@@ -40,14 +40,7 @@ export class ControlLayoutEditor {
       this.canvas.root.add(object);this.controls.set(id,object);
       let width=94,height=94;
       const image=(file:string,w:number,h=w,x=-w/2,y=-h/2)=>this.canvas.image(file,x,y,w,h,object);
-      if(id==='move') {
-        width=height=210;
-        image(this.skin['stick-base'],247,246).setAlpha(.75);
-        image(this.skin['arrow-up'],81,58,-40.5,-73-29);
-        image(this.skin['arrow-down'],81,58,-40.5,73-29);
-        image(this.skin['arrow-left'],58,81,-73-29,-40.5);
-        image(this.skin['arrow-right'],58,81,73-29,-40.5);
-      }
+      if(id==='move') {width=height=210;image(this.skin['stick-base'],210);image(this.skin.button,70);}
       else if(id==='attack') {width=159;height=160;image(this.skin.button,width,height);}
       else if(id==='swap') {width=height=75;image(this.skin.swap,75);}
       else {
