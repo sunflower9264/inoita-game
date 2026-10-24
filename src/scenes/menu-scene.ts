@@ -1,4 +1,5 @@
 import { SCENE_KEYS } from '../application/scene-keys.ts';
+import { controlSettings } from '../application/control-settings.ts';
 import Phaser from 'phaser';
 import type { MenuContext } from '../application/ports.ts';
 import { TITLE_MESSAGE_ASSETS, titleMenuImages } from '../application/menu-images.ts';
@@ -110,6 +111,12 @@ export class MenuScene extends Phaser.Scene {
           const enabled=this.app.audio?.settings[channel]??true;
           button(enabled?'开':'关',510,178+index*100,190,67,()=>{this.app.audio?.setEnabled(channel,!enabled);this.render();},34).setData('label',`${label}：${enabled?'开':'关'}`);
         }
+        view.text('移动方式',278,390,0,34);
+        const dpad=controlSettings.moveStyle==='dpad';
+        button(dpad?'十字按键':'虚拟摇杆',510,378,190,67,()=>{
+          controlSettings.setMoveStyle(dpad?'stick':'dpad');
+          this.render();
+        },30).setData('label','移动方式：' + (dpad?'十字按键':'虚拟摇杆'));
       }
     }
     if(this.deleteConfirm!==undefined){

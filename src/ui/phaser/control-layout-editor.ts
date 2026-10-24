@@ -4,6 +4,7 @@ import type { ControlSkin } from '../../domain/control-skin.ts';
 import { CONTROL_IDS, normalizeControlPosition, resolveControlLayout, type ControlId, type ControlPoint } from '../control-layout.ts';
 import type { ControlLayoutPreferences } from '../control-layout.ts';
 import type { ShortcutSlot } from './action-controls.ts';
+import { controlSettings } from '../../application/control-settings.ts';
 import { controlViewport } from './control-layout-viewport.ts';
 import { UiSurface } from './widgets.ts';
 
@@ -40,7 +41,19 @@ export class ControlLayoutEditor {
       this.canvas.root.add(object);this.controls.set(id,object);
       let width=94,height=94;
       const image=(file:string,w:number,h=w,x=-w/2,y=-h/2)=>this.canvas.image(file,x,y,w,h,object);
-      if(id==='move') {width=height=210;image(this.skin['stick-base'],210);image(this.skin.button,70);}
+      if(id==='move') {
+        if (controlSettings.moveStyle === 'dpad') {
+          width = height = 274;
+          const ring = this.scene.add.image(0, 0, this.skin['stick-base']).setScale(1.08).setAlpha(0.75);
+          const up = this.scene.add.image(0, -73, this.skin['arrow-up']).setScale(1.14);
+          const down = this.scene.add.image(0, 73, this.skin['arrow-down']).setScale(1.14);
+          const left = this.scene.add.image(-73, 0, this.skin['arrow-left']).setScale(1.14);
+          const right = this.scene.add.image(73, 0, this.skin['arrow-right']).setScale(1.14);
+          object.add([ring, up, down, left, right]);
+        } else {
+          width = height = 210; image(this.skin['stick-base'], 210); image(this.skin.button, 70);
+        }
+      }
       else if(id==='attack') {width=159;height=160;image(this.skin.button,width,height);}
       else if(id==='swap') {width=height=75;image(this.skin.swap,75);}
       else {

@@ -1,5 +1,6 @@
 import { UI_EVENTS } from '../application/ui-events.ts';
 import { displaySettings } from '../application/display-settings.ts';
+import { controlSettings } from '../application/control-settings.ts';
 import {CraftingPanel} from './phaser/crafting-panel.ts';
 import {EquipmentCrafting} from '../domain/crafting.ts';
 import {skillForGrowth,memberSkillGrowth} from '../domain/battle.ts';
@@ -382,8 +383,15 @@ export class StoryUI {
     v.text('帧率显示',260,275,0,25,undefined,content);
     const fps=displaySettings.fps;
     v.button(fps?'开启':'关闭',485,260,220,66,()=>{displaySettings.setFps(!fps);this.render();},{parent:content});
-    v.button('操作设置',485,350,220,66,()=>this.openControlEditor(),{parent:content});
-    this.finishScroll('settings',scroll,416);
+    // 移动方式：虚拟摇杆 / 十字按键
+    v.text('移动方式',260,365,0,25,undefined,content);
+    const dpad=controlSettings.moveStyle==='dpad';
+    v.button(dpad?'十字按键':'虚拟摇杆',485,350,220,66,()=>{
+      controlSettings.setMoveStyle(dpad?'stick':'dpad');
+      this.render();
+    },{parent:content}).setData('label','移动方式：' + (dpad?'十字按键':'虚拟摇杆'));
+    v.button('操作设置',485,440,220,66,()=>this.openControlEditor(),{parent:content});
+    this.finishScroll('settings',scroll,520);
   }
   /**
    * 存档槽：原版 `Scene_Init_POPUP_SC_SAVESLOT @0x1eae4c` 的面板 668×530 居中、三行 634×150、
