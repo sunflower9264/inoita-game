@@ -3,7 +3,7 @@ import { feedbackEffects } from '../domain/combat-feedback.ts';
 import { COMBAT_OUTCOME_EFFECTS } from '../domain/combat-outcomes.ts';
 import { skillEffectNames } from '../domain/skill-action.ts';
 import { skillReactionEffects } from '../domain/skill-reactions.ts';
-import type { BattleCatalog } from '../domain/battle.ts';
+import { skillForGrowth, type BattleCatalog } from '../domain/battle.ts';
 import type { WorldIndex } from '../domain/content.ts';
 import type { CompanionCatalog } from '../domain/party.ts';
 import type { WardrobeCatalog } from '../domain/wardrobe.ts';
@@ -50,8 +50,11 @@ export function residentCombatCoverageGaps(input: CoverageInput): CoverageGaps {
   for (const character of battle.classes) {
     for (const id of character.skills) {
       const skill = battle.skills[id];
-      for (const name of skillReactionEffects(skill)) effects.add(name);
-      if (skill.action) addAction(skill.action);
+      for (const profile of [skill, ...(skill.companion ? [skillForGrowth(skill, 'companion')] : [])]) {
+        for (const name of skillReactionEffects(profile)) effects.add(name);
+        if (profile.action) addAction(profile.action);
+        if (profile.followUpAction) addAction(profile.followUpAction);
+      }
     }
     for (const stance of Object.values(wardrobe.skillStances?.[character.id] ?? {}))
       for (const action of Object.values(stance.actions ?? {})) if (action) addAction(action);

@@ -33,6 +33,7 @@ export function skillEffectNames(action: SkillAction): string[] {
       for(const name of buffEffectNames(rank.effect))names.add(name);
     }
   }
+  if (action.transition?.casterStrikes?.effect) names.add(action.transition.casterStrikes.effect);
   if (action.transition?.actionEffect) names.add(action.transition.actionEffect);
   if (action.transition?.effect) names.add(action.transition.effect);
   return [...names];

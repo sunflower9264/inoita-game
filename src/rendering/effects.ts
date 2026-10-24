@@ -28,16 +28,32 @@ export function setEffectClip(scene: Phaser.Scene, effect: Phaser.GameObjects.Co
   const elapsed = previous?.accumulator ?? 0;
   effect.removeAll(true);
   for (const layer of clip.layers) {
+    if (scene.textures && !scene.textures.exists(layer.key)) {
+      globalThis.storyDiagnostics?.record('effect-texture-missing', { key: layer.key, file: layer.file });
+      continue;
+    }
     const sprite = scene.add.sprite(0, 0, layer.key).setOrigin(clip.originX, clip.originY)
       .setScale(clip.mirrorX ? -1 : 1, 1);
+    if (typeof scene.anims?.get === 'function' && scene.anims.exists(layer.key) && !(scene.anims.get(layer.key)?.frames?.length)) {
+      scene.anims.remove(layer.key);
+    }
     if (!scene.anims.exists(layer.key)) {
-      scene.anims.create({ key: layer.key, frames: scene.anims.generateFrameNumbers(layer.key, { start: 0, end: clip.frames - 1 }), frameRate: clip.frameRate });
+      const frames = scene.anims.generateFrameNumbers(layer.key, { start: 0, end: clip.frames - 1 });
+      if (scene.textures && (!frames || !frames.length)) {
+        globalThis.storyDiagnostics?.record('effect-frames-empty', { key: layer.key, frames: clip.frames });
+        sprite.destroy();
+        continue;
+      }
+      scene.anims.create({ key: layer.key, frames, frameRate: clip.frameRate });
     }
     const draw = layerDraw(layer);
     sprite.setBlendMode(blendModeOf(draw.kind === 'backdrop' ? backdropApproximation(layer.operations) : draw.blend));
     effect.add(sprite);
     if (effect.length === 1 && !loop) sprite.once('animationcomplete', () => effect.destroy());
-    sprite.play({ key: layer.key, startFrame, repeat: loop ? -1 : 0 });
+    sprite.play({ key: layer.key, startFrame: Math.max(0, Math.min(startFrame, clip.frames - 1)), repeat: loop ? -1 : 0 });
     sprite.anims.accumulator = elapsed;
+  }
+  if (!effect.length && !loop && scene.time) {
+    scene.time.delayedCall(0, () => { if (effect.scene) effect.destroy(); });
   }
 }

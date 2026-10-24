@@ -260,7 +260,7 @@ export class WorldCombat {
     const weapon=equipment['main-hand']??equipment['off-hand'];
     const actor=this.movement.actor(this.controlledVisual);
     const landing=rollManaGem(pickup,damage,rule,weapon?this.app.items.items[weapon].kind:undefined,target,
-      point=>this.movement.navigation.canStand(actor,point)&&this.movement.navigation.path(actor,point)!==null);
+      point=>this.movement.navigation.canStand(actor,point)&&this.movement.navigation.path(actor,point,256)!==null);
     if(!landing)return;
     const clip=pickup.hitDrop.directions[landing.direction].clip;
     groundLootFor(this.app.session).addFlying(map.id,target,landing,item,clip.frames*1000/clip.frameRate);
@@ -530,7 +530,7 @@ captureStoryActors():SceneActorState[] {
           return !!clearanceVisual && this.movement!.canStand(clearanceVisual, position);
         },
         canPlaceBody: (position, clearanceActorId) => this.canPlaceBodyAt(visual, position, clearanceActorId),
-        canReach: position => this.movement!.navigation.path(this.movement!.actor(visual), position) !== null,
+        canReach: position => this.movement!.navigation.path(this.movement!.actor(visual), position, 512) !== null,
         relocate: (position, clearance) => this.relocateVisual(enemy.visual, position, clearance),
         face: direction => { enemy.facing = direction; },
         play: (action, frame, complete) => {
@@ -1646,7 +1646,8 @@ captureStoryActors():SceneActorState[] {
     }
   }
   private movementSpeed(actorId:string,baseSpeed:number):number {
-    return Math.max(0,Math.trunc(baseSpeed*this.conditions.attribute(actorId,'moveSpeed',1000)/1000));
+    const mult = (actorId === this.controlledId || this.activeParty.includes(actorId)) ? (this.app.gmSpeedMultiplier ?? 1) : 1;
+    return Math.max(0,Math.trunc(baseSpeed*mult*this.conditions.attribute(actorId,'moveSpeed',1000)/1000));
   }
   private resourceCapacityInputs(id:string):{base:{maxHealth:number;maxMana:number};passives:PassiveModifier[]}|undefined {
     const member=this.memberOf(id),enemy=combatActor(this.arena,id,actor=>actor.key);
@@ -1861,7 +1862,7 @@ captureStoryActors():SceneActorState[] {
         return !!clearanceVisual&&this.movement.canStand(clearanceVisual,position);
       },
       canPlaceBody:(position,clearanceActorId)=>this.canPlaceBodyAt(visual,position,clearanceActorId),
-      canReach:position=>this.movement.navigation.path(this.movement.actor(visual),position)!==null,
+      canReach:position=>this.movement.navigation.path(this.movement.actor(visual),position,512)!==null,
       relocate:(position,clearance)=>this.relocateVisual(visual,position,clearance),face:setFacing,
       play:(action,frame,complete)=>{setFacing(action.facing);action.getAttackSpeedRate=()=>this.conditions.attribute(id,'attackSpeedRate',1000,this.partyPassives(id));return this.playAction(presenter,action,frame,complete);},
       frame:(action,index,contact,unitsReady,areaContact)=>{if(this.memberOf(action.caster.id)&&action.skill&&!this.soundedSkills.has(action)&&

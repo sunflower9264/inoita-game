@@ -87,9 +87,16 @@ export function setCharacterClip(scene: Phaser.Scene, character: CharacterVisual
     const single = name.startsWith('attack-') || name.startsWith('skill-') || name.startsWith('die-')
       || STORY_POSE_NAMES.some(pose => name.startsWith(`${pose}-`));
     clip.layers.forEach((layer, index) => {
-      if (!scene.anims.exists(layer.key)) scene.anims.create({ key: layer.key, frames: scene.anims.generateFrameNumbers(layer.key, { start: 0, end: clip.frames - 1 }), frameRate: clip.frameRate, repeat: single ? 0 : -1 });
+      if (typeof scene.anims?.get === 'function' && scene.anims.exists(layer.key) && !(scene.anims.get(layer.key)?.frames?.length)) {
+        scene.anims.remove(layer.key);
+      }
+      if (!scene.anims.exists(layer.key)) {
+        const frames = scene.anims.generateFrameNumbers(layer.key, { start: 0, end: clip.frames - 1 });
+        if (!scene.textures || frames?.length) scene.anims.create({ key: layer.key, frames, frameRate: clip.frameRate, repeat: single ? 0 : -1 });
+      }
       const sprite = character.layers[index];
-      sprite.play({ key: layer.key, startFrame });
+      if (scene.textures && !scene.anims.exists(layer.key)) return;
+      sprite.play({ key: layer.key, startFrame: Math.max(0, Math.min(startFrame, clip.frames - 1)) });
       sprite.anims.timeScale=1;
       sprite.anims.accumulator = elapsed;
     });

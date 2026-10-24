@@ -89,7 +89,7 @@ test('cancellation before frame two preserves the charge, while companion succes
   assert.equal(cancelled.order.includes('smoke-puff'),false);assert.ok(cancelled.combat.snapshot().cooldowns.whist);
   const companion=fixture('ally',2);companion.addEnemy();assert.equal(companion.start(),'started');companion.frame(2);
   assert.deepEqual(companion.forgot,['enemy']);assert.equal(companion.ally.player.mana,76);assert.equal(companion.player.player.mana,100);
-  assert.deepEqual(companion.order,['cancel-animation','clear-action','smoke-puff']);
+  assert.deepEqual(companion.order,['cancel-animation','clear-action','smoke-puff','sound:A_Skill_05']);
   assert.equal(companion.call('actorAttribute','ally','stealthDamageRate'),870);
   assert.equal(companion.call('actorAttribute','player','stealthDamageRate'),0);
 });
