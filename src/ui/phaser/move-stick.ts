@@ -40,7 +40,7 @@ function keyToCardinal(event: KeyboardEvent): CardinalDir | undefined {
 /**
  * 屏幕左下角的移动控制器：
  * - 支持两种模式自由切换：经典虚拟摇杆（自由 360°）与符文四向十字按键（严格四向互斥 + 发光反馈）。
- * - 响应用户在「设置」中的切换，支持多指触控与键盘输入。
+ * - 双视图预挂载在同一容器内，切换时直接切显隐与热区半径，避免 Phaser `removeInteractive()` 下一帧异步清空 `input` 的陷阱。
  */
 export class MoveStick {
   readonly axis = { x: 0, y: 0 };
@@ -48,39 +48,77 @@ export class MoveStick {
   private readonly hud: Hud;
   private readonly skin: ControlSkin;
   private readonly container: Phaser.GameObjects.Container;
+  private readonly hitArea: Phaser.Geom.Circle;
   private center = { x: 0, y: 0 };
+  private pointerId = -1;
   private isVisible = true;
   private readonly preferences: ControlLayoutPreferences | undefined;
   private readonly unsubscribePreferences: () => void;
   private readonly unsubscribeSettings: () => void;
   private layoutHeight: number | undefined;
 
-  // 虚拟摇杆专用组件与状态
-  private stickKnob?: Phaser.GameObjects.Image;
-  private stickPointerId = -1;
+  // 虚拟摇杆视图组件
+  private readonly stickBase: Phaser.GameObjects.Image;
+  private readonly stickKnob: Phaser.GameObjects.Image;
 
-  // 十字按键专用组件与状态
-  private arrowUp?: Phaser.GameObjects.Image;
-  private arrowDown?: Phaser.GameObjects.Image;
-  private arrowLeft?: Phaser.GameObjects.Image;
-  private arrowRight?: Phaser.GameObjects.Image;
-  private readonly activeTouches = new Map<number, { x: number; y: number }>();
-  private readonly touchHistory: number[] = [];
-  private touchAxis = { x: 0, y: 0 };
+  // 十字按键视图组件
+  private readonly dpadBase: Phaser.GameObjects.Image;
+  private readonly arrowUp: Phaser.GameObjects.Image;
+  private readonly arrowDown: Phaser.GameObjects.Image;
+  private readonly arrowLeft: Phaser.GameObjects.Image;
+  private readonly arrowRight: Phaser.GameObjects.Image;
+
   private readonly keyHistory: CardinalDir[] = [];
 
   constructor(scene: Phaser.Scene, hud: Hud, skin: ControlSkin, preferences?: ControlLayoutPreferences) {
     scene = hud.scene; this.scene = scene; this.hud = hud; this.skin = skin; this.preferences = preferences;
     this.container = hud.add(scene.make.container({ x: 0, y: 0 }, false));
 
-    this.initStyle(controlSettings.moveStyle);
+    for (const file of [
+      skin['stick-base'], skin.button,
+      skin['arrow-up'], skin['arrow-up-glow'],
+      skin['arrow-down'], skin['arrow-down-glow'],
+      skin['arrow-left'], skin['arrow-left-glow'],
+      skin['arrow-right'], skin['arrow-right-glow']
+    ]) {
+      if (file && scene.textures.exists(file)) scene.textures.get(file).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    }
+
+    // 1. 经典虚拟摇杆图层
+    this.stickBase = scene.add.image(0, 0, skin['stick-base']).setDisplaySize(STICK_BASE_RADIUS * 2, STICK_BASE_RADIUS * 2);
+    this.stickKnob = scene.add.image(0, 0, skin.button).setDisplaySize(STICK_KNOB_RADIUS * 2, STICK_KNOB_RADIUS * 2);
+
+    // 2. 符文四向十字按键图层
+    this.dpadBase = scene.add.image(0, 0, skin['stick-base']).setScale(DPAD_RUNE_SCALE).setAlpha(DPAD_RUNE_ALPHA);
+    this.arrowUp = scene.add.image(0, -DPAD_ARROW_OFFSET, skin['arrow-up']).setScale(DPAD_ARROW_SCALE_NORM);
+    this.arrowDown = scene.add.image(0, DPAD_ARROW_OFFSET, skin['arrow-down']).setScale(DPAD_ARROW_SCALE_NORM);
+    this.arrowLeft = scene.add.image(-DPAD_ARROW_OFFSET, 0, skin['arrow-left']).setScale(DPAD_ARROW_SCALE_NORM);
+    this.arrowRight = scene.add.image(DPAD_ARROW_OFFSET, 0, skin['arrow-right']).setScale(DPAD_ARROW_SCALE_NORM);
+
+    this.container.add([
+      this.stickBase, this.stickKnob,
+      this.dpadBase, this.arrowUp, this.arrowDown, this.arrowLeft, this.arrowRight
+    ]);
+
+    // 统一绑定一次交互热区与事件监听（切勿在运行时调用 removeInteractive，否则 Phaser 下一帧会清空 input）
+    const initRadius = controlSettings.moveStyle === 'dpad' ? DPAD_BASE_RADIUS : STICK_BASE_RADIUS;
+    this.hitArea = new Phaser.Geom.Circle(0, 0, initRadius);
+    this.container.setInteractive(this.hitArea, Phaser.Geom.Circle.Contains);
+    this.container.on('pointerdown', (pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
+      event.stopPropagation();
+      if (this.pointerId >= 0 && controlSettings.moveStyle === 'stick') return;
+      this.pointerId = pointer.id;
+      this.track(pointer);
+    });
+
+    this.applyStyle(controlSettings.moveStyle);
 
     this.unsubscribePreferences = preferences?.subscribe(() => {
       if (this.layoutHeight !== undefined) this.layout(this.layoutHeight);
     }) ?? (() => {});
 
     this.unsubscribeSettings = controlSettings.subscribe(style => {
-      this.rebuild(style);
+      this.applyStyle(style);
     });
 
     scene.input.on(Phaser.Input.Events.POINTER_MOVE, this.onMove, this);
@@ -91,96 +129,30 @@ export class MoveStick {
     scene.input.keyboard?.on('keyup', this.onKeyUp, this);
   }
 
-  private rebuild(style: MoveControlStyle): void {
+  private applyStyle(style: MoveControlStyle): void {
     this.reset();
-    this.container.removeAll(true);
-    this.container.removeInteractive();
-    this.stickKnob = undefined;
-    this.arrowUp = undefined;
-    this.arrowDown = undefined;
-    this.arrowLeft = undefined;
-    this.arrowRight = undefined;
-    this.initStyle(style);
-    if (this.layoutHeight !== undefined) this.layout(this.layoutHeight);
-    this.setVisible(this.isVisible);
-  }
-
-  private initStyle(style: MoveControlStyle): void {
-    const scene = this.scene, skin = this.skin;
-    if (style === 'dpad') {
-      for (const file of [
-        skin['stick-base'],
-        skin['arrow-up'], skin['arrow-up-glow'],
-        skin['arrow-down'], skin['arrow-down-glow'],
-        skin['arrow-left'], skin['arrow-left-glow'],
-        skin['arrow-right'], skin['arrow-right-glow']
-      ]) {
-        if (file && scene.textures.exists(file)) scene.textures.get(file).setFilter(Phaser.Textures.FilterMode.LINEAR);
-      }
-      const base = scene.add.image(0, 0, skin['stick-base']).setScale(DPAD_RUNE_SCALE).setAlpha(DPAD_RUNE_ALPHA);
-      this.arrowUp = scene.add.image(0, -DPAD_ARROW_OFFSET, skin['arrow-up']).setScale(DPAD_ARROW_SCALE_NORM);
-      this.arrowDown = scene.add.image(0, DPAD_ARROW_OFFSET, skin['arrow-down']).setScale(DPAD_ARROW_SCALE_NORM);
-      this.arrowLeft = scene.add.image(-DPAD_ARROW_OFFSET, 0, skin['arrow-left']).setScale(DPAD_ARROW_SCALE_NORM);
-      this.arrowRight = scene.add.image(DPAD_ARROW_OFFSET, 0, skin['arrow-right']).setScale(DPAD_ARROW_SCALE_NORM);
-      this.container.add([base, this.arrowUp, this.arrowDown, this.arrowLeft, this.arrowRight]);
-      this.container.setInteractive(new Phaser.Geom.Circle(0, 0, DPAD_BASE_RADIUS), Phaser.Geom.Circle.Contains);
-      this.container.on('pointerdown', (pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
-        event.stopPropagation();
-        this.activeTouches.set(pointer.id, { x: pointer.x, y: pointer.y });
-        const idx = this.touchHistory.indexOf(pointer.id);
-        if (idx >= 0) this.touchHistory.splice(idx, 1);
-        this.touchHistory.push(pointer.id);
-        this.trackDpadTouch(pointer.x, pointer.y);
-      });
-    } else {
-      for (const file of [skin['stick-base'], skin.button]) {
-        if (file && scene.textures.exists(file)) scene.textures.get(file).setFilter(Phaser.Textures.FilterMode.LINEAR);
-      }
-      const base = scene.add.image(0, 0, skin['stick-base']).setDisplaySize(STICK_BASE_RADIUS * 2, STICK_BASE_RADIUS * 2);
-      this.stickKnob = scene.add.image(0, 0, skin.button).setDisplaySize(STICK_KNOB_RADIUS * 2, STICK_KNOB_RADIUS * 2);
-      this.container.add([base, this.stickKnob]);
-      this.container.setInteractive(new Phaser.Geom.Circle(0, 0, STICK_BASE_RADIUS), Phaser.Geom.Circle.Contains);
-      this.container.on('pointerdown', (pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
-        event.stopPropagation();
-        if (this.stickPointerId >= 0) return;
-        this.stickPointerId = pointer.id;
-        this.trackStick(pointer);
-      });
-    }
+    const isDpad = style === 'dpad';
+    this.hitArea.setTo(0, 0, isDpad ? DPAD_BASE_RADIUS : STICK_BASE_RADIUS);
+    this.stickBase.setVisible(!isDpad);
+    this.stickKnob.setVisible(!isDpad);
+    this.dpadBase.setVisible(isDpad);
+    this.arrowUp.setVisible(isDpad);
+    this.arrowDown.setVisible(isDpad);
+    this.arrowLeft.setVisible(isDpad);
+    this.arrowRight.setVisible(isDpad);
   }
 
   private onMove(pointer: Phaser.Input.Pointer): void {
-    if (controlSettings.moveStyle === 'dpad') {
-      if (!this.activeTouches.has(pointer.id)) return;
-      this.activeTouches.set(pointer.id, { x: pointer.x, y: pointer.y });
-      if (this.touchHistory.at(-1) === pointer.id) this.trackDpadTouch(pointer.x, pointer.y);
-    } else {
-      if (pointer.id === this.stickPointerId) this.trackStick(pointer);
-    }
+    if (pointer.id === this.pointerId) this.track(pointer);
   }
 
   private onUp(pointer: Phaser.Input.Pointer): void {
-    if (controlSettings.moveStyle === 'dpad') {
-      if (!this.activeTouches.has(pointer.id)) return;
-      this.activeTouches.delete(pointer.id);
-      const idx = this.touchHistory.indexOf(pointer.id);
-      if (idx >= 0) this.touchHistory.splice(idx, 1);
-      if (this.touchHistory.length > 0) {
-        const lastId = this.touchHistory.at(-1)!;
-        const pos = this.activeTouches.get(lastId)!;
-        this.trackDpadTouch(pos.x, pos.y);
-      } else {
-        this.touchAxis = { x: 0, y: 0 };
-        this.syncAxis();
-      }
-    } else {
-      if (pointer.id === this.stickPointerId) this.reset();
-    }
+    if (pointer.id === this.pointerId) this.reset();
   }
 
   private onGameOut(): void {
     this.keyHistory.length = 0;
-    this.syncAxis();
+    if (this.pointerId < 0) this.syncKeyAxis();
   }
 
   private onKeyDown(event: KeyboardEvent): void {
@@ -192,7 +164,7 @@ export class MoveStick {
     const idx = this.keyHistory.indexOf(dir);
     if (idx >= 0) this.keyHistory.splice(idx, 1);
     this.keyHistory.push(dir);
-    this.syncAxis();
+    if (this.pointerId < 0) this.syncKeyAxis();
   }
 
   private onKeyUp(event: KeyboardEvent): void {
@@ -201,70 +173,59 @@ export class MoveStick {
     const idx = this.keyHistory.indexOf(dir);
     if (idx >= 0) {
       this.keyHistory.splice(idx, 1);
-      this.syncAxis();
+      if (this.pointerId < 0) this.syncKeyAxis();
     }
   }
 
-  private trackStick(pointer: Phaser.Input.Pointer): void {
+  private syncKeyAxis(): void {
+    if (this.keyHistory.length > 0 && this.isVisible) {
+      const vec = dirToVector(this.keyHistory.at(-1)!);
+      this.axis.x = vec.x;
+      this.axis.y = vec.y;
+    } else {
+      this.axis.x = 0;
+      this.axis.y = 0;
+    }
+    this.stickKnob.setPosition(this.axis.x * STICK_KNOB_LIMIT, this.axis.y * STICK_KNOB_LIMIT);
+    this.updateArrows();
+  }
+
+  private track(pointer: Phaser.Input.Pointer): void {
     const dx = (pointer.x - this.center.x) / this.container.scaleX;
     const dy = (pointer.y - this.center.y) / this.container.scaleY;
     const distance = Math.hypot(dx, dy);
-    const ratio = Math.min(1, STICK_KNOB_LIMIT / (distance || 1));
-    const pushed = distance >= STICK_DEAD_ZONE;
-    this.axis.x = pushed ? (dx * ratio) / STICK_KNOB_LIMIT : 0;
-    this.axis.y = pushed ? (dy * ratio) / STICK_KNOB_LIMIT : 0;
-    this.stickKnob?.setPosition(pushed ? dx * ratio : 0, pushed ? dy * ratio : 0);
-  }
 
-  private trackDpadTouch(px: number, py: number): void {
-    const dx = (px - this.center.x) / this.container.scaleX;
-    const dy = (py - this.center.y) / this.container.scaleY;
-    const distance = Math.hypot(dx, dy);
-    if (distance < DPAD_DEAD_ZONE) {
-      this.touchAxis = { x: 0, y: 0 };
-    } else {
-      const deg = Math.atan2(dy, dx) * (180 / Math.PI);
-      if (deg >= -45 && deg < 45) this.touchAxis = { x: 1, y: 0 };
-      else if (deg >= 45 && deg < 135) this.touchAxis = { x: 0, y: 1 };
-      else if (deg >= -135 && deg < -45) this.touchAxis = { x: 0, y: -1 };
-      else this.touchAxis = { x: -1, y: 0 };
-    }
-    this.syncAxis();
-  }
-
-  private syncAxis(): void {
     if (controlSettings.moveStyle === 'dpad') {
-      const touchActive = this.activeTouches.size > 0 && (this.touchAxis.x !== 0 || this.touchAxis.y !== 0);
-      if (touchActive) {
-        this.axis.x = this.touchAxis.x;
-        this.axis.y = this.touchAxis.y;
-      } else if (this.keyHistory.length > 0 && this.isVisible) {
-        const vec = dirToVector(this.keyHistory.at(-1)!);
-        this.axis.x = vec.x;
-        this.axis.y = vec.y;
-      } else {
+      if (distance < DPAD_DEAD_ZONE) {
         this.axis.x = 0;
         this.axis.y = 0;
+      } else {
+        const deg = Math.atan2(dy, dx) * (180 / Math.PI);
+        if (deg >= -45 && deg < 45) {
+          this.axis.x = 1;
+          this.axis.y = 0;
+        } else if (deg >= 45 && deg < 135) {
+          this.axis.x = 0;
+          this.axis.y = 1;
+        } else if (deg >= -135 && deg < -45) {
+          this.axis.x = 0;
+          this.axis.y = -1;
+        } else {
+          this.axis.x = -1;
+          this.axis.y = 0;
+        }
       }
       this.updateArrows();
     } else {
-      if (this.stickPointerId < 0) {
-        if (this.keyHistory.length > 0 && this.isVisible) {
-          const vec = dirToVector(this.keyHistory.at(-1)!);
-          this.axis.x = vec.x;
-          this.axis.y = vec.y;
-          this.stickKnob?.setPosition(vec.x * STICK_KNOB_LIMIT, vec.y * STICK_KNOB_LIMIT);
-        } else {
-          this.axis.x = 0;
-          this.axis.y = 0;
-          this.stickKnob?.setPosition(0, 0);
-        }
-      }
+      const ratio = Math.min(1, STICK_KNOB_LIMIT / (distance || 1));
+      const pushed = distance >= STICK_DEAD_ZONE;
+      this.axis.x = pushed ? (dx * ratio) / STICK_KNOB_LIMIT : 0;
+      this.axis.y = pushed ? (dy * ratio) / STICK_KNOB_LIMIT : 0;
+      this.stickKnob.setPosition(pushed ? dx * ratio : 0, pushed ? dy * ratio : 0);
     }
   }
 
   private updateArrows(): void {
-    if (!this.arrowUp || !this.arrowDown || !this.arrowLeft || !this.arrowRight) return;
     const up = this.axis.y < -0.3;
     const down = this.axis.y > 0.3;
     const left = this.axis.x < -0.3;
@@ -275,15 +236,13 @@ export class MoveStick {
     this.arrowRight.setTexture(right ? this.skin['arrow-right-glow'] : this.skin['arrow-right']).setScale(right ? DPAD_ARROW_SCALE_GLOW : DPAD_ARROW_SCALE_NORM);
   }
 
+  /** 松手或流程接管输入时回到中位。 */
   reset(): void {
-    this.stickPointerId = -1;
-    this.activeTouches.clear();
-    this.touchHistory.length = 0;
-    this.touchAxis = { x: 0, y: 0 };
+    this.pointerId = -1;
     this.keyHistory.length = 0;
     this.axis.x = 0;
     this.axis.y = 0;
-    this.stickKnob?.setPosition(0, 0);
+    this.stickKnob.setPosition(0, 0);
     this.updateArrows();
   }
 
@@ -296,6 +255,7 @@ export class MoveStick {
     this.reset();
   }
 
+  /** 加载中、对话或面板锁住输入、流程挂起时收起摇杆；收起后 Phaser 也不再把它算作点击目标。 */
   setVisible(visible: boolean): void {
     this.isVisible = visible;
     this.hud.setVisible(this.container, visible);
