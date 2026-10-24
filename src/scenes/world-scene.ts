@@ -125,10 +125,10 @@ export class WorldScene extends Phaser.Scene {
   private stick?: MoveStick;
   private controls?: ActionControls;
   private shortcutPageCache?:{configuration:SkillConfiguration;version:number;bagRevision:number;owner:string;classId:string;page:number;
-    entries:(ShortcutEntry|null)[];levels:Record<string,number>};
+    entries:(ShortcutEntry|null)[];levels:Record<string,number>;slotsSignature?:string};
   private nameBanner?: NameBanner;
   private minimap?: StoryMinimap;
-  private fpsReadout?: { container: Phaser.GameObjects.Container; text: Phaser.GameObjects.Text };
+  private fpsReadout?: { container: Phaser.GameObjects.Container; text: Phaser.GameObjects.Text; lastValue?: number; lastVisible?: boolean };
   private request = new AbortController();
   private mapAssets?: AssetLease;
   private prefetchTarget?: string;
@@ -696,7 +696,11 @@ export class WorldScene extends Phaser.Scene {
       cache={configuration,version:configuration.version,bagRevision:session.bag.revision,owner,classId:member.classId,page,entries,levels};
       this.shortcutPageCache=cache;
     }
-    this.controls.setShortcutPage(cache.entries.map(entry=>this.shortcutSlot(entry,member.player.mana,cache.levels[entry?.id??'']??0)));
+    const slots=cache.entries.map(entry=>this.shortcutSlot(entry,member.player.mana,cache.levels[entry?.id??'']??0));
+    const slotsSignature=slots.map(s=>s.entry?`${s.entry.kind}:${s.entry.id}:${s.quantity}:${s.enabled?1:0}:${s.cooldown?.remainingMs??0}/${s.cooldown?.durationMs??0}`:'_').join('|');
+    if(cache.slotsSignature===slotsSignature)return;
+    cache.slotsSignature=slotsSignature;
+    this.controls.setShortcutPage(slots);
   }
   private refreshLoadout(): void {
     this.refreshShortcutPage();
@@ -778,8 +782,18 @@ export class WorldScene extends Phaser.Scene {
   private updateFps(): void {
     const readout = this.fpsReadout;
     if (!readout) return;
-    this.hud!.setVisible(readout.container,displaySettings.fps);
-    if (displaySettings.fps) readout.text.setText(`${Math.round(this.game.loop.actualFps)} FPS`);
+    const visible = displaySettings.fps;
+    if (readout.lastVisible !== visible) {
+      readout.lastVisible = visible;
+      this.hud!.setVisible(readout.container, visible);
+    }
+    if (visible) {
+      const value = Math.round(this.game.loop.actualFps);
+      if (readout.lastValue !== value) {
+        readout.lastValue = value;
+        readout.text.setText(`${value} FPS`);
+      }
+    }
   }
   private layoutHud(): void {
     this.hud?.layout(this.scale.width, this.scale.height);
@@ -1417,6 +1431,7 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
     this.near = nearest;
   }
   override update(_time:number,delta:number): void {
+    const stepDelta=Math.min(delta,180);
     this.updateFps();
     if (!this.canControl) this.syncHud();
     if (!this.player || !this.movement) return;
@@ -1424,7 +1439,7 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
     this.pickupMessages?.setPaused(!this.canCombatControl);
     this.combat?.setPerformanceActive(this.performing);
     if(this.checkpointPending&&this.canControl&&!this.performing&&!this.app.director.busy&&this.combat?.canCheckpoint)this.captureCheckpoint();
-    this.combat?.update(delta,this.canCombatControl);
+    this.combat?.update(stepDelta,this.canCombatControl);
     if(this.canCombatControl&&!this.app.director.busy)for(const encounter of this.combat?.completedStoryEncounters??[]){
       if(this.encounterResults.has(encounter.id))continue;
       this.encounterResults.add(encounter.id);
@@ -1432,7 +1447,7 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
     }
     this.statusHud?.update(this.app.session.combatTick);
     this.groundLootView?.setPaused(!this.canCombatControl);
-    if(this.canCombatControl&&this.map){const store=groundLootFor(this.app.session);store.advance(this.map.id,delta);this.groundLootView?.sync(store.forMap(this.map.id));}
+    if(this.canCombatControl&&this.map){const store=groundLootFor(this.app.session);store.advance(this.map.id,stepDelta);this.groundLootView?.sync(store.forMap(this.map.id));}
     this.refreshShortcutPage();
     if (!this.canControl) { if (!this.performing) this.movement.stop(controlled); return; }
     if(this.combat?.playerCannotMove()){this.movement.stop(controlled);return;}
@@ -1442,7 +1457,7 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
     const length = Math.hypot(axis.x, axis.y);
     // 原版按方向键移动会清当前目标（CHAR_SetTarget(ch,0)）：面板随之隐藏，普攻改在范围内重新选敌。
     if(length>0){this.combat?.cancelAttack();this.combat?.clearTarget();this.combat?.cancelAmbushOnDirection();this.autoAttack.release();}
-    else if(this.combat?.attackState!=='idle')return;
+    if(this.combat?.attackState!=='idle')return;
     // 开始攻击之后站定自动接下一击；摇杆一动（已清目标）或目标消失就停。
     if(length===0&&this.autoAttack.next({targetId:this.combat?.targetId,attackState:this.combat?.attackState??'idle'}))this.combat?.attack();
     // 摇杆已处理死区。非零方向使用固定速度，推杆幅度不影响速度。

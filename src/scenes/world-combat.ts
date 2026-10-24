@@ -623,6 +623,10 @@ captureStoryActors():SceneActorState[] {
   private relocateVisual(visual: CharacterVisual, position: Point, clearanceActorId?: string): boolean {
     if (!this.movement) return false;
     if (this.canPlaceBodyAt(visual, position, clearanceActorId)) { this.movement.place(visual, position); return true; }
+    const actor = this.movement.actor(visual), shape = actor.shape();
+    if (this.movement.navigation.terrainFree(position) && this.movement.navigation.bodyTerrainFree(shape, position)) {
+      this.movement.place(visual, position); return true;
+    }
     this.relocationFailures ??= [];
     this.relocationFailures.push({ id: visual.entity.id, position: { ...position } });
     if (this.relocationFailures.length > 8) this.relocationFailures.shift();
@@ -1568,7 +1572,7 @@ captureStoryActors():SceneActorState[] {
       if(!state)return [];
       // 再生药水这类持续回复按「每脉冲额外恢复」生效，加在各人自己的恢复属性上。
       const regeneration=this.app.session.recovery.activeRegeneration;
-      const bonus=(key:'healthRecoveryPerPulse'|'manaRecoveryPerPulse'):number=>regeneration?regeneration[key]:0;
+      const bonus=(key:'healthRecoveryPerPulse'|'manaRecoveryPerPulse'):number=>member&&regeneration?regeneration[key]:0;
       return [{actorId:id,alive:state.health>0&&!this.pendingDefeats.has(id),level:state.level,
         healthRecoveryPerPulse:this.actorAttribute(id,'healthRecoveryPerPulse')+bonus('healthRecoveryPerPulse'),
         manaRecoveryPerPulse:this.actorAttribute(id,'manaRecoveryPerPulse')+bonus('manaRecoveryPerPulse'),
@@ -1649,8 +1653,14 @@ captureStoryActors():SceneActorState[] {
     const base=member?.panel??(enemy&&this.roster.enemySnapshot(id,enemy.definition,this.hero.level));
     if(!base)return;
     const passives=member?this.partyPassives(id):[];
-    for(const key of ['maxHealth','maxMana'] as const)this.conditions.setResourceCapacityInputs(id,key,
-      JSON.stringify([base[key],passives.filter(modifier=>modifier.attribute===key)]));
+    for(const key of ['maxHealth','maxMana'] as const){
+      let sig=String(base[key]);
+      for(const modifier of passives)if(modifier.attribute===key){
+        const op=modifier.operation;
+        sig+=`|${op.kind}:${'amount' in op?op.amount:'ratePerThousand' in op?op.ratePerThousand:'factor' in op?op.factor:'divisor' in op?op.divisor:''}`;
+      }
+      this.conditions.setResourceCapacityInputs(id,key,sig);
+    }
     return {base,passives};
   }
   private readResourceCapacity(id:string,key:ResourceCapacityKey):number {
@@ -2183,9 +2193,15 @@ captureStoryActors():SceneActorState[] {
     const clips=this.controlledId==='player'?undefined:{north:`skill-${key}-north`,south:`skill-${key}-south`,east:`skill-${key}-east`,west:`skill-${key}-west`} as Record<Facing,import('../domain/content.ts').ClipName>;
     this.runtime.request({actorId:this.controlledId,mode:action?'manual':'normal',skill:action?{id:key!,action,level,manaCost,clips}:undefined});
   }
-  cancelAttack(clearEffects=false):void{this.combat?.cancel(clearEffects,false);this.conditions.clearTemporary(this.controlledId);}
+  cancelAttack(clearEffects=false):void{
+    if(!clearEffects&&this.combatRuntime?.hasPendingBasicStrike(this.controlledId))return;
+    this.combat?.cancel(clearEffects,false);this.conditions.clearTemporary(this.controlledId);
+  }
   /** 摇杆真的移动时调用：原版移动会清当前目标，面板随之隐藏。 */
-  clearTarget():void{this.combat?.clearSelection();}
+  clearTarget():void{
+    if(this.combatRuntime?.hasPendingBasicStrike(this.controlledId))return;
+    this.combat?.clearSelection();
+  }
   get paused():boolean{return this.runtime.paused;}
   settleForSave():void{this.pendingDefeats.flush();for(const finish of [...(this.partyDefeatWork?.values()??[])])finish();}
   setPaused(paused:boolean):void {

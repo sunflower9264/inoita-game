@@ -470,6 +470,7 @@ function boot(): void {
       game.events.once(Phaser.Core.Events.DESTROY, restoreClock);
     } },
     scale: { mode: Phaser.Scale.NONE, autoCenter: Phaser.Scale.CENTER_BOTH, width: GAME_WIDTH, height: GAME_HEIGHT },
+    render: { powerPreference: 'high-performance', batchSize: 4096 },
     input: { activePointers: 3, keyboard: true }, loader: { maxParallelDownloads: 6, timeout: 15000, maxRetries: 1 },
     scene: [], banner: false, audio: { disableWebAudio: false }
   });

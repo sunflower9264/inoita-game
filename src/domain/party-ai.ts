@@ -200,7 +200,8 @@ export class PartyController {
       const radius=Math.hypot(actor.bounds.width+leader.bounds.width,actor.bounds.height+leader.bounds.height)+range*8;
       this.path=findPath(actor.position,{bounds:this.port.navigationBounds(),canStand,
         isGoal:point=>canStand(point)&&attackDistance(point,actor.bounds,leader.position,leader.bounds)<=range,
-        heuristic:point=>Math.max(0,Math.hypot(point.x-leader.position.x,point.y-leader.position.y)-radius)})??[];
+        heuristic:point=>Math.max(0,Math.hypot(point.x-leader.position.x,point.y-leader.position.y)-radius)},1024)??[];
+      if(!this.path.length)this.nextPathAt=this.clock+180;
     }
     if(this.nextWaypoint())this.port.followPath(this.nextWaypoint);else this.port.stop();
   }

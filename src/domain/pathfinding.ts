@@ -103,7 +103,7 @@ export function createPathSearch(start:Point,query:PathQuery):PathSearch {
 }
 
 /** 同步查询沿用同一搜索核、枚举顺序与斜角检查，一次完成全部搜索。 */
-export function findPath(start:Point,query:PathQuery):Point[]|null {
-  const result=createPathSearch(start,query).step(Infinity);
+export function findPath(start:Point,query:PathQuery,maxExpanded=Infinity):Point[]|null {
+  const result=createPathSearch(start,query).step(maxExpanded);
   return result.status==='found'?result.path:null;
 }

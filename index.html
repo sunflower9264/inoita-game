@@ -6,5 +6,40 @@
 <main id="game-frame">
 <div id="game" aria-label="游戏场景"></div>
 </main>
+<button id="fullscreen-btn" type="button" aria-label="全屏切换" style="position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:9999;padding:6px 14px;background:rgba(16,29,36,0.78);color:#e2c88d;border:1px solid rgba(226,200,141,0.4);border-radius:6px;font-size:12px;cursor:pointer;backdrop-filter:blur(4px);touch-action:manipulation;transition:opacity .3s">⛶ 全屏</button>
+<script>
+(function(){
+  var b=document.getElementById('fullscreen-btn');
+  if(!b)return;
+  function u(){
+    var f=!!(document.fullscreenElement||document.webkitFullscreenElement);
+    b.textContent=f?'✕ 退出全屏':'⛶ 全屏';
+    b.style.opacity=f?'0.3':'0.85';
+  }
+  b.addEventListener('click',function(e){
+    e.stopPropagation();
+    if(!document.fullscreenElement&&!document.webkitFullscreenElement){
+      var el=document.documentElement,req=el.requestFullscreen||el.webkitRequestFullscreen;
+      if(req)req.call(el).catch(function(){});
+      try{if(screen.orientation&&screen.orientation.lock)screen.orientation.lock('landscape').catch(function(){});}catch(_){}
+    }else{
+      var ex=document.exitFullscreen||document.webkitExitFullscreen;
+      if(ex)ex.call(document).catch(function(){});
+    }
+  });
+  document.addEventListener('fullscreenchange',u);
+  document.addEventListener('webkitfullscreenchange',u);
+  var t;
+  function fade(){
+    clearTimeout(t);
+    var f=!!(document.fullscreenElement||document.webkitFullscreenElement);
+    b.style.opacity=f?'0.35':'0.85';
+    t=setTimeout(function(){b.style.opacity='0.15';},4000);
+  }
+  window.addEventListener('touchstart',fade,{passive:true});
+  window.addEventListener('mousemove',fade,{passive:true});
+  fade();
+})();
+</script>
 <script src="/diagnostics.js"></script>
 <script type="module" src="/src/main.ts"></script></body></html>

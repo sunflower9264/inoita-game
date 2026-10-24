@@ -86,7 +86,12 @@ export class Session {
     if(entering&&mapSpawns)this.resetMapEnemies(mapSpawns);
     for(const [id,enemy] of this.enemyStates)if(enemy.capture&&
       (enemy.capture.map!==map||enemy.capture.visit!==this.storyWorld.visit))this.enemyStates.delete(id);
-    if (this.chests.mapId !== map) for (const spawn of this.chests.spawns) this.enemyStates.delete(spawn.id);
+    if (this.chests.mapId !== map) {
+      for (const spawn of this.chests.spawns) this.enemyStates.delete(spawn.id);
+      if (this.chests.mapId !== undefined) {
+        for (const [id, enemy] of this.enemyStates) if (enemy.deadUntil !== 'permanent') this.enemyStates.delete(id);
+      }
+    }
     this.chests.enterMap(map);
     this.springs.enterMap(map);
     this.shops.enterMap(map);

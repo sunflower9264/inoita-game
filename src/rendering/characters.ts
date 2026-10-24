@@ -79,7 +79,7 @@ export function setCharacterClip(scene: Phaser.Scene, character: CharacterVisual
     // 转向时保留当前帧号和帧内已过时间，所有图层一起接上。
     const previous = character.clipName?.startsWith('walk-') && name.startsWith('walk-')
       ? character.layers[0]?.anims : null;
-    const startFrame = previous ? (previous.currentFrame!.index - 1) % clip.frames : 0;
+    const startFrame = previous?.currentFrame ? (previous.currentFrame.index - 1) % clip.frames : 0;
     const elapsed = previous?.accumulator ?? 0;
     replaceLayers(scene, character, name);
     // 动作类动画播放一次，行走与待机循环。普攻走 playCharacterSequence，不经过这里。
