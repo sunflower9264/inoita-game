@@ -167,7 +167,19 @@ export class GmPanel {
     body.button('脱困', 780, 180, 180, 52, () => this.onRescue()).setData('label', '脱困');
     body.text(marks.length ? `已有标记：${marks.join('、')}` : '还没有状态标记。', 60, 244, 900, 16);
     body.text(`最近操作：${this.gm.actions().slice(-3).map(entry => entry.call).join(' → ') || '（还没有）'}`, 60, 276, 900, 16);
-    return '上报会把摘要和操作日志发到服务器，手机不用复制文本；标记会连同任务、背包与世界一起回退。';
+
+    const activeList = quests.active as { id: string; title: string }[];
+    const currentId = (digest.quests as { current?: string }).current ?? activeList[0]?.id;
+    const currentQuest = currentId ? this.campaign.quests.find(q => q.id === currentId) : undefined;
+    const questBtnLabel = currentQuest ? `完成任务：「${clipText(currentQuest.title, 8)}」` : '立刻完成当前任务';
+    body.button(questBtnLabel, 60, 316, 360, 48, () => this.onCompleteCurrentQuest(),
+      { disabled: !currentQuest }).setData('label', '立刻完成当前任务');
+    body.button(`穿墙：${this.gm.isNoclip() ? '开' : '关'}`, 440, 316, 220, 48,
+      () => this.onToggleNoclip(), { selected: this.gm.isNoclip() }).setData('label', '穿墙');
+    body.button(`2倍速度：${this.gm.isDoubleSpeed() ? '开' : '关'}`, 680, 316, 220, 48,
+      () => this.onToggleDoubleSpeed(), { selected: this.gm.isDoubleSpeed() }).setData('label', '2倍速度');
+
+    return '提示：穿墙开启后可自由穿越障碍与NPC；2倍速度提升移动跑图效率；完成当前任务可直接结算奖励。';
   }
 
   /** 人物页：选人、看数值、升级/回满/全队回满/无敌/无 CD。 */
@@ -507,6 +519,23 @@ export class GmPanel {
     if (!name) return;
     const result = this.gm.recall(name);
     this.result = result.ok ? `已回到「${name}」` : `回退失败：${result.reason}`;
+    this.hooks.render();
+  }
+  private onCompleteCurrentQuest(): void {
+    const result = this.gm.completeCurrentQuest();
+    this.result = result.reason ?? (result.ok ? '任务已完成' : '完成任务失败');
+    this.hooks.render();
+  }
+  private onToggleNoclip(): void {
+    const next = !this.gm.isNoclip();
+    this.gm.setNoclip(next);
+    this.result = next ? '穿墙模式已开启' : '穿墙模式已关闭';
+    this.hooks.render();
+  }
+  private onToggleDoubleSpeed(): void {
+    const next = !this.gm.isDoubleSpeed();
+    this.gm.setDoubleSpeed(next);
+    this.result = next ? '已开启 2 倍速度' : '已恢复正常速度';
     this.hooks.render();
   }
   private onRescue(): void {

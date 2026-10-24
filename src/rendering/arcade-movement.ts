@@ -20,6 +20,7 @@ export function movementBodyClass(Base: typeof Phaser.Physics.Arcade.Body) {
     private resumeImmovable=false;
     /** 注册意图：由移动层驱动的角色（true）还是内容摆放的实体（false）。 */
     private movable=true;
+    noclip=false;
     /** 是否允许在脚点非法时按整盒落点自愈；主角、佣兵与友方召唤物开启。 */
     private terrainRecovery=true;
     get recoversTerrain():boolean{return this.terrainRecovery;}
@@ -74,6 +75,12 @@ export function movementBodyClass(Base: typeof Phaser.Physics.Arcade.Body) {
           dx = (target.x - start.x) * fraction; dy = (target.y - start.y) * fraction;
         }
       }
+      if (this.noclip) {
+        this.resetFlags();
+        this.setVelocity(dx / delta, dy / delta);
+        super.update(delta);
+        return;
+      }
       const allowed = Math.max(Math.abs(dx), Math.abs(dy)) > Math.min(this.collision.width, this.collision.height) / 2
         ? this.navigation.constrainMotion(this.actor, start, dx, dy) : this.navigation.constrainTerrain(start, dx, dy);
       this.resetFlags();
@@ -84,7 +91,7 @@ export function movementBodyClass(Base: typeof Phaser.Physics.Arcade.Body) {
     }
     /** 分离人物后校验地形，防止碰撞修正把脚点挤入阻挡格。 */
     settleStep(): void {
-      if (!this.stepStart) return;
+      if (this.noclip || !this.stepStart) return;
       if (this.navigation.terrainFree(this.footPosition())) return;
       const pushed = this.footPosition();
       const displaced = pushed.x !== this.stepStart.x || pushed.y !== this.stepStart.y;

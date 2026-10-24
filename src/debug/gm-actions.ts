@@ -117,6 +117,10 @@ export interface GmPorts {
   travel?: (map: string, position?: { x: number; y: number }) => Promise<GmResult>;
   /** 调试现场的存档暂停与恢复；没有存档系统时省略。 */
   persistence?: GmPersistencePort;
+  setNoclip?: (enabled: boolean) => GmResult;
+  isNoclip?: () => boolean;
+  setSpeedMultiplier?: (multiplier: number) => GmResult;
+  getSpeedMultiplier?: () => number;
 }
 
 /** 既有报错收集端点（`public/diagnostics.js` 用的同一个）。只在开发服务挂载。 */
@@ -168,6 +172,14 @@ export interface GmActions {
   mark(name: string): GmResult;
   recall(name: string): GmResult;
   marks(): string[];
+  /** 立刻完成指定或当前追踪/进行中的任务。 */
+  completeCurrentQuest(questId?: string): GmResult;
+  /** 穿墙（无视地形与单位碰撞）。 */
+  setNoclip(enabled: boolean): GmResult;
+  isNoclip(): boolean;
+  /** 2倍速度开关。 */
+  setDoubleSpeed(enabled: boolean): GmResult;
+  isDoubleSpeed(): boolean;
   /** 最近做过哪些 GM 操作（含参数），用于复现问题。 */
   actions(): readonly GmActionLogEntry[];
   /** 把摘要（含操作日志）上报到服务器，手机上不用复制一大段文本。 */
@@ -498,6 +510,45 @@ export function createGmActions(ports: GmPorts): GmActions {
       session.restoreState(state);
       return { ok: true };
     }),
+    completeCurrentQuest: (questId?: string) => run('completeCurrentQuest', [questId], () => {
+      const activeList = questDigest().active;
+      const targetId = questId ?? session.currentQuest()?.id ?? activeList[0]?.id;
+      if (!targetId) return { ok: false, reason: '当前没有进行中的任务' };
+      const quest = session.definition(targetId);
+      if (!quest) return { ok: false, reason: `未找到任务定义：${targetId}` };
+      const status = session.status(targetId);
+      if (status === 'completed') return { ok: false, reason: `任务「${quest.title}」已完成` };
+
+      if (status === 'available') {
+        session.applyStoryCommands([{ type: 'quest', command: { type: 'accept', quest: targetId, cycle: session.questBook.state(targetId)?.cycle } }]);
+      }
+
+      for (const item of quest.handoverItems ?? []) {
+        const held = session.bag.count(item.item);
+        if (held < item.quantity) {
+          session.bag.add(item.item, item.quantity - held);
+        }
+      }
+
+      if (session.questBook.pinned(targetId)) session.unpinDebugQuest(targetId);
+
+      session.applyStoryCommands([{
+        type: 'quest',
+        command: { type: 'script-complete', quest: targetId, cycle: session.questBook.state(targetId)?.cycle }
+      }]);
+
+      return { ok: true, reason: `已完成任务「${quest.title}」` };
+    }),
+    setNoclip: enabled => run('setNoclip', [enabled], () => {
+      if (ports.setNoclip) return ports.setNoclip(enabled);
+      return { ok: true };
+    }),
+    isNoclip: () => ports.isNoclip?.() ?? false,
+    setDoubleSpeed: enabled => run('setDoubleSpeed', [enabled], () => {
+      if (ports.setSpeedMultiplier) return ports.setSpeedMultiplier(enabled ? 2 : 1);
+      return { ok: true };
+    }),
+    isDoubleSpeed: () => (ports.getSpeedMultiplier?.() ?? 1) > 1,
     actions: () => [...log],
     report: async () => {
       let result: GmResult;

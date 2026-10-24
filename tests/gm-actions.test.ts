@@ -416,3 +416,22 @@ test('a jump that cannot reach the debug scene restores the session and resumes 
   assert.equal(gm.storyDebug().autoSavePaused, false);
   director.dispose();
 });
+
+
+test('completeCurrentQuest, setNoclip, and setDoubleSpeed operate correctly through GM', () => {
+  const { session, gm, director } = harness(undefined, undefined);
+  assert.equal(gm.isNoclip(), false);
+  assert.equal(gm.setNoclip(true).ok, true);
+  assert.equal(gm.isDoubleSpeed(), false);
+  assert.equal(gm.setDoubleSpeed(true).ok, true);
+
+  const firstQuest = session.campaign.quests[0];
+  if (firstQuest) {
+    session.questBook.commit(session.questBook.plan({ type: 'accept', quest: firstQuest.id, source: 'script' }));
+    assert.equal(session.status(firstQuest.id), 'active');
+    const res = gm.completeCurrentQuest(firstQuest.id);
+    assert.equal(res.ok, true, res.reason);
+    assert.equal(session.status(firstQuest.id), 'completed');
+  }
+  director.dispose();
+});

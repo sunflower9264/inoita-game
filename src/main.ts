@@ -369,6 +369,20 @@ function installSession(session: Session): void {
       const scene = worldScene();
       return scene ? scene.gmTravel(map, position) : { ok: false, reason: '不在游戏场景里' };
     },
+    setNoclip: enabled => {
+      app.gmNoclip = enabled;
+      const scene = worldScene();
+      if (scene) scene.setNoclip(enabled);
+      return { ok: true };
+    },
+    isNoclip: () => app.gmNoclip,
+    setSpeedMultiplier: multiplier => {
+      app.gmSpeedMultiplier = multiplier;
+      const scene = worldScene();
+      if (scene) scene.setSpeedMultiplier(multiplier);
+      return { ok: true };
+    },
+    getSpeedMultiplier: () => app.gmSpeedMultiplier ?? 1,
     persistence: {
       // 调试现场不写玩家存档：停掉待写与重试。
       suspend: () => autoSaver?.suspend(),

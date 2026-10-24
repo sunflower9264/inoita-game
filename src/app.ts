@@ -56,6 +56,8 @@ import { ControlLayoutPreferences } from './ui/control-layout.ts';
  */
 export class StoryApp {
   readonly controlLayout = new ControlLayoutPreferences();
+  gmNoclip = false;
+  gmSpeedMultiplier = 1;
   captureControlPreview?:()=>readonly import('./ui/phaser/action-controls.ts').ShortcutSlot[];
   readonly checkpoint = new SessionCheckpoint<StoryWorldViewSnapshot>();
   /** 三个存档槽的持久化。标题页与游戏内菜单读的是同一份，键在 `domain/save-game.ts`。 */

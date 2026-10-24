@@ -21,6 +21,13 @@ export class MovementWorld {
   /** 最近被整盒校验改正的队伍单位落位；诊断用，正常流程应为空。 */
   private readonly corrections: { id: string; from: Point; to: Point }[] = [];
   get terrainCorrections(): readonly { id: string; from: Point; to: Point }[] { return this.corrections; }
+  setNoclip(visual: CharacterVisual, enabled: boolean): void {
+    const reg = this.registrations.get(visual);
+    if (reg) {
+      reg.body.noclip = enabled;
+      reg.ghost.value = enabled;
+    }
+  }
   constructor(scene: Phaser.Scene, navigation: NavigationWorld) {
     this.scene = scene; this.navigation = navigation;
     this.group = scene.add.group();
