@@ -109,7 +109,7 @@ export class CombatPresenter {
       if(!sprite.anims.exists(key))sprite.anims.create({key,frames:sequence.map(frame=>({key:source.key,frame})),
         frameRate:1000/frameDurationMs,repeat:0});
       // 各图层由 Phaser 依次更新，保留各自进度，避免后更新的武器层多走一帧。
-      const startFrame=sprite.anims.currentFrame!.index-1;
+      const startFrame=Math.max(0,(sprite.anims.currentFrame?.index??1)-1);
       const elapsed=sprite.anims.accumulator,nextTick=sprite.anims.nextTick;
       sprite.play({key,startFrame});
       sprite.anims.accumulator=elapsed;sprite.anims.nextTick=nextTick;
@@ -138,7 +138,9 @@ export class CombatPresenter {
     character.container.addAt(container,facing==='south'?character.layers.length:0);
     const distances=facing==='south'?[...trail.distancesPx].reverse():trail.distancesPx;
     for(const distance of distances)for(const sprite of character.layers){
-      const frame=sprite.anims.currentAnim!.frames[index]!;
+      const frames=sprite.anims.currentAnim?.frames;
+      const frame=frames?.[Math.min(index,frames.length-1)];
+      if(!frame)continue;
       container.add(this.scene.add.image(direction.x*distance,direction.y*distance,frame.textureKey,frame.textureFrame)
         .setOrigin(sprite.originX,sprite.originY).setScale(sprite.scaleX,sprite.scaleY)
         .setBlendMode(sprite.blendMode).setAlpha(trail.opacity));

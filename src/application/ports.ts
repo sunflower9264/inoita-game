@@ -32,6 +32,8 @@ export interface StoryClassContext {
 type SceneUI = Pick<GameUI,'ready'|'locked'|'mode'|'loading'|'loaded'|'error'|'location'|'toast'|'showInstant'|'resetInput'|'setMode'|'showDefeat'|'closeDefeat'|'controlLayoutEditing'|'preloadPortraits'>;
 export interface StoryContext {
   readonly controlLayout:ControlLayoutPreferences;
+  gmNoclip?: boolean;
+  gmSpeedMultiplier?: number;
   readonly checkpoint:import('../domain/session-checkpoint.ts').SessionCheckpoint<import('../scenes/world-scene.ts').StoryWorldViewSnapshot>;
   readonly storySignal?:AbortSignal;
   useRecoveryItem?: (entry:string,memberId?:string)=>RecoveryResult;

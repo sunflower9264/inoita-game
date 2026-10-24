@@ -1,10 +1,11 @@
 import type { ActorDefinition } from '../domain/content.ts';
-import type {
-  AttackEffectDefinition,
-  BasicAttackDefinition,
-  BattleCatalog,
-  BattleClass,
-  ResolvedBasicAttack
+import {
+  skillForGrowth,
+  type AttackEffectDefinition,
+  type BasicAttackDefinition,
+  type BattleCatalog,
+  type BattleClass,
+  type ResolvedBasicAttack
 } from '../domain/battle.ts';
 import { buffEffectNames } from '../domain/buff-effects.ts';
 import { feedbackEffects } from '../domain/combat-feedback.ts';
@@ -49,7 +50,7 @@ export function basicAttackEffects(catalog: BattleCatalog, attack: BasicAttackDe
 }
 
 /**
- * 当前职业可能用到的特效：技能、反应，以及这个职业的**全部武器姿态**。
+ * 当前职业可能用到的特效：技能（含私有追击与伙伴成长分支）、反应，以及这个职业的**全部武器姿态**。
  * 姿态按职业而不是按当前操控者收集，队友与主角因此共用同一份集合。
  */
 export function classEffects(catalog: BattleCatalog, character: BattleClass, attack: ResolvedBasicAttack,
@@ -58,9 +59,11 @@ export function classEffects(catalog: BattleCatalog, character: BattleClass, att
   if (catalog.attackEffects['life-drain']) names.add('life-drain');
   for (const id of character.skills) {
     const skill = catalog.skills[id];
-    for (const name of skillReactionEffects(skill)) names.add(name);
-    const action = skill.action; if (!action) continue;
-    for (const name of skillEffectNames(action)) names.add(name);
+    for (const profile of [skill, ...(skill.companion ? [skillForGrowth(skill, 'companion')] : [])]) {
+      for (const name of skillReactionEffects(profile)) names.add(name);
+      if (profile.action) for (const name of skillEffectNames(profile.action)) names.add(name);
+      if (profile.followUpAction) for (const name of skillEffectNames(profile.followUpAction)) names.add(name);
+    }
   }
   for (const stance of Object.values(wardrobe?.skillStances?.[character.id] ?? {}))
     for (const action of Object.values(stance.actions ?? {})) if (action)

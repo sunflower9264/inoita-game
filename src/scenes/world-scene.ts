@@ -125,10 +125,10 @@ export class WorldScene extends Phaser.Scene {
   private stick?: MoveStick;
   private controls?: ActionControls;
   private shortcutPageCache?:{configuration:SkillConfiguration;version:number;bagRevision:number;owner:string;classId:string;page:number;
-    entries:(ShortcutEntry|null)[];levels:Record<string,number>};
+    entries:(ShortcutEntry|null)[];levels:Record<string,number>;slotsSignature?:string};
   private nameBanner?: NameBanner;
   private minimap?: StoryMinimap;
-  private fpsReadout?: { container: Phaser.GameObjects.Container; text: Phaser.GameObjects.Text };
+  private fpsReadout?: { container: Phaser.GameObjects.Container; text: Phaser.GameObjects.Text; lastValue?: number; lastVisible?: boolean };
   private request = new AbortController();
   private mapAssets?: AssetLease;
   private prefetchTarget?: string;
@@ -331,6 +331,7 @@ export class WorldScene extends Phaser.Scene {
       ?? this.movement.navigation.nearest(appearance, requested);
     this.exitTrigger = new ExitTrigger(map.exits, spawn);
     this.player = this.createActor({ id: 'player', actor: campaign.start.actor, ...spawn });
+    if (this.app.gmNoclip) this.movement.setNoclip(this.player, true);
     this.lastPlayerPosition = { ...spawn };
     this.facing = options.facing === 'any' ? 'south' : options.facing || 'south';
     this.setClip(this.player, `idle-${this.facing}`);
@@ -696,7 +697,11 @@ export class WorldScene extends Phaser.Scene {
       cache={configuration,version:configuration.version,bagRevision:session.bag.revision,owner,classId:member.classId,page,entries,levels};
       this.shortcutPageCache=cache;
     }
-    this.controls.setShortcutPage(cache.entries.map(entry=>this.shortcutSlot(entry,member.player.mana,cache.levels[entry?.id??'']??0)));
+    const slots=cache.entries.map(entry=>this.shortcutSlot(entry,member.player.mana,cache.levels[entry?.id??'']??0));
+    const slotsSignature=slots.map(s=>s.entry?`${s.entry.kind}:${s.entry.id}:${s.quantity}:${s.enabled?1:0}:${s.cooldown?.remainingMs??0}/${s.cooldown?.durationMs??0}`:'_').join('|');
+    if(cache.slotsSignature===slotsSignature)return;
+    cache.slotsSignature=slotsSignature;
+    this.controls.setShortcutPage(slots);
   }
   private refreshLoadout(): void {
     this.refreshShortcutPage();
@@ -778,8 +783,18 @@ export class WorldScene extends Phaser.Scene {
   private updateFps(): void {
     const readout = this.fpsReadout;
     if (!readout) return;
-    this.hud!.setVisible(readout.container,displaySettings.fps);
-    if (displaySettings.fps) readout.text.setText(`${Math.round(this.game.loop.actualFps)} FPS`);
+    const visible = displaySettings.fps;
+    if (readout.lastVisible !== visible) {
+      readout.lastVisible = visible;
+      this.hud!.setVisible(readout.container, visible);
+    }
+    if (visible) {
+      const value = Math.round(this.game.loop.actualFps);
+      if (readout.lastValue !== value) {
+        readout.lastValue = value;
+        readout.text.setText(`${value} FPS`);
+      }
+    }
   }
   private layoutHud(): void {
     this.hud?.layout(this.scale.width, this.scale.height);
@@ -1105,6 +1120,7 @@ export class WorldScene extends Phaser.Scene {
   }
   syncControlledCharacter(resetExitTrigger=false):void{
     const actor=this.combat?.controlledVisual??this.player;
+    if(this.app?.gmNoclip&&actor&&this.movement)this.movement.setNoclip(actor,true);
     if(actor?.container.active)this.cameras.main.startFollow(actor.container,true,1,1);
     this.lastPlayerPosition=actor?this.movement?.position(actor):undefined;
     if(resetExitTrigger&&this.map&&this.lastPlayerPosition)this.exitTrigger=new ExitTrigger(this.map.exits,this.lastPlayerPosition);
@@ -1126,6 +1142,18 @@ export class WorldScene extends Phaser.Scene {
     this.combat?.stopMoving();this.syncControlledCharacter(true);
     return {ok:true,moved:true,from,to:landing};
   }
+  setNoclip(enabled: boolean): { ok: boolean } {
+    this.app.gmNoclip = enabled;
+    const controlled = this.combat?.controlledVisual ?? this.player;
+    if (controlled && this.movement) this.movement.setNoclip(controlled, enabled);
+    return { ok: true };
+  }
+  isNoclip(): boolean { return this.app.gmNoclip ?? false; }
+  setSpeedMultiplier(multiplier: number): { ok: boolean } {
+    this.app.gmSpeedMultiplier = multiplier;
+    return { ok: true };
+  }
+  getSpeedMultiplier(): number { return this.app.gmSpeedMultiplier ?? 1; }
   /** GM 无敌开关：写到会话级集合，换图重建战斗后仍然有效。 */
   setInvincible(actorId:string,enabled:boolean):{ok:boolean;reason?:string}{
     if(!this.app.session.hero)return {ok:false,reason:'当前会话没有角色系统'};
@@ -1417,6 +1445,7 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
     this.near = nearest;
   }
   override update(_time:number,delta:number): void {
+    const stepDelta=Math.min(delta,180);
     this.updateFps();
     if (!this.canControl) this.syncHud();
     if (!this.player || !this.movement) return;
@@ -1424,7 +1453,7 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
     this.pickupMessages?.setPaused(!this.canCombatControl);
     this.combat?.setPerformanceActive(this.performing);
     if(this.checkpointPending&&this.canControl&&!this.performing&&!this.app.director.busy&&this.combat?.canCheckpoint)this.captureCheckpoint();
-    this.combat?.update(delta,this.canCombatControl);
+    this.combat?.update(stepDelta,this.canCombatControl);
     if(this.canCombatControl&&!this.app.director.busy)for(const encounter of this.combat?.completedStoryEncounters??[]){
       if(this.encounterResults.has(encounter.id))continue;
       this.encounterResults.add(encounter.id);
@@ -1432,7 +1461,7 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
     }
     this.statusHud?.update(this.app.session.combatTick);
     this.groundLootView?.setPaused(!this.canCombatControl);
-    if(this.canCombatControl&&this.map){const store=groundLootFor(this.app.session);store.advance(this.map.id,delta);this.groundLootView?.sync(store.forMap(this.map.id));}
+    if(this.canCombatControl&&this.map){const store=groundLootFor(this.app.session);store.advance(this.map.id,stepDelta);this.groundLootView?.sync(store.forMap(this.map.id));}
     this.refreshShortcutPage();
     if (!this.canControl) { if (!this.performing) this.movement.stop(controlled); return; }
     if(this.combat?.playerCannotMove()){this.movement.stop(controlled);return;}
@@ -1442,7 +1471,7 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
     const length = Math.hypot(axis.x, axis.y);
     // 原版按方向键移动会清当前目标（CHAR_SetTarget(ch,0)）：面板随之隐藏，普攻改在范围内重新选敌。
     if(length>0){this.combat?.cancelAttack();this.combat?.clearTarget();this.combat?.cancelAmbushOnDirection();this.autoAttack.release();}
-    else if(this.combat?.attackState!=='idle')return;
+    if(this.combat?.attackState!=='idle')return;
     // 开始攻击之后站定自动接下一击；摇杆一动（已清目标）或目标消失就停。
     if(length===0&&this.autoAttack.next({targetId:this.combat?.targetId,attackState:this.combat?.attackState??'idle'}))this.combat?.attack();
     // 摇杆已处理死区。非零方向使用固定速度，推杆幅度不影响速度。

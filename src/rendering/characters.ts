@@ -79,7 +79,7 @@ export function setCharacterClip(scene: Phaser.Scene, character: CharacterVisual
     // 转向时保留当前帧号和帧内已过时间，所有图层一起接上。
     const previous = character.clipName?.startsWith('walk-') && name.startsWith('walk-')
       ? character.layers[0]?.anims : null;
-    const startFrame = previous ? (previous.currentFrame!.index - 1) % clip.frames : 0;
+    const startFrame = previous?.currentFrame ? (previous.currentFrame.index - 1) % clip.frames : 0;
     const elapsed = previous?.accumulator ?? 0;
     replaceLayers(scene, character, name);
     // 动作类动画播放一次，行走与待机循环。普攻走 playCharacterSequence，不经过这里。
@@ -87,9 +87,16 @@ export function setCharacterClip(scene: Phaser.Scene, character: CharacterVisual
     const single = name.startsWith('attack-') || name.startsWith('skill-') || name.startsWith('die-')
       || STORY_POSE_NAMES.some(pose => name.startsWith(`${pose}-`));
     clip.layers.forEach((layer, index) => {
-      if (!scene.anims.exists(layer.key)) scene.anims.create({ key: layer.key, frames: scene.anims.generateFrameNumbers(layer.key, { start: 0, end: clip.frames - 1 }), frameRate: clip.frameRate, repeat: single ? 0 : -1 });
+      if (typeof scene.anims?.get === 'function' && scene.anims.exists(layer.key) && !(scene.anims.get(layer.key)?.frames?.length)) {
+        scene.anims.remove(layer.key);
+      }
+      if (!scene.anims.exists(layer.key)) {
+        const frames = scene.anims.generateFrameNumbers(layer.key, { start: 0, end: clip.frames - 1 });
+        if (!scene.textures || frames?.length) scene.anims.create({ key: layer.key, frames, frameRate: clip.frameRate, repeat: single ? 0 : -1 });
+      }
       const sprite = character.layers[index];
-      sprite.play({ key: layer.key, startFrame });
+      if (scene.textures && !scene.anims.exists(layer.key)) return;
+      sprite.play({ key: layer.key, startFrame: Math.max(0, Math.min(startFrame, clip.frames - 1)) });
       sprite.anims.timeScale=1;
       sprite.anims.accumulator = elapsed;
     });

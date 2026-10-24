@@ -367,7 +367,9 @@ export class StoryDirector {
       return true;
     }
     const key = 'health-below-30:' + enemy;
+    const currentMap = this.session.storyWorld.currentLocation?.map;
     const event = this.campaign.events.find(event => event.source === 'battle' && event.key === key
+      && (!event.map || !currentMap || event.map === currentMap)
       && (!event.condition || this.session.evaluateCondition(event.condition))
       && (this.runtime.eventStatus(event.id) !== 'completed' || event.repeat));
     if (!event) return false;

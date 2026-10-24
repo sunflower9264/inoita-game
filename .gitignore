@@ -14,3 +14,5 @@ android/local.properties
 android/keystore.properties
 android/build/
 android/app/build/
+
+*.apk

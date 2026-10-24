@@ -43,6 +43,16 @@ export class CombatRuntime {
   get pauseOwners():readonly string[]{return [...this.pauses];}
   get idle():boolean{return this.actions.size===0&&this.tasks.size===0&&this.flights.size===0;}
   get pendingCount():number{return this.tasks.size;}
+  hasPendingBasicStrike(ownerId:string):boolean {
+    for(const track of this.actions.values()){
+      if(track.ownerId!==ownerId||track.action.skill||!track.action.basicAttack)continue;
+      const strikeFrame=track.action.basicAttack.strikes?.length
+        ?Math.max(...track.action.basicAttack.strikes.map(strike=>strike.frame))
+        :track.action.basicAttack.strikeFrame;
+      if(track.frame<strikeFrame)return true;
+    }
+    return false;
+  }
   setPaused(owner:string,paused:boolean):void{if(paused)this.pauses.add(owner);else this.pauses.delete(owner);}
 
   registerActor(id:string,controller:CombatController):void {

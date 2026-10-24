@@ -261,12 +261,12 @@ export class NavigationWorld {
     }
     return best;
   }
-  path(actor: NavigationActor, destination: Point): Point[] | null {
+  path(actor: NavigationActor, destination: Point, maxExpanded = Infinity): Point[] | null {
     if (!this.canStand(actor, destination)) return null;
     const free = (p: Point) => this.canStand(actor, p);
     const path = findPath(actor.position(), { bounds: this.bounds, canStand: free,
       isGoal: p => Math.hypot(p.x - destination.x, p.y - destination.y) <= PATH_GRID_SIZE && canTraverse(p, destination, free),
-      heuristic: p => Math.max(0, Math.hypot(p.x - destination.x, p.y - destination.y) - PATH_GRID_SIZE) });
+      heuristic: p => Math.max(0, Math.hypot(p.x - destination.x, p.y - destination.y) - PATH_GRID_SIZE) }, maxExpanded);
     if (path && (!path.length || Math.hypot(path.at(-1)!.x - destination.x, path.at(-1)!.y - destination.y) > .01)) path.push({ ...destination });
     return path;
   }
