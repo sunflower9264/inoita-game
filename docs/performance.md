@@ -280,7 +280,7 @@
 
 - 自动存档：去抖 1.2 s、最小间隔 2 s、5 分钟定时；触发进图/剧情事件/任务/定时。检查点只在进图和剧情世界投影后捕获，不是每帧。
 - 存档约 **211–300 KB**；检查点捕获 1.14–1.76 ms；写盘 0.73–0.87 ms；读档 parse 0.4–0.5 ms（桌面 V8）。11 槽合计接近 localStorage 5 MB 配额，晚期状态可能 4.4 MB。
-- ✅ **已修（2026-10-25）** **`StoryDirector.observeChanges` 每次 emit**：`bag.entries` 深拷贝全包，循环内每件 `session.itemCount`，而 `Bag.counts` 每次重建 Map → O(n²)。实测 201 件 **1.62 ms**、801 件 **19.2 ms/次 emit**（桌面）。战斗中掉血、恢复、耗蓝、金币都会 emit。现在背包 revision 未变即跳过，`Bag.counts` 自身也按 revision 缓存。
+- ✅ **已修（2026-10-25）** **`StoryDirector.observeChanges` 每次 emit**：`bag.entries` 深拷贝全包，循环内每件 `session.itemCount`，而 `Bag.counts` 每次重建 Map → O(n²)。实测 201 件 **1.62 ms**、801 件 **19.2 ms/次 emit**（桌面）。现在背包 revision 未变即跳过，`Bag.counts` 自身也按 revision 缓存；每次 emit 也不再深拷贝整个世界，只复制 choices 和 encounter 状态两张小表。
 - ✅ **已修（2026-10-25）** **`BattleCharacter.panel` 无缓存**：每次读 `hero.player` 都 `calculateCharacter` + `bag.get`（每件装备 `structuredClone`）。2 件 11.8 µs、9 件 **46.2 µs/次**；`party.alive('player')` 9.2 µs。佣兵 `CompanionMember.panel` 有缓存，0.012 µs/次。现在按 `(bag.revision, level, panelRevision)` 缓存；同时修掉加点预览直接改写面板的隐患。
 - `Bag.entries`/`allCells`/`pouchCells` 全部深拷贝；UI 每次 render 各取一次，200 件时几百次 clone。
 - `StoryDirector` 构造 30.9 ms（图 `structuredClone` 21.1 ms + 图校验 9.1 ms）；运行时至少两个 StoryRuntime，约 60 ms 额外。
@@ -649,6 +649,7 @@
 |---|---|---|---|
 | `Bag.counts` 每次重建整张 Map | 按 `revision` 缓存 `ReadonlyMap` | `20b2305` | bag/inventory 31/31 |
 | `observeChanges` 深拷贝背包 + 逐件计数 | 背包 revision 门控，变化时只读一次 counts | `f20d7f7` | 剧情观察用例 2/2 |
+| 观察时深拷贝整个世界 | 只复制 choices/encounter 状态两张小表 | `b790004` | 剧情观察/触发 19/20（1 条既有失败） |
 | `healthChanged` 扫 593 条事件 | 事件按 `source`/`key` 预索引 | `f20d7f7` | 原生触发、失败锁用例通过 |
 | `BattleCharacter.panel` 每次重算 | 按 `(bag.revision, level, panelRevision)` 缓存 | `e53b65d` | character-stats 16/16 |
 | 加点预览直接改写角色面板 | 预览改为在副本上累加 | `8424314` | 菜单套件与改动前基线一致（39/52） |
@@ -656,7 +657,7 @@
 | GM 开关依赖可选异步端口 | 先同步 render，再异步补载目录 | `c42695b` | title 11/11 |
 | 测试替身缺 `Scene.scale` / `document.addEventListener` | 补全替身，恢复回归卡口 | `c42695b`、`28925fc` | title 11/11；菜单 0/52 → 39/52 |
 
-同属 P1.1 但本轮未做：`Bag.entries/allCells/pouchCells` 的深拷贝缓存（需先审计调用方是否修改返回值）、`StoryWorld.captureState()` 的 revision 门控。
+同属 P1.1 但本轮未做：`Bag.entries/allCells/pouchCells` 的深拷贝缓存（需先审计调用方是否修改返回值）。剧情观察已不再调用 `StoryWorld.captureState()`；检查点/存档仍会整份捕获。
 
 全量验证口径：`npm run typecheck` 通过；本轮相关 89 条用例全绿；`story-menu-interactions` 39/52、战斗运行时 4 条失败均已在改动前 HEAD 复现，属既有问题。
 
