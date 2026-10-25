@@ -758,3 +758,23 @@
 - 死亡 Tween 循环、冷却签名引用属于可选小项。
 
 下一项：演出时 sleep WorldScene、静态 body/`WalkRoute`；值没变就跳过的剩余项需要先补 buff/条件 revision；资产线：UI 非图标资源与地图 prop 归档清理。
+
+### 2026-10-26：地图进程结束后的补漏（已提交）
+
+并行改地图的进程结束后，继续处理它未占用的战斗、移动和界面热点。
+
+| 位置 | 改动 | 提交 | 验证 |
+|---|---|---|---|
+| `CombatController.snapshot()` 每次只读 `state` / `targetId` 都顺带复制冷却表 | 新增 `actionState()` / `selectedTargetId()`；敌人、队友、召唤物、战斗运行时与 `WorldCombat` 的逐帧读取全部改走轻量方法 | `5deb596` | 190 条 AI/战斗相关用例通过 |
+| `WorldEnemyRoster.spawns` 每渲染帧过滤生成点、复制剧情遭遇、读宝箱生成记录 | 剧情世界、宝箱访问和可破坏物替换各带修订号；三者不变时复用同一份投影。刷新循环用集合判断已生成槽位 | `68c819c` | 57 条名册/宝箱/检查点/剧情世界用例通过 |
+| 布局每次读取设备安全区都要 `getComputedStyle` | 按视口重建版本缓存，`fitViewport()` 时失效 | `8051b7f` | viewport 3/3，新增复用与失效断言 |
+| 固定内容体（门、宝箱、火把）每物理步仍做地形约束与落点校验 | 没有移动意图时跳过约束，物理步后也不再重复校验；有意图时保持原路径 | `1ea2cbe` | movement-world/enemy-motion/story-stage/chest 43/43；movement 10/11，唯一失败是改动前就存在的剧情走位可达性用例 |
+| 冷却栏每个渲染帧取完整冷却快照并重算六格签名 | 只有战斗帧推进时才刷新；冷却对象引用相同直接返回 | `de26194` | 34 条快捷栏/冷却/控件用例通过 |
+| 死亡 Tween 与动画层每渲染帧重复 pause/resume | 只在暂停状态变化时遍历；暂停期间新倒下的角色创建时立即暂停 | `2ebd4a4` | 36 条战斗运行/结局相关用例通过 |
+| 召唤物交战观察每逻辑帧先拼全员数组再 filter/map | 直接遍历出战队伍和敌人名单生成观察项 | `2c89cd8` | 20 条召唤/仇恨/控件用例通过 |
+
+仍待做：
+- 演出舞台铺满画面时让 `WorldScene` 休眠。收益大，但涉及舞台首帧透明、世界重建后重新休眠和唤醒时序，需要真机确认没有黑帧或卡住。
+- `WalkRoute` 与 `NavigationWorld.nearestReachableBody/terrainRoute` 的同步寻路预算。
+- `syncCombatResourceLimits` 的缓存要先给 buff/状态加修订号，避免 ramp buff 读到旧上限。
+- `StoryUI.render` 在菜单里每次会话通知整页重建；要先定义一屏到底依赖哪些修订号。
