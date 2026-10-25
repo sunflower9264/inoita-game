@@ -18,18 +18,30 @@ export const titleMenuImages = [...COMMON_BUTTON_IMAGES, ...Object.values(TITLE_
   'back.png', 'slot.png', 'slot-empty.png'
 ].map(name => titleRoot + name)];
 
-/** 根据实际内容目录生成菜单图片清单，避免页面首次打开时才发现图片。 */
-export function gameMenuImages(panels: MenuPanels, items: ItemCatalog, battle: BattleCatalog, story: StoryInterface, shops:ShopCatalog): string[] {
-  const files = [
+/**
+ * 菜单图片分两批：
+ * - core 是打开菜单就立刻画出来的框架、职业预览与立绘；
+ * - extra 是 325 个物品图标 + 90 个技能图标，进游戏后在后台补，不挡世界开局。
+ */
+export function gameMenuImageGroups(panels: MenuPanels, items: ItemCatalog, battle: BattleCatalog, story: StoryInterface, shops:ShopCatalog): {core:string[];extra:string[]} {
+  const core = [
     ...COMMON_BUTTON_IMAGES,
     ...Object.values(panels.assets),
     ...panels.equipmentSlots.map(slot => slot.emptyIcon),
     ...panels.skillColumns.map(column => column.image),
     ...Object.values(panels.classes).map(character => character.preview),
     ...Object.values(panels.character.portraits).flatMap(character => [character.image, character.partyIcon]),
+    ...Object.values(story.assets), ...Object.values(shops.assets)
+  ];
+  const coreSet = new Set(core);
+  const extra = [...new Set([
     ...Object.values(items.items).map(item => item.icon),
     ...Object.values(battle.skills).map(skill => skill.icon)
-  ];
-  files.push(...Object.values(story.assets), ...Object.values(shops.assets));
-  return [...new Set(files)];
+  ])].filter(file => !coreSet.has(file));
+  return { core: [...coreSet], extra };
+}
+/** 完整清单：校验素材引用、UI 调试场景等需要一次拿全的地方使用。 */
+export function gameMenuImages(panels: MenuPanels, items: ItemCatalog, battle: BattleCatalog, story: StoryInterface, shops:ShopCatalog): string[] {
+  const { core, extra } = gameMenuImageGroups(panels, items, battle, story, shops);
+  return [...new Set([...core, ...extra])];
 }

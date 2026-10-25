@@ -33,7 +33,7 @@ import { StoryUI } from './ui/story-ui.ts';
 import { validateCharacterStats, validateMenuClasses, validateItemSkills, validateStoryItems, validateStoryPortraits, validateWardrobe, validateShops, validateCompanions } from './application/content-validation.ts';
 
 import { GAME_HEIGHT, GAME_WIDTH, fitViewport, configureCanvas } from './ui/viewport.ts';
-import { gameMenuImages } from './application/menu-images.ts';
+import { gameMenuImageGroups } from './application/menu-images.ts';
 import { GAME_FRAME_TIMING, installFrameLimitClock } from './application/game-timing.ts';
 import { installGameDiagnostics } from './application/game-diagnostics.ts';
 import { createGmActions, type GmActions } from './debug/gm-actions.ts';
@@ -132,7 +132,10 @@ interface MenuPreparation {
   signal: AbortSignal;
   progress: number;
   listeners: Set<(value: number) => void>;
-  promise: Promise<void>;
+  /** 菜单框架与立绘：开局前必须就绪。 */
+  core: Promise<void>;
+  /** 物品/技能图标：开局后后台补，不挡世界加载。 */
+  all: Promise<void>;
 }
 let menuPreparation: MenuPreparation | undefined;
 /** 当前模式对应的场景键。写成 `Record<GameMode, …>`：新增模式时必须在这里表态。 */
@@ -145,29 +148,61 @@ function afterFirstPaint(work: () => void): void {
   requestAnimationFrame(() => setTimeout(work, 0));
 }
 
-function prepareMenu(signal: AbortSignal, onProgress?: (value: number) => void): Promise<void> {
+function menuPreparationFor(signal: AbortSignal): MenuPreparation | undefined {
   let state = menuPreparation;
   if (!state || state.signal !== signal) {
     const host = app.uiAssets;
-    if (!host) return Promise.reject(new Error('界面场景尚未就绪'));
-    const files = [...gameMenuImages(app.menuPanels, app.items, app.battleCatalog, app.storyInterface, app.shops),
-      ...Object.values(app.companions.groupSkills??{}).map(skill=>skill.icon)];
-    const next: MenuPreparation = { signal, progress: 0, listeners: new Set(), promise: Promise.resolve() };
+    if (!host) return undefined;
+    const groups = gameMenuImageGroups(app.menuPanels, app.items, app.battleCatalog, app.storyInterface, app.shops);
+    const extra = [...new Set([...groups.extra,
+      ...Object.values(app.companions.groupSkills??{}).map(skill=>skill.icon)])];
+    const next: MenuPreparation = { signal, progress: 0, listeners: new Set(), core: Promise.resolve(), all: Promise.resolve() };
     menuPreparation = next;
-    next.promise = host.preloadFiles(
-      [...files, ...Object.values(app.controlSkin)], signal, value => {
-        next.progress = value;
-        for (const listener of next.listeners) listener(value);
-      }).catch(error => { if (menuPreparation === next) menuPreparation = undefined; throw error; });
+    const report = (value: number, base: number, span: number) => {
+      next.progress = base + value * span;
+      for (const listener of next.listeners) listener(next.progress);
+    };
+    const fail = (error: unknown) => { if (menuPreparation === next) menuPreparation = undefined; throw error; };
+    next.core = host.preloadFiles([...groups.core, ...Object.values(app.controlSkin)], signal,
+      value => report(value, 0, 0.6)).catch(fail);
+    next.all = next.core.then(() => extra.length
+      ? host.preloadFiles(extra, signal, value => report(value, 0.6, 0.4))
+      : undefined).catch(fail);
+    // 只等 core 的调用方不会观察 all；挂一个空处理，避免后台失败变成未处理拒绝。
+    void next.all.catch(() => {});
     state = next;
   }
+  return state;
+}
+function prepareMenu(signal: AbortSignal, onProgress?: (value: number) => void): Promise<void> {
+  const state = menuPreparationFor(signal);
+  if (!state) return Promise.reject(new Error('界面场景尚未就绪'));
   if (onProgress) {
     state.listeners.add(onProgress);
     onProgress(state.progress);
     const current = state;
-    void current.promise.finally(() => current.listeners.delete(onProgress)).catch(() => {});
+    void current.all.finally(() => current.listeners.delete(onProgress)).catch(() => {});
   }
-  return state.promise;
+  return state.all;
+}
+function prepareMenuCore(signal: AbortSignal, onProgress?: (value: number) => void): Promise<void> {
+  const state = menuPreparationFor(signal);
+  if (!state) return Promise.reject(new Error('界面场景尚未就绪'));
+  if (onProgress) {
+    state.listeners.add(onProgress);
+    onProgress(state.progress);
+    const current = state;
+    void current.core.finally(() => current.listeners.delete(onProgress)).catch(() => {});
+  }
+  return state.core;
+}
+/** 后台图标加载完时，已经打开的菜单要重画一次，否则首次打开会保留缺图占位。 */
+function refreshMenuWhenReady(signal: AbortSignal): void {
+  const state = menuPreparationFor(signal);
+  if (!state) return;
+  void state.all.then(() => app.storyUI?.refreshMenuAssets()).catch(error => {
+    if (!signal.aborted) globalThis.storyDiagnostics?.record('menu-asset-error', { error });
+  });
 }
 
 function clearMenuPreparations(): void {
@@ -251,7 +286,8 @@ async function finishStoryStart(classId: string): Promise<void> {
     await prepareStory(signal);
     signal.throwIfAborted();
     ui.loading('正在准备游戏菜单…', 0.15);
-    await prepareMenu(signal, value => ui.loading('正在准备游戏菜单…', 0.15 + 0.35 * value));
+    await prepareMenuCore(signal, value => ui.loading('正在准备游戏菜单…', 0.15 + 0.35 * value));
+    refreshMenuWhenReady(signal);
     signal.throwIfAborted();
   }
   catch (error) {
@@ -289,7 +325,8 @@ async function resumeSlot(slot:SaveSlotRef,signal?:AbortSignal):Promise<void> {
         await app.content.map(candidate.map.file,request);request.throwIfAborted();
         if(sourceMode==='menu'){
           ui.loading('正在准备游戏菜单…',0.15);
-          await prepareMenu(request,value=>ui.loading('正在准备游戏菜单…',0.15+0.35*value));
+          await prepareMenuCore(request,value=>ui.loading('正在准备游戏菜单…',0.15+0.35*value));
+          refreshMenuWhenReady(request);
         }
         request.throwIfAborted();return candidate;
       },
@@ -472,7 +509,7 @@ function boot(): void {
   app.prefetchStory = () => afterFirstPaint(() => {
     if (modeRequest.signal.aborted || app.mode !== 'class-select') return;
     const signal = modeRequest.signal;
-    void prepareStory(signal).then(() => prepareMenu(signal)).catch(() => {});
+    void prepareStory(signal).then(() => prepareMenuCore(signal)).catch(() => {});
   });
   app.storyUI = new StoryUI(app);
   app.openCrafting=actorId=>app.storyUI.openCrafting(actorId);
