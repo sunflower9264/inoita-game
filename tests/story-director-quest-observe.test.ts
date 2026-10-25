@@ -30,3 +30,26 @@ test('quest observation reuses the quest book version instead of re-reading ever
   assert.ok(reads() > base, '任务变化后应当重新采集');
   director.dispose();
 });
+
+/** 统计 `Bag.counts` 被读了几次：每次未命中都要重建整张分类计数。 */
+function countBagReads(session: Session) {
+  const bag = session.bag;
+  const descriptor = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(bag), 'counts')!;
+  let reads = 0;
+  Object.defineProperty(bag, 'counts', { configurable: true, get() { reads++; return descriptor.get!.call(bag); } });
+  return () => reads;
+}
+
+test('inventory observation reuses the bag revision instead of recounting every emit', () => {
+  const session = new Session(campaign), director = new StoryDirector(campaign, session, ui, () => {}, presentation);
+  const reads = countBagReads(session);
+  session.emit();                       // 预热：先让背包版本稳定下来
+  const base = reads();
+  // 与背包无关的通知（血量、金币、位置……频率远高于拾取）不该重新统计整包物品。
+  for (let index = 0; index < 10; index++) session.emit();
+  assert.equal(reads(), base);
+  // 背包真的变了必须重新统计，否则拾取类剧情事件会漏触发。
+  session.bag.add('rat-tail');session.emit();
+  assert.ok(reads() > base, '背包变化后应当重新统计');
+  director.dispose();
+});

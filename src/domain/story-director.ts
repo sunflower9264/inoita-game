@@ -5,7 +5,7 @@ import type { PerformanceAction, StoryPresentationPort, StoryStage, StoryStageSn
 import type { Session, SessionState } from './session.ts';
 import { StoryRuntime } from './story-runtime.ts';
 import type { StoryNodeCommit, StoryOccurrence, StoryPlaybackContext } from './story-runtime.ts';
-import type { StoryCommand, StoryNode, StoryTriggerSource } from './story-graph.ts';
+import type { StoryCommand, StoryEvent, StoryNode, StoryTriggerSource } from './story-graph.ts';
 import { healerRevivalQuote } from './party-revival.ts';
 
 export interface StoryUI {
@@ -73,6 +73,10 @@ export class StoryDirector {
   private observedQuests = new Map<string, string>();
   private observedQuestVersion?: number;
   private observedItems = new Map<string, number>();
+  private observedBagRevision?: number;
+  /** 事件按 source/key 预索引：受击与会话派发不必再扫全部事件表。 */
+  private readonly eventsByKey = new Map<string, StoryEvent[]>();
+  private readonly keylessEvents = new Map<string, StoryEvent[]>();
   private observedChoices = new Map<string, string>();
   private observedEncounters = new Map<string, string>();
   onTravel?: (destination: TravelDestination, signal: AbortSignal) => void | Promise<void>;
@@ -128,6 +132,15 @@ export class StoryDirector {
     });
     this.runtime.restore(session.runtimeState);
     this.projectionPending = session.runtimeState.runs.length > 0;
+    for (const event of campaign.events) {
+      const key = `${event.source}\0${event.key ?? ''}`;
+      const list = this.eventsByKey.get(key);
+      if (list) list.push(event); else this.eventsByKey.set(key, [event]);
+      if (event.key === undefined) {
+        const sourceList = this.keylessEvents.get(event.source);
+        if (sourceList) sourceList.push(event); else this.keylessEvents.set(event.source, [event]);
+      }
+    }
     this.observeChanges(false);
     this.unsubscribe = session.subscribe(() => {
       if (this.restoring || this.restorationVersion !== session.restorationVersion) {
@@ -150,25 +163,29 @@ export class StoryDirector {
       for (const [id, state] of quests) if (this.observedQuests.get(id) !== state) changes.push({ source: 'quest', key: id });
       this.observedQuests = quests; this.observedQuestVersion = questVersion;
     }
-    const items = new Map<string, number>();
-    for (const entry of this.session.bag.entries) items.set(entry.item, this.session.itemCount(entry.item));
+    // 背包版本没动就说明物品没动：全包深拷贝 + 逐件计数是 O(n²)，而掉血/恢复的 emit 远多于拾取。
+    const bagRevision = this.session.bag.revision;
+    if (bagRevision !== this.observedBagRevision) {
+      const items = new Map<string, number>(this.session.bag.counts);
+      for (const id of new Set([...items.keys(), ...this.observedItems.keys()])) if ((items.get(id) ?? 0) !== (this.observedItems.get(id) ?? 0)) changes.push({ source: 'inventory', key: id });
+      this.observedItems = items; this.observedBagRevision = bagRevision;
+    }
     const storyWorld = this.session.storyWorld.captureState(), choices = new Map(storyWorld.choices);
     const encounters = new Map(storyWorld.encounters.map(encounter => [encounter.id, encounter.status]));
-    for (const id of new Set([...items.keys(), ...this.observedItems.keys()])) if ((items.get(id) ?? 0) !== (this.observedItems.get(id) ?? 0)) changes.push({ source: 'inventory', key: id });
     for (const [id, value] of choices) if (this.observedChoices.get(id) !== value) changes.push({ source: 'choice', key: id });
     for (const encounter of storyWorld.encounters) if (['won','lost'].includes(encounter.status) && this.observedEncounters.get(encounter.id) !== encounter.status)
       changes.push({ source: 'battle', key: encounter.definitionId ?? encounter.id });
     const completedEvents = new Set(this.session.runtimeState.completedEvents);
     for (const id of completedEvents) if (!this.observedEvents.has(id)) changes.push({ source: 'event', key: id });
     this.observedEvents = completedEvents;
-    this.observedItems = items; this.observedChoices = choices;
+    this.observedChoices = choices;
     this.observedEncounters = encounters;
     if (!dispatch || !changes.length) return;
     const version = this.session.restorationVersion;
     // Session publishes while the runtime is still finishing its synchronous commit.
     queueMicrotask(() => {
       if (this.disposed || this.session.restorationVersion !== version) return;
-      for (const change of changes) if (this.campaign.events.some(event => event.source === change.source && (event.key === undefined || event.key === change.key))) {
+      for (const change of changes) if (this.eventCandidates(change.source, change.key).length) {
         this.triggerAfterManual(() => {
           void this.notify(change.source, change.key, change.source==='choice'?undefined:this.session.storyWorld.currentLocation?.map).catch(error => {
             if (this.onError) this.onError(error, () => this.retry()); else console.error(error);
@@ -355,6 +372,12 @@ export class StoryDirector {
     const sequence = Math.max(state.sequence, ...state.occurrenceSequences.map(([, value]) => value), ...state.pendingOccurrences.map(value => value.occurrence.sequence), 0) + 1;
     return { id: `${source}:${sequence}`, sequence, source, key, map, entity, ...(map ? { mapVisit: this.session.storyWorld.visit } : {}) };
   }
+  /** 某个 trigger 的候选事件：精确 key 的事件在前，无 key 的通配事件在后。 */
+  private eventCandidates(source: StoryTriggerSource, key?: string): StoryEvent[] {
+    const exact = this.eventsByKey.get(`${source}\0${key ?? ''}`) ?? [];
+    const keyless = key === undefined ? undefined : this.keylessEvents.get(source);
+    return keyless?.length ? [...exact, ...keyless] : exact;
+  }
   /** 原版在伤害跨过 30% 生命值时先检查演出，并让触发者至少保留 1 点生命。 */
   healthChanged(enemy: string, before: number, after: number, maximum: number, source?:{id:string;map:string;x:number;y:number}): boolean {
     if (this.disposed || after >= before || maximum <= 0) return false;
@@ -368,8 +391,7 @@ export class StoryDirector {
     }
     const key = 'health-below-30:' + enemy;
     const currentMap = this.session.storyWorld.currentLocation?.map;
-    const event = this.campaign.events.find(event => event.source === 'battle' && event.key === key
-      && (!event.map || !currentMap || event.map === currentMap)
+    const event = (this.eventsByKey.get(`battle\0${key}`) ?? []).find(event => (!event.map || !currentMap || event.map === currentMap)
       && (!event.condition || this.session.evaluateCondition(event.condition))
       && (this.runtime.eventStatus(event.id) !== 'completed' || event.repeat));
     if (!event) return false;
