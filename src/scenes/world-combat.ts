@@ -2432,6 +2432,7 @@ captureStoryActors():SceneActorState[] {
     if(this.scene.time.now>=this.nextPartySyncAt&&this.app.session.party?.activeIds.join('|')!==this.partySignature)
       void this.syncAllies().catch(error=>this.app.ui.toast((error as Error).message));
     if(this.controlledId!==this.syncedControlledId&&this.partyControllers.has(this.controlledId))this.syncControlled();
+    const tickBefore=this.app.session.combatTick;
     this.app.session.advanceCombatFrames(delta,()=>{
       this.conditions.update(LOGIC_FRAME_MS,tick=>this.periodicTick(tick));
       this.scene.refreshShortcutPage();
@@ -2454,7 +2455,8 @@ captureStoryActors():SceneActorState[] {
       if(this.defeated||this.closed||!this.scene.canCombatControl)return false;
       this.recoverResources();
     });
-    this.scene.refreshSkillCooldowns(this.cooldowns);
+    // 冷却读数按战斗帧变化；这一渲染帧没推进逻辑帧时不必重新取快照、重算签名。
+    if(tickBefore!==this.app.session.combatTick)this.scene.refreshSkillCooldowns(this.cooldowns);
     this.syncBuffLoops();
   }
   private readVisiblePartyResources():void {

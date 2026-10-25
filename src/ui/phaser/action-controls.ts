@@ -116,6 +116,7 @@ export class ActionControls {
   /** 当前操控角色的图标和冷却，编辑器只读复制值，不持有实战控件。 */
   snapshot():readonly ShortcutSlot[]{return this.page.map(slot=>{const cooldown=this.cooldownOf(slot);return {...slot,entry:slot.entry?{...slot.entry}:null,cooldown:cooldown?{...cooldown}:undefined};});}
   setCooldowns(cooldowns:Readonly<Record<string,Cooldown>>):void{
+    if(cooldowns===this.cooldowns)return;
     // 冷却读数没变就不重画；没有冷却的常态下每帧都省掉一次六格扫描。
     const signature=Object.keys(cooldowns).sort().map(id=>`${id}:${cooldowns[id].remainingMs}`).join('|');
     if(signature===this.cooldownSignature)return;
