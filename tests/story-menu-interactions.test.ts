@@ -131,7 +131,7 @@ const { StoryUI } = await import('../src/ui/story-ui.ts');
 hook.deregister();
 Object.defineProperties(globalThis, {
   window: { value: { devicePixelRatio: 1 }, configurable: true },
-  document: { value: { getElementById: (id: string) => id === 'safe-area' ? {} : null }, configurable: true },
+  document: { value: { getElementById: (id: string) => id === 'safe-area' ? {} : null, addEventListener() {}, removeEventListener() {} }, configurable: true },
   getComputedStyle: { value: () => ({ paddingLeft: '0', paddingRight: '0', paddingTop: '0', paddingBottom: '0' }), configurable: true }
 });
 
