@@ -11,6 +11,7 @@ export function actionCues(action: SkillAction) {
 
 /** 这个动作引用到的全部特效名，收集资源和校验都用同一份遍历。 */
 export function skillEffectNames(action: SkillAction): string[] {
+  if (action.effectNames !== undefined) return action.effectNames;
   const names = new Set<string>();
   for (const event of action.events) {
     if (event.kind === 'units') {
@@ -46,6 +47,7 @@ export function skillEffectNames(action: SkillAction): string[] {
  * 三者都只由当前操控的施法者触发，所以预加载只需覆盖玩家能操控的角色。
  */
 export function skillSoundNames(action: SkillAction): string[] {
+  if (action.soundNames !== undefined) return action.soundNames;
   const names = new Set<string>();
   for (const event of action.events) {
     if (event.kind === 'units') {
@@ -60,6 +62,7 @@ export function skillSoundNames(action: SkillAction): string[] {
 
 /** 召唤只收集外观资源，不递归加载召唤物自身的战斗能力。 */
 export function skillSummonNames(action:SkillAction):string[]{
+  if(action.summonNames!==undefined)return action.summonNames;
   return [...new Set(action.events.flatMap(event=>event.kind==='summon'?event.creatures.map(creature=>creature.enemyId):[]))];
 }
 
@@ -81,6 +84,10 @@ export function needsTarget(action: SkillAction): boolean {
  * 同一帧只通知一次，所以动画回调跳帧也不会把事件放两遍。
  */
 export function skillEvents(action: SkillAction, frame: number): SkillEvent[] {
+  if (action.eventFrames) return (action.eventFrames[String(frame)] ?? []).flatMap(index => {
+    const event = action.events[index];
+    return event ? [event] : [];
+  });
   return action.events.filter(event => event.kind==='spawn' ? frame>=event.frame&&frame<event.until : event.frame===frame);
 }
 

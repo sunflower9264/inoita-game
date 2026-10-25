@@ -727,7 +727,7 @@ export class StoryUI {
       drawDescriptionSeparator(v,0,y+5,353,detail.content);y+=20;
       y+=drawDescriptionText(v,skillLearningParts(skill.name,level,progression?.learningRequirements(skill.id),
         companion?skill.ranks[level].requiredCharacterLevel:undefined),0,y,353,22,detail.content)+12;
-      for(const row of skillNextLevelPreview(skill.ranks,level,skill.kind,maximum)){
+      for(const row of skillNextLevelPreview(skill.ranks,level,skill.kind,maximum,skill.display)){
         const center=353/2,labelColor=row.kind==='mana'?'#0f7cf9':'#ffffff',valueColor=row.kind==='mana'?'#0f7cf9':'#ff0000';
         v.text(row.label,center,y,0,19,labelColor,detail.content).setOrigin(.5,0);
         const valuesY=y+26;

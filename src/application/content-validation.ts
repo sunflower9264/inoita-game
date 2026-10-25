@@ -749,7 +749,7 @@ const combatUnit=variant('effect',{
   'clear-attribute':object({effect:oneOf('clear-attribute'),attribute:oneOf(...BATTLE_STAT_KEYS)}),
   ...Object.fromEntries(['action','taunt','visual'].map(effect=>[effect,object({effect:oneOf(effect)})])),
 });
-const skillAction=shape<SkillAction>({requiredOffhand:optional(oneOf('shield')),requiresActiveSummon:optional(boolean),hitEffectStyle:optional(oneOf('weapon','skill')),manaGemDrop:optional(oneOf('skill','weapon')),combatUnits:optional(array(combatUnit)),usesSkillDamageBuff:optional(boolean),repeat:optional(object({restartAfterFrame:count,countByLevel:array(count),requiresLivingTarget:optional(boolean),endsWithoutTarget:optional(boolean),facesTargetOnRelease:optional(boolean)})),charge:optional(charge),rearTeleport:optional(object({frame:count})),afterimages:optional(afterimages),requiresTarget:optional(boolean),minHealthRatePerThousand:optional(count),events:array(skillEvent),cooldownFrames:integer,approachDistanceUnits:number,searchRadiusPx:positive,transition:nullable(transition)});
+const skillAction=shape<SkillAction>({requiredOffhand:optional(oneOf('shield')),requiresActiveSummon:optional(boolean),hitEffectStyle:optional(oneOf('weapon','skill')),manaGemDrop:optional(oneOf('skill','weapon')),combatUnits:optional(array(combatUnit)),usesSkillDamageBuff:optional(boolean),repeat:optional(object({restartAfterFrame:count,countByLevel:array(count),requiresLivingTarget:optional(boolean),endsWithoutTarget:optional(boolean),facesTargetOnRelease:optional(boolean)})),charge:optional(charge),rearTeleport:optional(object({frame:count})),afterimages:optional(afterimages),requiresTarget:optional(boolean),minHealthRatePerThousand:optional(count),events:array(skillEvent),cooldownFrames:integer,approachDistanceUnits:number,searchRadiusPx:positive,transition:nullable(transition),effectNames:optional(strings),soundNames:optional(strings),summonNames:optional(strings),eventFrames:optional(record(array(integer)))});
 const passiveUnit=object({attribute:oneOf(...BATTLE_STAT_KEYS),
   condition:oneOf('always','weapon-two-handed','weapon-short-or-long-sword','weapon-mace','stealthed'),ranks:array(combatOperation)});
 const reactionBuff=shape<BuffReactionBuff>({key:oneOf(...BATTLE_BUFF_KEYS),rankPriority:count,effect:buffEffect});
@@ -816,8 +816,11 @@ const enemyAttributes=shape<EnemyAttributes>({maxMana:integer,physicalAttack:int
   physicalResistanceBonus:integer,magicResistance:integer,hitBonus:integer,evasionBonus:integer,
   criticalRate:integer,criticalResistance:integer,criticalDamageResistance:integer,criticalDamage:integer,weaponBlock:integer,shieldBlock:integer});
 const feedback=shape<CombatFeedbackDefinition>({digits:object({enemy:strings,enemyCritical:strings,party:strings,partyCritical:strings,miss:strings}),normalImpacts:strings,skillImpact:text,criticalImpact:text,criticalRing:text,criticalBursts:strings,missEffect:text,shakeOffsets:array(object({x:number,y:number}))});
-const skillGrowthFields={requiredInvestedSkillPoints:optional(integer),ranks:array(object({level:positive,manaCost:integer,requiredCharacterLevel:positive,pointCost:positive,investedSkillPoints:optional(integer),
-  details:array(object({label:text,value:text,kind:optional(oneOf('mana','cooldown','effect')),effectIndex:optional(integer),valueSpacing:optional(boolean),zeroValue:optional(text),valueParts:optional(descriptionParts)}))})),
+const skillDetail=object({label:text,value:text,kind:optional(oneOf('mana','cooldown','effect')),effectIndex:optional(integer),valueSpacing:optional(boolean),zeroValue:optional(text),valueParts:optional(descriptionParts)});
+const skillDisplayRow=object({label:text,kind:optional(oneOf('mana','cooldown','effect')),effectIndex:optional(integer),valueSpacing:optional(boolean),template:text,decimals:integer,highlight:boolean,zeroText:text});
+const skillRank=object({level:positive,manaCost:integer,requiredCharacterLevel:positive,pointCost:positive,investedSkillPoints:optional(integer),
+  details:optional(array(skillDetail)),displayValues:optional(array(number))});
+const skillGrowthFields={requiredInvestedSkillPoints:optional(integer),ranks:array(skillRank),display:optional(array(skillDisplayRow)),
   action:nullable(skillAction),followUpAction:optional(skillAction),passiveUnits:optional(array(passiveUnit)),reactionsByRank:optional(array(array(skillReaction)))};
 const battle=shape<BattleCatalog>({statusAttackBuffs:optional(object(Object.fromEntries(BATTLE_BUFF_KEYS.map(key=>[key,optional(buffEffect)])))),feedback,classes:array(object({id:text,name:text,description:text,preview:file,actor,attributes:array(object({name:text,value:number})),skills:strings,basicAttack:binding})),basicAttacks:record(basicAttack),skills:record(object({id:text,name:text,kind:oneOf('active','passive'),icon:file,description:text,descriptionParts:optional(descriptionParts),normalMaxLevel:positive,...skillGrowthFields,companion:object(skillGrowthFields)})),enemies:array(object({stateRules:optional(stateRules),acceptsBuffs:optional(boolean),skills:optional(array(enemySkill)),commandAction:optional(enemySkill),id:text,name:text,level:nullable(count),maxHealth:count,attributes:enemyAttributes,variant:text,actor,behavior,basicAttack:nullable(binding),displayOnlyReason:optional(text),defeatPresentation:optional(oneOf('vanish'))})),attackEffects:record(object({clips:record(effectClip),attachmentPoint:optional(oneOf('feet','effect-anchor')),attachedLifetime:optional(oneOf('action','character'))}))});
 
@@ -920,6 +923,21 @@ export function parseCampaign(value:unknown):Campaign {
 function unique(ids:string[],path:string):void{requireValue(new Set(ids).size===ids.length,path,'标识重复');}
 export function parseBattle(value:unknown,wardrobe?:WardrobeCatalog):BattleCatalog{
   battle(value,'battle');const result=value as BattleCatalog;
+  // 作者态 details 与构建期 display/displayValues 二选一；编译产物允许没有 details。
+  const checkDisplay=(id:string,profile:{display?:readonly {template:string}[];ranks:readonly {details?:readonly unknown[];displayValues?:readonly number[]}[]})=>{
+    if(profile.display){
+      requireValue(profile.display.length>0,id,'技能展示模板不能为空');
+      for(const row of profile.display)requireValue(row.template.includes('{v}'),id,'技能展示模板缺少 {v}');
+      for(const rank of profile.ranks)
+        requireValue(!!rank.displayValues&&rank.displayValues.length===profile.display.length,id,'技能展示数值必须覆盖全部模板行');
+      return;
+    }
+    for(const rank of profile.ranks)requireValue(!!rank.details?.length,id,'技能缺少 details 或 display');
+  };
+  for(const [id,skill] of Object.entries(result.skills)){
+    checkDisplay(id,skill);
+    if(skill.companion)checkDisplay(id+'.companion',skill.companion);
+  }
   for(const enemy of result.enemies)requireValue(enemy.level===null||enemy.level<=MAX_ENEMY_LEVEL,`${enemy.id}.level`,`怪物等级上限为 ${MAX_ENEMY_LEVEL}`);
   // 正式资源进运行时前的能力检查：缺能力的运算在这里报出来，不静默回退成普通混合。
   for(const problem of effectProblems(result.attackEffects))throw new Error(`内容无效 ${problem}`);
@@ -1054,7 +1072,7 @@ export function parseBattle(value:unknown,wardrobe?:WardrobeCatalog):BattleCatal
           requireValue(rank.level===index+1,id,'技能等级必须连续');
           requireValue(index===0||rank.requiredCharacterLevel>=skill.ranks[index-1].requiredCharacterLevel,id,'技能角色等级门槛无效');
           if(rank.investedSkillPoints!==undefined)requireValue(rank.investedSkillPoints>=(index?skill.ranks[index-1].investedSkillPoints??0:0),id,'技能累计投入值必须递增');
-          for(const detail of rank.details){
+          for(const detail of rank.details??[]){
             if(detail.effectIndex!==undefined)requireValue(detail.kind==='effect'&&detail.effectIndex<3,id,'技能效果行标识无效');
             if(detail.valueParts)requireValue(detail.valueParts.map(part=>part.text).join('')===detail.value,id,'技能数值片段与显示值不一致');
           }

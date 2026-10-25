@@ -309,6 +309,12 @@ export interface SkillAction {
   approachDistanceUnits: number;
   searchRadiusPx: number;
   transition: SkillTransition | null;
+  /** 构建期派生的运行时 IR；源 JSON 缺失时运行时回退计算。 */
+  effectNames?: string[];
+  soundNames?: string[];
+  summonNames?: string[];
+  /** 非 repeat 动作：逻辑帧号 -> events 下标（spawn 事件按 [frame, until) 展开）。 */
+  eventFrames?: Record<string, number[]>;
 }
 
 export type SkillGrowthProfile = 'hero' | 'companion';
@@ -318,12 +324,48 @@ export function memberSkillGrowth(memberId:string):SkillGrowthProfile {
   return memberId==='player'?'hero':'companion';
 }
 
+export interface SkillDetail {
+  label: string;
+  value: string;
+  kind?: 'mana' | 'cooldown' | 'effect';
+  effectIndex?: number;
+  valueSpacing?: boolean;
+  zeroValue?: string;
+  valueParts?: import('./description-text.ts').DescriptionTextPart[];
+}
+
+/** 构建期把技能详情编译成“模板 + 每级数值”后的运行时行。 */
+export interface SkillDisplayRow {
+  label: string;
+  kind?: 'mana' | 'cooldown' | 'effect';
+  effectIndex?: number;
+  valueSpacing?: boolean;
+  /** 例："{v}秒"、"+{v}%"、"-{v}%"、"‘+{v}秒" */
+  template: string;
+  decimals: number;
+  /** 原 valueParts 是否存在；存在时整段值使用 #00b4ff。 */
+  highlight: boolean;
+  /** 原 detail.zeroValue ?? '0'；保持预览页的旧口径。 */
+  zeroText: string;
+}
+
+export interface SkillRank {
+  level: number;
+  manaCost: number;
+  requiredCharacterLevel: number;
+  pointCost: number;
+  investedSkillPoints?: number;
+  /** 作者态详情；构建产物里会被 display/displayValues 取代。 */
+  details?: SkillDetail[];
+  /** 编译产物：与 display 一一对应的每级数值。 */
+  displayValues?: number[];
+}
+
 interface SkillGrowthDefinition {
   requiredInvestedSkillPoints?: number;
-  ranks: { level: number; manaCost: number; requiredCharacterLevel: number; pointCost: number;
-    investedSkillPoints?: number;
-    details: { label: string; value: string; kind?: 'mana' | 'cooldown' | 'effect'; effectIndex?: number;
-      valueSpacing?: boolean; zeroValue?: string; valueParts?: import('./description-text.ts').DescriptionTextPart[] }[] }[];
+  ranks: SkillRank[];
+  /** 编译产物：技能级详情模板；每个 rank 用 displayValues 提供数值。 */
+  display?: SkillDisplayRow[];
   action: SkillAction | null;
   /** 被动直接执行的私有动作：按当前目标结算一次，不进动作播放，也没有冷却与搜寻。 */
   followUpAction?: SkillAction;

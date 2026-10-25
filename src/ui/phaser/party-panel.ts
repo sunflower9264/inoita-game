@@ -5,6 +5,7 @@ import type { WorldIndex } from '../../domain/content.ts';
 import type { CompanionMember, CompanionGroupEffect } from '../../domain/party.ts';
 import type { EquipmentSlot } from '../../domain/items.ts';
 import { PRIMARY_STATS } from '../../domain/character-stats.ts';
+import { skillDetailEntries } from '../../domain/skill-display.ts';
 import { createCharacter } from '../../rendering/characters.ts';
 import type { PlaceModal } from './modal-placement.ts';
 import { drawRoundBand } from './round-band.ts';
@@ -211,7 +212,7 @@ export class PartyPanel {
     v.image(skill.icon,35,25,75,75);v.text(skill.name,135,30,550,26);v.text(level?`等级 ${level} / ${cap}`:cap?'尚未习得':'该佣兵未开放此技能',135,70,550,21);
     const scroll=v.scroll(35,124,648,197);let y=0;
     const text=v.text(skill.description,0,y,632,22,undefined,scroll.content);y+=text.height+15;
-    if(level)for(const detail of skill.ranks[level-1].details){const row=v.text(`${detail.label}：${detail.value}`,0,y,632,20,undefined,scroll.content);y+=row.height+10;}
+    if(level)for(const entry of skillDetailEntries(skill,skill.ranks[level-1]!)){const row=v.text(`${entry.label}：${entry.text}`,0,y,632,20,undefined,scroll.content);y+=row.height+10;}
     scroll.setHeight(y);v.button('关闭',480,350,190,48,()=>this.cancel());
   }
 }

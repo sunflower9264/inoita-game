@@ -30,9 +30,9 @@ test('six complete classes, legal ranks, original assets and independent actor a
       const skill = catalog.skills[id]; assert.ok(skill.name && skill.description); assert.ok(existsSync(new URL(skill.icon, publicRoot)));
       assert.deepEqual(skill.ranks.map(r => r.level), [1,2,3,4,5,6,7,8]);
       for (const rank of skill.ranks) {
-        assert.ok(rank.details.length > 0);
-        for (const field of rank.details) assert.ok(field.label && field.value && !/%[a-z]|NaN|undefined|\$[RGB]/.test(field.value));
-        assert.equal(rank.details.some(d => d.label === '冷却时间'), skill.kind === 'active');
+        assert.ok(rank.details!.length > 0);
+        for (const field of rank.details!) assert.ok(field.label && field.value && !/%[a-z]|NaN|undefined|\$[RGB]/.test(field.value));
+        assert.equal(rank.details!.some(d => d.label === '冷却时间'), skill.kind === 'active');
       }
     }
   }
