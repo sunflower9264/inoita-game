@@ -471,7 +471,7 @@
 |---|---|---|
 | P0.1 基线 | 手机统一测 4002/APK；清缓存冷启动/热启动；S1–S5 场景；同设备同网络 3 次取中位数 | 基线表 |
 | P0.2 帧时间采样 | 扩展现有 `game-diagnostics.ts`：PRE_STEP/POST_STEP/POST_RENDER 记录 update/render 时长；低频汇总 P50/P95/最长帧；错误上报带构建版本/DPR | `?perf` 或诊断字段 |
-| P0.3 资产归因 | 构建期扫描 `residentCombatAssets`/`planMapCombat`/地图/内容引用，按 SHA-256 + 帧配置分组，输出唯一内容/重复键/MB/归属 Top 20 | 资产报告 |
+| P0.3 资产归因 ✅ | `npm run report:assets` 扫描全部图片，按 SHA-256 分组并估算解码 MB，输出重复组与 Top 20 | 资产报告 |
 | P0.4 寻路基准 | 固定 50×57/46 actor 地图，测可达/不可达/拥挤三类；记录扩展数、p50/p95、最大耗时 | `tests/perf-pathfinding` 或脚本 |
 | P0.5 消融矩阵 | 真机逐项关闭：canopy、DPR 1.5/2、常驻包只留当前职业、AI step、HUD 重绘、音频 | 贡献排序 |
 | P0.6 绿色测试 ✅ | 先修当前红测试；至少让 `title-save-entry` 单跑通过 | 回归前置。已完成：11/11；菜单交互套件恢复 39/52 |
@@ -480,7 +480,7 @@
 
 1. ✅ **高频 emit 链路（2026-10-25 已实施）**：`observeChanges` 用 bag revision + 一次 counts；`Bag.counts` 按 revision 缓存；`BattleCharacter.panel` 缓存；`healthChanged` 事件索引；quest marker 按 questBook 版本缓存。仍待做：`Bag.entries/allCells/pouchCells` 的深拷贝缓存。
 2. ✅ **寻路（2026-10-25 已实施）**：敌人跨帧增量搜索 + 冻结快照 + 失败退避 600 ms；队伍 24 px/180 ms 重算；`WorldCombat` 每渲染帧共享 512 扩展预算；`canStand` 分配优化；`stepDelta` 最多 2 个逻辑步。
-3. **纹理去重**：构建期 SHA-256 + 帧配置；预计 -846 MB / -2,693 键，零画质；更新覆盖测试。
+3. ✅ **纹理去重（2026-10-25 已实施）**：构建期按文件 SHA-256 + 帧尺寸/帧数/帧率/循环类型合并 `battle.json` / `world.json` 的动画图层键；常驻包 3,363 键 / 1,769 MB → 1,025 键 / 996 MB。另有 `npm run report:assets` 输出完整重复归因；剩余文件级去重（地图 prop、UI 非图标资源）待做。
 4. **常驻包缩围**：只留当前职业/队伍/共享效果；返回菜单释放；伙伴入队时加载。
 5. ✅ **启动减负（2026-10-25 已实施）**：生产删运行期语义校验，构建期 minify 全部内容；不再 fetch 281 张地图；商店装备表、人物动作拆文件按需取；菜单物品/技能图标改为开局后后台补。仍需做：`campaign.json` 按章节/地图拆分。
 6. **逐帧脏检查（大部分完成，2026-10-25）**：✅ 掉落 revision + 按地图索引、`recoverResources` 早退、`syncDepth` 同值跳过、状态色/持续特效同值短路、重复 `setDepth` 删除、冷却签名、`setPaused` 同值、`syncHud` 目标状态按战斗帧缓存；仍待做：静态 body 跳过约束/插值、HUD 可见性同值短路、`WalkRoute` 重复采样。
@@ -489,7 +489,7 @@
 ### P2：结构性改造
 
 - Boss/角色 `skill-*` clip 按需加载，打完释放。
-- 地图 prop 图集；canopy 包围盒裁边/分块。
+- 地图 prop 图集；canopy 包围盒裁边/分块。UI 物品/技能图标图集 ✅（439 个图标 → 1 张 2,045×1,143 图集，请求数 439 → 2）。
 - 菜单/任务日志虚拟化；`MemberPanel` hitArea 复用。
 - 战斗/HUD 更完整的 revision 体系：`EnemyRoster`、`conditions`、`statusColors`、`syncBuffLoops`、`setPaused`。
 - 存档摘要与全档分离（递增 `SAVE_FORMAT`）；检查点去重复 clone/冗余字段。
@@ -710,4 +710,14 @@
 | 存档排序反复 parse 同一槽 | 排序期间按槽缓存读数 | `b5109f7` | 存档 30/30 |
 | BGM 换歌立即删缓存 | 保留上一首解码缓存；关闭音乐释放 | `dbfb895` | 音频 14/14 |
 
-下一项：对白增量更新、菜单同帧合并 render、存档摘要缓存（需定是否加 `SAVE_FORMAT`）；静态 body/`WalkRoute` 与寻路预算收益需真机确认；纹理/图集由另一个进程处理。
+### 2026-10-25：纹理去重与图标图集（已提交）
+
+| 根因 | 改动 | 提交 | 验证 |
+|---|---|---|---|
+| 动画贴图按方向/角色重复加载 | 构建期按 SHA-256 + 帧配置合并 battle/world 图层键；15,761 个引用从 8,969 键降到 2,874 键 | `adff44e` | 常驻战斗包 3,363 键/1,769 MB → 1,025 键/996 MB；build 校验通过 |
+| 439 个菜单图标各发一次请求 | `npm run atlas:icons` 生成 TexturePacker 图集；运行时按帧绘制，图集缺失时退回单图 | `adff44e` | 2.49 MB/439 请求 → 1.49 MB/2 请求；图集测试通过 |
+| 重复资产缺少可复查数据 | `npm run report:assets` 按 SHA-256 归因，输出重复组、磁盘/解码 MB 与 Top 20 | `adff44e` | 当前报告：1,901 组 / 6,641 个多余文件 / 51.6 MB 磁盘 / 2.1 GB 解码 |
+
+未做：地图 prop 图集（763 个 prop）、地图 prop 的文件级去重、非动画图片（立绘/UI 框架）的图集化。
+
+下一项（另一个进程）：对白增量更新、菜单同帧合并 render、存档摘要缓存；静态 body/`WalkRoute` 与寻路预算收益需真机确认。下一项（资产线）：地图 prop 图集与文件级去重。
