@@ -284,10 +284,10 @@ export class WorldCombat {
   get movement(){return this.scene.movement!;}
   get facing():Facing{return this.controlledId==='player'?this.scene.facing:combatActor(this.allies,this.controlledId,actor=>actor.id)?.facing??'south';}
   set facing(value:Facing){if(this.controlledId==='player')this.scene.facing=value;else{const ally=combatActor(this.allies,this.controlledId,actor=>actor.id);if(ally)ally.facing=value;}}
-  get attackState(){return this.combat?.snapshot().state??'idle';}
+  get attackState(){return this.combat?.actionState()??'idle';}
   /** 受控角色正在释放主动技能（含自动接近目标）。 */
   get castingSkill():boolean{return !!this.combat?.activeAction()?.skill;}
-  get targetId(){return this.combat?.snapshot().targetId;}
+  get targetId(){return this.combat?.selectedTargetId();}
   get cooldowns(){return this.combat?.snapshot().cooldowns??{};}
   /**
    * 卡住排查的最小快照：谁被冻住、在放什么动作、身上挂着哪些状态、移动体是否还在推进。
@@ -344,7 +344,7 @@ export class WorldCombat {
         id: enemy.key, enemy: enemy.definition.id,
         // 与 `enemy` 不相等说明场上实例和名册身份已经错开，伤害与目标血条会一起失效。
         rosterEnemy: this.roster.enemies.find(candidate => candidate.key === enemy.key)?.enemyId ?? null,
-        state: enemy.controller?.snapshot().state ?? null,
+        state: enemy.controller?.actionState() ?? null,
         position: this.movement.position(enemy.visual),
         health: this.roster.enemySnapshot(enemy.key, enemy.definition, this.hero.level)?.health ?? null,
         pendingDefeat: this.pendingDefeats.has(enemy.key),
@@ -358,8 +358,8 @@ export class WorldCombat {
     return this.runtime.idle&&!this.closed&&!this.defeated&&!this.deathTweens.size&&!this.pendingAllies.size&&
       this.activeParty.some(id=>this.memberOf(id)?.player.health)&&
       this.activeParty.every(id=>this.partyControllers.has(id)&&!!this.visualOf(id))&&
-      [...this.partyControllers.values()].every(controller=>controller.snapshot().state==='idle')&&
-      this.arena.every(enemy=>!this.pendingDefeats.has(enemy.key)&&(!enemy.controller||enemy.controller.snapshot().state==='idle'||enemy.controller.snapshot().state==='wandering'));
+      [...this.partyControllers.values()].every(controller=>controller.actionState()==='idle')&&
+      this.arena.every(enemy=>!this.pendingDefeats.has(enemy.key)&&(!enemy.controller||enemy.controller.actionState()==='idle'||enemy.controller.actionState()==='wandering'));
   }
 adoptStoryPositions(actors:readonly SceneActorState[]):void {
     const placements:{visual:CharacterVisual;position:{x:number;y:number};enabled:boolean}[]=[];
@@ -651,9 +651,8 @@ captureStoryActors():SceneActorState[] {
     const observations=this.combatants().filter(actor=>this.isActorAlive(actor.id)).map(actor=>{
       const enemy=combatActor(this.arena,actor.id,value=>value.key);
       const controller=this.partyControllers.get(actor.id)??enemy?.controller?.combatController;
-      const snapshot=enemy?.controller?.snapshot();
       return {actor,action:controller?.activeAction(),
-        chasingTargetId:actor.team!=='party'&&snapshot?.state==='chasing'?snapshot.targetId:undefined};
+        chasingTargetId:actor.team!=='party'&&enemy?.controller?.actionState()==='chasing'?enemy.controller.currentTargetId():undefined};
     });
     this.awareness.observe((this.app.session.combatTick??0)*LOGIC_FRAME_MS,observations);
   }
@@ -1040,7 +1039,7 @@ captureStoryActors():SceneActorState[] {
   private currentTargetOf(id:string):string|undefined {
     const enemy=combatActor(this.arena,id,actor=>actor.key);
     if(enemy)return this.enemyTarget(id);
-    return this.partyControllers.get(id)?.snapshot().targetId;
+    return this.partyControllers.get(id)?.selectedTargetId();
   }
   /** 背后渗透：目标当前的动作目标不是攻击者时，按已学等级加物理伤害率；目标没有目标也满足。 */
   private rearPenetrationBonus(attackerId:string,targetId:string):number {
@@ -1050,7 +1049,7 @@ captureStoryActors():SceneActorState[] {
   }
   private enemyTarget(id:string):string|undefined {
     const controller=combatActor(this.arena,id,actor=>actor.key)?.controller;
-    return controller?.combatController?controller.combatController.snapshot().targetId:controller?.snapshot().targetId;
+    return controller?.combatController?controller.combatController.selectedTargetId():controller?.currentTargetId();
   }
   private settleHit(event:AttackContact,hit:PhysicalHit,hero:BattleCharacter,targetEnemy?:MapEnemy,presentation:{style?:HitEffectStyle;periodic?:boolean;sound?:boolean}={}):void {
     if(this.pendingDefeats.has(event.targetId)||!this.conditions.canLoseHealth(event.targetId)
@@ -1363,8 +1362,8 @@ captureStoryActors():SceneActorState[] {
   }
   private attackSplashCenter(source:Combatant,targets:readonly Combatant[],rangeUnits:number):Point {
     const controller=this.partyControllers.get(source.id)??combatActor(this.arena,source.id,actor=>actor.key)?.controller?.combatController;
-    const selection=selectAttackSplashCenter(source,targets,rangeUnits,{currentTargetId:controller?.snapshot().targetId});
-    if(selection.targetId&&selection.targetId!==controller?.snapshot().targetId)controller?.setReactionTarget(selection.targetId);
+    const selection=selectAttackSplashCenter(source,targets,rangeUnits,{currentTargetId:controller?.selectedTargetId()});
+    if(selection.targetId&&selection.targetId!==controller?.selectedTargetId())controller?.setReactionTarget(selection.targetId);
     return selection.center;
   }
   private attackProc(event:AttackContact,hit:PhysicalHit,hero:BattleCharacter,_targetPosition?:Point):void {
@@ -1858,7 +1857,7 @@ captureStoryActors():SceneActorState[] {
       skills:()=>this.partySkills.get(id)??[],
       skillKind:skill=>this.app.session.party?.catalog.autoSkills?.[skill]?.kind,
       vitals:key=>this.memberOf(key)?.player,
-      attacking:key=>this.partyControllers.get(key)?.snapshot().state==='attacking',
+      attacking:key=>this.partyControllers.get(key)?.actionState()==='attacking',
       attackRange:()=>this.equipmentAttack(visual.actor,id).approachDistanceUnits+this.actorAttribute(id,'attackRangeBonusUnits'),
       counterattack:()=>this.app.session.party?.counterattack(id)??2,
       damageCount:()=>this.damageCount,
@@ -2168,7 +2167,7 @@ captureStoryActors():SceneActorState[] {
   selectEnemy(key:string):void{if(this.pendingDefeats.has(key)||!this.combat?.selectTarget(key))return;this.focusTarget(key);this.scene.refreshCombatTarget();}
   targetStatus(){
     // 操作人有目标时用操作人的；操作人没动手时，队友正在打或正在交战的敌人也要显示在顶部。
-    const enemy=this.targetOnMap(this.combat?.snapshot().targetId)
+    const enemy=this.targetOnMap(this.combat?.selectedTargetId())
       ??this.targetOnMap(this.partyTarget())??this.targetOnMap(this.engagedTarget());
     return enemy?this.roster.enemyStatus(enemy.key,enemy.definition):undefined;
   }
@@ -2179,7 +2178,7 @@ captureStoryActors():SceneActorState[] {
   private partyTarget():string|undefined{
     for(const [id,controller]of this.partyControllers){
       if(id===this.controlledId)continue;
-      const target=controller.snapshot().targetId;
+      const target=controller.selectedTargetId();
       if(target)return target;
     }
     return undefined;
@@ -2469,17 +2468,17 @@ captureStoryActors():SceneActorState[] {
   }
   afterMovement():void{
     this.readVisiblePartyResources();
-    if(this.hero.player.health>0&&this.controlledId!=='player'&&this.partyControllers.get('player')?.snapshot().state!=='attacking'){
+    if(this.hero.player.health>0&&this.controlledId!=='player'&&this.partyControllers.get('player')?.actionState()!=='attacking'){
       const moving=isBodyWalking(this.movement.body(this.player));
       setCharacterClip(this.scene,this.player,`${moving?'walk':'idle'}-${this.scene.facing}`);
     }
-    for(const ally of this.allies){if(!ally.member.alive||ally.id===this.controlledId||ally.controller.snapshot().state==='attacking')continue;
+    for(const ally of this.allies){if(!ally.member.alive||ally.id===this.controlledId||ally.controller.actionState()==='attacking')continue;
       const moving=isBodyWalking(ally.body);
       setCharacterClip(this.scene,ally.visual,`${moving?'walk':'idle'}-${ally.facing}`);
     }
     for(const enemy of this.arena){
       if(this.pendingDefeats.has(enemy.key))continue;
-      if(enemy.controller?.snapshot().state==='attacking')continue;
+      if(enemy.controller?.actionState()==='attacking')continue;
       const moving=isBodyWalking(enemy.body);
       const clip=`${moving?'walk':'idle'}-${enemy.facing}` as const;
       setCharacterClip(this.scene,enemy.visual,enemy.definition.actor.clips[clip]?clip:'idle-south');

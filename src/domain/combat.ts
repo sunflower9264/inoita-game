@@ -166,6 +166,10 @@ export class CombatController {
   snapshot(): CombatSnapshot {
     return { ...(this.selectedId?{targetId:this.selectedId}:{}), state: this.state, cooldowns: this.port.cooldowns.snapshot() };
   }
+  /** 只读动作阶段；不构造冷却快照，供每帧只判断状态的调用方使用。 */
+  actionState():CombatSnapshot['state']{return this.state;}
+  /** 只读当前选中的目标；语义与 `snapshot().targetId` 相同。 */
+  selectedTargetId():string|undefined{return this.selectedId;}
   activeAction():ActiveCombatAction|undefined {
     return this.active&&this.state!=='idle'?{state:this.state,targetId:this.active.targetId,skill:this.active.skill}:undefined;
   }

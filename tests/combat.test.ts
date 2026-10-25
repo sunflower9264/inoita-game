@@ -39,6 +39,19 @@ test('active action exposes its own target rather than the previous selection du
   run.combat.cancel();assert.equal(run.combat.activeAction(),undefined);
 });
 
+test('reading the action state or selected target does not build a cooldown snapshot',()=>{
+  const run=setup();
+  run.combat.selectTarget(enemy.id);
+  const cooldowns=run.port.cooldowns;
+  let snapshots=0;
+  run.port.cooldowns={...cooldowns,snapshot:()=>{snapshots++;return cooldowns.snapshot();}};
+  assert.equal(run.combat.actionState(),'idle');
+  assert.equal(run.combat.selectedTargetId(),enemy.id);
+  assert.equal(snapshots,0,'只读字段不该顺带遍历冷却');
+  run.combat.snapshot();
+  assert.equal(snapshots,1,'完整快照仍然包含冷却');
+});
+
 test('basic replacement is selected once at approach completion and its hand profile stays fixed for the action',()=>{
   const run=setup(),normal=resolveBasicAttack(catalog,catalog.classes[0]);
   const dual={...normal,strikeFrame:2,strikes:[{frame:2,hand:'main-hand' as const},{frame:5,hand:'offhand' as const}]};

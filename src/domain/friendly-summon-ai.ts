@@ -143,6 +143,8 @@ export class FriendlySummonController {
       approachTarget:()=>false,
     });
   }
+  actionState():SummonState{return this.state;}
+  currentTargetId():string|undefined{return this.targetId;}
   snapshot(){return {kind:this.kind,state:this.state,targetId:this.targetId,
     cooldowns:this.combatController.snapshot().cooldowns,searchPending:!!this.search,expandedNodes:this.expandedNodes};}
   captureState():FriendlySummonState {
@@ -303,7 +305,7 @@ export class FriendlySummonController {
       else if(gap>FRIENDLY_SUMMON_AI.followStartPx)this.followActive=true;
     }
     if(!this.returning&&!this.followActive){this.clearPath();this.port.stop();this.resetStuck();return;}
-    if(this.combatController.snapshot().state==='attacking')return;
+    if(this.combatController.actionState()==='attacking')return;
     if(!this.canMove(actor)){this.clearPath();return;}
     if(this.followDestination&&distance(this.followDestination,owner.position)>=FRIENDLY_SUMMON_AI.destinationChangePx){
       this.followUnreachable=false;this.stuckElapsed=0;this.followDestination={...owner.position};this.nextFollowSearchAt=this.clock;
@@ -391,7 +393,7 @@ export class FriendlySummonController {
     return path.slice(closest).map(point=>({...point}));
   }
   private applyReadyChoice(actor:Combatant,owner:Combatant):void {
-    if(!this.readyChoice||this.returning||this.combatController.snapshot().state==='attacking')return;
+    if(!this.readyChoice||this.returning||this.combatController.actionState()==='attacking')return;
     const choice=this.readyChoice;this.readyChoice=undefined;
     const tactics=this.port.tactics(),candidates=this.candidates(actor,owner,tactics),candidate=candidates.find(entry=>entry.actor.id===choice.targetId);
     if(!candidate)return;
@@ -413,13 +415,13 @@ export class FriendlySummonController {
     this.followActive=false;this.resetStuck();
   }
   private act(actor:Combatant,owner:Combatant):void {
-    if(this.combatController.snapshot().state==='attacking'){this.state='attacking';return;}
+    if(this.combatController.actionState()==='attacking'){this.state='attacking';return;}
     if(this.returning){this.state='returning';this.walk(actor);return;}
     const target=this.targetId?this.validTarget(actor,owner,this.targetId):undefined;
     if(target){
       if(this.attack&&this.inRange(actor,target)){
         this.clearPath();this.combatController.requestTarget(target.id,this.behavior.canTurn);
-        this.state=this.combatController.snapshot().state==='attacking'?'attacking':'chasing';
+        this.state=this.combatController.actionState()==='attacking'?'attacking':'chasing';
       }else{this.state='chasing';this.walk(actor);}
     }else if(this.followActive){this.state='following';this.walk(actor);}
     else{this.state='idle';this.port.stop();}
@@ -451,7 +453,7 @@ export class FriendlySummonController {
     // 贴身的正常待机不该反复清零计时；但主人就在 64px 内、召唤物却被地形隔开时，
     // 它同样需要走一次召回，否则会一直停在墙的另一侧。
     const blockedPath=this.followUnreachable||(this.pathTargetId===owner.id&&this.path.length>0);
-    if(!following||this.combatController.snapshot().state!=='idle'||(ownerDistance<=FRIENDLY_SUMMON_AI.returnStopPx&&!blockedPath)){this.resetStuck();return;}
+    if(!following||this.combatController.actionState()!=='idle'||(ownerDistance<=FRIENDLY_SUMMON_AI.returnStopPx&&!blockedPath)){this.resetStuck();return;}
     if(!this.progressOrigin)this.progressOrigin={...actor.position};
     if(this.followDestination&&distance(this.followDestination,owner.position)>=FRIENDLY_SUMMON_AI.destinationChangePx){
       this.resetStuck();this.followDestination={...owner.position};this.nextFollowSearchAt=this.clock;
@@ -471,7 +473,7 @@ export class FriendlySummonController {
   private resetStuck():void {this.stuckElapsed=0;this.progressOrigin=undefined;this.followUnreachable=false;}
   private dropTarget():void {
     this.targetId=undefined;this.clearPath();
-    if(this.combatController.snapshot().state==='approaching')this.combatController.cancel(false);
+    if(this.combatController.actionState()==='approaching')this.combatController.cancel(false);
     else this.combatController.clearSelection();
   }
   private clearPath():void {this.path=[];this.pathTargetId=undefined;this.pathDestination=undefined;this.port.stop();}

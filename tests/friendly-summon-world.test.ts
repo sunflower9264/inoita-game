@@ -21,7 +21,8 @@ interface TestVisual {id:string;actor:{collision:typeof box};container:{active:b
 interface TestEnemy {
   key:string;visual:TestVisual;summonedBy?:string;summonRemainingMs?:number;
   definition:{behavior:{awarenessRangeUnits:number}};
-  controller:{snapshot():{state:string;targetId?:string};combatController:{activeAction():ActiveCombatAction|undefined}};
+  controller:{snapshot():{state:string;targetId?:string};actionState():string;currentTargetId():string|undefined;
+    combatController:{activeAction():ActiveCombatAction|undefined}};
 }
 
 function fixture(){
@@ -31,7 +32,8 @@ function fixture(){
   const positions=new Map<TestVisual,Point>(),bodies=new Map<TestVisual,NavigationActor>(),actors=new Map<string,Combatant>();
   const dead=new Set<string>(),actions=new Map<string,ActiveCombatAction>(),selected=new Map<string,string>();
   const stateByEnemy=new Map<string,{state:string;targetId?:string}>();
-  const partyControllers=new Map<string,{activeAction():ActiveCombatAction|undefined;snapshot():{state:string;targetId?:string}}>();
+  const partyControllers=new Map<string,{activeAction():ActiveCombatAction|undefined;snapshot():{state:string;targetId?:string};
+    actionState():string;selectedTargetId():string|undefined}>();
   const moved:{visual:TestVisual;point:Point}[]=[];
   function addActor(id:string,team:string,position:Point):TestVisual {
     const visual:TestVisual={id,actor:{collision:{...box}},container:{active:true,visible:true}};
@@ -39,7 +41,8 @@ function fixture(){
     const body:NavigationActor={shape:()=>visual.actor,position:()=>point,enabled:()=>visual.container.visible};
     bodies.set(visual,body);navigation.register(body);
     actors.set(id,{id,team,position:point,bounds:visual.actor.collision});
-    if(team==='party')partyControllers.set(id,{activeAction:()=>actions.get(id),snapshot:()=>({state:actions.get(id)?.state??'idle',targetId:selected.get(id)})});
+    if(team==='party')partyControllers.set(id,{activeAction:()=>actions.get(id),snapshot:()=>({state:actions.get(id)?.state??'idle',targetId:selected.get(id)}),
+      actionState:()=>actions.get(id)?.state??'idle',selectedTargetId:()=>selected.get(id)});
     return visual;
   }
   const ownerVisual=addActor('player','party',{x:512,y:512});
@@ -48,7 +51,8 @@ function fixture(){
   partyControllers.delete('summon');
   const summon:TestEnemy={key:'summon',visual,summonedBy:'player',summonRemainingMs:12340,
     definition:{behavior:{awarenessRangeUnits:8}},
-    controller:{snapshot:()=>({state:'idle'}),combatController:{activeAction:()=>actions.get('summon')}}};
+    controller:{snapshot:()=>({state:'idle'}),actionState:()=> 'idle',currentTargetId:()=>undefined,
+      combatController:{activeAction:()=>actions.get('summon')}}};
   const arena:TestEnemy[]=[summon];
   const combatRuntime=new CombatRuntime(()=>session.combatTick);
   const awareness=new SummonCombatAwareness(0);
@@ -71,7 +75,8 @@ function fixture(){
   function hostile(id:string,point:Point,range=8):TestEnemy {
     const visual=addActor(id,'hostile',point);stateByEnemy.set(id,{state:'idle'});
     const enemy:TestEnemy={key:id,visual,definition:{behavior:{awarenessRangeUnits:range}},
-      controller:{snapshot:()=>stateByEnemy.get(id)!,combatController:{activeAction:()=>actions.get(id)}}};
+      controller:{snapshot:()=>stateByEnemy.get(id)!,actionState:()=>stateByEnemy.get(id)!.state,
+        currentTargetId:()=>stateByEnemy.get(id)!.targetId,combatController:{activeAction:()=>actions.get(id)}}};
     arena.push(enemy);return enemy;
   }
   return {world,state,session,terrain,navigation,positions,bodies,actors,dead,actions,selected,awareness,combatRuntime,

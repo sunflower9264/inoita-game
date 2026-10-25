@@ -108,7 +108,8 @@ function fixture(){
   const damage:NumericCombatUnit={effect:'physical',source:'physicalAttack',attributeWeights:primary,
     ranks:[{fixedAddition:0,operation:{kind:'add',amount:0}}]};
   let selected='attacker',reaction:((event:SkillReactionEvent)=>void)=()=>{};
-  const controller={snapshot:()=>({targetId:selected}),targetRemoved:()=>{},setReactionTarget:(id:string)=>{selected=id;order.push(`select:${id}`);}};
+  const controller={snapshot:()=>({targetId:selected}),selectedTargetId:()=>selected,actionState:()=> 'idle',
+    targetRemoved:()=>{},setReactionTarget:(id:string)=>{selected=id;order.push(`select:${id}`);}};
   let frame=0;const runtime=new CombatRuntime(()=>frame);
   const host=Object.setPrototypeOf({runtime,
     hero:defender,app:{battleCatalog:{...catalog,basicAttacks:{...catalog.basicAttacks,

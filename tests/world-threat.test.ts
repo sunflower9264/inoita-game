@@ -24,11 +24,12 @@ function fixture(){
     setHealth(value:number){this.player.health=Math.max(0,Math.min(100,value));events.push(`hp:${id}:${this.player.health}`);}}]));
   const actors=new Map([actor('caster','party'),actor('ally','party'),actor('enemy','hostile')].map(actor=>[actor.id,actor]));
   const enemyState={health:100,maxHealth:100,level:10};
-  const enemy={key:'enemy',definition:{behavior:{awarenessRangeUnits:8,canMove:true,canTurn:true,moveSpeedPxPerSecond:0,aggression:'none'}},controller:{snapshot:()=>({targetId:'ally'}),onThreatAdded:()=>events.push('threat')}};
+  const enemy={key:'enemy',definition:{behavior:{awarenessRangeUnits:8,canMove:true,canTurn:true,moveSpeedPxPerSecond:0,aggression:'none'}},
+    controller:{snapshot:()=>({targetId:'ally'}),currentTargetId:()=> 'ally',actionState:()=> 'idle',onThreatAdded:()=>events.push('threat')}};
   const attributes={physicalAttack:20,magicAttack:10,maxHealth:100,physicalDamageRate:0,magicDamageRate:0,stealthDamageRate:0,
     primaryAttributes:{strength:0,dexterity:0,vitality:0,intelligence:0,mentality:0}};
   const host=Object.setPrototypeOf({hero:members.get('caster'),arena:[enemy],activeParty:['caster','ally'],
-    app:{battleCatalog:catalog,session:{combatTick:31,skills:{draft:()=>({levels:{}})}}},conditions,hitResolution,pendingDefeats:new Set(),summonOwnerReactions:()=>{},disturbanceReaction:()=>{},
+    app:{battleCatalog:catalog,session:{combatTick:31,skills:{draft:()=>({levels:{}})},advanceRecoveryClock:()=>{}}},conditions,hitResolution,pendingDefeats:new Set(),summonOwnerReactions:()=>{},disturbanceReaction:()=>{},
     memberOf:(id:string)=>members.get(id),partyPassives:()=>[],partyFighter:()=>({}),actorAttributes:()=>attributes,
     actorAttribute:(_id:string,key:BattleStatKey)=>key==='physicalAttack'?attributes.physicalAttack:key==='threatGenerationRate'||key==='healingPowerRate'?1000:0,
     threatActor:(id:string)=>{const value=actors.get(id);return value&&{...value,states:conditions.activeStates(id)};},
@@ -46,7 +47,7 @@ function fixture(){
 test('accepted damage updates HP, then full overkill threat, then feedback, before deferred defeat',()=>{
   const f=fixture();f.actors.get('ally')!.tracksThreat=true;
   f.conditions.applyState('ally','sleep',1000);
-  f.host.arena.push({key:'ally',controller:{snapshot:()=>({}),onThreatAdded:()=>f.events.push('threat')}});
+  f.host.arena.push({key:'ally',controller:{snapshot:()=>({}),currentTargetId:()=>undefined,actionState:()=> 'idle',onThreatAdded:()=>f.events.push('threat')}});
   f.hitResolution.run(()=>invoke(f.host,'settleHit',{casterId:'caster',targetId:'ally'},{kind:'hit',damage:500},f.host.hero));
   assert.deepEqual(f.events,['hp:ally:0','threat','feedback','death:ally']);
   assert.equal(f.conditions.hasState('ally','sleep'),false);
@@ -77,7 +78,8 @@ test('only successful direct action states create state threat',()=>{
 });
 
 test('healing threat follows a reaction-selected current target rather than the previous AI decision',()=>{
-  const f=fixture();Object.assign(f.enemy.controller,{combatController:{snapshot:()=>({targetId:'caster'})}});
+  const f=fixture();Object.assign(f.enemy.controller,{combatController:{snapshot:()=>({targetId:'caster'}),selectedTargetId:()=> 'caster',
+    actionState:()=> 'idle'}});
   f.threat.heal('ally','ally',100);assert.equal(f.threat.captureState().entries.length,0);
   f.threat.heal('ally','caster',100);assert.equal(f.threat.captureState().entries[0].sourceId,'ally');
 });
@@ -110,7 +112,7 @@ test('hostile damage immunity rejects taunt before numerical threat and state ap
 
 test('resource pulses decay threat once after all actors have recovered',()=>{
   const events:string[]=[],host={activeParty:[],arena:[],
-    app:{session:{recoverCombatResources:()=>[{amounts:[{actorId:'a',healthAmount:1,manaAmount:2}]},{amounts:[]}]}},
+    app:{session:{recoveryPulseDue:true,recoverCombatResources:()=>[{amounts:[{actorId:'a',healthAmount:1,manaAmount:2}]},{amounts:[]}],advanceRecoveryClock:()=>{}}},
     restoreHealth:()=>events.push('health'),restoreMana:()=>events.push('mana'),threat:{decay:()=>events.push('decay')}};
   invoke(host,'recoverResources');assert.deepEqual(events,['health','mana','decay','decay']);
 });

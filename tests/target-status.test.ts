@@ -14,13 +14,13 @@ const definition={id:'wolf'},status={id:'enemy',name:'狼',level:3,health:20,max
 /** 顶部敌人面板只读这几项：操作人目标、队友控制器、最近交战记录与敌人名册。 */
 function host(controlledTarget?:string,companionTarget?:string){
   return Object.setPrototypeOf({
-    combat:{snapshot:()=>({targetId:controlledTarget})},
+    combat:{snapshot:()=>({targetId:controlledTarget}),selectedTargetId:()=>controlledTarget},
     arena:[{key:'enemy',definition}],
     roster:{enemyStatus:(key:string)=>key==='enemy'?status:undefined},
     pendingDefeats:new Set<string>(),
     partyControllers:new Map([
-      ['player',{snapshot:()=>({targetId:controlledTarget})}],
-      ['mercenary',{snapshot:()=>({targetId:companionTarget})}],
+      ['player',{snapshot:()=>({targetId:controlledTarget}),selectedTargetId:()=>controlledTarget}],
+      ['mercenary',{snapshot:()=>({targetId:companionTarget}),selectedTargetId:()=>companionTarget}],
     ]),
     app:{session:{combatTick:10,party:{controlledId:'player',activeIds:['player','mercenary']}}},
     focusTargetId:undefined,

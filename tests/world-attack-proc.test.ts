@@ -25,7 +25,8 @@ function fixture(count=1){
   let current:string|undefined='enemy-0';
   const host=Object.setPrototypeOf({hero,conditions,arena:enemies,app:{battleCatalog:catalog,session:{}},
     pendingDefeats:new PendingEnemyDefeats(),hitResolution:new CombatHitResolution(),
-    partyControllers:new Map([['player',{snapshot:()=>({targetId:current}),setReactionTarget:(id:string)=>{current=id;}}]]),
+    partyControllers:new Map([['player',{snapshot:()=>({targetId:current}),selectedTargetId:()=>current,
+      actionState:()=> 'idle',setReactionTarget:(id:string)=>{current=id;}}]]),
     memberOf:(id:string)=>id==='player'?hero:undefined,partyPassives:()=>[],partyFighter:()=>({}),partyAttackProc:()=>{},
     applyStateConsequences:()=>{},syncCombatResourceLimits:()=>{},
     actorAttributes:()=>({physicalAttack:hero.panel.physicalAttack,magicAttack:hero.panel.magicAttack,physicalDamageRate:0,magicDamageRate:0,

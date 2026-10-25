@@ -65,7 +65,7 @@ export class CombatRuntime {
     const actor=this.controllers.get(command.actorId);if(!actor)return {kind:'rejected',reason:'no-target'};
     const result=command.skill&&command.mode==='manual'?actor.requestManualSkill(command.skill,command.targetId):
       command.skill&&command.mode==='triggered'?actor.requestTriggeredAction(command.skill,command.targetId):actor.request(command.skill,command.targetId);
-    return result==='started'?{kind:actor.snapshot().state==='approaching'?'approaching':'started'}:{kind:'rejected',reason:result};
+    return result==='started'?{kind:actor.actionState()==='approaching'?'approaching':'started'}:{kind:'rejected',reason:result};
   }
   captureState():CombatRuntimeState{return {actors:[...this.controllers].map(([id,controller])=>[id,controller.snapshot()])};}
   restoreState(state:CombatRuntimeState):void {

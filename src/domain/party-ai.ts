@@ -91,6 +91,9 @@ export class PartyController {
     this.id=id;this.port=port;this.combatController=combat;this.random=random;
   }
   snapshot(){return this.combatController.snapshot();}
+  /** 只读动作阶段；不需要冷却快照时用这个。 */
+  actionState(){return this.combatController.actionState();}
+  selectedTargetId(){return this.combatController.selectedTargetId();}
   captureState():PartyControllerState {
     return {retaliation:this.retaliation,accumulator:this.accumulator,clock:this.clock,nextPathAt:this.nextPathAt,
       path:this.path.map(point=>({...point})),destination:this.destination?{...this.destination}:undefined,
@@ -139,7 +142,7 @@ export class PartyController {
     }
     this.combatController.update();
     if(!combatStateCapabilities(actor.states??[]).canAct){this.path=[];this.port.stop();return;}
-    if(this.combatController.snapshot().state!=='idle')return;
+    if(this.combatController.actionState()!=='idle')return;
     if(this.port.counterattack()===0)this.retaliation=undefined;
     const inCombat=this.port.inCombat();
     // 优先级：显式集火 > 自己被谁打 > 主操作角色正在打的目标 > 自己上一轮选中的目标。
@@ -147,7 +150,7 @@ export class PartyController {
       this.port.focusTarget(),
       this.retaliation,
       inCombat?this.port.partyTarget?.():undefined,
-      inCombat?this.combatController.snapshot().targetId:undefined
+      inCombat?this.combatController.selectedTargetId():undefined
     ]);
     if(!target)this.retaliation=undefined;
     // 队伍未进入战斗时只跟随，不放任何主动技能；召唤物之类的无目标技能也不例外。

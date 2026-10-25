@@ -116,6 +116,9 @@ export class EnemyController {
     }:port);
   }
   snapshot():EnemySnapshot{return {state:this.state,targetId:this.targetId,cooldowns:this.combat?.snapshot().cooldowns??{}};}
+  /** 只读行为阶段；不需要冷却快照时用这个。 */
+  actionState():EnemySnapshot['state']{return this.state;}
+  currentTargetId():string|undefined{return this.targetId;}
   captureState():EnemyControllerState {
     return structuredClone({state:this.state,targetId:this.targetId,pendingReturn:this.pendingReturn,threatCombatActive:this.threatCombatActive,
       accumulator:this.accumulator,clock:this.clock,nextPathAt:this.nextPathAt,path:this.path,destination:this.destination,
@@ -163,17 +166,17 @@ export class EnemyController {
     if(this.disposed||!this.combat||this.state==='returning'||this.behavior.aggression==='none')return false;
     const started=this.combat.requestTriggeredAction({...skill,level},targetId,this.behavior.canTurn)==='started';
     // 命令可以没有目标（召唤物的范围动作在原地施放），这时保留它原来的目标不改成 undefined。
-    if(started){if(targetId)this.targetId=targetId;this.pendingReturn=false;this.state=this.combat.snapshot().state==='attacking'?'attacking':'chasing';}
+    if(started){if(targetId)this.targetId=targetId;this.pendingReturn=false;this.state=this.combat.actionState()==='attacking'?'attacking':'chasing';}
     return started;
   }
   targetRemoved(targetId:string,reason:'hidden'|'inactive'='hidden'):void {
-    const current=this.port.threat?this.combat?.snapshot().targetId:this.targetId;
+    const current=this.port.threat?this.combat?.selectedTargetId():this.targetId;
     this.combat?.targetRemoved(targetId);
     if(current!==targetId)return;
     if(reason==='inactive'&&!this.mapWide){this.port.threat?.clear();this.threatCombatActive=false;}
     this.targetId=undefined;this.pendingReturn=false;
     this.path=[];this.destination=undefined;this.search=undefined;this.progressPosition=undefined;this.nextPathAt=0;this.port.stop();
-    this.state=this.combat?.snapshot().state==='attacking'?'attacking':'idle';
+    this.state=this.combat?.actionState()==='attacking'?'attacking':'idle';
   }
   disable():void {
     this.combat?.cancel(true,!this.port.threat);
@@ -192,7 +195,7 @@ export class EnemyController {
   }
   /** 全图交战只停止当前追近，保留已有仇恨及寻路重试截止时间。 */
   private awaitTarget():void {
-    if(this.combat?.snapshot().state==='approaching')this.combat.cancel();
+    if(this.combat?.actionState()==='approaching')this.combat.cancel();
     else this.combat?.clearSelection();
     this.state='idle';this.targetId=undefined;this.pendingReturn=false;
     this.path=[];this.destination=undefined;this.search=undefined;this.progressPosition=undefined;this.wanderDestination=undefined;this.idleElapsed=0;this.port.stop();
@@ -206,16 +209,16 @@ export class EnemyController {
   private tick():void{
     const actor=this.port.actor(this.id);
     if(!actor||!this.combat||this.behavior.aggression==='none'){this.port.stop();return;}
-    const current=this.port.threat?this.combat.snapshot().targetId:this.targetId;
+    const current=this.port.threat?this.combat.selectedTargetId():this.targetId;
     if(current&&!this.port.actor(current))this.targetRemoved(current,'inactive');
     const previous=current?this.port.actor(current):undefined;
     if(previous&&!canTargetCombatant(actor,previous))this.targetRemoved(previous.id);
-    const previousAction=this.combat.snapshot().state;
+    const previousAction=this.combat.actionState();
     this.combat.update();
     const capabilities=combatStateCapabilities(actor.states??[]);
     if(!capabilities.canAct){this.disable();return;}
     if(this.port.threat){
-      const action=this.combat.snapshot().state;
+      const action=this.combat.actionState();
       if(action==='approaching'||action==='attacking'){this.state=action==='attacking'?'attacking':'chasing';return;}
       if(previousAction==='approaching'){
         if(this.pendingReturn)this.returnHome();
@@ -239,7 +242,7 @@ export class EnemyController {
     if(this.port.threat){
       // 每个决策点扫描候选：接战后召唤物中途登场，也能在下一次决策点抢到仇恨。
       // `has` 保证同一来源只 notice 一次；被动敌人只在已经打到人时扫描，不主动开战。
-      if(this.behavior.aggression==='active'||(this.threatCombatActive&&this.combat.snapshot().targetId!==undefined)){
+      if(this.behavior.aggression==='active'||(this.threatCombatActive&&this.combat.selectedTargetId()!==undefined)){
         for(const candidate of this.port.candidates()){
           if(candidate.id===this.id||candidate.team===actor.team)continue;
           if(this.mapWide&&this.port.isAlive?.(candidate.id)===false)continue;
@@ -248,7 +251,7 @@ export class EnemyController {
           this.port.threat.notice(candidate.id);
         }
       }
-      this.targetId=this.port.threat.select(this.combat.snapshot().targetId);
+      this.targetId=this.port.threat.select(this.combat.selectedTargetId());
       if(this.targetId)this.threatCombatActive=true;
       else if(this.threatCombatActive){this.returnHome();return;}
     }
@@ -265,8 +268,8 @@ export class EnemyController {
       this.wanderDestination=undefined;this.path=[];this.destination=undefined;this.search=undefined;this.nextPathAt=0;this.port.stop();
     }
     const lost=this.targetId!==undefined&&(!target||target.team===actor.team||(!this.port.threat&&!this.inAwareness(actor,target)));
-    if(this.combat.snapshot().state==='approaching'){this.state='chasing';return;}
-    if(this.combat.snapshot().state==='attacking'){
+    if(this.combat.actionState()==='approaching'){this.state='chasing';return;}
+    if(this.combat.actionState()==='attacking'){
       this.state='attacking';if(lost)this.pendingReturn=true;return;
     }
     if(lost||this.pendingReturn){this.returnHome();return;}
@@ -292,16 +295,16 @@ export class EnemyController {
       if(this.port.threat&&!this.mapWide)this.nextPathAt=0;
       const result=this.combat.request({...skill,level:skill.level,manaCost:skill.manaCost},target.id,this.behavior.canTurn);
       if(result==='started'&&skill.once)this.spentOnce.add(skill.id);
-      if(this.port.threat&&(result!=='started'||this.combat.snapshot().state==='idle')){this.returnHome();return;}
-      this.state=this.combat.snapshot().state==='attacking'?'attacking':'chasing';return;
+      if(this.port.threat&&(result!=='started'||this.combat.actionState()==='idle')){this.returnHome();return;}
+      this.state=this.combat.actionState()==='attacking'?'attacking':'chasing';return;
     }
     if(this.attack&&(this.port.threat||distance<=this.attack.approachDistanceUnits)){
       if(this.holdImmobileAction(actor,target,this.attack.approachDistanceUnits))return;
       this.path=[];this.destination=undefined;this.search=undefined;
       if(this.port.threat&&!this.mapWide)this.nextPathAt=0;
       const result=this.combat.requestTarget(target.id,this.behavior.canTurn);
-      if(this.port.threat&&(result!=='started'||this.combat.snapshot().state==='idle')){this.returnHome();return;}
-      this.state=this.combat.snapshot().state==='attacking'?'attacking':'chasing';return;
+      if(this.port.threat&&(result!=='started'||this.combat.actionState()==='idle')){this.returnHome();return;}
+      this.state=this.combat.actionState()==='attacking'?'attacking':'chasing';return;
     }
     this.state='chasing';
     const ranges=[...(this.attack?[this.attack.approachDistanceUnits]:[]),...ready.map(skill=>skill.action.approachDistanceUnits)];
