@@ -11,6 +11,7 @@ import { storyConditionReferences } from '../src/domain/story-condition.ts';
 import { StoryWorldState } from '../src/domain/story-world.ts';
 import type { Campaign } from '../src/domain/campaign.ts';
 import type {ChoiceAction, ClipName, DialogueLine, WorldIndex, WorldMap} from '../src/domain/content.ts';
+import { PROP_ATLAS_BY_KEY } from '../src/generated/prop-atlas.ts';
 
 
 function navigationFor(map: WorldMap, entities = map.entities): NavigationWorld {
@@ -45,7 +46,7 @@ test('character clips resolve to valid assets inside the game project',()=>{
   assert.ok(clip.frameWidth>0&&clip.frameHeight>0&&clip.frames>0);
   for(const layer of clip.layers)assert.ok(fs.existsSync(path.join(root,layer.file)),layer.file);
  }
- for(const prop of world.props)assert.ok(fs.existsSync(path.join(root,prop.file)),prop.file);
+ for(const prop of world.props){assert.ok(fs.existsSync(path.join(root,prop.file)),prop.file);assert.ok(PROP_ATLAS_BY_KEY[prop.key],`prop atlas frame missing: ${prop.key}`);}
 });
 test('characters, chest variants and springs retain foot bounds while passage markers stay traversable',()=>{
  const expected={x:-8,y:-8,width:16,height:16};
