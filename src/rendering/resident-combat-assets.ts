@@ -17,6 +17,11 @@ export interface ResidentCombatInput {
   wardrobe: WardrobeCatalog;
   world: WorldIndex;
   companions: CompanionCatalog;
+  /**
+   * 省略 = 全部职业（构建期全量校验）；运行时只传当前主角职业。
+   * 伙伴外观始终全量，保留菜单实时预览。
+   */
+  classIds?: Iterable<string>;
 }
 
 /** 会话常驻的战斗视觉资源：一次加载，切图与战斗结束都不释放。 */
@@ -77,7 +82,11 @@ export function residentCombatAssets(input: ResidentCombatInput): CombatAssetPac
   for (const name of COMBAT_OUTCOME_EFFECTS) effectNames.add(name);
   addAssets(combatOutcomeAssets(battle));
   addAssets(combatFeedbackAssets(battle));
-  for (const character of battle.classes) addClass(character.id);
+  const selectedClasses = input.classIds === undefined ? undefined : new Set(input.classIds);
+  if (selectedClasses) for (const id of selectedClasses)
+    if (!battle.classes.some(character => character.id === id)) throw new Error(`常驻战斗包职业不存在：${id}`);
+  for (const character of battle.classes)
+    if (!selectedClasses || selectedClasses.has(character.id)) addClass(character.id);
   // 佣兵的基础外观必须在入队前就绪；职业特效与召唤物已由上面的职业循环覆盖。
   for (const definition of Object.values(companions.definitions)) {
     const actor = world.actors[definition.actor];

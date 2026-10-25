@@ -266,6 +266,17 @@ export class WorldScene extends Phaser.Scene {
     this.entities=this.app.session.storyWorld.projectEntities(map.id,this.baseEntities,this.app.campaign.placements);
     // 入口只保证「落脚图」可玩；后续剧情地图交给 ensureStoryAssets 在开演前按需加载。
     // 玩家侧战斗资源只在首次进入世界时并入主批次，之后由常驻租约保持。
+    // class stamp 防止某条遗漏的重置路径继续复用旧职业包。
+    const residentClassId = this.app.session.hero?.classId ?? this.app.session.character?.classId;
+    if (this.app.residentCombatReady && this.app.residentCombatClassId !== residentClassId) {
+      if (this.app.releaseResidentCombat) this.app.releaseResidentCombat();
+      else {
+        this.app.residentCombatAssets?.release();
+        this.app.residentCombatAssets = undefined;
+        this.app.residentCombatClassId = undefined;
+        this.app.residentCombatReady = false;
+      }
+    }
     const includeResidentCombat=!this.app.residentCombatReady;
     const plan = buildEntryPlan({
       currentMap: map,
@@ -301,6 +312,7 @@ export class WorldScene extends Phaser.Scene {
     // 地图租约被历史淘汰或场景关闭时不会把战斗纹理一起删掉。
     if(includeResidentCombat){
       this.app.residentCombatAssets=retainLoadedSceneAssets(this,plan.residentCombat??[]);
+      this.app.residentCombatClassId=residentClassId;
       this.app.residentCombatReady=true;
     }
     // 这张图已经由场景持有资源；运行时预取租约可以释放。

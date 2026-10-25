@@ -81,7 +81,8 @@ export function buildEntryPlan(input: EntryPlanInput): EntryPlan {
     ...(input.includeResidentCombat ? {
       residentCombat: residentCombatAssets({
         battle: input.inputs.battle, wardrobe: input.inputs.wardrobe,
-        world: input.inputs.world, companions: input.inputs.companions
+        world: input.inputs.world, companions: input.inputs.companions,
+        classIds: [input.inputs.hero.classId]
       }).assets
     } : {}),
     portraits: presentation.portraits,

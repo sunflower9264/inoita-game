@@ -4,10 +4,11 @@ import { COMBAT_OUTCOME_EFFECTS } from '../domain/combat-outcomes.ts';
 import { skillEffectNames } from '../domain/skill-action.ts';
 import { skillReactionEffects } from '../domain/skill-reactions.ts';
 import { skillForGrowth, type BattleCatalog } from '../domain/battle.ts';
-import type { WorldIndex } from '../domain/content.ts';
+import type { ActorDefinition, WorldIndex } from '../domain/content.ts';
 import type { CompanionCatalog } from '../domain/party.ts';
 import type { WardrobeCatalog } from '../domain/wardrobe.ts';
 import { basicAttackEffects } from './combat-asset-descriptors.ts';
+import { classSummonEnemyIds, enemyCombatAssets } from './combat-assets.ts';
 import { residentCombatAssets, type ResidentCombatInput } from './resident-combat-assets.ts';
 
 export interface CoverageInput extends ResidentCombatInput {
@@ -37,6 +38,8 @@ export function residentCombatCoverageGaps(input: CoverageInput): CoverageGaps {
   const pack = residentCombatAssets(input);
   const assetKeys = new Set(pack.assets.map(asset => asset.key));
   const actorLayerKeys = new Set(pack.assets.filter(asset => asset.kind === 'spritesheet').map(asset => asset.key));
+  const classIds = input.classIds === undefined ? undefined : new Set(input.classIds);
+  const classes = classIds ? battle.classes.filter(character => classIds.has(character.id)) : battle.classes;
   const effects = new Set<string>();
   const definitions = new Set<string>();
 
@@ -47,7 +50,7 @@ export function residentCombatCoverageGaps(input: CoverageInput): CoverageGaps {
     for (const name of Object.keys(basicAttackEffects(battle, attack))) effects.add(name);
   };
 
-  for (const character of battle.classes) {
+  for (const character of classes) {
     for (const id of character.skills) {
       const skill = battle.skills[id];
       for (const profile of [skill, ...(skill.companion ? [skillForGrowth(skill, 'companion')] : [])]) {
@@ -75,15 +78,28 @@ export function residentCombatCoverageGaps(input: CoverageInput): CoverageGaps {
       for (const layer of clip.layers) if (!assetKeys.has(layer.key)) missingLayers.push(layer.key);
   }
   const missingActorLayers: string[] = [];
-  const addActorLayers = (actorId: string): void => {
-    const actor = world.actors[actorId];
-    if (!actor) return;
+  const addActorLayers = (actor: ActorDefinition): void => {
     for (const clip of Object.values(actor.clips)) if (clip)
       for (const layer of clip.layers)
         if (layer.file && !actorLayerKeys.has(layer.key)) missingActorLayers.push(layer.key);
   };
-  for (const character of battle.classes) addActorLayers(character.actor.id);
-  for (const definition of Object.values(companions.definitions)) addActorLayers(definition.actor);
+  // 职业 actor 不在 world.actors 里，必须直接检查 battle.classes[].actor；
+  // 伙伴外观仍从 world.actors 取。
+  for (const character of classes) addActorLayers(character.actor);
+  for (const definition of Object.values(companions.definitions)) {
+    const actor = world.actors[definition.actor];
+    if (actor) addActorLayers(actor);
+  }
+  // 职业召唤物是另一个独立资源闭包，不能只靠职业 actor 覆盖。
+  for (const character of classes) for (const id of classSummonEnemyIds(battle, character.id)) {
+    const definition = battle.enemies.find(enemy => enemy.id === id);
+    if (!definition) { definitions.add(`summon:${id}`); continue; }
+    for (const asset of enemyCombatAssets(battle, definition)) {
+      if (assetKeys.has(asset.key)) continue;
+      if (asset.kind === 'spritesheet') missingActorLayers.push(asset.key);
+      else missingLayers.push(asset.key);
+    }
+  }
 
   return {
     effects: [...effects].filter(name => !pack.effectNames.has(name)),

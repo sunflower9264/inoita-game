@@ -78,6 +78,14 @@ export class StoryApp {
   /** 玩家侧全部战斗视觉资源在首次进游戏时加载并常驻，避免战斗与入队时现场加载。 */
   residentCombatReady=false;
   residentCombatAssets?: AssetLease;
+  residentCombatClassId?: string;
+  /** 释放常驻包并重置会话标记；重复调用幂等。 */
+  releaseResidentCombat(): void {
+    this.residentCombatAssets?.release();
+    this.residentCombatAssets = undefined;
+    this.residentCombatClassId = undefined;
+    this.residentCombatReady = false;
+  }
   wardrobe!: WardrobeCatalog;
   changeEquipment?: (entry: string | undefined, slot: EquipmentSlot, signal?: AbortSignal, memberId?:string) => Promise<string>;
   equipmentPreview?: () => string | undefined;

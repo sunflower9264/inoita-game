@@ -59,6 +59,8 @@ export interface StoryContext {
   /** 玩家侧全部战斗视觉资源在首次进游戏时加载并常驻，避免战斗与入队时现场加载。 */
   residentCombatReady?: boolean;
   residentCombatAssets?: import('./assets.ts').AssetLease;
+  residentCombatClassId?: string;
+  releaseResidentCombat?: () => void;
   readonly ui: SceneUI & Pick<GameUI,'drawPortrait'|'portrait'|'canSkip'|'loadingState'|'failed'>;
   readonly locked: boolean;
   readonly suspended: boolean;
