@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {fitViewport,configureCanvas} from '../src/ui/viewport.ts';
+import {fitViewport,configureCanvas,readSafeArea} from '../src/ui/viewport.ts';
 
 /** 假窗口对象：测试只需要 `fitViewport` 读的 `visualViewport`。 */
 interface FakeWindow {
@@ -29,6 +29,27 @@ test('viewport offsets and safe insets affect the frame and controls separately,
   for(const [name,descriptor] of original) {
    if(descriptor)Object.defineProperty(globalThis,name,descriptor);else delete globals[name];
   }
+ }
+});
+
+test('safe area is measured once until the viewport changes',()=>{
+ const globals=globalThis as unknown as Record<string,unknown>;
+ const original=['window','document','getComputedStyle'].map(name=>[name,Object.getOwnPropertyDescriptor(globalThis,name)] as const);
+ const style={setProperty(){}};
+ let reads=0;
+ try{
+  globals.window={visualViewport:{width:844,height:390,offsetLeft:0,offsetTop:0}};
+  globals.document={getElementById:(id:string)=>id==='game-frame'?{style}:{}};
+  globals.getComputedStyle=()=>{reads++;return {paddingLeft:'47px',paddingRight:'47px',paddingTop:'0px',paddingBottom:'21px'};};
+  fitViewport();
+  const measured=reads;
+  assert.deepEqual(readSafeArea(),{left:47,right:47,top:0,bottom:21});
+  readSafeArea();
+  assert.equal(reads,measured,'视口没变时不再读计算样式');
+  fitViewport();
+  assert.equal(reads,measured+1,'视口重建后重新测量');
+ }finally{
+  for(const[name,descriptor]of original){if(descriptor)Object.defineProperty(globalThis,name,descriptor);else delete globals[name];}
  }
 });
 

@@ -14,14 +14,23 @@ export const GAME_HEIGHT = 640;
 export const UI_UNIT_WIDTH = 800;
 export const UI_UNIT_HEIGHT = 480;
 
+let safeAreaRevision = 0;
+let safeAreaCache: { revision: number; value: { left: number; right: number; top: number; bottom: number } } | undefined;
+
 /** 设备安全区，单位为屏幕 CSS 像素。界面换算后使用，画布仍铺满窗口。 */
 export function readSafeArea(): { left: number; right: number; top: number; bottom: number } {
+  const cached = safeAreaCache;
+  if (cached?.revision === safeAreaRevision) return cached.value;
   const safe = getComputedStyle(element('safe-area'));
-  return { left: parseFloat(safe.paddingLeft) || 0, right: parseFloat(safe.paddingRight) || 0,
+  const value = { left: parseFloat(safe.paddingLeft) || 0, right: parseFloat(safe.paddingRight) || 0,
     top: parseFloat(safe.paddingTop) || 0, bottom: parseFloat(safe.paddingBottom) || 0 };
+  safeAreaCache = { revision: safeAreaRevision, value };
+  return value;
 }
 
 export function fitViewport(): void {
+  // 只有视口重建时安全区才可能变；布局每帧读取时直接复用这次测量。
+  safeAreaRevision++;
   const viewport = window.visualViewport;
   const { left, right, top, bottom } = readSafeArea();
   const width = Math.max(1, viewport?.width ?? innerWidth);
