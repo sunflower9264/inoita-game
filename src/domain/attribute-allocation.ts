@@ -15,7 +15,8 @@ export class AttributeAllocation {
     return this.hero.statPoints - PRIMARY_STATS.reduce((sum, stat) => sum + this.additions[stat], 0);
   }
   get attributes(): PrimaryAttributes {
-    const values = this.hero.panel.attributes;
+    // 面板是角色的派生数据，预览只能改副本；不能把本轮加点写回角色缓存。
+    const values = { ...this.hero.panel.attributes };
     for (const stat of PRIMARY_STATS) values[stat] += this.additions[stat];
     return values;
   }
