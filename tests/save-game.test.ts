@@ -178,3 +178,18 @@ test('current saves preserve complete story scenes and reject actor-only scene c
   delete (saved.game.session.runtime.runs[0].stage as Partial<typeof stage>).scene;
   assert.throws(()=>restoreSaveGame(createSession(),saved.game),/场景快照/);
 });
+
+test('summary reads reuse the parsed summary until the raw save changes',()=>{
+  const slots=new SaveSlots<World>(memory()),session=createSession();
+  session.enterMap(campaign.start.map);
+  slots.write(0,record(session));
+  const first=slots.peek(0);
+  assert.equal(first.kind,'ok');
+  assert.equal(slots.peek(0),first,'原文没变时复用同一份摘要');
+  slots.rename(0,'新名字');
+  const renamed=slots.peek(0);
+  assert.notEqual(renamed,first,'改名后缓存失效');
+  assert.equal(renamed.kind==='ok'?renamed.summary.name:undefined,'新名字');
+  slots.erase(0);
+  assert.equal(slots.peek(0).kind,'empty','删除后缓存失效');
+});

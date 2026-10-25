@@ -451,13 +451,13 @@ export class StoryUI {
     drawSaveBoardRow(v,assets,origin,SAVE_BOARD_LAYOUT.autoTop,this.saveRow(AUTO_SAVE_SLOT,loading));
     // 十个手动槽放进滚动区；按写入时间倒序，最新的排最前，空槽排在后面。
     const scroll=this.scroll('slots',origin.x,SAVE_BOARD_LAYOUT.listTop,SAVE_BOARD.panelWidth,SAVE_BOARD_LAYOUT.listHeight,v);
-    newestFirstSlots(slot=>this.app.saves.inspect(slot)).forEach((slot,index)=>
+    newestFirstSlots(slot=>this.app.saves.peek(slot)).forEach((slot,index)=>
       drawSaveBoardRow(v,assets,{x:0,y:0},index*SAVE_BOARD.rowStep,this.saveRow(slot,loading),scroll.content));
     this.finishScroll('slots',scroll,(MANUAL_SAVE_SLOT_COUNT-1)*SAVE_BOARD.rowStep+SAVE_BOARD.frameHeight);
   }
   /** 一行存档的读数、动作与行内控件；自动槽在存档页没有动作。 */
-  private saveRow(ref:SaveSlotRef,loading:boolean):SaveBoardRow<StoryWorldViewSnapshot>{
-    const reading=this.app.saves.inspect(ref),title=saveRowTitle(ref,reading),auto=ref===AUTO_SAVE_SLOT;
+  private saveRow(ref:SaveSlotRef,loading:boolean):SaveBoardRow{
+    const reading=this.app.saves.peek(ref),title=saveRowTitle(ref,reading),auto=ref===AUTO_SAVE_SLOT;
     const action=loading
       ? reading.kind==='ok'&&this.app.resumeSlot?()=>this.requestLoad(ref):undefined
       : auto?undefined:()=>this.requestSave(ref);
@@ -472,7 +472,7 @@ export class StoryUI {
     return {reading,action,label:title,title,auto,...(controls?{controls}:{})};
   }
   private requestLoad(ref:SaveSlotRef):void {
-    if(this.busy||this.app.saves.inspect(ref).kind!=='ok')return;
+    if(this.busy||this.app.saves.peek(ref).kind!=='ok')return;
     this.loadConfirm=ref;this.render();
   }
   private async loadFromSlot(ref:SaveSlotRef):Promise<void> {
@@ -485,7 +485,7 @@ export class StoryUI {
   /** 点一个手动槽：空槽直接存，已有存档先问一次再覆盖（原版对不可逆操作用是／否确认）。 */
   private requestSave(ref:SaveSlotRef):void{
     if(ref===AUTO_SAVE_SLOT)return;
-    if(this.app.saves.inspect(ref).kind==='empty'){this.saveToSlot(ref);return;}
+    if(this.app.saves.peek(ref).kind==='empty'){this.saveToSlot(ref);return;}
     this.saveConfirm=ref;this.render();
   }
   private saveToSlot(ref:SaveSlotRef):void{
@@ -504,7 +504,7 @@ export class StoryUI {
   /** 删除手动存档；删掉的正是当前槽时清空 `saveSlot`。 */
   private requestDelete(ref:SaveSlotRef):void{
     if(ref===AUTO_SAVE_SLOT)return;
-    if(this.app.saves.inspect(ref).kind==='empty')return;
+    if(this.app.saves.peek(ref).kind==='empty')return;
     this.deleteConfirm=ref;this.render();
   }
   private deleteSlot(ref:SaveSlotRef):void{
@@ -520,7 +520,7 @@ export class StoryUI {
   /** 改名：手机系统键盘输入，只收中文、英文、数字；确认后只改摘要里的名字。 */
   private renameSlot(ref:SaveSlotRef):void{
     if(ref===AUTO_SAVE_SLOT)return;
-    const reading=this.app.saves.inspect(ref);
+    const reading=this.app.saves.peek(ref);
     if(reading.kind!=='ok')return;
     const apply=(value:string|undefined):void=>{
       if(value!==undefined){
@@ -530,9 +530,9 @@ export class StoryUI {
       this.renameRef=undefined;this.render();this.sync();
     };
     // 测试没有 DOM 输入框，直接注入一个返回值。
-    if(this.app.promptText){void this.app.promptText(reading.game.summary.name??'').then(apply);return;}
+    if(this.app.promptText){void this.app.promptText(reading.summary.name??'').then(apply);return;}
     this.renameRef=ref;this.render();this.sync();
-    this.prompt?.show({title:'存档名称',initial:reading.game.summary.name??'',
+    this.prompt?.show({title:'存档名称',initial:reading.summary.name??'',
       onConfirm:value=>apply(value),onCancel:()=>apply(undefined)});
     // 没有 DOM（测试或极端环境）时输入框起不来，别让菜单一直处于「让出输入」状态。
     if(!this.prompt?.active){this.renameRef=undefined;this.render();this.sync();}

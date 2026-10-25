@@ -9,9 +9,8 @@ import { SAVE_BOARD, SAVE_BOARD_LAYOUT, drawSaveBoardRow, newestFirstSlots, save
 import { drawNativeMessage } from '../ui/phaser/native-message.ts';
 import { centerModal } from '../ui/phaser/modal-placement.ts';
 import { TextPrompt } from '../ui/text-prompt.ts';
-import { AUTO_SAVE_SLOT, MANUAL_SAVE_SLOT_COUNT, saveSlotLabel, type SaveSlotRef, type SlotReading } from '../domain/save-game.ts';
+import { AUTO_SAVE_SLOT, MANUAL_SAVE_SLOT_COUNT, saveSlotLabel, type SaveSlotRef, type SlotSummaryReading } from '../domain/save-game.ts';
 import type { AssetLease } from '../application/assets.ts';
-import type { StoryWorldViewSnapshot } from './world-scene.ts';
 
 const art=(name:string)=>`/assets/ui/title-menu/${name}.png`;
 /** 标题页右下角展示的版本号；等用户要求时再改。 */
@@ -97,14 +96,14 @@ export class MenuScene extends Phaser.Scene {
         const assets={frame:art('slot'),empty:art('slot-empty')};
         const origin=saveBoardOrigin(view.width);
         // 自动存档固定一行置顶；它没有改名与删除。
-        const auto=this.app.saves.inspect(AUTO_SAVE_SLOT),autoTitle=saveRowTitle(AUTO_SAVE_SLOT,auto);
-        drawSaveBoardRow<StoryWorldViewSnapshot>(view,assets,origin,SAVE_BOARD_LAYOUT.autoTop,
+        const auto=this.app.saves.peek(AUTO_SAVE_SLOT),autoTitle=saveRowTitle(AUTO_SAVE_SLOT,auto);
+        drawSaveBoardRow(view,assets,origin,SAVE_BOARD_LAYOUT.autoTop,
           {reading:auto,action:auto.kind==='ok'?()=>this.resume(AUTO_SAVE_SLOT):undefined,label:autoTitle,title:autoTitle,auto:true});
         // 十个手动槽放进滚动区；按写入时间倒序，最新的排最前，空槽排在后面。
         const scroll=view.scroll(origin.x,SAVE_BOARD_LAYOUT.listTop,SAVE_BOARD.panelWidth,SAVE_BOARD_LAYOUT.listHeight);
-        newestFirstSlots(slot=>this.app.saves.inspect(slot)).forEach((slot,index)=>{
-          const ref=slot,reading=this.app.saves.inspect(ref),title=saveRowTitle(ref,reading);
-          drawSaveBoardRow<StoryWorldViewSnapshot>(view,assets,{x:0,y:0},index*SAVE_BOARD.rowStep,{
+        newestFirstSlots(slot=>this.app.saves.peek(slot)).forEach((slot,index)=>{
+          const ref=slot,reading=this.app.saves.peek(ref),title=saveRowTitle(ref,reading);
+          drawSaveBoardRow(view,assets,{x:0,y:0},index*SAVE_BOARD.rowStep,{
             reading,label:title,title,
             action:reading.kind==='ok'?()=>this.resume(ref):reading.kind==='empty'?()=>{void this.app.enterGame?.(slot);}:undefined,
             ...this.slotControls(ref,reading),
@@ -155,7 +154,7 @@ export class MenuScene extends Phaser.Scene {
     this.layout();
   }
   /** 手动槽的行内控件：有效存档可改名与删除，坏档只能删；自动槽永远没有。 */
-  private slotControls(ref:SaveSlotRef,reading:SlotReading<StoryWorldViewSnapshot>):{controls?:SaveBoardControl[]}{
+  private slotControls(ref:SaveSlotRef,reading:SlotSummaryReading):{controls?:SaveBoardControl[]}{
     if(ref===AUTO_SAVE_SLOT)return {};
     // 控件用固定的槽位名（改名后仍叫「存档槽 N 删除」），行本身的标题才用自定义名字。
     const slotLabel=saveSlotLabel(ref);
@@ -167,7 +166,7 @@ export class MenuScene extends Phaser.Scene {
     return {};
   }
   private requestDelete(ref:SaveSlotRef):void{
-    if(ref===AUTO_SAVE_SLOT||this.app.saves.inspect(ref).kind==='empty')return;
+    if(ref===AUTO_SAVE_SLOT||this.app.saves.peek(ref).kind==='empty')return;
     this.deleteConfirm=ref;this.render();
   }
   private deleteSlot(ref:SaveSlotRef):void{
@@ -178,7 +177,7 @@ export class MenuScene extends Phaser.Scene {
   /** 改名：手机系统键盘输入，只收中文、英文、数字；确认后只改摘要里的名字。 */
   private renameSlot(ref:SaveSlotRef):void{
     if(ref===AUTO_SAVE_SLOT)return;
-    const reading=this.app.saves.inspect(ref);
+    const reading=this.app.saves.peek(ref);
     if(reading.kind!=='ok')return;
     const apply=(value:string|undefined):void=>{
       if(value!==undefined){
@@ -188,9 +187,9 @@ export class MenuScene extends Phaser.Scene {
       this.renameRef=undefined;this.render();
     };
     // 测试没有 DOM 输入框，直接注入一个返回值。
-    if(this.app.promptText){void this.app.promptText(reading.game.summary.name??'').then(apply);return;}
+    if(this.app.promptText){void this.app.promptText(reading.summary.name??'').then(apply);return;}
     this.renameRef=ref;this.render();
-    this.prompt?.show({title:'存档名称',initial:reading.game.summary.name??'',
+    this.prompt?.show({title:'存档名称',initial:reading.summary.name??'',
       onConfirm:value=>apply(value),onCancel:()=>apply(undefined)});
   }
   /**
@@ -204,8 +203,8 @@ export class MenuScene extends Phaser.Scene {
     this.page='slots';this.render();
     const refs:SaveSlotRef[]=[AUTO_SAVE_SLOT,...Array.from({length:MANUAL_SAVE_SLOT_COUNT},(_,slot)=>slot)];
     const portraits=[...new Set(refs.map(ref=>{
-      const reading=this.app.saves.inspect(ref);
-      return reading.kind==='ok'?reading.game.summary.portrait:undefined;
+      const reading=this.app.saves.peek(ref);
+      return reading.kind==='ok'?reading.summary.portrait:undefined;
     }).filter((file):file is string=>!!file&&!this.textures.exists(uiTexture(file))))];
     if(!portraits.length)return;
     void loadUiImages(this,portraits).then(lease=>{

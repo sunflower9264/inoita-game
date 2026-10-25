@@ -1,18 +1,18 @@
 import { buttonParts, type UiSurface } from './widgets.ts';
-import { AUTO_SAVE_SLOT, MANUAL_SAVE_SLOT_COUNT, saveSlotLabel, type SaveSlotRef, type SlotReading } from '../../domain/save-game.ts';
+import { AUTO_SAVE_SLOT, MANUAL_SAVE_SLOT_COUNT, saveSlotLabel, type SaveSlotRef, type SlotSummaryReading } from '../../domain/save-game.ts';
 
 /**
  * 手动槽的展示顺序：有存档的按写入时间倒序，最新的排在最前；空槽和损坏档
  * 没有可比较的时间，排在已有存档之后并按槽号稳定排列。槽号本身不变，操作仍落在原槽。
  */
-export function newestFirstSlots(read:(slot:number)=>SlotReading<unknown>):number[] {
+export function newestFirstSlots(read:(slot:number)=>SlotSummaryReading):number[] {
   // 排序比较器会反复问同一个槽；每个槽只读一次，避免一次排序做近 20 次 JSON.parse。
-  const readings=new Map<number,SlotReading<unknown>>();
+  const readings=new Map<number,SlotSummaryReading>();
   const savedAt=(slot:number):number=>{
     let reading=readings.get(slot);
     if(reading===undefined){reading=read(slot);readings.set(slot,reading);}
     if(reading.kind!=='ok')return -1;
-    const value=reading.game.summary.savedAt;
+    const value=reading.summary.savedAt;
     return typeof value==='number'&&Number.isFinite(value)?value:-1;
   };
   return Array.from({length:MANUAL_SAVE_SLOT_COUNT},(_,slot)=>slot)
@@ -55,8 +55,8 @@ const SAVE_SLOT_TIME_TEXT = '#b9ad86';
 const CONTROL_WIDTH = 96, CONTROL_GAP = 20, CONTROL_COLUMN = CONTROL_WIDTH + CONTROL_GAP;
 
 export interface SaveBoardControl { text:string; label:string; action:()=>void }
-export interface SaveBoardRow<World> {
-  reading:SlotReading<World>;
+export interface SaveBoardRow {
+  reading:SlotSummaryReading;
   /** 调用者提供可选槽的动作：开局允许空槽，读档只允许有效存档。 */
   action?:()=>void;
   /** 可访问名（键盘焦点与测试用它），手动槽固定「存档槽 N」。 */
@@ -76,8 +76,8 @@ export function saveBoardOrigin(width:number):{x:number; y:number} {
 }
 
 /** 行标题：自动槽固定「自动存档」，手动槽用自定义名字，没有就是「存档槽 N」。 */
-export function saveRowTitle(ref:SaveSlotRef, reading:SlotReading<unknown>):string {
-  const name=reading.kind==='ok'?reading.game.summary.name:undefined;
+export function saveRowTitle(ref:SaveSlotRef, reading:SlotSummaryReading):string {
+  const name=reading.kind==='ok'?reading.summary.name:undefined;
   if(ref===AUTO_SAVE_SLOT)return saveSlotLabel(ref);
   return name||saveSlotLabel(ref);
 }
@@ -93,14 +93,14 @@ export function formatSavedAt(savedAt?:number):string {
  * 画一行存档。`origin.x` 是行框左缘，`top` 是行框顶；行画在 `parent` 里时
  * 传入滚动区的内容容器（坐标相对容器）。
  */
-export function drawSaveBoardRow<World>(
+export function drawSaveBoardRow(
   view:UiSurface, assets:SaveBoardAssets, origin:{x:number; y:number}, top:number,
-  row:SaveBoardRow<World>, parent?:Phaser.GameObjects.Container
+  row:SaveBoardRow, parent?:Phaser.GameObjects.Container
 ):void {
   view.image(assets.frame,origin.x,top,SAVE_BOARD.frameWidth,SAVE_BOARD.frameHeight,parent);
   const left=origin.x+SAVE_BOARD.rowInset, bottom=top+SAVE_BOARD.rowInset;
   if(row.reading.kind==='ok'){
-    const summary=row.reading.game.summary;
+    const summary=row.reading.summary;
     // 立绘只给高度，宽度按原图比例：人物页立绘是竖幅的胸像。
     view.image(summary.portrait,left+20,bottom+12,undefined,PORTRAIT_HEIGHT,parent);
     view.text(row.title,left+170,bottom+14,340,24,SAVE_SLOT_TEXT,parent);

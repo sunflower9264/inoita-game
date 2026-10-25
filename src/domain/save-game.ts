@@ -46,6 +46,12 @@ export type SlotReading<World = unknown> =
   | { kind:'unreadable'; reason:string }
   | { kind:'ok'; game:SaveGame<World> };
 
+/** 只带摘要的读槽结果：存档页显示用，不必把整份存档留在内存里。 */
+export type SlotSummaryReading =
+  | { kind:'empty' }
+  | { kind:'unreadable'; reason:string }
+  | { kind:'ok'; summary:SaveSummary };
+
 /** 存档要用的那部分 localStorage；测试传内存实现。 */
 export interface SaveStorage {
   getItem(key:string):string|null;
@@ -94,6 +100,8 @@ export function restoreSaveGame<World>(session:Session, game:SaveGame<World>):Wo
 export class SaveSlots<World = unknown> {
   private readonly storage:SaveStorage;
   private readonly prefix:string;
+  /** 按原始字符串缓存的摘要；存档页反复读同一批槽时只解析一次。 */
+  private readonly summaryCache=new Map<string,{raw:string;reading:SlotSummaryReading}>();
   constructor(storage?:SaveStorage, prefix='inotia4.story.v1') {
     this.storage=storage ?? (typeof localStorage==='undefined' ? noStorage : localStorage);
     this.prefix=prefix;
@@ -108,6 +116,36 @@ export class SaveSlots<World = unknown> {
   private manualKey(ref:SaveSlotRef):string {
     if(ref===AUTO_SAVE_SLOT)throw new Error('自动存档不能删除或改名');
     return this.key(ref);
+  }
+  /**
+   * 只读摘要：标题页/存档页显示用。解析结果按原始字符串缓存，存档没变就不重复 parse；
+   * 要整份存档（真正读档）仍用 `inspect`。
+   */
+  peek(ref:SaveSlotRef):SlotSummaryReading {
+    const key=this.key(ref);
+    let raw:string|null;
+    try { raw=this.storage.getItem(key); }
+    catch { return {kind:'unreadable',reason:'无法读取本地存档'}; }
+    if(raw===null){this.summaryCache.delete(key);return {kind:'empty'};}
+    const cached=this.summaryCache.get(key);
+    if(cached&&cached.raw===raw)return cached.reading;
+    const reading=this.summaryOf(raw);
+    this.summaryCache.set(key,{raw,reading});
+    return reading;
+  }
+  private summaryOf(raw:string):SlotSummaryReading {
+    let parsed:unknown;
+    try { parsed=JSON.parse(raw); }
+    catch { return {kind:'unreadable',reason:'存档内容不是有效 JSON'}; }
+    const record=parsed as Partial<SaveGame<World>>;
+    if(!record||typeof record!=='object')return {kind:'unreadable',reason:'存档内容不是对象'};
+    if(typeof record.format==='number'&&record.format!==SAVE_FORMAT)return {kind:'empty'};
+    if(record.format!==SAVE_FORMAT)return {kind:'unreadable',reason:'存档缺少有效版本'};
+    if(!record.session||!record.world)return {kind:'unreadable',reason:'存档缺少会话或世界状态'};
+    const summary=record.summary;
+    if(!summary||typeof summary.classId!=='string'||typeof summary.mapId!=='string'||!Number.isFinite(summary.level))
+      return {kind:'unreadable',reason:'存档摘要无效'};
+    return {kind:'ok',summary};
   }
   inspect(ref:SaveSlotRef):SlotReading<World> {
     const key=this.key(ref);
@@ -133,9 +171,9 @@ export class SaveSlots<World = unknown> {
     // 覆盖旧档时沿用那个槽原来的自定义名字：只有玩家改名才会换名字。
     const summary=game.summary.name===undefined?this.existingName(ref):undefined;
     const record=summary===undefined?game:{...game,summary:{...game.summary,name:summary}};
-    this.storage.setItem(this.key(ref),JSON.stringify(record));
+    const key=this.key(ref);this.storage.setItem(key,JSON.stringify(record));this.summaryCache.delete(key);
   }
-  erase(ref:SaveSlotRef):void { this.storage.removeItem(this.manualKey(ref)); }
+  erase(ref:SaveSlotRef):void { const key=this.manualKey(ref);this.storage.removeItem(key);this.summaryCache.delete(key); }
   /**
    * 改存档名字。名字按 `sanitizeSaveName` 过滤；过滤后为空表示清掉自定义名字。
    * 返回实际存下的名字（清空时为 undefined）；槽里没有有效存档时不改。
@@ -147,7 +185,7 @@ export class SaveSlots<World = unknown> {
     const applied=sanitizeSaveName(name)||undefined;
     const summary={ ...reading.game.summary };
     if(applied===undefined)delete summary.name;else summary.name=applied;
-    this.storage.setItem(this.key(ref),JSON.stringify({ ...reading.game, summary }));
+    const key=this.key(ref);this.storage.setItem(key,JSON.stringify({ ...reading.game, summary }));this.summaryCache.delete(key);
     return applied;
   }
   private existingName(ref:SaveSlotRef):string|undefined {
