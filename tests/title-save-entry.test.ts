@@ -30,7 +30,7 @@ function fakeView(width:number,height:number){
     width,height,
     root:{visible:true,bringToTop:()=>{},setPosition:function(){return this;},setScale:function(){return this;},getWorldTransformMatrix:()=>({scaleX:1,scaleY:1,transformPoint:(x:number,y:number)=>({x,y})})},
     buttons:[] as Button[],texts:[] as string[],textNodes:[] as TextNode[],scrolls:[] as FakeScroll[],enabled:()=>true,focusIndex:-1,
-    scene:{game:{events:{emit:()=>{}}}},focus:()=>{},layout:()=>{},image:stub,
+    scene:{game:{events:{emit:()=>{}}},scale:{width,height}},focus:()=>{},layout:()=>{},image:stub,
     text(value:string,x:number,y:number,_width:number,size:number){
       this.texts.push(value);
       const node:TextNode={value,x,y,size,origin:[0,0],handlers:new Map()};this.textNodes.push(node);

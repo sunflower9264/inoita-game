@@ -73,7 +73,8 @@ export class MenuScene extends Phaser.Scene {
     label.setInteractive({useHandCursor:true});
     label.on('pointerdown',()=>{
       if(!this.app.ui.ready||this.app.ui.suspended||!this.sys.isActive())return;
-      if(gm.toggle())void this.app.loadDebugCatalog?.().then(()=>this.render(),error=>console.error(error));
+      // 开关状态先同步画出来；目录是可选依赖，没有它也不能让「调试：开」一直不出现。
+      if(gm.toggle()){this.render();void this.app.loadDebugCatalog?.().then(()=>this.render(),error=>console.error(error));}
       else this.render();
     });
     if(gm.on)view.text('调试：开',8,610,0,18);
