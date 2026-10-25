@@ -55,6 +55,12 @@ export function overlaps(a: GameRectangle, b: GameRectangle): boolean {
   return a.x < b.x + b.width - COLLISION_EPSILON && a.x + a.width > b.x + COLLISION_EPSILON &&
     a.y < b.y + b.height - COLLISION_EPSILON && a.y + a.height > b.y + COLLISION_EPSILON;
 }
+/** 与 `overlaps(collisionAt(shape,point), other)` 等价，但不为每次比较分配矩形。 */
+function overlapsAt(shape: GameRectangle, point: Point, other: GameRectangle): boolean {
+  const x = point.x + shape.x, y = point.y + shape.y;
+  return x < other.x + other.width - COLLISION_EPSILON && x + shape.width > other.x + COLLISION_EPSILON &&
+    y < other.y + other.height - COLLISION_EPSILON && y + shape.height > other.y + COLLISION_EPSILON;
+}
 export function mirroredCollision(box: GameRectangle | undefined, flip = false): GameRectangle | undefined {
   return box && { ...box, x: flip ? -box.x - box.width : box.x };
 }
@@ -77,7 +83,7 @@ export class NavigationWorld {
   /** 分帧搜索读取同一时刻的完整通行状态；执行路径时仍使用实时 canStand 检查。 */
   captureStandability(actor:NavigationActor):NavigationQuerySnapshot {
     const bounds=Object.freeze({...this.bounds}),start=Object.freeze({...actor.position()});
-    const collision=actor.shape().collision,shape={collision:collision?{...collision}:undefined};
+    const source=actor.shape().collision,collision=source?{...source}:undefined;
     const terrain=this.terrain?{...this.terrain,blocked:[...this.terrain.blocked]}:undefined;
     const occupied:GameRectangle[]=[];
     for(const other of this.actors){
@@ -87,8 +93,7 @@ export class NavigationWorld {
     }
     const terrainFree=(point:Point)=>terrainFreeAt(bounds,terrain,point);
     return {bounds,start,terrainFree,canStand(point){
-      const box=collisionAt(shape,point);
-      return !box||terrainFree(point)&&!occupied.some(other=>overlaps(box,other));
+      return !collision||terrainFree(point)&&!occupied.some(other=>overlapsAt(collision,point,other));
     }};
   }
   canPlace(shape: NavigationShape, point: Point, ignore?: NavigationActor, placements: readonly Placement[] = []): boolean {
@@ -114,15 +119,16 @@ export class NavigationWorld {
     return !box || bodyFreeAt(this.bounds, this.terrain, box);
   }
   private blockedByActors(box: GameRectangle, ignore?: NavigationActor, placements: readonly Placement[] = []): boolean {
-    const replacements = new Map(placements.map(p => [p.actor, p]));
+    // 绝大多数查询没有瞬移/落位覆盖；空 placements 时别为每个查询建一张 Map。
+    const replacements = placements.length ? new Map(placements.map(p => [p.actor, p])) : undefined;
     for (const actor of this.actors) {
       if (actor === ignore) continue;
       if (ignore?.ghost?.() || actor.ghost?.()) continue;
       if (ignore && !blocksActor(ignore, actor)) continue;
-      const replacement = replacements.get(actor);
+      const replacement = replacements?.get(actor);
       if (!(replacement?.enabled ?? actor.enabled())) continue;
-      const other = collisionAt(actor.shape(), replacement?.position ?? actor.position());
-      if (other && overlaps(box, other)) return true;
+      const other = actor.shape().collision;
+      if (other && overlapsAt(other, replacement?.position ?? actor.position(), box)) return true;
     }
     return false;
   }
@@ -134,8 +140,9 @@ export class NavigationWorld {
    */
   canStand(actor: NavigationActor, point: Point): boolean {
     if (!this.terrainFree(point)) return false;
-    const shape = actor.shape();
-    return !collisionAt(shape, point) || this.canPlace(shape, point, actor);
+    // `canPlace` 会再查一次地形和碰撞盒；这里已经查过地形，只补人物占位。
+    const box = collisionAt(actor.shape(), point);
+    return !box || !this.blockedByActors(box, actor);
   }
   /**
    * 整组落位是否都站得住，**包括没动的那些**。判定「一次挪动之后这一组是否成立」用它。
