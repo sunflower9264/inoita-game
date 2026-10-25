@@ -23,6 +23,10 @@ export class FormalUiScene extends Phaser.Scene implements GameUiView {
   private surface!:UiSurface;
   private questPopup!:QuestPopup;
   private signature='';
+  /** 当前画面是否是可增量的普通对白外壳（框、立绘、说话人不重建）。 */
+  private dialogueShell=false;
+  /** 对白正文（当前页文本）的签名；只变这里时只更新正文 Text。 */
+  private dialogueBodySignature='';
   /** 对白正文按色段拆成多个 Text：原版控制码不显示，字色随 `$X` 变化。 */
   private dialogueRuns:Phaser.GameObjects.Text[]=[];
   private dialogueLayout?:DialogueTextLayout;
@@ -124,6 +128,35 @@ export class FormalUiScene extends Phaser.Scene implements GameUiView {
     for(const line of revealedRuns(layout,ui.revealed))
       for(const run of line.runs){const target=this.dialogueRuns[index++];if(target)target.setText(run.text);}
   }
+  /**
+   * 只重建对白正文：框、立绘、说话人和控件留在原地，正文 Text 按位置复用。
+   * Phaser 的每个 Text 都有自己的画布纹理；翻页时销毁再新建几十个是演出卡顿的主因。
+   */
+  private renderDialogueBody(ui:GameUI):void {
+    const v=this.surface,box=this.textBox(ui),screen=ui.dialogueLine?.presentation==='screen';
+    const next:{text:string;x:number;y:number;color:string}[]=[];
+    this.dialogueMetrics(box.size,(measure,lineHeight)=>{
+      const layout=layoutDialogueText(ui.page,DIALOGUE_TEXT_COLOR,box.width,measure,lineHeight);
+      this.dialogueLayout=layout;
+      const top=screen?320-layout.lines.length*lineHeight/2:box.y;
+      layout.lines.forEach((line,index)=>{
+        const offset=screen?(box.width-line.width)/2:0;
+        for(const run of line.runs)next.push({text:run.text,x:box.x+offset+run.x,y:top+index*lineHeight,color:run.key});
+      });
+    });
+    const keep=Math.min(this.dialogueRuns.length,next.length);
+    for(let index=0;index<keep;index++){
+      const target=this.dialogueRuns[index]!,run=next[index]!;
+      target.setText(run.text).setPosition(run.x,run.y).setColor(run.color);
+    }
+    for(let index=keep;index<this.dialogueRuns.length;index++)this.dialogueRuns[index]!.destroy();
+    this.dialogueRuns.length=keep;
+    for(let index=keep;index<next.length;index++){
+      const run=next[index]!;
+      this.dialogueRuns.push(v.text(run.text,run.x,run.y,0,box.size,run.color));
+    }
+    this.renderText(ui);
+  }
   sync(ui:GameUI):void{
     if(!this.surface)return;
     const portrait=window.innerHeight>window.innerWidth;
@@ -132,8 +165,14 @@ export class FormalUiScene extends Phaser.Scene implements GameUiView {
     const progress=Phaser.Math.Clamp(ui.loadingState?.progress??0,0,1);
     const showSkip=ui.mode==='game'&&ui.ready&&!ui.suspended&&!portrait&&!ui.loadingState&&!ui.defeated&&!ui.choices&&!ui.quest&&!!this.app.director?.canSkip;
     const defeat=ui.defeatState;
-    const signature=JSON.stringify([ui.mode,ui.loadingState?.label,!!ui.loadingState?.retry,ui.failed,ui.suspended,portrait,defeat,ui.toastMessage,ui.dialogueLine,ui.portraitFile,ui.page,ui.canSkip,showSkip,ui.choices?.prompt,ui.choices?.options,ui.quest?.definition.id,ui.quest?.kind]);
-    if(signature===this.signature){this.progressBar?.setSize(560*progress,5);return;}this.signature=signature;
+    // 正文页不进整屏签名：同一句对白翻页时只换正文，不重建框、立绘和控件。
+    const bodySignature=JSON.stringify([ui.page,ui.dialogueLine?.presentation]);
+    const signature=JSON.stringify([ui.mode,ui.loadingState?.label,!!ui.loadingState?.retry,ui.failed,ui.suspended,portrait,defeat,ui.toastMessage,ui.dialogueLine,ui.portraitFile,ui.canSkip,showSkip,ui.choices?.prompt,ui.choices?.options,ui.quest?.definition.id,ui.quest?.kind]);
+    if(signature===this.signature){
+      if(this.dialogueShell&&bodySignature!==this.dialogueBodySignature){this.dialogueBodySignature=bodySignature;this.renderDialogueBody(ui);}
+      this.progressBar?.setSize(560*progress,5);return;
+    }
+    this.signature=signature;this.dialogueShell=false;
     const v=this.surface;v.clear();v.layout(0);this.dialogueRuns=[];this.dialogueLayout=undefined;this.progressBar=undefined;v.visible(true);
     const modal=portrait||!!ui.loadingState||ui.defeated;
     this.background.setVisible(modal).setSize(this.scale.width,this.scale.height).setFillStyle(0x000000,ui.defeated&&!portrait&&!ui.loadingState ? .65:1);
@@ -189,22 +228,12 @@ export class FormalUiScene extends Phaser.Scene implements GameUiView {
         if(ui.portraitFile){const left=ui.dialogueLine.actor===ui.playerActor;v.image(ui.portraitFile,left?edges.left:edges.right,606,undefined,516).setOrigin(left?0:1,1);}
         v.text(ui.dialogueLine.speaker??'',box.x,428,box.width,25);
       }
-      // 对白正文：原版控制码解析成色段后逐段画，字色随 `$X` 变；逐字揭示只截每个色段的文字。
-      const screen=ui.dialogueLine.presentation==='screen';
-      this.dialogueMetrics(box.size,(measure,lineHeight)=>{
-        const layout=layoutDialogueText(ui.page,DIALOGUE_TEXT_COLOR,box.width,measure,lineHeight);
-        this.dialogueLayout=layout;
-        const top=screen?320-layout.lines.length*lineHeight/2:box.y;
-        layout.lines.forEach((line,index)=>{
-          const offset=screen?(box.width-line.width)/2:0;
-          for(const run of line.runs)this.dialogueRuns.push(
-            v.text(run.text,box.x+offset+run.x,top+index*lineHeight,0,box.size,run.key));
-        });
-      });
-      this.renderText(ui);
+      this.renderDialogueBody(ui);
+      this.dialogueShell=true;
     }
     if(showSkip){const skin=this.app.controlSkin;v.button('',this.dialogueSafeEdges().right-168,16,136,62,()=>this.app.director?.skip(),{image:skin?.skip?skin.skip:undefined,pressed:skin?.['skip-pressed'],guard:()=>ui.ready&&!ui.suspended&&!!this.app.director?.canSkip}).setData('label','跳过');}
     if(ui.toastMessage&&!portrait&&!ui.loadingState&&!ui.defeated){v.rect(180,150,600,90,0x101d24,.95);v.text(ui.toastMessage,480,164,560,24).setOrigin(.5,0);}
+    this.dialogueBodySignature=bodySignature;
     v.layout(0);
   }
 }
