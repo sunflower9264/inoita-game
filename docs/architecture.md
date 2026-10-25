@@ -106,7 +106,7 @@
 
 `ContentLoader` 使用 `content-validation.ts` 校验已加载的目录。`tools/validate-content.mjs` 额外检查完整目录、图片、音频及跨文件关系；同一入口也接在 Vite 开发服务（4003）的启动和内容变化上。剧情引用与每条分支的演员、音频、路线、并行冲突由专用校验器检查。`tools/build.mjs` 先校验 `public/`，构建到临时目录，对构建前后的 `public/assets` 与 `public/content` 做内容哈希并比对，再把 `.build-meta.json` 写进产物、校验构建结果并替换 `dist/`。输出使用相对 base 与 `bundles/`，部署在站点根路径；公共资源 URL 在加载边界追加内容版本，供静态服务长缓存。
 
-内容运行时：`tools/content-build.ts` 在构建期把 `public/content` 转成运行时内容目录（当前只做 minify），`tools/build.mjs` 用它替换 `dist/content` 并计算 `contentVersion`。生产构建注入 `__STORY_TRUST_CONTENT__`，`ContentLoader` 只做 `JSON.parse`；开发服务、Node 测试、`?gm` 与 `?validate` 仍执行完整 `parseX` 和跨文件校验。构建期 `validateContent` 是唯一权威校验入口，运行时不再重复。
+内容运行时：`tools/content-build.ts` 在构建期把 `public/content` 转成运行时内容目录——全部 JSON minify；`battle.json` 的 90 个技能把 `details` 编译成 `display` 模板 + 每级 `displayValues`，Warlock 与 `enemy-lunatic-djinn-1` 的动作试点预计算 `requiresTarget/effectNames/soundNames/summonNames/eventFrames`；`shops.equipment` 拆到 `shops-equipment.json`，并省略与 `character-stats.gradeVariants` 重复的 `variants`。`tools/build.mjs` 用它替换 `dist/content` 并计算 `contentVersion`。生产构建注入 `__STORY_TRUST_CONTENT__`，`ContentLoader` 只做 `JSON.parse`；开发服务、Node 测试、`?gm` 与 `?validate` 仍执行完整 `parseX` 和跨文件校验。构建期 `validateContent` 是唯一权威校验入口，运行时不再重复。
 
 ## 构建、缓存与部署
 
