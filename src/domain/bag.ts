@@ -98,6 +98,7 @@ export class Bag {
   get learnedRecipes(): string[] { return [...this.recipeBook]; }
   lastResult?: Readonly<ItemResult>;
   private rules?:BagRules;
+  private countsCache?:{revision:number;value:ReadonlyMap<string,number>};
 
   constructor(changed: () => void, catalog: ItemCatalog = emptyCatalog, classId = '', seed: 'none' | 'game' = 'none', rules?:BagRules) {
     this.catalog = catalog; this.classId = classId; this.changed = changed;this.rules=rules;
@@ -214,10 +215,17 @@ export class Bag {
     if(row.length!==SHORTCUT_ENTRY_COUNT)throw new Error('快捷栏格数无效');
     this.shortcuts.set(owner,structuredClone(row));this.notify();
   }
+  /**
+   * 分类计数按 revision 缓存：背包没变时同一份 Map 直接复用。
+   * `count()` 和 `observeChanges` 会在一次通知里按物品反复读它，重建整张 Map 是 O(n²) 的根。
+   */
   get counts(): ReadonlyMap<string, number> {
-    const counts = new Map<string, number>();
-    for (const id of this.orderedIds()) { const entry = this.instances.get(id)!; counts.set(entry.item, (counts.get(entry.item) ?? 0) + entry.quantity); }
-    return counts;
+    const cached = this.countsCache;
+    if (cached && cached.revision === this.revision) return cached.value;
+    const value = new Map<string, number>();
+    for (const id of this.orderedIds()) { const entry = this.instances.get(id)!; value.set(entry.item, (value.get(entry.item) ?? 0) + entry.quantity); }
+    this.countsCache = { revision: this.revision, value };
+    return value;
   }
   count(item: string): number { return this.counts.get(item) ?? 0; }
   get(id: string): ItemInstance | undefined { const entry=this.instances.get(id); return entry && copy(entry); }

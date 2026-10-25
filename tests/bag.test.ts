@@ -274,6 +274,22 @@ test('organise compacts all layouts and repeated calls leave the revision alone'
   assert.equal(bag.revision,revision,'已经整理过就不再通知');
 });
 
+test('item counts reuse one map per revision and refresh after inventory changes',()=>{
+  const bag=create('dark-knight',()=>{}),[first]=pick('material',1);
+  bag.add(first!);
+  const counts=bag.counts;
+  assert.equal(bag.counts,counts,'没有变化时复用同一份计数');
+  assert.equal(bag.count(first!),1);
+  const revision=bag.revision;
+  bag.counts;bag.count(first!);
+  assert.equal(bag.revision,revision,'读计数不推进 revision');
+  bag.add(first!);
+  assert.notEqual(bag.counts,counts,'背包变化后重建');
+  assert.equal(bag.count(first!),2);
+  assert.equal(bag.remove(first!,1),true);
+  assert.equal(bag.count(first!),1,'消耗后计数同步刷新');
+});
+
 test('organise sorts every pouch by category and natural name',()=>{
   const bag=create('dark-knight',()=>{},[...weapons(2),...pouchItems('armor',2),...pick('consumable',2),...pick('material',2),...pick('quest',2)].reverse());
   bag.organize();
