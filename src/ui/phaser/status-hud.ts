@@ -197,7 +197,14 @@ export class StatusHud {
     if(signature===this.targetSignature)return;
     this.targetSignature=signature;this.target=target;this.paintTarget();this.syncVisibility();
   }
-  private paintTarget():void{if(!this.target)return;const target=this.target;this.name.setText(`${target.name} (Lv.${target.level})`).setColor(targetNameColor(this.skin,this.player?.level??1,target));this.targetGauge.update(target.health,target.maxHealth);}
+  private paintTarget():void{
+    if(!this.target)return;
+    const target=this.target,color=targetNameColor(this.skin,this.player?.level??1,target);
+    this.name.setText(`${target.name} (Lv.${target.level})`);
+    // setColor 每次都会重画文字画布；颜色没变就跳过。
+    if(this.name.style.color!==color)this.name.setColor(color);
+    this.targetGauge.update(target.health,target.maxHealth);
+  }
   private paintPlayerIcons(conditions:readonly ActiveCondition[]):void{
     const skin=this.skin.buffIcons;
     const entries=conditions.filter(condition=>condition.kind==='buff'&&skin.catalog[condition.id]);

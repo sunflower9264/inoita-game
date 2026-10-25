@@ -3,6 +3,7 @@ import type Phaser from 'phaser';
 import type { GameUI } from '../game-ui.ts';
 import { MONEY } from '../item-layout.ts';
 import { splitMoney } from '../money-display.ts';
+import { readSafeArea } from '../viewport.ts';
 import { questPopupContent, questPopupLayout } from '../quest-popup-layout.ts';
 import { UiSurface } from './widgets.ts';
 import { drawQuestText, measureQuestText } from './quest-text.ts';
@@ -24,9 +25,10 @@ export class QuestPopup {
   }
 
   sync(quest: QuestPopupState | undefined, assets: Record<string, string>, itemName: (id: string) => string): void {
-    const v = this.surface, viewport = `${v.scene.scale.width}:${v.scene.scale.height}`;
+    const v = this.surface, safe = readSafeArea(), viewport = `${v.scene.scale.width}:${v.scene.scale.height}:${safe.left}:${safe.right}:${safe.top}:${safe.bottom}`;
     this.shade.setVisible(!!quest).setSize(v.scene.scale.width, v.scene.scale.height);
-    if (this.quest === quest && this.viewport === viewport) { v.layout(0); return; }
+    // 任务和画布/安全区都没变时不必重新测量与排版。
+    if (this.quest === quest && this.viewport === viewport) return;
     const scrollTop = this.quest === quest ? v.scrolls[0]?.scrollTop ?? 0 : 0;
     this.quest = quest; this.viewport = viewport;
     v.clear(); v.visible(!!quest); v.layout(0);

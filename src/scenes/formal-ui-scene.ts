@@ -147,7 +147,9 @@ export class FormalUiScene extends Phaser.Scene implements GameUiView {
     const keep=Math.min(this.dialogueRuns.length,next.length);
     for(let index=0;index<keep;index++){
       const target=this.dialogueRuns[index]!,run=next[index]!;
-      target.setText(run.text).setPosition(run.x,run.y).setColor(run.color);
+      target.setText(run.text).setPosition(run.x,run.y);
+      // setColor 没有值没变就返回的保护，每次都会重画文字画布；颜色没变就别写。
+      if(target.style.color!==run.color)target.setColor(run.color);
     }
     for(let index=keep;index<this.dialogueRuns.length;index++)this.dialogueRuns[index]!.destroy();
     this.dialogueRuns.length=keep;
