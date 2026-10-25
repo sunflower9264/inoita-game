@@ -650,12 +650,20 @@ captureStoryActors():SceneActorState[] {
     if(source&&target&&source.team!==target.team)this.summonAwareness.contact(source,target,(this.app.session.combatTick??0)*LOGIC_FRAME_MS);
   }
   private observeSummonCombat():void {
-    const observations=this.combatants().filter(actor=>this.isActorAlive(actor.id)).map(actor=>{
-      const enemy=combatActor(this.arena,actor.id,value=>value.key);
-      const controller=this.partyControllers.get(actor.id)??enemy?.controller?.combatController;
-      return {actor,action:controller?.activeAction(),
-        chasingTargetId:actor.team!=='party'&&enemy?.controller?.actionState()==='chasing'?enemy.controller.currentTargetId():undefined};
-    });
+    // 直接按队伍和敌人两份名单收集，避免每逻辑帧先拼一份全员数组再 filter/map。
+    const observations:{actor:Combatant;action?:ReturnType<CombatController['activeAction']>;chasingTargetId?:string}[]=[];
+    for(const id of this.activeParty){
+      if(!this.isActorAlive(id))continue;
+      const actor=this.combatant(id);if(!actor)continue;
+      observations.push({actor,action:this.partyControllers.get(id)?.activeAction()});
+    }
+    for(const enemy of this.arena){
+      if(!this.isActorAlive(enemy.key))continue;
+      const actor=this.combatant(enemy.key);if(!actor)continue;
+      const controller=enemy.controller;
+      observations.push({actor,action:controller?.combatController?.activeAction(),
+        chasingTargetId:actor.team!=='party'&&controller?.actionState()==='chasing'?controller.currentTargetId():undefined});
+    }
     this.awareness.observe((this.app.session.combatTick??0)*LOGIC_FRAME_MS,observations);
   }
   private tryRecallSummon(enemy:MapEnemy):boolean {
