@@ -14,6 +14,7 @@ import { isBodyWalking } from '../rendering/arcade-movement.ts';
 import type { ClipName, EntityPlacement, ExitFacing, Facing, MapExit, WorldMap } from '../domain/content.ts';
 import type { AssetLease } from '../application/assets.ts';
 import { Wardrobe } from '../rendering/wardrobe.ts';
+import { costumeRecipe } from '../domain/wardrobe.ts';
 import type { EquipmentSlot } from '../domain/items.ts';
 import type { ActorDefinition } from '../domain/content.ts';
 import type { StoryStageSnapshot } from '../domain/story-performance.ts';
@@ -221,10 +222,30 @@ export class WorldScene extends Phaser.Scene {
       if (!signal.aborted && this.options === options) this.failure(error);
     });
   }
+  /** 先把当前武器/职业那套人物动作请求发出去；失败不挡进图，Wardrobe 会重试。 */
+  private warmPlayerPoses(signal: AbortSignal): void {
+    const character = this.app.session.character;
+    if (!character) return;
+    try {
+      const recipe = costumeRecipe(this.app.wardrobe, this.app.items, this.app.session.bag.equipmentItems(),
+        character.classId, character.appearance.id);
+      const missing = [...new Set(Object.values(recipe.poses))]
+        .filter((id): id is string => typeof id === 'string' && !this.app.wardrobe.poses[id]);
+      if (!missing.length) return;
+      void this.app.content.wardrobePoses(missing, signal).catch(error => {
+        if (!signal.aborted) globalThis.storyDiagnostics?.record('wardrobe-pose-warm-error', { error });
+      });
+    } catch (error) {
+      globalThis.storyDiagnostics?.record('wardrobe-pose-warm-error', { error });
+    }
+  }
   async open(options: SceneOptions): Promise<void> {
     const { ui, world, campaign } = this.app;
     const signal = this.request.signal;
     const silentRequested = options.silentEntry === true;
+    // 人物动作按需取。第一套外观在地图加载之后就要用，先和地图资源并行发请求，
+    // 等 Wardrobe.prepare() 时通常已经到齐，不把首次进图的等待堆在加载条末尾。
+    this.warmPlayerPoses(signal);
     // 演出中的世界重建先保持舞台画面；素材不齐时会在计划生成后回退到可见加载。
     if (silentRequested) ui.resetInput();
     else ui.loading('正在前往新的地方…', options.initialEntry ? 0.5 : 0);

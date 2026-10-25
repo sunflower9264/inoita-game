@@ -196,9 +196,14 @@ export class StoryUI {
     if(!this.session||!this.app.shops.shops[shopId]||this.app.ui.mode!=='game')return;
     if(this.requestAllocationExit(()=>{void this.openShop(shopId,mapId);}))return;
     if(Object.keys(this.app.shops.equipment).length){this.showShop(shopId,mapId);return;}
+    // 正常流程进游戏时已在后台预取；这里只在预取没赶上时短暂等一下。
+    this.app.ui.toast('正在准备商店…');
     return this.ensureShopEquipment().then(()=>{
       if(!this.session||this.app.ui.mode!=='game')return;
       this.showShop(shopId,mapId);
+    }).catch(error=>{
+      this.app.ui.toast('商店准备失败');
+      globalThis.storyDiagnostics?.record('shop-equipment-load-error',{error});
     });
   }
   private showShop(shopId:string,mapId:string):void{

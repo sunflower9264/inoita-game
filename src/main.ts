@@ -246,6 +246,12 @@ function prepareStory(signal: AbortSignal): Promise<void> {
     }
     Object.assign(app, { world, campaign, storyInterface: presentation, battleCatalog: battle, characterStats: stats,
       menuPanels: panels, items, wardrobe, statusHud, controlSkin, shops, companions, crafting });
+    // 商店装备表在进游戏前就开始取，走路到商人时通常已经就绪；首次打开不再等这一下。
+    if(!Object.keys(app.shops.equipment).length){
+      void app.content.shopEquipment(signal).then(equipment => { app.shops.equipment = equipment; }).catch(error => {
+        if(!signal.aborted)globalThis.storyDiagnostics?.record('shop-equipment-warm-error',{error});
+      });
+    }
   })();
   storyPreparation = task;
   storyPreparationSignal=signal;
