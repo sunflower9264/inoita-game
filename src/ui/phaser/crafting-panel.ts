@@ -43,10 +43,13 @@ export class CraftingPanel {
   private confirm():void {
     const quote=this.confirmation;if(!quote||this.committing)return;
     this.committing=true;this.confirmation=undefined;
-    try {this.crafting.commit(quote);this.target=undefined;this.sound();}
-    catch(error){if(error instanceof CraftingError)this.message=this.panels.itemMessages[error.notice];else throw error;}
+    const target=this.target;this.target=undefined;
+    let committed=false;
+    try {this.crafting.commit(quote);this.sound();committed=true;}
+    catch(error){this.target=target;if(error instanceof CraftingError)this.message=this.panels.itemMessages[error.notice];else throw error;}
     finally {this.committing=false;}
-    this.changed();
+    // 成功时 session 通知已经用“目标已清空”的状态重画过；失败才本地重画显示错误。
+    if(!committed)this.changed();
   }
   render(v:UiSurface,modal:UiSurface,placeModal:(width:number,height:number)=>void,startDrag:(pointer:Phaser.Input.Pointer,entry:string,scroll:ScrollArea)=>void):void {
     const {session,catalog}=this.crafting,bag=session.bag,assets=this.panels.assets,op=catalog.operations[this.tier];
