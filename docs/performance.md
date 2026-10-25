@@ -148,7 +148,7 @@
 - Boss 全 clip：龙系 **433 MB**（skill clip 352 MB）、黑暗势力 **287 MB**（skill clip 229 MB）。`characterAssets` 返回 actor 的全部 clips，包括只在特定技能中用的 `skill-*`。
 - 普通切图相对常驻包新增中位数约 **10 MB**；Boss 图新增 **290–441 MB**。
 - 释放策略：地图历史保留 3 个 lease；剧情预取最多 20 张；常驻包无释放调用；返回菜单不清地图历史。
-- 音频：183 个文件 / 17.4 MB；BGM 完整解码 24–28 MB/首；**28.9% 的地图出口会换 BGM**，每次立即删除旧缓存再 decode。首次战斗预载 **131 个 SE / 18.1 MB 解码**，异步不阻塞，但请求数偏多。
+- 音频：183 个文件 / 17.4 MB；BGM 完整解码 24–28 MB/首；**28.9% 的地图出口会换 BGM**。✅ 已保留上一首解码缓存（2026-10-25），往回切图不再重新解码；首次战斗预载 **131 个 SE / 18.1 MB 解码**，异步不阻塞，但请求数偏多。
 
 **修复方向（按收益/成本）**：
 1. 构建期内容哈希去重，canonical key 或 loader alias；预计 **-846 MB / -2,693 键**，零画质。
@@ -266,8 +266,8 @@
 - 每次点击/状态变化：`StoryUI.render()` 先清空 `surface/body/description/modal` 和所有 `ScrollArea`，再整页重画；末尾 `sync()` 又 layout 一次。背包/技能/商店/合成/任务日志都是这个模式。
 - 商店购买/出售、合成提交、队伍变更、恢复药水：session emit 触发一次 render，`changed()` 再一次，**同一次操作双重建**。
 - 单次打开约 130–350 个 GameObjects、17–80 个 Phaser Text；每个 Text 有独立 canvas 纹理，3× DPR 下创建/销毁几十张高分辨率文字纹理会造成数 MB GPU 上传。
-- 滚动区在 WebGL 下用 `enableFilters + addMask`，`FilterMask` 默认每帧 `updateDynamicTexture`；静态矩形遮罩每帧重做。
-- 存档页：`newestFirstSlots` 排序比较器反复 `inspect`，每行再 `inspect`，自动槽再 1 次，立绘再 10 次；一次打开约 **22–33 次全量 JSON.parse**，桌面 3–6 ms，移动端 20–80 ms 量级。
+- ✅ **已修（2026-10-25）** 滚动区在 WebGL 下用 `enableFilters + addMask`；`FilterMask` 默认每帧 `updateDynamicTexture`。现在 `autoUpdate=false`，只在遮罩几何变化时置 `needsUpdate`。
+- 存档页：`newestFirstSlots` 排序比较器反复 `inspect`，每行再 `inspect`，自动槽再 1 次，立绘再 10 次；一次打开约 **22–33 次全量 JSON.parse**。✅ 排序阶段已按槽去重，每个槽只读一次（2026-10-25）；行/立绘的重复读与摘要缓存仍未做。
 - 非虚拟列表：任务日志按全部活跃组渲染；GM 道具页 1003 件全画（`ScrollArea.setVirtual` 已存在但未用）。
 - 小开销：说明分隔线每 8 px 一个 Rectangle（353 宽约 44 个）；round band 每行 9 个对象；`save-board` 先画文字再 `setText` 重画；`MemberPanel` 每次数值变化重建 hitArea。
 - `status-hud.json`/`menu-panels.json` 是小型布局/皮肤数据，保留；不要扩成通用布局引擎。
@@ -484,7 +484,7 @@
 4. **常驻包缩围**：只留当前职业/队伍/共享效果；返回菜单释放；伙伴入队时加载。
 5. ✅ **启动减负（2026-10-25 已实施）**：生产删运行期语义校验，构建期 minify 全部内容；不再 fetch 281 张地图；商店装备表、人物动作拆文件按需取；菜单物品/技能图标改为开局后后台补。仍需做：`campaign.json` 按章节/地图拆分。
 6. **逐帧脏检查（大部分完成，2026-10-25）**：✅ 掉落 revision + 按地图索引、`recoverResources` 早退、`syncDepth` 同值跳过、状态色/持续特效同值短路、重复 `setDepth` 删除、冷却签名、`setPaused` 同值、`syncHud` 目标状态按战斗帧缓存；仍待做：静态 body 跳过约束/插值、HUD 可见性同值短路、`WalkRoute` 重复采样。
-7. **剧情/菜单表现层**：演出 sleep WorldScene；对白增量更新；菜单同帧合并 render；滚动遮罩静态化；存档摘要缓存。
+7. **剧情/菜单表现层（部分完成）**：✅ 滚动遮罩静态化（2026-10-25）、存档排序去重；仍待做：演出 sleep WorldScene、对白增量更新、菜单同帧合并 render、存档摘要缓存。
 
 ### P2：结构性改造
 
@@ -493,7 +493,7 @@
 - 菜单/任务日志虚拟化；`MemberPanel` hitArea 复用。
 - 战斗/HUD 更完整的 revision 体系：`EnemyRoster`、`conditions`、`statusColors`、`syncBuffLoops`、`setPaused`。
 - 存档摘要与全档分离（递增 `SAVE_FORMAT`）；检查点去重复 clone/冗余字段。
-- BGM LRU 2–3 或流式；`prepareCombat` 收窄。
+- ✅ BGM 保留上一首解码缓存（2026-10-25）；流式与 `prepareCombat` 收窄仍未做。
 - DPR 上限/画质档（默认 2，低端 1.5，需视觉验收）。
 - 构建：`springs.json` 校验 ✅；仍待做：删第二次 `validateContent`、Phaser vendor 拆包、brotli、逐文件 hash manifest。
 
@@ -702,4 +702,12 @@
 
 同批补齐：冷却签名、`setPaused` 同值、`syncHud` 目标缓存、掉落按地图索引（见上表）。仍待做：静态 body 跳过约束/插值、HUD 可见性同值短路、`WalkRoute` 重复采样。
 
-下一项：静态 body 跳过约束/插值、HUD 可见性同值短路、`WalkRoute` 重复采样；`walk-route`/`nearestReachableBody` 的同步搜索预算需先确认真机收益；纹理去重与常驻包缩围等内容管线完全收尾后再排。
+### 2026-10-25：其他独立优化（已提交）
+
+| 根因 | 改动 | 提交 | 验证 |
+|---|---|---|---|
+| 滚动遮罩每帧重做动态纹理 | `autoUpdate=false`，几何变化才 `needsUpdate` | `2a2ed77` | 菜单/任务/标题 68/73（5 条既有失败） |
+| 存档排序反复 parse 同一槽 | 排序期间按槽缓存读数 | `b5109f7` | 存档 30/30 |
+| BGM 换歌立即删缓存 | 保留上一首解码缓存；关闭音乐释放 | `dbfb895` | 音频 14/14 |
+
+下一项：对白增量更新、菜单同帧合并 render、存档摘要缓存（需定是否加 `SAVE_FORMAT`）；静态 body/`WalkRoute` 与寻路预算收益需真机确认；纹理/图集由另一个进程处理。
