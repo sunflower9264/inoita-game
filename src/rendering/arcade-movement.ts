@@ -62,6 +62,8 @@ export function movementBodyClass(Base: typeof Phaser.Physics.Arcade.Body) {
     override update(delta: number): void {
       if(this.suspended){this.stop();return;}
       if (!this.navigation || !this.actor.enabled()) { this.stop(); super.update(delta); return; }
+      // 内容摆放的机关、门和宝箱不会自己移动；没有移动意图时不必每步做地形约束。
+      if(!this.movable&&!this.intention){this.resetFlags();this.setVelocity(0,0);super.update(delta);return;}
       const start = this.footPosition(); this.stepStart = start;
       if (this.terrainRecovery && !this.navigation.terrainFree(start)) this.illegalStarts += 1;
       let dx = 0, dy = 0;
@@ -91,7 +93,8 @@ export function movementBodyClass(Base: typeof Phaser.Physics.Arcade.Body) {
     }
     /** 分离人物后校验地形，防止碰撞修正把脚点挤入阻挡格。 */
     settleStep(): void {
-      if (this.noclip || !this.stepStart) return;
+      // 固定内容体不会被碰撞分离推动；没有移动意图时无需每步重复校验地形。
+      if ((!this.movable && !this.intention) || this.noclip || !this.stepStart) return;
       if (this.navigation.terrainFree(this.footPosition())) return;
       const pushed = this.footPosition();
       const displaced = pushed.x !== this.stepStart.x || pushed.y !== this.stepStart.y;

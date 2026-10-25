@@ -58,7 +58,7 @@ function fixture(terrain: CollisionMap | { name: string; bounds: { x: number; y:
     } as unknown as Phaser.GameObjects.GameObject & Point;
     const body = new Body(world, object);
     const actor: NavigationActor = { position: () => body.footPosition(), shape: () => shape, enabled: () => body.enable && (object as unknown as { visible: boolean }).visible };
-    body.initialize(navigation, actor); body.setSize(8, 8, false).setOffset(-4, -4); body.updateFromGameObject(); body.shape(shape); body.setImmovable(!movable);
+    body.initialize(navigation, actor, movable); body.setSize(8, 8, false).setOffset(-4, -4); body.updateFromGameObject(); body.shape(shape); body.setImmovable(!movable);
     object.body = body; world.add(body); objects.push(object);
     const unregister = navigation.register(actor);
     interpolation.register(object, actor.position, actor.enabled);
@@ -83,6 +83,19 @@ function fixture(terrain: CollisionMap | { name: string; bounds: { x: number; y:
   return { world, navigation, interpolation, add, step, check };
 }
 const empty = { name: 'arena', bounds: { x: 0, y: 0, width: 192, height: 192 } };
+
+test('a fixed content body skips terrain constraints until it gets a movement intention', () => {
+  const f = fixture(empty);
+  const fixed = f.add({ x: 40, y: 40 }, square, false);
+  const constrain = f.navigation.constrainTerrain.bind(f.navigation);
+  let calls = 0;
+  f.navigation.constrainTerrain = (...args: Parameters<typeof constrain>) => { calls++; return constrain(...args); };
+  fixed.body.update(.016);
+  assert.equal(calls, 0, '没有移动意图的机关不需要每步约束地形');
+  fixed.body.drive({ x: 1, y: 0 }, 10);
+  fixed.body.update(.016);
+  assert.equal(calls, 1, '一旦有移动意图，仍然照常约束');
+});
 
 test('real game timing preserves speed and smooth display motion at 30–144 Hz', () => {
   const speed = 8 * 1000 / 60;
