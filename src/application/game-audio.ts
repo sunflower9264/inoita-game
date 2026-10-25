@@ -16,6 +16,8 @@ export interface AudioCatalog {
 }
 
 interface AudioPreferences { music: boolean; effects: boolean }
+/** 保留上一首 BGM 的解码缓存：往回走一张图时不用重新解码（约 25 MB/首）。 */
+const MUSIC_CACHE_RETENTION = 1;
 export interface StoryAudioState { music: string | null; ambience: string | null }
 const STORAGE_KEY = 'inotia4.audio.v1';
 /** 升级音效不在目录结构的任何索引里，只能按资源名直接引用。 */
@@ -37,6 +39,8 @@ export class GameAudio {
   private readonly scene: Phaser.Scene;
   private readonly isSuspended: () => boolean;
   private readonly pending = new Map<string, Promise<boolean>>();
+  /** 已停止但仍保留在缓存里的 BGM key（最多 MUSIC_CACHE_RETENTION 首）。 */
+  private readonly retainedMusic: string[] = [];
   private readonly queued = new Map<string, { path: string; resolve: (loaded: boolean) => void }>();
   /** 正在等待加载完成、准备补播的音效；同一条只补播一次。 */
   private readonly replayQueued = new Set<string>();
@@ -193,28 +197,49 @@ export class GameAudio {
     const music = channel === 'music';
     const current = music ? this.music : this.ambience;
     const previousKey = music ? this.playingMusicKey : this.playingAmbienceKey;
-    current?.stop(); current?.destroy();
-    // Decoded BGM buffers are large; release the previous loop with its sound.
-    if (previousKey) this.scene.cache.audio.remove(previousKey);
-    if (music) { this.music = undefined; this.playingMusicKey = undefined; }
-    else { this.ambience = undefined; this.playingAmbienceKey = undefined; }
     const id = music ? this.musicId : this.ambienceId;
     const revision = music ? ++this.musicRevision : ++this.ambienceRevision;
     const enabled = music ? this.settings.music : this.settings.effects;
     const path = id && (music ? this.catalog.music[id] : this.catalog.effects[id]);
-    if (!enabled || !id || !path) return;
-    const key = `${music ? 'bgm' : 'se'}:${id}`;
+    const key = enabled && id && path ? `${music ? 'bgm' : 'se'}:${id}` : undefined;
+    current?.stop(); current?.destroy();
+    if (music) { this.music = undefined; this.playingMusicKey = undefined; }
+    else { this.ambience = undefined; this.playingAmbienceKey = undefined; }
+    // 马上要播的这一首不算历史；否则 A→B→A 会在加载前先把 A 淘汰掉。
+    if (music && key) this.dropRetainedMusic(key);
+    // 解码后的 BGM 很大，但往回切图很常见；保留上一首，超出的再释放。
+    if (previousKey) {
+      if (music) this.retainMusic(previousKey);
+      else this.scene.cache.audio.remove(previousKey);
+    }
+    if (!key || !path) { if (music && !enabled) this.releaseRetainedMusic(); return; }
     void this.load(key, path).then(loaded => {
       if (!loaded || revision !== (music ? this.musicRevision : this.ambienceRevision) ||
           !(music ? this.settings.music : this.settings.effects)) return;
       const sound = this.scene.sound.add(key, { loop: true, volume: music ? 0.65 : 0.45 });
-      if (music) { this.music = sound; this.playingMusicKey = key; }
+      if (music) { this.music = sound; this.playingMusicKey = key; this.dropRetainedMusic(key); }
       else { this.ambience = sound; this.playingAmbienceKey = key; }
       sound.play();
       if (this.isSuspended()) sound.pause();
     });
   }
 
+  private retainMusic(key: string): void {
+    if (this.retainedMusic.includes(key)) return;
+    if (this.playingMusicKey === key) return;
+    this.retainedMusic.push(key);
+    while (this.retainedMusic.length > MUSIC_CACHE_RETENTION) {
+      const oldest = this.retainedMusic.shift()!;
+      if (oldest !== this.playingMusicKey) this.scene.cache.audio.remove(oldest);
+    }
+  }
+  private dropRetainedMusic(key: string): void {
+    const index = this.retainedMusic.indexOf(key);
+    if (index >= 0) this.retainedMusic.splice(index, 1);
+  }
+  private releaseRetainedMusic(): void {
+    for (const key of this.retainedMusic.splice(0)) if (key !== this.playingMusicKey) this.scene.cache.audio.remove(key);
+  }
   private load(key: string, path: string): Promise<boolean> {
     if (!path) return Promise.resolve(false);
     if (this.scene.cache.audio.exists(key)) return Promise.resolve(true);

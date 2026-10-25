@@ -11,6 +11,8 @@ const catalog = JSON.parse(readFileSync(new URL('../public/content/audio.json', 
 function harness(options: { suspended?: () => boolean } = {}) {
   const cache = new Set<string>();
   const queued: string[] = [];
+  /** 所有被 loader 请求过的 key，用来断言缓存命中后不再重新加载。 */
+  const requested: string[] = [];
   /** 每次 loader.start() 处理掉的文件数，用来确认预加载分了批。 */
   const batches: number[] = [];
   /** 一次性音效的播放记录；循环音频走 sound.add()，不进这里。 */
@@ -18,7 +20,7 @@ function harness(options: { suspended?: () => boolean } = {}) {
   const sounds: { key: string; isPlaying: boolean; destroyed: boolean }[] = [];
   let sinceStart = 0;
   const loader = Object.assign(new EventEmitter(), {
-    audio(key: string) { queued.push(key); sinceStart++; },
+    audio(key: string) { requested.push(key); queued.push(key); sinceStart++; },
     start() { batches.push(sinceStart); sinceStart = 0; },
   });
   const scene = {
@@ -56,6 +58,7 @@ function harness(options: { suspended?: () => boolean } = {}) {
     played,
     cachedKeys: () => new Set(cache),
     playing: () => sounds.filter(sound => sound.isPlaying).map(sound => sound.key),
+    requested: () => [...requested],
     async finishLoading() {
       await setImmediate();
       await finish();
@@ -242,4 +245,32 @@ test('战斗音效预加载覆盖运行时能触发的每一条音效', async ()
   const weaponSounds = Object.values(catalog.combat.weapons)
     .flatMap(entry => [entry.critical, entry.blocked, ...entry.normal.map(cue => cue.sound), ...(entry.miss ? [entry.miss] : [])]);
   assert.deepEqual(weaponSounds.filter(name => name && !cached.has(`se:${name}`)), []);
+});
+
+test('keeps the previous BGM decoded so walking back does not reload it', async () => {
+  const f=harness();
+  const entries=Object.entries(catalog.maps).filter(([,entry])=>entry.music);
+  const first=entries[0],second=entries.find(([,entry])=>entry.music!==first[1].music)!;
+  assert.ok(second,'目录里至少要有两张不同 BGM 的地图');
+  const firstKey=`bgm:${first[1].music}`;
+  f.audio.enterMap(first[0]);await f.drain();
+  assert.ok(f.cachedKeys().has(firstKey));
+  f.audio.enterMap(second[0]);await f.drain();
+  assert.ok(f.cachedKeys().has(firstKey),'上一首 BGM 仍保留在缓存里');
+  const requests=f.requested().filter(key=>key===firstKey).length;
+  f.audio.enterMap(first[0]);await f.drain();
+  assert.equal(f.requested().filter(key=>key===firstKey).length,requests,'回到上一张图不再重新加载');
+  assert.ok(f.playing().includes(firstKey));
+});
+
+test('retains only one previous BGM and releases retained music when disabled', async () => {
+  const f=harness();
+  const tracks=[...new Set(Object.values(catalog.maps).map(entry=>entry.music).filter((id):id is string=>!!id))];
+  const maps=tracks.slice(0,3).map(id=>Object.entries(catalog.maps).find(([,entry])=>entry.music===id)!);
+  assert.equal(maps.length,3,'目录里至少要有三首地图 BGM');
+  for(const [mapId] of maps){f.audio.enterMap(mapId);await f.drain();}
+  assert.ok(f.cachedKeys().has(`bgm:${maps[1][1].music}`),'上一首保留');
+  assert.ok(!f.cachedKeys().has(`bgm:${maps[0][1].music}`),'更早的释放');
+  f.audio.setEnabled('music',false);
+  assert.ok(![...f.cachedKeys()].some(key=>key.startsWith('bgm:')),'关闭音乐后释放所有 BGM 缓存');
 });
