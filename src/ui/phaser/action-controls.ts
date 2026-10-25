@@ -40,6 +40,8 @@ export class ActionControls {
   private readonly hud:Hud;private readonly scene:Phaser.Scene;
   private readonly attack:Control;private readonly slots:Control[]=[];private readonly swap:Control;
   private page:ShortcutSlot[]=[];private cooldowns:Readonly<Record<string,Cooldown>>={};
+  /** 上一次画冷却时的签名；没有冷却时每帧都不必重画。 */
+  private cooldownSignature?:string;
   private readonly pressGate=new ActionPressGate();
   private readonly preferences:ControlLayoutPreferences|undefined;
   private readonly unsubscribe:()=>void;
@@ -111,7 +113,12 @@ export class ActionControls {
   }
   /** 当前操控角色的图标和冷却，编辑器只读复制值，不持有实战控件。 */
   snapshot():readonly ShortcutSlot[]{return this.page.map(slot=>{const cooldown=this.cooldownOf(slot);return {...slot,entry:slot.entry?{...slot.entry}:null,cooldown:cooldown?{...cooldown}:undefined};});}
-  setCooldowns(cooldowns:Readonly<Record<string,Cooldown>>):void{this.cooldowns=cooldowns;this.paint();}
+  setCooldowns(cooldowns:Readonly<Record<string,Cooldown>>):void{
+    // 冷却读数没变就不重画；没有冷却的常态下每帧都省掉一次六格扫描。
+    const signature=Object.keys(cooldowns).sort().map(id=>`${id}:${cooldowns[id].remainingMs}`).join('|');
+    if(signature===this.cooldownSignature)return;
+    this.cooldownSignature=signature;this.cooldowns=cooldowns;this.paint();
+  }
   setAttack(enabled:boolean,dimUnavailable=true):void{this.attack.container.setAlpha(enabled||!dimUnavailable?1:.4);if(this.attack.container.input)this.attack.container.input.enabled=enabled;}
   private paint():void{
     this.slots.forEach((control,index)=>{
