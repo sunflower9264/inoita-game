@@ -110,6 +110,8 @@
 
 菜单图片同样分两批：`gameMenuImageGroups()` 把菜单框架、职业预览和立绘放在 `core`，325 个物品图标与 90 个技能图标放进 `extra`。开局前只等 `core`，`extra` 在世界加载期间后台补；补完后 `StoryUI.refreshMenuAssets()` 重画已打开的菜单。UI 调试与素材校验仍用完整的 `gameMenuImages()`。
 
+地图 prop 走独立图集：`npm run atlas:props` 把 `world.props` 按 SHA-256 去重后打包为 `public/assets/props/atlas/props-0.png/json`，生成 `src/generated/prop-atlas.ts` 的 prop key → 页/frame 映射；`public/content/world.json` 和地图 JSON 完全不变。`mapSurfaceAssets()` 对每张有 feature 的地图只加入一次图集页，`drawMapLayers()` 用 `texture+frame` 绘制，`composeColorDodge()` 从 frame 的裁剪矩形取像素。原始 prop PNG 保留，`validate:content` 校验所有 763 个 prop、17,535 个 feature、帧尺寸/边界/摘要和图集新鲜度。
+
 ## 构建、缓存与部署
 
 - 4002 由 `npm run serve` 运行 `tools/serve-built.ts`，直接提供 `dist/`；4003 是 Vite 开发服务（`npm run dev`）。

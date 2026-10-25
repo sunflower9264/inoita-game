@@ -480,7 +480,7 @@
 
 1. ✅ **高频 emit 链路（2026-10-25 已实施）**：`observeChanges` 用 bag revision + 一次 counts；`Bag.counts` 按 revision 缓存；`BattleCharacter.panel` 缓存；`healthChanged` 事件索引；quest marker 按 questBook 版本缓存。仍待做：`Bag.entries/allCells/pouchCells` 的深拷贝缓存。
 2. ✅ **寻路（2026-10-25 已实施）**：敌人跨帧增量搜索 + 冻结快照 + 失败退避 600 ms；队伍 24 px/180 ms 重算；`WorldCombat` 每渲染帧共享 512 扩展预算；`canStand` 分配优化；`stepDelta` 最多 2 个逻辑步。
-3. ✅ **纹理去重（2026-10-25 已实施）**：构建期按文件 SHA-256 + 帧尺寸/帧数/帧率/循环类型合并 `battle.json` / `world.json` 的动画图层键；常驻包 3,363 键 / 1,769 MB → 1,025 键 / 996 MB。另有 `npm run report:assets` 输出完整重复归因；剩余文件级去重（地图 prop、UI 非图标资源）待做。
+3. ✅ **纹理去重（2026-10-25 已实施）**：构建期按文件 SHA-256 + 帧尺寸/帧数/帧率/循环类型合并 `battle.json` / `world.json` 的动画图层键；常驻包 3,363 键 / 1,769 MB → 1,025 键 / 996 MB。另有 `npm run report:assets` 输出完整重复归因；地图 prop 已改为单页图集，剩余文件级去重（UI 非图标资源）待做。
 4. **常驻包缩围**：只留当前职业/队伍/共享效果；返回菜单释放；伙伴入队时加载。
 5. ✅ **启动减负（2026-10-25 已实施）**：生产删运行期语义校验，构建期 minify 全部内容；不再 fetch 281 张地图；商店装备表、人物动作拆文件按需取；菜单物品/技能图标改为开局后后台补。仍需做：`campaign.json` 按章节/地图拆分。
 6. **逐帧脏检查（大部分完成，2026-10-25）**：✅ 掉落 revision + 按地图索引、`recoverResources` 早退、`syncDepth` 同值跳过、状态色/持续特效同值短路、重复 `setDepth` 删除、冷却签名、`setPaused` 同值、`syncHud` 目标状态按战斗帧缓存；仍待做：静态 body 跳过约束/插值、HUD 可见性同值短路、`WalkRoute` 重复采样。
@@ -489,7 +489,7 @@
 ### P2：结构性改造
 
 - Boss/角色 `skill-*` clip 按需加载，打完释放。
-- 地图 prop 图集；canopy 包围盒裁边/分块。UI 物品/技能图标图集 ✅（439 个图标 → 1 张 2,045×1,143 图集，请求数 439 → 2）。
+- 地图 prop 图集 ✅（763 个 prop → 431 帧 / 1 张 2,048×421 图集；394 张有 feature 的地图各加载 1 页，22 张无 feature 地图不加载）；canopy 包围盒裁边/分块待做。UI 物品/技能图标图集 ✅（439 个图标 → 1 张 2,045×1,143 图集，请求数 439 → 2）。
 - 菜单/任务日志虚拟化；`MemberPanel` hitArea 复用。
 - 战斗/HUD 更完整的 revision 体系：`EnemyRoster`、`conditions`、`statusColors`、`syncBuffLoops`、`setPaused`。
 - 存档摘要与全档分离（递增 `SAVE_FORMAT`）；检查点去重复 clone/冗余字段。
@@ -731,4 +731,13 @@
 | 存档页反复 `inspect` 整档 | 新增 `peek` 摘要缓存；排序/行/立绘只用摘要 | `4eac018` | 存档/标题/菜单 95/100（5 条既有失败）、save-game 11/11 |
 | 合成成功重画两次 | 提交前清掉选中目标，成功沿用 session 通知；失败恢复目标并本地重画 | `6116f28` | 菜单/合成 51/56（5 条既有失败） |
 
-下一项：演出时 sleep WorldScene、静态 body/`WalkRoute`；资产线（另一个进程）：地图 prop 图集与文件级去重。
+### 2026-10-25：地图 prop 图集（已提交）
+
+| 根因 | 改动 | 提交 | 验证 |
+|---|---|---|---|
+| 每图 10–28 次 prop 纹理切换 | 构建期按 SHA-256 去重 763 个 prop 为 431 帧，打包为 2048×421 单页；运行时 `mapSurfaceAssets` 只加载图集页，`drawMapLayers` 用 `texture+frame` 绘制 | `c97a1b8`、`1d5ad26` | 416 张地图：394 张各 1 页、22 张无 feature 不加载；请求 763 → 2；`color-dodge` 按 frame 裁剪 |
+| 图集映射/装箱容易悄悄过期 | 生成 `PROP_ATLAS_BY_KEY`/页表/源摘要/布局摘要；`validate:content` 校验 763 key、17,535 feature、帧尺寸/边界/重叠、摘要，构建前后各跑一次 | `c97a1b8`、`1d5ad26` | `typecheck`、`validate:content`、`build` 通过；prop/baseline/map/scene/content 相关测试通过 |
+
+未做：地图 prop 的文件级去重（原图保留）、立绘/UI 框架图集化。
+
+下一项：演出时 sleep WorldScene、静态 body/`WalkRoute`；资产线：UI 非图标资源与地图 prop 归档清理。
