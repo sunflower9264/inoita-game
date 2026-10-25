@@ -1,18 +1,34 @@
 import { UI_EVENTS } from '../../application/ui-events.ts';
 import Phaser from 'phaser';
 import { readSafeArea } from '../viewport.ts';
-import { loadSceneAssets } from '../../rendering/scene-assets.ts';
+import { loadSceneAssets, type PendingAsset } from '../../rendering/scene-assets.ts';
 import type { AssetLease } from '../../application/assets.ts';
 import { COMMON_BUTTON, COMMON_BUTTON_IMAGES } from '../common-button.ts';
+import { UI_ICON_ATLAS_DATA, UI_ICON_ATLAS_FILE, UI_ICON_ATLAS_KEY, UI_ICON_FRAMES } from '../../generated/icon-atlas.ts';
 
 export const GOLD = '#f3deb0';
 import { FONT } from '../text-style.ts';
 export const uiTexture = (file: string): string => `interface:${file}`;
+/** 图标可能来自图集；非图集资源仍按文件路径作为纹理键。 */
+export function uiImage(file: string): { key: string; frame?: string } {
+  const frame = UI_ICON_FRAMES[file];
+  return frame ? { key: UI_ICON_ATLAS_KEY, frame } : { key: uiTexture(file) };
+}
+const uiIconAtlasAsset: PendingAsset = { kind: 'atlas', key: UI_ICON_ATLAS_KEY, file: UI_ICON_ATLAS_FILE, atlas: UI_ICON_ATLAS_DATA };
+const atlasImageFiles = new Set([UI_ICON_ATLAS_FILE, UI_ICON_ATLAS_DATA]);
 
 export async function loadUiImages(scene: Phaser.Scene, files: string[], progress = (_value: number) => {}): Promise<AssetLease> {
   files = [...new Set([...files, ...COMMON_BUTTON_IMAGES])];
-  const lease = await loadSceneAssets(scene, [...new Set(files)].filter(Boolean).map(file => ({kind:'image' as const,key:uiTexture(file),file})), progress, true);
-  for (const file of files) scene.textures.get(uiTexture(file)).setFilter(Phaser.Textures.FilterMode.LINEAR);
+  const wantsAtlas = files.some(file => atlasImageFiles.has(file) || UI_ICON_FRAMES[file] !== undefined);
+  const assets: PendingAsset[] = wantsAtlas ? [uiIconAtlasAsset] : [];
+  for (const file of files) if (!atlasImageFiles.has(file) && UI_ICON_FRAMES[file] === undefined)
+    assets.push({ kind: 'image', key: uiTexture(file), file });
+  const lease = await loadSceneAssets(scene, assets, progress, true);
+  const linear = Phaser.Textures.FilterMode.LINEAR;
+  for (const asset of assets) {
+    const texture = scene.textures.exists(asset.key) ? scene.textures.get(asset.key) : undefined;
+    texture?.setFilter(linear);
+  }
   return lease;
 }
 
@@ -189,6 +205,8 @@ export class ScrollArea {
   readonly layer:Phaser.GameObjects.Layer;
   readonly content:Phaser.GameObjects.Container;
   private mask:Phaser.GameObjects.Rectangle;
+  /** WebGL 遮罩的滤镜控制器；静态化后只在几何变化时重做遮罩纹理。 */
+  private maskFilter?:{autoUpdate:boolean;needsUpdate:boolean};
   private zone:Phaser.GameObjects.Zone;
   private offset=0;
   private extent=0;
@@ -202,7 +220,12 @@ export class ScrollArea {
     this.surface=surface;this.x=x;this.y=y;this.width=width;this.height=height;this.bleed=bleed;
     const scene=surface.scene;this.layer=scene.add.layer().setDepth(surface.depth+1);this.content=scene.add.container(0,0);this.layer.add(this.content);
     this.mask=new Phaser.GameObjects.Rectangle(scene,0,0,1,1,0xffffff).setOrigin(0);
-    if(scene.game.renderer.type===Phaser.WEBGL){this.layer.enableFilters();this.layer.filters!.external.addMask(this.mask,false,scene.cameras.main,'world');}
+    if(scene.game.renderer.type===Phaser.WEBGL){
+      this.layer.enableFilters();
+      this.maskFilter=this.layer.filters!.external.addMask(this.mask,false,scene.cameras.main,'world');
+      // FilterMask 默认每帧重做动态纹理；滚动区的遮罩只在缩放/安全区变化时改几何。
+      this.maskFilter.autoUpdate=false;this.maskFilter.needsUpdate=true;
+    }
     else this.layer.setMask(this.mask.createGeometryMask());
     this.zone=scene.add.zone(0,0,1,1).setOrigin(0).setDepth(surface.depth+.5).setInteractive();
     this.zone.on('pointerdown',(p:Phaser.Input.Pointer)=>{if(this.onTop(p))this.begin(p);});
@@ -257,6 +280,16 @@ export class ScrollArea {
   private move(pointer:Phaser.Input.Pointer):void{if(this.press?.id!==pointer.id||!pointer.isDown)return;if(!this.surface.enabled()||!this.surface.root.visible){this.cancelGesture();return;}const distance=(pointer.y-this.press.y)/this.surface.root.getWorldTransformMatrix().scaleY;if(Math.abs(distance)>8)this.moved=true;if(this.moved){this.scrollTop=this.press.offset-distance;this.onScroll?.();}}
   private up(pointer:Phaser.Input.Pointer):void{if(this.press?.id===pointer.id)this.press=undefined;}
   private wheel(pointer:Phaser.Input.Pointer,_objects:Phaser.GameObjects.GameObject[],_dx:number,dy:number):void{if(this.onTop(pointer)){const before=this.offset;this.scrollTop=this.offset+dy/this.surface.root.getWorldTransformMatrix().scaleY;if(this.offset!==before)this.onScroll?.();}}
-  layout():void{const matrix=this.surface.root.getWorldTransformMatrix(),position=matrix.transformPoint(this.x,this.y),bleedX=this.bleed*matrix.scaleX,bleedY=this.bleed*matrix.scaleY;this.content.setPosition(position.x,position.y-this.offset*matrix.scaleY).setScale(matrix.scaleX,matrix.scaleY);this.mask.setPosition(position.x-bleedX,position.y-bleedY).setSize((this.width+this.bleed*2)*matrix.scaleX,(this.height+this.bleed*2)*matrix.scaleY);this.zone.setPosition(this.mask.x,this.mask.y).setSize(this.mask.width,this.mask.height);if(this.zone.input)this.zone.input.hitArea.setSize(this.zone.width,this.zone.height);this.renderVirtual();}
+  layout():void{
+    const matrix=this.surface.root.getWorldTransformMatrix(),position=matrix.transformPoint(this.x,this.y),bleedX=this.bleed*matrix.scaleX,bleedY=this.bleed*matrix.scaleY;
+    const maskX=position.x-bleedX,maskY=position.y-bleedY,maskWidth=(this.width+this.bleed*2)*matrix.scaleX,maskHeight=(this.height+this.bleed*2)*matrix.scaleY;
+    const maskChanged=this.mask.x!==maskX||this.mask.y!==maskY||this.mask.width!==maskWidth||this.mask.height!==maskHeight;
+    this.content.setPosition(position.x,position.y-this.offset*matrix.scaleY).setScale(matrix.scaleX,matrix.scaleY);
+    this.mask.setPosition(maskX,maskY).setSize(maskWidth,maskHeight);
+    if(maskChanged&&this.maskFilter)this.maskFilter.needsUpdate=true;
+    this.zone.setPosition(this.mask.x,this.mask.y).setSize(this.mask.width,this.mask.height);
+    if(this.zone.input)this.zone.input.hitArea.setSize(this.zone.width,this.zone.height);
+    this.renderVirtual();
+  }
   destroy():void{const scene=this.surface.scene;scrollAreas.get(scene)?.delete(this);scene.input.off('pointerdown',this.down,this);scene.input.off('pointermove',this.move,this);scene.input.off('pointerup',this.up,this);scene.input.off('wheel',this.wheel,this);this.zone.destroy();this.layer.destroy(true);this.mask.destroy();}
 }
