@@ -6,6 +6,7 @@ import { parseStatusHud, parseCharacterStats, parseMenuPanels, parseBattle, pars
 import type { StoryInterface } from '../domain/story-interface.ts';
 import type { ShopCatalog } from '../domain/shop.ts';
 import { parseSprings, type SpringCatalog } from '../domain/springs.ts';
+import { wardrobePoseFile, type CostumePose, type WardrobeCatalog } from '../domain/wardrobe.ts';
 import { versionedContent } from './asset-version.ts';
 
 interface ContentRequest<T> {
@@ -38,7 +39,21 @@ export class ContentLoader {
     return parseShopEquipment(value, stats);
   }
   companions(signal?:AbortSignal){return this.read('content/companions.json',parseCompanions,signal);}
-  wardrobe(signal?:AbortSignal){return this.read('content/wardrobe.json',parseWardrobe,signal);}
+  /**
+   * 人物动作占 wardrobe 的绝大部分。生产包把它们拆成单文件，`Wardrobe` 只取当前
+   * 武器/职业用到的动作；dev/GM 需要完整校验时再把全部动作合回来跑 parseWardrobe。
+   */
+  async wardrobe(signal?:AbortSignal):Promise<WardrobeCatalog>{
+    const core=await this.read<WardrobeCatalog>('content/wardrobe.json',value=>value as WardrobeCatalog,signal);
+    if(this.trusted)return core;
+    if(Object.keys(core.poses).length)return parseWardrobe(core);
+    const ids=await this.read<string[]>('content/wardrobe/pose-index.json',value=>value as string[],signal);
+    return parseWardrobe({...core,poses:await this.wardrobePoses(ids,signal)});
+  }
+  async wardrobePoses(ids:readonly string[],signal?:AbortSignal):Promise<Record<string,CostumePose>>{
+    const entries=await Promise.all(ids.map(async id=>[id,await this.read<CostumePose>(wardrobePoseFile(id),value=>value as CostumePose,signal)]as const));
+    return Object.fromEntries(entries);
+  }
   private read<T>(file:string, parse:(data:unknown)=>T, signal?:AbortSignal):Promise<T>{
     signal?.throwIfAborted();
     let request = this.requests.get(file) as ContentRequest<T> | undefined;

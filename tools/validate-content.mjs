@@ -20,7 +20,12 @@ export function validateContent(root=fileURLToPath(new URL('../public/',import.m
  const campaignJson=read('content/campaign.json'),campaign=parseCampaign(campaignJson);
  const itemsJson=read('content/items.json'),items=parseItemCatalog(itemsJson);
  const audio=read('content/audio.json');const companions=parseCompanions(read('content/companions.json'));
- const storyInterface=parseStoryInterface(read('content/story-interface.json'));const wardrobe=parseWardrobe(read('content/wardrobe.json'));validateStoryItems(campaign,items);validateWardrobe(wardrobe,items,battle);validateItemSkills(items,battle);
+ const storyInterface=parseStoryInterface(read('content/story-interface.json'));
+ // 生产包把人物动作拆成单文件；校验前先按索引合回来，规则保持和源内容一致。
+ const wardrobeJson=read('content/wardrobe.json');
+ if(!Object.keys(wardrobeJson.poses??{}).length&&fs.existsSync(path.join(root,'content/wardrobe/pose-index.json')))
+  wardrobeJson.poses=Object.fromEntries(read('content/wardrobe/pose-index.json').map(id=>[id,read(`content/wardrobe/poses/${encodeURIComponent(id)}.json`)]));
+ const wardrobe=parseWardrobe(wardrobeJson);validateStoryItems(campaign,items);validateWardrobe(wardrobe,items,battle);validateItemSkills(items,battle);
  const crafting=parseCrafting(read('content/crafting.json'));validateCrafting(crafting,items);
  const stats=parseCharacterStats(read('content/character-stats.json'));
  const shops=parseShops(read('content/shops.json'));

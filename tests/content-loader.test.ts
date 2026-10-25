@@ -41,6 +41,26 @@ test('trusted loader returns raw JSON without running the semantic parser', asyn
   } finally { globalThis.fetch = original; }
 });
 
+test('trusted wardrobe returns the core file and fetches only requested poses', async () => {
+  const original = globalThis.fetch;
+  const calls: string[] = [];
+  globalThis.fetch = (async (input: string | URL | Request) => {
+    const url = String(input);
+    calls.push(url);
+    const body = url === 'content/wardrobe.json' ? { poses: {} } : { mirrorX: false, frameRate: 8, frames: [] };
+    return { ok: true, json: async () => body } as Response;
+  }) as typeof fetch;
+  try {
+    const loader = new ContentLoader();
+    loader.trusted = true;
+    assert.deepEqual(await loader.wardrobe(), { poses: {} });
+    await loader.wardrobePoses(['pose-a']);
+    assert.deepEqual(calls, ['content/wardrobe.json', 'content/wardrobe/poses/pose-a.json']);
+    await loader.wardrobePoses(['pose-a']);
+    assert.deepEqual(calls, ['content/wardrobe.json', 'content/wardrobe/poses/pose-a.json']);
+  } finally { globalThis.fetch = original; }
+});
+
 test('failed content can be requested again', async () => {
   const original = globalThis.fetch;
   let calls = 0;

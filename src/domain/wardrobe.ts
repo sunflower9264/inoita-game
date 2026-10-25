@@ -8,7 +8,7 @@ export interface CostumePiece {
 export interface CostumePart {
   part: string; piece: number; x: number; y: number; scaleX: number; scaleY: number; angle: number; alpha: number;
 }
-interface CostumePose { mirrorX: boolean; frameRate: number; frames: CostumePart[][] }
+export interface CostumePose { mirrorX: boolean; frameRate: number; frames: CostumePart[][] }
 export interface WardrobeCatalog {
   defaultShield?:boolean;
   companions?:Record<string,{variants:Record<string,string>;fixedParts:string[]}>;
@@ -25,6 +25,23 @@ export interface WardrobeCatalog {
   equipment: Record<string,{main:Record<string,string>;offHand:Record<string,string>}>;
   poses: Record<string,CostumePose>;
   stances: Record<string,Partial<Record<ClipName,string>>>;
+}
+/** 生产包把动作逐条拆成文件；这里统一出唯一 ID，校验、构建与按需加载共用。 */
+export function wardrobePoseIds(catalog: WardrobeCatalog): string[] {
+  const ids = new Set<string>();
+  const add = (pose: string | null | undefined) => { if (pose) ids.add(pose); };
+  for (const stance of [...Object.values(catalog.stances), ...Object.values(catalog.skills)])
+    for (const pose of Object.values(stance)) add(pose);
+  for (const stances of Object.values(catalog.skillStances ?? {}))
+    for (const stance of Object.values(stances))
+      for (const pose of Object.values(stance.poses)) add(pose);
+  return [...ids].sort();
+}
+export function wardrobePoseRelativeFile(id: string): string {
+  return `wardrobe/poses/${encodeURIComponent(id)}.json`;
+}
+export function wardrobePoseFile(id: string): string {
+  return `content/${wardrobePoseRelativeFile(id)}`;
 }
 /** 只认真实副手物品的盾牌类别；`defaultShield` 表示这名角色的原始外观本身带盾。 */
 export function hasOffhandShield(items:ItemCatalog,equipment:Partial<Record<EquipmentSlot,string>>,defaultShield=false):boolean {

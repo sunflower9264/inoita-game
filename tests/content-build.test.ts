@@ -27,6 +27,29 @@ test('buildContent minifies JSON without changing parsed content', async () => {
   }
 });
 
+test('buildContent splits wardrobe poses into per-pose files', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'content-build-wardrobe-'));
+  const source = path.join(root, 'source');
+  const output = path.join(root, 'output');
+  try {
+    await fs.mkdir(source, { recursive: true });
+    const pose = { mirrorX: false, frameRate: 8, frames: [[{ part: 'body', piece: 0, x: 0, y: 0, scaleX: 1, scaleY: 1, angle: 0, alpha: 1 }]] };
+    await fs.writeFile(path.join(source, 'wardrobe.json'), JSON.stringify({
+      poses: { 'pose-a': pose, 'pose-b': pose }, stances: { 'unarmed:empty': { 'idle-south': 'pose-a' } },
+      skills: { 'skill-a': { 'skill-a-south': 'pose-b' } }
+    }));
+    const stats = await buildContent(source, output);
+    assert.equal(stats.wardrobePoses, 2);
+    const core = JSON.parse(await fs.readFile(path.join(output, 'wardrobe.json'), 'utf8'));
+    assert.deepEqual(core.poses, {});
+    assert.deepEqual(JSON.parse(await fs.readFile(path.join(output, 'wardrobe', 'pose-index.json'), 'utf8')),
+      ['pose-a', 'pose-b']);
+    assert.deepEqual(JSON.parse(await fs.readFile(path.join(output, 'wardrobe', 'poses', 'pose-a.json'), 'utf8')), pose);
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
 test('buildContent rejects malformed JSON', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'content-build-bad-'));
   try {

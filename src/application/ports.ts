@@ -54,7 +54,7 @@ export interface StoryContext {
   readonly campaign: Campaign;
   readonly session: Session;
   readonly director: StoryDirector;
-  readonly content: Pick<ContentLoader,'map'|'drops'|'springs'|'shopEquipment'>;
+  readonly content: Pick<ContentLoader,'map'|'drops'|'springs'|'shopEquipment'|'wardrobePoses'>;
   readonly companions: import('../domain/party.ts').CompanionCatalog;
   /** 玩家侧全部战斗视觉资源在首次进游戏时加载并常驻，避免战斗与入队时现场加载。 */
   residentCombatReady?: boolean;

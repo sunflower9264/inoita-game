@@ -120,7 +120,8 @@ export class AnimationDebugScene extends Phaser.Scene {
       const off = equipment['off-hand'] ? items.items[equipment['off-hand']].kind : 'empty';
       const stance = `${main}:${off}`;
       const poses = Object.fromEntries(Object.entries(wardrobe.stances[stance]).filter(([name]) => name.startsWith('idle-') || name.startsWith('walk-')));
-      this.wardrobe = new Wardrobe(this, { ...wardrobe, stances: { ...wardrobe.stances, [stance]: poses } }, items);
+      this.wardrobe = new Wardrobe(this, { ...wardrobe, stances: { ...wardrobe.stances, [stance]: poses } }, items,
+        (ids, signal) => this.app.content.wardrobePoses(ids, signal));
       const outfit = await this.wardrobe.prepare(actors[0], equipment);
       signal.throwIfAborted();
       this.wardrobe.activate(outfit);

@@ -130,7 +130,7 @@ export class StoryStageScene extends Phaser.Scene {
         if (!base) continue;
         let wardrobe = createdWardrobes.get(memberId) ?? this.wardrobes.get(memberId);
         if (!wardrobe) {
-          wardrobe = new Wardrobe(this, this.app.wardrobe, this.app.items);
+          wardrobe = new Wardrobe(this, this.app.wardrobe, this.app.items, (ids, signal) => this.app.content.wardrobePoses(ids, signal));
           createdWardrobes.set(memberId, wardrobe);
         }
         const bag = this.app.session.bag;

@@ -1,7 +1,7 @@
 import type Phaser from 'phaser';
 import type { ActorDefinition, AnimationClip, ClipName } from '../domain/content.ts';
 import type { EquipmentSlot, ItemCatalog } from '../domain/items.ts';
-import { costumeRecipe, type CostumePart, type CostumePiece, type WardrobeCatalog } from '../domain/wardrobe.ts';
+import { costumeRecipe, type CostumePart, type CostumePiece, type CostumePose, type WardrobeCatalog } from '../domain/wardrobe.ts';
 
 interface Outfit {
   actor: ActorDefinition;
@@ -12,11 +12,16 @@ interface Outfit {
 }
 let serial = 0;
 
+/** 生产内容包把人物动作拆成单文件，合成外观前只取这套武器/职业实际用到的动作。 */
+export type WardrobePoseLoader = (ids: readonly string[], signal: AbortSignal) => Promise<Record<string, CostumePose>>;
+
 /** Compile only worn combinations; Phaser owns playback of the resulting frames. */
 export class Wardrobe {
   private scene: Phaser.Scene;
   private catalog: WardrobeCatalog;
   private items: ItemCatalog;
+  private poseLoader?: WardrobePoseLoader;
+  private poseLoads = new Map<string,Promise<void>>();
   private cache = new Map<string,Outfit>();
   private preparations = new Map<string,Promise<Outfit>>();
   private preparationRequest = new AbortController();
@@ -30,8 +35,8 @@ export class Wardrobe {
     outfit.users += 1;
     this.current = outfit;
   }
-  constructor(scene: Phaser.Scene, catalog: WardrobeCatalog, items: ItemCatalog) {
-    this.scene=scene;this.catalog=catalog;this.items=items;
+  constructor(scene: Phaser.Scene, catalog: WardrobeCatalog, items: ItemCatalog, poseLoader?: WardrobePoseLoader) {
+    this.scene=scene;this.catalog=catalog;this.items=items;this.poseLoader=poseLoader;
     for(const [key,piece]of Object.entries(catalog.sprites)) {
       const texture=scene.textures.get(piece.texture);
       if(!texture.has(key))texture.add(key,0,piece.x,piece.y,piece.width,piece.height);
@@ -52,14 +57,33 @@ export class Wardrobe {
   }
   clear(): void {
     this.preparationRequest.abort(new DOMException('人物外观生成已取消','AbortError'));
-    this.preparationRequest=new AbortController();this.preparations.clear();
+    this.preparationRequest=new AbortController();this.preparations.clear();this.poseLoads.clear();
     // 场景关闭时角色也一起销毁，这里可以强制回收全部外观。
     for(const outfit of this.cache.values()){outfit.users=0;this.dispose(outfit);}
     this.cache.clear();this.current=undefined;
   }
+  private loadPose(id: string, signal: AbortSignal): Promise<void> {
+    if(this.catalog.poses[id])return Promise.resolve();
+    const pending=this.poseLoads.get(id);
+    if(pending)return pending;
+    if(!this.poseLoader)return Promise.reject(new Error(`人物动作未加载：${id}`));
+    const load=(async()=>{
+      const poses=await this.poseLoader!([id],signal);
+      Object.assign(this.catalog.poses,poses);
+      if(!this.catalog.poses[id])throw new Error(`人物动作缺失：${id}`);
+    })();
+    this.poseLoads.set(id,load);
+    void load.catch(()=>{if(this.poseLoads.get(id)===load)this.poseLoads.delete(id);});
+    return load;
+  }
   async prepare(base: ActorDefinition, equipment: Partial<Record<EquipmentSlot,string>>, classId?:string): Promise<Outfit> {
     if(!this.active)throw new DOMException('场景已关闭','AbortError');
     const recipe=costumeRecipe(this.catalog,this.items,equipment,classId,base.id);
+    const poseIds=[...new Set(Object.values(recipe.poses))].filter((id):id is string=>typeof id==='string');
+    // dev/测试与整包内容已经在 poses 里；此时不能额外让出一拍，否则并发表演的同步阶段被打散。
+    const missing=poseIds.filter(id=>!this.catalog.poses[id]);
+    if(missing.length)await Promise.all(missing.map(id=>this.loadPose(id,this.preparationRequest.signal)));
+    this.preparationRequest.signal.throwIfAborted();
     const signature=JSON.stringify([base.id,recipe.poses,Object.entries(recipe.variants).sort()]);
     const cached=this.cache.get(signature);
     if(cached){this.cache.delete(signature);this.cache.set(signature,cached);return cached;}

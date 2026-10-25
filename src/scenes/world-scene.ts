@@ -282,7 +282,7 @@ export class WorldScene extends Phaser.Scene {
     this.app.releaseStoryPrefetch(map.id);
     for(const id of plan.current.visuals.actorIds)this.projectedActorIds.add(id);
     this.app.clearMapPrefetch();
-    this.wardrobe=new Wardrobe(this,this.app.wardrobe,this.app.items);
+    this.wardrobe=new Wardrobe(this,this.app.wardrobe,this.app.items,(ids,signal)=>this.app.content.wardrobePoses(ids,signal));
     const outfit=await this.wardrobe.prepare(this.app.session.character!.appearance,this.app.session.bag.equipmentItems(),this.app.session.character!.classId);
     signal.throwIfAborted();this.wardrobe.activate(outfit);this.equippedActor=outfit.actor;this.equipmentPreview=outfit.preview;
     this.projectedPlayerEquipment=JSON.stringify(this.app.session.bag.equipmentItems());
@@ -605,7 +605,7 @@ export class WorldScene extends Phaser.Scene {
   }
   private companionWardrobe(id:string):Wardrobe {
     let wardrobe=this.companionWardrobes.get(id);
-    if(!wardrobe){wardrobe=new Wardrobe(this,this.app.wardrobe,this.app.items);this.companionWardrobes.set(id,wardrobe);}
+    if(!wardrobe){wardrobe=new Wardrobe(this,this.app.wardrobe,this.app.items,(ids,signal)=>this.app.content.wardrobePoses(ids,signal));this.companionWardrobes.set(id,wardrobe);}
     return wardrobe;
   }
   async preparePartyMember(id:string,signal?:AbortSignal):Promise<void> {

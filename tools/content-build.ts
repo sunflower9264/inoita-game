@@ -3,6 +3,7 @@ import path from 'node:path';
 import { contentDigest } from '../src/application/content-hash.ts';
 import { compileSkillDisplay } from '../src/domain/skill-display.ts';
 import { compileSkillAction } from '../src/domain/skill-action-compiler.ts';
+import { wardrobePoseRelativeFile, type WardrobeCatalog } from '../src/domain/wardrobe.ts';
 import type { SkillAction, SkillDisplayRow, SkillRank } from '../src/domain/battle.ts';
 
 export interface ContentBuildStats {
@@ -13,6 +14,7 @@ export interface ContentBuildStats {
   skillProfiles: number;
   displayRows: number;
   irSkills: number;
+  wardrobePoses: number;
 }
 
 interface SourceFile {
@@ -61,7 +63,7 @@ async function filesUnder(directory: string, relative = ''): Promise<SourceFile[
  */
 export async function buildContent(sourceDir: string, outputDir: string): Promise<ContentBuildStats> {
   const files = await filesUnder(sourceDir);
-  let sourceBytes = 0, outputBytes = 0, skillProfiles = 0, displayRows = 0, irSkills = 0;
+  let sourceBytes = 0, outputBytes = 0, skillProfiles = 0, displayRows = 0, irSkills = 0, wardrobePoses = 0;
   for (const file of files) {
     const target = path.join(outputDir, file.relative);
     await fs.mkdir(path.dirname(target), { recursive: true });
@@ -83,7 +85,7 @@ export async function buildContent(sourceDir: string, outputDir: string): Promis
         displayRows += skill.display?.length ?? 0;
         if (skill.companion) displayRows += skill.companion.display?.length ?? 0;
       }
-      irSkills += compilePilotActions(battle);
+      irSkills += compileActions(battle);
     } else if (file.relative === 'shops.json') {
       // shops 的装备表约 1.2 MB，独立成文件；运行时第一次打开商店再取。
       const shops = parsed as { equipment?: Record<string, Record<string, unknown>> };
@@ -99,6 +101,25 @@ export async function buildContent(sourceDir: string, outputDir: string): Promis
       const equipmentTarget = path.join(path.dirname(target), 'shops-equipment.json');
       await fs.writeFile(equipmentTarget, equipmentText);
       outputBytes += Buffer.byteLength(equipmentText);
+    } else if (file.relative === 'wardrobe.json') {
+      // 人物动作约 3.9 MB，却只有当前武器/职业用到的十几条会被合成。
+      // 逐条拆文件，运行时按 recipe 取；索引留给 dev/GM 的完整校验。
+      const wardrobe = parsed as WardrobeCatalog;
+      const poses = wardrobe.poses ?? {};
+      const ids = Object.keys(poses);
+      wardrobe.poses = {};
+      transformed = wardrobe;
+      for (const id of ids) {
+        const text = JSON.stringify(poses[id]);
+        const poseTarget = path.join(outputDir, wardrobePoseRelativeFile(id));
+        await fs.mkdir(path.dirname(poseTarget), { recursive: true });
+        await fs.writeFile(poseTarget, text);
+        outputBytes += Buffer.byteLength(text);
+      }
+      const indexText = JSON.stringify(ids);
+      await fs.writeFile(path.join(path.dirname(target), 'wardrobe', 'pose-index.json'), indexText);
+      outputBytes += Buffer.byteLength(indexText);
+      wardrobePoses = ids.length;
     } else {
       // 防止 minify 改动数值/键/结构：解析后的 canonical 内容必须一致。
       const minified = JSON.stringify(parsed);
@@ -110,7 +131,7 @@ export async function buildContent(sourceDir: string, outputDir: string): Promis
     sourceBytes += Buffer.byteLength(text);
     outputBytes += Buffer.byteLength(minified);
   }
-  return { files: files.length, sourceBytes, outputBytes, skillProfiles, displayRows, irSkills };
+  return { files: files.length, sourceBytes, outputBytes, skillProfiles, displayRows, irSkills, wardrobePoses };
 }
 
 /** 返回编译过的 profile 数（1 = 本体，companion 另算）。 */
@@ -125,17 +146,18 @@ function compileProfile(skill: SkillProfileLike): number {
   return 1;
 }
 
-/** 动作 IR 试点：Warlock 的全部技能 + enemy-lunatic-djinn-1。 */
-function compilePilotActions(battle: BattleLike): number {
-  const pilotSkills = new Set(battle.classes?.find(character => character.id === 'warlock')?.skills ?? []);
+/**
+ * 动作 IR：把全部技能与敌人的派生字段（目标需求、效果/音效/召唤名、事件帧索引）
+ * 提前算进内容。战斗运行时优先读这些字段，旧内容没有时仍按原逻辑计算。
+ */
+function compileActions(battle: BattleLike): number {
   let count = 0;
   const compile = (action: SkillAction | null | undefined): void => {
     if (!action) return;
     Object.assign(action, compileSkillAction(action));
     count++;
   };
-  for (const [id, skill] of Object.entries(battle.skills ?? {})) {
-    if (!pilotSkills.has(id)) continue;
+  for (const skill of Object.values(battle.skills ?? {})) {
     compile(skill.action);
     compile(skill.followUpAction);
     if (skill.companion) {
@@ -144,12 +166,12 @@ function compilePilotActions(battle: BattleLike): number {
     }
   }
   for (const enemy of battle.enemies ?? []) {
-    if (enemy.id !== 'enemy-lunatic-djinn-1') continue;
     for (const skill of enemy.skills ?? []) {
       compile(skill.action);
       compile(skill.companionAction);
     }
     compile(enemy.commandAction?.action);
+    compile(enemy.commandAction?.companionAction);
   }
   return count;
 }
