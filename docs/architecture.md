@@ -112,6 +112,8 @@
 
 地图 prop 走独立图集：`npm run atlas:props` 把 `world.props` 按 SHA-256 去重后打包为 `public/assets/props/atlas/props-0.png/json`，生成 `src/generated/prop-atlas.ts` 的 prop key → 页/frame 映射；`public/content/world.json` 和地图 JSON 完全不变。`mapSurfaceAssets()` 对每张有 feature 的地图只加入一次图集页，`drawMapLayers()` 用 `texture+frame` 绘制，`composeColorDodge()` 从 frame 的裁剪矩形取像素。原始 prop PNG 保留，`validate:content` 校验所有 763 个 prop、17,535 个 feature、帧尺寸/边界/摘要和图集新鲜度。
 
+首次进入世界时，常驻战斗包只包含当前主角职业、全部伙伴外观和共享特效：`residentCombatAssets({..., classIds:[session.character.classId]})`。上阵伙伴的职业特效由每图 `planMapCombat` 和战斗内 `syncAllies` 加载；新游戏/读档/回菜单会释放旧租约并重置 `residentCombatReady`，`residentCombatClassId` 防止换职业后误用旧包。
+
 ## 构建、缓存与部署
 
 - 4002 由 `npm run serve` 运行 `tools/serve-built.ts`，直接提供 `dist/`；4003 是 Vite 开发服务（`npm run dev`）。
