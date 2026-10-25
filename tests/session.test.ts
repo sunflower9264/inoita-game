@@ -75,3 +75,18 @@ test('blocking cells, diagonal sliding, bounds and long frames cannot be crossed
  const end=new NavigationWorld(map).constrainTerrain({x:8,y:24},200,12);assert.ok(end.x<32);assert.ok(end.y>24);
  const corrected=new NavigationWorld(map).nearest({}, {x:40,y:24});assert.equal(canStandOnTerrain(map,corrected.x,corrected.y),true);
 });
+
+test('actor markers reuse the quest book version instead of rescanning every quest',()=>{
+  const isolated=structuredClone(campaign),quests=isolated.quests;
+  let scans=0;
+  Object.defineProperty(isolated,'quests',{configurable:true,get(){scans++;return quests;}});
+  const session=new Session(isolated);
+  session.accept('grafton-mission');
+  assert.equal(session.markerActor('darius','npc-40'),true);
+  const base=scans;
+  session.markerActor('darius','npc-40');session.markerActor('darius','npc-40');
+  assert.equal(scans,base,'任务簿版本不变时不再扫描任务表');
+  session.focusDebugQuest('grafton-mission');
+  session.markerActor('darius','npc-40');
+  assert.ok(scans>base,'调试焦点变化后重新扫描');
+});

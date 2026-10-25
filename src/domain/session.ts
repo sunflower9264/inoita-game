@@ -175,6 +175,8 @@ export class Session {
   /** 任务组的主线／支线归属；NPC 任务槽按原版先主线后支线的顺序取。 */
   private readonly questGroupKinds: ReadonlyMap<string, 'main' | 'side'>;
   private questSlotProjection?: { version: number; focus?: string; values: Map<string, CampaignQuest | undefined> };
+  /** 角色头顶的任务标记按任务簿版本缓存；版本不变时交互候选不必重扫全部任务。 */
+  private markerActorProjection?: { version: number; focus?: string; values: Map<string, boolean> };
   /** GM 任务调试的焦点；任务面板据此只列出当前任务。 */
   get debugFocusQuest():string|undefined { return this.debugFocusQuestValue; }
   focusDebugQuest(id:string|undefined):void { this.debugFocusQuestValue=id; this.emit(); }
@@ -680,10 +682,16 @@ export class Session {
    * 调试焦点只看焦点任务：前置任务的人物不挂标记。
    */
   markerActor(actor:string,characterId?:string):boolean {
-    const focus=this.debugFocusQuestValue;
-    return this.campaign.quests.some(quest=>(!focus||quest.id===focus)
-      &&(this.matchesQuestActor(quest,actor,characterId,false)
-      ||this.matchesQuestActor(quest,actor,characterId,true))&&(!!focus||this.questBook.visible(quest.id)));
+    const version=this.questBook.version,focus=this.debugFocusQuestValue,cached=this.markerActorProjection;
+    if(!cached||cached.version!==version||cached.focus!==focus)this.markerActorProjection={version,focus,values:new Map()};
+    const values=this.markerActorProjection!.values,key=actor+'\0'+(characterId??'');
+    if(!values.has(key)){
+      const visibleFocus=!!focus;
+      values.set(key,this.campaign.quests.some(quest=>(!focus||quest.id===focus)
+        &&(this.matchesQuestActor(quest,actor,characterId,false)
+        ||this.matchesQuestActor(quest,actor,characterId,true))&&(visibleFocus||this.questBook.visible(quest.id))));
+    }
+    return values.get(key)!;
   }
 
   currentQuest():CampaignQuest|undefined {
