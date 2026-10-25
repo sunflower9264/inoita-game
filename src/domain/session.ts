@@ -433,6 +433,10 @@ export class Session {
   get nowMs():number { return this.gameTimeMs; }
   advanceGameTime(deltaMs:number):void { if(deltaMs>0){this.gameTimeMs+=deltaMs;this.recovery.advance(deltaMs);} }
   get resourceRecoveryDelayMs():number { return this.resourceRecovery.millisecondsUntilNextPulse-this.combatClock.fractionalMs; }
+  /** 当前战斗帧是否会触发资源恢复脉冲。 */
+  get recoveryPulseDue():boolean { return this.resourceRecovery.pulseDueAtFrame(this.combatTick); }
+  /** 没有脉冲的帧只推进恢复时钟，保证“距下一脉冲”的读数与逐帧结算一致。 */
+  advanceRecoveryClock():void { this.resourceRecovery.advanceToFrame(this.combatTick,[]); }
   get combatTick():number { return this.combatClock.currentFrame; }
   advanceCombatFrames(deltaMs:number,step:(frame:number)=>unknown):void {
     this.combatClock.advance(deltaMs,frame=>{

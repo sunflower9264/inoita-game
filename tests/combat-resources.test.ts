@@ -87,3 +87,13 @@ test('empty rosters still advance the shared phase and paused updates produce no
   assert.deepEqual(clock.captureState(),saved);
   assert.equal(clock.advance(1720,[actor('player')])[0].atMs,3720);
 });
+
+test('pulse due check matches the 30-frame deadline without building recovery inputs',()=>{
+  const clock=new CombatResourceRecovery();
+  assert.equal(clock.pulseDueAtFrame(30),false);
+  assert.equal(clock.pulseDueAtFrame(31),true);
+  clock.advanceToFrame(31,[actor('player')]);
+  assert.equal(clock.pulseDueAtFrame(32),false);
+  assert.equal(clock.pulseDueAtFrame(61),false);
+  assert.equal(clock.pulseDueAtFrame(62),true);
+});

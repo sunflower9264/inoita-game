@@ -79,6 +79,12 @@ export class CombatResourceRecovery {
     return this.advance(frame*LOGIC_FRAME_MS-this.elapsedMs,actors);
   }
 
+  /** 该逻辑帧是否会触发一次脉冲；调用方可在构建整队恢复属性前早退。 */
+  pulseDueAtFrame(frame:number):boolean {
+    if(!Number.isSafeInteger(frame)||frame<0)throw new Error('资源恢复帧无效');
+    return this.deadlineTick<frame;
+  }
+
   resetDeadline(frame:number):void {
     if(!Number.isSafeInteger(frame)||frame<0)throw new Error('资源恢复帧无效');
     this.deadlineTick=frame+30;

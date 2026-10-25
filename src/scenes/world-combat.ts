@@ -1574,6 +1574,8 @@ captureStoryActors():SceneActorState[] {
     if(state&&(state.health>0||this.hitResolution?.isAwaitingDefeat(id)))this.roster.setEnemyMana(id,state.mana+amount,enemy.definition);
   }
   private recoverResources():void {
+    // 恢复脉冲约 1.86 秒一次；不在脉冲帧上就不必构建整队的恢复属性。
+    if(!this.app.session.recoveryPulseDue){this.app.session.advanceRecoveryClock();return;}
     const actors=[...this.activeParty,...this.arena.map(enemy=>enemy.key)].flatMap(id=>{
       const member=this.memberOf(id),enemy=combatActor(this.arena,id,actor=>actor.key);
       const state=member?.player??(enemy&&this.roster.enemySnapshot(id,enemy.definition,this.hero.level));
