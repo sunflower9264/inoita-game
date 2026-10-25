@@ -6,8 +6,11 @@ import { AUTO_SAVE_SLOT, MANUAL_SAVE_SLOT_COUNT, saveSlotLabel, type SaveSlotRef
  * 没有可比较的时间，排在已有存档之后并按槽号稳定排列。槽号本身不变，操作仍落在原槽。
  */
 export function newestFirstSlots(read:(slot:number)=>SlotReading<unknown>):number[] {
+  // 排序比较器会反复问同一个槽；每个槽只读一次，避免一次排序做近 20 次 JSON.parse。
+  const readings=new Map<number,SlotReading<unknown>>();
   const savedAt=(slot:number):number=>{
-    const reading=read(slot);
+    let reading=readings.get(slot);
+    if(reading===undefined){reading=read(slot);readings.set(slot,reading);}
     if(reading.kind!=='ok')return -1;
     const value=reading.game.summary.savedAt;
     return typeof value==='number'&&Number.isFinite(value)?value:-1;
