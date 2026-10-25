@@ -190,7 +190,7 @@
 **结论：单次快照/条件更新不慢；问题在“每帧/每次 emit 的无条件全量投影”。**
 
 - 【已证实】`CombatRuntime.step` 的 filter/sort、`CombatController.snapshot()`、`CombatConditions.update` 实测都很小（µs 级），不是主因。
-- `WorldCombat.update` 每渲染帧对全部 player/ally/enemy 做 `setCharacterStealth`、`statusColors.paint`、`setPaused`。✅ `statusColors.paint` 已按（着色规则、逻辑帧、图层批次）同值短路（2026-10-25）；`setPaused` 同值短路仍未做。
+- ✅ **已修（2026-10-25）** `WorldCombat.update` 每渲染帧对全部 player/ally/enemy 做 `setCharacterStealth`、`statusColors.paint`、`setPaused`。`statusColors.paint` 按（着色规则、逻辑帧、图层批次）同值短路；`setPaused` 同值直接返回，新刷出的敌人/召唤物与入队队友会使缓存失效。
 - ✅ **已修（2026-10-25）** `syncBuffLoops` 每帧对每个 actor 调 `buffLoopFrames`（多层分配），再进 `BuffLoopRenderer.sync` 分配 Map/Set。无 buff 时现在返回共享空数组，渲染器也不再建 Map/Set。
 - ✅ **已修（2026-10-25）** `recoverResources` 每逻辑帧构建全 actor 恢复属性，但脉冲间隔约 1.86 s。现在非脉冲帧只推进恢复时钟，不构建属性。
 - `roster.refresh` 每渲染帧；`updateEnemies` 每逻辑帧对全图所有敌人 step（无视野裁剪）。✅ 其中与 `syncDepth` 重复的 `setDepth` 已删除（2026-10-25）。
@@ -229,8 +229,8 @@
 
 ### 4.6 HUD、输入、移动与物理
 
-- `refreshShortcutPage` 每渲染帧构造 6 格与签名字符串；`WorldCombat` 每个逻辑帧又调一次；`refreshSkillCooldowns` 每渲染帧 `setCooldowns → paint()`，遍历 6 格写 alpha/input，冷却期间每格 `Graphics.clear()` + 扇形重绘。
-- `syncHud` 每帧先算 `targetStatus()`（含 `calculateEnemy`、`combatants()` 全量数组）和 `hasHostileTarget()`，再用签名决定是否写文本；贵的部分在签名之前。
+- ✅ **已修（2026-10-25）** `refreshSkillCooldowns` 每渲染帧 `setCooldowns → paint()`。现在按冷却读数签名门控，没有冷却变化时不再重画六格；`refreshShortcutPage` 本身已有 layout/槽位缓存。
+- ✅ **已修（2026-10-25）** `syncHud` 每帧先算 `targetStatus()`（含 `calculateEnemy`、`combatants()` 全量数组）和 `hasHostileTarget()`。现在按 `(combatTick, 目标 id)` 缓存，同一逻辑帧内的多个渲染帧只算一次。
 - `Hud.setVisible`、`statusHud.setVisible`、`overheadStatus.setVisible`、`NameBanner.sync` 每帧无条件写；`MoveStick.setVisible(false)` 每帧走 `reset()` → 4 个箭头 `setTexture`（PR 4b6dd64 的小回归）。
 - ✅ **已修（2026-10-25）** `MovementWorld.syncDepth` 每帧对所有注册容器 `setDepth`；Phaser 的 depth setter 会 `queueDepthSort()`。现在值没变就不写。典型地图 60–70% 的 body 是不可移动的地图实体，但它们仍参与每物理步的约束查询、`settleStep`、插值和深度。
 - `MovementInterpolation` 每帧 3 次 restore + 1 次 apply，遍历全部注册视觉；`MovementBody.update` 每个 body 每步产生约 8–10 个小对象，60–70 body ≈ 3–4 万对象/秒。
@@ -483,7 +483,7 @@
 3. **纹理去重**：构建期 SHA-256 + 帧配置；预计 -846 MB / -2,693 键，零画质；更新覆盖测试。
 4. **常驻包缩围**：只留当前职业/队伍/共享效果；返回菜单释放；伙伴入队时加载。
 5. ✅ **启动减负（2026-10-25 已实施）**：生产删运行期语义校验，构建期 minify 全部内容；不再 fetch 281 张地图；商店装备表、人物动作拆文件按需取；菜单物品/技能图标改为开局后后台补。仍需做：`campaign.json` 按章节/地图拆分。
-6. **逐帧脏检查（部分完成，2026-10-25）**：✅ 掉落 revision、`recoverResources` 早退、`syncDepth` 同值跳过、状态色/持续特效同值短路、重复 `setDepth` 删除；仍待做：快捷栏/冷却 10–15 Hz、`syncHud` 事件化/10 Hz、`setPaused` 同值、静态 body 跳过约束/插值、HUD 可见性同值短路、掉落按地图分桶。
+6. **逐帧脏检查（大部分完成，2026-10-25）**：✅ 掉落 revision + 按地图索引、`recoverResources` 早退、`syncDepth` 同值跳过、状态色/持续特效同值短路、重复 `setDepth` 删除、冷却签名、`setPaused` 同值、`syncHud` 目标状态按战斗帧缓存；仍待做：静态 body 跳过约束/插值、HUD 可见性同值短路、`WalkRoute` 重复采样。
 7. **剧情/菜单表现层**：演出 sleep WorldScene；对白增量更新；菜单同帧合并 render；滚动遮罩静态化；存档摘要缓存。
 
 ### P2：结构性改造
@@ -686,7 +686,7 @@
 
 未做：`walk-route.ts` 与 `NavigationWorld.nearestReachableBody/terrainRoute` 的同步搜索仍未加预算；`canReach` 保持 512 上限。
 
-### 2026-10-25：P1.6 逐帧脏检查（部分完成，已提交）
+### 2026-10-25：P1.6 逐帧脏检查（已提交）
 
 | 根因 | 改动 | 提交 | 验证 |
 |---|---|---|---|
@@ -695,7 +695,11 @@
 | 状态色每帧重设 color matrix | 按（颜色引用、逻辑帧、图层批次）短路 | `2e42abf` | 战斗/状态用例通过 |
 | 无 buff 也分配 Map/Set | 无持续特效直接返回；共享空数组 | `2e42abf` | buff-loop 用例通过 |
 | 非脉冲帧构建整队恢复属性 | `pulseDueAtFrame` 门控；非脉冲帧只推进时钟 | `442ead3` | 资源恢复 31/31 |
+| 冷却读数没变也重画六格 | 按冷却签名门控 paint | `4d373ec` | 快捷栏/战斗用例通过 |
+| 暂停状态每帧逐角色重设动画/特效 | 同值直接返回；新视觉使缓存失效 | `f1d3308` | 战斗运行时无新增失败 |
+| 掉落每帧扫全局表 | 每图 id 索引，forMap/collect/advance 只扫当前图 | `8a52454` | 掉落/检查点用例通过 |
+| `syncHud` 每帧重算目标状态 | 按 `(combatTick, 目标 id)` 缓存 | `137b5ed` | 状态栏/目标/剧情锁 49/50（1 条既有失败） |
 
-未做：快捷栏/冷却 10–15 Hz、`syncHud` 节流、`setPaused` 同值短路、静态 body 跳过约束/插值、掉落按地图分桶。
+同批补齐：冷却签名、`setPaused` 同值、`syncHud` 目标缓存、掉落按地图索引（见上表）。仍待做：静态 body 跳过约束/插值、HUD 可见性同值短路、`WalkRoute` 重复采样。
 
-下一项：P1.6 的剩余项（快捷栏/冷却与 HUD 节流、`setPaused`、静态 body、掉落分桶）；`walk-route`/`nearestReachableBody` 的同步搜索预算；纹理去重与常驻包缩围等内容管线完全收尾后再排。
+下一项：静态 body 跳过约束/插值、HUD 可见性同值短路、`WalkRoute` 重复采样；`walk-route`/`nearestReachableBody` 的同步搜索预算需先确认真机收益；纹理去重与常驻包缩围等内容管线完全收尾后再排。
