@@ -1,5 +1,6 @@
 import { SCENE_KEYS } from '../application/scene-keys.ts';
 import { controlSettings } from '../application/control-settings.ts';
+import { fullscreenActive, fullscreenStatus, onFullscreenChange, setFullscreen } from '../application/fullscreen.ts';
 import Phaser from 'phaser';
 import type { MenuContext } from '../application/ports.ts';
 import { TITLE_MESSAGE_ASSETS, titleMenuImages } from '../application/menu-images.ts';
@@ -43,6 +44,10 @@ export class MenuScene extends Phaser.Scene {
       if(event.key==='Escape'&&this.page!=='home'){this.showHome();}else this.surface?.key(event);
     });
     this.scale.on('resize',this.layout,this);
+    // 浏览器自身的退出（Esc、手势）不会走设置页的按钮，靠事件把开关状态同步回来。
+    this.events.once('shutdown',onFullscreenChange(()=>{
+      if(this.page==='settings'&&this.surface&&this.sys.isActive())this.render();
+    }));
     void loadUiImages(this,titleMenuImages).then(lease=>{
       if(controller.signal.aborted){lease.release();return;}
       this.events.once('shutdown',()=>lease.release());
@@ -111,9 +116,23 @@ export class MenuScene extends Phaser.Scene {
           const enabled=this.app.audio?.settings[channel]??true;
           button(enabled?'开':'关',510,178+index*100,190,67,()=>{this.app.audio?.setEnabled(channel,!enabled);this.render();},34).setData('label',`${label}：${enabled?'开':'关'}`);
         }
-        view.text('移动方式',278,390,0,34);
+        // 全屏是浏览器能力；不支持的环境显示为不可用，APK 壳已经隐藏系统栏，显示为已全屏。
+        let rowTop=378;
+        view.text('全屏',278,rowTop+12,0,34);
+        const fullscreen=fullscreenStatus();
+        if(fullscreen==='available'){
+          const active=fullscreenActive();
+          button(active?'开':'关',510,rowTop,190,67,()=>setFullscreen(!active),34)
+            .setData('label','全屏：'+(active?'开':'关'));
+        }else{
+          const label=fullscreen==='packaged'?'已全屏':'不支持';
+          view.button(label,510,rowTop,190,67,()=>{},{fontSize:30,disabled:true})
+            .setData('label','全屏：'+label);
+        }
+        rowTop+=100;
+        view.text('移动方式',278,rowTop+12,0,34);
         const dpad=controlSettings.moveStyle==='dpad';
-        button(dpad?'十字按键':'虚拟摇杆',510,378,190,67,()=>{
+        button(dpad?'十字按键':'虚拟摇杆',510,rowTop,190,67,()=>{
           controlSettings.setMoveStyle(dpad?'stick':'dpad');
           this.render();
         },30).setData('label','移动方式：' + (dpad?'十字按键':'虚拟摇杆'));

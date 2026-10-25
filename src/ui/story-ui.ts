@@ -1,5 +1,6 @@
 import { UI_EVENTS } from '../application/ui-events.ts';
 import { displaySettings } from '../application/display-settings.ts';
+import { fullscreenActive, fullscreenStatus, onFullscreenChange, setFullscreen } from '../application/fullscreen.ts';
 import { controlSettings } from '../application/control-settings.ts';
 import {CraftingPanel} from './phaser/crafting-panel.ts';
 import {EquipmentCrafting} from '../domain/crafting.ts';
@@ -84,7 +85,7 @@ export class StoryUI {
   private backTab?:UiSurface;
   private shortcutEdit?:{kind:ShortcutEntry['kind'];id:string;page:number};
   private backdrop?:Phaser.GameObjects.Rectangle;
-  private session?:Session;private world?:WorldIndex;private content?:StoryInterface;private unsubscribe?:()=>void;
+  private session?:Session;private world?:WorldIndex;private content?:StoryInterface;private unsubscribe?:()=>void;private unsubscribeFullscreen?:()=>void;
   /** 菜单是否打开；诊断用，和 `locked` 里的 `story-menu` 对应。 */
   get menuOpen():boolean{return this.open;}
   private page:Page='bag';private open=false;private selectedMemberId='player';private questPanel?:QuestPanel;
@@ -138,9 +139,12 @@ export class StoryUI {
     this.modal.enabled=()=>this.open&&!this.app.ui.suspended&&!this.busy&&(!!this.operation||!!this.itemNotice||!!this.allocationExit||this.skillReset||this.saveConfirm!==undefined||this.loadConfirm!==undefined||this.deleteConfirm!==undefined||!!this.craftingPanel?.modalOpen||!!this.shopPanel?.modalOpen||!!this.partyPanel?.modalOpen);
     this.hudButtons.enabled=()=>this.app.ui.mode==='game'&&this.app.ui.ready&&!this.app.ui.locked&&!this.app.ui.suspended;
     scene.scale.on('resize',this.resize,this);scene.input.keyboard?.on('keydown',this.key,this);
+    // 浏览器自身的退出（Esc、手势）不会走设置页的按钮，靠事件把开关状态同步回来。
+    this.unsubscribeFullscreen?.();
+    this.unsubscribeFullscreen=onFullscreenChange(()=>{if(this.open&&this.page==='settings')this.render();});
     scene.input.on('pointermove',this.moveDrag,this);scene.input.on('pointerup',this.endDrag,this);scene.input.on('pointerupoutside',this.cancelDrag,this);
     scene.game.events.on(UI_EVENTS.minimapLayout,this.onMinimap,this);scene.game.events.on(UI_EVENTS.cancelInput,this.cancelDrag,this);
-    scene.events.once('shutdown',()=>{this.unsubscribe?.();this.discardAllocation();scene.scale.off('resize',this.resize,this);scene.game.events.off(UI_EVENTS.minimapLayout,this.onMinimap,this);scene.game.events.off(UI_EVENTS.cancelInput,this.cancelDrag,this);this.cancelOperation();this.prompt?.close();this.surface!.root.remove(this.body!.root);this.surface?.destroy();this.body?.destroy();this.modal?.destroy();this.hudButtons?.destroy();this.description?.destroy();this.shortcutScreen?.destroy();this.backTab?.destroy();this.backdrop?.destroy();this.controlEditor?.destroy();this.controlEditor=undefined;});
+    scene.events.once('shutdown',()=>{this.unsubscribe?.();this.unsubscribeFullscreen?.();this.discardAllocation();scene.scale.off('resize',this.resize,this);scene.game.events.off(UI_EVENTS.minimapLayout,this.onMinimap,this);scene.game.events.off(UI_EVENTS.cancelInput,this.cancelDrag,this);this.cancelOperation();this.prompt?.close();this.surface!.root.remove(this.body!.root);this.surface?.destroy();this.body?.destroy();this.modal?.destroy();this.hudButtons?.destroy();this.description?.destroy();this.shortcutScreen?.destroy();this.backTab?.destroy();this.backdrop?.destroy();this.controlEditor?.destroy();this.controlEditor=undefined;});
     this.sync();
   }
   bind(session:Session,world:WorldIndex,content:StoryInterface):void{
@@ -363,11 +367,10 @@ export class StoryUI {
     this.controlEditor?.close();this.page='settings';this.app.ui.setControlLayoutEditing(false);this.render();
   }
   /**
-   * 设置页：声音、画面偏好与操作设置各一行。
+   * 设置页：声音、画面偏好与操作设置各占一行，行距 90。
    *
-   * 四行按 90 行距排，全部落在 960×431 的内容区内，不用滚动就能看全；滚动区照别的页面
-   * 一样建好，以后加设置项不必再改版面，拖动滚动的抬手也不会误触发开关
-   * （条目挂在 `scroll.content` 上，`widgets` 的 `scrollClickAllowed` 负责拦住拖动后的抬手）。
+   * 条目挂在 `scroll.content` 上，`widgets` 的 `scrollClickAllowed` 负责拦住拖动后的
+   * 抬手；行数变化时只调整末尾传给 `finishScroll` 的内容高度，不用重排其他页面。
    */
   private renderSettings():void{
     const v=this.body!,audio=this.app.audio;
@@ -383,15 +386,30 @@ export class StoryUI {
     v.text('帧率显示',260,275,0,25,undefined,content);
     const fps=displaySettings.fps;
     v.button(fps?'开启':'关闭',485,260,220,66,()=>{displaySettings.setFps(!fps);this.render();},{parent:content});
+    // 全屏是浏览器能力；不支持的环境显示为不可用，APK 壳已经隐藏系统栏，显示为已全屏。
+    let rowTop=350;
+    const fullscreen=fullscreenStatus();
+    v.text('全屏',260,rowTop+15,0,25,undefined,content);
+    if(fullscreen==='available'){
+      const active=fullscreenActive();
+      v.button(active?'开启':'关闭',485,rowTop,220,66,()=>setFullscreen(!active),{parent:content})
+        .setData('label','全屏：' + (active?'开启':'关闭'));
+    }else{
+      const label=fullscreen==='packaged'?'已全屏':'不支持';
+      v.button(label,485,rowTop,220,66,()=>{},{parent:content,disabled:true})
+        .setData('label','全屏：'+label);
+    }
+    rowTop+=90;
     // 移动方式：虚拟摇杆 / 十字按键
-    v.text('移动方式',260,365,0,25,undefined,content);
+    v.text('移动方式',260,rowTop+15,0,25,undefined,content);
     const dpad=controlSettings.moveStyle==='dpad';
-    v.button(dpad?'十字按键':'虚拟摇杆',485,350,220,66,()=>{
+    v.button(dpad?'十字按键':'虚拟摇杆',485,rowTop,220,66,()=>{
       controlSettings.setMoveStyle(dpad?'stick':'dpad');
       this.render();
     },{parent:content}).setData('label','移动方式：' + (dpad?'十字按键':'虚拟摇杆'));
-    v.button('操作设置',485,440,220,66,()=>this.openControlEditor(),{parent:content});
-    this.finishScroll('settings',scroll,520);
+    rowTop+=90;
+    v.button('操作设置',485,rowTop,220,66,()=>this.openControlEditor(),{parent:content});
+    this.finishScroll('settings',scroll,rowTop+80);
   }
   /**
    * 存档槽：原版 `Scene_Init_POPUP_SC_SAVESLOT @0x1eae4c` 的面板 668×530 居中、三行 634×150、
