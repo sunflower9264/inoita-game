@@ -12,6 +12,8 @@ import {parseDrops} from '../src/domain/drops.ts';
 import {parseShopEquipment} from '../src/application/content-validation.ts';
 import {parseSprings} from '../src/domain/springs.ts';
 import {titleMenuImages} from '../src/application/menu-images.ts';
+import {UI_ICON_ATLAS_DATA,UI_ICON_ATLAS_FILE,UI_ICON_FRAMES,UI_ICON_SOURCE_DIGEST} from '../src/generated/icon-atlas.ts';
+import {iconSourceDigest} from './build-icon-atlas.ts';
 import {residentCombatAssets} from '../src/rendering/resident-combat-assets.ts';
 import {residentCombatCoverageGaps} from '../src/rendering/combat-visual-coverage.ts';
 export function validateContent(root=fileURLToPath(new URL('../public/',import.meta.url))){
@@ -20,6 +22,11 @@ export function validateContent(root=fileURLToPath(new URL('../public/',import.m
  const campaignJson=read('content/campaign.json'),campaign=parseCampaign(campaignJson);
  const itemsJson=read('content/items.json'),items=parseItemCatalog(itemsJson);
  const audio=read('content/audio.json');const companions=parseCompanions(read('content/companions.json'));
+ // 菜单图标走构建期图集；内容新增图标后必须重新生成，否则运行时会缺帧。
+ const iconFiles=[...Object.values(items.items).map(item=>item.icon),...Object.values(battle.skills).map(skill=>skill.icon),
+  ...Object.values(companions.groupSkills??{}).map(skill=>skill.icon)];
+ for(const icon of iconFiles)if(!UI_ICON_FRAMES[icon])throw new Error(`图标未进入图集：${icon}；运行 npm run atlas:icons`);
+ if(iconSourceDigest()!==UI_ICON_SOURCE_DIGEST)throw new Error('图标图集已过期；运行 npm run atlas:icons');
  const storyInterface=parseStoryInterface(read('content/story-interface.json'));
  // 生产包把人物动作拆成单文件；校验前先按索引合回来，规则保持和源内容一致。
  const wardrobeJson=read('content/wardrobe.json');
@@ -53,6 +60,7 @@ export function validateContent(root=fileURLToPath(new URL('../public/',import.m
  validateContentRelations({world,battle,campaign,items,wardrobe,audio,maps});
  // 以下两项需要文件系统，留在构建侧：资源存在性与图集头。
  const assets=new Set();const visit=value=>{if(typeof value==='string'&&/^(assets|content)\//.test(value))assets.add(value);else if(Array.isArray(value))value.forEach(visit);else if(value&&typeof value==='object')Object.values(value).forEach(visit);};documents.forEach(visit);
+ for(const file of [UI_ICON_ATLAS_FILE,UI_ICON_ATLAS_DATA])assets.add(file);
  for(const file of titleMenuImages)assets.add(file.replace(/^\//,''));
  for(const file of assets)ensure(fs.existsSync(path.join(root,file)),`资源不存在 ${file}`);
  const headers=new Map();

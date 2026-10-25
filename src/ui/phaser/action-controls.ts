@@ -8,7 +8,7 @@ import { ControlLayoutPreferences, resolveControlLayout, type ControlId } from '
 import { controlViewport } from './control-layout-viewport.ts';
 export { SHORTCUT_OFFSETS, SWAP_OFFSET, PENDING_OFFSET } from '../control-layout.ts';
 import { ActionPressGate } from '../action-press-gate.ts';
-import { uiTexture } from './widgets.ts';
+import { uiImageFor } from './widgets.ts';
 import { FONT } from '../text-style.ts';
 
 interface ControlSize {width:number;height:number;hitRadius:number;iconSize:number}
@@ -61,7 +61,7 @@ export class ActionControls {
     this.swap=this.circle(SWAP_SIZE,[skin.swap],skin['swap-pressed'],()=>handlers.swap());
     this.scene.input.on('pointerup',this.release,this);this.scene.input.on('pointerupoutside',this.release,this);this.setVisible(false);
   }
-  private image(file:string,width:number,height:number):Phaser.GameObjects.Image{const texture=this.scene.textures.get(file);texture.setFilter(Phaser.Textures.FilterMode.LINEAR);return this.scene.add.image(0,0,file).setOrigin(Math.floor(width/2)/width,Math.floor(height/2)/height).setDisplaySize(width,height);}
+  private image(file:string,width:number,height:number,frame?:string):Phaser.GameObjects.Image{const texture=this.scene.textures.get(file);texture.setFilter(Phaser.Textures.FilterMode.LINEAR);return this.scene.add.image(0,0,file,frame).setOrigin(Math.floor(width/2)/width,Math.floor(height/2)/height).setDisplaySize(width,height);}
   private circle(size:ControlSize,files:string[],pressed:string,action:()=>void):Control{
     const container=this.hud.add(this.scene.add.container(0,0));container.add(files.map(file=>this.image(file,size.width,size.height)));
     const mask=this.scene.add.graphics();const highlight=this.image(pressed,size.width,size.height).setBlendMode(Phaser.BlendModes.ADD).setVisible(false);container.add([mask,highlight]);
@@ -80,8 +80,8 @@ export class ActionControls {
   private icon(control:Control,file:string|undefined,size:number):void{
     if(control.iconKey===file&&control.iconSize===size)return;
     control.iconKey=file;control.iconSize=size;control.icon?.destroy();control.icon=undefined;if(!file)return;
-    const key=this.scene.textures.exists(uiTexture(file))?uiTexture(file):file;if(!this.scene.textures.exists(key))return;
-    control.icon=this.image(key,size,size);control.container.addAt(control.icon,2);
+    const ref=uiImageFor(this.scene,file);if(!this.scene.textures.exists(ref.key))return;
+    control.icon=this.image(ref.key,size,size,ref.frame);control.container.addAt(control.icon,2);
   }
   /** 冷却扇形按进度重画；进度没变就跳过，所以每帧调用也不会白白重建绘制指令。 */
   private paintFan(control:Control,value:Cooldown|undefined):void{

@@ -34,6 +34,7 @@ import { validateCharacterStats, validateMenuClasses, validateItemSkills, valida
 
 import { GAME_HEIGHT, GAME_WIDTH, fitViewport, configureCanvas } from './ui/viewport.ts';
 import { gameMenuImageGroups } from './application/menu-images.ts';
+import { UI_ICON_ATLAS_FILE } from './generated/icon-atlas.ts';
 import { GAME_FRAME_TIMING, installFrameLimitClock } from './application/game-timing.ts';
 import { installGameDiagnostics } from './application/game-diagnostics.ts';
 import { createGmActions, type GmActions } from './debug/gm-actions.ts';
@@ -163,7 +164,8 @@ function menuPreparationFor(signal: AbortSignal): MenuPreparation | undefined {
       for (const listener of next.listeners) listener(next.progress);
     };
     const fail = (error: unknown) => { if (menuPreparation === next) menuPreparation = undefined; throw error; };
-    next.core = host.preloadFiles([...groups.core, ...Object.values(app.controlSkin)], signal,
+    // 图标图集一次加载：物品/技能图标在世界 HUD 上就要用，不能被后台补图拖成空白。
+    next.core = host.preloadFiles([...groups.core, ...Object.values(app.controlSkin), UI_ICON_ATLAS_FILE], signal,
       value => report(value, 0, 0.6)).catch(fail);
     next.all = next.core.then(() => extra.length
       ? host.preloadFiles(extra, signal, value => report(value, 0.6, 0.4))

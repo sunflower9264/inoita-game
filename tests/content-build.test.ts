@@ -50,6 +50,39 @@ test('buildContent splits wardrobe poses into per-pose files', async () => {
   }
 });
 
+test('buildContent merges identical clip layers into one texture key', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'content-build-dedupe-'));
+  const source = path.join(root, 'source');
+  try {
+    await fs.mkdir(source, { recursive: true });
+    await fs.mkdir(path.join(root, 'assets', 'characters'), { recursive: true });
+    await fs.writeFile(path.join(root, 'assets', 'characters', 'a.png'), 'same-bytes');
+    await fs.writeFile(path.join(root, 'assets', 'characters', 'b.png'), 'same-bytes');
+    const clip = (key: string, file: string, frames = 2) => ({ frameWidth: 2, frameHeight: 2, frames,
+      frameRate: 10, mirrorX: false, originX: 0.5, originY: 0.5,
+      layers: [{ key, file, blend: 'normal' }] });
+    await fs.writeFile(path.join(source, 'battle.json'), JSON.stringify({
+      classes: [{ actor: { clips: {
+        'attack-east': clip('attack-east-key', 'assets/characters/b.png'),
+        'attack-west': clip('attack-west-key', 'assets/characters/a.png')
+      } } }]
+    }));
+    const output = path.join(root, 'out');
+    const stats = await buildContent(source, output);
+    assert.equal(stats.dedupedLayers, 1);
+    assert.equal(stats.clipKeysBefore, 2);
+    assert.equal(stats.clipKeysAfter, 1);
+    const battle = JSON.parse(await fs.readFile(path.join(output, 'battle.json'), 'utf8'));
+    const east = battle.classes[0].actor.clips['attack-east'].layers[0];
+    const west = battle.classes[0].actor.clips['attack-west'].layers[0];
+    assert.deepEqual(east, west);
+    assert.equal(east.file, 'assets/characters/a.png');
+    assert.equal(east.key, 'attack-west-key');
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
 test('buildContent rejects malformed JSON', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'content-build-bad-'));
   try {

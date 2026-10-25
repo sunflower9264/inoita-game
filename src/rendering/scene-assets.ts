@@ -5,7 +5,9 @@ import { versionedAsset } from '../application/asset-version.ts';
 
 export type PendingAsset =
   | { kind: 'image'; key: string; file: string }
-  | { kind: 'spritesheet'; key: string; file: string; config: Phaser.Types.Loader.FileTypes.ImageFrameConfig };
+  | { kind: 'spritesheet'; key: string; file: string; config: Phaser.Types.Loader.FileTypes.ImageFrameConfig }
+  /** 打包后的图集：图片和 JSON 必须成对加载，纹理键下会注册所有帧。 */
+  | { kind: 'atlas'; key: string; file: string; atlas: string; frame?: string };
 const pools = new WeakMap<Phaser.Textures.TextureManager, AssetPool>();
 /** 队列按纹理管理器排队：同一份纹理库只有一个 loader 能写，跨场景并发会重复注册同一纹理键。 */
 const textureQueues = new WeakMap<Phaser.Textures.TextureManager, Promise<void>>();
@@ -57,8 +59,9 @@ export type AssetGap = 'texture' | `frame:${number}`;
 /** 纹理存在且 spritesheet 帧完整才算就绪；预检、加载、验收共用这一判据。 */
 export function assetGap(scene: Phaser.Scene, asset: PendingAsset): AssetGap | undefined {
   if (!scene.textures.exists(asset.key)) return 'texture';
-  if (asset.kind !== 'spritesheet') return undefined;
   const texture = scene.textures.get(asset.key);
+  if (asset.kind === 'atlas') return asset.frame && !texture.has(asset.frame) ? 'frame:0' : undefined;
+  if (asset.kind !== 'spritesheet') return undefined;
   const end = asset.config.endFrame ?? -1;
   const count = end < 0 ? 1 : end - (asset.config.startFrame ?? 0) + 1;
   for (let frame = 0; frame < count; frame++) if (!texture.has(String(frame))) return `frame:${frame}`;
@@ -117,9 +120,9 @@ export async function loadSceneAssets(scene: Phaser.Scene, assets: PendingAsset[
         const complete=()=>{clean();resolve();};
         scene.load.on('progress',progress);scene.load.once('complete',complete);controller.signal.addEventListener('abort',cancelled,{once:true});
         for(const asset of needed){
-          const file=versionedAsset(asset.file);
-          if(asset.kind==='image')scene.load.image(asset.key,file);
-          else scene.load.spritesheet(asset.key,file,asset.config);
+          if(asset.kind==='image')scene.load.image(asset.key,versionedAsset(asset.file));
+          else if(asset.kind==='spritesheet')scene.load.spritesheet(asset.key,versionedAsset(asset.file),asset.config);
+          else scene.load.atlas(asset.key,versionedAsset(asset.file),versionedAsset(asset.atlas));
         }
         scene.load.start();
       });

@@ -14,7 +14,16 @@ export function uiImage(file: string): { key: string; frame?: string } {
   const frame = UI_ICON_FRAMES[file];
   return frame ? { key: UI_ICON_ATLAS_KEY, frame } : { key: uiTexture(file) };
 }
-const uiIconAtlasAsset: PendingAsset = { kind: 'atlas', key: UI_ICON_ATLAS_KEY, file: UI_ICON_ATLAS_FILE, atlas: UI_ICON_ATLAS_DATA };
+/** 图集尚未加载（测试替身或异常路径）时退回单图纹理键，避免整页渲染中断。 */
+export function uiImageFor(scene: Phaser.Scene, file: string): { key: string; frame?: string } {
+  const ref = uiImage(file);
+  if (!ref.frame) return ref;
+  const texture = scene.textures.exists(ref.key) ? scene.textures.get(ref.key) : undefined;
+  return texture?.has(ref.frame) ? ref : { key: uiTexture(file) };
+}
+const firstIconFrame = Object.values(UI_ICON_FRAMES)[0];
+const uiIconAtlasAsset: PendingAsset = { kind: 'atlas', key: UI_ICON_ATLAS_KEY, file: UI_ICON_ATLAS_FILE,
+  atlas: UI_ICON_ATLAS_DATA, ...(firstIconFrame ? { frame: firstIconFrame } : {}) };
 const atlasImageFiles = new Set([UI_ICON_ATLAS_FILE, UI_ICON_ATLAS_DATA]);
 
 export async function loadUiImages(scene: Phaser.Scene, files: string[], progress = (_value: number) => {}): Promise<AssetLease> {
@@ -62,7 +71,8 @@ export class UiSurface {
   destroy(): void { this.scene.game.events.off(UI_EVENTS.cancelInput,this.cancelInput);this.scene.input.off('pointerupoutside',this.cancelInput);this.clear();this.root.destroy(); }
   visible(value: boolean): void { this.root.setVisible(value); this.scrolls.forEach(scroll=>scroll.layer.setVisible(value&&scroll.visible)); }
   image(file: string, x: number, y: number, width?: number, height?: number, parent=this.root): Phaser.GameObjects.Image {
-    const result=this.scene.add.image(x,y,uiTexture(file)).setOrigin(0);
+    const ref=uiImageFor(this.scene,file);
+    const result=this.scene.add.image(x,y,ref.key,ref.frame).setOrigin(0);
     if(width!==undefined||height!==undefined){const ratio=result.width/result.height;result.setDisplaySize(width??height!*ratio,height??width!/ratio);}
     parent.add(result); return result;
   }

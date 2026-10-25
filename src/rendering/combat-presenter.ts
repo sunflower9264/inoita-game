@@ -105,7 +105,7 @@ export class CombatPresenter {
     const flipped=!!clip.mirrorX!==!!character.entity.flip;
     for(const [index,sprite]of character.layers.entries()){
       const source=clip.layers[index];if(!source)continue;
-      const key=`${source.key}#action`;
+      const key=`${source.key}#${name}#action`;
       if(!sprite.anims.exists(key))sprite.anims.create({key,frames:sequence.map(frame=>({key:source.key,frame})),
         frameRate:1000/frameDurationMs,repeat:0});
       // 各图层由 Phaser 依次更新，保留各自进度，避免后更新的武器层多走一帧。

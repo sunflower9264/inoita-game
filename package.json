@@ -9,6 +9,8 @@
   },
   "devDependencies": {
     "@types/node": "24.13.6",
+    "@types/pngjs": "^6.0.5",
+    "pngjs": "^7.0.0",
     "typescript": "5.9.3",
     "vite": "8.3.0"
   },
@@ -21,6 +23,8 @@
     "test": "node tools/test.ts",
     "test:all": "node tools/test.ts --all",
     "validate:content": "node tools/validate-content.mjs",
+    "report:assets": "node tools/asset-report.ts",
+    "atlas:icons": "node tools/build-icon-atlas.ts",
     "apk": "node tools/build-apk.mjs",
     "verify:apk": "node tools/verify-apk.mjs",
     "test:standalone": "node tests/standalone.mjs"

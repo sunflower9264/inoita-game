@@ -31,7 +31,7 @@ import { readSafeArea } from './viewport.ts';
 import { ControlLayoutEditor } from './phaser/control-layout-editor.ts';
 import { resolveControlLayout, type ControlId } from './control-layout.ts';
 import { controlViewport } from './phaser/control-layout-viewport.ts';
-import { UiSurface, uiTexture, type ScrollArea } from './phaser/widgets.ts';
+import { UiSurface, uiImageFor, type ScrollArea } from './phaser/widgets.ts';
 import { drawDescriptionClose, drawDescriptionPanel, drawDescriptionRows, drawDescriptionSeparator, drawDescriptionTitle } from './phaser/description-panel.ts';
 import { ItemApplicationError } from '../domain/item-application.ts';
 import { drawNativeMessage } from './phaser/native-message.ts';
@@ -1158,7 +1158,7 @@ export class StoryUI {
       this.suppressClick=true;this.drag.active=true;scroll.cancelGesture();
       this.selectedItem=undefined;this.itemResult=undefined;this.render();
       const item=this.session!.bag.catalog.items[this.session!.bag.get(entry)!.item];
-      this.drag.ghost=this.scene!.add.image(pointer.x,pointer.y,uiTexture(item.icon)).setDisplaySize(72*this.surface!.root.scaleX,72*this.surface!.root.scaleY).setAlpha(.8).setDepth(800);
+      const icon=uiImageFor(this.scene!,item.icon);this.drag.ghost=this.scene!.add.image(pointer.x,pointer.y,icon.key,icon.frame).setDisplaySize(72*this.surface!.root.scaleX,72*this.surface!.root.scaleY).setAlpha(.8).setDepth(800);
     });
     this.drag={entry,pointer:pointer.id,x:pointer.x,y:pointer.y,timer,active:false};
   }

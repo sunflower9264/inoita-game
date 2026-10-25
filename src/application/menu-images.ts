@@ -21,7 +21,7 @@ export const titleMenuImages = [...COMMON_BUTTON_IMAGES, ...Object.values(TITLE_
 /**
  * 菜单图片分两批：
  * - core 是打开菜单就立刻画出来的框架、职业预览与立绘；
- * - extra 是 325 个物品图标 + 90 个技能图标，进游戏后在后台补，不挡世界开局。
+ * - extra 是物品/技能图标路径，运行时由 `icon-atlas` 映射到同一张图集。
  */
 export function gameMenuImageGroups(panels: MenuPanels, items: ItemCatalog, battle: BattleCatalog, story: StoryInterface, shops:ShopCatalog): {core:string[];extra:string[]} {
   const core = [

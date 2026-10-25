@@ -1,5 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
+import { STORY_POSE_NAMES } from '../src/domain/content.ts';
 import { contentDigest } from '../src/application/content-hash.ts';
 import { compileSkillDisplay } from '../src/domain/skill-display.ts';
 import { compileSkillAction } from '../src/domain/skill-action-compiler.ts';
@@ -15,6 +17,11 @@ export interface ContentBuildStats {
   displayRows: number;
   irSkills: number;
   wardrobePoses: number;
+  /** 被合并到同一贴图键的动画图层数。 */
+  dedupedLayers: number;
+  /** battle/world 里动画贴图键的数量变化。 */
+  clipKeysBefore: number;
+  clipKeysAfter: number;
 }
 
 interface SourceFile {
@@ -41,6 +48,117 @@ interface BattleLike {
   enemies?: { id: string; skills?: EnemySkillLike[]; commandAction?: EnemySkillLike }[];
 }
 
+interface ClipLayerLike { key: string; file: string; [field: string]: unknown }
+interface ClipLike {
+  frameWidth: number; frameHeight: number; frames: number; frameRate: number;
+  layers: ClipLayerLike[]; [field: string]: unknown;
+}
+interface ClipRecord { clip: ClipLike; name: string; layer: ClipLayerLike }
+interface ClipDedupe {
+  docs: Map<string, unknown>;
+  canonical: Map<string, { key: string; file: string }>;
+  hashes: Map<string, string>;
+  dedupedLayers: number;
+  clipKeysBefore: number;
+  clipKeysAfter: number;
+}
+
+/** 和 `setCharacterClip` 的 `single` 判定保持一致；特效动画本身不注册 repeat。 */
+function singleClip(name: string): boolean {
+  return name.startsWith('attack-') || name.startsWith('skill-') || name.startsWith('die-')
+    || STORY_POSE_NAMES.some(pose => name.startsWith(`${pose}-`));
+}
+
+function walkClips(value: unknown, visit: (clip: ClipLike, name: string) => void): void {
+  if (!value || typeof value !== 'object') return;
+  if (Array.isArray(value)) { for (const item of value) walkClips(item, visit); return; }
+  const record = value as Record<string, unknown>;
+  if (record.clips && typeof record.clips === 'object' && !Array.isArray(record.clips)) {
+    for (const [name, clip] of Object.entries(record.clips as Record<string, unknown>)) {
+      if (clip && typeof clip === 'object' && Array.isArray((clip as ClipLike).layers)) visit(clip as ClipLike, name);
+    }
+  }
+  for (const child of Object.values(record)) walkClips(child, visit);
+}
+
+/**
+ * 动画图层的贴图按内容寻址合并：文件字节、帧尺寸、帧数、帧率和循环类型都一样时，
+ * 多个方向/多个角色共用同一个纹理键。运行时 Phaser 只解码、上传一份；`mirrorX`
+ * 仍留在各自的 clip 上，翻转逻辑不变。
+ *
+ * 只处理 battle.json / world.json 的 `clips`，因为地图 JSON 用 prop 键、不在 debug
+ * 来源哈希里；这两份文件不在调试现场表的来源哈希中，合并不会让现场表过期。
+ */
+async function dedupeClipLayers(sourceDir: string, files: SourceFile[]): Promise<ClipDedupe> {
+  const docs = new Map<string, unknown>();
+  for (const relative of ['battle.json', 'world.json']) {
+    const source = files.find(file => file.relative === relative);
+    if (source) docs.set(relative, JSON.parse(await fs.readFile(source.absolute, 'utf8')));
+  }
+  const records: ClipRecord[] = [];
+  for (const document of docs.values()) {
+    walkClips(document, (clip, name) => {
+      for (const layer of clip.layers) if (layer.file) records.push({ clip, name, layer });
+    });
+  }
+  const hashes = new Map<string, string>();
+  const assetRoot = path.resolve(sourceDir, '..');
+  const hashFile = async (file: string): Promise<string | undefined> => {
+    const cached = hashes.get(file);
+    if (cached !== undefined) return cached || undefined;
+    if (!file.startsWith('assets/')) return undefined;
+    try {
+      const bytes = await fs.readFile(path.join(assetRoot, file));
+      const hash = createHash('sha256').update(bytes).digest('hex');
+      hashes.set(file, hash);
+      return hash;
+    } catch {
+      hashes.set(file, '');
+      return undefined;
+    }
+  };
+  const groups = new Map<string, ClipLayerLike[]>();
+  for (const record of records) {
+    const hash = await hashFile(record.layer.file);
+    if (!hash) continue;
+    const kind = record.layer.file.split('/')[1] ?? '';
+    const group = [hash, record.clip.frameWidth, record.clip.frameHeight, record.clip.frames,
+      record.clip.frameRate, singleClip(record.name) ? 'single' : 'loop', kind].join('|');
+    const entries = groups.get(group);
+    if (entries) entries.push(record.layer); else groups.set(group, [record.layer]);
+  }
+  let clipKeysBefore = 0, clipKeysAfter = 0;
+  const before = new Set<string>(), after = new Set<string>();
+  const canonical = new Map<string, { key: string; file: string }>();
+  const keyOwners = new Map<string, string>();
+  for (const [group, entries] of groups) {
+    const ordered = [...entries].sort((a, b) => a.file.localeCompare(b.file) || a.key.localeCompare(b.key));
+    const chosen = { key: ordered[0]!.key, file: ordered[0]!.file };
+    const owner = keyOwners.get(chosen.key);
+    if (owner && owner !== group) throw new Error(`贴图键指向不同资源：${chosen.key}`);
+    keyOwners.set(chosen.key, group);
+    canonical.set(group, chosen);
+  }
+  let dedupedLayers = 0;
+  for (const record of records) {
+    before.add(record.layer.key);
+    const hash = hashes.get(record.layer.file);
+    if (!hash) { after.add(record.layer.key); continue; }
+    const kind = record.layer.file.split('/')[1] ?? '';
+    const group = [hash, record.clip.frameWidth, record.clip.frameHeight, record.clip.frames,
+      record.clip.frameRate, singleClip(record.name) ? 'single' : 'loop', kind].join('|');
+    const chosen = canonical.get(group);
+    if (!chosen) { after.add(record.layer.key); continue; }
+    if (record.layer.key !== chosen.key || record.layer.file !== chosen.file) dedupedLayers++;
+    record.layer.key = chosen.key;
+    record.layer.file = chosen.file;
+    after.add(record.layer.key);
+  }
+  clipKeysBefore = before.size;
+  clipKeysAfter = after.size;
+  return { docs, canonical, hashes, dedupedLayers, clipKeysBefore, clipKeysAfter };
+}
+
 async function filesUnder(directory: string, relative = ''): Promise<SourceFile[]> {
   const entries = await fs.readdir(directory, { withFileTypes: true });
   const result: SourceFile[] = [];
@@ -63,6 +181,7 @@ async function filesUnder(directory: string, relative = ''): Promise<SourceFile[
  */
 export async function buildContent(sourceDir: string, outputDir: string): Promise<ContentBuildStats> {
   const files = await filesUnder(sourceDir);
+  const dedupe = await dedupeClipLayers(sourceDir, files);
   let sourceBytes = 0, outputBytes = 0, skillProfiles = 0, displayRows = 0, irSkills = 0, wardrobePoses = 0;
   for (const file of files) {
     const target = path.join(outputDir, file.relative);
@@ -75,7 +194,7 @@ export async function buildContent(sourceDir: string, outputDir: string): Promis
       continue;
     }
     const text = await fs.readFile(file.absolute, 'utf8');
-    const parsed: unknown = JSON.parse(text);
+    const parsed: unknown = dedupe.docs.get(file.relative) ?? JSON.parse(text);
     let transformed: unknown = parsed;
     if (file.relative === 'battle.json') {
       const battle = parsed as BattleLike;
@@ -131,7 +250,8 @@ export async function buildContent(sourceDir: string, outputDir: string): Promis
     sourceBytes += Buffer.byteLength(text);
     outputBytes += Buffer.byteLength(minified);
   }
-  return { files: files.length, sourceBytes, outputBytes, skillProfiles, displayRows, irSkills, wardrobePoses };
+  return { files: files.length, sourceBytes, outputBytes, skillProfiles, displayRows, irSkills, wardrobePoses,
+    dedupedLayers: dedupe.dedupedLayers, clipKeysBefore: dedupe.clipKeysBefore, clipKeysAfter: dedupe.clipKeysAfter };
 }
 
 /** 返回编译过的 profile 数（1 = 本体，companion 另算）。 */

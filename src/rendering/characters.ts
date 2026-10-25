@@ -111,7 +111,7 @@ export function setCharacterClip(scene: Phaser.Scene, character: CharacterVisual
 export function playCharacterSequence(scene: Phaser.Scene, character: CharacterVisual, name: ClipName, sequence: number[], frameDurationMs: number): void {
   const clip = replaceLayers(scene, character, name);
   clip.layers.forEach((layer, index) => {
-    const key = `${layer.key}#action`;
+    const key = `${layer.key}#${name}#action`;
     const sprite = character.layers[index];
     sprite.anims.create({ key, frames: sequence.map(frame => ({ key: layer.key, frame })), frameRate: 1000 / frameDurationMs, repeat: 0 });
     sprite.play({ key });

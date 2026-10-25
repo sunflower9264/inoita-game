@@ -38,5 +38,5 @@ try{
  validateContent(output);
  try{await fs.rename(dist,previous);moved=true;}catch(error){if(error.code!=='ENOENT')throw error;}
  try{await fs.rename(output,dist);}catch(error){if(moved)await fs.rename(previous,dist);throw error;}
- console.log(`Standalone build: story-game/dist/ (assets ${versions.assetVersion}, content ${versions.contentVersion}; content ${contentStats.files} files, ${contentStats.sourceBytes} -> ${contentStats.outputBytes} bytes)`);
+ console.log(`Standalone build: story-game/dist/ (assets ${versions.assetVersion}, content ${versions.contentVersion}; content ${contentStats.files} files, ${contentStats.sourceBytes} -> ${contentStats.outputBytes} bytes; clip keys ${contentStats.clipKeysBefore} -> ${contentStats.clipKeysAfter}, ${contentStats.dedupedLayers} layers deduped)`);
 }finally{await fs.rm(staging,{recursive:true,force:true});}
