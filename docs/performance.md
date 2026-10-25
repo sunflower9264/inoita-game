@@ -263,7 +263,7 @@
 **结论：菜单图片预载做得对；卡顿来自整页重建、双重 render、滚动遮罩和存档 parse。**
 
 - 菜单图片 654–697 张、约 4.1–4.6 MB、解码约 15 MB，返回菜单释放；打开面板无网络 IO，这是正确的。
-- 每次点击/状态变化：`StoryUI.render()` 先清空 `surface/body/description/modal` 和所有 `ScrollArea`，再整页重画。✅ `show()` 末尾重复的 `sync()` 已去掉；商店买卖、队伍加入/移出成功时不再重画第二次（2026-10-25）。合成成功仍会重画两次（提交后还要清掉选中目标）。
+- 每次点击/状态变化：`StoryUI.render()` 先清空 `surface/body/description/modal` 和所有 `ScrollArea`，再整页重画。✅ `show()` 末尾重复的 `sync()` 已去掉；商店买卖、队伍加入/移出、合成成功都不再重画第二次（2026-10-25）；失败路径仍本地重画以显示错误。
 - 商店购买/出售、合成提交、队伍变更、恢复药水：session emit 触发一次 render，`changed()` 再一次，**同一次操作双重建**。
 - 单次打开约 130–350 个 GameObjects、17–80 个 Phaser Text；每个 Text 有独立 canvas 纹理，3× DPR 下创建/销毁几十张高分辨率文字纹理会造成数 MB GPU 上传。
 - ✅ **已修（2026-10-25）** 滚动区在 WebGL 下用 `enableFilters + addMask`；`FilterMask` 默认每帧 `updateDynamicTexture`。现在 `autoUpdate=false`，只在遮罩几何变化时置 `needsUpdate`。
@@ -727,5 +727,6 @@
 | 对白翻页整屏 clear/重建 | 正文页从整屏签名拆出；Text 复用，只更新内容/位置/颜色 | `d84ef6e` | 对白/剧情 41/41；画面需用户验收 |
 | 商店/队伍操作成功重画两次 | 成功路径交给 session 通知那次；失败才本地重画 | `e8d20f2` | 菜单/商店/队伍 75/80（5 条既有失败） |
 | 存档页反复 `inspect` 整档 | 新增 `peek` 摘要缓存；排序/行/立绘只用摘要 | `4eac018` | 存档/标题/菜单 95/100（5 条既有失败）、save-game 11/11 |
+| 合成成功重画两次 | 提交前清掉选中目标，成功沿用 session 通知；失败恢复目标并本地重画 | `6116f28` | 菜单/合成 51/56（5 条既有失败） |
 
-下一项：演出时 sleep WorldScene、合成成功后的第二次重画、静态 body/`WalkRoute`；资产线（另一个进程）：地图 prop 图集与文件级去重。
+下一项：演出时 sleep WorldScene、静态 body/`WalkRoute`；资产线（另一个进程）：地图 prop 图集与文件级去重。
