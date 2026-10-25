@@ -482,7 +482,7 @@
 2. ✅ **寻路（2026-10-25 已实施）**：敌人跨帧增量搜索 + 冻结快照 + 失败退避 600 ms；队伍 24 px/180 ms 重算；`WorldCombat` 每渲染帧共享 512 扩展预算；`canStand` 分配优化；`stepDelta` 最多 2 个逻辑步。
 3. **纹理去重**：构建期 SHA-256 + 帧配置；预计 -846 MB / -2,693 键，零画质；更新覆盖测试。
 4. **常驻包缩围**：只留当前职业/队伍/共享效果；返回菜单释放；伙伴入队时加载。
-5. **启动减负**：生产删运行期语义校验；不再 fetch 281 张地图；`campaign.json` minify；菜单图按面板懒加载。
+5. ✅ **启动减负（2026-10-25 已实施）**：生产删运行期语义校验，构建期 minify 全部内容；不再 fetch 281 张地图；商店装备表、人物动作拆文件按需取；菜单物品/技能图标改为开局后后台补。仍需做：`campaign.json` 按章节/地图拆分。
 6. **逐帧脏检查**：掉落 revision/只读；快捷栏/冷却 10–15 Hz；`syncHud` 事件化/10 Hz；`recoverResources` 早退；`syncDepth` 同值跳过；静态 body 跳过约束/插值；HUD 可见性同值短路。
 7. **剧情/菜单表现层**：演出 sleep WorldScene；对白增量更新；菜单同帧合并 render；滚动遮罩静态化；存档摘要缓存。
 
@@ -495,11 +495,11 @@
 - 存档摘要与全档分离（递增 `SAVE_FORMAT`）；检查点去重复 clone/冗余字段。
 - BGM LRU 2–3 或流式；`prepareCombat` 收窄。
 - DPR 上限/画质档（默认 2，低端 1.5，需视觉验收）。
-- 构建：删第二次 `validateContent`；`springs.json` 校验；Phaser vendor 拆包；brotli；逐文件 hash manifest。
+- 构建：`springs.json` 校验 ✅；仍待做：删第二次 `validateContent`、Phaser vendor 拆包、brotli、逐文件 hash manifest。
 
 ### P3：长期治理
 
-- 内容编译器：技能 IR、剧情预索引/拆分、按章节/地图/职业打包；运行时只做轻量检查。
+- 内容编译器：技能 IR ✅（90 个技能展示模板、235 个技能/敌人动作的 `requiresTarget/effectNames/soundNames/summonNames/eventFrames` 已在构建期生成）；剧情预索引/拆分、按章节/地图/职业打包仍待做。
 - 大特效降采样/压缩纹理（`rampage-burst` 543 → 约 136 MB，2×；KTX/ASTC 再降）。
 - 角色/特效图集；必要时 Phaser `SpriteGPULayer`/`TilemapGPULayer`。
 - 资产使用图与 CI 预算：孤儿资源、重复率、常驻 MB、单图纹理数、单技能 MB。
@@ -670,8 +670,9 @@
 | `shops.equipment` 与角色数值重复 1.2 MB | 拆到 `shops-equipment.json`，品级从 `character-stats` 派生 | `4193ec9` | 商店拆表/懒加载用例 |
 | `wardrobe.poses` 占 3.9 MB，只用到一小部分 | 按动作拆 220 个文件，运行时按 recipe 取 | `bdd2db4` | 加载器冒烟；核心 4.8 MB → 695 KB |
 | 654 张菜单图开局全部阻塞加载 | 框架/立绘先加载，物品与技能图标后台补 | `59aab4b` | 菜单图片清单用例 |
+| 懒加载把等待推到首次打开 | 人物动作与地图资源并行请求；商店装备表在 `prepareStory` 后后台取；未赶上时提示并上报 | `5aae718` | typecheck、相关 18 项测试、build |
 
-构建产物 content 33,450,325 → 26,875,739 字节。未做：伙伴目录懒加载（152 KB，建会话时就要用）、`groundSprite` 共享（对象本身很小）。
+构建产物 content 33,450,325 → 26,875,739 字节；开局必须加载的部分约 22.4 MB。未做：伙伴目录懒加载（152 KB，建会话时就要用）、`groundSprite` 共享（对象本身很小）。
 
 ### 2026-10-25：P1.2 寻路与 AI 扩展预算（已提交）
 
