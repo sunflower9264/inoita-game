@@ -188,6 +188,9 @@ export class BattleCharacter {
   private spentSkillPoints=0;
   private skillUseHandler?: (item:string,skill?:string)=>string|undefined;
   private listeners=new Set<()=>void>();
+  /** 面板缓存：数值、装备或等级没变时，`hero.player` 不该每次都重算全套属性。 */
+  private panelCache?:{bagRevision:number;level:number;panelRevision:number;panel:CharacterPanel};
+  private panelRevision=0;
   constructor(classId:string,catalog:CharacterStatsCatalog,items:ItemCatalog) {
     if(!catalog.classes[classId])throw new Error('职业数值不存在');
     this.classId=classId;this.catalog=catalog;
@@ -230,6 +233,7 @@ export class BattleCharacter {
     this.currentLevel=restored.level;this.allocation=restored.allocation;this.health=restored.health;this.mana=restored.mana;
     this.combatResourceLimits=restored.resourceLimits;this.experience=restored.experience;
     this.bonusSkillPoints=restored.bonusSkillPoints;this.spentSkillPoints=restored.spentSkillPoints;
+    this.panelRevision++;
   }
   get level(){return this.currentLevel;}
   get allocated():PrimaryAttributes{return {...this.allocation};}
@@ -243,8 +247,12 @@ export class BattleCharacter {
   grantSkillPoint():void {this.bonusSkillPoints++;this.changed();}
   resetSkillPoints():void {this.bonusSkillPoints=0;this.spentSkillPoints=0;this.changed();}
   get panel():CharacterPanel {
-    return calculateCharacter(this.catalog,this.bag.catalog,this.classId,this.level,this.allocation,
+    const cached=this.panelCache;
+    if(cached&&cached.bagRevision===this.bag.revision&&cached.level===this.currentLevel&&cached.panelRevision===this.panelRevision)return cached.panel;
+    const panel=calculateCharacter(this.catalog,this.bag.catalog,this.classId,this.level,this.allocation,
       Object.fromEntries(Object.entries(this.bag.equipment).map(([slot,id])=>[slot,this.bag.get(id!)])));
+    this.panelCache={bagRevision:this.bag.revision,level:this.currentLevel,panelRevision:this.panelRevision,panel};
+    return panel;
   }
   get player(){const p=this.panel,limits=this.combatResourceLimits??p;return {level:this.level,health:this.health,maxHealth:limits.maxHealth,mana:this.mana,maxMana:limits.maxMana,experience:this.experience,nextLevelExperience:this.catalog.experience[this.level-1]??0};}
   subscribe(listener:()=>void):()=>void {this.listeners.add(listener);return ()=>{this.listeners.delete(listener);};}
@@ -270,7 +278,7 @@ export class BattleCharacter {
     if(this.mana<cost)return false;
     this.mana-=cost;for(const listener of this.listeners)listener();return true;
   }
-  private changed(){const p=this.player;this.health=Math.min(this.health,p.maxHealth);this.mana=Math.min(this.mana,p.maxMana);for(const listener of this.listeners)listener();}
+  private changed(){this.panelRevision++;const p=this.player;this.health=Math.min(this.health,p.maxHealth);this.mana=Math.min(this.mana,p.maxMana);for(const listener of this.listeners)listener();}
   private refill(){const p=this.player;this.health=p.maxHealth;this.mana=p.maxMana;}
   recover():void {this.refill();this.changed();}
   addExperience(amount:number):number {

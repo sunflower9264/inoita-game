@@ -252,3 +252,20 @@ test('weapon changes select native skill clips and timing, and unarmed ranger sk
   invalid.skillStances['dark-knight']['two-handed:empty'].actions['dark-strike']!.events[0].frame=999;
   assert.throws(()=>validateWardrobe(invalid,items,battle),/帧号升序|触发帧越界/);
 });
+
+test('hero panel is reused until the bag, level or allocation changes',()=>{
+  const hero=new BattleCharacter('dark-knight',catalog,items),first=hero.panel;
+  assert.equal(hero.panel,first,'数值与背包都没变时复用同一份面板');
+  const material=Object.entries(items.items).find(([,item])=>!item.pickup&&item.category==='material')![0];
+  hero.bag.add(material);
+  assert.notEqual(hero.panel,first,'背包变化后重新计算');
+  const afterBag=hero.panel;
+  hero.addExperience(catalog.experience[0]!);
+  assert.notEqual(hero.panel,afterBag,'升级后重新计算');
+  const afterLevel=hero.panel;
+  hero.allocate('strength',1);
+  assert.notEqual(hero.panel,afterLevel,'分配属性后重新计算');
+  const afterAllocation=hero.panel,state=hero.captureState();
+  hero.restoreState({...state,allocation:{...state.allocation,strength:state.allocation.strength+1}});
+  assert.notEqual(hero.panel,afterAllocation,'读档恢复属性后重新计算');
+});
