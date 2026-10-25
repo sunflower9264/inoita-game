@@ -324,7 +324,12 @@ export class CombatConditions {
     return this.buffs.get(actorId)?.get(id)?.effect.simulationFrames?.lastActiveFrame;
   }
   appearanceColors(actorId:string):readonly {red:number;green:number;blue:number}[]|undefined {
-    return [...this.buffs.get(actorId)?.values()??[]].reverse().find(buff=>buff.effect.appearanceColors?.length)?.effect.appearanceColors;
+    const buffs=this.buffs.get(actorId);
+    if(!buffs?.size)return undefined;
+    // 等价于 reverse().find：后加上的 buff 优先。
+    let found:readonly {red:number;green:number;blue:number}[]|undefined;
+    for(const buff of buffs.values())if(buff.effect.appearanceColors?.length)found=buff.effect.appearanceColors;
+    return found;
   }
   attribute(actorId:string,id:BattleStatKey,base:number,passives:readonly PassiveModifier[]=[]):number {
     const temporary=this.temporary.get(actorId)?.get(id);
@@ -332,7 +337,8 @@ export class CombatConditions {
     let value=base;
     for(const modifier of passives)if(modifier.attribute===id)
       value=applyCombatOperation(value,modifier.operation);
-    for(const buff of [...this.buffs.get(actorId)?.values()??[]].reverse()){
+    const buffs=this.buffs.get(actorId);
+    if(buffs?.size)for(const buff of [...buffs.values()].reverse()){
       for(const modifier of buff.effect.modifiers)if(modifier.attribute===id)
         value=applyCombatOperation(value,stackOperation(modifier.operation,buff.stackCount));
       for(const ramp of buff.effect.attributeRamps??[])if(ramp.attribute===id)

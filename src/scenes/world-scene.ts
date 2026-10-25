@@ -765,7 +765,10 @@ export class WorldScene extends Phaser.Scene {
       if (character.marker) {
         const status = session.marker(character.entity.actor,character.entity.characterId);
         character.marker.container.setVisible(!!status);
-        character.marker.glyph.setText(status === 'available' ? '!' : '?').setColor(status === 'active' ? '#adb9bb' : '#ffdb78');
+        const glyph=character.marker.glyph,color=status==='active'?'#adb9bb':'#ffdb78';
+        glyph.setText(status==='available'?'!':'?');
+        // setColor 每次都会重画文字画布；状态颜色没变就跳过。
+        if(glyph.style.color!==color)glyph.setColor(color);
       }
     }
     const map = this.map;

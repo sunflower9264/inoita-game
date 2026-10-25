@@ -17,6 +17,8 @@ export function groundLootAssets(items:ItemCatalog):PendingAsset[] {
 export class GroundLootView {
   private readonly visuals=new Map<string,Phaser.GameObjects.Image|Phaser.GameObjects.Container>();
   private readonly flying=new Set<string>();
+  /** 当前暂停状态；值没变时不再遍历飞行掉落。 */
+  private paused=false;
   private readonly createFlight:(clip:EffectClip,x:number,y:number)=>Phaser.GameObjects.Container;
   private readonly layer:Phaser.GameObjects.Layer;
   private readonly scene:Phaser.Scene;
@@ -39,6 +41,7 @@ export class GroundLootView {
         const elapsed=drop.flight.durationMs-drop.flight.remainingMs;
         for(const child of visual.list){const sprite=child as Phaser.GameObjects.Sprite;
           sprite.play({key:sprite.texture.key,startFrame:Math.min(clip.frames-1,Math.floor(elapsed*clip.frameRate/1000)),repeat:0});}
+        if(this.paused)for(const child of visual.list)(child as Phaser.GameObjects.Sprite).anims.pause();
         this.layer.add(visual);this.visuals.set(drop.id,visual);this.flying.add(drop.id);continue;
       }
       const sprite=drop.reward.kind==='money'?MONEY_SPRITE:this.items.items[drop.reward.item].groundSprite;
@@ -48,6 +51,8 @@ export class GroundLootView {
     }
   }
   setPaused(paused:boolean):void {
+    if(this.paused===paused)return;
+    this.paused=paused;
     for(const [id,visual] of this.visuals)if(this.flying.has(id))
       for(const child of (visual as Phaser.GameObjects.Container).list){const sprite=child as Phaser.GameObjects.Sprite; if(paused)sprite.anims.pause();else sprite.anims.resume();}
   }
