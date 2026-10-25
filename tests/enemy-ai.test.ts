@@ -154,13 +154,32 @@ test('an attack finishes after losing detection, then returns home without react
   assert.deepEqual(run.actor.position,{x:16,y:32});assert.equal(run.ai.snapshot().state,'idle');
 });
 
-test('unreachable targets wait and retry no faster than 180 ms, then resume after an obstruction moves',()=>{
+test('unreachable targets back off 600 ms, then resume after an obstruction moves',()=>{
   const run=setup();let blocked=true,calls=0;
   const original=run.port.canStand;run.port.canStand=point=>{calls++;return !blocked&&original(point);};
   run.advance();const first=calls;assert.ok(first>0);assert.equal(run.waypoint(),undefined);
-  run.advance(2);assert.equal(calls,first);blocked=false;run.advance();assert.ok(run.waypoint());
+  run.advance(2);assert.equal(calls,first);blocked=false;
+  // 常见 RPG 的失败退避是 0.5–1 秒；退避期内不再撞同一堵墙。
+  run.advance(6);assert.equal(run.waypoint(),undefined,'退避期内不重试');
+  run.advance(4);assert.ok(run.waypoint(),'退避结束后重新寻路');
   run.ai.cancel();assert.equal(run.ai.snapshot().state,'idle');assert.equal(run.waypoint(),undefined);
   run.ai.dispose();run.advance(3);assert.equal(run.plays(),0);
+});
+
+test('a cross-frame search spends the shared budget and keeps moving while it runs',()=>{
+  // 移动速度放到接近 0：只看搜索期间是否朝目标走、完成后是否换用路径点。
+  const run=setup({moveSpeedPxPerSecond:1});let grants=0;
+  run.port.pathBudget={take:limit=>{grants++;return Math.min(limit,4);}};
+  run.advance();
+  assert.ok(grants>0,'从共享预算领取扩展');
+  assert.deepEqual(run.waypoint(),run.player.position,'路径还没算完时先朝目标直走');
+  for(let frame=0;frame<200;frame++){
+    const next=run.waypoint();
+    if(next&&next.x!==run.player.position.x)break;
+    run.advance();
+  }
+  const next=run.waypoint();
+  assert.ok(next&&next.x!==run.player.position.x,'搜索完成后改走路径点');
 });
 
 test('a body stalled by physics replans after 180 ms even when the next segment remains clear',()=>{

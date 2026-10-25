@@ -178,6 +178,23 @@ test('changing pursuit target or required range invalidates the cached follow pa
   run.port.attackRange=()=>1;run.ai.update(60);assert.equal(run.boundsCalls(),3);
   run.focus(undefined);run.ai.update(60);assert.equal(run.boundsCalls(),4);
 });
+test('followers re-path after the leader moves three grid steps, not on every step',()=>{
+  const run=setup();run.ai.update(60);const base=run.boundsCalls();
+  run.ai.update(180);
+  run.leader.position={x:run.leader.position.x+8,y:32};run.ai.update(60);
+  assert.equal(run.boundsCalls(),base,'队长只挪一格不重算');
+  run.leader.position={x:run.leader.position.x+16,y:32};run.ai.update(60);
+  assert.equal(run.boundsCalls(),base+1,'队长走远三格才重算');
+});
+test('a follow search yields when the shared budget is exhausted and retries later',()=>{
+  const run=setup();let grants=0;
+  run.port.pathBudget={take:()=>{grants++;return 0;}};
+  run.ai.update(60);
+  assert.ok(grants>0,'跟随者向共享预算申请扩展');
+  assert.equal(run.boundsCalls(),0,'没有预算时这一帧不开搜索');
+  run.port.pathBudget=undefined;run.ai.update(60);
+  assert.equal(run.boundsCalls(),1,'预算恢复后再算');
+});
 test('party checkpoints restore the pending logic frame and cached navigation without sharing mutable points',()=>{
   const run=setup();run.ai.update(85);const saved=run.ai.captureState(),expected=structuredClone(saved);
   assert.equal(saved.accumulator,25);assert.equal(saved.clock,60);assert.ok(saved.path.length);

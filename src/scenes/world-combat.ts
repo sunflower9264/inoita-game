@@ -34,6 +34,7 @@ import { choosePartyLanding } from '../domain/party-placement.ts';
 import type { NavigationActor, NavigationShape } from '../domain/navigation-world.ts';
 import { overlapsFootRect } from '../domain/navigation.ts';
 import { PartyController, type PartyPort } from '../domain/party-ai.ts';
+import { PathBudget } from '../domain/path-budget.ts';
 import { partyCombatModifiers, partyProcSucceeds } from '../domain/party-combat.ts';
 import { reviveAtHealer } from '../domain/party-revival.ts';
 import type { ResourceCapacityKey, ResourceCapacities } from '../domain/combat-conditions.ts';
@@ -143,6 +144,9 @@ export function enemyTapRect(actor:ActorDefinition):{x:number;y:number;width:num
  * 然后才轮到各敌人的朝向与 AI——顺序反了会对着不存在的敌人写状态。
  */
 
+/** 所有 AI 每渲染帧共享的寻路扩展预算；一次扩展约几微秒，512 约 2–4 ms。 */
+const PATH_BUDGET_PER_RENDER_FRAME=512;
+
 /** 正式地图的战斗结算与角色表现装配。 */
 export class WorldCombat {
   private actionDispatchers?:WeakMap<CombatPresenter,CombatActionDispatcher>;
@@ -185,6 +189,8 @@ export class WorldCombat {
   private presenter?:CombatPresenter;
   private readonly combatEffects:CombatEffects;
   private enemiesRunning=false;
+  /** 敌人、队伍与召唤共享的寻路预算，在每个渲染帧开头重置。 */
+  private readonly pathBudget=new PathBudget(PATH_BUDGET_PER_RENDER_FRAME);
   private partyActionsSuspended=false;
   private performanceHidden=false;
   private closed=false;
@@ -517,6 +523,8 @@ captureStoryActors():SceneActorState[] {
       rangeBonusUnits:key=>this.actorAttribute(key,'attackRangeBonusUnits'), facing: () => enemy.facing,
         home: () => this.roster.enemies.find(item => item.key === enemy.key) ?? placed,
         navigationBounds: () => this.movement!.navigation.bounds,
+        pathBudget: this.pathBudget,
+        navigationSnapshot: () => this.movement!.navigation.captureStandability(this.movement!.actor(visual)),
         moveToward: position => { if(!this.conditions.canAutoApproach(enemy.key)){this.movement.stop(visual);return;} this.movement!.toward(visual, position, this.movementSpeed(enemy.key,definition.behavior.moveSpeedPxPerSecond)); if (definition.behavior.canTurn) enemy.facing = faceTarget(this.movement!.position(visual), position); },
         followPath: nextWaypoint => this.movement.followPath(visual, () => {
           if(!this.conditions.canMove(enemy.key))return undefined;
@@ -1851,7 +1859,7 @@ captureStoryActors():SceneActorState[] {
       attackRange:()=>this.equipmentAttack(visual.actor,id).approachDistanceUnits+this.actorAttribute(id,'attackRangeBonusUnits'),
       counterattack:()=>this.app.session.party?.counterattack(id)??2,
       damageCount:()=>this.damageCount,
-      navigationBounds:()=>this.movement.navigation.bounds,
+      navigationBounds:()=>this.movement.navigation.bounds,pathBudget:this.pathBudget,
       moveToward:position=>{if(!this.conditions.canAutoApproach(id)){this.movement.stop(visual);return;}setFacing(faceTarget(this.movement.position(visual),position));this.movement.toward(visual,position,this.movementSpeed(id,PLAYER_MOVE_SPEED));},
       followPath:nextWaypoint=>this.movement.followPath(visual,()=>{
         if(!this.conditions.canMove(id))return undefined;
@@ -2390,6 +2398,7 @@ captureStoryActors():SceneActorState[] {
   }
   update(delta:number,enabled:boolean):void{
     if(this.closed||!this.player?.container.active)return;
+    this.pathBudget?.reset();
     this.outcomes.setPaused(!enabled||this.defeated);
     for(const [id,tween]of this.deathTweens){
       if(enabled&&!this.defeated)tween.resume();else tween.pause();

@@ -6,7 +6,7 @@ import { combatStateCapabilities } from './combat-state.ts';
 import type { AttackContact, Combatant, CombatPort, CombatSnapshot, Cooldown } from './combat.ts';
 import { needsTarget } from './skill-action.ts';
 import type { GameRectangle, Point } from './navigation.ts';
-import { canTraverse, findPath, PATH_GRID_SIZE } from './pathfinding.ts';
+import { canTraverse, createPathSearch, PATH_GRID_SIZE, type PathSearch } from './pathfinding.ts';
 import { enemyAwarenessRangeUnits } from './enemy-engagement.ts';
 
 export interface EnemyPort extends CombatPort {
@@ -19,6 +19,10 @@ export interface EnemyPort extends CombatPort {
   /** 当前生命与上限；用于原版释放条件的 HP 阈值判定。 */
   health?(id:string):{current:number;maximum:number}|undefined;
   navigationBounds(): GameRectangle;
+  /** 每渲染帧共享的寻路扩展预算；缺省时按单次上限同步推进（测试与无场景调用）。 */
+  pathBudget?:{take(limit:number):number};
+  /** 冻结通行快照；有它时跨帧搜索读同一份地图。 */
+  navigationSnapshot?():{bounds:GameRectangle;canStand(point:Point):boolean};
   threat?:{
     select(current:string|undefined):string|undefined;
     notice(source:string):void;
@@ -52,6 +56,14 @@ interface EnemyControllerState {
 }
 
 const REPATH_INTERVAL_MS=180;
+/** 跨帧搜索每次推进的扩展上限；多个 AI 共享渲染帧预算。 */
+const SEARCH_SLICE=128;
+/** 施法前的同步可达性检查；不能沿用跨帧搜索，保持原判定的即时性。 */
+const HOLD_SEARCH_CAP=1024;
+/** 闲逛路径很短，一次同步算完。 */
+const WANDER_SEARCH_CAP=512;
+/** 目标不可达后的重试间隔（常见 RPG 做法：0.5–1 秒）。 */
+const FAILED_PATH_MS=600;
 const ARRIVAL_DISTANCE_PX=.5;
 /** 原版释放条件的生命千分比上限；`always` 不设阈值，直接可放。 */
 const RELEASE_HEALTH_RATE:Record<EnemyReleaseCondition,number|undefined>=
@@ -82,6 +94,8 @@ export class EnemyController {
   private disposed=false;
   private idleElapsed=0;
   private wanderDestination?:Point;
+  /** 正在跨帧推进的搜索；目标变化或恢复检查点时会丢弃。 */
+  private search?:{task:PathSearch;target?:Combatant;targetId?:string;destination:Point;range:number;isGoal:(point:Point)=>boolean};
   private readonly spentOnce=new Set<string>();
   private get mapWide():boolean{return this.behavior.engagement==='map-wide';}
 
@@ -111,7 +125,7 @@ export class EnemyController {
   }
   restoreState(state:EnemyControllerState):void {
     if(this.disposed)throw new Error('无法恢复已销毁的敌人行为');
-    const saved=structuredClone(state);this.cancel();
+    const saved=structuredClone(state);this.cancel();this.search=undefined;
     if(saved.combat)this.combat?.restoreState(saved.combat);
     this.state=saved.state;this.targetId=saved.targetId;this.pendingReturn=saved.pendingReturn;
     this.threatCombatActive=saved.threatCombatActive??!!saved.targetId;
@@ -158,17 +172,17 @@ export class EnemyController {
     if(current!==targetId)return;
     if(reason==='inactive'&&!this.mapWide){this.port.threat?.clear();this.threatCombatActive=false;}
     this.targetId=undefined;this.pendingReturn=false;
-    this.path=[];this.destination=undefined;this.progressPosition=undefined;this.nextPathAt=0;this.port.stop();
+    this.path=[];this.destination=undefined;this.search=undefined;this.progressPosition=undefined;this.nextPathAt=0;this.port.stop();
     this.state=this.combat?.snapshot().state==='attacking'?'attacking':'idle';
   }
   disable():void {
     this.combat?.cancel(true,!this.port.threat);
-    this.path=[];this.destination=undefined;this.progressPosition=undefined;this.wanderDestination=undefined;this.idleElapsed=0;this.port.stop();
+    this.path=[];this.destination=undefined;this.search=undefined;this.progressPosition=undefined;this.wanderDestination=undefined;this.idleElapsed=0;this.port.stop();
     if(this.state!=='returning')this.state=this.targetId?'chasing':'idle';
   }
   cancel():void{
     this.combat?.cancel(true);this.state='idle';this.targetId=undefined;this.pendingReturn=false;this.threatCombatActive=false;
-    this.path=[];this.destination=undefined;this.progressPosition=undefined;this.accumulator=0;this.wanderDestination=undefined;this.idleElapsed=0;this.port.stop();
+    this.path=[];this.destination=undefined;this.search=undefined;this.progressPosition=undefined;this.accumulator=0;this.wanderDestination=undefined;this.idleElapsed=0;this.port.stop();
   }
   reset():void{this.cancel();this.combat?.reset();this.spentOnce.clear();}
   dispose():void{this.cancel();this.disposed=true;this.combat?.dispose();}
@@ -181,13 +195,13 @@ export class EnemyController {
     if(this.combat?.snapshot().state==='approaching')this.combat.cancel();
     else this.combat?.clearSelection();
     this.state='idle';this.targetId=undefined;this.pendingReturn=false;
-    this.path=[];this.destination=undefined;this.progressPosition=undefined;this.wanderDestination=undefined;this.idleElapsed=0;this.port.stop();
+    this.path=[];this.destination=undefined;this.search=undefined;this.progressPosition=undefined;this.wanderDestination=undefined;this.idleElapsed=0;this.port.stop();
   }
   private returnHome():void{
     if(this.mapWide){this.awaitTarget();return;}
     this.port.threat?.clear();this.threatCombatActive=false;
     this.combat?.cancel(true);this.state='returning';this.targetId=undefined;this.pendingReturn=false;
-    this.path=[];this.destination=undefined;this.progressPosition=undefined;this.wanderDestination=undefined;this.idleElapsed=0;this.port.stop();
+    this.path=[];this.destination=undefined;this.search=undefined;this.progressPosition=undefined;this.wanderDestination=undefined;this.idleElapsed=0;this.port.stop();
   }
   private tick():void{
     const actor=this.port.actor(this.id);
@@ -211,14 +225,14 @@ export class EnemyController {
       if(this.threatCombatActive){
         this.pendingReturn=false;
         if(this.state==='returning'){
-          this.state='idle';this.path=[];this.destination=undefined;this.nextPathAt=0;this.port.stop();
+          this.state='idle';this.path=[];this.destination=undefined;this.search=undefined;this.nextPathAt=0;this.port.stop();
         }
       }
     }
     if(this.state==='returning'){
       const home=this.port.home();
       if(!this.behavior.canMove||Math.hypot(actor.position.x-home.x,actor.position.y-home.y)<=(this.port.followDistancePx??ARRIVAL_DISTANCE_PX)){
-        this.state='idle';this.path=[];this.destination=undefined;this.idleElapsed=0;this.port.stop();return;
+        this.state='idle';this.path=[];this.destination=undefined;this.search=undefined;this.idleElapsed=0;this.port.stop();return;
       }
       this.navigate(actor,home,undefined,this.port.followDistancePx??0);return;
     }
@@ -248,7 +262,7 @@ export class EnemyController {
     }
     const target=this.targetId?this.port.actor(this.targetId):undefined;
     if(target&&this.wanderDestination){
-      this.wanderDestination=undefined;this.path=[];this.destination=undefined;this.nextPathAt=0;this.port.stop();
+      this.wanderDestination=undefined;this.path=[];this.destination=undefined;this.search=undefined;this.nextPathAt=0;this.port.stop();
     }
     const lost=this.targetId!==undefined&&(!target||target.team===actor.team||(!this.port.threat&&!this.inAwareness(actor,target)));
     if(this.combat.snapshot().state==='approaching'){this.state='chasing';return;}
@@ -274,7 +288,7 @@ export class EnemyController {
       // 原版 MONSTERAI_RunAIProc 遍历全部绑定、匹配项逐个覆盖输出，取最后一个。
       const skill=available[available.length-1];
       if(needsTarget(skill.action)&&this.holdImmobileAction(actor,target,skill.action.approachDistanceUnits,skill))return;
-      this.path=[];this.destination=undefined;
+      this.path=[];this.destination=undefined;this.search=undefined;
       if(this.port.threat&&!this.mapWide)this.nextPathAt=0;
       const result=this.combat.request({...skill,level:skill.level,manaCost:skill.manaCost},target.id,this.behavior.canTurn);
       if(result==='started'&&skill.once)this.spentOnce.add(skill.id);
@@ -283,7 +297,7 @@ export class EnemyController {
     }
     if(this.attack&&(this.port.threat||distance<=this.attack.approachDistanceUnits)){
       if(this.holdImmobileAction(actor,target,this.attack.approachDistanceUnits))return;
-      this.path=[];this.destination=undefined;
+      this.path=[];this.destination=undefined;this.search=undefined;
       if(this.port.threat&&!this.mapWide)this.nextPathAt=0;
       const result=this.combat.requestTarget(target.id,this.behavior.canTurn);
       if(this.port.threat&&(result!=='started'||this.combat.snapshot().state==='idle')){this.returnHome();return;}
@@ -309,9 +323,9 @@ export class EnemyController {
     if(this.behavior.canMove&&this.behavior.moveSpeedPxPerSecond>0&&combatStateCapabilities(actor.states??[]).canMove)return false;
     const manaCost=skill?(this.port.manaCost?.(skill)??skill.manaCost):undefined;
     if(manaCost&&this.port.canSpendMana?.(manaCost)===false)return false;
-    this.path=[];this.destination=undefined;if(!this.mapWide)this.nextPathAt=0;
-    const reachable=this.navigate(actor,target.position,target,range,false);
-    this.path=[];this.destination=undefined;this.progressPosition=undefined;this.port.stop();
+    this.path=[];this.destination=undefined;this.search=undefined;if(!this.mapWide)this.nextPathAt=0;
+    const reachable=this.reachableNow(actor,target.position,target,range);
+    this.path=[];this.destination=undefined;this.search=undefined;this.progressPosition=undefined;this.port.stop();
     if(reachable){this.state='idle';this.combat?.setReactionTarget(target.id);}
     else this.returnHome();
     return true;
@@ -326,22 +340,57 @@ export class EnemyController {
     const stalled=this.path.length>0&&this.clock-this.lastProgressAt>=REPATH_INTERVAL_MS;
     const moved=!this.destination||targetDistance(this.destination,destination)>=PATH_GRID_SIZE||range!==this.destinationRange;
     const blocked=this.path.length>0&&!canTraverse(actor.position,this.path[0],point=>this.port.canStand(point));
-    if(this.clock>=this.nextPathAt&&(moved||blocked||stalled||!this.path.length)){
-      this.nextPathAt=this.clock+REPATH_INTERVAL_MS;this.destination={...destination};this.destinationRange=range;
-      if(stalled)this.lastProgressAt=this.clock;
-      const canStand=(point:Point)=>this.port.canStand(point);
-      const isGoal=target
-        ?(point:Point)=>canStand(point)&&attackDistance(point,actor.bounds,target.position,target.bounds)<=range
-        :(point:Point)=>Math.hypot(point.x-destination.x,point.y-destination.y)<=Math.max(PATH_GRID_SIZE,range)&&canStand(point);
-      // 松的距离下界覆盖双方实体范围和量化余量，保证 A* 不高估剩余路程。
-      const radius=target?Math.hypot(actor.bounds.width+target.bounds.width,actor.bounds.height+target.bounds.height)+range*8:PATH_GRID_SIZE;
-      this.path=findPath(actor.position,{bounds:this.port.navigationBounds(),canStand,isGoal,
-        heuristic:point=>Math.max(0,Math.hypot(point.x-destination.x,point.y-destination.y)-radius)})??[];
-      if(!target&&!range&&(this.path.length||isGoal(actor.position)))this.path.push({...destination});
-    }
+    // 目标换了（或从追击切回回家）就丢弃旧搜索，避免把上一条路线接回来。
+    if(this.search&&this.search.targetId!==target?.id)this.search=undefined;
+    if(this.search)this.advanceSearch(actor);
+    else if(this.clock>=this.nextPathAt&&(moved||blocked||stalled||!this.path.length))this.beginSearch(actor,destination,target,range,stalled);
+    // 跨帧搜索还没出结果时先朝目标直走，别让敌人站着等路径算完。
+    if(follow&&this.search&&!this.path.length){this.port.moveToward(destination);return true;}
     if(!follow)return this.path.length>0;
     if(this.nextWaypoint()){this.port.followPath(this.nextWaypoint);return true;}
     this.port.stop();return this.path.length>0;
+  }
+  private searchQuery(actor:Combatant,destination:Point,target:Combatant|undefined,range:number){
+    const snapshot=this.port.navigationSnapshot?.();
+    const canStand=snapshot?(point:Point)=>snapshot.canStand(point):(point:Point)=>this.port.canStand(point);
+    const isGoal=target
+      ?(point:Point)=>canStand(point)&&attackDistance(point,actor.bounds,target.position,target.bounds)<=range
+      :(point:Point)=>Math.hypot(point.x-destination.x,point.y-destination.y)<=Math.max(PATH_GRID_SIZE,range)&&canStand(point);
+    // 松的距离下界覆盖双方实体范围和量化余量，保证 A* 不高估剩余路程。
+    const radius=target?Math.hypot(actor.bounds.width+target.bounds.width,actor.bounds.height+target.bounds.height)+range*8:PATH_GRID_SIZE;
+    return {bounds:snapshot?.bounds??this.port.navigationBounds(),canStand,isGoal,
+      heuristic:(point:Point)=>Math.max(0,Math.hypot(point.x-destination.x,point.y-destination.y)-radius)};
+  }
+  private beginSearch(actor:Combatant,destination:Point,target:Combatant|undefined,range:number,stalled:boolean):void{
+    this.nextPathAt=this.clock+REPATH_INTERVAL_MS;this.destination={...destination};this.destinationRange=range;
+    if(stalled)this.lastProgressAt=this.clock;
+    const query=this.searchQuery(actor,destination,target,range);
+    this.search={task:createPathSearch(actor.position,query),target,targetId:target?.id,destination:{...destination},range,isGoal:query.isGoal};
+    this.advanceSearch(actor);
+  }
+  private advanceSearch(actor:Combatant):void{
+    const search=this.search;if(!search)return;
+    const requested=SEARCH_SLICE;
+    const granted=this.port.pathBudget?.take(requested)??requested;
+    if(granted<=0)return;
+    const result=search.task.step(granted);
+    if(result.status==='pending')return;
+    this.search=undefined;
+    if(result.status==='unreachable'){this.path=[];this.nextPathAt=this.clock+FAILED_PATH_MS;return;}
+    // 搜索期间敌人可能已朝目标直走过一段；从离当前位置最近的点继续，别掉头走回起点。
+    let start=0,nearest=Infinity;
+    for(let index=0;index<result.path.length;index++){
+      const point=result.path[index],distance=Math.hypot(point.x-actor.position.x,point.y-actor.position.y);
+      if(distance>=nearest)break;
+      start=index;nearest=distance;
+    }
+    this.path=result.path.slice(start);
+    if(!search.target&&!search.range&&(this.path.length||search.isGoal(actor.position)))this.path.push({...search.destination});
+  }
+  /** 施法前的即时可达性：同步算完但带上限，不参与跨帧状态。 */
+  private reachableNow(actor:Combatant,destination:Point,target:Combatant,range:number):boolean{
+    const result=createPathSearch(actor.position,this.searchQuery(actor,destination,target,range)).step(HOLD_SEARCH_CAP);
+    return result.status==='found'&&result.path.length>0;
   }
   private readonly nextWaypoint=():Point|undefined=>{
     const actor=this.port.actor(this.id);if(!actor||this.disposed)return;
@@ -380,10 +429,13 @@ export class EnemyController {
     else destination.y+=(facing==='north'?-1:1)*distance;
     const canStand=(point:Point)=>this.port.canStand(point);
     if(!canStand(destination))return;
-    const path=findPath(actor.position,{bounds:this.port.navigationBounds(),canStand,
+    const granted=this.port.pathBudget?.take(WANDER_SEARCH_CAP)??WANDER_SEARCH_CAP;
+    if(granted<=0)return;
+    const result=createPathSearch(actor.position,{bounds:this.port.navigationBounds(),canStand,
       isGoal:point=>Math.hypot(point.x-destination.x,point.y-destination.y)<=PATH_GRID_SIZE&&canTraverse(point,destination,canStand),
-      heuristic:point=>Math.max(0,Math.hypot(point.x-destination.x,point.y-destination.y)-PATH_GRID_SIZE)});
-    if(!path)return;
+      heuristic:point=>Math.max(0,Math.hypot(point.x-destination.x,point.y-destination.y)-PATH_GRID_SIZE)}).step(granted);
+    if(result.status!=='found')return;
+    const path=result.path;
     if(!path.length||Math.hypot(path.at(-1)!.x-destination.x,path.at(-1)!.y-destination.y)>ARRIVAL_DISTANCE_PX)path.push(destination);
     this.path=path;this.destination=undefined;this.wanderDestination=destination;this.state='wandering';
     this.progressPosition={...actor.position};this.lastProgressAt=this.clock;

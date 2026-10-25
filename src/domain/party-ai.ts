@@ -3,7 +3,7 @@ import { attackDistance, targetDistance } from './basic-attack.ts';
 import { CombatController, canTargetCombatant, type AttackContact, type Combatant, type CombatPort } from './combat.ts';
 import { combatStateCapabilities } from './combat-state.ts';
 import { needsTarget } from './skill-action.ts';
-import { canTraverse, findPath, PATH_GRID_SIZE } from './pathfinding.ts';
+import { canTraverse, createPathSearch, PATH_GRID_SIZE } from './pathfinding.ts';
 import type { GameRectangle, Point } from './navigation.ts';
 
 export type PartySkillKind = 'chance' | 'combat-chance' | 'heal' | 'ally-combat' | 'emergency-heal';
@@ -18,6 +18,8 @@ export interface PartyPort extends CombatPort {
   /** 该成员当前承受的连续受击次数，供延迟档判定。 */
   damageCount(): number;
   navigationBounds(): GameRectangle;
+  /** 每渲染帧共享的寻路扩展预算；缺省时按单次上限同步搜索（测试与无场景调用）。 */
+  pathBudget?:{take(limit:number):number};
   followPath(next: () => Point | undefined): void;
   skills(): readonly EnemyPlayableSkill[];
   skillKind(id:string): PartySkillKind | undefined;
@@ -39,6 +41,14 @@ interface PartyControllerState {
 /** 跟随距离按双方碰撞矩形之间的间隔计算，每个距离单位为八个地图像素。
  *  同队单位之间不碰撞，这个间隔负责让他们不贴脸、也不和玩家挤在同一点上。 */
 const PARTY_FOLLOW_DISTANCE_UNITS = 4;
+/** 队长走出 3 格才重算；贴脸 8px 会让跟随者每逻辑帧重开搜索。 */
+const PARTY_REPATH_DISTANCE_PX = PATH_GRID_SIZE * 3;
+/** 两次重算之间的最短间隔。 */
+const PARTY_REPATH_INTERVAL_MS = 180;
+/** 跟随是一次性同步搜索的上限；预算不足时下一帧再试。 */
+const PARTY_SEARCH_CAP = 384;
+/** 不可达后的重试间隔。 */
+const PARTY_FAILED_PATH_MS = 600;
 
 /** 原版自动反击档位：0 未启用、1 延迟、2 启用。 */
 export type CounterattackMode = 0 | 1 | 2;
@@ -193,15 +203,20 @@ export class PartyController {
       this.path=[];this.destination=undefined;this.nextPathAt=0;
       this.destinationTarget=leader.id;this.destinationRange=range;
     }
-    const moved=!this.destination||targetDistance(this.destination,leader.position)>=PATH_GRID_SIZE;
+    const moved=!this.destination||targetDistance(this.destination,leader.position)>=PARTY_REPATH_DISTANCE_PX;
     if(this.clock>=this.nextPathAt&&(moved||!this.path.length||!this.nextWaypoint())){
-      this.nextPathAt=this.clock+LOGIC_FRAME_MS;this.destination={...leader.position};
-      const canStand=(point:Point)=>this.port.canStand(point);
-      const radius=Math.hypot(actor.bounds.width+leader.bounds.width,actor.bounds.height+leader.bounds.height)+range*8;
-      this.path=findPath(actor.position,{bounds:this.port.navigationBounds(),canStand,
-        isGoal:point=>canStand(point)&&attackDistance(point,actor.bounds,leader.position,leader.bounds)<=range,
-        heuristic:point=>Math.max(0,Math.hypot(point.x-leader.position.x,point.y-leader.position.y)-radius)},1024)??[];
-      if(!this.path.length)this.nextPathAt=this.clock+180;
+      const granted=this.port.pathBudget?.take(PARTY_SEARCH_CAP)??PARTY_SEARCH_CAP;
+      if(granted>0){
+        this.nextPathAt=this.clock+PARTY_REPATH_INTERVAL_MS;this.destination={...leader.position};
+        const canStand=(point:Point)=>this.port.canStand(point);
+        const radius=Math.hypot(actor.bounds.width+leader.bounds.width,actor.bounds.height+leader.bounds.height)+range*8;
+        const result=createPathSearch(actor.position,{bounds:this.port.navigationBounds(),canStand,
+          isGoal:point=>canStand(point)&&attackDistance(point,actor.bounds,leader.position,leader.bounds)<=range,
+          heuristic:point=>Math.max(0,Math.hypot(point.x-leader.position.x,point.y-leader.position.y)-radius)}).step(granted);
+        if(result.status==='found')this.path=result.path;
+        else if(result.status==='unreachable'){this.path=[];this.nextPathAt=this.clock+PARTY_FAILED_PATH_MS;}
+        else this.nextPathAt=this.clock+LOGIC_FRAME_MS;
+      }else this.nextPathAt=this.clock+LOGIC_FRAME_MS;
     }
     if(this.nextWaypoint())this.port.followPath(this.nextWaypoint);else this.port.stop();
   }
