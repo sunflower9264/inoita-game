@@ -112,6 +112,8 @@ export class StoryUI {
   private drag?:{entry:string;pointer:number;x:number;y:number;timer:Phaser.Time.TimerEvent;active:boolean;ghost?:Phaser.GameObjects.Image};private suppressClick=false;
   private drops:{object:Phaser.GameObjects.Container|Phaser.GameObjects.Image;entry?:string;slot?:EquipmentSlot;view?:InventoryView;cell?:number;craft?:boolean}[]=[];
   constructor(app:StoryUIContext){this.app=app;}
+  /** 菜单图标后台补载完成后重画，已经打开的页面不会一直停在缺图占位。 */
+  refreshMenuAssets():void { if(this.open)this.render(); }
   /**
    * 面板内容按原版基准排布：原版是 960×640、960 宽的内容区水平居中
    * （`CalcResolutionWidth = (虚拟宽-960)/2`，见 `work/findings/05_render_resolution.md`）。
@@ -186,12 +188,21 @@ export class StoryUI {
     this.craftingPanel=new CraftingPanel(new EquipmentCrafting(this.session,this.app.crafting),this.app.menuPanels,()=>this.render(),()=>this.app.audio?.ui('craft'),this.app.shops.grades);
     this.show('crafting');
   }
-  async openShop(shopId:string,mapId:string):Promise<void>{
+  /**
+   * 装备表已在内容里时同步打开，保持原有点击链路；生产包第一次开商店才返回 Promise，
+   * 调用方可以忽略，也可以等它完成后再读 `shopPanel`。
+   */
+  openShop(shopId:string,mapId:string):void|Promise<void>{
     if(!this.session||!this.app.shops.shops[shopId]||this.app.ui.mode!=='game')return;
     if(this.requestAllocationExit(()=>{void this.openShop(shopId,mapId);}))return;
-    await this.ensureShopEquipment();
-    if(!this.session||this.app.ui.mode!=='game')return;
-    this.close();const store=new Storefront(this.app.shops,this.session.bag.catalog,this.app.characterStats,this.session,shopId,mapId);this.shopPanel=new ShopPanel(store,this.session,this.app.shops,this.app.menuPanels.assets,()=>this.render(),()=>this.member(),this.classNames());this.show('shop');
+    if(Object.keys(this.app.shops.equipment).length){this.showShop(shopId,mapId);return;}
+    return this.ensureShopEquipment().then(()=>{
+      if(!this.session||this.app.ui.mode!=='game')return;
+      this.showShop(shopId,mapId);
+    });
+  }
+  private showShop(shopId:string,mapId:string):void{
+    this.close();const store=new Storefront(this.app.shops,this.session!.bag.catalog,this.app.characterStats,this.session!,shopId,mapId);this.shopPanel=new ShopPanel(store,this.session!,this.app.shops,this.app.menuPanels.assets,()=>this.render(),()=>this.member(),this.classNames());this.show('shop');
   }
   /** 生产内容包把 shops.equipment 拆到独立文件；第一次开商店时合并。 */
   private async ensureShopEquipment():Promise<void>{
@@ -214,9 +225,11 @@ export class StoryUI {
     this.show('bag');this.beginOperation(entry,kind);
   }
   /** 调试入口：打开商店并停在该店的某个交易步骤；`shopId` 必须是 shops.json 里存在的键。 */
-  async debugShop(shopId:string,step:'browse'|'description'|'quantity'|'confirm'|'notice'='browse',kind:'buy'|'sell'='buy',mapId=''):Promise<void>{
-    await this.openShop(shopId,mapId);
-    if(step!=='browse')this.shopPanel?.debugTrade(step,kind);
+  debugShop(shopId:string,step:'browse'|'description'|'quantity'|'confirm'|'notice'='browse',kind:'buy'|'sell'='buy',mapId=''):void|Promise<void>{
+    const opened=this.openShop(shopId,mapId);
+    const apply=()=>{if(step!=='browse')this.shopPanel?.debugTrade(step,kind);};
+    if(opened)return opened.then(apply);
+    apply();
   }
   close():void{
     if(this.open&&this.requestAllocationExit(()=>this.close()))return;
