@@ -189,6 +189,8 @@ export class WorldCombat {
   private presenter?:CombatPresenter;
   private readonly combatEffects:CombatEffects;
   private enemiesRunning=false;
+  /** 上一次应用的暂停状态；同值时跳过逐角色动画/特效暂停。 */
+  private pausedValue?:boolean;
   /** 敌人、队伍与召唤共享的寻路预算，在每个渲染帧开头重置。 */
   private readonly pathBudget=new PathBudget(PATH_BUDGET_PER_RENDER_FRAME);
   private partyActionsSuspended=false;
@@ -1908,6 +1910,8 @@ captureStoryActors():SceneActorState[] {
   }
   private async syncAllies():Promise<void>{
     const party=this.app.session.party;if(!party||this.closed)return;
+    // 新加入的队友需要重新应用当前暂停状态。
+    this.pausedValue=undefined;
     this.partySignature=party.activeIds.join('|');
     const active=new Set(party.activeIds.slice(1));
     for(const ally of [...this.allies])if(!active.has(ally.id)){
@@ -2082,6 +2086,8 @@ captureStoryActors():SceneActorState[] {
   }
   private spawnEnemy(placed:PlacedEnemy):void{
     if(this.closed||this.arena.some(enemy=>enemy.key===placed.key))return;
+    // 新刷出的敌人/召唤物需要重新应用当前暂停状态。
+    this.pausedValue=undefined;
     const definition=this.app.battleCatalog.enemies.find(enemy=>enemy.id===placed.enemyId);
     if(!definition?.actor.collision)throw new Error(`敌人外观缺少碰撞范围：${placed.enemyId}`);
     this.arena.push(this.buildEnemy(placed,definition));refreshCombatActors(this.arena);
@@ -2215,6 +2221,8 @@ captureStoryActors():SceneActorState[] {
   get paused():boolean{return this.runtime.paused;}
   settleForSave():void{this.pendingDefeats.flush();for(const finish of [...(this.partyDefeatWork?.values()??[])])finish();}
   setPaused(paused:boolean):void {
+    if(this.pausedValue===paused)return;
+    this.pausedValue=paused;
     this.runtime.setPaused('control',paused);
     for(const id of [...this.activeParty,...this.arena.map(enemy=>enemy.key)]){
       const visual=this.visualOf(id);if(!visual)continue;
