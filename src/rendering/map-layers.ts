@@ -2,6 +2,7 @@ import type Phaser from 'phaser';
 import type { MapFeature, WorldMap } from '../domain/content.ts';
 import type { PendingAsset } from './scene-assets.ts';
 import { blendModeOf } from './blend-modes.ts';
+import { propAtlasAssets, propFrameSource, propRef } from './prop-atlas.ts';
 
 let serial = 0;
 
@@ -19,11 +20,9 @@ export function mapSurfaceAssets(
     { kind: 'image', key: map.id + '-ground', file: map.ground },
     { kind: 'image', key: map.id + '-canopy', file: map.canopy }
   ];
-  for (const feature of map.features) {
-    const prop = props.find(entry => entry.key === feature.texture);
-    if (!prop) throw new Error('场景物件缺少资源');
-    assets.push({ kind: 'image', key: prop.key, file: prop.file });
-  }
+  const propKeys = new Set(map.features.map(feature => feature.texture));
+  // 图集页每页只出现一次；未映射的 prop 仍按单图加载。
+  assets.push(...propAtlasAssets(propKeys, props));
   return assets;
 }
 
@@ -39,24 +38,24 @@ export function dodgePixel(background: number, foreground: number): number {
 export function composeColorDodge(
   scene: Phaser.Scene, groundKey: string, feature: MapFeature, textureKey: string
 ): string {
-  const width = feature.width, height = (scene.textures.get(feature.texture).getSourceImage() as HTMLImageElement).height;
+  const prop = propFrameSource(scene, feature.texture);
+  const width = feature.width, height = prop.height;
   const left = feature.x - (feature.flip ? width - feature.offsetX : feature.offsetX);
   const top = feature.y - feature.offsetY;
   const texture = scene.textures.createCanvas(textureKey, width, height);
   if (!texture) throw new Error('无法创建颜色减淡贴图：' + textureKey);
   try {
     const ground = scene.textures.get(groundKey).getSourceImage() as HTMLImageElement;
-    const prop = scene.textures.get(feature.texture).getSourceImage() as HTMLImageElement;
     const context = texture.context;
     context.drawImage(ground, left, top, width, height, 0, 0, width, height);
     const backdrop = context.getImageData(0, 0, width, height);
-    // 物件那层单独画一次，翻转按最终朝向镜像。
+    // 物件那层单独画一次，翻转按最终朝向镜像；图集页只取 frame 的矩形。
     const scratch = document.createElement('canvas');
     scratch.width = width; scratch.height = height;
     const scratchContext = scratch.getContext('2d');
     if (!scratchContext) throw new Error('无法创建颜色减淡画布');
     if (feature.flip) { scratchContext.translate(width, 0); scratchContext.scale(-1, 1); }
-    scratchContext.drawImage(prop, 0, 0);
+    scratchContext.drawImage(prop.image, prop.x, prop.y, prop.width, prop.height, 0, 0, prop.width, prop.height);
     const source = scratchContext.getImageData(0, 0, width, height).data;
     const pixels = backdrop.data;
     for (let index = 0; index < pixels.length; index += 4) {
@@ -88,14 +87,16 @@ export function drawMapLayers(
     images.push(scene.add.image(0, 0, map.id + '-ground').setOrigin(0).setDepth(-10000));
     for (const feature of map.features) {
       const dodged = feature.blend === 'color-dodge';
-      let key = feature.texture;
+      const prop = propRef(feature.texture);
+      let key = prop.texture, frame = prop.frame;
       if (dodged) {
         key = composeColorDodge(scene, map.id + '-ground', feature, `${options.keyPrefix}-${++serial}`);
+        frame = undefined;
         composites.push(key);
       }
       const left = feature.x - (feature.flip ? feature.width - feature.offsetX : feature.offsetX);
       const top = feature.y - feature.offsetY;
-      const image = scene.add.image(left, top, key).setOrigin(0).setDepth(feature.y);
+      const image = scene.add.image(left, top, key, frame).setOrigin(0).setDepth(feature.y);
       // 合成好的贴图已经按最终朝向画好，不再翻转。
       if (!dodged) image.setFlipX(feature.flip).setBlendMode(blendModeOf(feature.blend));
       images.push(image);

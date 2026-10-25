@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { registerHooks } from 'node:module';
 import type Phaser from 'phaser';
 import type { WorldMap } from '../src/domain/content.ts';
+import { PROP_ATLAS_BY_KEY } from '../src/generated/prop-atlas.ts';
 
 const hook = registerHooks({ resolve(specifier, context, next) {
   return specifier === 'phaser'
@@ -13,29 +15,42 @@ const { drawMapLayers, mapSurfaceAssets, dodgePixel } = await import('../src/ren
 hook.deregister();
 
 interface FakeImage {
-  key: string; x: number; y: number; depth: number; flipped: boolean; blend: number | null;
-  scene?: object; destroyed: boolean;
-  setOrigin(): FakeImage; setDepth(value: number): FakeImage; setFlipX(value: boolean): FakeImage;
+  key: string; frame?: string; x: number; y: number; depth: number; flipped: boolean; blend: number | null;
+  origin: { x: number; y: number }; scene?: object; destroyed: boolean;
+  setOrigin(x?: number, y?: number): FakeImage; setDepth(value: number): FakeImage; setFlipX(value: boolean): FakeImage;
   setBlendMode(value: number): FakeImage; destroy(): void;
 }
 
-function fixture(failOnKey?: string) {
-  const images: FakeImage[] = [], removed: string[] = [];
-  const textures = new Map<string, { height: number }>([
-    ['map-ground', { height: 4 }], ['map-canopy', { height: 4 }], ['prop-a', { height: 4 }], ['prop-b', { height: 4 }]
+function fixture(failOnKey?: string, atlas?: { key: string; frame: string; width: number; height: number }) {
+  const images: FakeImage[] = [], removed: string[] = [], drawImages: unknown[][] = [];
+  const textures = new Map<string, { width: number; height: number }>([
+    ['map-ground', { width: 4, height: 4 }], ['map-canopy', { width: 4, height: 4 }],
+    ['prop-a', { width: 4, height: 4 }], ['prop-b', { width: 4, height: 4 }]
   ]);
+  if (atlas) textures.set(atlas.key, { width: atlas.width, height: atlas.height });
   const scene = {
     textures: {
       exists: (key: string) => textures.has(key),
-      get: (key: string) => ({ getSourceImage: () => textures.get(key) }),
+      get: (key: string) => {
+        const source = textures.get(key)!;
+        return {
+          getSourceImage: () => source,
+          get: (frame = '__BASE') => ({
+            source: { image: { ...source, frame } },
+            cutX: atlas && key === atlas.key ? 7 : 0,
+            cutY: atlas && key === atlas.key ? 9 : 0,
+            cutWidth: source.width ?? 1, cutHeight: source.height
+          })
+        };
+      },
       remove: (key: string) => { removed.push(key); textures.delete(key); },
       createCanvas: (key: string, width: number, height: number) => {
-        textures.set(key, { height });
+        textures.set(key, { width, height });
         const data = new Uint8ClampedArray(width * height * 4).fill(100);
         return {
           key,
           context: {
-            drawImage() {},
+            drawImage(...args: unknown[]) { drawImages.push(args); },
             getImageData: () => ({ data: new Uint8ClampedArray(data) }),
             putImageData() {}
           },
@@ -44,11 +59,12 @@ function fixture(failOnKey?: string) {
       }
     },
     add: {
-      image: (x: number, y: number, key: string) => {
+      image: (x: number, y: number, key: string, frame?: string) => {
         if (key === failOnKey) throw new Error('绘制失败：' + key);
         const image: FakeImage = {
-          key, x, y, depth: 0, flipped: false, blend: null, scene: {}, destroyed: false,
-          setOrigin() { return image; }, setDepth(value) { image.depth = value; return image; },
+          key, frame, x, y, depth: 0, flipped: false, blend: null, origin: { x: 0, y: 0 }, scene: {}, destroyed: false,
+          setOrigin(originX = 0, originY = 0) { image.origin = { x: originX, y: originY }; return image; },
+          setDepth(value) { image.depth = value; return image; },
           setFlipX(value) { image.flipped = value; return image; },
           setBlendMode(value) { image.blend = value; return image; },
           destroy() { image.destroyed = true; image.scene = undefined; }
@@ -57,7 +73,7 @@ function fixture(failOnKey?: string) {
       }
     }
   };
-  return { scene: scene as unknown as Phaser.Scene, images, removed };
+  return { scene: scene as unknown as Phaser.Scene, images, removed, drawImages };
 }
 
 const map = (features: WorldMap['features']) => ({ id: 'map', ground: 'ground.png', canopy: 'canopy.png', features } as unknown as WorldMap);
@@ -121,6 +137,71 @@ test('color dodge creates its own texture and does not flip or blend the image a
   } finally {
     (globalThis as { document?: unknown }).document = previous;
   }
+});
+
+test('map surface assets use one atlas page and drawing keeps the frame', () => {
+  const [propKey, entry] = Object.entries(PROP_ATLAS_BY_KEY)[0]!;
+  const run = fixture(undefined, { key: entry.key, frame: entry.frame, width: 8, height: 8 });
+  const assets = mapSurfaceAssets(map([{ texture: propKey } as WorldMap['features'][number]]), [
+    { key: propKey, file: 'unused.png' }
+  ]);
+  assert.deepEqual(assets.map(asset => asset.key), ['map-ground', 'map-canopy', entry.key]);
+  assert.equal(assets[2]!.kind, 'atlas');
+  const layers = drawMapLayers(run.scene, map([
+    { texture: propKey, x: 10, y: 20, offsetX: 2, offsetY: 3, width: 8, flip: true, blend: 'multiply' }
+  ]), { keyPrefix: 'test-atlas' });
+  assert.deepEqual([run.images[1]!.key, run.images[1]!.frame], [entry.key, entry.frame]);
+  assert.deepEqual(run.images[1]!.origin, { x: 0, y: 0 });
+  assert.deepEqual([run.images[1]!.x, run.images[1]!.y, run.images[1]!.flipped, run.images[1]!.blend], [4, 17, true, 2]);
+  layers.destroy();
+  assert.deepEqual(run.removed, [], 'destroy 不能删除租约管理的图集页');
+});
+
+test('color dodge copies the atlas frame rect instead of the whole page', () => {
+  const [propKey, entry] = Object.entries(PROP_ATLAS_BY_KEY)[0]!;
+  const run = fixture(undefined, { key: entry.key, frame: entry.frame, width: 8, height: 8 });
+  const previous = (globalThis as { document?: unknown }).document;
+  (globalThis as { document?: unknown }).document = {
+    createElement: () => {
+      const canvas = {
+        width: 0, height: 0,
+        getContext: () => ({
+          translate() {}, scale() {}, drawImage(...args: unknown[]) { run.drawImages.push(args); },
+          getImageData: () => ({ data: new Uint8ClampedArray(canvas.width * canvas.height * 4).fill(100) })
+        })
+      };
+      return canvas;
+    }
+  };
+  try {
+    drawMapLayers(run.scene, map([
+      { texture: propKey, x: 10, y: 20, offsetX: 0, offsetY: 0, width: 8, flip: false, blend: 'color-dodge' }
+    ]), { keyPrefix: 'test-dodge-atlas' });
+    const propDraw = run.drawImages.find(args => args.length === 9 && (args[0] as { frame?: string })?.frame === entry.frame)!;
+    assert.ok(propDraw, 'must draw a frame rect');
+    assert.deepEqual(propDraw.slice(1), [7, 9, 8, 8, 0, 0, 8, 8]);
+  } finally {
+    (globalThis as { document?: unknown }).document = previous;
+  }
+});
+
+test('real maps load one atlas page only when they have features', () => {
+  const world = JSON.parse(fs.readFileSync(new URL('../public/content/world.json', import.meta.url), 'utf8'));
+  let empty = 0, withFeatures = 0;
+  for (const reference of world.maps) {
+    const document = JSON.parse(fs.readFileSync(new URL(`../public/${reference.file}`, import.meta.url), 'utf8'));
+    const assets = mapSurfaceAssets(document, world.props);
+    if (!document.features.length) {
+      empty++;
+      assert.deepEqual(assets.map(asset => asset.key), [`${document.id}-ground`, `${document.id}-canopy`]);
+    } else {
+      withFeatures++;
+      assert.deepEqual(assets.map(asset => asset.key),
+        [`${document.id}-ground`, `${document.id}-canopy`, 'props-atlas:0']);
+    }
+  }
+  assert.equal(empty, 22);
+  assert.equal(withFeatures, 394);
 });
 
 test('a failed layer construction rolls back images and composite textures', () => {

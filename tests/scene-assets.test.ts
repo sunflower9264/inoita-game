@@ -10,19 +10,27 @@ const diagnostic = (pattern: RegExp) => (error: unknown) => error instanceof Err
 
 function setup() {
   const events = new EventEmitter();
-  const frames = new Map<string, Set<number>>();
+  const frames = new Map<string, Set<string | number>>();
   const removed: string[] = [];
-  const queued: string[] = [];
+  const queued: PendingAsset[] = [];
   let starts = 0;
   let outcome: 'success' | 'decode-error' | 'network-error' | 'missing-frame' | 'pending' = 'success';
   const load = Object.assign(new EventEmitter(), {
-    spritesheet: (key: string) => queued.push(key), image: (key: string) => queued.push(key),
+    spritesheet: (key: string, file: string, config: Phaser.Types.Loader.FileTypes.ImageFrameConfig) =>
+      queued.push({ kind: 'spritesheet', key, file, config }),
+    image: (key: string, file: string) => queued.push({ kind: 'image', key, file }),
+    atlas: (key: string, file: string, atlas: string) => queued.push({ kind: 'atlas', key, file, atlas }),
     start: () => { starts++; queueMicrotask(() => {
       if (outcome === 'pending') return;
-      for (const key of queued.splice(0)) {
-        if (outcome === 'network-error') load.emit('loaderror', { key });
-        if (outcome === 'success') frames.set(key, new Set([0, 1, 2]));
-        if (outcome === 'missing-frame') frames.set(key, new Set([0, 2]));
+      for (const asset of queued.splice(0)) {
+        if (outcome === 'network-error') load.emit('loaderror', { key: asset.key });
+        if (asset.kind === 'atlas') {
+          if (outcome === 'success') frames.set(asset.key, new Set(['frame-a', 'frame-b']));
+          if (outcome === 'missing-frame') frames.set(asset.key, new Set(['frame-a']));
+        } else {
+          if (outcome === 'success') frames.set(asset.key, new Set([0, 1, 2]));
+          if (outcome === 'missing-frame') frames.set(asset.key, new Set([0, 2]));
+        }
       }
       // Phaser's decode failure reaches complete without loaderror or a failed count.
       load.emit('complete', load, 0, 0);
@@ -32,7 +40,10 @@ function setup() {
     events, load,
     textures: {
       exists: (key: string) => frames.has(key),
-      get: (key: string) => ({ has: (frame: string) => frames.get(key)!.has(Number(frame)) }),
+      get: (key: string) => ({ has: (frame: string) => {
+        const values = frames.get(key)!;
+        return values.has(frame) || values.has(Number(frame));
+      } }),
       remove: (key: string) => { removed.push(key); frames.delete(key); }
     },
     anims: { exists: () => false, remove: () => {} }
@@ -136,6 +147,20 @@ test('network failure and shutdown clean up loading listeners and ownership', as
   await assert.rejects(pending, { name: 'AbortError' });
   assert.deepEqual(cancelled.load.eventNames(), []);
   assert.equal(cancelled.events.listenerCount('shutdown'), 0);
+});
+
+test('atlas assets load with string frames and verify their sentinel frame', async () => {
+  const atlas: PendingAsset = { kind: 'atlas', key: 'props-atlas:0', file: 'assets/props/atlas/props-0.png',
+    atlas: 'assets/props/atlas/props-0.json', frame: 'frame-a' };
+  const run = setup();
+  assert.equal(missingSceneAssets(run.scene, [atlas]).length, 1);
+  run.frames.set(atlas.key, new Set(['frame-b']));
+  assert.equal(missingSceneAssets(run.scene, [atlas]).length, 1, '哨兵帧缺失必须重新加载');
+  const lease = await loadSceneAssets(run.scene, [atlas], () => {});
+  assert.equal(missingSceneAssets(run.scene, [atlas]).length, 0);
+  assert.equal(run.queued.length, 0);
+  lease.release();
+  assert.deepEqual(run.removed, [atlas.key, atlas.key], '哨兵帧缺失时先删旧纹理，释放时再删新纹理');
 });
 
 test('retaining assets verifies textures and frames before taking a lease', () => {
