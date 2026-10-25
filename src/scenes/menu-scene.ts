@@ -30,6 +30,8 @@ export class MenuScene extends Phaser.Scene {
   private deleteConfirm?:SaveSlotRef;
   private renameRef?:SaveSlotRef;
   private prompt?:TextPrompt;
+  /** 环境设置列表的滚动位置：开关后整页重画，位置要接着上次的来。 */
+  private settingsScroll=0;
   constructor(app:MenuContext){super(SCENE_KEYS.menu);this.app=app;}
   create(options:{page?:'home'|'slots'}={}):void {
     this.page='home';this.app.ui.setMode('menu');this.app.ui.loading('正在准备主菜单…');
@@ -80,7 +82,7 @@ export class MenuScene extends Phaser.Scene {
     const view=this.surface!;view.clear();this.modal?.clear();
     // 删除确认或改名输入开着时，存档页整块不接受输入。
     const guard=()=>this.app.ui.ready&&!this.app.ui.suspended&&this.sys.isActive()&&this.deleteConfirm===undefined&&this.renameRef===undefined;view.enabled=guard;
-    const button=(label:string,x:number,y:number,w:number,h:number,action:()=>void,fontSize=36)=>view.button(label,x,y,w,h,action,{fontSize,guard});
+    const button=(label:string,x:number,y:number,w:number,h:number,action:()=>void,fontSize=36,parent?:Phaser.GameObjects.Container)=>view.button(label,x,y,w,h,action,{fontSize,guard,parent});
     if(this.page==='home'){
       view.image(art('logo'),291,52,617,353);view.image(art('subtitle-left'),305,385,undefined,122);view.image(art('subtitle-right'),601,385,undefined,122);
       button('开始游戏',416,457,369,124,()=>this.openSlots());
@@ -110,32 +112,36 @@ export class MenuScene extends Phaser.Scene {
         scroll.setHeight((MANUAL_SAVE_SLOT_COUNT-1)*SAVE_BOARD.rowStep+SAVE_BOARD.frameHeight);
       }else{
         view.text('环境设置',600,20,760,49).setOrigin(.5,0);
-        view.rect(200,126,800,425,0x000000,.7);view.image(art('slot'),200,126,800,425);
-        for(const [index,[channel,label]]of ([['music','背景音乐'],['effects','音效']]as const).entries()){
-          view.text(label,278,190+index*100,0,34);
+        // 边框固定在原版位置；选项排进边框内侧的滚动区，行数增加时只滚动，不会压到边线。
+        const panel={x:200,y:126,width:800,height:425},inset=24;
+        view.rect(panel.x,panel.y,panel.width,panel.height,0x000000,.7);
+        view.image(art('slot'),panel.x,panel.y,panel.width,panel.height);
+        const list=view.scroll(panel.x+20,panel.y+inset,panel.width-40,panel.height-inset*2),content=list.content;
+        // 每一项只有文案、当前值和动作；开关后整页重画，滚动位置由 settingsScroll 接续。
+        const rows:{label:string;value:string;action:()=>void;disabled?:boolean}[]=[];
+        for(const [channel,label]of ([['music','背景音乐'],['effects','音效']]as const)){
           const enabled=this.app.audio?.settings[channel]??true;
-          button(enabled?'开':'关',510,178+index*100,190,67,()=>{this.app.audio?.setEnabled(channel,!enabled);this.render();},34).setData('label',`${label}：${enabled?'开':'关'}`);
+          rows.push({label,value:enabled?'开':'关',action:()=>{this.app.audio?.setEnabled(channel,!enabled);this.render();}});
         }
         // 全屏是浏览器能力；不支持的环境显示为不可用，APK 壳已经隐藏系统栏，显示为已全屏。
-        let rowTop=378;
-        view.text('全屏',278,rowTop+12,0,34);
         const fullscreen=fullscreenStatus();
         if(fullscreen==='available'){
           const active=fullscreenActive();
-          button(active?'开':'关',510,rowTop,190,67,()=>setFullscreen(!active),34)
-            .setData('label','全屏：'+(active?'开':'关'));
+          rows.push({label:'全屏',value:active?'开':'关',action:()=>setFullscreen(!active)});
         }else{
-          const label=fullscreen==='packaged'?'已全屏':'不支持';
-          view.button(label,510,rowTop,190,67,()=>{},{fontSize:30,disabled:true})
-            .setData('label','全屏：'+label);
+          rows.push({label:'全屏',value:fullscreen==='packaged'?'已全屏':'不支持',action:()=>{},disabled:true});
         }
-        rowTop+=100;
-        view.text('移动方式',278,rowTop+12,0,34);
         const dpad=controlSettings.moveStyle==='dpad';
-        button(dpad?'十字按键':'虚拟摇杆',510,rowTop,190,67,()=>{
-          controlSettings.setMoveStyle(dpad?'stick':'dpad');
-          this.render();
-        },30).setData('label','移动方式：' + (dpad?'十字按键':'虚拟摇杆'));
+        rows.push({label:'移动方式',value:dpad?'十字按键':'虚拟摇杆',action:()=>{controlSettings.setMoveStyle(dpad?'stick':'dpad');this.render();}});
+        rows.forEach((row,index)=>{
+          const top=28+index*100;
+          view.text(row.label,58,top+12,0,34,undefined,content);
+          button(row.value,290,top,190,67,row.action,row.value.length>2?30:34,content)
+            .setData('label',`${row.label}：${row.value}`);
+        });
+        list.setHeight(28+(rows.length-1)*100+67+24);
+        list.onScroll=()=>{this.settingsScroll=list.scrollTop;};
+        list.scrollTop=this.settingsScroll;
       }
     }
     if(this.deleteConfirm!==undefined){

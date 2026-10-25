@@ -9,12 +9,19 @@ const {MenuScene}=await import('../src/scenes/menu-scene.ts');
 const {UiSurface}=await import('../src/ui/phaser/widgets.ts');hook.deregister();
 class Button {
   readonly active=true;readonly visible=true;readonly input:{enabled:boolean};
+  x=0;y=0;width=0;height=0;
   private readonly data=new Map<string,unknown>();
   constructor(label:string,action:()=>void,disabled=false){this.input={enabled:!disabled};this.data.set('label',label);this.data.set('action',action);}
   setData(key:string,value:unknown){this.data.set(key,value);return this;}
   getData(key:string){return this.data.get(key);}
 }
 interface TextNode { value:string; x:number; y:number; size:number; origin:[number,number]; handlers:Map<string,()=>void> }
+/** 标题页的滚动区替身：只记录滚动窗口和内容高度，拖动行为由 ScrollArea 自己的用例覆盖。 */
+interface FakeScroll {
+  x:number;y:number;width:number;height:number;extent:number;scrollTop:number;
+  content:{list:unknown[];add():void;remove():void;removeAll():void};
+  setHeight(value:number):void;layout():void;destroy():void;onScroll?:()=>void;
+}
 /** 标题页的菜单画布与删除确认画布共用这一份替身，只有尺寸与 `scene` 相同。 */
 function fakeView(width:number,height:number){
   /** 图片只被链式调用，不需要真的画出来。 */
@@ -22,7 +29,7 @@ function fakeView(width:number,height:number){
   return {
     width,height,
     root:{visible:true,bringToTop:()=>{},setPosition:function(){return this;},setScale:function(){return this;},getWorldTransformMatrix:()=>({scaleX:1,scaleY:1,transformPoint:(x:number,y:number)=>({x,y})})},
-    buttons:[] as Button[],texts:[] as string[],textNodes:[] as TextNode[],enabled:()=>true,focusIndex:-1,
+    buttons:[] as Button[],texts:[] as string[],textNodes:[] as TextNode[],scrolls:[] as FakeScroll[],enabled:()=>true,focusIndex:-1,
     scene:{game:{events:{emit:()=>{}}}},focus:()=>{},layout:()=>{},image:stub,
     text(value:string,x:number,y:number,_width:number,size:number){
       this.texts.push(value);
@@ -33,15 +40,17 @@ function fakeView(width:number,height:number){
         setInteractive:()=>label,on:(event:string,handler:()=>void)=>{node.handlers.set(event,handler);return label;}};
       return label;
     },rect:()=>{},
-    clear(){this.buttons=[];this.texts=[];this.focusIndex=-1;},
-    button(label:string,_x:number,_y:number,_w:number,_h:number,action:()=>void,options:{disabled?:boolean}={}){
-      const button=new Button(label,action,options.disabled);this.buttons.push(button);return button;
+    clear(){this.buttons=[];this.texts=[];this.scrolls=[];this.focusIndex=-1;},
+    button(label:string,x:number,y:number,width:number,height:number,action:()=>void,options:{disabled?:boolean}={}){
+      const button=new Button(label,action,options.disabled);
+      Object.assign(button,{x,y,width,height});this.buttons.push(button);return button;
     },
     key(event:KeyboardEvent){UiSurface.prototype.key.call(this as unknown as InstanceType<typeof UiSurface>,event);},
     focusables(){return UiSurface.prototype.focusables.call(this as unknown as InstanceType<typeof UiSurface>);},
-    scroll(){
+    scroll(x:number,y:number,width:number,height:number){
       const content={ list:[] as unknown[], add(){}, remove(){}, removeAll(){} };
-      return { content, setHeight(){}, scrollTop:0, layout(){}, destroy(){} };
+      const value:FakeScroll={x,y,width,height,extent:0,scrollTop:0,content,setHeight(extent:number){value.extent=extent;},layout(){},destroy(){}};
+      this.scrolls.push(value);return value;
     },
   };
 }
@@ -144,11 +153,19 @@ test('older development saves enter the same empty-slot class flow',()=>{
   f.click('开始游戏');f.click('存档槽 2');assert.deepEqual(f.events,['new']);
 });
 
-test('title settings shows audio controls without a language row',()=>{
+test('title settings keeps every row inside a scrolling panel',()=>{
   const f=fixture();f.click('环境设置');
   assert(f.view.texts.includes('背景音乐'));assert(f.view.texts.includes('音效'));
   assert(!f.view.texts.some(text=>text.includes('语言')||text.includes('简体中文')));
-  assert.deepEqual(f.view.buttons.map(button=>button.getData('label')),['返回主菜单','背景音乐：开','音效：开']);
+  assert.deepEqual(f.view.buttons.map(button=>button.getData('label')),
+    ['返回主菜单','背景音乐：开','音效：开','全屏：不支持','移动方式：虚拟摇杆']);
+  // 选项挂在面板内侧的滚动区：边框不滚，行数再多也只滚动，不会画到边线上。
+  const scroll=f.view.scrolls.at(-1);assert.ok(scroll);
+  assert.deepEqual([scroll.x,scroll.y,scroll.width,scroll.height],[220,150,760,377]);
+  const rows=f.view.buttons.filter(button=>String(button.getData('label')).includes('：'));
+  assert.equal(rows.length,4);
+  assert(rows.every(row=>row.y>=0&&row.y+row.height<=scroll.extent),'每一行都在滚动内容的高度内');
+  assert(scroll.extent>scroll.height,'四行排不进可视区时靠滚动查看');
 });
 
 test('challenge mode is disabled and is excluded from native keyboard focus',()=>{
