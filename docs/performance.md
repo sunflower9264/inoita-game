@@ -247,7 +247,7 @@
 **结论：领域层优化得不错；主要成本在表现层重复重建和双场景渲染。**
 
 - 【已证实】`StoryRuntime` 事件按来源索引、QuestBook 写时复制、`session.quests` 按版本缓存、`refresh()` 无变化早退；条件求值、`waitEncounter` 状态机、对白分页/打字机算法都很便宜。**不要重写这些。**
-- 每句对白：`GameUI` 至少触发 3 次 `FormalUiScene.sync`，有立绘 4 次；每次 signature 变化都 `surface.clear()` 销毁全部子对象再重建。长演出 `event-413`（171 句）约 **500–700 次 UI 全量重建**。
+- 每句对白：`GameUI` 至少触发 3 次 `FormalUiScene.sync`，有立绘 4 次。✅ 同一句对白翻页时不再整屏重建（2026-10-25）：框、立绘、说话人和控件保留，正文 Text 按位置复用；新对白/换立绘/选项/弹窗仍整屏重建。长演出里**翻页**这部分的全量重建已消掉。
 - 演出时 `scene.launch('story-stage')` + `moveAbove`，WorldScene 没有 pause/sleep；舞台相机底色只是遮住，下层仍在 update/渲染（两套地图/角色/物理/相机）。
 - 每个演出动作（face/appear/walk/leave/world-object）走 `captureStage()` + `applyStorySceneAction`，多次 `structuredClone`；全内容约 7,400 个这类动作。跨图演出 `scenes` 历史增长后，每次快照越来越贵。
 - 每个剧情节点：`capture()`（session + world + stage）、提交时克隆 commit/checkpoint/stage、`session.applyStoryCommands`（空批次 0.48–1.25 ms）等，组合约 1–3 ms/节点。
@@ -263,11 +263,11 @@
 **结论：菜单图片预载做得对；卡顿来自整页重建、双重 render、滚动遮罩和存档 parse。**
 
 - 菜单图片 654–697 张、约 4.1–4.6 MB、解码约 15 MB，返回菜单释放；打开面板无网络 IO，这是正确的。
-- 每次点击/状态变化：`StoryUI.render()` 先清空 `surface/body/description/modal` 和所有 `ScrollArea`，再整页重画；末尾 `sync()` 又 layout 一次。背包/技能/商店/合成/任务日志都是这个模式。
+- 每次点击/状态变化：`StoryUI.render()` 先清空 `surface/body/description/modal` 和所有 `ScrollArea`，再整页重画。✅ `show()` 末尾重复的 `sync()` 已去掉；商店买卖、队伍加入/移出成功时不再重画第二次（2026-10-25）。合成成功仍会重画两次（提交后还要清掉选中目标）。
 - 商店购买/出售、合成提交、队伍变更、恢复药水：session emit 触发一次 render，`changed()` 再一次，**同一次操作双重建**。
 - 单次打开约 130–350 个 GameObjects、17–80 个 Phaser Text；每个 Text 有独立 canvas 纹理，3× DPR 下创建/销毁几十张高分辨率文字纹理会造成数 MB GPU 上传。
 - ✅ **已修（2026-10-25）** 滚动区在 WebGL 下用 `enableFilters + addMask`；`FilterMask` 默认每帧 `updateDynamicTexture`。现在 `autoUpdate=false`，只在遮罩几何变化时置 `needsUpdate`。
-- 存档页：`newestFirstSlots` 排序比较器反复 `inspect`，每行再 `inspect`，自动槽再 1 次，立绘再 10 次；一次打开约 **22–33 次全量 JSON.parse**。✅ 排序阶段已按槽去重，每个槽只读一次（2026-10-25）；行/立绘的重复读与摘要缓存仍未做。
+- 存档页：`newestFirstSlots` 排序比较器反复 `inspect`，每行再 `inspect`，自动槽再 1 次，立绘再 10 次；一次打开约 **22–33 次全量 JSON.parse**。✅ 已加 `peek` 摘要缓存（2026-10-25）：排序/行/立绘只用摘要，同一份原文只解析一次；读档才 `inspect` 完整存档。
 - 非虚拟列表：任务日志按全部活跃组渲染；GM 道具页 1003 件全画（`ScrollArea.setVirtual` 已存在但未用）。
 - 小开销：说明分隔线每 8 px 一个 Rectangle（353 宽约 44 个）；round band 每行 9 个对象；`save-board` 先画文字再 `setText` 重画；`MemberPanel` 每次数值变化重建 hitArea。
 - `status-hud.json`/`menu-panels.json` 是小型布局/皮肤数据，保留；不要扩成通用布局引擎。
@@ -484,7 +484,7 @@
 4. **常驻包缩围**：只留当前职业/队伍/共享效果；返回菜单释放；伙伴入队时加载。
 5. ✅ **启动减负（2026-10-25 已实施）**：生产删运行期语义校验，构建期 minify 全部内容；不再 fetch 281 张地图；商店装备表、人物动作拆文件按需取；菜单物品/技能图标改为开局后后台补。仍需做：`campaign.json` 按章节/地图拆分。
 6. **逐帧脏检查（大部分完成，2026-10-25）**：✅ 掉落 revision + 按地图索引、`recoverResources` 早退、`syncDepth` 同值跳过、状态色/持续特效同值短路、重复 `setDepth` 删除、冷却签名、`setPaused` 同值、`syncHud` 目标状态按战斗帧缓存；仍待做：静态 body 跳过约束/插值、HUD 可见性同值短路、`WalkRoute` 重复采样。
-7. **剧情/菜单表现层（部分完成）**：✅ 滚动遮罩静态化（2026-10-25）、存档排序去重；仍待做：演出 sleep WorldScene、对白增量更新、菜单同帧合并 render、存档摘要缓存。
+7. **剧情/菜单表现层（大部分完成，2026-10-25）**：✅ 滚动遮罩静态化、对白翻页增量、商店/队伍去重、存档摘要缓存；仍待做：演出 sleep WorldScene、合成成功后的第二次重画、菜单更彻底的局部重绘。
 
 ### P2：结构性改造
 
@@ -720,4 +720,12 @@
 
 未做：地图 prop 图集（763 个 prop）、地图 prop 的文件级去重、非动画图片（立绘/UI 框架）的图集化。
 
-下一项（另一个进程）：对白增量更新、菜单同帧合并 render、存档摘要缓存；静态 body/`WalkRoute` 与寻路预算收益需真机确认。下一项（资产线）：地图 prop 图集与文件级去重。
+### 2026-10-25：剧情与菜单表现层（已提交）
+
+| 根因 | 改动 | 提交 | 验证 |
+|---|---|---|---|
+| 对白翻页整屏 clear/重建 | 正文页从整屏签名拆出；Text 复用，只更新内容/位置/颜色 | `d84ef6e` | 对白/剧情 41/41；画面需用户验收 |
+| 商店/队伍操作成功重画两次 | 成功路径交给 session 通知那次；失败才本地重画 | `e8d20f2` | 菜单/商店/队伍 75/80（5 条既有失败） |
+| 存档页反复 `inspect` 整档 | 新增 `peek` 摘要缓存；排序/行/立绘只用摘要 | `4eac018` | 存档/标题/菜单 95/100（5 条既有失败）、save-game 11/11 |
+
+下一项：演出时 sleep WorldScene、合成成功后的第二次重画、静态 body/`WalkRoute`；资产线（另一个进程）：地图 prop 图集与文件级去重。
