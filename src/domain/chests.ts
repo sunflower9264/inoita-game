@@ -19,8 +19,12 @@ export class ChestVisits {
   /** 剧情摆放的一次性宝箱：开启后跨地图访问保持已消耗，不能反复领取。 */
   private readonly consumed = new Set<string>();
   private readonly enemies: EnemySpawn[] = [];
+  /** 生成记录或本次访问变化时递增；只读投影可以据此复用上一次的结果。 */
+  private revisionValue = 0;
+  get revision(): number { return this.revisionValue; }
   captureState():ChestVisitsState { return structuredClone({map:this.map,visit:this.visit,opened:[...this.opened],consumed:[...this.consumed],enemies:this.enemies}); }
   restoreState(state:ChestVisitsState):void {
+    this.revisionValue++;
     const restored=structuredClone(state);this.map=restored.map;this.visit=restored.visit;
     this.opened.clear();for(const id of restored.opened)this.opened.add(id);
     this.consumed.clear();for(const id of restored.consumed??[])this.consumed.add(id);
@@ -30,6 +34,7 @@ export class ChestVisits {
   get spawns(): readonly EnemySpawn[] { return this.enemies; }
   enterMap(map: string): void {
     if (map === this.map) return;
+    this.revisionValue++;
     this.map = map; this.visit++;
     this.opened.clear(); this.enemies.length = 0;
   }
@@ -40,11 +45,13 @@ export class ChestVisits {
   }
   /** 泉水喝出怪物：和宝箱怪走同一份生成记录，随本次地图访问一起重建。 */
   spawnEnemy(map: string, key: string, enemyId: string, position: {x:number;y:number}): void {
+    this.revisionValue++;
     this.enemies.push({ id: `spring:${this.visit}:${map}:${key}`, enemyId, x: position.x, y: position.y, respawn: false });
   }
   /** 可破坏物里开出的怪：同样只活到本次地图访问结束。 */
   spawnBreakableEnemies(map: string, key: string, enemyIds: readonly string[], position: {x:number;y:number}): void {
     if (map !== this.map) return;
+    this.revisionValue++;
     enemyIds.forEach((enemyId, index) => this.enemies.push({
       id: `breakable:${this.visit}:${map}:${key}:${index}`, enemyId, x: position.x, y: position.y, respawn: false
     }));
@@ -53,6 +60,7 @@ export class ChestVisits {
     if (map !== this.map) return;
     const key = this.persistentKey(map, entity);
     if (oneTime ? this.consumed.has(key) : this.opened.has(entity)) return;
+    this.revisionValue++;
     if (oneTime) this.consumed.add(key); else this.opened.add(entity);
     try {
       const result = roll();

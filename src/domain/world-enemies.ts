@@ -88,13 +88,19 @@ export class WorldEnemyRoster extends EnemyRoster {
   private readonly breakableSlots:ReadonlyMap<string,WorldSpawn>;
   /** 本次进图累计的任务关键敌人；只增不减，避免任务完成时撤掉正在交战的怪。 */
   private readonly questSpawnIds=new Set<string>();
+  /** 可破坏物替换结果的版本：缓存重建后必须重新掷骰。 */
+  private breakableRevision=0;
+  private spawnsCache?:{key:string;value:readonly WorldSpawn[]};
   private emptyReported=false;
   get spawns(): readonly WorldSpawn[] {
-    this.collectQuestSpawns();
+    const questRevision=this.collectQuestSpawns();
+    const cacheKey=`${this.session.storyWorld.revision}|${this.session.chests.revision}|${questRevision}|${this.questSpawnIds.size}|${this.breakableRevision}`;
+    const cached=this.spawnsCache;
+    if(cached?.key===cacheKey)return cached.value;
     const extras=this.questSpawnIds.size
       ? this.rawMapSpawns.filter(spawn=>this.questSpawnIds.has(spawn.enemyId)&&!this.mapSpawnIds.has(spawn.id))
       : [];
-    return [...this.bandSpawns.filter(spawn=>this.session.storyWorld.enemyAvailable(this.mapId,spawn.enemyId))
+    const value=[...this.bandSpawns.filter(spawn=>this.session.storyWorld.enemyAvailable(this.mapId,spawn.enemyId))
       .map(spawn=>this.breakableSpawnFor(spawn)),
       ...extras.filter(spawn=>this.session.storyWorld.enemyAvailable(this.mapId,spawn.enemyId))
         .map(spawn=>this.breakableSpawnFor(spawn)),
@@ -102,6 +108,10 @@ export class WorldEnemyRoster extends EnemyRoster {
       .filter(encounter=>encounter.map===this.mapId).flatMap(encounter=>encounter.spawns.map(spawn=>({
         ...spawn,id:encounterSpawnId(encounter.id,spawn.id),respawn:false as const
       })))];
+    // 第一次生成可破坏物替换时版本会变，缓存键按生成后的版本记录，下一次可以直接命中。
+    this.spawnsCache={key:`${this.session.storyWorld.revision}|${this.session.chests.revision}|${questRevision}|${this.questSpawnIds.size}|${this.breakableRevision}`,
+      value};
+    return value;
   }
   private readonly sources = new Map<string,WorldSpawn>();
   constructor(session:Session,map:WorldMap,questSpawns:readonly CampaignEnemyPlacement[],heroLevel:number,
@@ -132,6 +142,7 @@ capturePreparedState():{roster:ReturnType<EnemyRoster['captureState']>;breakable
   }
   adoptPreparedState(state:{roster:ReturnType<EnemyRoster['captureState']>;breakableRolls:[string,string][]}):void{
     this.breakableRolls.clear();for(const [id,enemy] of state.breakableRolls)this.breakableRolls.set(id,enemy);
+    this.breakableRevision++;
     this.restoreState(state.roster);
     this.refresh();
   }
@@ -151,6 +162,7 @@ capturePreparedState():{roster:ReturnType<EnemyRoster['captureState']>;breakable
       if(this.questSpawnIds.has(slot.enemyId))this.breakableRolls.delete(placed.key);
       else this.breakableRolls.set(placed.key,placed.enemyId);
     }
+    this.breakableRevision++;
     // source() 要给死亡结算提供恢复后的真实敌人身份，不能停留在构造时的随机结果。
     this.sources.clear();
     for(const spawn of this.spawns)this.sources.set(spawn.id,spawn);
@@ -173,8 +185,9 @@ capturePreparedState():{roster:ReturnType<EnemyRoster['captureState']>;breakable
   }
   refresh():{added:PlacedEnemy[];removed:string[]}{
     const added:PlacedEnemy[]=[],removed:string[]=[];
-    const spawns=this.spawns,active=new Set(spawns.map(spawn=>spawn.id));
-    const current=new Map(spawns.map(spawn=>[spawn.id,spawn]));
+    const spawns=this.spawns,active=new Set<string>(),current=new Map<string,WorldSpawn>();
+    for(const spawn of spawns){active.add(spawn.id);current.set(spawn.id,spawn);}
+    const present=new Set(this.enemies.map(enemy=>enemy.key));
     for(const placed of [...this.enemies]){
       const spawn=current.get(placed.key)??this.sources.get(placed.key);
       if(!spawn)continue;
@@ -182,15 +195,15 @@ capturePreparedState():{roster:ReturnType<EnemyRoster['captureState']>;breakable
       const leaving=!active.has(spawn.id)||!this.session.canSpawnEnemy(spawn);
       // 同 key 换身份只是这一槽改了外观，缓存仍是本次访问的结果，下一帧不能再掷一次。
       if(!leaving&&placed.enemyId===spawn.enemyId)continue;
-      super.removeEnemy(placed.key);removed.push(placed.key);
-      if(leaving)this.breakableRolls.delete(placed.key);
+      super.removeEnemy(placed.key);present.delete(placed.key);removed.push(placed.key);
+      if(leaving){this.breakableRolls.delete(placed.key);this.breakableRevision++;}
     }
     for(const spawn of spawns){
       this.sources.set(spawn.id,spawn);
-      if(!this.session.canSpawnEnemy(spawn)||this.enemies.some(enemy=>enemy.key===spawn.id))continue;
+      if(!this.session.canSpawnEnemy(spawn)||present.has(spawn.id))continue;
       const vitals=this.session.enemyVitals(spawn.id);
       const placed:PlacedEnemy={key:spawn.id,enemyId:spawn.enemyId,x:spawn.x,y:spawn.y,health:vitals.health,mana:vitals.mana};
-      this.restoreEnemy(placed);added.push(placed);
+      this.restoreEnemy(placed);present.add(spawn.id);added.push(placed);
     }
     this.recordEmptyDiagnostic(spawns);
     return {added,removed};
@@ -208,11 +221,11 @@ capturePreparedState():{roster:ReturnType<EnemyRoster['captureState']>;breakable
   private breakableSpawnFor(spawn:WorldSpawn):WorldSpawn{
     if(!('breakableEligible' in spawn)||!spawn.breakableEligible)return spawn;
     // 任务关键敌人优先：任务目标出现时恢复原怪，并让 refresh 替换掉已生成的景物。
-    if(this.questSpawnIds.has(spawn.enemyId)){this.breakableRolls.delete(spawn.id);return spawn;}
+    if(this.questSpawnIds.has(spawn.enemyId)){this.breakableRolls.delete(spawn.id);this.breakableRevision++;return spawn;}
     let enemyId=this.breakableRolls.get(spawn.id);
     if(enemyId===undefined){
       enemyId=this.rollBreakableEnemy(spawn.enemyId);
-      this.breakableRolls.set(spawn.id,enemyId);
+      this.breakableRolls.set(spawn.id,enemyId);this.breakableRevision++;
     }
     return enemyId===spawn.enemyId?spawn:{...spawn,enemyId};
   }
@@ -227,9 +240,10 @@ capturePreparedState():{roster:ReturnType<EnemyRoster['captureState']>;breakable
     }else if(roll<5)return BREAKABLE_ENEMY_IDS.box;
     return original;
   }
-  private collectQuestSpawns():void{
+  private collectQuestSpawns():number{
     const snapshot=this.questEnemies?.snapshot();
     if(snapshot)for(const id of snapshot.ids)this.questSpawnIds.add(id);
+    return snapshot?.revision??0;
   }
   /** 剧情资格：active 任务槽、剧情可见性、敌人可用性；刻意不看死亡/刷新计时。 */
   private storySpawnable(spawn:WorldSpawn):boolean{

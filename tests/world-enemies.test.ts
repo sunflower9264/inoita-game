@@ -37,6 +37,21 @@ test('mixed-level source map activates the last tier reached by the hero',()=>{
   }
 });
 
+test('spawn projection is reused until the story world or generated spawns change',()=>{
+  const session=new Session(campaign);
+  const map=content('maps/shadow-forest-west.json') as WorldMap;
+  const roster=new WorldEnemyRoster(session,map,[],1);
+  const first=roster.spawns;
+  assert.equal(roster.spawns,first,'没有变化时复用同一份投影');
+  const spawn=map.enemySpawns![0]!;
+  session.applyStoryCommands([{type:'world',command:{kind:'enemy-availability',map:map.id,enemyId:spawn.enemyId,available:false}}]);
+  const next=roster.spawns;
+  assert.notEqual(next,first,'剧情世界变化后重新投影');
+  assert.ok(!next.some(value=>value.enemyId===spawn.enemyId));
+  session.chests.spawnEnemy(map.id,'test','enemy-cave-bat',{x:10,y:20});
+  assert.ok(roster.spawns.some(value=>value.id.startsWith('spring:')),'宝箱/泉水生成后重新投影');
+});
+
 test('tier bands switch only after reaching the next representative level',()=>{
   const map={id:'band-map',enemySpawns:[
     {id:'low',enemyId:'enemy-low',x:0,y:0,tierLevel:10},
