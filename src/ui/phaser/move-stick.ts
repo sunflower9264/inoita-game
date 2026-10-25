@@ -69,6 +69,8 @@ export class MoveStick {
   private readonly arrowRight: Phaser.GameObjects.Image;
 
   private readonly keyHistory: CardinalDir[] = [];
+  /** 每个箭头上次用的贴图；同 key 只更新缩放，不重复 setTexture。 */
+  private readonly arrowKeys = ['','','',''];
 
   constructor(scene: Phaser.Scene, hud: Hud, skin: ControlSkin, preferences?: ControlLayoutPreferences) {
     scene = hud.scene; this.scene = scene; this.hud = hud; this.skin = skin; this.preferences = preferences;
@@ -225,15 +227,19 @@ export class MoveStick {
     }
   }
 
+  private setArrow(index: number, image: Phaser.GameObjects.Image, key: string, scale: number): void {
+    if (this.arrowKeys[index] !== key) { this.arrowKeys[index] = key; image.setTexture(key); }
+    image.setScale(scale);
+  }
   private updateArrows(): void {
     const up = this.axis.y < -0.3;
     const down = this.axis.y > 0.3;
     const left = this.axis.x < -0.3;
     const right = this.axis.x > 0.3;
-    this.arrowUp.setTexture(up ? this.skin['arrow-up-glow'] : this.skin['arrow-up']).setScale(up ? DPAD_ARROW_SCALE_GLOW : DPAD_ARROW_SCALE_NORM);
-    this.arrowDown.setTexture(down ? this.skin['arrow-down-glow'] : this.skin['arrow-down']).setScale(down ? DPAD_ARROW_SCALE_GLOW : DPAD_ARROW_SCALE_NORM);
-    this.arrowLeft.setTexture(left ? this.skin['arrow-left-glow'] : this.skin['arrow-left']).setScale(left ? DPAD_ARROW_SCALE_GLOW : DPAD_ARROW_SCALE_NORM);
-    this.arrowRight.setTexture(right ? this.skin['arrow-right-glow'] : this.skin['arrow-right']).setScale(right ? DPAD_ARROW_SCALE_GLOW : DPAD_ARROW_SCALE_NORM);
+    this.setArrow(0, this.arrowUp, up ? this.skin['arrow-up-glow'] : this.skin['arrow-up'], up ? DPAD_ARROW_SCALE_GLOW : DPAD_ARROW_SCALE_NORM);
+    this.setArrow(1, this.arrowDown, down ? this.skin['arrow-down-glow'] : this.skin['arrow-down'], down ? DPAD_ARROW_SCALE_GLOW : DPAD_ARROW_SCALE_NORM);
+    this.setArrow(2, this.arrowLeft, left ? this.skin['arrow-left-glow'] : this.skin['arrow-left'], left ? DPAD_ARROW_SCALE_GLOW : DPAD_ARROW_SCALE_NORM);
+    this.setArrow(3, this.arrowRight, right ? this.skin['arrow-right-glow'] : this.skin['arrow-right'], right ? DPAD_ARROW_SCALE_GLOW : DPAD_ARROW_SCALE_NORM);
   }
 
   /** 松手或流程接管输入时回到中位。 */
@@ -257,8 +263,10 @@ export class MoveStick {
 
   /** 加载中、对话或面板锁住输入、流程挂起时收起摇杆；收起后 Phaser 也不再把它算作点击目标。 */
   setVisible(visible: boolean): void {
+    if (this.isVisible === visible) return;
     this.isVisible = visible;
     this.hud.setVisible(this.container, visible);
+    // 只在真正转为隐藏时回到中位；隐藏期间每帧 reset 会白重设 4 个箭头贴图。
     if (!visible) this.reset();
   }
 

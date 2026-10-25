@@ -42,6 +42,8 @@ export class ActionControls {
   private page:ShortcutSlot[]=[];private cooldowns:Readonly<Record<string,Cooldown>>={};
   /** 上一次画冷却时的签名；没有冷却时每帧都不必重画。 */
   private cooldownSignature?:string;
+  /** 上一次应用的可见性；隐藏稳定态不重复遍历控件和清理输入。 */
+  private visibleApplied?:boolean;
   private readonly pressGate=new ActionPressGate();
   private readonly preferences:ControlLayoutPreferences|undefined;
   private readonly unsubscribe:()=>void;
@@ -153,6 +155,11 @@ export class ActionControls {
     this.slots.forEach((control,index)=>place(control,`slot-${index}` as ControlId));
     place(this.swap,'swap');
   }
-  setVisible(visible:boolean):void{for(const control of this.all())this.hud.setVisible(control.container,visible);if(!visible)this.resetInput();}
+  setVisible(visible:boolean):void{
+    if(this.visibleApplied===visible)return;
+    this.visibleApplied=visible;
+    for(const control of this.all())this.hud.setVisible(control.container,visible);
+    if(!visible)this.resetInput();
+  }
   destroy():void{this.unsubscribe();this.scene.input.off('pointerup',this.release,this);this.scene.input.off('pointerupoutside',this.release,this);this.all().forEach(control=>control.container.destroy(true));}
 }

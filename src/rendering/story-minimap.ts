@@ -24,6 +24,9 @@ export class StoryMinimap {
   private readonly terrainKey: string;
   private readonly cellSize: number;
   private readonly tasks = new Map<string, Phaser.GameObjects.Image>();
+  /** 上次任务点的 id/状态/坐标；没变就不重设贴图与层序。 */
+  private taskSignature = '';
+  private playerPoint?: { x: number; y: number };
   private placed = { x: 0, y: 0, scale: 1 };
   constructor(owner: Phaser.Scene, hud: Hud, map: WorldMap) {
     this.owner = owner; this.hud = hud; this.map = map;
@@ -79,9 +82,14 @@ export class StoryMinimap {
     return {x: p.x + 3, y: p.y + 3 - lift};
   }
   updatePlayer(point: Point): void {
-    const p = this.project(point, 4); this.player.setPosition(p.x, p.y);
+    const p = this.project(point, 4);
+    if (this.playerPoint?.x === p.x && this.playerPoint.y === p.y) return;
+    this.playerPoint = p; this.player.setPosition(p.x, p.y);
   }
   updateTasks(tasks: MinimapTask[]): void {
+    const signature = tasks.map(task => `${task.id}|${task.status}|${task.x}|${task.y}`).join(';');
+    if (signature === this.taskSignature) return;
+    this.taskSignature = signature;
     const ids = new Set(tasks.map(task => task.id));
     for (const [id, icon] of this.tasks) if (!ids.has(id)) { icon.destroy(); this.tasks.delete(id); }
     for (const task of tasks) {

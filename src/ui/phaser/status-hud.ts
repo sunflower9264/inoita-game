@@ -44,7 +44,7 @@ class MemberPanel {
   private readonly onSelect:(id:string)=>void;
   private readonly frame:Phaser.GameObjects.Image;private readonly portrait:Phaser.GameObjects.Image;
   private readonly level:Phaser.GameObjects.Text;private readonly gauges:Record<'health'|'mana'|'experience',Gauge>;
-  private icons:Phaser.GameObjects.Image[]=[];private signature='';private contentSignature='';private visible=false;
+  private icons:Phaser.GameObjects.Image[]=[];private signature='';private contentSignature='';private visible=false;private iconSignature='';
   constructor(scene:Phaser.Scene,hud:Hud,skin:StatusHudSkin,onSelect:(id:string)=>void){
     this.scene=scene;this.hud=hud;this.skin=skin;this.onSelect=onSelect;
     const layout=skin.member;
@@ -98,11 +98,18 @@ class MemberPanel {
     const panelHeight=this.skin.member.height;
     const entries=conditions.filter(condition=>skin.catalog[condition.id]);
     while(this.icons.length<entries.length){const image=this.scene.add.image(0,0,'').setOrigin(0).setDisplaySize(skin.size,skin.size);this.container.add(image);this.icons.push(image);}
-    entries.forEach((condition,index)=>{
-      const at=buffIconPosition(skin,panelHeight,index);
-      this.icons[index].setTexture(skin.catalog[condition.id]).setPosition(at.x,at.y).setVisible(true).setData('remainingMs',condition.remainingMs);
-    });
-    for(const image of this.icons.slice(entries.length))image.setVisible(false).setData('remainingMs',undefined);
+    const signature=entries.map(condition=>condition.id).join('|');
+    if(signature!==this.iconSignature){
+      this.iconSignature=signature;
+      entries.forEach((condition,index)=>{
+        const at=buffIconPosition(skin,panelHeight,index);
+        this.icons[index].setTexture(skin.catalog[condition.id]).setPosition(at.x,at.y).setVisible(true);
+      });
+      for(const image of this.icons.slice(entries.length))image.setVisible(false);
+    }
+    // 闪烁要靠 remainingMs，每次通知都要更新；贴图/位置只在图标集合变化时重设。
+    entries.forEach((condition,index)=>this.icons[index].setData('remainingMs',condition.remainingMs));
+    for(const image of this.icons.slice(entries.length))image.setData('remainingMs',undefined);
   }
   /** 跟随状态面板整组显隐：对白、演出、菜单与暂停期间一起隐藏。 */
   setVisible(value:boolean):void{
@@ -135,6 +142,7 @@ export class StatusHud {
   private readonly unsubscribe:()=>void;private player?:Readonly<StoryPlayerState>;private target?:TargetStatus;private visible=false;
   private targetSignature='';private lastTick=-1;
   private partySignature='';private playerIconImages:Phaser.GameObjects.Image[]=[];private memberCount=0;
+  private playerIconSignature='';private portraitKey?:string;private visibilityApplied=false;
   constructor(hud:Hud,skin:StatusHudSkin,readPlayer:()=>Readonly<StoryPlayerState>|undefined,subscribe:(listener:()=>void)=>()=>void,
     readParty?:()=>PartySnapshot|undefined,onSelect?:(id:string)=>void,portraitFor?:(id:string)=>string|undefined,onFocus?:()=>void,
     readConditions?:(id:string)=>readonly ActiveCondition[],readHero?:()=>MemberValues|undefined){
@@ -171,7 +179,8 @@ export class StatusHud {
         const values=id==='player'?readHero?.()??member:member;
         panel.set(id,values as MemberValues|undefined,snapshot?.living.includes(id)??true,portraitFor?.(id));});
       for(let slot=others.length;slot<this.panels.length;slot++)this.panels[slot].set(undefined,undefined,true);
-      const file=portraitFor?.(controlled),key=portraitKey(scene,file);if(key)this.portrait.setTexture(key).setDisplaySize(p.width,p.height);
+      const file=portraitFor?.(controlled),key=portraitKey(scene,file);
+      if(key&&key!==this.portraitKey){this.portraitKey=key;this.portrait.setTexture(key).setDisplaySize(p.width,p.height);}
       this.paintPlayerIcons(readConditions?.(controlled)??[]);
       this.panels.forEach((panel,index)=>panel.paintIcons(index<others.length?(readConditions?.(others[index])??[]):[]));
       if(this.player){const value=this.player;this.level.setText(String(value.level)).setScale(Math.min(1,(level.width-4)/Math.max(1,this.level.width),(level.height-4)/Math.max(1,this.level.height)));this.gauges.health.update(value.health,value.maxHealth);this.gauges.mana.update(value.mana,value.maxMana);this.gauges.experience.update(value.experience,value.nextLevelExperience);}this.paintTarget();this.syncVisibility();
@@ -212,11 +221,17 @@ export class StatusHud {
       const image=this.hud.scene.add.image(0,0,'').setOrigin(0).setDisplaySize(skin.size,skin.size);
       this.playerIcons.add(image);this.playerIconImages.push(image);
     }
-    entries.forEach((condition,index)=>{
-      const at=buffIconPosition(skin,this.skin.player.height,index);
-      this.playerIconImages[index].setTexture(skin.catalog[condition.id]).setPosition(at.x,at.y).setVisible(true).setData('remainingMs',condition.remainingMs);
-    });
-    for(const image of this.playerIconImages.slice(entries.length))image.setVisible(false).setData('remainingMs',undefined);
+    const signature=entries.map(condition=>condition.id).join('|');
+    if(signature!==this.playerIconSignature){
+      this.playerIconSignature=signature;
+      entries.forEach((condition,index)=>{
+        const at=buffIconPosition(skin,this.skin.player.height,index);
+        this.playerIconImages[index].setTexture(skin.catalog[condition.id]).setPosition(at.x,at.y).setVisible(true);
+      });
+      for(const image of this.playerIconImages.slice(entries.length))image.setVisible(false);
+    }
+    entries.forEach((condition,index)=>this.playerIconImages[index].setData('remainingMs',condition.remainingMs));
+    for(const image of this.playerIconImages.slice(entries.length))image.setData('remainingMs',undefined);
   }
   layout():void{const scene=this.hud.scene,bounds=scene.game.canvas.getBoundingClientRect(),safe=readSafeArea(),unit=scene.scale.width/Math.max(1,bounds.width),size=Math.min(scene.scale.width/800,scene.scale.height/480);
     const right=scene.scale.width-safe.right*unit,top=safe.top*unit;
@@ -234,7 +249,11 @@ export class StatusHud {
     this.panels.forEach((panel,index)=>{const y=column.tops[index];if(y===undefined)return;
       panel.container.setScale(size*column.scale).setPosition(right-memberEdge*size*column.scale,y);});
   }
-  setVisible(value:boolean):void{this.visible=value;this.syncVisibility();}
+  setVisible(value:boolean):void{
+    // 第一次必须真正应用（构造时容器默认可见）；之后同值不重复遍历面板。
+    if(this.visibilityApplied&&this.visible===value)return;
+    this.visibilityApplied=true;this.visible=value;this.syncVisibility();
+  }
   private syncVisibility():void{
     this.hud.setVisible(this.playerContainer,this.visible&&!!this.player);
     this.hud.setVisible(this.targetContainer,this.visible&&!!this.target);

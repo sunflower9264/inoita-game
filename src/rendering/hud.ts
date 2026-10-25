@@ -29,7 +29,10 @@ export class Hud {
   }
   setVisible(object: Phaser.GameObjects.Container, visible: boolean): void {
     this.visibility.set(object, visible);
-    this.applyVisibility(object, visible);
+    // 比较对象实际值，不能缓存“上次请求值”：切图/睡眠唤醒后要能重新应用。
+    const resolved = visible && this.owner.sys.isActive();
+    if (object.visible === resolved) return;
+    object.setVisible(resolved);
   }
   private applyVisibility(object: Phaser.GameObjects.Container, requested: boolean): void {
     const visible = requested && this.owner.sys.isActive();
