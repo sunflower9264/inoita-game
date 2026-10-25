@@ -61,7 +61,10 @@ export class PartyPanel {
     return this.app.menuPanels.character.portraits[actor?.portrait??'kiyan']?.partyIcon??this.app.menuPanels.assets[`party-class-${member.classId}`];
   }
   private run(action:()=>void):void{
-    this.error='';try{action();}catch(error){this.error=(error as Error).message;}this.changed();
+    this.error='';let failed=true;
+    try{action();failed=false;}catch(error){this.error=(error as Error).message;}
+    // 成功时队伍变更已经通过 session 通知重画过；只有失败要本地重画显示错误。
+    if(failed)this.changed();
   }
   render(v:UiSurface,modal:UiSurface,placeModal?:PlaceModal):void{
     this.placeModal=placeModal;

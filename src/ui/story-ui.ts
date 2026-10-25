@@ -179,7 +179,8 @@ export class StoryUI {
     if(page==='quests'&&(!this.open||this.page!==page))this.questPanel?.reset();
     if(!this.open){this.open=true;this.app.ui.lock(true,'story-menu');}
     if(this.page!==page){this.itemResult=undefined;this.cancelOperation();this.adjusting=false;this.notice='';}
-    this.page=page;this.render();this.sync();
+    // render() 末尾已经 sync 过；这里再调一次会把整层再排版一遍。
+    this.page=page;this.render();
   }
   openCrafting(actorId:string):void {
     if(!this.session||!this.app.crafting||this.world?.actors[actorId]?.service!=='fusion-machine'||this.app.ui.mode!=='game')return;

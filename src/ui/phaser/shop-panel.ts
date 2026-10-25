@@ -221,9 +221,11 @@ export class ShopPanel {
       ()=>{
         // Clear before the session notification renders the updated shelves and wallet.
         this.selection=undefined;
-        try{if(buying)this.store.buy(selection.id,selection.quantity);else this.store.sell(selection.id,selection.quantity);}
+        let failed=true;
+        try{if(buying)this.store.buy(selection.id,selection.quantity);else this.store.sell(selection.id,selection.quantity);failed=false;}
         catch(error){selection.error=(error as Error).message;this.selection=selection;}
-        this.changed();
+        // 成功时 session 通知已经重画过；只有失败需要本地重画来显示错误。
+        if(failed)this.changed();
       },{total,disabled:insufficient});
   }
   /**
