@@ -191,7 +191,7 @@
 
 - 【已证实】`CombatRuntime.step` 的 filter/sort、`CombatController.snapshot()`、`CombatConditions.update` 实测都很小（µs 级），不是主因。
 - ✅ **已修（2026-10-25）** `WorldCombat.update` 每渲染帧对全部 player/ally/enemy 做 `setCharacterStealth`、`statusColors.paint`、`setPaused`。`statusColors.paint` 按（着色规则、逻辑帧、图层批次）同值短路；`setPaused` 同值直接返回，新刷出的敌人/召唤物与入队队友会使缓存失效。
-- ✅ **已修（2026-10-25）** `syncBuffLoops` 每帧对每个 actor 调 `buffLoopFrames`（多层分配），再进 `BuffLoopRenderer.sync` 分配 Map/Set。无 buff 时现在返回共享空数组，渲染器也不再建 Map/Set。
+- ✅ **已修（2026-10-25）** `syncBuffLoops` 每帧对每个 actor 调 `buffLoopFrames`（多层分配），再进 `BuffLoopRenderer.sync` 分配 Map/Set。无 buff 时返回共享空数组；有 buff 时按帧龄判断，逻辑帧没变不再 `setCurrentFrame`，层序对了也不再 `bringToTop`。
 - ✅ **已修（2026-10-25）** `recoverResources` 每逻辑帧构建全 actor 恢复属性，但脉冲间隔约 1.86 s。现在非脉冲帧只推进恢复时钟，不构建属性。
 - `roster.refresh` 每渲染帧；`updateEnemies` 每逻辑帧对全图所有敌人 step（无视野裁剪）。✅ 其中与 `syncDepth` 重复的 `setDepth` 已删除（2026-10-25）。
 - `observeSummonCombat` 每逻辑帧构造全量 `combatants()` 并为每个敌人 snapshot，即使场上无召唤物。
@@ -231,7 +231,7 @@
 
 - ✅ **已修（2026-10-25）** `refreshSkillCooldowns` 每渲染帧 `setCooldowns → paint()`。现在按冷却读数签名门控，没有冷却变化时不再重画六格；`refreshShortcutPage` 本身已有 layout/槽位缓存。
 - ✅ **已修（2026-10-25）** `syncHud` 每帧先算 `targetStatus()`（含 `calculateEnemy`、`combatants()` 全量数组）和 `hasHostileTarget()`。现在按 `(combatTick, 目标 id)` 缓存，同一逻辑帧内的多个渲染帧只算一次。
-- `Hud.setVisible`、`statusHud.setVisible`、`overheadStatus.setVisible`、`NameBanner.sync` 每帧无条件写；`MoveStick.setVisible(false)` 每帧走 `reset()` → 4 个箭头 `setTexture`（PR 4b6dd64 的小回归）。
+- ✅ **已修（2026-10-25）** `Hud.setVisible`、`statusHud.setVisible`、`overheadStatus.setVisible`、`NameBanner.sync` 每帧无条件写；`MoveStick.setVisible(false)` 每帧走 `reset()` → 4 个箭头 `setTexture`。现在 HUD 写入前比较对象实际可见性，摇杆只在转为隐藏时 reset 一次，箭头缓存上次贴图；状态图标按 id 序列、人像按 key、小地图任务点按坐标签名判断。
 - ✅ **已修（2026-10-25）** `MovementWorld.syncDepth` 每帧对所有注册容器 `setDepth`；Phaser 的 depth setter 会 `queueDepthSort()`。现在值没变就不写。典型地图 60–70% 的 body 是不可移动的地图实体，但它们仍参与每物理步的约束查询、`settleStep`、插值和深度。
 - `MovementInterpolation` 每帧 3 次 restore + 1 次 apply，遍历全部注册视觉；`MovementBody.update` 每个 body 每步产生约 8–10 个小对象，60–70 body ≈ 3–4 万对象/秒。
 - `WalkRoute.next` 每步两次 `canTraverse`，同一段路重复采样。
@@ -741,4 +741,20 @@
 
 未做：地图 prop 的文件级去重（原图保留）、立绘/UI 框架图集化。
 
-下一项：演出时 sleep WorldScene、静态 body/`WalkRoute`；资产线：UI 非图标资源与地图 prop 归档清理。
+### 2026-10-25：「值没变就跳过」盘点与修复（已提交）
+
+| 位置 | 改动 | 提交 | 验证 |
+|---|---|---|---|
+| 对白色段 / 目标名 / 剧情标记的 `setColor` | 颜色没变不重画文字 | `ce25390`、`3821c6f` | 对白/状态/世界帧相关通过 |
+| `BuffLoopRenderer` 每帧换帧与重排 | 按帧龄跳过；层序对了不 `bringToTop` | `ce25390` | buff 用例 3/3 |
+| 任务弹窗每次 sync 重排 | 任务/画布/安全区没变直接返回 | `ce25390` | 任务弹窗用例通过 |
+| 摇杆隐藏、操作键显隐、HUD 显隐、状态图标、人像、小地图任务点 | 值没变不写/不重建 | `52ffd5a` | 45/45 |
+| 掉落暂停 | 状态没变直接返回；新飞行掉落补暂停 | `3821c6f` | 掉落用例通过 |
+| 外观颜色/属性查询 | 无 buff 不分配临时数组 | `3821c6f` | 条件/资源用例通过 |
+
+未做或回退：
+- `conditions.update` 的空集合早退会跳过共享帧时钟，测试抓到后回退。
+- `syncCombatResourceLimits` 的缓存需要 buff/条件 revision；直接缓存 maxHealth/maxMana 会在 ramp buff 下读到旧值，暂不做（最内层 setter 已有值没变就返回）。
+- 死亡 Tween 循环、冷却签名引用属于可选小项。
+
+下一项：演出时 sleep WorldScene、静态 body/`WalkRoute`；值没变就跳过的剩余项需要先补 buff/条件 revision；资产线：UI 非图标资源与地图 prop 归档清理。
