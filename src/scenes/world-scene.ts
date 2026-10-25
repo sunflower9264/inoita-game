@@ -1457,7 +1457,8 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
     this.near = nearest;
   }
   override update(_time:number,delta:number): void {
-    const stepDelta=Math.min(delta,180);
+    // 卡顿时最多补 2 个逻辑帧；补 3 帧会把 AI/寻路/状态的尖峰叠成三倍。
+    const stepDelta=Math.min(delta,120);
     this.updateFps();
     if (!this.canControl) this.syncHud();
     if (!this.player || !this.movement) return;
