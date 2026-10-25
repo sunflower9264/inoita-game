@@ -12,6 +12,8 @@ export class BuffLoopRenderer {
   constructor(scene:Phaser.Scene,catalog:BattleCatalog){this.scene=scene;this.catalog=catalog;}
   sync(id:string,visual:CharacterVisual|undefined,frames:readonly BuffLoopFrame[]):void {
     if(!visual?.container.active){this.remove(id);return;}
+    // 没有持续特效时别为每个角色建 Map/Set；已有特效仍要清掉。
+    if(!frames.length){this.remove(id);return;}
     const active=this.actors.get(id)??new Map<string,Phaser.GameObjects.Container>();
     const retained=new Set<string>();
     for(const frame of frames){

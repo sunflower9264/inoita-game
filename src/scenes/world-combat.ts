@@ -1756,7 +1756,6 @@ captureStoryActors():SceneActorState[] {
     for (const enemy of this.arena) {
       if(this.pendingDefeats.has(enemy.key))continue;
       if(!(enemy.controller instanceof FriendlySummonController))enemy.controller?.step();
-      enemy.visual.container.setDepth(enemy.visual.container.y + .5);
     }
     this.observeSummonCombat();
     for(const enemy of this.arena)if(!this.pendingDefeats.has(enemy.key)&&enemy.controller instanceof FriendlySummonController)enemy.controller.step();

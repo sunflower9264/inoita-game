@@ -150,6 +150,8 @@ export class WorldScene extends Phaser.Scene {
   private dropCatalog?:DropCatalog;
   private springCatalog?:SpringCatalog;
   private groundLootView?:GroundLootView;
+  /** 上次同步给掉落视图的 store revision。 */
+  private groundLootRevision=-1;
   private pickupMessages?:PickupMessages;
   private readonly pickupRecipients=new Map<string,CharacterVisual>();
   /** 普攻连打门控：发起过一次普攻后，站定就自动接下一击，摇杆一动即停。 */
@@ -331,7 +333,8 @@ export class WorldScene extends Phaser.Scene {
     this.layoutHud();
     this.mapLayers = drawMapLayers(this, map, { keyPrefix: `${map.id}-dodge` });
     this.groundLootView=new GroundLootView(this,this.app.items,(clip,x,y)=>createEffect(this,clip,x,y,true));
-    this.groundLootView.sync(groundLootFor(this.app.session).forMap(map.id));
+    const groundLoot=groundLootFor(this.app.session);
+    this.groundLootView.sync(groundLoot.forMap(map.id));this.groundLootRevision=groundLoot.revision;
     this.pickupMessages=new PickupMessages(this,this.app.items,{anchor:id=>{
       const character=this.pickupRecipients.get(id);
       if(!character?.container.active)return undefined;
@@ -1495,7 +1498,8 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
     }
     this.statusHud?.update(this.app.session.combatTick);
     this.groundLootView?.setPaused(!this.canCombatControl);
-    if(this.canCombatControl&&this.map){const store=groundLootFor(this.app.session);store.advance(this.map.id,stepDelta);this.groundLootView?.sync(store.forMap(this.map.id));}
+    if(this.canCombatControl&&this.map){const store=groundLootFor(this.app.session);store.advance(this.map.id,stepDelta);
+      if(store.revision!==this.groundLootRevision){this.groundLootRevision=store.revision;this.groundLootView?.sync(store.forMap(this.map.id));}}
     this.refreshShortcutPage();
     if (!this.canControl) { if (!this.performing) this.movement.stop(controlled); return; }
     if(this.combat?.playerCannotMove()){this.movement.stop(controlled);return;}

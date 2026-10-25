@@ -227,7 +227,14 @@ export class MovementWorld {
   }
   private renderPositions(): void { this.interpolation.apply(); }
   private restorePositions(): void { this.interpolation.restore(); }
-  private syncDepth(): void { for (const visual of this.registrations.keys()) if (visual.container.active) visual.container.setDepth(visual.container.y + .5); }
+  private syncDepth(): void {
+    for (const visual of this.registrations.keys()) {
+      if (!visual.container.active) continue;
+      const depth = visual.container.y + .5;
+      // Phaser 的 setDepth 每次都会把 display list 标脏并重排；值没变就别写。
+      if (visual.container.depth !== depth) visual.container.setDepth(depth);
+    }
+  }
   destroy(): void {
     this.interpolation.destroy();
     this.scene.physics.world?.off('worldstep', this.settleStep, this);

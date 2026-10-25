@@ -11,6 +11,7 @@ export interface ActiveCondition {
   sourceId:string;stackCount:number;ownerBuff?:BattleBuffKey;
 }
 type BuffEffect=BattleBuffEffect;
+const NO_BUFF_LOOPS:readonly BuffLoopFrame[]=[];
 export interface BuffLoopFrame {buff:BattleBuffKey;effect:string;frameAge:number}
 export interface PeriodicTick { sourceId:string;targetId:string;buffId:BattleBuffKey;stackCount:number;effect:BuffEffect['periodic'][number] }
 type InitializeBuffState=(state:BattleStateKey)=>{lastActiveFrame:number}|false;
@@ -289,7 +290,9 @@ export class CombatConditions {
     return structuredClone([...this.buffs.get(actorId)?.values()??[]].reverse().flatMap(buff=>buff.effect.reactions??[]));
   }
   buffLoopFrames(actorId:string):readonly BuffLoopFrame[] {
-    return [...this.buffs.get(actorId)?.values()??[]].reverse().flatMap(buff=>{
+    // 绝大多数角色没有持续特效；别为每帧的每个角色分配临时数组。
+    if(!this.buffs.get(actorId)?.size)return NO_BUFF_LOOPS;
+    return [...this.buffs.get(actorId)!.values()].reverse().flatMap(buff=>{
       const frameAge=buff.nextFrameAge??Math.floor(buff.elapsedMs/LOGIC_FRAME_MS);
       return (buff.effect.loopEffects??[]).filter(loop=>frameAge>=loop.firstFrameAge)
         .map(loop=>({buff:buff.id,effect:loop.effect,frameAge}));

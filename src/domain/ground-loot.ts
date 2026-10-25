@@ -22,10 +22,13 @@ export interface GroundLootState { nextId:number; drops:GroundDrop[] }
 export class GroundLootStore {
   private nextId=0;
   private readonly drops=new Map<string,GroundDrop>();
+  /** 掉落内容/飞行状态的版本号；界面只在它变化时重建，避免每帧克隆整张表。 */
+  revision=0;
   captureState():GroundLootState { return structuredClone({nextId:this.nextId,drops:[...this.drops.values()]}); }
   restoreState(state:GroundLootState):void {
     const restored=structuredClone(state);this.nextId=restored.nextId;this.drops.clear();
     for(const drop of restored.drops)this.drops.set(drop.id,drop);
+    this.revision++;
   }
   add(map:string,x:number,y:number,rewards:readonly DropReward[],options:{nowMs?:number}={}):GroundDrop[] {
     const nowMs=options.nowMs;
@@ -36,6 +39,7 @@ export class GroundLootStore {
       return structuredClone(drop);
     });
     this.prune(map);
+    if(added.length)this.revision++;
     return added;
   }
   /** 队伍掉落共用一张背包，但地面总量仍要封顶：每图最多 64 件，超出淘汰最旧的。 */
@@ -53,7 +57,7 @@ export class GroundLootStore {
     if(!Number.isFinite(deltaMs)||deltaMs<=0)return;
     for(const drop of this.drops.values())if(drop.map===map&&drop.flight){
       drop.flight.remainingMs-=deltaMs;
-      if(drop.flight.remainingMs<=0)delete drop.flight;
+      if(drop.flight.remainingMs<=0){delete drop.flight;this.revision++;}
     }
   }
   forMap(map:string):GroundDrop[] {return [...this.drops.values()].filter(drop=>drop.map===map).map(drop=>structuredClone(drop));}
@@ -66,6 +70,7 @@ export class GroundLootStore {
       if(collect(structuredClone(drop.reward))===false)continue;
       this.drops.delete(drop.id);taken.push(structuredClone(drop));
     }
+    if(taken.length)this.revision++;
     return taken;
   }
   /**
@@ -79,6 +84,7 @@ export class GroundLootStore {
       if(collect(structuredClone(drop.reward))===false)continue;
       this.drops.delete(drop.id);taken.push(structuredClone(drop));
     }
+    if(taken.length)this.revision++;
     return taken;
   }
 }

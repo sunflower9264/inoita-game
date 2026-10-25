@@ -5,7 +5,7 @@ import { statusColorMatrix, type StatusColor } from '../domain/status-color.ts';
 /** 每个角色独立着色；动画换贴图后为新图层重新挂上同一颜色规则。 */
 export class StatusColorRenderer {
   private filters=new WeakMap<Phaser.GameObjects.Sprite,Phaser.Filters.ColorMatrix>();
-  private appearances=new WeakMap<CharacterVisual,{colors:readonly StatusColor[]|undefined;frame:number}>();
+  private appearances=new WeakMap<CharacterVisual,{colors:readonly StatusColor[]|undefined;frame:number;layers:readonly Phaser.GameObjects.Sprite[]}>();
   private flashes=new WeakSet<CharacterVisual>();
   flash(character:CharacterVisual,scene:Phaser.Scene):void {
     if(this.flashes.has(character))return;
@@ -20,8 +20,10 @@ export class StatusColorRenderer {
     });
   }
   paint(character:CharacterVisual,colors:readonly StatusColor[]|undefined,logicalFrame:number):void {
-    this.appearances.set(character,{colors,frame:logicalFrame});
-    const flash=this.flashes.has(character);
+    const previous=this.appearances.get(character),flash=this.flashes.has(character);
+    // 着色规则、逻辑帧和图层批次都没变时不必重设 color matrix；换动作会换新图层数组。
+    if(previous&&!flash&&previous.colors===colors&&previous.frame===logicalFrame&&previous.layers===character.layers)return;
+    this.appearances.set(character,{colors,frame:logicalFrame,layers:character.layers});
     for(const sprite of character.layers){
       let filter=this.filters.get(sprite);
       if(!colors?.length&&!flash){filter?.setActive(false);continue;}
