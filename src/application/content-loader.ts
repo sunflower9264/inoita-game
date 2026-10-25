@@ -15,6 +15,11 @@ interface ContentRequest<T> {
 }
 
 export class ContentLoader {
+  /**
+   * 生产构建信任构建期校验：只做 JSON.parse，不重复跑 parseX 的语义校验。
+   * 开发服务、Node 测试与直接 import 默认 false；main.ts 按构建常量/GM 打开。
+   */
+  trusted = false;
   private readonly requests = new Map<string, ContentRequest<unknown>>();
   statusHud(signal?:AbortSignal){return this.read('content/status-hud.json',parseStatusHud,signal);}
   characterStats(signal?:AbortSignal){return this.read('content/character-stats.json',parseCharacterStats,signal);}
@@ -35,7 +40,8 @@ export class ContentLoader {
         if (!response.ok) throw new Error(`资源暂时无法加载：${file}`);
         const value = await response.json();
         controller.signal.throwIfAborted();
-        return parse(value);
+        // 已核对现有 parseX 都是“校验后返回原对象”，生产可跳过；dev/test 仍完整校验。
+        return this.trusted ? value as T : parse(value);
       })();
       request = { promise, controller, waiters: 0, finished: false };
       this.requests.set(file, request);

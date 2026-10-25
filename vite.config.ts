@@ -94,7 +94,9 @@ export default defineConfig(({ command }) => {
     appType: 'mpa',
     define: {
       __STORY_ASSET_VERSION__: JSON.stringify(versions.assetVersion),
-      __STORY_CONTENT_VERSION__: JSON.stringify(versions.contentVersion)
+      __STORY_CONTENT_VERSION__: JSON.stringify(versions.contentVersion),
+      // 生产构建信任构建期校验；dev/test/GM/?validate 走完整校验。
+      __STORY_TRUST_CONTENT__: JSON.stringify(command === 'build')
     },
     plugins: [contentGuard(), diagnosticCollector(), versionPublicAssets(versions.assetVersion)],
     server: { host: true, port: 4003, strictPort: true },

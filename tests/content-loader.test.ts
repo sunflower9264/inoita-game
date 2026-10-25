@@ -29,6 +29,18 @@ test('concurrent callers fetch and parse one content file once, even if one call
   } finally { globalThis.fetch = original; }
 });
 
+test('trusted loader returns raw JSON without running the semantic parser', async () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = (async () => ({ ok: true, json: async () => ({}) } as Response)) as typeof fetch;
+  try {
+    const trusted = new ContentLoader();
+    trusted.trusted = true;
+    assert.deepEqual(await trusted.statusHud(), {});
+    const checked = new ContentLoader();
+    await assert.rejects(checked.statusHud());
+  } finally { globalThis.fetch = original; }
+});
+
 test('failed content can be requested again', async () => {
   const original = globalThis.fetch;
   let calls = 0;

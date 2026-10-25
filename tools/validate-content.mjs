@@ -9,6 +9,7 @@ import {validateDebugCatalog} from '../src/debug/catalog-validation.ts';
 import {validateContentRelations} from '../src/application/content-relations.ts';
 import {validateSpriteSheet} from './validate-spritesheet.ts';
 import {parseDrops} from '../src/domain/drops.ts';
+import {parseSprings} from '../src/domain/springs.ts';
 import {titleMenuImages} from '../src/application/menu-images.ts';
 import {residentCombatAssets} from '../src/rendering/resident-combat-assets.ts';
 import {residentCombatCoverageGaps} from '../src/rendering/combat-visual-coverage.ts';
@@ -22,11 +23,12 @@ export function validateContent(root=fileURLToPath(new URL('../public/',import.m
  const crafting=parseCrafting(read('content/crafting.json'));validateCrafting(crafting,items);
  const shops=parseShops(read('content/shops.json'));validateShops(shops,items,world);
  const drops=parseDrops(read('content/drops.json'),items,battle.enemies.map(enemy=>enemy.id));
+ const springs=parseSprings(read('content/springs.json'));
  validateStoryPortraits(world,storyInterface);
  const stats=parseCharacterStats(read('content/character-stats.json'));validateCharacterStats(stats,items,battle);validateCompanions(companions,world,battle,stats,campaign);
  const menu=parseMenuPanels(read('content/menu-panels.json'));validateMenuClasses(menu,battle);
  const maps=new Map();
- const documents=[crafting,companions,parseStatusHud(read('content/status-hud.json')),items,shops,drops,wardrobe,menu,world,battle,campaign,storyInterface,parseStoryClasses(read('content/story-classes.json')),parseControlSkin(read('content/control-skin.json')),audio];
+ const documents=[crafting,companions,parseStatusHud(read('content/status-hud.json')),items,shops,drops,springs,wardrobe,menu,world,battle,campaign,storyInterface,parseStoryClasses(read('content/story-classes.json')),parseControlSkin(read('content/control-skin.json')),audio];
  const ensure=(value,message)=>{if(!value)throw new Error(message);};
  // 地图要各自读一个文件，读进来后连同其它内容一起交给跨文件规则（src/application/content-relations.ts）。
  for(const reference of world.maps){const map=parseMap(read(reference.file));maps.set(map.id,map);documents.push(map);}

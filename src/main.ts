@@ -13,6 +13,7 @@ import { storyReferenceMaps, validateStoryReferences } from './application/story
 import { ControlsScene } from './scenes/controls-scene.ts';
 import Phaser from 'phaser';
 import { StoryApp } from './app.ts';
+import { trustedContentNow } from './application/content-trust.ts';
 import type { Session } from './domain/session.ts';
 import { newStorySession } from './domain/story-class.ts';
 import { StoryClassScene } from './scenes/story-class-scene.ts';
@@ -92,6 +93,8 @@ const addressParams = new URLSearchParams(location.search);
  */
 const gmFromAddress = addressParams.has('gm');
 const gmOn = (): boolean => gmFromAddress || app.gmMode.on;
+// 生产构建信任构建期校验；?gm、持久 GM 或 ?validate 强制走完整校验。
+app.content.trusted = trustedContentNow() && !gmOn();
 
 const inspect = gmFromAddress || addressParams.has('inspect') || addressParams.has('ui-debug') || addressParams.has('animation-debug');
 const uiDebug = addressParams.has('ui-debug');
@@ -185,23 +188,27 @@ function prepareStory(signal: AbortSignal): Promise<void> {
     // 调试现场表是独立产物：只有 GM 会话加载，普通游玩不请求 1.35MB 的调试数据。
     if (gmOn()) campaign.debugStory = await app.content.storyDebug(signal);
     signal.throwIfAborted();
-    validateMenuClasses(panels, battle);
-    validateWardrobe(wardrobe, items, battle);
-    validateItemSkills(items, battle);
-    validateCharacterStats(stats, items, battle);
-    validateStoryItems(campaign, items);
-    validateShops(shops, items, world);
-    validateCrafting(crafting, items);
-    validateCompanions(companions,world,battle,stats,campaign);
-    const storyMaps = new Map(await Promise.all([...storyReferenceMaps(campaign)].map(async id => {
-      const reference = world.maps.find(map => map.id === id);
-      if (!reference) throw new Error(`剧情地图不存在：${id}`);
-      return [id, await app.content.map(reference.file, signal)] as const;
-    })));
-    signal.throwIfAborted();
-    validateStoryReferences(campaign, world, battle, storyMaps, items);
-    validateStoryPerformance(world, campaign, storyMaps, app.audio?.catalog);
-    validateStoryPortraits(world, presentation);
+    // 生产构建信任构建期校验：不重复跑语义校验，也不为校验 fetch 281 张剧情地图。
+    // dev/测试/?gm/?validate 仍走完整路径。
+    if (!app.content.trusted) {
+      validateMenuClasses(panels, battle);
+      validateWardrobe(wardrobe, items, battle);
+      validateItemSkills(items, battle);
+      validateCharacterStats(stats, items, battle);
+      validateStoryItems(campaign, items);
+      validateShops(shops, items, world);
+      validateCrafting(crafting, items);
+      validateCompanions(companions,world,battle,stats,campaign);
+      const storyMaps = new Map(await Promise.all([...storyReferenceMaps(campaign)].map(async id => {
+        const reference = world.maps.find(map => map.id === id);
+        if (!reference) throw new Error(`剧情地图不存在：${id}`);
+        return [id, await app.content.map(reference.file, signal)] as const;
+      })));
+      signal.throwIfAborted();
+      validateStoryReferences(campaign, world, battle, storyMaps, items);
+      validateStoryPerformance(world, campaign, storyMaps, app.audio?.catalog);
+      validateStoryPortraits(world, presentation);
+    }
     Object.assign(app, { world, campaign, storyInterface: presentation, battleCatalog: battle, characterStats: stats,
       menuPanels: panels, items, wardrobe, statusHud, controlSkin, shops, companions, crafting });
   })();
