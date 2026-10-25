@@ -265,14 +265,24 @@ const shopRule:Check=(v,p)=>{
 };
 const nullableItem:Check=(v,p)=>{if(v!==null)text(v,p);};
 const shopPool=shape<WeightedItem>({weight:integer,item:optional(nullableItem),tiers:optional(array(object({item:nullableItem,level:integer})))});
+interface ShopEquipmentDraft {
+  defaultGrade:number;randomGrade:boolean;dropLevel:number;randomGroup:'weapon'|'armor'|'accessory'|'none';
+  randomListed:boolean;uniqueListed:boolean;
+  variants?:{attack:number;defense:number;gradeName:string;optionCount:number;socketLimit:number}[];
+  concealedPrices:number[];
+}
+const shopEquipmentEntry=shape<ShopEquipmentDraft>({defaultGrade:integer,randomGrade:boolean,dropLevel:number,randomGroup:oneOf('weapon','armor','accessory','none'),randomListed:boolean,uniqueListed:boolean,
+  variants:optional(array(object({attack:integer,defense:integer,gradeName:text,optionCount:integer,socketLimit:integer}))),concealedPrices:array(integer)});
+const shopEquipment=record(shopEquipmentEntry);
 const shops=shape<ShopCatalog>({shops:record(object({name:text,priceRatePercent:count,fixedStock:strings,categories:strings,stockRules:array(shopRule)})),
   lampShop:text,mapShopLevels:record(integer),categories:record(object({name:text,group:oneOf('weapons','armor')})),assets:record(file),
   profiles:record(object({pools:record(array(shopPool)),chances:object({generic:integer,equipment:integer,consumable:integer,upgrade:integer,crafting:integer,misc:integer}),uniqueChanceByLevel:array(integer)})),
-  equipment:record(object({defaultGrade:integer,randomGrade:boolean,dropLevel:number,randomGroup:oneOf('weapon','armor','accessory','none'),randomListed:boolean,uniqueListed:boolean,
-    variants:array(object({attack:integer,defense:integer,gradeName:text,optionCount:integer,socketLimit:integer})),concealedPrices:array(integer)})),
+  equipment:optional(shopEquipment),
   grades:array(object({name:text,armorName:optional(text),rarity:integer,weight:integer})),rarityWeights:object({ordinary:array(integer),rare:array(integer)})});
 export function parseShops(value:unknown):ShopCatalog {
   shops(value,'shops');const result=value as ShopCatalog;
+  // 生产构建把大型装备表拆到 shops-equipment.json，运行时按需合并；dev 源文件完整。
+  result.equipment ??= {};
   requireValue(Object.keys(result.shops).length===18,'shops','需要 18 个商店 NPC');
   requireValue(result.shops[result.lampShop],'shops.lampShop','缺少神灯商人');
   requireValue(result.grades.length===15&&result.rarityWeights.ordinary.length===5&&result.rarityWeights.rare.length===5,'shops','品质规则不完整');
@@ -293,6 +303,23 @@ export function parseShops(value:unknown):ShopCatalog {
   for(const key of ['slot','selection','gold','silver','copper','merchant-title'])requireValue(result.assets[key],'shops.assets',`缺少素材 ${key}`);
   return result;
 }
+const shopEquipmentFile=shape<{equipment:Record<string,ShopEquipmentDraft>}>({equipment:shopEquipment});
+/** 生产内容包把 shops.equipment 拆到独立文件；解析后即可合并回 ShopCatalog。 */
+export function parseShopEquipment(value:unknown,stats?:CharacterStatsCatalog):ShopCatalog['equipment'] {
+  shopEquipmentFile(value,'shops-equipment');
+  const result=value as {equipment:Record<string,ShopEquipmentDraft>};
+  for(const [id,equipment]of Object.entries(result.equipment)){
+    if(!equipment.variants){
+      const variants=stats?.equipment[id]?.gradeVariants;
+      requireValue(variants?.length===15,id,'装备品级需要 character-stats 派生');
+      equipment.variants=variants.map(variant=>({attack:variant.attack,defense:variant.defense,
+        gradeName:variant.name,optionCount:variant.optionCount,socketLimit:variant.socketLimit}));
+    }
+    requireValue(equipment.variants.length===15&&equipment.defaultGrade<15&&equipment.concealedPrices.length===128,id,'装备品质或报价不完整');
+  }
+  return result.equipment as ShopCatalog['equipment'];
+}
+
 export function validateShops(shops:ShopCatalog, items:ItemCatalog, world:WorldIndex):void {
   for(const [id,shop]of Object.entries(shops.shops)) {
     requireValue(id===shops.lampShop||world.actors[id],id,'商店人物不存在');

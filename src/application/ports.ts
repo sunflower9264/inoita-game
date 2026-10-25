@@ -54,7 +54,7 @@ export interface StoryContext {
   readonly campaign: Campaign;
   readonly session: Session;
   readonly director: StoryDirector;
-  readonly content: Pick<ContentLoader,'map'|'drops'|'springs'>;
+  readonly content: Pick<ContentLoader,'map'|'drops'|'springs'|'shopEquipment'>;
   readonly companions: import('../domain/party.ts').CompanionCatalog;
   /** 玩家侧全部战斗视觉资源在首次进游戏时加载并常驻，避免战斗与入队时现场加载。 */
   residentCombatReady?: boolean;
@@ -73,6 +73,8 @@ export interface StoryContext {
   autoSave?: (reason: import('./auto-save.ts').AutoSaveReason) => void;
 }
 export interface StoryUIContext {
+  /** 商店装备表按需加载（生产内容包与 shops.json 分开）。 */
+  readonly content: Pick<ContentLoader,'shopEquipment'>;
   readonly controlLayout:ControlLayoutPreferences;
   captureControlPreview?:()=>readonly import('../ui/phaser/action-controls.ts').ShortcutSlot[];
   resumeSlot?:(slot:import('../domain/save-game.ts').SaveSlotRef,signal?:AbortSignal)=>Promise<void>;

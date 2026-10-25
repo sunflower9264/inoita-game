@@ -186,10 +186,17 @@ export class StoryUI {
     this.craftingPanel=new CraftingPanel(new EquipmentCrafting(this.session,this.app.crafting),this.app.menuPanels,()=>this.render(),()=>this.app.audio?.ui('craft'),this.app.shops.grades);
     this.show('crafting');
   }
-  openShop(shopId:string,mapId:string):void{
+  async openShop(shopId:string,mapId:string):Promise<void>{
     if(!this.session||!this.app.shops.shops[shopId]||this.app.ui.mode!=='game')return;
-    if(this.requestAllocationExit(()=>this.openShop(shopId,mapId)))return;
+    if(this.requestAllocationExit(()=>{void this.openShop(shopId,mapId);}))return;
+    await this.ensureShopEquipment();
+    if(!this.session||this.app.ui.mode!=='game')return;
     this.close();const store=new Storefront(this.app.shops,this.session.bag.catalog,this.app.characterStats,this.session,shopId,mapId);this.shopPanel=new ShopPanel(store,this.session,this.app.shops,this.app.menuPanels.assets,()=>this.render(),()=>this.member(),this.classNames());this.show('shop');
+  }
+  /** 生产内容包把 shops.equipment 拆到独立文件；第一次开商店时合并。 */
+  private async ensureShopEquipment():Promise<void>{
+    if(Object.keys(this.app.shops.equipment).length)return;
+    this.app.shops.equipment=await this.app.content.shopEquipment();
   }
   /**
    * 面板调试入口，只给 `?ui-debug` 的调试场景调用：直接把面板摆到目标状态，跳过点击链路。
@@ -207,8 +214,8 @@ export class StoryUI {
     this.show('bag');this.beginOperation(entry,kind);
   }
   /** 调试入口：打开商店并停在该店的某个交易步骤；`shopId` 必须是 shops.json 里存在的键。 */
-  debugShop(shopId:string,step:'browse'|'description'|'quantity'|'confirm'|'notice'='browse',kind:'buy'|'sell'='buy',mapId=''):void{
-    this.openShop(shopId,mapId);
+  async debugShop(shopId:string,step:'browse'|'description'|'quantity'|'confirm'|'notice'='browse',kind:'buy'|'sell'='buy',mapId=''):Promise<void>{
+    await this.openShop(shopId,mapId);
     if(step!=='browse')this.shopPanel?.debugTrade(step,kind);
   }
   close():void{

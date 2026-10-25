@@ -2,8 +2,9 @@ import {parseCrafting} from '../domain/crafting.ts';
 import type { WorldIndex, WorldMap } from '../domain/content.ts';
 import type { Campaign } from '../domain/campaign.ts';
 import type { BattleCatalog } from '../domain/battle.ts';
-import { parseStatusHud, parseCharacterStats, parseMenuPanels, parseBattle, parseCampaign, parseMap, parseWorld, parseStoryInterface, parseControlSkin, parseStoryClasses, parseItemCatalog, parseWardrobe, parseShops, parseCompanions, parseStoryDebugCatalog } from './content-validation.ts';
+import { parseStatusHud, parseCharacterStats, parseMenuPanels, parseBattle, parseCampaign, parseMap, parseWorld, parseStoryInterface, parseControlSkin, parseStoryClasses, parseItemCatalog, parseWardrobe, parseShops, parseShopEquipment, parseCompanions, parseStoryDebugCatalog } from './content-validation.ts';
 import type { StoryInterface } from '../domain/story-interface.ts';
+import type { ShopCatalog } from '../domain/shop.ts';
 import { parseSprings, type SpringCatalog } from '../domain/springs.ts';
 import { versionedContent } from './asset-version.ts';
 
@@ -28,6 +29,14 @@ export class ContentLoader {
   springs(signal?:AbortSignal):Promise<SpringCatalog>{return this.read('content/springs.json',parseSprings,signal);}
   crafting(signal?:AbortSignal){return this.read('content/crafting.json',parseCrafting,signal);}
   shops(signal?:AbortSignal){return this.read('content/shops.json',parseShops,signal);}
+  /** 生产内容包把大型装备表拆到独立文件；打开商店时再取。 */
+  async shopEquipment(signal?:AbortSignal):Promise<ShopCatalog['equipment']>{
+    const value=await this.read<{equipment:ShopCatalog['equipment']}>('content/shops-equipment.json',
+      data=>data as {equipment:ShopCatalog['equipment']},signal);
+    // 生产包省略了 variants；从已加载的 character-stats 派生，避免重复存储 726 KB。
+    const stats=await this.characterStats(signal);
+    return parseShopEquipment(value, stats);
+  }
   companions(signal?:AbortSignal){return this.read('content/companions.json',parseCompanions,signal);}
   wardrobe(signal?:AbortSignal){return this.read('content/wardrobe.json',parseWardrobe,signal);}
   private read<T>(file:string, parse:(data:unknown)=>T, signal?:AbortSignal):Promise<T>{

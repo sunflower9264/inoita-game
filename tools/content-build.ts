@@ -84,6 +84,21 @@ export async function buildContent(sourceDir: string, outputDir: string): Promis
         if (skill.companion) displayRows += skill.companion.display?.length ?? 0;
       }
       irSkills += compilePilotActions(battle);
+    } else if (file.relative === 'shops.json') {
+      // shops 的装备表约 1.2 MB，独立成文件；运行时第一次打开商店再取。
+      const shops = parsed as { equipment?: Record<string, Record<string, unknown>> };
+      const equipment = Object.fromEntries(Object.entries(shops.equipment ?? {}).map(([id, entry]) => {
+        // variants 与 character-stats.gradeVariants 重复；运行时由 stats 派生。
+        const { variants: _variants, ...rest } = entry;
+        return [id, rest];
+      }));
+      // 保留空对象，信任路径的 ContentLoader 不跑 parseShops，仍需能读 equipment。
+      shops.equipment = {};
+      transformed = shops;
+      const equipmentText = JSON.stringify({ equipment });
+      const equipmentTarget = path.join(path.dirname(target), 'shops-equipment.json');
+      await fs.writeFile(equipmentTarget, equipmentText);
+      outputBytes += Buffer.byteLength(equipmentText);
     } else {
       // 防止 minify 改动数值/键/结构：解析后的 canonical 内容必须一致。
       const minified = JSON.stringify(parsed);
