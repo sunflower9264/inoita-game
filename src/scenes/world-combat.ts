@@ -163,6 +163,8 @@ export class WorldCombat {
   private heroAi?:PartyController;
   private readonly fallen=new Set<string>();
   private readonly deathTweens=new Map<string,Phaser.Tweens.Tween>();
+  /** 死亡表现当前是否被暂停；只在状态变化时逐角色应用。 */
+  private deathVisualsPaused?:boolean;
   private readonly partyControllers=new Map<string,CombatController>();
   private readonly partySkills=new Map<string,EnemyPlayableSkill[]>();
   private readonly pendingAllies=new Set<string>();
@@ -2313,8 +2315,11 @@ captureStoryActors():SceneActorState[] {
     const deathClip=`die-${facing}` as const,clip=id==='player'?undefined:visual.actor.clips[deathClip];
     if(clip)setCharacterClip(this.scene,visual,deathClip,true);
     else for(const sprite of visual.layers)sprite.anims.stop();
-    this.deathTweens.set(id,this.scene.tweens.add({targets:visual.container,alpha:0,
-      delay:clip?clip.frames*1000/clip.frameRate:0,duration:10*LOGIC_FRAME_MS}));
+    const deathTween=this.scene.tweens.add({targets:visual.container,alpha:0,
+      delay:clip?clip.frames*1000/clip.frameRate:0,duration:10*LOGIC_FRAME_MS});
+    this.deathTweens.set(id,deathTween);
+    // 暂停期间新倒下的角色也要立刻停在首帧，不能等下一次暂停状态切换。
+    if(this.deathVisualsPaused){deathTween.pause();for(const sprite of visual.layers)sprite.anims.pause();}
     (this.partyDefeatWork??=new Map()).set(id,finish);
     this.runtime.schedule(`party-defeat:${id}`,10+(clip?Math.ceil(clip.frames*1000/clip.frameRate/LOGIC_FRAME_MS):0),finish);
   }
@@ -2408,9 +2413,13 @@ captureStoryActors():SceneActorState[] {
     if(this.closed||!this.player?.container.active)return;
     this.pathBudget?.reset();
     this.outcomes.setPaused(!enabled||this.defeated);
-    for(const [id,tween]of this.deathTweens){
-      if(enabled&&!this.defeated)tween.resume();else tween.pause();
-      for(const sprite of this.visualOf(id)?.layers??[])if(enabled&&!this.defeated)sprite.anims.resume();else sprite.anims.pause();
+    const deathPaused=!enabled||this.defeated;
+    if(deathPaused!==this.deathVisualsPaused){
+      this.deathVisualsPaused=deathPaused;
+      for(const [id,tween]of this.deathTweens){
+        if(deathPaused)tween.pause();else tween.resume();
+        for(const sprite of this.visualOf(id)?.layers??[])if(deathPaused)sprite.anims.pause();else sprite.anims.resume();
+      }
     }
     this.feedback.setPaused(!enabled||this.defeated);
     const colorFrame=this.app.session.combatTick;
