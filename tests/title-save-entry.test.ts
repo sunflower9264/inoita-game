@@ -161,7 +161,7 @@ test('title settings keeps every row inside a scrolling panel',()=>{
     ['返回主菜单','背景音乐：开','音效：开','全屏：不支持','移动方式：虚拟摇杆']);
   // 选项挂在面板内侧的滚动区：边框不滚，行数再多也只滚动，不会画到边线上。
   const scroll=f.view.scrolls.at(-1);assert.ok(scroll);
-  assert.deepEqual([scroll.x,scroll.y,scroll.width,scroll.height],[220,150,760,377]);
+  assert.deepEqual([scroll.x,scroll.y,scroll.width,scroll.height],[240,190,720,297]);
   const rows=f.view.buttons.filter(button=>String(button.getData('label')).includes('：'));
   assert.equal(rows.length,4);
   assert(rows.every(row=>row.y>=0&&row.y+row.height<=scroll.extent),'每一行都在滚动内容的高度内');

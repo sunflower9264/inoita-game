@@ -112,11 +112,11 @@ export class MenuScene extends Phaser.Scene {
         scroll.setHeight((MANUAL_SAVE_SLOT_COUNT-1)*SAVE_BOARD.rowStep+SAVE_BOARD.frameHeight);
       }else{
         view.text('环境设置',600,20,760,49).setOrigin(.5,0);
-        // 边框固定在原版位置；选项排进边框内侧的滚动区，行数增加时只滚动，不会压到边线。
-        const panel={x:200,y:126,width:800,height:425},inset=24;
-        view.rect(panel.x,panel.y,panel.width,panel.height,0x000000,.7);
+        // 边框固定在原版位置；选项排进金色边线内侧的滚动区，行数增加时只滚动，不会压到边线。
+        // 边线在 slot.png 原图里内缩约 18×20 像素，按显示尺寸换算后水平约 28、垂直约 47。
+        const panel={x:200,y:126,width:800,height:425};
         view.image(art('slot'),panel.x,panel.y,panel.width,panel.height);
-        const list=view.scroll(panel.x+20,panel.y+inset,panel.width-40,panel.height-inset*2),content=list.content;
+        const list=view.scroll(panel.x+40,panel.y+64,panel.width-80,panel.height-128),content=list.content;
         // 每一项只有文案、当前值和动作；开关后整页重画，滚动位置由 settingsScroll 接续。
         const rows:{label:string;value:string;action:()=>void;disabled?:boolean}[]=[];
         for(const [channel,label]of ([['music','背景音乐'],['effects','音效']]as const)){
@@ -134,12 +134,12 @@ export class MenuScene extends Phaser.Scene {
         const dpad=controlSettings.moveStyle==='dpad';
         rows.push({label:'移动方式',value:dpad?'十字按键':'虚拟摇杆',action:()=>{controlSettings.setMoveStyle(dpad?'stick':'dpad');this.render();}});
         rows.forEach((row,index)=>{
-          const top=28+index*100;
-          view.text(row.label,58,top+12,0,34,undefined,content);
-          button(row.value,290,top,190,67,row.action,row.value.length>2?30:34,content)
+          const top=20+index*100;
+          view.text(row.label,38,top+12,0,34,undefined,content);
+          button(row.value,270,top,190,67,row.action,row.value.length>2?30:34,content)
             .setData('label',`${row.label}：${row.value}`);
         });
-        list.setHeight(28+(rows.length-1)*100+67+24);
+        list.setHeight(20+(rows.length-1)*100+67+20);
         list.onScroll=()=>{this.settingsScroll=list.scrollTop;};
         list.scrollTop=this.settingsScroll;
       }
