@@ -11,6 +11,25 @@ export type PendingAsset =
 const pools = new WeakMap<Phaser.Textures.TextureManager, AssetPool>();
 /** 队列按纹理管理器排队：同一份纹理库只有一个 loader 能写，跨场景并发会重复注册同一纹理键。 */
 const textureQueues = new WeakMap<Phaser.Textures.TextureManager, Promise<void>>();
+/**
+ * 正在加载某个纹理键的调用数。损坏缓存重建前必须区分“其他加载者”和“真正持有纹理的用户”：
+ * 前者还没开始用这张纹理，可以一起等重建；后者不能删。
+ */
+const activeLoaders = new WeakMap<Phaser.Textures.TextureManager, Map<string, number>>();
+
+function loaderCounts(scene: Phaser.Scene): Map<string, number> {
+  let counts = activeLoaders.get(scene.textures);
+  if (!counts) { counts = new Map(); activeLoaders.set(scene.textures, counts); }
+  return counts;
+}
+
+function changeLoaders(scene: Phaser.Scene, keys: Iterable<string>, delta: 1 | -1): void {
+  const counts = loaderCounts(scene);
+  for (const key of keys) {
+    const next = (counts.get(key) ?? 0) + delta;
+    if (next > 0) counts.set(key, next); else counts.delete(key);
+  }
+}
 
 function poolFor(scene: Phaser.Scene): AssetPool {
   let pool = pools.get(scene.textures);
@@ -97,7 +116,9 @@ export async function loadSceneAssets(scene: Phaser.Scene, assets: PendingAsset[
     byKey.set(asset.key, asset);
   }
   const unique = [...byKey.values()];
-  const ownership = pool.acquire(unique.map(asset=>asset.key));
+  const keys = unique.map(asset=>asset.key);
+  changeLoaders(scene, keys, 1);
+  const ownership = pool.acquire(keys);
   const lease = {release:()=>{scene.events.off('shutdown',lease.release);ownership.release();}};
   const controller = new AbortController();
   const shutdown = () => controller.abort(new DOMException('场景已关闭','AbortError'));
@@ -109,7 +130,11 @@ export async function loadSceneAssets(scene: Phaser.Scene, assets: PendingAsset[
       // 纹理键已存在但帧不全：先确认没有别的租约在用它，再删掉重建。
       for (const asset of needed) {
         if (assetGap(scene, asset) === 'texture') continue;
-        if (pool.holders(asset.key) !== 1)
+        const holders = pool.holders(asset.key);
+        const loading = loaderCounts(scene).get(asset.key) ?? 0;
+        // 只有“正在加载这个键、还没开始用纹理”的其他调用者可以和本次一起等重建；
+        // 真正持有纹理的租约（地图/舞台/常驻包）仍然不能删。
+        if (holders !== 1 && holders !== loading)
           throw new Error(`贴图 ${asset.key} 仍被其他租约持有，无法补齐缺失帧`);
         removeTexture(scene, asset.key);
       }
@@ -137,5 +162,7 @@ export async function loadSceneAssets(scene: Phaser.Scene, assets: PendingAsset[
     if(!controller.signal.aborted)globalThis.storyDiagnostics?.record('asset-load-error',
       {error,files:unique.map(asset=>({key:asset.key,file:asset.file}))});
     scene.events.off('shutdown',shutdown);lease.release();throw error;
+  }finally{
+    changeLoaders(scene, keys, -1);
   }
 }

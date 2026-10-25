@@ -163,6 +163,20 @@ test('atlas assets load with string frames and verify their sentinel frame', asy
   assert.deepEqual(run.removed, [atlas.key, atlas.key], '哨兵帧缺失时先删旧纹理，释放时再删新纹理');
 });
 
+test('concurrent loaders can repair one damaged atlas texture without one failing', async () => {
+  const atlas: PendingAsset = { kind: 'atlas', key: 'props-atlas:0', file: 'assets/props/atlas/props-0.png',
+    atlas: 'assets/props/atlas/props-0.json', frame: 'frame-a' };
+  const run = setup();
+  run.frames.set(atlas.key, new Set(['frame-b'])); // 哨兵帧缺失的损坏缓存
+  const [first, second] = await Promise.all([
+    loadSceneAssets(run.scene, [atlas], () => {}),
+    loadSceneAssets(run.scene, [atlas], () => {})
+  ]);
+  assert.equal(missingSceneAssets(run.scene, [atlas]).length, 0);
+  first.release(); second.release();
+  assert.deepEqual(run.removed, [atlas.key, atlas.key], '只删一次旧缓存，最后释放一次新纹理');
+});
+
 test('retaining assets verifies textures and frames before taking a lease', () => {
   const run = setup();
   assert.throws(() => retainLoadedSceneAssets(run.scene, [asset]), /常驻资源尚未就绪：skill-effect/);
