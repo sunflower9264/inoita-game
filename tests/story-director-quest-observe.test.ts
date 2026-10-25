@@ -53,3 +53,22 @@ test('inventory observation reuses the bag revision instead of recounting every 
   assert.ok(reads() > base, '背包变化后应当重新统计');
   director.dispose();
 });
+
+/** 统计剧情世界被整份深拷贝了几次。 */
+function countWorldCaptures(session: Session) {
+  const world = session.storyWorld, original = world.captureState.bind(world);
+  let reads = 0;
+  world.captureState = () => { reads++; return original(); };
+  return () => reads;
+}
+
+test('story observation reads choices and encounters without cloning the whole world', () => {
+  const session = new Session(campaign), director = new StoryDirector(campaign, session, ui, () => {}, presentation);
+  const captures = countWorldCaptures(session);
+  session.emit();
+  const base = captures();
+  // 与剧情世界无关的通知（掉血、金币、位置……）不该深拷贝整个世界。
+  for (let index = 0; index < 10; index++) session.emit();
+  assert.equal(captures(), base);
+  director.dispose();
+});

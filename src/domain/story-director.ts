@@ -170,16 +170,21 @@ export class StoryDirector {
       for (const id of new Set([...items.keys(), ...this.observedItems.keys()])) if ((items.get(id) ?? 0) !== (this.observedItems.get(id) ?? 0)) changes.push({ source: 'inventory', key: id });
       this.observedItems = items; this.observedBagRevision = bagRevision;
     }
-    const storyWorld = this.session.storyWorld.captureState(), choices = new Map(storyWorld.choices);
-    const encounters = new Map(storyWorld.encounters.map(encounter => [encounter.id, encounter.status]));
+    // 只取观察需要的两张小表；不要为了 choices/encounters 深拷贝整个剧情世界。
+    const choices = this.session.storyWorld.choiceValues();
+    const encounters = this.session.storyWorld.encounterStatuses();
+    const encounterStatuses = new Map<string,string>();
     for (const [id, value] of choices) if (this.observedChoices.get(id) !== value) changes.push({ source: 'choice', key: id });
-    for (const encounter of storyWorld.encounters) if (['won','lost'].includes(encounter.status) && this.observedEncounters.get(encounter.id) !== encounter.status)
-      changes.push({ source: 'battle', key: encounter.definitionId ?? encounter.id });
+    for (const [id, encounter] of encounters) {
+      encounterStatuses.set(id, encounter.status);
+      if (['won','lost'].includes(encounter.status) && this.observedEncounters.get(id) !== encounter.status)
+        changes.push({ source: 'battle', key: encounter.definitionId ?? id });
+    }
     const completedEvents = new Set(this.session.runtimeState.completedEvents);
     for (const id of completedEvents) if (!this.observedEvents.has(id)) changes.push({ source: 'event', key: id });
     this.observedEvents = completedEvents;
     this.observedChoices = choices;
-    this.observedEncounters = encounters;
+    this.observedEncounters = encounterStatuses;
     if (!dispatch || !changes.length) return;
     const version = this.session.restorationVersion;
     // Session publishes while the runtime is still finishing its synchronous commit.
