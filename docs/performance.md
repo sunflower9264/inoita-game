@@ -660,4 +660,17 @@
 
 全量验证口径：`npm run typecheck` 通过；本轮相关 89 条用例全绿；`story-menu-interactions` 39/52、战斗运行时 4 条失败均已在改动前 HEAD 复现，属既有问题。
 
+### 2026-10-25：JSON 内容管线（已提交）
+
+| 根因 | 改动 | 提交 | 验证 |
+|---|---|---|---|
+| 生产重复跑 8 个语义校验 + 281 张剧情地图 | 构建期校验，生产只 `JSON.parse`；`?gm`/`?validate` 保留完整校验 | `49e8689` | typecheck、validate:content、build |
+| 技能 `details` 存 8 级重复格式化字符串 | 构建期编译为 `display` 模板 + `displayValues` | `34e63da` | 4,688 行逐字 parity |
+| 技能动作每次现算效果/音效/事件帧 | 全部 235 个技能/敌人动作预计算 IR | `bdd2db4` | 动作 IR parity 测试 |
+| `shops.equipment` 与角色数值重复 1.2 MB | 拆到 `shops-equipment.json`，品级从 `character-stats` 派生 | `4193ec9` | 商店拆表/懒加载用例 |
+| `wardrobe.poses` 占 3.9 MB，只用到一小部分 | 按动作拆 220 个文件，运行时按 recipe 取 | `bdd2db4` | 加载器冒烟；核心 4.8 MB → 695 KB |
+| 654 张菜单图开局全部阻塞加载 | 框架/立绘先加载，物品与技能图标后台补 | `59aab4b` | 菜单图片清单用例 |
+
+构建产物 content 33,450,325 → 26,875,739 字节。未做：伙伴目录懒加载（152 KB，建会话时就要用）、`groundSprite` 共享（对象本身很小）。
+
 下一项：P1.2 寻路与 AI 扩展预算（进行中）。
