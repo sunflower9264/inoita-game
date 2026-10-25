@@ -106,6 +106,8 @@ export class WorldScene extends Phaser.Scene {
   near: Character | null = null;
   /** 上一次 HUD 调和写入时的状态摘要；逐帧兜底调用时用它跳过无变化的重复写入。 */
   private hudSignature='';
+  /** 目标状态按战斗帧缓存；同一逻辑帧内的多个渲染帧不必重复计算敌人数值。 */
+  private targetStatusCache?:{tick:number;actor:string;status:ReturnType<WorldCombat['targetStatus']>;hostile:boolean};
   /** 切图或首次加载期间为 true，此时不接受输入。 */
   loadingWorld = true;
   destroyed = false;
@@ -1429,8 +1431,19 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
     this.statusHud?.setVisible(backgroundVisible);
     this.overheadStatus?.setVisible(backgroundVisible);
     const target = this.near?.container.visible ? this.near : null;
-    const targetStatus=this.combat?.targetStatus?.();
-    const hostile=!!this.combat?.hasHostileTarget?.();
+    // 敌人数值只在逻辑帧里变化；同一战斗帧的多个渲染帧复用同一份目标状态。
+    const tick=this.app.session?.combatTick,actorId=target?.entity.id??'';
+    let targetStatus:ReturnType<WorldCombat['targetStatus']>,hostile:boolean;
+    if(tick===undefined){
+      targetStatus=this.combat?.targetStatus?.();hostile=!!this.combat?.hasHostileTarget?.();
+    }else{
+      let targetCache=this.targetStatusCache;
+      if(!targetCache||targetCache.tick!==tick||targetCache.actor!==actorId){
+        targetCache={tick,actor:actorId,status:this.combat?.targetStatus?.(),hostile:!!this.combat?.hasHostileTarget?.()};
+        this.targetStatusCache=targetCache;
+      }
+      targetStatus=targetCache.status;hostile=targetCache.hostile;
+    }
     // 名称条同样每帧同步：新对象默认隐藏，等摘要变化才显示会把换图后的提示吞掉。
     this.nameBanner?.sync(backgroundVisible, target ? target.entity.name || target.actor.name : null);
     // 方法同时承担「状态变化后立即同步」和「逐帧兜底」两种调用；决定文字与按钮的状态
