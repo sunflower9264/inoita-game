@@ -1411,3 +1411,29 @@ test('the GM item page scrolls addable items, shows details and gives a chosen q
   assert.equal(f.session.money, money + 10_000);
   assert.equal(gm.actions().at(-1)?.call, 'gainMoney');
 });
+
+test('session notifications only repaint the menu page whose data changed', t => {
+  const f=fixture();t.after(f.cleanup);
+  f.menu.show('bag');
+  const close=f.scene.button('关闭菜单');
+  // 背包页不显示生命值；战斗回血/掉血的会话通知不该把整页背包重建一遍。
+  f.hero.setHealth(Math.max(1,f.hero.player.health-1));
+  assert.equal(f.scene.button('关闭菜单'),close,'只改生命值时背包页保持原对象');
+  // 钱是背包页真正显示的数据；变化后必须真实重绘。
+  f.session.gainMoney(1);
+  const rebuilt=f.scene.button('关闭菜单');
+  assert.notEqual(rebuilt,close,'钱变化后背包页重绘');
+  assert.equal(close.active,false,'旧对象已销毁');
+
+  // 系统页不消费会话数据，任何会话通知都不该重绘它。
+  f.menu.show('system');
+  const systemClose=f.scene.button('关闭菜单');
+  f.session.gainMoney(1);
+  assert.equal(f.scene.button('关闭菜单'),systemClose,'系统页不因会话通知重绘');
+
+  // 状态页显示生命值，变化时必须重绘。
+  f.menu.show('status');
+  const statusClose=f.scene.button('关闭菜单');
+  f.hero.setHealth(Math.max(1,f.hero.player.health-1));
+  assert.notEqual(f.scene.button('关闭菜单'),statusClose,'状态页数值变化时重绘');
+});

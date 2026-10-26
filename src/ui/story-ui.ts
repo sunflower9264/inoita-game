@@ -91,6 +91,8 @@ export class StoryUI {
   private page:Page='bag';private open=false;private selectedMemberId='player';private questPanel?:QuestPanel;
   private itemResult?:ItemResult;
   private filter:InventoryView='all';private selectedItem?:string;private descSide:'left'|'right'='left';private operation?:Operation;private itemNotice?:string;private busy=false;private request=new AbortController();
+  /** 上次整页重绘时当前页依赖的数据签名；会话通知用它判断要不要重绘。 */
+  private sessionSignature='';
   /** 当前弹层的框尺寸，由打开它的对话框声明；初值只是没有对话框时的兜底。 */
   private modalBox={width:450,height:350};
   private modalActive=false;
@@ -151,10 +153,15 @@ export class StoryUI {
   }
   bind(session:Session,world:WorldIndex,content:StoryInterface):void{
     this.discardAllocation();
-    this.close();this.hudButtons?.clear();this.unsubscribe?.();this.session=session;this.world=world;this.content=content;this.page='bag';this.selectedMemberId='player';this.filter='all';this.selectedItem=undefined;this.itemResult=undefined;this.scrollOffsets.clear();
+    this.close();this.hudButtons?.clear();this.unsubscribe?.();this.session=session;this.world=world;this.content=content;this.page='bag';this.selectedMemberId='player';this.filter='all';this.selectedItem=undefined;this.itemResult=undefined;this.scrollOffsets.clear();this.sessionSignature='';
     this.questPanel=new QuestPanel(session,world,this.app.menuPanels,()=>this.render());
     this.partyPanel=new PartyPanel(session,world,this.app,()=>this.render(),(id,page)=>this.selectMember(id,page));
-    this.unsubscribe=session.subscribe(()=>{if(this.open&&!this.busy)this.render();});this.sync();
+    this.unsubscribe=session.subscribe(()=>{
+      // 快捷键登记与控制布局编辑时菜单本体被藏起来；退出这两个模式时调用方会显式重绘。
+      if(!this.open||this.busy||this.shortcutEdit||this.app.ui.controlLayoutEditing)return;
+      const signature=this.sessionDataSignature();
+      if(signature===undefined||signature!==this.sessionSignature)this.render();
+    });this.sync();
   }
   sync():void{
     if(this.app.ui.suspended){this.cancelDrag();if(this.renameRef!==undefined){this.prompt?.close();this.renameRef=undefined;}}
@@ -323,7 +330,46 @@ export class StoryUI {
   private configuration(){return this.selectedMemberId==='player'?this.session!.skills:(this.member() as CompanionMember).skills;}
   private scroll(name:string,x:number,y:number,w:number,h:number,surface=this.body!,bleed=0):ScrollArea{const scroll=surface.scroll(x,y,w,h,bleed);this.scrollNames.set(name,scroll);return scroll;}
   private finishScroll(name:string,scroll:ScrollArea,height:number):void{scroll.setHeight(height);scroll.scrollTop=this.scrollOffsets.get(`${this.page}:${name}`)??0;}
+  /**
+   * 会话每次通知都会走到这里；只有当前页真正依赖的数据变化时才整页重绘。
+   * 界面操作仍然直接调 `render()`，不经过这道门。
+   */
   private render():void{
+    this.renderNow();
+    const signature=this.sessionDataSignature();
+    if(signature!==undefined)this.sessionSignature=signature;
+  }
+  /**
+   * 当前页依赖的数据签名。返回 `undefined` 的页面（任务、调试）依赖条件求值等
+   * 不易枚举的数据，保持每次通知都重绘，避免显示过期内容。
+   */
+  private sessionDataSignature():string|undefined{
+    const session=this.session;
+    if(!session)return undefined;
+    const party=session.party;
+    const partyShape=`${party?.activeIds.join('|')??''}|${party?.controlledId??''}`;
+    const member=this.member();
+    const companion=this.selectedMemberId==='player'?undefined:party?.get(this.selectedMemberId);
+    const bag=session.bag.revision,money=session.money;
+    switch(this.page){
+      case 'bag':return `bag|${this.selectedMemberId}|${bag}|${money}|${member?.level??0}|${partyShape}`;
+      case 'status':return `status|${this.selectedMemberId}|${bag}|${member?.level??0}|${JSON.stringify(member?.player??null)}|${session.hero?.skillPoints??0}|${session.hero?.statPoints??0}|${partyShape}`;
+      case 'skills':return `skills|${this.selectedMemberId}|${bag}|${session.skills.version}|${companion?.skills.version??''}|${member?.level??0}|${session.hero?.skillPoints??0}|${partyShape}`;
+      case 'party':{
+        const detail=party?.activeIds.map(id=>{
+          if(id==='player')return `player:${session.hero?.level??0}:${session.hero?.skillPoints??0}:${JSON.stringify(session.hero?.player??null)}`;
+          const entry=party.get(id);
+          return `${id}:${entry?.level??0}:${entry?.skills.version??0}:${JSON.stringify(entry?.player??null)}:${entry?.counterattack??0}:${JSON.stringify([...(entry?.aiFrequency??new Map())])}`;
+        }).join('|')??'';
+        return `party|${bag}|${partyShape}|${detail}`;
+      }
+      case 'shop':return `shop|${this.selectedMemberId}|${bag}|${money}|${partyShape}`;
+      case 'crafting':return `crafting|${this.selectedMemberId}|${bag}|${money}|${member?.level??0}|${partyShape}`;
+      case 'save':case 'load':case 'settings':case 'system':return this.page;
+      default:return undefined;
+    }
+  }
+  private renderNow():void{
     if(!this.open||!this.surface||!this.body||!this.session)return;
     this.craftingPanel?.captureScroll();this.shopPanel?.captureScroll();this.questPanel?.captureScroll();this.partyPanel?.captureScroll();this.scrollNames.forEach((scroll,name)=>this.scrollOffsets.set(`${this.page}:${name}`,scroll.scrollTop));this.scrollNames.clear();this.surface.root.remove(this.body.root);this.surface.clear();this.body.clear();this.description?.clear();this.modal!.clear();this.surface.root.add(this.body.root);this.drops=[];this.keyboardFocus=undefined;
     if(!this.member()){this.discardAllocation();this.selectedMemberId='player';}const v=this.surface;
