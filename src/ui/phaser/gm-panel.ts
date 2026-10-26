@@ -64,10 +64,10 @@ const readableStoryText = (value:string):string => {
 };
 
 type StoryCategory = 'main' | 'side' | 'hidden';
-type StoryFilter = '' | StoryCategory | 'gaps';
+type StoryFilter = StoryCategory | 'gaps';
 const CATEGORY_LABELS: Record<StoryCategory, string> = { main: '主线', side: '支线', hidden: '隐藏' };
 const STORY_FILTERS: readonly (readonly [StoryFilter, string])[] = [
-  ['', '全部'], ['main', '主线'], ['side', '支线'], ['hidden', '隐藏'], ['gaps', '缺口'],
+  ['main', '主线'], ['side', '支线'], ['hidden', '隐藏'], ['gaps', '缺口'],
 ];
 const QUEST_STATUS_LABELS: Record<string, string> = {
   locked: '未解锁', available: '可接取', active: '进行中', ready: '待交付', completed: '已完成',
@@ -109,7 +109,7 @@ interface StoryTaskRow {
 
 export class GmPanel {
   private page: GmPage = 'status';
-  private filter: StoryFilter = '';
+  private filter: StoryFilter = 'main';
   private result = '';
   private selectedQuest?: string;
   private selectedGap?: number;
@@ -489,6 +489,7 @@ export class GmPanel {
     if(!this.storyCatalog){
       const side=new Set(this.campaign.questGroups.filter(group=>group.kind==='side').flatMap(group=>group.questIds));
       const quests=new Map(this.campaign.quests.map(quest=>[quest.id,quest]));
+      const order=new Map(this.campaign.quests.map((quest,index)=>[quest.id,index]));
       this.storyCatalog=(this.campaign.debugStory?.tasks??[]).flatMap((task):StoryTaskRow[]=>{
         const quest=quests.get(task.quest);
         if(!quest)return [];
@@ -498,9 +499,9 @@ export class GmPanel {
           title:readableStoryText(group&&group!==quest.title?`${group} · ${quest.title}`:quest.title),
           category:quest.hidden?'hidden':side.has(quest.id)?'side':'main',
         }];
-      });
+      }).sort((a,b)=>(order.get(a.quest.id)??Number.MAX_SAFE_INTEGER)-(order.get(b.quest.id)??Number.MAX_SAFE_INTEGER));
     }
-    return this.storyCatalog.filter(row=>!this.filter||row.category===this.filter);
+    return this.storyCatalog.filter(row=>row.category===this.filter);
   }
 
   private async onReport(): Promise<void> {

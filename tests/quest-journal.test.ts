@@ -70,6 +70,15 @@ test('a GM focus shows the task even when it is hidden or only available', () =>
   assert.deepEqual(questJournal(campaign, states({ 'grafton-mission': questProgress('locked') }), 'grafton-mission'), []);
 });
 
+test('main and side groups follow game progression rather than quest-group id order', () => {
+  const groups = questJournal(campaign, states({
+    'quest-18': questProgress('active'),
+    'quest-222': questProgress('active'),
+  }));
+  // 两个都是支线；按任务在 campaign.quests 里的先后，quest-18 应排在 quest-222 前面。
+  assert.deepEqual(groups.map(group => group.definition.id), ['native-group-12', 'native-group-103']);
+});
+
 test('a talk quest describes its target without inventing a progress counter', () => {
   const quest = campaign.quests.find(entry => entry.id === 'quest-103')!;
   const text = questJournalText({ definition: campaign.questGroups[0], ready: false,

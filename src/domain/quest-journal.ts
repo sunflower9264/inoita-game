@@ -22,6 +22,9 @@ interface QuestJournalGroup {
 export function questJournal(campaign: Campaign, states: ReadonlyMap<string, Readonly<QuestProgress>>,
   focus?: string): QuestJournalGroup[] {
   const definitions = new Map(campaign.quests.map(quest => [quest.id, quest]));
+  const progression = new Map(campaign.quests.map((quest, index) => [quest.id, index]));
+  const groupIndex = (definition: QuestGroupDefinition): number =>
+    Math.min(...definition.questIds.map(id => progression.get(id) ?? Number.MAX_SAFE_INTEGER));
   return campaign.questGroups.flatMap(definition => {
     const entries = definition.questIds.flatMap(id => {
       const state = states.get(id), quest = definitions.get(id);
@@ -32,7 +35,10 @@ export function questJournal(campaign: Campaign, states: ReadonlyMap<string, Rea
     if (!entries.length) return [];
     if (!focus && !entries.some(entry => entry.state.status === 'active' || entry.state.status === 'ready')) return [];
     return [{ definition, entries, ready: entries.some(entry => entry.state.status === 'ready') }];
-  }).sort((a, b) => Number(b.definition.kind === 'main') - Number(a.definition.kind === 'main'));
+  }).sort((a, b) => {
+    const byKind = Number(b.definition.kind === 'main') - Number(a.definition.kind === 'main');
+    return byKind || groupIndex(a.definition) - groupIndex(b.definition);
+  });
 }
 
 /** 完成段锁定为灰色；进行中的目标使用当前玩法状态，不改任务结算。 */

@@ -1294,6 +1294,8 @@ test('the GM story page lists tasks and enters the selected one without exposing
   gm.previewStory=async target=>({ok:true,preview:{quest:target.quest,phase:'available',location:campaign.start}});
   Object.defineProperty(f.app,'gm',{value:gm,configurable:true});
   f.menu.show('debug');f.scene.click(f.scene.button('调试页 剧情'));
+  assert.equal(f.scene.buttons('分类 全部').length,0,'不再提供混合全部栏');
+  assert.ok(f.scene.button('分类 主线')&&f.scene.button('分类 支线'));
   const texts=()=>f.scene.texts().join(' ');
   const taskButtons=()=>f.scene.nodes.filter(node=>node.shown&&node.getData('uiAction')&&String(node.getData('label')).startsWith('任务 '));
   assert(taskButtons().length>0,'剧情页没有列出任务');
