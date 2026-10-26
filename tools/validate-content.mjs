@@ -16,6 +16,8 @@ import {UI_ICON_ATLAS_DATA,UI_ICON_ATLAS_FILE,UI_ICON_FRAMES,UI_ICON_SOURCE_DIGE
 import {iconSourceDigest} from './build-icon-atlas.ts';
 import {UI_ATLAS_FRAMES,UI_ATLAS_PAGES,UI_ATLAS_SOURCE_DIGEST} from '../src/generated/ui-atlas.ts';
 import {uiAtlasFiles,uiAtlasSourceDigest} from './build-ui-atlas.ts';
+import {EFFECT_ATLAS_BY_FILE,EFFECT_ATLAS_PAGES,EFFECT_ATLAS_SOURCE_DIGEST} from '../src/generated/effect-atlas.ts';
+import {effectAtlasSourceDigest,effectUses} from './build-effect-atlas.ts';
 import {PROP_ATLAS_BY_KEY,PROP_ATLAS_LAYOUT_DIGEST,PROP_ATLAS_PAGES,PROP_ATLAS_SOURCE_DIGEST} from '../src/generated/prop-atlas.ts';
 import {propSourceDigest} from './build-prop-atlas.ts';
 import {residentCombatAssets} from '../src/rendering/resident-combat-assets.ts';
@@ -65,6 +67,29 @@ export function validateContent(root=fileURLToPath(new URL('../public/',import.m
    throw new Error(`prop 图集帧尺寸与原图不一致：${entry.frame}`);
  }
  if(propSourceDigest()!==PROP_ATLAS_SOURCE_DIGEST)throw new Error('地图 prop 图集已过期；运行 npm run atlas:props');
+ // 技能特效裁边图集：四个大特效的每一帧都必须有可用的裁剪帧，摘要不能过期。
+ const effectPages=new Map(EFFECT_ATLAS_PAGES.map(page=>[page.key,read(page.data)]));
+ for(const page of EFFECT_ATLAS_PAGES){
+  const json=effectPages.get(page.key);
+  if(!json?.frames?.[page.frame])throw new Error(`技能特效图集哨兵帧缺失：${page.frame}；运行 npm run atlas:effects`);
+  for(const [name,frame] of Object.entries(json.frames)){
+   const rect=frame.frame;
+   if(!rect||!(rect.w>0)||!(rect.h>0)||rect.x<0||rect.y<0||rect.x+rect.w>page.width||rect.y+rect.h>page.height)
+    throw new Error(`技能特效图集帧越界：${name}`);
+   if(frame.spriteSourceSize.x<0||frame.spriteSourceSize.y<0
+    ||frame.spriteSourceSize.x+frame.spriteSourceSize.w>frame.sourceSize.w
+    ||frame.spriteSourceSize.y+frame.spriteSourceSize.h>frame.sourceSize.h)
+    throw new Error(`技能特效图集裁剪信息越界：${name}`);
+  }
+ }
+ for(const [file,frames] of Object.entries(EFFECT_ATLAS_BY_FILE)){
+  if(!frames.length)throw new Error(`技能特效图集映射为空：${file}`);
+  for(const ref of frames)if(!effectPages.get(EFFECT_ATLAS_PAGES[ref.page]?.key)?.frames?.[ref.frame])
+   throw new Error(`技能特效图集帧缺失：${file} → ${ref.frame}；运行 npm run atlas:effects`);
+ }
+ for(const use of effectUses())if(!EFFECT_ATLAS_BY_FILE[use.file])
+  throw new Error(`特效文件未进入图集：${use.file}；运行 npm run atlas:effects`);
+ if(effectAtlasSourceDigest()!==EFFECT_ATLAS_SOURCE_DIGEST)throw new Error('技能特效图集已过期；运行 npm run atlas:effects');
  const storyInterface=parseStoryInterface(read('content/story-interface.json'));
  // 生产包把人物动作拆成单文件；校验前先按索引合回来，规则保持和源内容一致。
  const wardrobeJson=read('content/wardrobe.json');
@@ -103,6 +128,7 @@ export function validateContent(root=fileURLToPath(new URL('../public/',import.m
  for(const file of [UI_ICON_ATLAS_FILE,UI_ICON_ATLAS_DATA])assets.add(file);
  for(const page of UI_ATLAS_PAGES){assets.add(page.file);assets.add(page.data);}
  for(const page of PROP_ATLAS_PAGES){assets.add(page.file);assets.add(page.data);}
+ for(const page of EFFECT_ATLAS_PAGES){assets.add(page.file);assets.add(page.data);}
  for(const file of titleMenuImages)assets.add(file.replace(/^\//,''));
  for(const file of assets)ensure(fs.existsSync(path.join(root,file)),`资源不存在 ${file}`);
  const headers=new Map();

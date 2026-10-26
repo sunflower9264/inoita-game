@@ -26,6 +26,7 @@
     "report:assets": "node tools/asset-report.ts",
     "atlas:icons": "node tools/build-icon-atlas.ts",
     "atlas:props": "node tools/build-prop-atlas.ts",
+    "atlas:effects": "node tools/build-effect-atlas.ts",
     "atlas:ui": "node tools/build-ui-atlas.ts",
     "apk": "node tools/build-apk.mjs",
     "verify:apk": "node tools/verify-apk.mjs",

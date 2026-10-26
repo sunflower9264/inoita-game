@@ -10,6 +10,7 @@ import type { WardrobeCatalog } from '../domain/wardrobe.ts';
 import { basicAttackEffects } from './combat-asset-descriptors.ts';
 import { classSummonEnemyIds, enemyCombatAssets } from './combat-assets.ts';
 import { residentCombatAssets, type ResidentCombatInput } from './resident-combat-assets.ts';
+import { EFFECT_ATLAS_BY_FILE, EFFECT_ATLAS_PAGES } from '../generated/effect-atlas.ts';
 
 export interface CoverageInput extends ResidentCombatInput {
   battle: BattleCatalog;
@@ -74,8 +75,15 @@ export function residentCombatCoverageGaps(input: CoverageInput): CoverageGaps {
     const definition = battle.attackEffects[name];
     if (!definition) { definitions.add(name); continue; }
     if (!pack.effectNames.has(name)) continue;
-    for (const clip of Object.values(definition.clips))
-      for (const layer of clip.layers) if (!assetKeys.has(layer.key)) missingLayers.push(layer.key);
+    for (const clip of Object.values(definition.clips)) {
+      for (const layer of clip.layers) {
+        const atlas = EFFECT_ATLAS_BY_FILE[layer.file];
+        const keys = atlas
+          ? [...new Set(atlas.slice(0, clip.frames).map(frame => EFFECT_ATLAS_PAGES[frame.page]!.key))]
+          : [layer.key];
+        for (const key of keys) if (!assetKeys.has(key)) missingLayers.push(key);
+      }
+    }
   }
   const missingActorLayers: string[] = [];
   const addActorLayers = (actor: ActorDefinition): void => {

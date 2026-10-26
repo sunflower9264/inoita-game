@@ -1,4 +1,4 @@
-import type { ActorDefinition } from '../domain/content.ts';
+import type { ActorDefinition, EffectClip } from '../domain/content.ts';
 import {
   skillForGrowth,
   type AttackEffectDefinition,
@@ -13,6 +13,7 @@ import { COMBAT_OUTCOME_EFFECTS } from '../domain/combat-outcomes.ts';
 import { skillEffectNames } from '../domain/skill-action.ts';
 import { skillReactionEffects } from '../domain/skill-reactions.ts';
 import type { WardrobeCatalog } from '../domain/wardrobe.ts';
+import { EFFECT_ATLAS_BY_FILE, EFFECT_ATLAS_PAGES } from '../generated/effect-atlas.ts';
 import type { PendingAsset } from './scene-assets.ts';
 
 /**
@@ -31,12 +32,60 @@ export function characterAssets(actor: ActorDefinition): PendingAsset[] {
     })) : []);
 }
 
-export function effectAssets(effects: Readonly<Record<string, AttackEffectDefinition | undefined>>): PendingAsset[] {
-  return Object.values(effects).flatMap(effect => effect ? Object.values(effect.clips).flatMap(clip =>
-    clip.layers.map(layer => ({
-      kind: 'spritesheet' as const, key: layer.key, file: layer.file,
-      config: { frameWidth: clip.frameWidth, frameHeight: clip.frameHeight, endFrame: clip.frames - 1 }
-    }))) : []);
+const effectPageAssets = new Map<number, PendingAsset>();
+/** 同一图集页的 descriptor 必须完全一致；所有特效共用同一个对象。 */
+function effectPageAsset(index: number): PendingAsset {
+  const cached = effectPageAssets.get(index);
+  if (cached) return cached;
+  const page = EFFECT_ATLAS_PAGES[index];
+  if (!page) throw new Error(`特效图集页缺失：${index}`);
+  const asset: PendingAsset = Object.freeze({ kind: 'atlas', key: page.key, file: page.file,
+    atlas: page.data, frame: page.frame });
+  effectPageAssets.set(index, asset);
+  return asset;
+}
+
+export interface EffectClipSet { clips: Readonly<Record<string, EffectClip>> }
+
+/** 一个特效 clip 的每层实际使用的纹理键：图集层取所有页，未映射层取原 spritesheet 键。 */
+export function effectLayerTextureKeys(clip: EffectClip): string[] {
+  const keys = new Set<string>();
+  for (const layer of clip.layers) {
+    const atlas = EFFECT_ATLAS_BY_FILE[layer.file];
+    if (!atlas) { keys.add(layer.key); continue; }
+    for (const frame of atlas.slice(0, clip.frames)) {
+      const page = EFFECT_ATLAS_PAGES[frame.page];
+      if (page) keys.add(page.key);
+    }
+  }
+  return [...keys];
+}
+
+export function effectAssets(effects: Readonly<Record<string, EffectClipSet | undefined>>): PendingAsset[] {
+  const assets = new Map<string, PendingAsset>();
+  const add = (asset: PendingAsset): void => {
+    const previous = assets.get(asset.key);
+    if (previous && JSON.stringify(previous) !== JSON.stringify(asset))
+      throw new Error(`特效贴图键指向不同资源：${asset.key}`);
+    assets.set(asset.key, asset);
+  };
+  for (const effect of Object.values(effects)) {
+    if (!effect) continue;
+    for (const clip of Object.values(effect.clips)) {
+      for (const layer of clip.layers) {
+        const atlas = EFFECT_ATLAS_BY_FILE[layer.file];
+        if (atlas) {
+          const frames = atlas.slice(0, clip.frames);
+          if (!frames.length) throw new Error(`特效图集没有帧：${layer.file}`);
+          for (const frame of frames) add(effectPageAsset(frame.page));
+          continue;
+        }
+        add({ kind: 'spritesheet', key: layer.key, file: layer.file,
+          config: { frameWidth: clip.frameWidth, frameHeight: clip.frameHeight, endFrame: clip.frames - 1 } });
+      }
+    }
+  }
+  return [...assets.values()];
 }
 
 /** 玩家和怪物共用的普攻资源收集。 */

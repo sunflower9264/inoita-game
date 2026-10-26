@@ -2,6 +2,7 @@ import type Phaser from 'phaser';
 import type {EffectClip} from '../domain/content.ts';
 import type { GroundItemSprite, ItemCatalog } from '../domain/items.ts';
 import type { GroundDrop } from '../domain/ground-loot.ts';
+import { effectAssets } from './combat-asset-descriptors.ts';
 import type { PendingAsset } from './scene-assets.ts';
 
 const MONEY_SPRITE:GroundItemSprite={file:'assets/ui/items/money-ground.png',width:16,height:12,anchorX:7,anchorY:4};
@@ -10,7 +11,7 @@ const textureKey=(file:string):string=>`ground:${file}`;
 export function groundLootAssets(items:ItemCatalog):PendingAsset[] {
   const files=new Set([MONEY_SPRITE.file,...Object.values(items.items).map(item=>item.groundSprite.file)]);
   const clips=Object.fromEntries(Object.entries(items.items).filter(([,item])=>item.pickup).map(([id,item])=>[id,{clips:Object.fromEntries(item.pickup!.hitDrop.directions.map(direction=>[direction.name,direction.clip]))}]));
-  return [...[...files].map(file=>({kind:'image' as const,key:textureKey(file),file})),...Object.values(clips).flatMap(effect=>Object.values(effect.clips).flatMap(clip=>clip.layers.map(layer=>({kind:'spritesheet' as const,key:layer.key,file:layer.file,config:{frameWidth:clip.frameWidth,frameHeight:clip.frameHeight,endFrame:clip.frames-1}}))))];
+  return [...[...files].map(file=>({kind:'image' as const,key:textureKey(file),file})),...effectAssets(clips)];
 }
 
 /** Ground sprites retain their native map-pixel dimensions and drawing anchor. */

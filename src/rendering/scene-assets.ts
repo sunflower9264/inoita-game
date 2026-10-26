@@ -2,6 +2,7 @@ import type Phaser from 'phaser';
 import { AssetPool } from '../application/assets.ts';
 import type { AssetLease } from '../application/assets.ts';
 import { versionedAsset } from '../application/asset-version.ts';
+import { releaseEffectAnimations } from './effect-animations.ts';
 
 export type PendingAsset =
   | { kind: 'image'; key: string; file: string }
@@ -93,6 +94,7 @@ export function missingSceneAssets(scene: Phaser.Scene, assets: readonly Pending
 }
 
 function removeTexture(scene: Phaser.Scene, key: string): void {
+  releaseEffectAnimations(scene, key);
   if (scene.anims.exists(key)) scene.anims.remove(key);
   if (scene.textures.exists(key)) scene.textures.remove(key);
 }

@@ -11,6 +11,7 @@ import type {ClipName} from '../domain/content.ts';
 import type {Point} from '../domain/navigation.ts';
 import {isCurrentLayers,playCharacterSequence,setCharacterClip,showIdlePose,type CharacterVisual} from './characters.ts';
 import {createEffect,setEffectClip} from './effects.ts';
+import {effectLayerTextureKeys} from './combat-asset-descriptors.ts';
 import {CombatEffects} from './combat-effects.ts';
 export type {ActionDispatchRunner} from '../domain/combat-action-dispatcher.ts';
 export { basicAttackEffects, classEffects } from './combat-asset-descriptors.ts';
@@ -186,7 +187,7 @@ export class CombatPresenter {
       :worldPosition;
     if(!position)throw new Error(`人物缺少特效锚点：${character.actor.id}`);
     const effect=this.effect(name,variant,position);
-    const textureKeys=definition.clips[variant].layers.map(layer=>layer.key);
+    const textureKeys=effectLayerTextureKeys(definition.clips[variant]!);
     if(placement==='attached'){
       if(definition.attachedLifetime==='character'){
         this.effects.delete(effect);
