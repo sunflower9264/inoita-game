@@ -75,6 +75,11 @@ export interface SceneOptions {
   facing?: ExitFacing;
 }
 export interface StoryWorldViewSnapshot {location:TravelDestination;world?:WorldCombatState;generatedEntities:EntityPlacement[];scene:SceneSnapshot;audio?:StoryAudioState}
+/** 存档捕获失败的原因；界面据此给出具体提示，而不是一律说“当前地图不能存档”。 */
+export type SaveWorldReason = 'debug' | 'loading' | 'not-ready';
+export type SaveWorldResult =
+  | { ok: true; map: { id: string; name: string }; world: StoryWorldViewSnapshot }
+  | { ok: false; reason: SaveWorldReason };
 
 /** 任务图标，浮在人物头顶。 */
 interface QuestMarker {
@@ -1311,14 +1316,15 @@ captureStoryScene():SceneSnapshot {
   }
   /**
    * 存档要连世界一起带走。换图途中（`loadingWorld`）与还没进图时没有完整的落点，
-   * 返回 undefined 让界面报「在当前的地图中无法进行存档」。
+   * 返回带原因的失败结果让界面给出准确提示；调试现场也走同一条失败分支。
    */
-  captureSaveWorld():{map:{id:string;name:string};world:StoryWorldViewSnapshot}|undefined {
-    // 调试现场禁手动存档：存档摘要会读到这里，返回 undefined 由界面报「当前无法存档」。
-    if(this.app.session.debugFocusQuest)return undefined;
-    if(!this.map||!this.player||!this.movement||this.loadingWorld)return undefined;
+  captureSaveWorld(): SaveWorldResult {
+    // 调试现场禁手动存档：存档摘要会读到这里，返回失败由界面报「调试现场不能存档」。
+    if(this.app.session.debugFocusQuest)return {ok:false,reason:'debug'};
+    if(!this.map||!this.player||!this.movement)return {ok:false,reason:'not-ready'};
+    if(this.loadingWorld)return {ok:false,reason:'loading'};
     this.combat?.settleForSave();
-    return {map:{id:this.map.id,name:this.map.name},world:this.captureStoryWorld()};
+    return {ok:true,map:{id:this.map.id,name:this.map.name},world:this.captureStoryWorld()};
   }
   private restartStoryWorld(location:TravelDestination,signal:AbortSignal,world?:WorldCombatState,generatedEntities?:EntityPlacement[],silent=false,preparedScene?:SceneSnapshot):Promise<void>{
     signal.throwIfAborted();

@@ -38,7 +38,7 @@ import { drawNativeMessage } from './phaser/native-message.ts';
 import { AUTO_SAVE_SLOT, MANUAL_SAVE_SLOT_COUNT, captureSaveGame, saveSlotLabel, saveSummary, sessionClassId, type SaveGame, type SaveSlotRef } from '../domain/save-game.ts';
 import { SAVE_BOARD, SAVE_BOARD_LAYOUT, drawSaveBoardRow, newestFirstSlots, saveBoardOrigin, saveRowTitle, type SaveBoardRow } from './phaser/save-board.ts';
 import { TextPrompt } from './text-prompt.ts';
-import type { StoryWorldViewSnapshot } from '../scenes/world-scene.ts';
+import type { SaveWorldReason, StoryWorldViewSnapshot } from '../scenes/world-scene.ts';
 import { drawPopupPanel } from './phaser/popup-panel.ts';
 import { drawRoundBand } from './phaser/round-band.ts';
 import { drawSolidBorder } from './phaser/solid-border.ts';
@@ -64,6 +64,10 @@ const COUNTERATTACK_LABELS=['未启用','延迟','启用'];
 const SHORTCUT_PROMPT='请选择要设置的快捷键。';
 /** 存档结果与「不能存取」的提示文本，原版取文本表 35331／35332／35342 条。 */
 const SAVE_DONE='保存成功',SAVE_FAILED='保存失败',SAVE_UNAVAILABLE='在当前的地图中无法进行存档。';
+const SAVE_UNAVAILABLE_DEBUG='调试现场不能存档，请先在调试面板点「结束调试」。';
+const SAVE_UNAVAILABLE_LOADING='地图正在载入，请稍后再存档。';
+const saveUnavailableNotice=(reason:SaveWorldReason):string=>reason==='debug'?SAVE_UNAVAILABLE_DEBUG
+  :reason==='loading'?SAVE_UNAVAILABLE_LOADING:SAVE_UNAVAILABLE;
 /** 菜单内容块的固定原点；说明层与内容块共用同一坐标。 */
 const CONTENT_ORIGIN={x:32,y:172} as const;
 /** 这些使用方式走独立操作面板，不出现在背包的「使用」菜单里。 */
@@ -536,10 +540,10 @@ export class StoryUI {
   }
   private saveToSlot(ref:SaveSlotRef):void{
     if(ref===AUTO_SAVE_SLOT)return;
-    const game=this.captureSaveRecord();
-    if(!game){this.itemNotice=SAVE_UNAVAILABLE;this.render();return;}
+    const captured=this.captureSaveRecord();
+    if(!captured.ok){this.itemNotice=saveUnavailableNotice(captured.reason);this.render();return;}
     try{
-      this.app.saves.write(ref,game);
+      this.app.saves.write(ref,captured.record);
       this.app.saveSlot=ref;
       this.app.audio?.ui('select');this.itemNotice=SAVE_DONE;
     }catch(error){
@@ -584,10 +588,11 @@ export class StoryUI {
     if(!this.prompt?.active){this.renameRef=undefined;this.render();this.sync();}
   }
   /** 摘要与快照的唯一捕获口：手动保存与自动存档共用。 */
-  captureSaveRecord():SaveGame<StoryWorldViewSnapshot>|undefined{
-    if(!this.session)return undefined;
+  captureSaveRecord():{ok:true;record:SaveGame<StoryWorldViewSnapshot>}|{ok:false;reason:SaveWorldReason}{
+    if(!this.session)return {ok:false,reason:'not-ready'};
     const capture=this.app.captureSaveWorld?.();
-    return capture?captureSaveGame(this.session,capture.world,this.saveSummaryOf(capture.map)):undefined;
+    if(!capture||!capture.ok)return {ok:false,reason:capture?.reason??'not-ready'};
+    return {ok:true,record:captureSaveGame(this.session,capture.world,this.saveSummaryOf(capture.map))};
   }
   /** 摘要里的职业名与立绘在存档时就展开，标题页读档不必再加载职业目录。 */
   private saveSummaryOf(map:{id:string;name:string}){

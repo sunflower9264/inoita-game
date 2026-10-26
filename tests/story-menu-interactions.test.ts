@@ -243,7 +243,7 @@ function fixture(classId = 'dark-knight') {
   const saves = new SaveSlots<StoryWorldViewSnapshot>({ getItem: key => stored.get(key) ?? null,
     setItem: (key, value) => { stored.set(key, value); }, removeItem: key => { stored.delete(key); } });
   const app: StoryUIContext = { content:{shopEquipment:async()=>({})}, controlLayout:new ControlLayoutPreferences(null), ui: controls, battleCatalog: battle, storyClasses: read<StoryClassCatalog>('story-classes'), menuPanels: panels,
-    saves, captureSaveWorld: () => ({ map: { id: campaign.start.map, name: '测试地图' },
+    saves, captureSaveWorld: () => ({ ok: true, map: { id: campaign.start.map, name: '测试地图' },
       world: { location: { map: campaign.start.map, x: 16, y: 24, facing: 'south' as const }, generatedEntities: [],
         scene:{map:campaign.start.map,actors:[{id:'player',actor:campaign.start.actor,memberId:'player',x:16,y:24,facing:'south',visible:true}]} } }),
     crafting:parseCrafting(read('crafting')),controlSkin: read<ControlSkin>('control-skin'), shops: read<ShopCatalog>('shops'), characterStats: stats,
@@ -1186,6 +1186,23 @@ test('saving without a loaded world reports the original refusal and leaves the 
   f.scene.click(f.scene.button('存档槽 1'));
   assert(f.scene.texts().includes('在当前的地图中无法进行存档。'));
   assert.deepEqual(f.app.saves.inspect(0),{kind:'empty'});
+  f.scene.click(f.scene.button('确认'));
+  assert.deepEqual(f.app.saves.inspect(0),{kind:'empty'});
+});
+
+test('save refusal distinguishes a debug scene from map loading and a missing world', t => {
+  const f=fixture();t.after(f.cleanup);
+  f.app.captureSaveWorld=()=>({ok:false,reason:'debug'});
+  f.menu.show('save');f.scene.click(f.scene.button('存档槽 1'));
+  assert(f.scene.texts().includes('调试现场不能存档，请先在调试面板点「结束调试」。'));
+  f.scene.click(f.scene.button('确认'));
+  f.app.captureSaveWorld=()=>({ok:false,reason:'loading'});
+  f.menu.show('save');f.scene.click(f.scene.button('存档槽 1'));
+  assert(f.scene.texts().includes('地图正在载入，请稍后再存档。'));
+  f.scene.click(f.scene.button('确认'));
+  f.app.captureSaveWorld=()=>({ok:false,reason:'not-ready'});
+  f.menu.show('save');f.scene.click(f.scene.button('存档槽 1'));
+  assert(f.scene.texts().includes('在当前的地图中无法进行存档。'));
   f.scene.click(f.scene.button('确认'));
   assert.deepEqual(f.app.saves.inspect(0),{kind:'empty'});
 });

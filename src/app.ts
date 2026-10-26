@@ -19,7 +19,7 @@ import type { StoryClassCatalog } from './domain/story-class.ts';
 import type { ItemCatalog, EquipmentSlot, ItemResult } from './domain/items.ts';
 import { SessionCheckpoint } from './domain/session-checkpoint.ts';
 import { SaveSlots } from './domain/save-game.ts';
-import type { StoryWorldViewSnapshot } from './scenes/world-scene.ts';
+import type { SaveWorldResult, StoryWorldViewSnapshot } from './scenes/world-scene.ts';
 import type { WardrobeCatalog } from './domain/wardrobe.ts';
 import type { GameAudio } from './application/game-audio.ts';
 import type { ShopCatalog } from './domain/shop.ts';
@@ -127,7 +127,7 @@ export class StoryApp {
   /** 标题页与游戏内设置共用的读档入口，装配点在 `main.ts`。 */
   resumeSlot?: (slot:import('./domain/save-game.ts').SaveSlotRef,signal?:AbortSignal) => Promise<void>;
   /** 取当前地图与世界的存档快照；地图、战斗还没就绪时返回 undefined。 */
-  captureSaveWorld?: () => { map:{ id:string; name:string }; world:StoryWorldViewSnapshot } | undefined;
+  captureSaveWorld?: () => SaveWorldResult;
   /** 游戏世界目录，进入剧情时加载。 */
   world!: WorldIndex;
   /** 本次体验版的剧情编排。 */

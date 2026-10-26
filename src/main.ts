@@ -125,7 +125,7 @@ function startAutoSave(session:Session):void {
     enabled:()=>app.mode==='game'&&!app.suspended&&!!app.session&&!app.session.debugFocusQuest,
     // 演出与菜单锁着时不抢写：等解锁后再写，免得存到一半的状态。
     locked:()=>app.locked||!!app.director?.busy,
-    capture:()=>app.storyUI.captureSaveRecord(),
+    capture:()=>{const captured=app.storyUI.captureSaveRecord();return captured.ok?captured.record:undefined;},
     write:game=>app.saves.write(AUTO_SAVE_SLOT,game),
   });
   autoSaver=saver;
@@ -534,7 +534,7 @@ function boot(): void {
   app.enterGame = enterGame; app.returnToMenu = returnToMenu; app.startStory = startStory;
   app.prepareStory = prepareStory; app.prepareMenu = prepareMenu;
   app.resumeSlot = resumeSlot;
-  app.captureSaveWorld = () => worldScene()?.captureSaveWorld();
+  app.captureSaveWorld = () => worldScene()?.captureSaveWorld() ?? {ok:false,reason:'not-ready'};
   app.autoSave = reason => autoSaver?.request(reason);
   app.captureControlPreview = () => worldScene()?.getControlLayoutPreview()??[];
   app.prefetchStory = () => afterFirstPaint(() => {

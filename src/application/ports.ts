@@ -18,6 +18,7 @@ import type { WardrobeCatalog } from '../domain/wardrobe.ts';
 import type { GameAudio } from './game-audio.ts';
 import type { ShopCatalog } from '../domain/shop.ts';
 import type { ControlLayoutPreferences } from '../ui/control-layout.ts';
+import type { SaveWorldResult } from '../scenes/world-scene.ts';
 
 export interface StoryClassContext {
   readonly storyClasses: StoryClassCatalog;
@@ -90,7 +91,7 @@ export interface StoryUIContext {
   readonly saves: import('../domain/save-game.ts').SaveSlots<import('../scenes/world-scene.ts').StoryWorldViewSnapshot>;
   saveSlot?:number;
   /** 当前地图与世界的存档快照；地图或战斗还没就绪时没有可存的东西。摘要由界面按菜单内容补上。 */
-  captureSaveWorld?: () => { map:{ id:string; name:string }; world:import('../scenes/world-scene.ts').StoryWorldViewSnapshot } | undefined;
+  captureSaveWorld?: () => SaveWorldResult;
   changeEquipment?: (entry: string | undefined, slot: EquipmentSlot, signal?: AbortSignal, memberId?:string) => Promise<string>;
   equipmentPreview?: () => string | undefined;
   equipmentAppearance?:(memberId:string)=>import('../domain/content.ts').ActorDefinition|undefined;
