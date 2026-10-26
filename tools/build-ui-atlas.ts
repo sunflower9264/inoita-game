@@ -134,6 +134,21 @@ export function writeUiAtlas(): { files: number; unique: number; pages: number; 
         const to = ((frame.y + row) * page.width + frame.x) * 4;
         png.data.copy(atlas.data, to, from, from + frame.w * 4);
       }
+      // 帧之间留的是透明空隙；UI 在非整数缩放下走线性过滤，边缘会采到空隙，拼起来就透出黑缝。
+      // 把最外一圈像素向四周复制 PADDING 像素，帧外的采样读到的是同一颜色。
+      const put = (x: number, y: number, sourceX: number, sourceY: number): void => {
+        const from = (sourceY * frame.w + sourceX) * 4;
+        const to = ((frame.y + y) * page.width + frame.x + x) * 4;
+        png.data.copy(atlas.data, to, from, from + 4);
+      };
+      for (let offset = 1; offset <= PADDING; offset++) {
+        for (let x = 0; x < frame.w; x++) { put(x, -offset, x, 0); put(x, frame.h - 1 + offset, x, frame.h - 1); }
+        for (let y = 0; y < frame.h; y++) { put(-offset, y, 0, y); put(frame.w - 1 + offset, y, frame.w - 1, y); }
+      }
+      for (let dx = 1; dx <= PADDING; dx++) for (let dy = 1; dy <= PADDING; dy++) {
+        put(-dx, -dy, 0, 0); put(frame.w - 1 + dx, -dy, frame.w - 1, 0);
+        put(-dx, frame.h - 1 + dy, 0, frame.h - 1); put(frame.w - 1 + dx, frame.h - 1 + dy, frame.w - 1, frame.h - 1);
+      }
     }
     fs.mkdirSync(path.dirname(path.join(PUBLIC, image)), { recursive: true });
     const bytes = PNG.sync.write(atlas, { colorType: 6 });
