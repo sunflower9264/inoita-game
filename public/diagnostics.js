@@ -17,6 +17,59 @@
   let sequence = 0, sending = false, snapshot = () => null;
   let pending = [], recent = [], capturing = false;
   let lastFrame = 0, phase = 'boot', stalled = false, visibleSince = Date.now();
+  // 帧时间只在 `?perf` 下采样：正常游玩不写数组、不发额外诊断。
+  // 30 秒一窗口，最多保留约 30 秒的帧；排序只在窗口结束时做一次。
+  const perfEnabled = /[?&]perf(?:=|&|$)/.test(String(location.search || ''));
+  const FRAME_WINDOW = 1800, FRAME_REPORT_MS = 30000;
+  const frameSamples = new Float64Array(FRAME_WINDOW), updateSamples = new Float64Array(FRAME_WINDOW), renderSamples = new Float64Array(FRAME_WINDOW);
+  let frameSampleCount = 0, frameSampleCursor = 0, lastFrameReport = Date.now();
+  let updateStartedAt = 0, renderStartedAt = 0;
+  const buildVersion = (() => {
+    try { return new URL(document.currentScript.src).searchParams.get('v'); }
+    catch { return null; }
+  })();
+  function nowMs() {
+    try { return typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now(); }
+    catch { return Date.now(); }
+  }
+  function addFrameSample(frameMs, updateMs, renderMs) {
+    if (!perfEnabled || document.visibilityState !== 'visible'
+      || !Number.isFinite(frameMs) || frameMs < 0
+      || !Number.isFinite(updateMs) || updateMs < 0
+      || !Number.isFinite(renderMs) || renderMs < 0) return;
+    frameSamples[frameSampleCursor] = frameMs;
+    updateSamples[frameSampleCursor] = updateMs;
+    renderSamples[frameSampleCursor] = renderMs;
+    frameSampleCursor = (frameSampleCursor + 1) % FRAME_WINDOW;
+    if (frameSampleCount < FRAME_WINDOW) frameSampleCount++;
+  }
+  function sortedWindow(source) {
+    const values = [];
+    for (let index = 0; index < frameSampleCount; index++) values.push(source[index]);
+    return values.sort((a, b) => a - b);
+  }
+  function percentile(values, ratio) {
+    return values[Math.min(values.length - 1, Math.floor(values.length * ratio))] ?? 0;
+  }
+  function reportFrameStats(now) {
+    if (!perfEnabled || !frameSampleCount || document.visibilityState !== 'visible' || now - lastFrameReport < FRAME_REPORT_MS) return;
+    const frames = sortedWindow(frameSamples), updates = sortedWindow(updateSamples), renders = sortedWindow(renderSamples);
+    lastFrameReport = now;
+    const stats = {
+      frames: frameSampleCount,
+      p50Ms: +percentile(frames, .5).toFixed(2),
+      p95Ms: +percentile(frames, .95).toFixed(2),
+      maxMs: +frames[frames.length - 1].toFixed(2),
+      updateP95Ms: +percentile(updates, .95).toFixed(2),
+      renderP95Ms: +percentile(renders, .95).toFixed(2),
+      long50Ms: frames.filter(value => value > 50).length,
+      long100Ms: frames.filter(value => value > 100).length,
+      dpr: typeof devicePixelRatio === 'number' ? devicePixelRatio : null,
+      build: buildVersion
+    };
+    frameSampleCount = 0; frameSampleCursor = 0;
+    record('frame-stats', stats);
+  }
 
   // 限制深度和长度；错误对象、循环引用和带异常 getter 的对象都能记录。
   function safe(value, depth = 0, seen = new WeakSet()) {
@@ -129,13 +182,31 @@
   }, true);
   window.addEventListener('unhandledrejection', event => record('unhandled-rejection', { reason: event.reason }));
   window.addEventListener('pagehide', () => { void flush(); });
-  document.addEventListener('visibilitychange', () => { visibleSince = Date.now(); stalled = false; });
+  document.addEventListener('visibilitychange', () => {
+    visibleSince = Date.now(); stalled = false;
+    // 后台期间不采样；回到前台时丢掉后台前的旧窗口，避免把两段时间混成一条统计。
+    frameSampleCount = 0; frameSampleCursor = 0; lastFrameReport = Date.now();
+  });
   document.addEventListener('webglcontextlost', event => record('webgl-context-lost', { status: event.statusMessage }), true);
   window.storyDiagnostics = {
     record, flush,
     setSnapshot(provider) { snapshot = provider; },
-    markFrame(nextPhase) { phase = nextPhase; lastFrame = Date.now(); stalled = false; },
-    stopFrames() { lastFrame = 0; phase = 'stopped'; },
+    markFrame(nextPhase) {
+      phase = nextPhase; lastFrame = Date.now(); stalled = false;
+      if (!perfEnabled) return;
+      const now = nowMs();
+      if (nextPhase === 'update') updateStartedAt = now;
+      else if (nextPhase === 'render') renderStartedAt = now;
+      else if (nextPhase === 'idle' && updateStartedAt && renderStartedAt) {
+        addFrameSample(now - updateStartedAt, renderStartedAt - updateStartedAt, now - renderStartedAt);
+        updateStartedAt = 0; renderStartedAt = 0;
+      }
+    },
+    stopFrames() {
+      lastFrame = 0; phase = 'stopped';
+      updateStartedAt = 0; renderStartedAt = 0;
+      frameSampleCount = 0; frameSampleCursor = 0;
+    },
     export() { return JSON.stringify({ version: 1, entries: recent, pending }, null, 2); }
   };
   // 真正阻塞整个 JavaScript 线程时此计时器也不能执行；异常造成的停帧可以记录。
@@ -145,6 +216,7 @@
       stalled = true;
       record('frame-stalled', { message: '游戏超过 5 秒未进入下一帧' });
     }
+    reportFrameStats(Date.now());
     void flush();
   }, 2000);
   record('collector-start', { message: '手机诊断收集器已启动', version: 1 });

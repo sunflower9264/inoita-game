@@ -28,7 +28,7 @@ interface Collector {
   export(): string;
 }
 function client(storage = new Map<string, string>(), brokenStorage = false,
-  options: { native?: boolean; hostname?: string; onNativeReport?: (body: string, id: string) => void } = {}) {
+  options: { native?: boolean; hostname?: string; search?: string; onNativeReport?: (body: string, id: string) => void } = {}) {
   const windowEvents = new EventEmitter(), documentEvents = new EventEmitter();
   const sent: { entries: Entry[] }[] = [], originals: unknown[][] = [], intervals: (() => void)[] = [];
   let now = 1000, online = true;
@@ -37,7 +37,7 @@ function client(storage = new Map<string, string>(), brokenStorage = false,
     addEventListener: (event: string, callback: (...args: unknown[]) => void) => documentEvents.on(event, callback) };
   const sandbox = {
     document, console: { error: (...args: unknown[]) => originals.push(args) },
-    location: { pathname: '/', hostname: options.hostname }, navigator: { userAgent: 'test mobile' },
+    location: { pathname: '/', hostname: options.hostname, search: options.search ?? '' }, navigator: { userAgent: 'test mobile' },
     innerWidth: 800, innerHeight: 400, devicePixelRatio: 2, URL, AbortController, Date: Clock,
     localStorage: { getItem: (key: string) => { if (brokenStorage) throw Error('disabled'); return storage.get(key) ?? null; },
       setItem: (key: string, value: string) => { if (brokenStorage) throw Error('disabled'); storage.set(key, value); } },
@@ -155,6 +155,59 @@ test('stopped game frames report once per gap and ignore background time', () =>
   f.advance(2000); assert.equal(f.entries().length, count);
   f.advance(4000); assert.equal(f.entries().length, count + 1);
   f.collector.stopFrames(); f.advance(10000); assert.equal(f.entries().length, count + 1);
+});
+
+test('?perf records low-frequency frame stats while normal play stays untouched', () => {
+  const frame = (f: ReturnType<typeof client>) => {
+    f.collector.markFrame('update'); f.advance(4);
+    f.collector.markFrame('render'); f.advance(8);
+    f.collector.markFrame('idle'); f.advance(4);
+  };
+  const perf = client(new Map(), false, { search: '?perf' });
+  for (let index = 0; index < 30; index++) frame(perf);
+  perf.advance(30000);
+  const stats = perf.entries().find(entry => entry.kind === 'frame-stats');
+  assert.ok(stats, '满 30 秒记录一次窗口统计');
+  assert.deepEqual(stats.details, {
+    frames: 30, p50Ms: 12, p95Ms: 12, maxMs: 12, updateP95Ms: 4, renderP95Ms: 8,
+    long50Ms: 0, long100Ms: 0, dpr: 2, build: null
+  });
+  assert.equal(perf.entries().filter(entry => entry.kind === 'frame-stats').length, 1, '不按帧上报');
+
+  const plain = client();
+  for (let index = 0; index < 30; index++) frame(plain);
+  plain.advance(30000);
+  assert.equal(plain.entries().some(entry => entry.kind === 'frame-stats'), false, '没带 ?perf 不采样');
+});
+
+test('?perf drops the window around background/stop and ignores out-of-order phases', () => {
+  const perf = client(new Map(), false, { search: '?perf' });
+  for (let index = 0; index < 10; index++) {
+    perf.collector.markFrame('update'); perf.advance(4);
+    perf.collector.markFrame('render'); perf.advance(8);
+    perf.collector.markFrame('idle'); perf.advance(4);
+  }
+  perf.advance(10000);
+  perf.document.visibilityState = 'hidden'; perf.documentEvents.emit('visibilitychange');
+  perf.advance(30000);
+  assert.equal(perf.entries().some(entry => entry.kind === 'frame-stats'), false, '后台期间不上报旧窗口');
+  perf.document.visibilityState = 'visible'; perf.documentEvents.emit('visibilitychange');
+  perf.advance(10000);
+  assert.equal(perf.entries().some(entry => entry.kind === 'frame-stats'), false, '回前台后重新累计 30 秒');
+  // render/idle 缺少 update 时不能写入负数或超大 update/render 样本。
+  perf.collector.markFrame('render'); perf.advance(5); perf.collector.markFrame('idle');
+  perf.advance(30000);
+  assert.equal(perf.entries().some(entry => entry.kind === 'frame-stats'), false, '没有完整帧就不上报');
+  perf.collector.markFrame('update'); perf.advance(4);
+  perf.collector.markFrame('render'); perf.advance(8);
+  perf.collector.markFrame('idle'); perf.advance(4);
+  perf.advance(30000);
+  const stats = perf.entries().find(entry => entry.kind === 'frame-stats');
+  assert.ok(stats);
+  assert.equal(stats.details.frames, 1, '只有顺序完整的帧才进窗口');
+  perf.collector.stopFrames();
+  perf.advance(40000);
+  assert.equal(perf.entries().filter(entry => entry.kind === 'frame-stats').length, 1, 'stop 后清空窗口');
 });
 
 test('reinstalling the script leaves a single console interceptor and bounds records', async () => {
