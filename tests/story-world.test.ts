@@ -48,6 +48,45 @@ test('a story-placed treasure chest persists across map visits',()=>{
   assert.deepEqual(world.projectEntities('boss-room',[]).map(entity=>entity.id),['story-object-1-2']);
 });
 
+test('removing the last story instance also hides the static copies of that character',()=>{
+  const world=new StoryWorldState(),at=(map:string)=>({map,x:8,y:8,facing:'south' as const});
+  const base=[{id:'static-door-0',actor:'door',characterId:'npc-9',x:8,y:8},
+    {id:'static-door-1',actor:'door',characterId:'npc-9',x:24,y:8},
+    {id:'bystander',actor:'npc-10',characterId:'npc-10',x:40,y:8}];
+  world.apply({kind:'travel',destination:at('hall')});
+  world.apply({kind:'place',scope:'visit',entity:{id:'story-door',map:'hall',actor:'door',characterId:'npc-9',x:8,y:8}});
+  assert.deepEqual(world.projectEntities('hall',base).map(entity=>entity.id).sort(),
+    ['bystander','static-door-0','static-door-1','story-door']);
+  world.apply({kind:'remove-character',characterId:'npc-9',map:'hall',all:true});
+  assert.deepEqual(world.projectEntities('hall',base).map(entity=>entity.id),['bystander'],
+    '静态副本不能因为剧情实例先匹配过就留下来');
+  world.apply({kind:'travel',destination:at('forest')});
+  world.apply({kind:'travel',destination:at('hall')});
+  assert.deepEqual(world.projectEntities('hall',base).map(entity=>entity.id),['bystander'],
+    '访问实例过期后，移除标记仍要挡住静态副本');
+});
+
+test('an explicit visible placement clears an earlier removal flag, including visit scope',()=>{
+  const world=new StoryWorldState(),at=(map:string)=>({map,x:8,y:8,facing:'south' as const});
+  const base=[{id:'static-door',actor:'door',characterId:'npc-9',x:8,y:8}];
+  world.apply({kind:'travel',destination:at('hall')});
+  world.apply({kind:'remove-character',characterId:'npc-9',map:'hall',all:true});
+  assert.equal(world.actorVisible('hall','door','npc-9'),false);
+  world.apply({kind:'place',scope:'visit',entity:{id:'story-door',map:'hall',actor:'door',characterId:'npc-9',x:24,y:8}});
+  assert.equal(world.actorVisible('hall','door','npc-9'),true,'重新登场时不能被上次移除的标记挡住');
+  assert.deepEqual(world.projectEntities('hall',base).map(entity=>entity.id).sort(),['static-door','story-door']);
+});
+
+test('removing one instance with all:false keeps the remaining copies visible',()=>{
+  const world=new StoryWorldState(),at=(map:string)=>({map,x:8,y:8,facing:'south' as const});
+  world.apply({kind:'travel',destination:at('hall')});
+  world.apply({kind:'place',entity:{id:'first',map:'hall',actor:'guard',characterId:'npc-8',x:8,y:8}});
+  world.apply({kind:'place',entity:{id:'second',map:'hall',actor:'guard',characterId:'npc-8',x:24,y:8}});
+  world.apply({kind:'remove-character',characterId:'npc-8',map:'hall',all:false});
+  assert.equal(world.actorVisible('hall','guard','npc-8'),true,'还有实例在场时不记录整图缺席');
+  assert.equal(world.projectEntities('hall',[]).length,1);
+});
+
 test('story exit gates and encounter terminal results survive a stable snapshot',()=>{
   const world=new StoryWorldState(),exit={x:64,y:0,width:16,height:48,destination:'hall',spawn:{x:8,y:8},facing:'south' as const,exitFacing:'any' as const};
   world.apply({kind:'exit',id:storyExitId('camp',exit),enabled:false});

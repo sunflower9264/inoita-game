@@ -142,20 +142,25 @@ export class StoryWorldState {
         // 后续原版命令再把它永久摆出来；只靠对象展开会把旧的 mapVisit 留下来。
         this.entities.set(entity.id,{...this.entities.get(entity.id),...entity,removed:false,
           mapVisit:command.scope==='visit'?this.mapVisit+(entity.map!==this.location?.map?1:0):undefined});
-        // 常驻登记（非访问作用域）把角色明确摆出来时，撤销这张图上「角色不在场」的旧标记：
+        // 任何可见登记都会把角色明确摆出来，撤销这张图上「角色不在场」的旧标记：
         // 事件常先 remove-character 再在后面的节点里重新登记（event-162 → event-163 的波西娅）。
-        if(command.scope!=='visit'&&entity.visible!==false&&entity.characterId)
+        // 访问作用域同样要撤销，否则重新登场的过场角色会被上一次移除的静态标记挡住。
+        if(entity.visible!==false&&entity.characterId)
           this.flags.delete(JSON.stringify(['absent-actor',entity.map,entity.characterId]));
         return;
       }
       case 'remove-character':{
-        let matched=false;
         for(const entity of this.entities.values())if(entity.characterId===command.characterId&&entity.map===command.map&&!entity.removed){
-          entity.removed=true;matched=true;if(!command.all)break;
+          entity.removed=true;if(!command.all)break;
         }
-        // 地图静态摆放不在 `entities` 表里：没有剧情实例可移除时，按「本图缺少该角色」
-        // 记录，投影与场景刷新才会隐藏它并停掉碰撞。
-        if(!matched&&command.characterId)this.flags.add(JSON.stringify(['absent-actor',command.map,command.characterId]));
+        // 地图静态摆放不在 `entities` 表里。只要本图这个角色已经没有任何可见的剧情实例，
+        // 就记「本图缺少该角色」：场景刷新会同时隐藏静态副本并停掉碰撞。
+        // 只在还有剧情实例留下时不记，避免 `all:false` 误伤同图的其他副本。
+        if(command.characterId){
+          const remaining=[...this.entities.values()].some(entity=>entity.characterId===command.characterId
+            &&entity.map===command.map&&!entity.removed);
+          if(!remaining)this.flags.add(JSON.stringify(['absent-actor',command.map,command.characterId]));
+        }
         return;
       }
       case 'show':case 'hide':case 'remove':{
