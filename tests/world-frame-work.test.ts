@@ -10,6 +10,7 @@ import type {ItemCatalog} from '../src/domain/items.ts';
 import {SkillConfiguration} from '../src/domain/skill-configuration.ts';
 import {NavigationWorld} from '../src/domain/navigation-world.ts';
 import {CompanionSkillProgression} from '../src/domain/companion-progression.ts';
+import {SCENE_KEYS} from '../src/application/scene-keys.ts';
 import type {ShortcutSlot} from '../src/ui/phaser/action-controls.ts';
 
 const hook=registerHooks({resolve(specifier,context,next){return specifier==='phaser'
@@ -128,4 +129,53 @@ test('an entry performance without any drawn frame still ends the loading page o
   await (invoke(host,'holdEntryLoading',async()=>false,ui) as Promise<void>);
   assert.deepEqual(calls,['loaded']);
   assert.equal(host.holdingEntryLoading,false);
+});
+
+test('stage occlusion hides the world camera, pauses physics and restores it on release',()=>{
+  const calls:string[]=[];
+  const camera={visible:true,
+    preRender(){calls.push('preRender');},
+    setVisible(value:boolean){calls.push(`visible:${value}`);camera.visible=value;return camera;}};
+  const physics={world:{},pause(){calls.push('pause');},resume(){calls.push('resume');}};
+  const messages={values:[] as boolean[],setPaused(value:boolean){this.values.push(value);}};
+  const loot={values:[] as boolean[],setPaused(value:boolean){this.values.push(value);}};
+  const host=Object.assign(Object.create(WorldScene.prototype),{
+    destroyed:false,stageOccluded:false,cameras:{main:camera},physics,
+    pickupMessages:messages,groundLootView:loot,
+    sys:{isActive:()=>true},loadingWorld:false,performing:false,
+    app:{ui:{ready:true,controlLayoutEditing:false},locked:true,suspended:false,director:{busy:true}}});
+  invoke(host,'setStageOccluded',true);
+  assert.deepEqual(calls,['preRender','visible:false','pause'],'隐藏前先结算镜头，再停渲染和物理');
+  assert.deepEqual(messages.values,[true]);
+  assert.deepEqual(loot.values,[true]);
+  invoke(host,'setStageOccluded',true);
+  assert.deepEqual(calls,['preRender','visible:false','pause'],'同值不重复操作');
+  invoke(host,'setStageOccluded',false);
+  assert.deepEqual(calls.slice(-2),['visible:true','resume']);
+  assert.equal(host.stageOccluded,false);
+
+  const dead=Object.assign(Object.create(WorldScene.prototype),{destroyed:true,stageOccluded:false,
+    cameras:{main:{setVisible(){throw new Error('销毁后不应触碰相机');}}},physics:{world:{}}});
+  assert.doesNotThrow(()=>invoke(dead,'setStageOccluded',true));
+  assert.equal(dead.stageOccluded,false);
+});
+
+test('world update stays idle while the stage covers it and recovers when the stage is gone',()=>{
+  let covered=true;
+  const calls:string[]=[];
+  const host=Object.assign(Object.create(WorldScene.prototype),{
+    stageOccluded:true,destroyed:false,
+    scene:{get:(key:string)=>key===SCENE_KEYS.storyStage?{worldCovered:covered}:undefined},
+    cameras:{main:{preRender(){calls.push('preRender');},setVisible(value:boolean){calls.push(`visible:${value}`);}}},
+    physics:{world:{},pause(){calls.push('pause');},resume(){calls.push('resume');}},
+    pickupMessages:{setPaused(){}},groundLootView:{setPaused(){}},
+    sys:{isActive:()=>true},loadingWorld:false,performing:false,
+    app:{ui:{ready:true,controlLayoutEditing:false},locked:false,suspended:false,director:{busy:false}}});
+  invoke(host,'update',0,16);
+  assert.equal(host.stageOccluded,true,'舞台仍盖住时不推进世界');
+  assert.deepEqual(calls,[]);
+  covered=false;
+  invoke(host,'update',0,16);
+  assert.equal(host.stageOccluded,false,'舞台消失后自愈');
+  assert.deepEqual(calls,['visible:true','resume']);
 });

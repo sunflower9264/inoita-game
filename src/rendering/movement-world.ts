@@ -225,9 +225,11 @@ export class MovementWorld {
     for (const r of this.registrations.values()) if (r.actor.enabled()) r.body.settleStep();
     this.interpolation.completeStep(delta * 1000 * this.scene.physics.world.timeScale);
   }
-  private renderPositions(): void { this.interpolation.apply(); }
+  /** 物理暂停时没有新步进，插值坐标不会变化；只保留 restore，避免把容器留在临时坐标。 */
+  private renderPositions(): void { if (!this.scene.physics.world.isPaused) this.interpolation.apply(); }
   private restorePositions(): void { this.interpolation.restore(); }
   private syncDepth(): void {
+    if (this.scene.physics.world.isPaused) return;
     for (const visual of this.registrations.keys()) {
       if (!visual.container.active) continue;
       const depth = visual.container.y + .5;

@@ -112,6 +112,8 @@ export class WorldScene extends Phaser.Scene {
   loadingWorld = true;
   destroyed = false;
   performing = false;
+  /** 演出舞台已经铺满画面；正式世界这帧不更新、不渲染、物理也不步进。 */
+  private stageOccluded = false;
   private readonly storyEntityAssets:AssetLease[]=[];
   private readonly projectedActorIds=new Set<string>();
   private lastProjectedLocation?:string;
@@ -169,6 +171,7 @@ export class WorldScene extends Phaser.Scene {
     this.mapLayers?.destroy(); this.mapLayers = undefined;
     this.performing = false; this.player = undefined; this.noclipVisual = undefined; this.map = undefined;
     this.options = options; this.characters = []; this.near = null; this.loadingWorld = true; this.destroyed = false;
+    this.stageOccluded = false;
     this.movement = undefined; this.lastPlayerPosition = undefined;this.combat=undefined;this.checkpointPending=!options.checkpoint;
     this.shortcutPageCache=undefined;
     this.dropCatalog=undefined;this.springCatalog=undefined;this.groundLootView=undefined;this.pickupMessages=undefined;this.pickupRecipients.clear();
@@ -244,6 +247,34 @@ export class WorldScene extends Phaser.Scene {
       globalThis.storyDiagnostics?.record('wardrobe-pose-warm-error', { error });
     }
   }
+  /**
+   * 演出舞台铺满画面后，正式世界继续留在 RUNNING（Loader、scene.restart 和跨场景调用都要用），
+   * 但不再更新、渲染或步进物理。舞台恢复透明前必须解除。
+   */
+  setStageOccluded(occluded: boolean): void {
+    if (this.destroyed || this.stageOccluded === occluded) return;
+    this.stageOccluded = occluded;
+    const camera = this.cameras?.main;
+    if (camera) {
+      // 相机不可见后不再走 preRender，follow 也不会推进；隐藏前先结算一次，
+      // 下一段演出读取 scrollX/scrollY 时才是当前镜头，而不是重建后的初值。
+      if (occluded) camera.preRender?.();
+      camera.setVisible(!occluded);
+    }
+    if (this.physics?.world) {
+      if (occluded) this.physics.pause(); else this.physics.resume();
+    }
+    const paused = occluded || !this.canCombatControl;
+    this.pickupMessages?.setPaused(paused);
+    this.groundLootView?.setPaused(paused);
+  }
+
+  /** 以舞台自己的遮罩状态为准；舞台关闭或重建后这里会把遮挡解除。 */
+  private syncStageOcclusion(): void {
+    const stage = this.scene?.get?.(SCENE_KEYS.storyStage) as { worldCovered?: boolean } | undefined;
+    this.setStageOccluded(stage?.worldCovered === true);
+  }
+
   async open(options: SceneOptions): Promise<void> {
     const { ui, world, campaign } = this.app;
     const signal = this.request.signal;
@@ -413,6 +444,8 @@ export class WorldScene extends Phaser.Scene {
     this.loadingWorld = false;
     globalThis.storyDiagnostics?.record('start-phase',{phase:'world-ready',map:map.id});
     this.events.emit('map-ready', map.id);
+    // 剧情内换图会重建本场景；新实例的相机和物理都是新的，必须按舞台当前状态重新遮挡。
+    this.syncStageOcclusion();
     this.app.audio?.enterMap(map.id);
     this.trimTextures(); this.app.syncLifecycle?.();
     if(!this.app.checkpoint.available){this.captureCheckpoint();this.checkpointPending=true;}
@@ -1517,6 +1550,12 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
     this.near = nearest;
   }
   override update(_time:number,delta:number): void {
+    // 舞台已经铺满画面时，正式世界这帧不跑战斗、HUD、掉落和移动；
+    // 自愈检查保证舞台被关闭或重建后不会永远停在这里。
+    if (this.stageOccluded) {
+      this.syncStageOcclusion();
+      if (this.stageOccluded) return;
+    }
     // 卡顿时最多补 2 个逻辑帧；补 3 帧会把 AI/寻路/状态的尖峰叠成三倍。
     const stepDelta=Math.min(delta,120);
     this.updateFps();

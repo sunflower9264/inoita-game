@@ -5,6 +5,7 @@ import test from 'node:test';
 import type { StoryContext } from '../src/application/ports.ts';
 import type { ActorDefinition, WorldMap } from '../src/domain/content.ts';
 import { validateStoryStageSnapshot, type StoryStage, type StoryStageSnapshot } from '../src/domain/story-performance.ts';
+import { SCENE_KEYS } from '../src/application/scene-keys.ts';
 import { stageSnapshot } from './helpers/story-stage.ts';
 import type { WorldScene } from '../src/scenes/world-scene.ts';
 import type { StoryStageScene as StageSceneType } from '../src/scenes/story-stage-scene.ts';
@@ -24,10 +25,12 @@ hook.deregister();
 const appearance = { id: 'hero', clips: {} } as ActorDefinition;
 
 test('the initial curtain is drawn during create before readiness and survives map preparation', () => {
-  const sequence: string[] = [], covers: { destroyed: boolean }[] = [];
+  const sequence: string[] = [], covers: { destroyed: boolean }[] = [], occlusions: boolean[] = [];
   const events = new EventEmitter(), scale = Object.assign(new EventEmitter(), { width: 320, height: 200 });
   const scene = new StoryStageScene({} as StoryContext);
   Object.assign(scene, { events, scale, cameras: { main: { setBackgroundColor() {} } }, input: {},
+    scene: { get: (key: string) => key === SCENE_KEYS.world
+      ? { setStageOccluded(value: boolean) { occlusions.push(value); } } : undefined },
     add: { rectangle(x: number, y: number, width: number, height: number, color: number) {
       assert.deepEqual({x,y,width,height,color}, {x:-320,y:-200,width:960,height:600,color:0});
       sequence.push('cover');
@@ -39,11 +42,14 @@ test('the initial curtain is drawn during create before readiness and survives m
   });
   scene.create({ initialCurtain: { opacity: 1, color: 0 }, onReady: () => sequence.push('ready') });
   assert.deepEqual(sequence, ['cover']);
+  assert.deepEqual(occlusions, [false], '首幕透明，正式世界保持可见');
   events.emit('create'); assert.deepEqual(sequence, ['cover', 'ready']);
   scene.releaseStage(true); assert.equal(covers[0].destroyed, false);
+  assert.deepEqual(occlusions, [false], '保留幕布的中间释放不解除遮挡状态');
   scene.clearEarlyCurtain(); assert.equal(covers[0].destroyed, true);
   scene.showInitialCurtain({ opacity: 1, color: 0 });
   events.emit('shutdown'); assert.equal(covers[1].destroyed, true);
+  assert.deepEqual(occlusions, [false, false], 'shutdown 后正式世界恢复可见');
 });
 
 test('the stage backdrop turns opaque only after a map is drawn and transparent on release', async () => {
@@ -75,7 +81,10 @@ test('the stage backdrop turns opaque only after a map is drawn and transparent 
   const camera = { scrollX: 0, scrollY: 0, width: 960, height: 640, zoom: 1,
     setBackgroundColor(color: string) { colors.push(color); return camera; },
     setZoom() { return camera; }, setRoundPixels() { return camera; }, setBounds() { return camera; }, centerOn() { return camera; } };
+  const occlusions: boolean[] = [];
   Object.assign(scene, {
+    scene: { get: (key: string) => key === SCENE_KEYS.world
+      ? { setStageOccluded(value: boolean) { occlusions.push(value); } } : undefined },
     events: new EventEmitter(), scale: { width: 960, height: 640, on() {}, off() {} },
     game: { canvas: { getBoundingClientRect: () => ({ width: 960, height: 640 }) } },
     sys: { isActive: () => true }, cameras: { main: camera },
@@ -97,10 +106,12 @@ test('the stage backdrop turns opaque only after a map is drawn and transparent 
     content.map = async () => { throw new Error('load failed'); };
     await assert.rejects(scene.showStage(stage, new AbortController().signal, appearance));
     assert.ok(!colors.includes(STAGE_BACKDROP_COLOR));
+    assert.ok(!occlusions.includes(true), '首张图失败时正式世界不被遮挡');
 
     content.map = async () => map;
     await scene.showStage(stage, new AbortController().signal, appearance);
     assert.equal(colors.at(-1), STAGE_BACKDROP_COLOR);
+    assert.deepEqual(occlusions, [true], '舞台铺满后才停掉正式世界');
     const previousPlayer=scene.player;
     app.world.actors.broken={id:'broken',clips:{'idle-east':{layers:[]}}} as unknown as ActorDefinition;
     const invalidCast=stageSnapshot({...stage,cast:[{id:'broken',actor:'broken',x:8,y:8,facing:'south',visible:true}]});
@@ -116,12 +127,15 @@ test('the stage backdrop turns opaque only after a map is drawn and transparent 
     content.map = async () => { throw new Error('load failed'); };
     await assert.rejects(scene.showStage({ ...stage, map: 'other' }, new AbortController().signal, appearance));
     assert.equal(colors.at(-1), STAGE_BACKDROP_COLOR);
+    assert.equal(occlusions.at(-1), true, '换图失败时保留遮挡，不露出正式世界');
 
     scene.releaseStage();
     assert.equal(colors.at(-1), STAGE_TRANSPARENT_COLOR);
+    assert.deepEqual(occlusions, [true, false], '舞台释放后正式世界恢复渲染');
     // SHUTDOWN 时 CameraManager 可能已经销毁主相机，清理路径不能抛错。
     (scene.cameras as unknown as { main?: unknown }).main = undefined;
     assert.doesNotThrow(() => scene.releaseStage());
+    assert.equal(occlusions.at(-1), false);
   } finally {
     MovementWorld.prototype.register = saved.register;
     MovementWorld.prototype.setEnabled = saved.setEnabled;

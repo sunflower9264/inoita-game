@@ -47,6 +47,8 @@ export class StoryStageScene extends Phaser.Scene {
   private readonly actorLeases = new Set<AssetLease>();
   private clearMap?: () => void;
   private revision = 0;
+  /** 舞台是否已经用不透明底色完全盖住正式世界。 */
+  private covered = false;
   private readonly wardrobes = new Map<string, Wardrobe>();
   private earlyCurtain?: Phaser.GameObjects.Rectangle;
   constructor(app: StoryContext) {
@@ -85,8 +87,14 @@ export class StoryStageScene extends Phaser.Scene {
    * 这里用可选链避免清理路径抛错。
    */
   private setWorldCovered(covered: boolean): void {
+    this.covered = covered;
     this.cameras?.main?.setBackgroundColor(covered ? STAGE_BACKDROP_COLOR : STAGE_TRANSPARENT_COLOR);
+    // 正式世界保留 RUNNING（Loader 和 scene.restart 都要用），只停掉看不见的更新和绘制。
+    const world = this.scene?.get?.(SCENE_KEYS.world) as { setStageOccluded?(value: boolean): void } | undefined;
+    world?.setStageOccluded?.(covered);
   }
+  /** 舞台画面是否已经完全不透明地盖住正式世界。 */
+  get worldCovered(): boolean { return this.covered; }
   /** 新地图加载完成前保留上一幅画面；迟到的加载只释放自己的租约。 */
   async showStage(stage: StoryStageSnapshot, signal: AbortSignal, playerAppearance?: ActorDefinition): Promise<void> {
     signal.throwIfAborted(); validateStoryStageSnapshot(stage);
@@ -233,8 +241,9 @@ export class StoryStageScene extends Phaser.Scene {
     }
   }
   releaseStage(preserveEarlyCurtain = false): void {
-    // 先恢复透明：最终释放到场景 stop 之间露出下面已经切换好的世界，避免黑帧。
-    this.setWorldCovered(false);
+    // 最终释放时先恢复世界渲染，再到场景 stop 之间露出下面已经切换好的世界，避免黑帧。
+    // 换幕重建（preserveEarlyCurtain）仍由旧舞台盖着，不能中途解除遮挡。
+    if (!preserveEarlyCurtain) this.setWorldCovered(false);
     this.revision++;
     if (!preserveEarlyCurtain) this.clearEarlyCurtain();
     this.movement?.destroy(); this.movement = undefined;
