@@ -787,11 +787,18 @@
 
 | 根因 | 改动 | 提交 | 验证 |
 |---|---|---|---|
-| 菜单开局逐张加载 239 个静态 UI 文件；iPhone 实测 239 张 / 26.6 s | 新增 `npm run atlas:ui`：从 `gameMenuImageGroups().core` 取 229 张 PNG，按内容去重成 203 帧，打包为 1 页 2048×1116（1.37 MB）；`uiImage`/`loadUiImages` 同时识别图标图集与 UI 图集 | 本次 | `typecheck`、`validate:content`；`ui-atlas`、`icon-atlas`、`menu-images`、`menu-panels`、`asset-version` 共 10 项通过；`npm run deploy` 通过 |
-| 共用按钮、任务弹窗边、标题提示条和操作皮肤按整张纹理或文件路径取图，不能直接进图集 | 这四类留在图集外（10 张 + 19 张操作皮肤），继续按单图加载；队伍头像与状态栏人像改为图集感知 | 本次 | 229 个文件映射到 1 页；菜单准备请求从约 260 降到约 33 |
+| 菜单开局逐张加载 239 个静态 UI 文件；iPhone 实测 239 张 / 26.6 s | 新增 `npm run atlas:ui`：从 `gameMenuImageGroups().core` 取 229 张 PNG，按内容去重成 203 帧，打包为 1 页 2048×1116（1.37 MB）；`uiImage`/`loadUiImages` 同时识别图标图集与 UI 图集 | `477ce3b` | `typecheck`、`validate:content`；`ui-atlas`、`icon-atlas`、`menu-images`、`menu-panels`、`asset-version` 共 10 项通过；`npm run deploy` 通过 |
+| 共用按钮、任务弹窗边、标题提示条和操作皮肤按整张纹理或文件路径取图，不能直接进图集 | 这四类留在图集外（10 张 + 19 张操作皮肤），继续按单图加载；队伍头像与状态栏人像改为图集感知 | `477ce3b` | 229 个文件映射到 1 页；菜单准备请求从约 260 降到约 33 |
+
+### 2026-10-26：演出铺满画面时正式世界停更停渲
+
+| 根因 | 改动 | 提交 | 验证 |
+|---|---|---|---|
+| 剧情演出时 `story-stage` 与正式世界同时 update/渲染；世界被舞台不透明底色盖住，但战斗 AI、HUD、掉落、移动插值和整图绘制仍在跑 | 舞台在 `setWorldCovered` 切换时通知正式世界；世界隐藏主相机、暂停 Arcade 物理、`update` 顶部早退；物理暂停期间移动插值不再 apply。`open()` 按舞台状态重新应用，舞台关闭或重建时在 `update` 里自愈；隐藏相机前先 `preRender` 一次，剧情内换图后舞台镜头不会读到重建初值 | `687208b` | `typecheck`；舞台隔离 26/26、世界帧 8/8、移动/剧情投影/剧情世界 27/27；`world-runtime-review` 25/26，唯一失败为改动前已复现的 `applyNoclip` 测试替身问题 |
+
+不做 `scene.sleep`：世界场景的 Loader 绑定在场景 `UPDATE` 事件上，sleep 后剧情投影和预取会等不到 `complete`；`scene.restart` 也会把 sleeping 场景恢复成 active。纯世界背景对白没有舞台，`worldCovered` 始终为 false，世界照常更新。
 
 仍待做：
-- 演出舞台铺满画面时让 `WorldScene` 休眠。收益大，但涉及舞台首帧透明、世界重建后重新休眠和唤醒时序，需要真机确认没有黑帧或卡住。
 - `WalkRoute` 与 `NavigationWorld.nearestReachableBody/terrainRoute` 的同步寻路预算。
 - `syncCombatResourceLimits` 的缓存要先给 buff/状态加修订号，避免 ramp buff 读到旧上限。
 - `StoryUI.render` 在菜单里每次会话通知整页重建；要先定义一屏到底依赖哪些修订号。
