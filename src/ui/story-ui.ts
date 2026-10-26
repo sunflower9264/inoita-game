@@ -85,7 +85,7 @@ export class StoryUI {
   /** 登记快捷键那一屏单独一层：它盖在遮罩上，菜单本体整块藏起来。 */
   private shortcutScreen?:UiSurface;
   private controlEditor?:ControlLayoutEditor;
-  /** 左上角返回钮单独一层：原版它贴着屏幕左缘，不随 960 内容区居中。 */
+  /** 左上角圆形关闭钮单独一层：不随 960 内容区居中，靠安全区左上角摆放。 */
   private backTab?:UiSurface;
   private shortcutEdit?:{kind:ShortcutEntry['kind'];id:string;page:number};
   private backdrop?:Phaser.GameObjects.Rectangle;
@@ -286,8 +286,8 @@ export class StoryUI {
     this.surface?.layout(12);this.positionModal();
     // 说明面板不在 surface 之下，位置与缩放按 surface 的世界变换同步，坐标系与内容块一致。
     if(this.surface&&this.description){const matrix=this.surface.root.getWorldTransformMatrix(),position=matrix.transformPoint(CONTENT_ORIGIN.x,CONTENT_ORIGIN.y);this.description.root.setPosition(position.x,position.y).setScale(matrix.scaleX,matrix.scaleY);}
-    // 登记快捷键那一屏与返回钮按原版的屏幕坐标摆：缩放取操作区的缩放，屏幕左上角为原点；
-    // 返回钮再让开设备安全区，其余内容里的 HUD 锚点已经算过安全区。
+    // 登记快捷键那一屏按原版的屏幕坐标摆：缩放取操作区的缩放，屏幕左上角为原点；
+    // 圆形关闭钮再让开设备安全区，其余内容里的 HUD 锚点已经算过安全区。
     if(this.scene&&this.shortcutScreen&&this.backTab){
       const {scale}=controlPlacement(this.scene,this.scene.scale.width,this.scene.scale.height),bounds=this.scene.game.canvas.getBoundingClientRect(),safe=readSafeArea(),unit=this.scene.scale.width/Math.max(1,bounds.width);
       this.shortcutScreen.root.setPosition(0,0).setScale(scale);this.backTab.root.setPosition(safe.left*unit,safe.top*unit).setScale(scale);
@@ -435,7 +435,7 @@ export class StoryUI {
   private openControlEditor():void {
     if(!this.scene||!this.content||!this.open)return;
     this.cancelDrag();
-    this.controlEditor??=new ControlLayoutEditor(this.scene,this.app.controlLayout,this.app.controlSkin,this.content.assets,()=>this.closeControlEditor());
+    this.controlEditor??=new ControlLayoutEditor(this.scene,this.app.controlLayout,this.app.controlSkin,this.app.menuPanels.assets,()=>this.closeControlEditor());
     this.controlEditor.open(this.app.captureControlPreview?.()??[]);
     this.app.ui.setControlLayoutEditing(true);this.render();
   }
@@ -883,7 +883,7 @@ export class StoryUI {
   private shortcutIconSize(entry:ShortcutEntry):number{return entry.kind==='item'?ITEM_ICON_SIZE:SLOT_ICON_SIZE;}
   /**
    * 登记快捷键这一屏，原版是 `UIShortcutMenu`（依据见 `work/findings/shortcut-screen-2026-10-13.md`）：
-   * 菜单整块让位、露出背后的游戏画面与黑色遮罩；左上角一枚返回钮，顶部一行提示，
+   * 菜单整块让位、露出背后的游戏画面与黑色遮罩；左上角一枚圆形关闭钮，顶部一行提示，
    * 右侧浮出与游戏里同一排的六个圆槽与换组按钮，待登记的对象画在屏幕中间偏右的圆框里。
    * 圆槽与换组钮的位置读设备键位配置，与游戏 HUD 共用坐标和缩放，
    * 所以进这一屏后它们与游戏画面里的那一排严丝合缝。这一层的原点是屏幕左上角。
@@ -914,19 +914,15 @@ export class StoryUI {
     if(icon)v.image(icon,pending.x-size/2,pending.y-size/2,size,size);
   }
   /**
-   * 左上角返回钮。原版 `UIGameMenu_InitBackButton @0x14cdcc` 把矩形放在 (−CalcResolutionWidth, 6, 78, 86)，
-   * 即贴着屏幕左缘；`UIGameMenu_DrawBackButton @0x14ccb4` 先画 `UI_DrawBorderRect(x−20, y, w+20, h)` 的
-   * 边框底托（左边的 20 像素落在屏外），再画图组 15 索引 58 的 ← 在 +(15,24)，按下时在 +(3,12) 以叠加混合叠
-   * 索引 52 的光晕。这一层的原点是安全区的左上角，缩放与操作区一致。
+   * 登记快捷键屏左上角的关闭钮。全菜单统一用菜单页右上角那枚圆形关闭图，
+   * 这里只是需要更大的命中区，所以画成 67×67；不再用带边框的返回箭头。
    */
   private renderBackButton():void{
     const back=this.backTab,assets=this.app.menuPanels.assets;if(!back)return;
     back.clear();
-    back.border(assets,-20,6,98,86);
-    const button=back.button('',0,6,78,86,()=>this.goBack(),{bare:true,pressed:assets['menu-back-pressed'],pressedRect:{x:3,y:12,width:62,height:61},pressedAdd:true}).setData('label','返回');
-    button.addAt(back.image(assets['menu-back'],15,24,38,39,button),0);
+    back.button('',12,12,67,67,()=>this.goBack(),{image:assets.close,pressed:assets['close-pressed']}).setData('label','返回');
   }
-  /** 左上角返回钮与 Escape 的去向：登记屏退回进来前的页面，其余情况由 `close` 关掉菜单。 */
+  /** 左上角关闭钮与 Escape 的去向：登记屏退回进来前的页面，其余情况由 `close` 关掉菜单。 */
   private goBack():void{
     if(this.shortcutEdit)this.closeShortcutScreen();
   }

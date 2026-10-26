@@ -26,7 +26,7 @@ export class ControlLayoutEditor {
     this.canvas = new UiSurface(scene,960,640,350);
     this.toolbar = new UiSurface(scene,960,640,390);
     this.toolbar.enabled = () => this.active && this.toolbar.root.visible;
-    this.toolbar.button('',12,12,51,51,close,{image:assets.close,pressed:assets['close-pressed']}).setData('label','关闭操作设置');
+    this.toolbar.button('',12,12,67,67,close,{image:assets.close,pressed:assets['close-pressed']}).setData('label','关闭操作设置');
     this.toolbar.button('恢复默认',0,12,220,66,() => {this.cancel();this.preferences.reset();});
     this.unsubscribe = preferences.subscribe(() => this.layout());
     scene.game.events.on(UI_EVENTS.cancelInput,this.cancel,this);

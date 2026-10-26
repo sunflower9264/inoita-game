@@ -16,7 +16,7 @@ export const TITLE_MESSAGE_ASSETS: Record<string, string> = Object.fromEntries(
 export const titleMenuImages = [...COMMON_BUTTON_IMAGES, ...Object.values(TITLE_MESSAGE_ASSETS), ...[
   'background.png', 'logo.png', 'subtitle-left.png', 'subtitle-right.png',
   'back.png', 'slot.png', 'slot-empty.png'
-].map(name => titleRoot + name)];
+].map(name => titleRoot + name), '/assets/ui/menus/close.png', '/assets/ui/menus/close-pressed.png'];
 
 /**
  * 菜单图片分两批：

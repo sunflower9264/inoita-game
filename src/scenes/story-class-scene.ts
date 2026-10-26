@@ -25,7 +25,7 @@ export class StoryClassScene extends Phaser.Scene {
   private async open(signal:AbortSignal):Promise<void>{
     const catalog=this.app.storyClasses;
     await Promise.all([
-      loadUiImages(this,[catalog.background,...Object.values(catalog.assets),...catalog.classes.map(entry=>entry.icon)],value=>{if(!signal.aborted)this.app.ui.loading('正在准备职业…',value);}).then(lease=>{if(signal.aborted){lease.release();signal.throwIfAborted();}this.events.once('shutdown',()=>lease.release());}),
+      loadUiImages(this,[catalog.background,...Object.values(catalog.assets),...catalog.classes.map(entry=>entry.icon),'/assets/ui/menus/close.png','/assets/ui/menus/close-pressed.png'],value=>{if(!signal.aborted)this.app.ui.loading('正在准备职业…',value);}).then(lease=>{if(signal.aborted){lease.release();signal.throwIfAborted();}this.events.once('shutdown',()=>lease.release());}),
       loadSceneAssets(this,catalog.classes.flatMap(entry=>characterAssets(entry.previewActor)),()=>{})
     ]);
     signal.throwIfAborted();
@@ -36,7 +36,7 @@ export class StoryClassScene extends Phaser.Scene {
     this.selected=entry;const view=this.surface!,catalog=this.app.storyClasses;view.clear();this.preview=undefined;
     view.image(catalog.background,80,0,800,640);view.image(catalog.assets.title,263,20,434,56);view.text(entry.name,480,31,0,28).setOrigin(.5,0);
     const guard=()=>this.app.ui.ready&&!this.app.suspended;view.enabled=guard;
-    view.button('',12,16,70,66,()=>this.app.returnToMenu?.(),{image:catalog.assets.back,guard}).setData('label','返回主菜单');
+    view.button('',12,16,67,67,()=>this.app.returnToMenu?.(),{image:'/assets/ui/menus/close.png',pressed:'/assets/ui/menus/close-pressed.png',guard}).setData('label','返回主菜单');
     const positions=[[37,118],[70,251],[198,313],[648,313],[776,251],[809,118]];
     catalog.classes.forEach((character,index)=>{
       const [x,y]=positions[index];const button=view.button('',x,y,116,114,()=>this.choose(character),{image:character.icon,guard}).setData('label',character.name);

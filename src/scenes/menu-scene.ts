@@ -90,7 +90,7 @@ export class MenuScene extends Phaser.Scene {
       view.button('挑战模式',835,472,300,92,()=>{},{fontSize:36,disabled:true});
       this.addVersion(view);
     }else{
-      view.button('',28,21,78,86,()=>this.showHome(),{image:art('back'),guard}).setData('label','返回主菜单');
+      view.button('',28,21,67,67,()=>this.showHome(),{image:'/assets/ui/menus/close.png',pressed:'/assets/ui/menus/close-pressed.png',guard}).setData('label','返回主菜单');
       if(this.page==='slots'){
         view.text('存档槽',600,20,760,49).setOrigin(.5,0);
         const assets={frame:art('slot'),empty:art('slot-empty')};
