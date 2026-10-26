@@ -392,7 +392,9 @@ export class WorldScene extends Phaser.Scene {
       if(!character?.container.active)return undefined;
       return {...this.movement!.displayPosition(character),headAnchor:character.actor.headAnchor??{x:0,y:0}};
     }});
-    this.movement = new MovementWorld(this, new NavigationWorld(map));
+    const mapNavigation = new NavigationWorld(map);
+    mapNavigation.prepareTerrainRouting();
+    this.movement = new MovementWorld(this, mapNavigation);
     for (const entity of this.entities) this.characters.push(this.createActor(entity));
     // 同图场景重建（检查点恢复、剧情演出）沿用本次地图访问的喝空记录。
     this.restoreDrainedSprings();

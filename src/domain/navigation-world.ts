@@ -1,8 +1,11 @@
 import { canStandInRect, canStandOnTerrain, type CollisionMap, type GameRectangle, type Point } from './navigation.ts';
-import { canTraverse, findPath, PATH_GRID_SIZE } from './pathfinding.ts';
+import { canTraverse, createPathSearch, findPath, PATH_GRID_SIZE } from './pathfinding.ts';
 
 const TERRAIN_RADIUS = 4;
 const COLLISION_EPSILON = 1e-7;
+/** 没有首选落点时的同步兜底搜索预算；超过后交给调用方回退，避免整张图扫完。 */
+const PLACEMENT_SEARCH_BUDGET = 512;
+const TERRAIN_DIRECTIONS: readonly (readonly [number, number])[] = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
 export interface NavigationShape { collision?: GameRectangle }
 /** 通行阵营：玩家、佣兵和友方召唤物同属 party，彼此不占位；敌人与中立 NPC 保持实体碰撞。 */
 export type NavigationFaction = 'party' | 'hostile' | 'neutral';
@@ -71,12 +74,18 @@ export class NavigationWorld {
   readonly name: string;
   private readonly terrain?: CollisionMap;
   private readonly actors = new Set<NavigationActor>();
+  private terrainComponents?: { cols: number; rows: number; labels: Int32Array };
   constructor(terrain: CollisionMap | { name: string; bounds: GameRectangle }) {
     this.name = terrain.name;
     this.terrain = 'tileSize' in terrain ? terrain : undefined;
     this.bounds = 'bounds' in terrain ? { ...terrain.bounds } : { x: 0, y: 0, width: terrain.columns * terrain.tileSize, height: terrain.rows * terrain.tileSize };
   }
   register(actor: NavigationActor): () => void { this.actors.add(actor); return () => this.actors.delete(actor); }
+  /**
+   * 地图加载完调用：把 8 px 地形连通块的建表成本移出第一次召唤/落点查询。
+   * 不调用也能工作，`terrainRoute` 会在首次查询时惰性建表。
+   */
+  prepareTerrainRouting(): void { this.terrainComponents ??= this.buildTerrainComponents(); }
   terrainFree(point: Point): boolean {
     return terrainFreeAt(this.bounds,this.terrain,point);
   }
@@ -93,7 +102,8 @@ export class NavigationWorld {
     }
     const terrainFree=(point:Point)=>terrainFreeAt(bounds,terrain,point);
     return {bounds,start,terrainFree,canStand(point){
-      return !collision||terrainFree(point)&&!occupied.some(other=>overlapsAt(collision,point,other));
+      // 与 `canStand()` 同口径：地形和地图边界对所有角色都生效；没有碰撞盒只表示不查人物占位。
+      return terrainFree(point)&&(!collision||!occupied.some(other=>overlapsAt(collision,point,other)));
     }};
   }
   canPlace(shape: NavigationShape, point: Point, ignore?: NavigationActor, placements: readonly Placement[] = []): boolean {
@@ -233,7 +243,7 @@ export class NavigationWorld {
       return { ...preferred };
     let landing: Point | undefined;
     const free = (point: Point) => this.terrainFree(point);
-    const path = findPath(origin, {
+    const search = createPathSearch(origin, {
       bounds: this.bounds,
       canStand: free,
       isGoal: point => {
@@ -243,18 +253,95 @@ export class NavigationWorld {
       },
       heuristic: () => 0,
     });
-    return path === null || !landing ? undefined : landing;
+    const result = search.step(PLACEMENT_SEARCH_BUDGET);
+    // 预算耗尽和真的不可达要分开：前者可能只是落点很远，记录一次再交给调用方回退；
+    // 后者说明整张可达区域没有能放下整个身体的位置。
+    if (result.status === 'pending') {
+      globalThis.storyDiagnostics?.record('placement-search-budget', {
+        map: this.name, origin, shape: shape.collision ?? null, budget: PLACEMENT_SEARCH_BUDGET
+      });
+      return undefined;
+    }
+    return result.status === 'found' && landing ? landing : undefined;
   }
-  /** 地形连通性：与移动使用的窄足底口径一致。 */
+  /**
+   * 地形连通性：与移动使用的窄足底口径一致。
+   *
+   * 之前每次都从起点做一次 A*；大地图上最坏 30–50 ms，召唤/落点/队伍归位会丢帧。
+   * 地形在一张图内不变，所以按 8 px 网格预计算连通块，查询只比较连通块编号。
+   * 位于网格点之外的点先用 canTraverse 接到相邻网格点，和寻路器的起点/终点规则一致。
+   */
   private terrainRoute(from: Point, to: Point): boolean {
     const free = (point: Point) => this.terrainFree(point);
     if (!free(from) || !free(to)) return false;
+    const fromLabels = this.terrainLabelsAt(from), toLabels = this.terrainLabelsAt(to);
+    if (fromLabels.length && toLabels.length) {
+      const reachable = new Set(fromLabels);
+      return toLabels.some(label => reachable.has(label));
+    }
+    // 极边缘或没有相邻网格点时才退回精确搜索；正常落点不会走到这里，仍加同一预算兜底。
     return findPath(from, {
       bounds: this.bounds,
       canStand: free,
       isGoal: point => Math.hypot(point.x - to.x, point.y - to.y) <= PATH_GRID_SIZE && canTraverse(point, to, free),
       heuristic: point => Math.max(0, Math.hypot(point.x - to.x, point.y - to.y) - PATH_GRID_SIZE),
-    }) !== null;
+    }, PLACEMENT_SEARCH_BUDGET) !== null;
+  }
+  /** 惰性建立 8 px 地形连通块；建表成本只发生在第一次落点/召唤查询。 */
+  private terrainLabelsAt(point: Point): number[] {
+    const components = this.terrainComponents ??= this.buildTerrainComponents();
+    const step = PATH_GRID_SIZE, epsilon = 1e-6;
+    const gx = (point.x - this.bounds.x) / step, gy = (point.y - this.bounds.y) / step;
+    const labels: number[] = [];
+    const add = (column: number, row: number): void => {
+      if (column < 0 || row < 0 || column >= components.cols || row >= components.rows) return;
+      const label = components.labels[row * components.cols + column];
+      if (label < 0) return;
+      const grid = { x: this.bounds.x + column * step, y: this.bounds.y + row * step };
+      if (!this.terrainFree(grid) || !canTraverse(point, grid, p => this.terrainFree(p))) return;
+      if (!labels.includes(label)) labels.push(label);
+    };
+    if (Math.abs(gx - Math.round(gx)) < epsilon && Math.abs(gy - Math.round(gy)) < epsilon) {
+      add(Math.round(gx), Math.round(gy));
+    } else {
+      const columns = [...new Set([Math.floor(gx), Math.ceil(gx)])];
+      const rows = [...new Set([Math.floor(gy), Math.ceil(gy)])];
+      for (const column of columns) for (const row of rows) add(column, row);
+    }
+    return labels;
+  }
+  private buildTerrainComponents(): { cols: number; rows: number; labels: Int32Array } {
+    const step = PATH_GRID_SIZE;
+    const cols = Math.floor(this.bounds.width / step) + 1;
+    const rows = Math.floor(this.bounds.height / step) + 1;
+    const labels = new Int32Array(cols * rows).fill(-1);
+    const free = new Uint8Array(cols * rows);
+    for (let row = 0; row < rows; row++) for (let column = 0; column < cols; column++) {
+      free[row * cols + column] = this.terrainFree({ x: this.bounds.x + column * step, y: this.bounds.y + row * step }) ? 1 : 0;
+    }
+    const queue: number[] = [];
+    let label = 0;
+    for (let start = 0; start < free.length; start++) {
+      if (labels[start] !== -1 || !free[start]) continue;
+      labels[start] = label;
+      queue.length = 0; queue.push(start);
+      for (let head = 0; head < queue.length; head++) {
+        const current = queue[head], column = current % cols, row = (current - column) / cols;
+        for (const [dx, dy] of TERRAIN_DIRECTIONS) {
+          const nextColumn = column + dx, nextRow = row + dy;
+          if (nextColumn < 0 || nextRow < 0 || nextColumn >= cols || nextRow >= rows) continue;
+          const next = nextRow * cols + nextColumn;
+          if (labels[next] !== -1 || !free[next]) continue;
+          // 斜向只允许在两个正交邻居都可走时通过，和 canTraverse 的角规则一致。
+          if (dx && dy && (!free[row * cols + nextColumn] || !free[nextRow * cols + column])) continue;
+          labels[next] = label; queue.push(next);
+        }
+      }
+      label++;
+    }
+    const components = { cols, rows, labels };
+    this.terrainComponents = components;
+    return components;
   }
   private scanNearest(standable: (point: Point) => boolean, point: Point): Point | undefined {
     if (standable(point)) return { ...point };

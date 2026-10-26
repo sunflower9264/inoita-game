@@ -138,6 +138,23 @@ test('整盒就近落点绕开已站立实体，整张地图都放不下时返�
   assert.throws(() => sealed.nearest({ collision: body }, { x: 100, y: 100 }), /地图没有可通行区域/, 'nearest 保持抛错契约');
 });
 
+test('落点搜索预算耗尽会单独上报，不和真的不可达混在一起', () => {
+  const records: { kind: string; details: unknown }[] = [];
+  const previous = (globalThis as { storyDiagnostics?: unknown }).storyDiagnostics;
+  (globalThis as unknown as { storyDiagnostics: { record(kind: string, details: unknown): void } }).storyDiagnostics = {
+    record: (kind, details) => records.push({ kind, details })
+  };
+  try {
+    const navigation = new NavigationWorld(openMap());
+    const huge = { collision: { x: -1000, y: -1000, width: 2000, height: 2000 } };
+    assert.equal(navigation.nearestReachableBody(huge, { x: 100, y: 100 }), undefined);
+    assert.equal(records.at(-1)?.kind, 'placement-search-budget');
+  } finally {
+    if (previous === undefined) Reflect.deleteProperty(globalThis, 'storyDiagnostics');
+    else (globalThis as { storyDiagnostics?: unknown }).storyDiagnostics = previous;
+  }
+});
+
 test('召唤可达落点：preferred 从主人处走得到就原样使用', () => {
   const navigation = new NavigationWorld(openMap());
   const body = { x: -8, y: -8, width: 16, height: 16 };

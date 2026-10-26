@@ -253,17 +253,24 @@ test('all authored walks complete with actual Arcade collisions, including paral
     const actions = storyScriptActions(campaign, script);
     let f: ReturnType<typeof fixture> | undefined;
     const cast = new Map<string, ReturnType<ReturnType<typeof fixture>['add']>>();
+    const unpositioned = new Set<string>();
     const flatten = (a: PerformanceAction): Exclude<PerformanceAction, { type: 'parallel' }>[] => a.type === 'parallel' ? a.actions.flatMap(flatten) : [a];
     for (const action of actions) {
       if (action.type === 'dialogue' || action.type === 'choice' || action.type === 'quest-popup') continue;
       if (action.type === 'stage') {
-        cast.clear();
+        cast.clear(); unpositioned.clear();
         // `mapFromWorld` 的舞台声明「沿用场上现状」：坐标是占位，运行时按当前场景解析
         // （`resolveStoryStage`），校验器也不对它判落位。没有场上现状可依，整段不参与判定。
         if (action.mapFromWorld) { f = undefined; continue; }
         f = fixture(maps.get(action.map)!);
         const player = f.add(action, world.actors[campaign.start.actor], false); player.body.enable = action.playerVisible; cast.set('player', player);
-        for (const member of action.cast) { const e = f.add(member, world.actors[member.actor], false); e.body.enable = member.visible; cast.set(member.id, e); }
+        for (const member of action.cast) {
+          const e = f.add(member, world.actors[member.actor], false);
+          e.body.enable = member.visible; cast.set(member.id, e);
+          // 演出层直接跳过未定位/停用角色的 walk；这里必须用同一规则，
+          // 否则会为一条永远不会推进的路由等待到超时。
+          if (member.unpositioned) unpositioned.add(member.id);
+        }
         f.check(); continue;
       }
       if (!f) continue;
@@ -274,6 +281,7 @@ test('all authored walks complete with actual Arcade collisions, including paral
         if (a.type === 'appear') { assert.ok(f.navigation.canPlace(entry.actor.shape(), a, entry.actor), `${script}/${a.target} appear`); entry.body.reset(a.x, a.y); entry.body.updateFromGameObject(); entry.body.enable = true; }
         if (a.type === 'leave') entry.body.enable = false;
         if (a.type === 'walk') {
+          if (!entry.body.enable || unpositioned.has(a.target)) continue;
           const route = new WalkRoute(f.navigation, entry.actor, a, a.speedPxPerSecond);
           entry.body.setImmovable(false); entry.body.walk(route, a.speedPxPerSecond); routes.push({ route, entry, id: a.target }); walks++;
         }
@@ -285,7 +293,7 @@ test('all authored walks complete with actual Arcade collisions, including paral
       for (const r of routes) { assert.equal(r.route.state, 'arrived', `${script}/${r.id}: ${r.route.error?.message}; ${JSON.stringify(r.entry.actor.position())} → ${JSON.stringify(r.route.destination)}; path ${JSON.stringify(f.navigation.path(r.entry.actor,r.route.destination))}; cast ${JSON.stringify([...cast].filter(([,e])=>e.actor.enabled()).map(([id,e])=>[id,e.actor.position()]))}`); r.entry.body.halt(); r.entry.body.setImmovable(true); }
     }
   }
-  // 断言跑过的走位条数，防止脚本筛选或舞台处理改动后这段悄悄什么都不查。动态舞台整段跳过，
-  // 所以这里只统计静态舞台里的走位；内容变多时同步这个数。
-  assert.equal(walks, 963);
+  // 断言跑过的走位条数，防止脚本筛选或舞台处理改动后这段悄悄什么都不查。动态舞台与
+  // 未定位/停用角色整段跳过，所以这里只统计真正会推进的静态舞台走位；内容变多时同步这个数。
+  assert.equal(walks, 813);
 });
