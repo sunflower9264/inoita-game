@@ -177,6 +177,7 @@ export class WorldScene extends Phaser.Scene {
     this.projectedActorIds.clear();
   }
   create(): void {
+    globalThis.storyDiagnostics?.record('start-phase',{phase:'world-create'});
     if(this.options.signal?.aborted){this.options.onError?.(this.options.signal.reason);this.scene.stop();return;}
     const externalSignal=this.options.signal;
     const cancelLoad=()=>this.request.abort(externalSignal?.reason);
@@ -246,6 +247,7 @@ export class WorldScene extends Phaser.Scene {
   async open(options: SceneOptions): Promise<void> {
     const { ui, world, campaign } = this.app;
     const signal = this.request.signal;
+    globalThis.storyDiagnostics?.record('start-phase',{phase:'world-open',map:options.map});
     const silentRequested = options.silentEntry === true;
     // 人物动作按需取。第一套外观在地图加载之后就要用，先和地图资源并行发请求，
     // 等 Wardrobe.prepare() 时通常已经到齐，不把首次进图的等待堆在加载条末尾。
@@ -257,6 +259,7 @@ export class WorldScene extends Phaser.Scene {
     if (!reference) throw new Error('这片区域的资源尚未准备好');
     const [map,rawDrops,rawSprings] = await Promise.all([this.app.content.map(reference.file, signal),this.app.content.drops(signal),this.app.content.springs(signal)]);
     signal.throwIfAborted();
+    globalThis.storyDiagnostics?.record('start-phase',{phase:'map-data-ready',map:map.id});
     this.map = map;
     this.app.session.enterMap(map.id,map.questItemSpawns??[],map,map.enemySpawns);
     this.dropCatalog=parseDrops(rawDrops,this.app.items,this.app.battleCatalog.enemies.map(enemy=>enemy.id));
@@ -288,6 +291,8 @@ export class WorldScene extends Phaser.Scene {
       checkpoint: options.checkpoint,
       includeResidentCombat
     });
+    globalThis.storyDiagnostics?.record('start-phase',{phase:'entry-plan-ready',map:map.id,
+      assets:plan.shared.length+plan.current.assets.length+(plan.residentCombat?.length??0)});
     const planned=[...plan.shared,...plan.current.assets,...(plan.residentCombat??[])];
     // 有进图剧情时把加载页的最后一段留给剧情链预取：同一条进度条继续走完，
     // 不再先填满、再归零重来一次（那看起来就是第二个进度条）。
@@ -308,6 +313,7 @@ export class WorldScene extends Phaser.Scene {
     }, { signal, start: options.initialEntry ? 0.5 : 0, end: mapProgressEnd });
     if(signal.aborted){loaded.currentLease.release();signal.throwIfAborted();}
     this.mapAssets = loaded.currentLease;
+    globalThis.storyDiagnostics?.record('start-phase',{phase:'scene-assets-ready',map:map.id});
     // 玩家侧战斗资源已经随主批次加载；再取一份只覆盖这些贴图的常驻租约，
     // 地图租约被历史淘汰或场景关闭时不会把战斗纹理一起删掉。
     if(includeResidentCombat){
@@ -322,6 +328,7 @@ export class WorldScene extends Phaser.Scene {
     this.wardrobe=new Wardrobe(this,this.app.wardrobe,this.app.items,(ids,signal)=>this.app.content.wardrobePoses(ids,signal));
     const outfit=await this.wardrobe.prepare(this.app.session.character!.appearance,this.app.session.bag.equipmentItems(),this.app.session.character!.classId);
     signal.throwIfAborted();this.wardrobe.activate(outfit);this.equippedActor=outfit.actor;this.equipmentPreview=outfit.preview;
+    globalThis.storyDiagnostics?.record('start-phase',{phase:'wardrobe-ready',map:map.id});
     this.projectedPlayerEquipment=JSON.stringify(this.app.session.bag.equipmentItems());
     this.statusHud=new StatusHud(this.hud!,this.app.statusHud,()=>this.combat?.controlledState??this.app.session.player,listener=>this.app.session.subscribe(listener),
       ()=>this.app.session.party?.snapshot(),id=>{if(this.canControl)this.combat?.switchControl(id);},id=>{
@@ -404,6 +411,7 @@ export class WorldScene extends Phaser.Scene {
       return ui.portrait(key ? this.app.storyInterface.portraits[key] : undefined, actor ? world.actors[actor]?.name : undefined, portraitSignal);
     };
     this.loadingWorld = false;
+    globalThis.storyDiagnostics?.record('start-phase',{phase:'world-ready',map:map.id});
     this.events.emit('map-ready', map.id);
     this.app.audio?.enterMap(map.id);
     this.trimTextures(); this.app.syncLifecycle?.();

@@ -9,7 +9,7 @@ import type { PartySnapshot } from '../../domain/party.ts';
 import { readSafeArea } from '../viewport.ts';
 import { resolveControlLayout } from '../control-layout.ts';
 import { controlViewport } from './control-layout-viewport.ts';
-import { uiTexture } from './widgets.ts';
+import { uiImage } from './widgets.ts';
 import { FONT } from '../text-style.ts';
 
 /** 大面板与队友列、队友面板之间的空隙，按 800×480 参考单位给，换算时只乘屏幕缩放。 */
@@ -74,12 +74,12 @@ class MemberPanel {
     this.hud.setVisible(this.container,this.visible);
     // 会话每次通知都会重设全部面板；数值没变时跳过贴图、字体与槽位重写。
     const down=!living,downKey=id==='player'?this.skin.assets['player-portrait-down']:this.skin.assets['member-portrait-down'],
-      portraitImage=down?downKey:portraitKey(this.scene,portrait)??this.skin.assets['member-portrait'];
-    const content=`${id}|${values.level}|${values.health}/${values.maxHealth}|${values.mana}/${values.maxMana}|${values.experience}/${values.nextLevelExperience}|${portraitImage}`;
+      portraitImage:PortraitRef=down?{key:downKey}:portraitRef(this.scene,portrait)??{key:this.skin.assets['member-portrait']};
+    const content=`${id}|${values.level}|${values.health}/${values.maxHealth}|${values.mana}/${values.maxMana}|${values.experience}/${values.nextLevelExperience}|${portraitRefKey(portraitImage)}`;
     if(content===this.contentSignature)return;
     this.contentSignature=content;
     this.frame.setTexture(this.skin.assets['member-frame']).setDisplaySize(layout.width,layout.height);
-    this.portrait.setTexture(portraitImage);
+    this.portrait.setTexture(portraitImage.key,portraitImage.frame);
     const p=layout.portrait;
     this.portrait.setPosition(p.x,p.y).setDisplaySize(p.width,p.height);
     const level=layout.level;
@@ -127,10 +127,15 @@ class MemberPanel {
   destroy():void{this.container.destroy(true);}
 }
 
-function portraitKey(scene:Phaser.Scene,file:string|undefined):string|undefined{
+interface PortraitRef{key:string;frame?:string}
+const portraitRefKey=(ref:PortraitRef):string=>ref.frame?`${ref.key}\0${ref.frame}`:ref.key;
+/** 状态栏皮肤按文件路径直接做纹理键；菜单面板图片可能进了 UI 图集，两种都要认。 */
+function portraitRef(scene:Phaser.Scene,file:string|undefined):PortraitRef|undefined{
   if(!file)return undefined;
-  const key=uiTexture(file);
-  return scene.textures.exists(key)?key:(scene.textures.exists(file)?file:undefined);
+  const ref=uiImage(file);
+  const texture=scene.textures.exists(ref.key)?scene.textures.get(ref.key):undefined;
+  if(texture&&(!ref.frame||texture.has(ref.frame)))return ref;
+  return scene.textures.exists(file)?{key:file}:undefined;
 }
 
 export class StatusHud {
@@ -179,8 +184,8 @@ export class StatusHud {
         const values=id==='player'?readHero?.()??member:member;
         panel.set(id,values as MemberValues|undefined,snapshot?.living.includes(id)??true,portraitFor?.(id));});
       for(let slot=others.length;slot<this.panels.length;slot++)this.panels[slot].set(undefined,undefined,true);
-      const file=portraitFor?.(controlled),key=portraitKey(scene,file);
-      if(key&&key!==this.portraitKey){this.portraitKey=key;this.portrait.setTexture(key).setDisplaySize(p.width,p.height);}
+      const file=portraitFor?.(controlled),ref=portraitRef(scene,file),portraitSignature=ref?portraitRefKey(ref):undefined;
+      if(ref&&portraitSignature!==this.portraitKey){this.portraitKey=portraitSignature;this.portrait.setTexture(ref.key,ref.frame).setDisplaySize(p.width,p.height);}
       this.paintPlayerIcons(readConditions?.(controlled)??[]);
       this.panels.forEach((panel,index)=>panel.paintIcons(index<others.length?(readConditions?.(others[index])??[]):[]));
       if(this.player){const value=this.player;this.level.setText(String(value.level)).setScale(Math.min(1,(level.width-4)/Math.max(1,this.level.width),(level.height-4)/Math.max(1,this.level.height)));this.gauges.health.update(value.health,value.maxHealth);this.gauges.mana.update(value.mana,value.maxMana);this.gauges.experience.update(value.experience,value.nextLevelExperience);}this.paintTarget();this.syncVisibility();

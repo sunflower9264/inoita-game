@@ -783,6 +783,13 @@
 
 未做：职业 actor 的 36 个 `skill-*` clip 仍随当前职业包加载；Wardrobe 已能动态生成这些外观，后续可单独移除。黑暗骑士/游侠仍约 245/466 MB，大招特效需要 P3 懒加载或降采样。
 
+### 2026-10-26：菜单静态 UI 图集
+
+| 根因 | 改动 | 提交 | 验证 |
+|---|---|---|---|
+| 菜单开局逐张加载 239 个静态 UI 文件；iPhone 实测 239 张 / 26.6 s | 新增 `npm run atlas:ui`：从 `gameMenuImageGroups().core` 取 229 张 PNG，按内容去重成 203 帧，打包为 1 页 2048×1116（1.37 MB）；`uiImage`/`loadUiImages` 同时识别图标图集与 UI 图集 | 本次 | `typecheck`、`validate:content`；`ui-atlas`、`icon-atlas`、`menu-images`、`menu-panels`、`asset-version` 共 10 项通过；`npm run deploy` 通过 |
+| 共用按钮、任务弹窗边、标题提示条和操作皮肤按整张纹理或文件路径取图，不能直接进图集 | 这四类留在图集外（10 张 + 19 张操作皮肤），继续按单图加载；队伍头像与状态栏人像改为图集感知 | 本次 | 229 个文件映射到 1 页；菜单准备请求从约 260 降到约 33 |
+
 仍待做：
 - 演出舞台铺满画面时让 `WorldScene` 休眠。收益大，但涉及舞台首帧透明、世界重建后重新休眠和唤醒时序，需要真机确认没有黑帧或卡住。
 - `WalkRoute` 与 `NavigationWorld.nearestReachableBody/terrainRoute` 的同步寻路预算。

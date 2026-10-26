@@ -14,6 +14,8 @@ import {parseSprings} from '../src/domain/springs.ts';
 import {titleMenuImages} from '../src/application/menu-images.ts';
 import {UI_ICON_ATLAS_DATA,UI_ICON_ATLAS_FILE,UI_ICON_FRAMES,UI_ICON_SOURCE_DIGEST} from '../src/generated/icon-atlas.ts';
 import {iconSourceDigest} from './build-icon-atlas.ts';
+import {UI_ATLAS_FRAMES,UI_ATLAS_PAGES,UI_ATLAS_SOURCE_DIGEST} from '../src/generated/ui-atlas.ts';
+import {uiAtlasFiles,uiAtlasSourceDigest} from './build-ui-atlas.ts';
 import {PROP_ATLAS_BY_KEY,PROP_ATLAS_LAYOUT_DIGEST,PROP_ATLAS_PAGES,PROP_ATLAS_SOURCE_DIGEST} from '../src/generated/prop-atlas.ts';
 import {propSourceDigest} from './build-prop-atlas.ts';
 import {residentCombatAssets} from '../src/rendering/resident-combat-assets.ts';
@@ -29,6 +31,14 @@ export function validateContent(root=fileURLToPath(new URL('../public/',import.m
   ...Object.values(companions.groupSkills??{}).map(skill=>skill.icon)];
  for(const icon of iconFiles)if(!UI_ICON_FRAMES[icon])throw new Error(`图标未进入图集：${icon}；运行 npm run atlas:icons`);
  if(iconSourceDigest()!==UI_ICON_SOURCE_DIGEST)throw new Error('图标图集已过期；运行 npm run atlas:icons');
+ // 菜单静态 UI 图集：菜单框架、商店、剧情页签、职业预览与队伍头像。
+ const uiPages=new Map(UI_ATLAS_PAGES.map(page=>[page.key,read(page.data)]));
+ for(const page of UI_ATLAS_PAGES)if(!uiPages.get(page.key)?.frames?.[page.frame])throw new Error(`菜单 UI 图集哨兵帧缺失：${page.frame}；运行 npm run atlas:ui`);
+ for(const file of uiAtlasFiles()){
+  if(UI_ICON_FRAMES[file])throw new Error(`菜单 UI 图同时出现在两个图集：${file}`);
+  if(!UI_ATLAS_FRAMES[file])throw new Error(`菜单 UI 图未进入图集：${file}；运行 npm run atlas:ui`);
+ }
+ if(uiAtlasSourceDigest()!==UI_ATLAS_SOURCE_DIGEST)throw new Error('菜单 UI 图集已过期；运行 npm run atlas:ui');
  // 地图 prop 图集：内容里的每个 prop/feature 都必须有帧，且图集不能是旧文件。
  const propKeys=new Set();
  const propPages=new Map(PROP_ATLAS_PAGES.map(page=>[page.key,read(page.data)]));
@@ -91,6 +101,7 @@ export function validateContent(root=fileURLToPath(new URL('../public/',import.m
  // 以下两项需要文件系统，留在构建侧：资源存在性与图集头。
  const assets=new Set();const visit=value=>{if(typeof value==='string'&&/^(assets|content)\//.test(value))assets.add(value);else if(Array.isArray(value))value.forEach(visit);else if(value&&typeof value==='object')Object.values(value).forEach(visit);};documents.forEach(visit);
  for(const file of [UI_ICON_ATLAS_FILE,UI_ICON_ATLAS_DATA])assets.add(file);
+ for(const page of UI_ATLAS_PAGES){assets.add(page.file);assets.add(page.data);}
  for(const page of PROP_ATLAS_PAGES){assets.add(page.file);assets.add(page.data);}
  for(const file of titleMenuImages)assets.add(file.replace(/^\//,''));
  for(const file of assets)ensure(fs.existsSync(path.join(root,file)),`资源不存在 ${file}`);

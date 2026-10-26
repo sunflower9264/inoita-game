@@ -5,14 +5,20 @@ import { loadSceneAssets, type PendingAsset } from '../../rendering/scene-assets
 import type { AssetLease } from '../../application/assets.ts';
 import { COMMON_BUTTON, COMMON_BUTTON_IMAGES } from '../common-button.ts';
 import { UI_ICON_ATLAS_DATA, UI_ICON_ATLAS_FILE, UI_ICON_ATLAS_KEY, UI_ICON_FRAMES } from '../../generated/icon-atlas.ts';
+import { UI_ATLAS_FRAMES, UI_ATLAS_PAGES } from '../../generated/ui-atlas.ts';
 
 export const GOLD = '#f3deb0';
 import { FONT } from '../text-style.ts';
 export const uiTexture = (file: string): string => `interface:${file}`;
-/** 图标可能来自图集；非图集资源仍按文件路径作为纹理键。 */
+/** 图集映射键不带前导斜杠；原始文件路径仍按原样作为单图纹理键。 */
+const atlasName = (file: string): string => file.startsWith('/') ? file.slice(1) : file;
+/** 图标和菜单 UI 都可能来自图集；非图集资源仍按文件路径作为纹理键。 */
 export function uiImage(file: string): { key: string; frame?: string } {
-  const frame = UI_ICON_FRAMES[file];
-  return frame ? { key: UI_ICON_ATLAS_KEY, frame } : { key: uiTexture(file) };
+  const name = atlasName(file);
+  const iconFrame = UI_ICON_FRAMES[name];
+  if (iconFrame) return { key: UI_ICON_ATLAS_KEY, frame: iconFrame };
+  const ui = UI_ATLAS_FRAMES[name];
+  return ui ? { key: ui.key, frame: ui.frame } : { key: uiTexture(file) };
 }
 /** 图集尚未加载（测试替身或异常路径）时退回单图纹理键，避免整页渲染中断。 */
 export function uiImageFor(scene: Phaser.Scene, file: string): { key: string; frame?: string } {
@@ -24,14 +30,34 @@ export function uiImageFor(scene: Phaser.Scene, file: string): { key: string; fr
 const firstIconFrame = Object.values(UI_ICON_FRAMES)[0];
 const uiIconAtlasAsset: PendingAsset = { kind: 'atlas', key: UI_ICON_ATLAS_KEY, file: UI_ICON_ATLAS_FILE,
   atlas: UI_ICON_ATLAS_DATA, ...(firstIconFrame ? { frame: firstIconFrame } : {}) };
-const atlasImageFiles = new Set([UI_ICON_ATLAS_FILE, UI_ICON_ATLAS_DATA]);
+const uiAtlasAssets: PendingAsset[] = UI_ATLAS_PAGES.map(page =>
+  ({ kind: 'atlas', key: page.key, file: page.file, atlas: page.data, frame: page.frame }));
+const atlasImageFiles = new Set([
+  UI_ICON_ATLAS_FILE, UI_ICON_ATLAS_DATA,
+  ...UI_ATLAS_PAGES.flatMap(page => [page.file, page.data])
+]);
 
 export async function loadUiImages(scene: Phaser.Scene, files: string[], progress = (_value: number) => {}): Promise<AssetLease> {
   files = [...new Set([...files, ...COMMON_BUTTON_IMAGES])];
-  const wantsAtlas = files.some(file => atlasImageFiles.has(file) || UI_ICON_FRAMES[file] !== undefined);
-  const assets: PendingAsset[] = wantsAtlas ? [uiIconAtlasAsset] : [];
-  for (const file of files) if (!atlasImageFiles.has(file) && UI_ICON_FRAMES[file] === undefined)
+  const names = files.map(atlasName);
+  const wantsIcon = names.some(name =>
+    name === UI_ICON_ATLAS_FILE || name === UI_ICON_ATLAS_DATA || UI_ICON_FRAMES[name] !== undefined);
+  const pageIndexes = new Set<number>();
+  for (const name of names) {
+    const frame = UI_ATLAS_FRAMES[name];
+    if (frame) pageIndexes.add(frame.page);
+    const index = UI_ATLAS_PAGES.findIndex(page => page.file === name || page.data === name);
+    if (index >= 0) pageIndexes.add(index);
+  }
+  const assets: PendingAsset[] = [];
+  if (wantsIcon) assets.push(uiIconAtlasAsset);
+  for (const index of [...pageIndexes].sort((a, b) => a - b)) assets.push(uiAtlasAssets[index]);
+  for (const [index, file] of files.entries()) {
+    const name = names[index];
+    if (atlasImageFiles.has(name)) continue;
+    if (UI_ICON_FRAMES[name] !== undefined || UI_ATLAS_FRAMES[name] !== undefined) continue;
     assets.push({ kind: 'image', key: uiTexture(file), file });
+  }
   const lease = await loadSceneAssets(scene, assets, progress, true);
   const linear = Phaser.Textures.FilterMode.LINEAR;
   for (const asset of assets) {

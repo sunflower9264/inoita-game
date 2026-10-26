@@ -102,6 +102,11 @@ const uiDebug = addressParams.has('ui-debug');
 const animationDebug = addressParams.has('animation-debug');
 
 let modeRequest = new AbortController();
+/** 启动阶段上报：卡住时诊断日志里的最后一条就是现场。 */
+function recordStartPhase(phase:string,details?:Record<string,unknown>):void{
+  try{globalThis.storyDiagnostics?.record('start-phase',{phase,...details});}
+  catch{/* 诊断不能影响启动 */}
+}
 const savedGameLoader=new SavedGameLoader();
 /**
  * 自动存档：进图、剧情事件完成、任务接取/完成、定时四种时机合并写入唯一的自动槽。
@@ -159,6 +164,7 @@ function menuPreparationFor(signal: AbortSignal): MenuPreparation | undefined {
       ...Object.values(app.companions.groupSkills??{}).map(skill=>skill.icon)])];
     const next: MenuPreparation = { signal, progress: 0, listeners: new Set(), core: Promise.resolve(), all: Promise.resolve() };
     menuPreparation = next;
+    recordStartPhase('menu-prepare-start',{core:groups.core.length,extra:extra.length});
     const report = (value: number, base: number, span: number) => {
       next.progress = base + value * span;
       for (const listener of next.listeners) listener(next.progress);
@@ -166,9 +172,9 @@ function menuPreparationFor(signal: AbortSignal): MenuPreparation | undefined {
     const fail = (error: unknown) => { if (menuPreparation === next) menuPreparation = undefined; throw error; };
     // 图标图集一次加载：物品/技能图标在世界 HUD 上就要用，不能被后台补图拖成空白。
     next.core = host.preloadFiles([...groups.core, ...Object.values(app.controlSkin), UI_ICON_ATLAS_FILE], signal,
-      value => report(value, 0, 0.6)).catch(fail);
+      value => report(value, 0, 0.6)).then(() => recordStartPhase('menu-core-loaded')).catch(fail);
     next.all = next.core.then(() => extra.length
-      ? host.preloadFiles(extra, signal, value => report(value, 0.6, 0.4))
+      ? host.preloadFiles(extra, signal, value => report(value, 0.6, 0.4)).then(() => recordStartPhase('menu-extra-loaded'))
       : undefined).catch(fail);
     // 只等 core 的调用方不会观察 all；挂一个空处理，避免后台失败变成未处理拒绝。
     void next.all.catch(() => {});
@@ -216,15 +222,18 @@ function prepareStory(signal: AbortSignal): Promise<void> {
   if (app.campaign) return Promise.resolve();
   if (storyPreparation&&storyPreparationSignal===signal) return storyPreparation;
   const task = (async () => {
+    recordStartPhase('story-fetch-start',{trusted:app.content.trusted,gm:gmOn()});
     const [world, campaign, presentation, battle, panels, items, wardrobe, statusHud, controlSkin, stats, shops, companions, crafting] = await Promise.all([
       app.content.world(signal), app.content.campaign(signal), app.content.storyInterface(signal), app.content.battle(signal),
       app.content.menuPanels(signal), app.content.items(signal), app.content.wardrobe(signal),
       app.content.statusHud(signal), app.content.controlSkin(signal), app.content.characterStats(signal), app.content.shops(signal), app.content.companions(signal), app.content.crafting(signal)
     ]);
     signal.throwIfAborted();
+    recordStartPhase('story-fetched');
     // 调试现场表是独立产物：只有 GM 会话加载，普通游玩不请求 1.35MB 的调试数据。
     if (gmOn()) campaign.debugStory = await app.content.storyDebug(signal);
     signal.throwIfAborted();
+    recordStartPhase('story-debug-ready');
     // 生产构建信任构建期校验：不重复跑语义校验，也不为校验 fetch 281 张剧情地图。
     // dev/测试/?gm/?validate 仍走完整路径。
     if (!app.content.trusted) {
@@ -246,8 +255,10 @@ function prepareStory(signal: AbortSignal): Promise<void> {
       validateStoryPerformance(world, campaign, storyMaps, app.audio?.catalog);
       validateStoryPortraits(world, presentation);
     }
+    recordStartPhase('story-validated',{trusted:app.content.trusted});
     Object.assign(app, { world, campaign, storyInterface: presentation, battleCatalog: battle, characterStats: stats,
       menuPanels: panels, items, wardrobe, statusHud, controlSkin, shops, companions, crafting });
+    recordStartPhase('story-assigned');
     // 商店装备表在进游戏前就开始取，走路到商人时通常已经就绪；首次打开不再等这一下。
     if(!Object.keys(app.shops.equipment).length){
       void app.content.shopEquipment(signal).then(equipment => { app.shops.equipment = equipment; }).catch(error => {
@@ -289,14 +300,17 @@ function startStory(classId: string): void {
 async function finishStoryStart(classId: string): Promise<void> {
   if (app.mode !== 'class-select' || !app.game?.scene.isActive('story-class-select')) return;
   const signal = modeRequest.signal;
+  recordStartPhase('class-start',{classId,gm:gmOn(),trusted:app.content.trusted});
   ui.loading('正在开始游戏…');
   try {
     await prepareStory(signal);
     signal.throwIfAborted();
+    recordStartPhase('story-ready');
     ui.loading('正在准备游戏菜单…', 0.15);
     await prepareMenuCore(signal, value => ui.loading('正在准备游戏菜单…', 0.15 + 0.35 * value));
     refreshMenuWhenReady(signal);
     signal.throwIfAborted();
+    recordStartPhase('menu-ready');
   }
   catch (error) {
     if (signal.aborted) return;
@@ -309,8 +323,11 @@ async function finishStoryStart(classId: string): Promise<void> {
   const selection = currentScene()!;
   app.mode = 'game'; ui.setMode('game'); ui.loading('正在开始游戏…');
   const campaign = app.campaign;
+  recordStartPhase('session-install-start');
   installSession(newStorySession(campaign, app.world.actors[campaign.start.actor], selected, app.items,app.characterStats,app.battleCatalog,app.companions));
+  recordStartPhase('session-installed');
   selection.scene.start(SCENE_KEYS.world, { ...app.campaign.start, initialEntry: true });
+  recordStartPhase('world-scene-start');
 }
 
 /** 标题与游戏内设置共用读档：准备失败保留入口，旧场景关闭后才替换会话。 */
