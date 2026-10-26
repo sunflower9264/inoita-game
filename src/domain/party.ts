@@ -269,7 +269,8 @@ export class PartyRoster {
     const definition=this.catalog.definitions[definitionId];
     if(!definition||definition.source!=='story')throw new Error(`剧情伙伴不存在：${definitionId}`);
     const id=`story-${definitionId}`;const existing=this.owned.get(id);if(existing)return existing;
-    if(this.activeSize>=3)throw new Error('队伍已满，无法加入剧情伙伴');
+    // 剧情伙伴只要进入名册就够了：上阵位满了就留在候补，由玩家自己换人，
+    // 不因为队伍已满中断剧情。
     const training=this.catalog.generation.training;
     const generated:GeneratedCompanion={level:this.hero.level,baseAttributes:{...this.stats.classes[definition.classId]},
       skillCaps:Object.fromEntries(Object.entries(training).filter(([,skill])=>skill.classId===definition.classId).map(([key,skill])=>[key,skill.maxLevel])),groupSkills:[]};

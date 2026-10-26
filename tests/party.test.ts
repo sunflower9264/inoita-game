@@ -88,6 +88,23 @@ test('story companions use authored join and leave without inventing an event in
   assert.equal(party.get(member.id),undefined);
 });
 
+test('story companions join the roster as reserves when both active slots are full',()=>{
+  const {party}=setup();
+  party.bag.add('mercenary-emblem-black-knight');
+  const first=party.recruit(party.bag.entries.find(entry=>entry.item==='mercenary-emblem-black-knight')!.id,()=>0).member;
+  party.deployFirstAvailable(first.id);
+  party.bag.add('mercenary-emblem-black-knight');
+  const second=party.recruit(party.bag.entries.find(entry=>entry.item==='mercenary-emblem-black-knight')!.id,()=>0).member;
+  party.deployFirstAvailable(second.id);
+  assert.deepEqual(party.activeIds,['player',first.id,second.id]);
+  const story=party.joinStory('mercenary-portia');
+  assert.deepEqual(party.activeIds,['player',first.id,second.id],'剧情伙伴不挤掉已上阵的佣兵');
+  assert.equal(party.get(story.id),story);
+  assert.ok(party.snapshot().reserves.includes(story.id),'剧情伙伴留在候补名册');
+  assert.equal(party.joinStory('mercenary-portia'),story,'重复加入返回同一个伙伴');
+  assert.equal(party.leaveStory('mercenary-portia'),true);
+});
+
 test('enemy health scales with deployed party size and survives a map reload',()=>{
   const campaign=read<Campaign>('campaign'),map=JSON.parse(readFileSync(new URL('../public/content/maps/shadow-forest-west.json',import.meta.url),'utf8')) as WorldMap;
   const battle=read<BattleCatalog>('battle'),hero=new BattleCharacter('dark-knight',stats,items);

@@ -175,7 +175,7 @@ function prepareFromStartTable(source: Session, session: Session, task: StoryDeb
   return session.captureState();
 }
 
-/** 伙伴变化在安装后用真实名册应用：加入的剧情伙伴要按目录生成并上阵。 */
+/** 伙伴变化在安装后用真实名册应用：加入的剧情伙伴按目录生成，上阵位空着时自动上阵。 */
 function applyPartyChanges(session: Session, party: NonNullable<StoryDebugStartTable['party']>): void {
   const roster = session.party;
   if (!roster) throw new Error('当前会话没有队伍系统，无法套用现场表里的伙伴变化');
