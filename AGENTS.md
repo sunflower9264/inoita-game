@@ -39,7 +39,7 @@ Phaser 4 和 3 的差异很大：渲染管线从 pipeline 改成 render node，F
 - **工程自包含**。运行、测试和普通构建只读取本目录的源码、`public/` 和测试。
 - **剧情独立创作**。`public/content/campaign.json` 是剧情、任务和角色摆放的源文件；新增字段先定义游戏含义、单位和消费方式，内容加载和构建共用校验器。
 - **名字用游戏里的概念**。动画叫 `walk-east`、`idle-south`，地图属性叫 `blocked`、`exits`、`entities`，剧情行为叫 `dialogue`、`choice`。
-- **存档不做兼容**。开发阶段存档只保证“当前代码写得进、同一份代码读得回”。改了存档结构或校验口径就把 `src/domain/save-game.ts` 的 `SAVE_FORMAT` 加一；旧档会显示为空槽，不写迁移代码。
+- **存档兼容上一版**。当前代码必须能读回最近一次发布的存档格式。改了存档结构或校验口径就把 `src/domain/save-game.ts` 的 `SAVE_FORMAT` 加一，同时在 `src/application/saved-game.ts` 的升级链里补上旧版到新版的迁移和旧档测试；升级链覆盖的旧档正常读取，更早的档案显示为空槽。
 
 ## 3. 测试与验证
 

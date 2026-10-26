@@ -3,10 +3,15 @@ import type { Session, SessionState } from './session.ts';
 /** 手动存档槽：原版三个，体验版扩到十个，方便反复测任务时保进度。 */
 export const MANUAL_SAVE_SLOT_COUNT = 10;
 /**
- * 存档格式版本。记录结构或校验口径变了就加一，旧档会被当成不可读取（见 AGENTS.md 的
- * 「存档不做兼容」）：开发阶段不写迁移，玩家下次保存时覆盖掉旧档。
+ * 存档格式版本。记录结构或校验口径变了就加一，并在 `application/saved-game.ts`
+ * 的升级链里补上从上一版读回的迁移；比 `LEGACY_SAVE_FORMATS` 更旧的档才按空槽处理。
  */
 export const SAVE_FORMAT = 34;
+/** 仍然能读回并升级到当前格式的旧版本；新增升级步骤时同步加入这里。 */
+export const LEGACY_SAVE_FORMATS: readonly number[] = [33];
+export function isReadableSaveFormat(format: unknown): format is number {
+  return typeof format === 'number' && (format === SAVE_FORMAT || LEGACY_SAVE_FORMATS.includes(format));
+}
 
 /** 存档写给谁：手动槽用序号（0..9），唯一的自动槽用 `'auto'`。 */
 export type SaveSlotRef = number | typeof AUTO_SAVE_SLOT;
@@ -139,8 +144,8 @@ export class SaveSlots<World = unknown> {
     catch { return {kind:'unreadable',reason:'存档内容不是有效 JSON'}; }
     const record=parsed as Partial<SaveGame<World>>;
     if(!record||typeof record!=='object')return {kind:'unreadable',reason:'存档内容不是对象'};
-    if(typeof record.format==='number'&&record.format!==SAVE_FORMAT)return {kind:'empty'};
-    if(record.format!==SAVE_FORMAT)return {kind:'unreadable',reason:'存档缺少有效版本'};
+    if(typeof record.format==='number'&&!isReadableSaveFormat(record.format))return {kind:'empty'};
+    if(!isReadableSaveFormat(record.format))return {kind:'unreadable',reason:'存档缺少有效版本'};
     if(!record.session||!record.world)return {kind:'unreadable',reason:'存档缺少会话或世界状态'};
     const summary=record.summary;
     if(!summary||typeof summary.classId!=='string'||typeof summary.mapId!=='string'||!Number.isFinite(summary.level))
@@ -158,8 +163,8 @@ export class SaveSlots<World = unknown> {
     catch { return {kind:'unreadable',reason:'存档内容不是有效 JSON'}; }
     const record=parsed as Partial<SaveGame<World>>;
     if(!record||typeof record!=='object')return {kind:'unreadable',reason:'存档内容不是对象'};
-    if(typeof record.format==='number'&&record.format!==SAVE_FORMAT)return {kind:'empty'};
-    if(record.format!==SAVE_FORMAT)return {kind:'unreadable',reason:'存档缺少有效版本'};
+    if(typeof record.format==='number'&&!isReadableSaveFormat(record.format))return {kind:'empty'};
+    if(!isReadableSaveFormat(record.format))return {kind:'unreadable',reason:'存档缺少有效版本'};
     if(!record.session||!record.world)return {kind:'unreadable',reason:'存档缺少会话或世界状态'};
     const summary=record.summary;
     if(!summary||typeof summary.classId!=='string'||typeof summary.mapId!=='string'||!Number.isFinite(summary.level))

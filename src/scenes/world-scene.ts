@@ -74,7 +74,8 @@ export interface SceneOptions {
   y: number;
   facing?: ExitFacing;
 }
-export interface StoryWorldViewSnapshot {location:TravelDestination;world?:WorldCombatState;generatedEntities:EntityPlacement[];scene:SceneSnapshot;audio?:StoryAudioState}
+/** 旧存档没有 `scene`，读档时按 `location` 与剧情世界状态重新投影；新存档始终写入。 */
+export interface StoryWorldViewSnapshot {location:TravelDestination;world?:WorldCombatState;generatedEntities:EntityPlacement[];scene?:SceneSnapshot;audio?:StoryAudioState}
 /** 存档捕获失败的原因；界面据此给出具体提示，而不是一律说“当前地图不能存档”。 */
 export type SaveWorldReason = 'debug' | 'loading' | 'not-ready';
 export type SaveWorldResult =

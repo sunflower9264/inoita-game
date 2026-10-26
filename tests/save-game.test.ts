@@ -66,6 +66,16 @@ test('damaged slots stay unreadable while an older development format displays E
   assert.deepEqual(slots.inspect(0),{ kind:'empty' });
 });
 
+test('the previous published format stays readable until the slot is overwritten',()=>{
+  const slots=new SaveSlots<World>(memory()),session=createSession(),legacy=record(session);legacy.format=SAVE_FORMAT-1;
+  slots.write(1,legacy);
+  const reading=slots.inspect(1);
+  assert.equal(reading.kind,'ok');assert.equal(reading.kind==='ok'&&reading.game.format,SAVE_FORMAT-1);
+  slots.write(1,record(session));
+  const rewritten=slots.inspect(1);
+  assert.equal(rewritten.kind,'ok');assert.equal(rewritten.kind==='ok'&&rewritten.game.format,SAVE_FORMAT);
+});
+
 test('slot numbers are bounded and a refusing storage reports the write failure',()=>{
   const slots=new SaveSlots<World>(memory()),session=createSession();
   assert.throws(()=>slots.inspect(MANUAL_SAVE_SLOT_COUNT),/存档槽编号无效/);
