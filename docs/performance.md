@@ -781,7 +781,7 @@
 | `residentCombatReady` 一次性、旧租约从不释放 | 新游戏/读档/回菜单释放并重置；`residentCombatClassId` 戳防止旧职业包复用 | `eb8aa6c` | `resident-combat-lifecycle`、`scene-assets` 释放用例通过 |
 | 职业 actor 覆盖检查查 `world.actors['battle-*']` 实际空转 | 直接检查 `battle.classes[].actor`，并补职业召唤物覆盖 | `eb8aa6c` | 全量 + 六职业 scoped coverage 门禁通过 |
 
-未做：职业 actor 的 36 个 `skill-*` clip 仍随当前职业包加载；Wardrobe 已能动态生成这些外观，后续可单独移除。黑暗骑士/游侠仍约 245/466 MB，大招特效需要 P3 懒加载或降采样。
+未做：职业 actor 的 36 个 `skill-*` clip 仍随当前职业包加载；Wardrobe 已能动态生成这些外观，后续可单独移除。黑暗骑士/游侠仍约 245/466 MB；四个大招特效已在 2026-10-26 改为裁边图集，剩余体积再压需要降采样或压缩纹理。
 
 ### 2026-10-26：菜单静态 UI 图集
 
@@ -805,6 +805,16 @@
 | 菜单打开时任何 session 通知都会清空重建当前页；背包、技能等页在战斗中会随着掉血、回蓝、掉落反复重建，即使这些数据根本不在当前页 | 每页计算数据签名（背包版本、任务版本、技能版本、金钱、成员等级与生命、队伍组成等）；签名没变就直接跳过整页重绘。任务页和调试页依赖条件求值等不易枚举的数据，保持每次通知重绘；快捷键登记与控制布局编辑期间菜单不可见，也不重绘。显式界面操作仍直接重绘，不受门控影响 | `a163f19` | `typecheck`；`story-menu-interactions` 48/53（5 条失败与改动前一致）、`shop-panel`/`quest-panel-default`/`title-save-entry` 21/21、GM 相关 24/24 |
 
 未做：页内对象复用和局部更新。现在只减少“不该发生的整页重建”；页面数据真正变化时仍是 clear + 重建。
+
+### 2026-10-26：四个大特效逐帧裁边并打包图集
+
+| 根因 | 改动 | 提交 | 验证 |
+|---|---|---|---|
+| 四个大招的每一层都是未裁剪的整张画布，实测非透明像素只占 0.08%–0.71%，但显存按整张 RGBA 存；`rampage-burst` 16 层 × 34 MB、`hellsword-swing` 25 张 20 MB 图，合计解码约 1 GB | 新增 `npm run atlas:effects`：解码四个特效的全部图层，逐帧裁到非透明包围盒，按特效分别装箱成带 `sourceSize`/`spriteSourceSize` 的图集页；运行时 `effectAssets` 按文件映射加载图集页，`effects.ts` 用图集帧播放，未纳入图集的技能继续按 spritesheet 加载。图集页释放时同步清掉引用它的动画 | `b824032` | `typecheck`；`effect-atlas` 5/5；特效/加载相关 54/56（2 条 `character-effects` 失败为改动前既有）；`validate:content`、`build` 通过 |
+
+四个特效按构建产物去重口径：**1006.6 MB 解码 → 146.1 MB 图集解码**，磁盘 1.11 MB、13 页。按特效分别为 `rampage-burst` 1.6 MB、`hellsword-swing` 75.1 MB、`freeze-shard` 22.7 MB、`blinding-flash` 46.6 MB；图集按特效分页，加载某个职业的特效不会把别的大特效整页带进来。
+
+未做：原始 spritesheet 仍随 `battle.json` 一起打包（映射后的特效不再加载它们，但文件还在）；画面位置需要真机验收（裁边帧依赖 Phaser 的 `sourceSize`/`spriteSourceSize` 保持原原点）。如果还要继续压，下一步是 2× 降采样或 ASTC/ETC2 压缩纹理，属于有画质取舍的资产管线。
 
 仍待做：
 - `WalkRoute` 与 `NavigationWorld.nearestReachableBody/terrainRoute` 的同步寻路预算。
