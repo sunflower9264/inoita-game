@@ -68,6 +68,9 @@ test('a new game follows the main story through the ending and all five memory l
     for (let count = 0; count < 8; count++) await h.defeat('enemy-arnen-sentinel-1');
     assert.equal(h.session.status('quest-39'), 'completed');
     assert.equal(h.session.status('quest-40'), 'active');
+    assert.equal(h.director.runtime.eventStatus('event-51'), 'completed');
+    assert.deepEqual(h.entities().filter(entity => entity.characterId === 'npc-134'
+      || entity.characterId === 'npc-303'), [], '城堡一层的出口巨石必须随事件 51 收尾移除');
     // 从城堡一层进二层，落在路障下方；先靠近机关（quest-40 进行中），事件 57 才会拆掉路障。
     await h.travel('inside-arnen-castle01-8b6ce276');
     await h.travel('inside-arnen-castle02-9a1430d7');
@@ -320,6 +323,14 @@ test('a new game follows the main story through the ending and all five memory l
     for (let count = 0; count < 3; count++) await h.defeat('enemy-redhood-bandits-1');
     for (const index of [1, 8, 10, 28, 0]) await h.useExit(index);
     await h.travel('redhoods-hideout-59b7c357'); await h.region('event-123');
+    // 事件 123 接取 quest-150：依次扳动四个开关，再向盗贼之门交付，event-124 才会开门。
+    for (const switchNpc of ['npc-297', 'npc-298', 'npc-299', 'npc-300']) await h.talk(switchNpc);
+    assert.equal(h.session.status('quest-150'), 'ready');
+    await h.talk('npc-295');
+    assert.equal(h.session.status('quest-150'), 'completed');
+    assert.equal(h.director.runtime.eventStatus('event-124'), 'completed');
+    assert.equal(h.entities().some(entity => entity.characterId === 'npc-295'), false,
+      '交付后地下之门必须从地图上移除');
     await h.travel('redhoods-boss-room-c9f73fd1'); await h.region('event-134');
     await h.defeat('enemy-redhood-bandits-boss-1');
     assert.equal(h.session.status('quest-78'), 'completed');

@@ -34995,6 +34995,24 @@
               "type": "flag",
               "flag": "quest-npc-located-npc-94",
               "value": true
+            },
+            {
+              "type": "world",
+              "command": {
+                "kind": "remove-character",
+                "characterId": "npc-134",
+                "map": "inside-arnen-castle01-8b6ce276",
+                "all": true
+              }
+            },
+            {
+              "type": "world",
+              "command": {
+                "kind": "remove-character",
+                "characterId": "npc-303",
+                "map": "inside-arnen-castle01-8b6ce276",
+                "all": true
+              }
             }
           ],
           "exit": {
