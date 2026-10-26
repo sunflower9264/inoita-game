@@ -9,7 +9,7 @@ import type Phaser from 'phaser';
 import { SHORTCUT_PAGE_COUNT, SHORTCUT_SLOT_COUNT, ShortcutBar, type ShortcutEntry } from '../domain/shortcut-bar.ts';
 import { SLOT_ICON_SIZE, ITEM_ICON_SIZE, PENDING_OFFSET, controlPlacement } from './phaser/action-controls.ts';
 import { AttributeAllocation } from '../domain/attribute-allocation.ts';
-import { PRIMARY_STATS } from '../domain/character-stats.ts';
+import { PRIMARY_STATS, type PrimaryStat } from '../domain/character-stats.ts';
 import { characterCombatValues } from './character-values.ts';
 import type { StoryUIContext } from '../application/ports.ts';
 import type { Session } from '../domain/session.ts';
@@ -111,6 +111,8 @@ export class StoryUI {
   private renameRef?:SaveSlotRef;
   private prompt?:TextPrompt;
   private allocation?:AttributeAllocation;private allocationExit?:()=>void;private allocationError='';
+  /** 能力加点按钮的长按连发；每次重画都会换按钮，所以只记指针和这一步要加的属性。 */
+  private allocationHold?:Phaser.Time.TimerEvent;
   private craftingPanel?:CraftingPanel;private craftingActor?:string;
   private shopPanel?:ShopPanel;private partyPanel?:PartyPanel;private notice='';
   private keyboardFocus?:Phaser.GameObjects.Container;
@@ -654,6 +656,7 @@ export class StoryUI {
           const button=v.button('',x,index*64+70,51,58,()=>this.action(()=>this.allocation!.change(stat,delta)),{
             image:panels.assets['character-step'],pressed:panels.assets['character-step-pressed'],native:true,pressedAdd:true,disabled,
           }).setData('label',`${label}${attribute.name}`);
+          button.on('pointerdown',(pointer:Phaser.Input.Pointer)=>this.startAllocationHold(pointer,stat,delta));
           if(delta===1)for(const part of ['face','highlight']) (button.getData(part) as Phaser.GameObjects.Image).setFlipX(true);
         }
       }
@@ -676,8 +679,23 @@ export class StoryUI {
     this.allocationError='';
   }
   private discardAllocation():void{
+    this.stopAllocationHold();
     this.allocation?.cancel();this.allocation=undefined;this.allocationExit=undefined;this.allocationError='';this.adjusting=false;
   }
+  /** 长按加点：按住 400ms 后开始，每 90ms 加／减一点；松开或到达上下限就停。 */
+  private startAllocationHold(pointer:Phaser.Input.Pointer,stat:PrimaryStat,delta:1|-1):void{
+    this.stopAllocationHold();
+    this.allocationHold=this.scene!.time.delayedCall(400,()=>this.stepAllocationHold(pointer,stat,delta));
+  }
+  private stepAllocationHold(pointer:Phaser.Input.Pointer,stat:PrimaryStat,delta:1|-1):void{
+    const allocation=this.allocation;
+    // 每一步都会重画并换掉按钮，所以继续的条件只看指针、分配视图和余额，不看按下时的那个按钮。
+    if(!pointer.isDown||!this.adjusting||!allocation||!this.surface?.root.visible
+      ||(delta===1?allocation.remainingPoints<1:allocation.pending[stat]===0)){this.stopAllocationHold();return;}
+    this.action(()=>this.allocation!.change(stat,delta));
+    this.allocationHold=this.scene!.time.delayedCall(90,()=>this.stepAllocationHold(pointer,stat,delta));
+  }
+  private stopAllocationHold():void{this.allocationHold?.remove();this.allocationHold=undefined;}
   private requestAllocationExit(next:()=>void):boolean{
     if(this.allocationExit)return true;
     if(!this.allocation?.hasChanges){this.discardAllocation();return false;}

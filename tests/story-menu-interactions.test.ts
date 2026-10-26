@@ -352,6 +352,21 @@ test('ability allocation counts added points per attribute and the reset button 
   assert(f.scene.texts().includes(`${panels.character.labels.statPoints} ${points}`),'标题栏显示返还后的全部点数');
 });
 
+test('holding an allocation arrow keeps adding points until released',t=>{
+  const f=fixture();t.after(f.cleanup);f.hero.addExperience(f.hero.player.nextLevelExperience);
+  f.menu.show('status');f.scene.click(f.scene.button('查看属性加点'));
+  const added=()=>f.scene.nodes.find(node=>node.shown&&node.color==='#e1823b'&&node.x===781&&node.y===84);
+  f.scene.press(f.scene.button('增加力量'));
+  assert.equal(added(),undefined,'还没到长按阈值时不加点');
+  f.scene.hold();
+  assert.equal(added()?.text,'+1','按住到阈值后开始自动加点');
+  f.scene.hold();
+  assert.equal(added()?.text,'+2','按住期间每一拍再加一点');
+  f.scene.release(f.scene.button('增加力量'));
+  f.scene.hold();
+  assert.equal(added()?.text,'+2','松开后停止连加');
+});
+
 test('skill settings page drops the initial-point label and keeps the reset button',t=>{
   const f=fixture();t.after(f.cleanup);
   f.menu.show('skills');f.scene.click(f.scene.button('设置'));
