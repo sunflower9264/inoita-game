@@ -177,7 +177,8 @@ export interface EntityPlacement extends VisibilityRules {
   characterId?: string;
   x: number;
   y: number;
-  /** 素材默认朝西，`true` 表示左右翻转。 */
+  /** 摆放朝向：`true` 表示原版这个点朝东（`CHAR_SetDirection(char, 3)`）。
+   * 四向动作素材由 clip 的 `mirrorX` 表达朝向，这里只用于单视图素材的左右镜像。 */
   flip?: boolean;
   /** 显示名，覆盖角色资源里的名字。 */
   name?: string;

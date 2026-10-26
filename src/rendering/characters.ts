@@ -34,6 +34,20 @@ export function characterAnimationState(character: CharacterVisual): { progress?
   };
 }
 
+/**
+ * 动作当前是否要水平镜像。
+ *
+ * 四向素材（有 `idle-east`/`walk-east` 这类左右动作）已经用 clip 的 `mirrorX` 表达朝向：
+ * `walk-east` 是朝西图的原样副本再翻转。地图摆放点的 `flip` 在原版里是「这个点朝东」
+ * 的朝向位，不能再当成第二次镜像，否则东西向会正负抵消，角色背对行进方向走。
+ * 只有单向素材（灯、火把这类静态对象）仍然靠摆放点的 `flip` 做左右翻转。
+ */
+export function clipMirrored(clip: AnimationClip, actor: ActorDefinition, entity: Pick<EntityPlacement, 'flip'>): boolean {
+  const directional = !!actor.clips['idle-east'] || !!actor.clips['idle-west']
+    || !!actor.clips['walk-east'] || !!actor.clips['walk-west'];
+  return !!clip.mirrorX !== (directional ? false : !!entity.flip);
+}
+
 export function createCharacter(scene: Phaser.Scene, actor: ActorDefinition, entity: EntityPlacement): CharacterVisual {
   const character: CharacterVisual = { entity, actor, container: scene.add.container(entity.x, entity.y).setDepth(entity.y + .5), layers: [], clipName: null };
   try { setCharacterClip(scene, character, 'idle-south'); return character; }
@@ -48,7 +62,7 @@ export function createCharacter(scene: Phaser.Scene, actor: ActorDefinition, ent
 function replaceLayers(scene: Phaser.Scene, character: CharacterVisual, name: ClipName): AnimationClip {
   const clip = character.actor.clips[name];
   if (!clip) throw new Error(`角色动作缺少资源：${character.entity.actor}/${name}`);
-  const flipped = !!clip.mirrorX !== !!character.entity.flip;
+  const flipped = clipMirrored(clip, character.actor, character.entity);
   character.clipName = name; character.flipped = flipped;
   for (const sprite of character.layers) sprite.destroy(); character.layers = [];
   for (const layer of clip.layers) {
@@ -75,7 +89,7 @@ export function setCharacterClip(scene: Phaser.Scene, character: CharacterVisual
       if (Object.keys(character.actor.clips).length) throw new Error(`角色动作缺少资源：${character.entity.actor}/${name}`);
       return;
     }
-    if (!restart && character.clipName === name && character.flipped === (!!clip.mirrorX !== !!character.entity.flip)) return;
+    if (!restart && character.clipName === name && character.flipped === clipMirrored(clip, character.actor, character.entity)) return;
     // 转向时保留当前帧号和帧内已过时间，所有图层一起接上。
     const previous = character.clipName?.startsWith('walk-') && name.startsWith('walk-')
       ? character.layers[0]?.anims : null;
@@ -143,7 +157,7 @@ export function showIdlePose(character: CharacterVisual, facing: Facing, frameIn
   if (!clip) return;
   const frame = idlePoseFrame(frameIndex, sourceFrameCount, clip.frames);
   if (frame === null) return;
-  const flipped = !!clip.mirrorX !== !!character.entity.flip;
+  const flipped = clipMirrored(clip, character.actor, character.entity);
   character.layers.forEach((sprite, index) => {
     if (sprite.anims.isPlaying) sprite.anims.stop();
     const source = clip.layers[index];

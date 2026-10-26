@@ -50,7 +50,9 @@ export function prepareSceneVisit(inputs:SceneVisitInputs,map:WorldMap,player:Sc
     const visible=session.visible(entity)&&session.storyWorld.actorVisible(map.id,entity.actor,entity.characterId)
       &&!(original.chest&&session.chests.isOpened(map.id,entity.id,session.storyWorld.isPlaced(entity.id)));
     return {id:`entity:${entity.id}`,actor:entity.actor,worldEntityId:entity.id,characterId:entity.characterId,
-      x:entity.x,y:entity.y,facing:session.storyWorld.entity(entity.id)?.facing??'south',visible,flip:entity.flip,
+      x:entity.x,y:entity.y,
+      facing:session.storyWorld.entity(entity.id)?.facing??(entity.flip&&appearance.clips['idle-east']?'east':'south'),
+      visible,flip:entity.flip,
       appearance:structuredClone(appearance)};
   });
   const register=(actor:SceneActorState,faction:'neutral'|'party'|'hostile')=>navigation.register({

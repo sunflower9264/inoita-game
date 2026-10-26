@@ -11,8 +11,8 @@ const hook = registerHooks({ resolve(specifier, context, next) { return specifie
 const { setCharacterClip } = await import('../src/rendering/characters.ts');
 hook.deregister();
 
-const clip = (key: string) => ({ frameWidth: 1, frameHeight: 1, frames: 3, originX: 0, originY: 0, frameRate: 10,
-  mirrorX: false, layers: [{ key, file: 'unused.png', blend: 'normal' }] });
+const clip = (key: string, mirrorX = false) => ({ frameWidth: 1, frameHeight: 1, frames: 3, originX: 0, originY: 0,
+  frameRate: 10, mirrorX, layers: [{ key, file: 'unused.png', blend: 'normal' }] });
 
 test('story poses play once so the completion event can settle them', () => {
   const created: { key: string; repeat: number }[] = [];
@@ -38,4 +38,51 @@ test('story poses play once so the completion event can settle them', () => {
     { key: 'cry-south', repeat: 0 }, { key: 'look-around-south', repeat: 0 },
     { key: 'idle-south', repeat: -1 }, { key: 'walk-south', repeat: -1 },
   ]);
+});
+
+test('a map placement marked flip does not reverse the direction of walk clips', () => {
+  const sprites: { scaleX: number; scaleY: number }[] = [];
+  const scene = {
+    anims: { exists: () => false, remove() {}, create() {}, generateFrameNumbers: () => [] },
+    add: { sprite: () => {
+      const sprite = { scaleX: 1, scaleY: 1, anims: { timeScale: 1, accumulator: 0 },
+        setOrigin() { return sprite; }, setBlendMode() { return sprite; },
+        setScale(x: number, y = 1) { sprite.scaleX = x; sprite.scaleY = y; return sprite; },
+        play() { return sprite; }, destroy() {} };
+      sprites.push(sprite); return sprite;
+    } },
+  } as unknown as Phaser.Scene;
+  const actor = { id: 'earl-grafton', clips: {
+    'idle-south': clip('earl-grafton-idle-south'),
+    'walk-south': clip('earl-grafton-walk-south'),
+    'walk-west': clip('earl-grafton-walk-west'),
+    'walk-east': clip('earl-grafton-walk-east', true),
+  } } as unknown as CharacterVisual['actor'];
+  for (const flip of [false, true]) {
+    const visual = { entity: { id: 'earl-grafton', actor: 'earl-grafton', x: 184, y: 184, flip },
+      actor, container: { addAt() {} }, layers: [], clipName: null } as unknown as CharacterVisual;
+    for (const [name, expected] of [['walk-east', -1], ['walk-west', 1], ['walk-south', 1]] as const) {
+      setCharacterClip(scene, visual, name, true);
+      assert.equal(visual.flipped, expected < 0, `${name} flipped（摆放点 flip=${flip}）`);
+      assert.equal(sprites.at(-1)!.scaleX, expected, `${name} scaleX（摆放点 flip=${flip}）`);
+    }
+  }
+});
+
+test('a single-direction static actor still uses the placement flip as its mirror', () => {
+  const sprites: { scaleX: number }[] = [];
+  const scene = {
+    anims: { exists: () => false, remove() {}, create() {}, generateFrameNumbers: () => [] },
+    add: { sprite: () => {
+      const sprite = { scaleX: 1, scaleY: 1, anims: { timeScale: 1, accumulator: 0 },
+        setOrigin() { return sprite; }, setBlendMode() { return sprite; },
+        setScale(x: number) { sprite.scaleX = x; return sprite; }, play() { return sprite; }, destroy() {} };
+      sprites.push(sprite); return sprite;
+    } },
+  } as unknown as Phaser.Scene;
+  const actor = { id: 'lamp-f6c235d6', clips: { 'idle-south': clip('lamp-idle-south') } } as unknown as CharacterVisual['actor'];
+  const visual = { entity: { id: 'lamp', actor: 'lamp-f6c235d6', x: 0, y: 0, flip: true },
+    actor, container: { addAt() {} }, layers: [], clipName: null } as unknown as CharacterVisual;
+  setCharacterClip(scene, visual, 'idle-south', true);
+  assert.equal(sprites.at(-1)!.scaleX, -1, '单向素材仍按摆放点镜像');
 });

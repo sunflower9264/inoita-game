@@ -135,6 +135,21 @@ test('foreign map preparation isolates session state and formal adoption preserv
   assert.deepEqual(formal.capturePreparedState().breakableRolls,snapshot.visit!.breakableRolls);
 });
 
+test('a flipped directional placement starts facing east in a prepared scene',()=>{
+  const read=(name:string)=>JSON.parse(readFileSync(new URL(`../public/content/${name}.json`,import.meta.url),'utf8'));
+  const campaign=read('campaign'),world=read('world'),battleCatalog=read('battle');
+  const session=new Session(campaign),map=read('maps/silent-cave-depths');
+  const springs=parseSprings(read('springs'));
+  const drops=parseDrops(read('drops'),read('items'),battleCatalog.enemies.map((enemy:{id:string})=>enemy.id));
+  const player={id:'player',actor:campaign.start.actor,x:map.width/2,y:map.height/2,facing:'south' as const,visible:true,
+    appearance:world.actors[campaign.start.actor]};
+  const snapshot=prepareSceneVisit({session,campaign,world,battleCatalog,drops,springs},map,player,()=>0);
+  const earl=snapshot.actors.find(actor=>actor.actor==='earl-grafton');
+  assert.ok(earl,'预备场景里应有伯爵');
+  assert.equal(earl!.flip,true,'伯爵摆放点带 flip');
+  assert.equal(earl!.facing,'east','flip 是摆放朝向，四向素材应初始朝东而不是朝南');
+});
+
 test('prepared party members are marked as followers of the player',()=>{
   const read=(name:string)=>JSON.parse(readFileSync(new URL(`../public/content/${name}.json`,import.meta.url),'utf8'));
   const campaign=read('campaign'),world=read('world'),battleCatalog=read('battle'),items=read('items');

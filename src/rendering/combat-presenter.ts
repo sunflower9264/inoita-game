@@ -9,7 +9,7 @@ import {attackSequence} from '../domain/basic-attack.ts';
 import {attackCycleFrames} from '../domain/combat-tempo.ts';
 import type {ClipName} from '../domain/content.ts';
 import type {Point} from '../domain/navigation.ts';
-import {isCurrentLayers,playCharacterSequence,setCharacterClip,showIdlePose,type CharacterVisual} from './characters.ts';
+import {clipMirrored,isCurrentLayers,playCharacterSequence,setCharacterClip,showIdlePose,type CharacterVisual} from './characters.ts';
 import {createEffect,setEffectClip} from './effects.ts';
 import {effectLayerTextureKeys} from './combat-asset-descriptors.ts';
 import {CombatEffects} from './combat-effects.ts';
@@ -103,7 +103,7 @@ export class CombatPresenter {
     const name=action.skill!.clips?.[action.facing]??`skill-${action.skill!.id}-${action.facing}` as ClipName;
     if(character.clipName===name)return;
     const clip=character.actor.clips[name]!;
-    const flipped=!!clip.mirrorX!==!!character.entity.flip;
+    const flipped=clipMirrored(clip,character.actor,character.entity);
     for(const [index,sprite]of character.layers.entries()){
       const source=clip.layers[index];if(!source)continue;
       const key=`${source.key}#${name}#action`;

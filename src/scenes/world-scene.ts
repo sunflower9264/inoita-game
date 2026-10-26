@@ -717,7 +717,8 @@ export class WorldScene extends Phaser.Scene {
   createActor(entity: EntityPlacement): Character {
     const actor = entity.id === 'player' ? this.equippedActor ?? this.app.session.character?.appearance ?? this.app.world.actors[this.app.session.storyWorld.actorAppearance(entity.actor)] : this.app.world.actors[this.app.session.storyWorld.actorAppearance(entity.actor)];
     const character: Character = { ...createCharacter(this, actor, entity), marker: null };
-    const facing=this.app.session.storyWorld.entity(entity.id)?.facing;
+    const facing=this.app.session.storyWorld.entity(entity.id)?.facing
+      ?? (entity.flip && actor.clips['idle-east'] ? 'east' : undefined);
     if(facing)this.setClip(character,`idle-${facing}`);
     const container = character.container;
     const player = entity.id === 'player';
