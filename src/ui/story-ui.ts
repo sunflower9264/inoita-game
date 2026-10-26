@@ -778,8 +778,6 @@ export class StoryUI {
         {image:panels.assets[SKILL_LEVEL_ASSETS[level]!],pressed:panels.assets['skill-level-pressed'],native:true}).setData('label',`自动反击 ${COUNTERATTACK_LABELS[level]}`);
       button.setAlpha(mode===level?1:.55);
     }
-    v.rect(93,215,393,2,0x315069);
-    v.text(labels.initialSkillPoints,289,235,0,22).setOrigin(.5,0);
     if(this.selectedMemberId==='player')v.button(labels.resetButton,161,290,257,63,()=>{this.skillReset=true;this.render();});
   }
   /** 说明区由技能目录与 AI 设置共享；设置页与原版一样留空。 */

@@ -352,6 +352,13 @@ test('ability allocation counts added points per attribute and the reset button 
   assert(f.scene.texts().includes(`${panels.character.labels.statPoints} ${points}`),'标题栏显示返还后的全部点数');
 });
 
+test('skill settings page drops the initial-point label and keeps the reset button',t=>{
+  const f=fixture();t.after(f.cleanup);
+  f.menu.show('skills');f.scene.click(f.scene.button('设置'));
+  assert(!f.scene.texts().includes(panels.skillPanel.labels.initialSkillPoints),'设置页不再画「初始技能点」');
+  assert(f.scene.canHit(f.scene.button(panels.skillPanel.labels.resetButton)),'初始化按钮仍在');
+});
+
 test('AI settings shows two columns and clears the description for unlearned skills',t=>{
   const f=fixture();t.after(f.cleanup);
   f.menu.show('skills');f.scene.click(f.scene.button('AI 设置'));
