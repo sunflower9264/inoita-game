@@ -263,7 +263,7 @@
 **结论：菜单图片预载做得对；卡顿来自整页重建、双重 render、滚动遮罩和存档 parse。**
 
 - 菜单图片 654–697 张、约 4.1–4.6 MB、解码约 15 MB，返回菜单释放；打开面板无网络 IO，这是正确的。
-- 每次点击/状态变化：`StoryUI.render()` 先清空 `surface/body/description/modal` 和所有 `ScrollArea`，再整页重画。✅ `show()` 末尾重复的 `sync()` 已去掉；商店买卖、队伍加入/移出、合成成功都不再重画第二次（2026-10-25）；失败路径仍本地重画以显示错误。
+- 每次点击/状态变化：`StoryUI.render()` 先清空 `surface/body/description/modal` 和所有 `ScrollArea`，再整页重画。✅ `show()` 末尾重复的 `sync()` 已去掉；商店买卖、队伍加入/移出、合成成功都不再重画第二次（2026-10-25）；失败路径仍本地重画以显示错误。✅ 会话通知按当前页的数据签名门控（2026-10-26）：签名没变就不重绘，背包/技能等页不再随战斗掉血反复重建。
 - 商店购买/出售、合成提交、队伍变更、恢复药水：session emit 触发一次 render，`changed()` 再一次，**同一次操作双重建**。
 - 单次打开约 130–350 个 GameObjects、17–80 个 Phaser Text；每个 Text 有独立 canvas 纹理，3× DPR 下创建/销毁几十张高分辨率文字纹理会造成数 MB GPU 上传。
 - ✅ **已修（2026-10-25）** 滚动区在 WebGL 下用 `enableFilters + addMask`；`FilterMask` 默认每帧 `updateDynamicTexture`。现在 `autoUpdate=false`，只在遮罩几何变化时置 `needsUpdate`。
@@ -798,7 +798,15 @@
 
 不做 `scene.sleep`：世界场景的 Loader 绑定在场景 `UPDATE` 事件上，sleep 后剧情投影和预取会等不到 `complete`；`scene.restart` 也会把 sleeping 场景恢复成 active。纯世界背景对白没有舞台，`worldCovered` 始终为 false，世界照常更新。
 
+### 2026-10-26：菜单会话通知门控
+
+| 根因 | 改动 | 提交 | 验证 |
+|---|---|---|---|
+| 菜单打开时任何 session 通知都会清空重建当前页；背包、技能等页在战斗中会随着掉血、回蓝、掉落反复重建，即使这些数据根本不在当前页 | 每页计算数据签名（背包版本、任务版本、技能版本、金钱、成员等级与生命、队伍组成等）；签名没变就直接跳过整页重绘。任务页和调试页依赖条件求值等不易枚举的数据，保持每次通知重绘；快捷键登记与控制布局编辑期间菜单不可见，也不重绘。显式界面操作仍直接重绘，不受门控影响 | `a163f19` | `typecheck`；`story-menu-interactions` 48/53（5 条失败与改动前一致）、`shop-panel`/`quest-panel-default`/`title-save-entry` 21/21、GM 相关 24/24 |
+
+未做：页内对象复用和局部更新。现在只减少“不该发生的整页重建”；页面数据真正变化时仍是 clear + 重建。
+
 仍待做：
 - `WalkRoute` 与 `NavigationWorld.nearestReachableBody/terrainRoute` 的同步寻路预算。
 - `syncCombatResourceLimits` 的缓存要先给 buff/状态加修订号，避免 ramp buff 读到旧上限。
-- `StoryUI.render` 在菜单里每次会话通知整页重建；要先定义一屏到底依赖哪些修订号。
+- `StoryUI.render` 在页面数据真正变化时仍是整页 clear/重建；会话通知已经按当前页签名跳过未变化的页（2026-10-26），页内对象复用/局部更新仍待做。
