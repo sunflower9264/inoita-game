@@ -7,8 +7,8 @@ import type { ItemCatalog } from '../src/domain/items.ts';
 import type { CharacterStatsCatalog } from '../src/domain/character-stats.ts';
 import type { Campaign } from '../src/domain/campaign.ts';
 import { parseShops } from '../src/application/content-validation.ts';
-import { descriptionLayout, descriptionPanel, POPUP_FRAME, shopLayout, tradeLayout, tradeMessageLayout } from '../src/ui/shop-layout.ts';
-import { BAG_DESCRIPTION_WIDTH } from '../src/ui/bag-layout.ts';
+import { BAG_DESCRIPTION_WIDTH, DESCRIPTION_PANEL } from '../src/ui/bag-layout.ts';
+import { descriptionPanel, POPUP_FRAME, shopLayout, tradeLayout, tradeMessageLayout } from '../src/ui/shop-layout.ts';
 import { INVENTORY_LABELS, INVENTORY_SIDE_FILTERS } from '../src/domain/inventory.ts';
 import { ShopPanel } from '../src/ui/phaser/shop-panel.ts';
 import { centerModal } from '../src/ui/phaser/modal-placement.ts';
@@ -64,9 +64,9 @@ class Surface {
    */
   get descriptionBorders(){return this.calls.filter((call,index)=>{
     const before=this.calls[index-1];
-    return call.kind==='border'&&!!before&&before.kind==='rect'&&before.color===0&&before.alpha===descriptionLayout.backgroundAlpha;});}
+    return call.kind==='border'&&!!before&&before.kind==='rect'&&before.color===0&&before.alpha===DESCRIPTION_PANEL.backgroundAlpha;});}
   /** 说明面板的内缩黑底：`GRPX_FillRectAlpha(...,0xff000000,60)` 的矩形。 */
-  get descriptionFills(){return this.calls.filter(call=>call.kind==='rect'&&call.color===0&&call.alpha===descriptionLayout.backgroundAlpha);}
+  get descriptionFills(){return this.calls.filter(call=>call.kind==='rect'&&call.color===0&&call.alpha===DESCRIPTION_PANEL.backgroundAlpha);}
   /** 面板上不画字的按钮（关闭钮）用 `setData('label')` 标身份，所以两种标签都要认。 */
   get buttons(){return this.calls.filter(call=>call.kind==='button'&&(call.label!==''||call.node?.label));}
 }
@@ -129,12 +129,12 @@ test('shop layout keeps the native panel geometry',()=>{
   assert.deepEqual(general.badge,{x:67,y:47,color:'#ffffff'});
   // 说明面板与背包那份同规则；横向落点由调用方按左右栏给，纵向是本作适配值。
   // 说明面板与背包共用同一份原版矩形：442×431，纵向与所盖那一栏的顶边对齐。
-  assert.equal(descriptionLayout.y,0);
+  assert.equal(DESCRIPTION_PANEL.y,0);
   // 442 是这套子件的设计宽度；实际面板与它盖住的那一栏同宽（背包栏 395、人物栏 409、货架栏 462）。
-  assert.equal(descriptionLayout.width,442);
+  assert.equal(DESCRIPTION_PANEL.width,442);
   assert.equal(descriptionPanel(395).width,395);
   assert.equal(descriptionPanel(409).width,409);
-  assert.equal(descriptionPanel(442).scroll.width,descriptionLayout.scroll.width);
+  assert.equal(descriptionPanel(442).scroll.width,DESCRIPTION_PANEL.scroll.width);
   assert.equal(descriptionPanel(395).scroll.width,395-20-64,'从右边收窄');
   assert.equal(descriptionPanel(395).close.x,395-61,'关闭按钮跟着右边缘走（离右边缘 61 = 67 宽 + 探出 6）');
   assert.equal(descriptionPanel(395).menu.width,377-47,'底部菜单行同步收窄');
@@ -143,17 +143,17 @@ test('shop layout keeps the native panel geometry',()=>{
   assert.equal(descriptionPanel(462).close.x,462-61,'变宽时关闭按钮仍贴右边缘');
   assert.equal(descriptionPanel(462).scroll.width,378,'变宽时滚动区右侧留边不变');
   assert.equal(descriptionPanel(462).menu.width,377+20,'变宽时菜单行右侧留边不变');
-  assert.equal(descriptionLayout.height,431);
+  assert.equal(DESCRIPTION_PANEL.height,431);
   // 面板自带底色：内缩 10 取原版（UIDesc_Draw 的 GRPX_FillRectAlpha 参数 0x3c=60），
   // 本作把不透明度提到 85%，让面板压得住底下那一栏。
-  assert.equal(descriptionLayout.inset,10);
-  assert.equal(descriptionLayout.background,0x000000);
-  assert.equal(descriptionLayout.backgroundAlpha,.85);
+  assert.equal(DESCRIPTION_PANEL.inset,10);
+  assert.equal(DESCRIPTION_PANEL.background,0x000000);
+  assert.equal(DESCRIPTION_PANEL.backgroundAlpha,.85);
   // 物品名在面板顶上，不在滚动区里：落点 (20,22)、右边留 82 给关闭按钮。
-  assert.deepEqual(descriptionLayout.title,{x:20,y:22,right:82,size:24});
-  assert.deepEqual(descriptionLayout.scroll,{x:20,y:60,width:358,height:258});
-  assert.deepEqual(descriptionLayout.close,{x:381,y:-6,size:67},'原版 349，本作右移到贴住右上角');
-  assert.deepEqual(descriptionLayout.menu.offsets[1],126);
+  assert.deepEqual(DESCRIPTION_PANEL.title,{x:20,y:22,right:82,size:24});
+  assert.deepEqual(DESCRIPTION_PANEL.scroll,{x:20,y:60,width:358,height:258});
+  assert.deepEqual(DESCRIPTION_PANEL.close,{x:381,y:-6,size:67},'原版 349，本作右移到贴住右上角');
+  assert.deepEqual(DESCRIPTION_PANEL.menu.offsets[1],126);
   // 数量框的内容按原版摆：图标在计数区左侧，数量左对齐于其右侧，金额与文本底板左端对齐。
   const quantity=tradeLayout.quantity;
   // 黑底是 `GRPX_FillRect(x+35, y+35, 宽−70, 高−70)`，不是九宫格边框的内区。

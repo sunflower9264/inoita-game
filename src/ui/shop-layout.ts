@@ -1,5 +1,4 @@
 /** 说明面板与背包共用同一套矩形，只在 bag-layout 里维护一份。 */
-import { DESCRIPTION_PANEL } from './bag-layout.ts';
 import { MONEY, SIDE_BUTTON_OFFSETS, SLOT, SLOT_STRIDE } from './item-layout.ts';
 
 /**
@@ -125,7 +124,6 @@ export function tradeMessageLayout(lines:number, hasMoney:boolean) {
  *   的那一栏。x 因此不写死，由调用方取当前 `shopLayout()` 的 `bagFrame.x` 或 `leftFrame.x`。
  * - **纵向与那一栏的顶边对齐**（原版恒为 133，就是内容框顶边），所以这里没有本作的纵向适配。
  */
-export const descriptionLayout = DESCRIPTION_PANEL;
 /** 商店那份说明面板与背包共用一套矩形：按它盖住的那一栏取宽，见 `bag-layout.ts` 的 `descriptionPanel`。 */
 export { descriptionPanel } from './bag-layout.ts';
 

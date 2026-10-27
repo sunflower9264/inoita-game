@@ -1,6 +1,7 @@
 import { LOGIC_FRAME_MS } from './battle.ts';
 
 export const RESOURCE_RECOVERY_INTERVAL_MS=31*LOGIC_FRAME_MS;
+const RESOURCE_RECOVERY_INTERVAL_TICKS=RESOURCE_RECOVERY_INTERVAL_MS/LOGIC_FRAME_MS;
 
 interface ResourceAttributes {
   healthRecoveryPerPulse:number;
@@ -56,7 +57,7 @@ export interface CombatResourceRecoveryState {
 /** 活跃游戏时间共用一个恢复时钟；地图和角色切换沿用同一实例或恢复快照。 */
 export class CombatResourceRecovery {
   private elapsedMs=0;
-  private deadlineTick=30;
+  private deadlineTick=RESOURCE_RECOVERY_INTERVAL_TICKS-1;
 
   get currentTick():number { return Math.floor(this.elapsedMs/LOGIC_FRAME_MS); }
 
@@ -87,7 +88,7 @@ export class CombatResourceRecovery {
 
   resetDeadline(frame:number):void {
     if(!Number.isSafeInteger(frame)||frame<0)throw new Error('资源恢复帧无效');
-    this.deadlineTick=frame+30;
+    this.deadlineTick=frame+RESOURCE_RECOVERY_INTERVAL_TICKS-1;
   }
 
   advance(deltaMs:number,actors:readonly ResourceRecoveryActor[]):ResourceRecoveryPulse[] {
@@ -102,7 +103,7 @@ export class CombatResourceRecovery {
         manaAmount:actor.manaRecoveryPerPulse,
       }))});
       // 沿用上一截止帧推进，跨过多个脉冲时保留原相位。
-      this.deadlineTick+=31;
+      this.deadlineTick+=RESOURCE_RECOVERY_INTERVAL_TICKS;
     }
     return pulses;
   }

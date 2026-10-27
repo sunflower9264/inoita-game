@@ -8,9 +8,6 @@ declare const __STORY_TRUST_CONTENT__: boolean;
 
 const injected = typeof __STORY_TRUST_CONTENT__ === 'boolean' ? __STORY_TRUST_CONTENT__ : false;
 
-/** 构建期注入的信任开关；测试与直接 import 恒为 false。 */
-export const trustedContent = injected;
-
 /** 当前页面是否可以使用信任路径；GM 与 ?validate 强制完整校验。 */
 export function trustedContentNow(): boolean {
   if (!injected) return false;

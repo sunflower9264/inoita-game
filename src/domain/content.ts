@@ -364,11 +364,6 @@ export interface StartPlacement {
   script: string;
 }
 
-/** 剧情放置的人物，带所在地图。 */
-export interface Placement extends EntityPlacement {
-  map: string;
-}
-
 /** 任务日志中共用一条列表项的剧情步骤。 */
 export interface QuestGroupDefinition {
   id: string;
