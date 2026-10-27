@@ -40,31 +40,56 @@ function upgradeSavedGame(game:SaveGame<StoryWorldViewSnapshot>):SaveGame<StoryW
   }
   return upgraded;
 }
-/** 已删除的扩容背包在旧档里换成可用的消耗品，避免删内容后旧进度读不出来。 */
+/**
+ * 已删除的道具在旧档里这样处理：扩容背包换成可用的消耗品，其余直接丢弃。
+ * 丢弃时必须同时清掉格位与快捷栏引用，否则背包自检会拒绝整份存档。
+ */
 const LEGACY_BAG_REPLACEMENTS:Record<string,string>={
   handbag:'healing-potion-m','small-bag':'healing-potion-l',backpack:'healing-potion-xl','infinity-bag':'elixir'};
-function migrateLegacyBagItems(game:SaveGame<StoryWorldViewSnapshot>):SaveGame<StoryWorldViewSnapshot>{
-  const session=game.session,legacy=(id:string|undefined)=>!!id&&LEGACY_BAG_REPLACEMENTS[id]!==undefined;
+const LEGACY_REMOVED_ITEMS=new Set(['novice-dice','standard-dice','advanced-dice','supreme-dice','chaos-dice','stats-reset-spell']);
+function migrateLegacyItems(game:SaveGame<StoryWorldViewSnapshot>):SaveGame<StoryWorldViewSnapshot>{
+  const session=game.session;
+  const legacy=(id:string|undefined)=>!!id&&(LEGACY_BAG_REPLACEMENTS[id]!==undefined||LEGACY_REMOVED_ITEMS.has(id));
   const needsMigration=
     session.bag.instances.some(entry=>legacy(entry.item))||
     session.bag.shortcuts.some(([,row])=>row.some(slot=>slot?.kind==='item'&&legacy(slot.id)))||
     session.receipts.some(receipt=>receipt.reward.items.some(item=>legacy(item.item)))||
-    session.groundLoot.drops.some(drop=>drop.reward.kind==='item'&&(legacy(drop.reward.item)||legacy(drop.reward.instance?.item)));
+    session.groundLoot.drops.some(drop=>drop.reward.kind==='item'&&(legacy(drop.reward.item)||legacy(drop.reward.instance?.item)))||
+    session.shops.stock.some(([,offers])=>offers.some(offer=>legacy(offer.instance.item)));
   if(!needsMigration)return game;
   const migrated=structuredClone(game),s=migrated.session;
   const replace=(id:string)=>LEGACY_BAG_REPLACEMENTS[id]??id;
-  for(const entry of s.bag.instances)entry.item=replace(entry.item);
-  for(const [,row] of s.bag.shortcuts)for(const slot of row)if(slot?.kind==='item')slot.id=replace(slot.id);
-  for(const receipt of s.receipts)for(const item of receipt.reward.items)item.item=replace(item.item);
-  for(const drop of s.groundLoot.drops)if(drop.reward.kind==='item'){
+  const removedIds=new Set<string>();
+  s.bag.instances=s.bag.instances.filter(entry=>{
+    entry.item=replace(entry.item);
+    if(!LEGACY_REMOVED_ITEMS.has(entry.item))return true;
+    removedIds.add(entry.id);return false;
+  });
+  if(removedIds.size){
+    for(const [pouch,cells] of Object.entries(s.bag.pouches))
+      s.bag.pouches[pouch as keyof typeof s.bag.pouches]=cells.filter(id=>id===undefined||!removedIds.has(id));
+    s.bag.allCells=s.bag.allCells.filter(id=>id===undefined||!removedIds.has(id));
+  }
+  for(const [,row] of s.bag.shortcuts)for(const [index,slot] of row.entries())if(slot?.kind==='item'){
+    if(LEGACY_REMOVED_ITEMS.has(slot.id))row[index]=null;else slot.id=replace(slot.id);
+  }
+  for(const receipt of s.receipts){
+    for(const item of receipt.reward.items)item.item=replace(item.item);
+    receipt.reward.items=receipt.reward.items.filter(item=>!LEGACY_REMOVED_ITEMS.has(item.item));
+  }
+  s.groundLoot.drops=s.groundLoot.drops.filter(drop=>{
+    if(drop.reward.kind!=='item')return true;
     drop.reward.item=replace(drop.reward.item);
     if(drop.reward.instance)drop.reward.instance.item=replace(drop.reward.instance.item);
-  }
+    const instanceItem=drop.reward.instance?.item;
+    return !LEGACY_REMOVED_ITEMS.has(drop.reward.item)&&!(instanceItem&&LEGACY_REMOVED_ITEMS.has(instanceItem));
+  });
+  for(const [,offers] of s.shops.stock)offers.splice(0,offers.length,...offers.filter(offer=>!LEGACY_REMOVED_ITEMS.has(offer.instance.item)));
   return migrated;
 }
 /** 候选会话独立于当前游戏，坏记录在切换场景之前被拒绝。 */
 export function prepareSavedGame(game:SaveGame<StoryWorldViewSnapshot>,content:SavedGameContent){
-  const upgraded=migrateLegacyBagItems(upgradeSavedGame(game));
+  const upgraded=migrateLegacyItems(upgradeSavedGame(game));
   const selected=content.storyClasses.classes.find(entry=>entry.id===upgraded.summary.classId);
   if(!selected)throw new Error('存档记录的职业在当前内容里不存在');
   const world=structuredClone(upgraded.world),location=world?.location;

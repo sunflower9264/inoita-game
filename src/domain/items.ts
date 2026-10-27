@@ -7,7 +7,7 @@ import type { DescriptionTextPart } from './description-text.ts';
 export const EQUIPMENT_SLOTS = ['head', 'hands', 'back', 'body', 'feet', 'main-hand', 'off-hand', 'neck', 'ring', 'accessory'] as const;
 export type EquipmentSlot = typeof EQUIPMENT_SLOTS[number];
 export const ITEM_USES = ['recover-health', 'consume', 'enchant', 'socket', 'purify', 'pack', 'box', 'unseal', 'learn', 'regenerate',
-  'reset-skills', 'reset-attributes', 'recruit', 'merchant', 'revive', 'recipe', 'dungeon'] as const;
+  'reset-skills', 'recruit', 'merchant', 'revive', 'recipe', 'dungeon'] as const;
 export type ItemUseKind = typeof ITEM_USES[number];
 export interface ItemReward { item: string; quantity: number }
 export interface GroundItemSprite {
@@ -115,7 +115,7 @@ export interface ItemResult {
 export const USE_LABELS: Record<ItemUseKind, string> = {
   'recover-health': '使用',
   consume: '使用', enchant: '强化', socket: '镶嵌', purify: '净化', pack: '打开礼盒', box: '打开宝箱', unseal: '解除封印',
-  learn: '使用技能书', regenerate: '使用', 'reset-skills': '初始化技能', 'reset-attributes': '初始化能力',
+  learn: '使用技能书', regenerate: '使用', 'reset-skills': '初始化技能',
   recruit: '使用徽章', merchant: '召唤神灯商人', revive: '复活', recipe: '打开合成套装', dungeon: '使用符文'
 };
 
@@ -158,7 +158,7 @@ export const USE_HANDLING: Record<ItemUseKind, 'bag' | 'ui' | 'pending'> = {
   consume: 'bag',
   dungeon: 'pending',
   enchant: 'bag', socket: 'bag', purify: 'bag', pack: 'bag', box: 'bag', unseal: 'bag',
-  recipe: 'bag', learn: 'bag', 'reset-skills': 'bag', 'reset-attributes': 'bag',
+  recipe: 'bag', learn: 'bag', 'reset-skills': 'bag',
 };
 
 /**

@@ -5,6 +5,7 @@ import {prepareSavedGame,type SavedGameContent} from '../src/application/saved-g
 import {newStorySession} from '../src/domain/story-class.ts';
 import {captureSaveGame,saveSummary} from '../src/domain/save-game.ts';
 import type {StoryWorldViewSnapshot} from '../src/scenes/world-scene.ts';
+import {emptyShortcutRow} from '../src/domain/shortcut-bar.ts';
 const read=<T>(name:string):T=>JSON.parse(readFileSync(new URL(`../public/content/${name}.json`,import.meta.url),'utf8')) as T;
 const content:SavedGameContent={campaign:read('campaign'),world:read('world'),storyClasses:read('story-classes'),
   items:read('items'),characterStats:read('character-stats'),battleCatalog:read('battle'),companions:read('companions')};
@@ -53,6 +54,31 @@ test('old saves containing removed expansion bags migrate to consumables',()=>{
   const before=structuredClone(saved),candidate=prepareSavedGame(saved,content);
   assert.equal(candidate.session.bag.get(entry.id)?.item,'healing-potion-m');
   assert.deepEqual(saved,before,'旧档迁移不改写槽里的原件');
+});
+
+test('old saves containing removed items drop them and every reference',()=>{
+  for(const legacyItem of ['standard-dice','stats-reset-spell']){
+    const saved=record(),bag=saved.session.bag;
+    const equipped=new Set([...Object.values(bag.worn),...bag.companionEquipment.flatMap(([,equipment])=>Object.values(equipment))]);
+    const entry=bag.instances.find(value=>!equipped.has(value.id))!;
+    entry.item=legacyItem;
+    if(!bag.shortcuts.length)bag.shortcuts.push(['player',emptyShortcutRow()]);
+    const row=bag.shortcuts[0]![1];
+    row[row.length-1]={kind:'item',id:legacyItem};
+    const map=saved.world.location.map;
+    saved.session.groundLoot.drops.push({id:'ground-legacy',map,x:16,y:24,reward:{kind:'item',item:legacyItem,quantity:1}});
+    saved.session.shops.stock.push(['legacy-shop',[{id:'legacy-offer',instance:{id:'legacy-instance',item:legacyItem,quantity:1,enhancement:0,gems:[]},
+      limited:true,concealed:false,sold:false}]]);
+    const before=structuredClone(saved),candidate=prepareSavedGame(saved,content),state=candidate.session.bag.captureState();
+    assert.equal(candidate.session.bag.get(entry.id),undefined,`${legacyItem} 实例被丢弃`);
+    assert.ok(!state.allCells.includes(entry.id),`${legacyItem} 全部页不再引用被丢弃的实例`);
+    for(const cells of Object.values(state.pouches))assert.ok(!cells.includes(entry.id),`${legacyItem} 分类袋不再引用被丢弃的实例`);
+    for(const [,shortcut] of state.shortcuts)for(const slot of shortcut)assert.ok(!(slot?.kind==='item'&&slot.id===legacyItem),`${legacyItem} 快捷栏不再指向被删除的道具`);
+    const restored=candidate.session.captureState();
+    assert.ok(!restored.groundLoot.drops.some(drop=>drop.id==='ground-legacy'),`${legacyItem} 地面掉落被丢弃`);
+    assert.ok(!restored.shops.stock.some(([,offers])=>offers.some(offer=>offer.instance.item===legacyItem)),`${legacyItem} 商店存货被丢弃`);
+    assert.deepEqual(saved,before,'旧档迁移不改写槽里的原件');
+  }
 });
 
 test('invalid class, map, position and actors are rejected without changing the saved input',()=>{

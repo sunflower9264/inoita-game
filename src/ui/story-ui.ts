@@ -1163,7 +1163,6 @@ export class StoryUI {
       }
     }
     else if(use?.kind==='reset-skills'){line(`确定为${this.world!.actors[this.session!.campaign.start.actor].name}初始化技能？`);line('清空已学技能与快捷栏，返还正常加点；卓越灵药增加的技能点会消失。');}
-    else if(use?.kind==='reset-attributes')line(`确定为${this.world!.actors[this.session!.campaign.start.actor].name}初始化能力？`);
     else if(entry.item===SKILL_POINT_ITEM)line(`确定对${this.world!.actors[this.session!.campaign.start.actor].name}使用${item.name}？`);
     if(op.error)line(op.error);this.finishScroll('operation',scroll,y);
     const using=op.kind==='use',skill=entry.skill||op.skill||'';
@@ -1180,7 +1179,7 @@ export class StoryUI {
     const unimplemented=unimplementedItemUse(entry.item,definition);
     if(unimplemented)return unimplemented;
     const kind=definition.use?.kind;
-    if(this.selectedMemberId!=='player'&&(kind==='reset-attributes'||kind==='reset-skills'||kind==='learn'||entry.item===SKILL_POINT_ITEM))return '该道具仅能用于主角';
+    if(this.selectedMemberId!=='player'&&(kind==='reset-skills'||kind==='learn'||entry.item===SKILL_POINT_ITEM))return '该道具仅能用于主角';
   }
   private bookProblem(id:string):string|undefined{return this.selectedMemberId==='player'?this.session!.skills.bookProblem(id):'主角技能书仅能用于主角';}
   private renderItemResult():void {

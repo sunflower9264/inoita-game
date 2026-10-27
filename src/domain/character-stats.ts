@@ -217,7 +217,6 @@ export class BattleCharacter {
           if(!use.requiresEnhanced){target.numbers.enhancementScroll??=source.item;target.numbers.enhancementUses--;}
         }
         if(use.kind==='socket'&&target?.numbers)target.numbers.gemModifiers.push(...source.numbers!.modifiers.map(m=>({...m})));
-        if(use.kind==='reset-attributes')this.allocation=emptyAttributes();
         return this.skillUseHandler?.(source.item,skill);
       }
     };

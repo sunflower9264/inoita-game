@@ -548,10 +548,10 @@ test('WebGL common button slices stay inside hit areas and preserve selected fee
 });
 
 test('companion bag rejects hero-only items at the button, direct entry and confirmation boundaries', t => {
-  for (const item of ['stats-reset-spell', 'skills-reset-spell', 'supreme-elixir']) {
+  for (const item of ['skills-reset-spell', 'supreme-elixir']) {
     const f = fixture(); t.after(f.cleanup); f.hero.addExperience(f.hero.player.nextLevelExperience); f.hero.allocate('strength', 1);
     const member = f.recruit(), source = f.add(item); f.select(member.id); f.menu.debugDescribe(source.id);
-    const label = item === 'stats-reset-spell' ? '初始化能力' : item === 'skills-reset-spell' ? '初始化技能' : '使用';
+    const label = item === 'skills-reset-spell' ? '初始化技能' : '使用';
     assert.equal(f.scene.button(label).input!.enabled, false, item);
     const before = f.session.captureState(); f.menu.debugUse(source.id);
     assert.equal(f.internals.operation, undefined, `${item} 不进入使用流程`); assert.deepEqual(f.session.captureState(), before);
@@ -561,14 +561,13 @@ test('companion bag rejects hero-only items at the button, direct entry and conf
   }
 });
 
-test('hero bag still applies attribute reset, skill reset and supreme elixir', t => {
-  for (const item of ['stats-reset-spell', 'skills-reset-spell', 'supreme-elixir']) {
+test('hero bag still applies skill reset and supreme elixir', t => {
+  for (const item of ['skills-reset-spell', 'supreme-elixir']) {
     const f = fixture(); t.after(f.cleanup); f.hero.addExperience(Number.MAX_SAFE_INTEGER); f.hero.allocate('strength', 1);
     f.session.skills.learn('dark-strike');f.session.skills.learn('dark-strike');
     const skill = battle.classes.find(value => value.id === f.hero.classId)!.skills[1]; f.session.skills.learn(skill);
     const source = f.add(item), points = f.session.skills.points(); f.menu.debugUse(source.id); f.scene.click(f.scene.button('确定'));
     assert.equal(f.session.bag.count(item), 0);
-    if (item === 'stats-reset-spell') assert.equal(f.hero.allocated.strength, 0);
     if (item === 'skills-reset-spell') assert.equal(f.session.skills.level(skill), 0);
     if (item === 'supreme-elixir') assert.equal(f.session.skills.points(), points + 1);
   }
@@ -692,9 +691,9 @@ test('discarding a lamp only removes inventory; using a lamp opens its shop', t 
 });
 
 test('description buttons and scrolling reject modal, busy, suspended and closed input', t => {
-  const f = fixture(); t.after(f.cleanup); const source = f.add('stats-reset-spell');
+  const f = fixture(); t.after(f.cleanup); const source = f.add('skills-reset-spell');
   f.menu.debugDescribe(source.id); f.menu.debugUse(source.id, 'discard');
-  const button = f.scene.button('初始化能力'), scroll = f.internals.description.scrolls[0]!;
+  const button = f.scene.button('初始化技能'), scroll = f.internals.description.scrolls[0]!;
   scroll.setHeight(1000);
   const point = scroll.content.getWorldTransformMatrix().transformPoint(10, 10);
   Object.assign(f.scene.input.activePointer, point);
@@ -770,8 +769,8 @@ test('scrolling a shop description never scrolls the bag column underneath', t =
 });
 
 test('opening a modal cancels an unfinished description press before it can resume', t => {
-  const f = fixture(); t.after(f.cleanup); const source = f.add('stats-reset-spell'); f.menu.debugDescribe(source.id);
-  const button = f.scene.button('初始化能力');
+  const f = fixture(); t.after(f.cleanup); const source = f.add('skills-reset-spell'); f.menu.debugDescribe(source.id);
+  const button = f.scene.button('初始化技能');
   for (const transition of ['modal', 'suspended'] as const) {
     f.scene.press(button); assert.equal(button.getData('highlight').visible, true);
     if (transition === 'modal') f.internals.operation = { entry: source.id, kind: 'discard', quantity: 1 };
@@ -791,7 +790,7 @@ test('keyboard reaches equipment description actions and modal focus stays insid
   const item = items.startingEquipment['dark-knight']['main-hand']!, weapon = f.add(item);
   f.menu.debugDescribe(weapon.id); keyboardFocus(f, '装备'); assert(f.scene.key('Enter')); await Promise.resolve();
   assert.equal(f.session.bag.equipment['main-hand'], weapon.id, 'Enter 执行独立说明层装备按钮');
-  const source = f.add('stats-reset-spell'); f.menu.debugDescribe(source.id);
+  const source = f.add('skills-reset-spell'); f.menu.debugDescribe(source.id);
   keyboardFocus(f, '丢弃', true); assert(f.scene.key(' '));
   assert.equal(f.internals.operation?.kind, 'discard', 'Shift+Tab 与空格执行说明层按钮');
   const labels = new Set<string>();
@@ -800,7 +799,7 @@ test('keyboard reaches equipment description actions and modal focus stays insid
   assert(f.scene.key('Escape')); assert.equal(f.internals.operation, undefined);
   assert.equal(f.session.bag.count(source.item), 1, 'Escape 取消确认');
   keyboardFocus(f, '关闭', true); assert(f.scene.key('Enter'));
-  assert.equal(f.scene.buttons('初始化能力').length, 0, '键盘关闭说明而保留背包'); assert(f.scene.buttons('背包').length);
+  assert.equal(f.scene.buttons('初始化技能').length, 0, '键盘关闭说明而保留背包'); assert(f.scene.buttons('背包').length);
 });
 
 test('keyboard reaches shop buy and sell description actions and Escape backs out', t => {

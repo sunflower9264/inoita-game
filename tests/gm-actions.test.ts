@@ -210,7 +210,7 @@ test('items excludes pickup-only items, filters and reports owned counts', () =>
   const { session, gm } = harness();
   const all = gm.items();
   assert.ok(!all.some(entry => entry.id === 'mana-gem'));
-  assert.ok(all.length > 1000);
+  assert.equal(all.length, Object.values(items.items).filter(item => !item.pickup).length, '清单覆盖全部可直接发放的物品');
 
   const equipment = gm.items('equipment');
   assert.ok(equipment.length > 0);

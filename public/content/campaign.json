@@ -315563,10 +315563,6 @@
         "money": 510,
         "items": [
           {
-            "item": "standard-dice",
-            "quantity": 1
-          },
-          {
             "item": "standard-weapon-scroll",
             "quantity": 3
           }
@@ -319392,10 +319388,6 @@
           {
             "item": "resurrection-scroll",
             "quantity": 3
-          },
-          {
-            "item": "standard-dice",
-            "quantity": 1
           }
         ]
       },
@@ -325036,12 +325028,7 @@
       "rewards": {
         "experience": 14410,
         "money": 600,
-        "items": [
-          {
-            "item": "advanced-dice",
-            "quantity": 1
-          }
-        ]
+        "items": []
       },
       "offerScript": null,
       "completeScript": "complete:quest-280",
@@ -326503,10 +326490,6 @@
         "experience": 17470,
         "money": 730,
         "items": [
-          {
-            "item": "supreme-dice",
-            "quantity": 1
-          },
           {
             "item": "improved-resurrection-scroll",
             "quantity": 1
@@ -330317,12 +330300,7 @@
       "rewards": {
         "experience": 3188,
         "money": 665,
-        "items": [
-          {
-            "item": "advanced-dice",
-            "quantity": 1
-          }
-        ]
+        "items": []
       },
       "offerScript": null,
       "completeScript": null,
@@ -346938,10 +346916,6 @@
         "experience": 10480,
         "money": 0,
         "items": [
-          {
-            "item": "standard-dice",
-            "quantity": 1
-          },
           {
             "item": "healing-potion-m",
             "quantity": 5

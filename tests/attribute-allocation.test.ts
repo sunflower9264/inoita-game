@@ -100,9 +100,6 @@ test('invalid or unaffordable allocation is rejected before any attribute or bal
   assert.equal(draft.pending.vitality, 1);
   assert.equal(hero.allocated.vitality, 0);
   draft.cancel();
-  hero.bag.add('stats-reset-spell');
-  hero.bag.use(hero.bag.entries.find(entry => entry.item === 'stats-reset-spell')!.id);
-  assert.equal(hero.statPoints, 3);assert.deepEqual(hero.allocated, zero);
 });
 
 test('character combat rows retain native order and percentage units', () => {
