@@ -23,6 +23,8 @@
     "test": "node tools/test.ts",
     "test:all": "node tools/test.ts --all",
     "validate:content": "node tools/validate-content.mjs",
+    "debug-start": "node tools/debug-start/story-debug-start.ts --write",
+    "debug-start:check": "node tools/debug-start/story-debug-start.ts --check",
     "report:assets": "node tools/asset-report.ts",
     "atlas:icons": "node tools/build-icon-atlas.ts",
     "atlas:props": "node tools/build-prop-atlas.ts",

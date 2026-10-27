@@ -297,7 +297,7 @@
 - `dist` 约 **237 MB / 12,168 文件**；入口 JS 2.31 MB（gzip 630 KB），Phaser min 1.38 MB 约占 60%；无 source map；单 chunk。
 - `npm run validate:content` **1.40 s**；`typecheck` 2.58 s；`npm run build` 内部 `validateContent(public)` + 复制 217 MB + 再 `validateContent(output)`，第二次是重复劳动（多约 1.4 s）。
 - **构建期已经调用 `validateStoryReferences` / `validateStoryPerformance`**（`content-relations.ts`）；运行期 `main.ts` 又跑一遍，还有 8 个内容校验器也是重复。生产环境应删运行时语义校验，只保留 parse/轻量 shape。
-- 构建期缺 `springs.json` 校验；`npm run debug-start` 指引不存在。
+- 构建期缺 `springs.json` 校验。
 - 全量测试 361 文件、38 s、退出码 1；`title-save-entry` 单跑 2/11 失败。
 - 诊断收集器不是每帧：`markFrame` 每帧只 3 次 `Date.now()`；snapshot/JSON/localStorage 只在错误/启动/停帧时发生。错误风暴时 `localStorage` 同步写最多约 384 KB，会放大阻塞；正常游玩不是主因。
 - 4003 dev 是 241 模块 / 26.69 MB JS；4002 是 2.31 MB / gzip 630 KB。手机性能必须以 4002/APK 为准。

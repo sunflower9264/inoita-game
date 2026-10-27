@@ -73,7 +73,7 @@ render_game_to_text()   // GM 打开时返回的就是 digest()，含实时玩�
 
 选中一个任务，GM 把世界还原成这段剧情**开演前**的样子，再由正式导演直接播这段演出。
 
-**现场表** `campaign.debugStory.tasks[].start` 回答「开演前世界是什么样」：任务做到哪一步、谁在哪张图、哪些门开了、背包里有什么、哪些事件已经发生。`campaign.debugStory` 是随游戏发布的调试任务目录，现场表只存与干净会话不同的部分；运行时 `prepareTaskStart` 把它展开成完整状态，走真实 `restoreState` 校验后安装，并复核安装结果是 `refresh` 固定点。主角成长、技能、金币、普通背包和已有伙伴从当前会话合并。
+**现场表** `campaign.debugStory.tasks[].start` 回答「开演前世界是什么样」：任务做到哪一步、谁在哪张图、哪些门开了、背包里有什么、哪些事件已经发生。`campaign.debugStory` 是随游戏发布的调试任务目录，现场表只存与干净会话不同的部分；运行时 `prepareTaskStart` 把它展开成完整状态，走真实 `restoreState` 校验后安装，并复核安装结果是 `refresh` 固定点。主角成长、技能、金币、普通背包和已有伙伴从当前会话合并。现场表是生成物：改过 `public/content` 后运行 `npm run debug-start` 重新生成，`npm run debug-start:check` 只检查是否过期；路线、脚本草稿等输入在 `tools/debug-start/data/`。
 
 **演出** `debugStory.tasks[].play` 回答「把哪段剧情演出来」：进入任务后由正式导演从记录的脚本/节点开演，对白、选项、战斗都用真实表现，接取和推进由演出自己完成。现场表停在开幕之前，所以可接取任务进去后仍是「可接取」，导演一开演就接取。两者分开：现场表不决定演不演，演出也不负责补人物。
 

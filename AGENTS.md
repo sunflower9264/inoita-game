@@ -95,7 +95,7 @@ public/                原样复制进构建产物的静态资源和内容
   content/             剧情、任务、地图、战斗、物品、音频等内容 JSON
   assets/              图片与音频素材
 tests/                 单元测试（*.test.ts）与独立构建验证
-tools/                 构建、校验、静态服务、APK 打包
+tools/                 构建、校验、调试现场表生成、静态服务、APK 打包
 docs/                  架构、剧情创作、音频、部署、调试与诊断
 android/               Android WebView 壳（可选）
 .agents/skills/        Phaser 4 开发技能
@@ -108,6 +108,8 @@ android/               Android WebView 壳（可选）
 npm test -- tests/combat.test.ts   # 类型检查 + 指定用例
 npm run typecheck                  # 只做类型检查
 npm run validate:content           # 内容、校验器或素材引用变化时
+npm run debug-start                # 内容改动后重新生成 GM 任务现场表
+npm run debug-start:check          # 只检查 GM 任务现场表是否过期
 npm run test:all                   # 用户明确要求全量单元测试时
 npm run test:standalone            # 独立安装、类型检查与构建验收
 npm run build                      # 校验并替换 dist/
