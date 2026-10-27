@@ -383,11 +383,14 @@ export class StoryDirector {
     const keyless = key === undefined ? undefined : this.keylessEvents.get(source);
     return keyless?.length ? [...exact, ...keyless] : exact;
   }
-  /** 原版在伤害跨过 30% 生命值时先检查演出，并让触发者至少保留 1 点生命。 */
+  /** 原版在伤害跨过 30% 生命值时先检查演出，并让触发者至少保留 1 点生命；致死一击按同样规则处理。 */
   healthChanged(enemy: string, before: number, after: number, maximum: number, source?:{id:string;map:string;x:number;y:number}): boolean {
     if (this.disposed || after >= before || maximum <= 0) return false;
     const threshold = Math.trunc(maximum * 3 / 10);
-    if(source&&before>threshold&&after<=threshold&&this.session.weakenQuestTarget(enemy,source)){
+    // 致死一击也要走捕捉：目标可能已经在 30% 以下（例如先前的攻击把它打残），
+    // 只认「跨过 30%」会让这一击直接打死它，任务目标从此没有可交互对象。
+    const capture=after<=0||(before>threshold&&after<=threshold);
+    if(source&&capture&&this.session.weakenQuestTarget(enemy,source)){
       this.projectionPending=true;
       if(this.manual.signal.aborted)this.manual=new AbortController();
       this.cleanup=this.cleanup.catch(()=>{}).then(()=>this.project(this.manual.signal));

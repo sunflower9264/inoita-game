@@ -21,6 +21,8 @@ test('Gunther capture preserves the animal, changes its appearance, and counts o
   session.accept(quest.id);
   const director=new StoryDirector(content,session,ui,()=>{}, {begin(){},async execute(){},async finish(){},async release(){}});
   const source={id:'grayfang-instance',map:'hanun-forest-2',x:120,y:88};
+  // 捕捉目标按本次进图登记；先站到源地图上，再结算伤害。
+  session.applyStoryCommands([{type:'travel',destination:{map:source.map,x:source.x,y:source.y,facing:'south'}}]);
   assert.equal(director.healthChanged(quest.targetChanges![0].enemyId,100,0,100,source),true);
   await setImmediate();
   assert.equal(session.status(quest.id),'active');
@@ -40,9 +42,25 @@ test('Gunther capture preserves the animal, changes its appearance, and counts o
   director.dispose();
 });
 
+test('a killing blow still turns a weakened target into its capture NPC',async()=>{
+  const {quest,session,content}=fixture('quest-18');
+  session.accept(quest.id);
+  const director=new StoryDirector(content,session,ui,()=>{}, {begin(){},async execute(){},async finish(){},async release(){}});
+  const source={id:'grayfang-weakened',map:'hanun-forest-2',x:120,y:88};
+  session.applyStoryCommands([{type:'travel',destination:{map:source.map,x:source.x,y:source.y,facing:'south'}}]);
+  // 目标已经在 30% 以下（例如先前的攻击已把它打残），这一击直接打死它：仍然要留下可捕捉的 NPC。
+  assert.equal(director.healthChanged(quest.targetChanges![0].enemyId,20,0,100,source),true);
+  await setImmediate();
+  const target=session.storyWorld.projectEntities(source.map,[]).find(entity=>entity.id==='quest-target:'+source.id);
+  assert.ok(target,'击杀没有留下可捕捉的目标');
+  assert.equal(session.enemyVitals(source.id).deadUntil,'permanent');
+  director.dispose();
+});
+
 test('a task with two transformed targets requires both interactions and keeps a captured target across a save',()=>{
   const {quest,session,content}=fixture('quest-94');session.accept(quest.id);
   assert.equal(quest.goals.length,2);
+  session.applyStoryCommands([{type:'travel',destination:{map:'field',x:40,y:40,facing:'south'}}]);
   const first=quest.targetChanges![0];
   session.weakenQuestTarget(first.enemyId,{id:'first',map:'field',x:40,y:40});
   const restored=new Session(content);restored.restoreState(session.captureState());

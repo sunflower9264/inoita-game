@@ -480,9 +480,11 @@ export class Session {
     if(!match||!this.canSpawnEnemy({...source,enemyId}))return false;
     this.transaction(()=>{
       this.applyStoryCommands([
-        {type:'world',command:{kind:'place',entity:{id:'quest-target:'+source.id,map:source.map,actor:match.change.actor,
+        // 捕捉目标只在这次进图有效：`place` 按 `scope` 决定访问寿命，传进命令里的 `mapVisit`
+        // 会被它覆盖；不带 scope 的话，离图后 NPC 还留在世界里，可捕捉状态却已随进图清掉。
+        {type:'world',command:{kind:'place',scope:'visit',entity:{id:'quest-target:'+source.id,map:source.map,actor:match.change.actor,
           characterId:match.quest.goals.find(goal=>goal.id===match.change.goal)?.characterId,
-          mapVisit:this.storyWorld.visit,x:source.x,y:source.y,visible:true,hint:match.change.interactText||match.change.changedText}}},
+          x:source.x,y:source.y,visible:true,hint:match.change.interactText||match.change.changedText}}},
       ]);
       // 转换不会调用原版死亡重置；本次地图仍占用源槽，离图后重新登记。
       this.enemyStates.set(source.id,{health:1,deadUntil:'permanent',capture:{map:source.map,visit:this.storyWorld.visit}});
