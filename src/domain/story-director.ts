@@ -27,6 +27,8 @@ export interface StoryWorldPort {
   restore(snapshot: unknown, signal: AbortSignal): Promise<void>;
   project(stage: StoryStageSnapshot | undefined, signal: AbortSignal): Promise<void>;
   checkpoint(): void;
+  /** 一次剧情播放正常交还操作权后的收尾；取消/报错不调用。 */
+  settle?(): void | Promise<void>;
 }
 interface PlaybackBaseline { session: SessionState; world?: unknown; stage?: StoryStageSnapshot }
 
@@ -249,7 +251,15 @@ export class StoryDirector {
   dispose(): void { this.disposed = true; this.deferredTriggers.length = 0; this.unsubscribe(); this.unsubscribeDefeats(); this.cancel(); }
   private async request(result: Promise<boolean>): Promise<boolean> {
     this.presentationStarted = false;
-    try { const played = await result; await this.cleanup; return played; }
+    try {
+      const played = await result; await this.cleanup;
+      if (played) {
+        await this.world?.settle?.();
+        // 收拢也是正式位置的一部分；事件检查点要记录收拢后的站位，死亡回滚才不会把人送回障碍后。
+        this.world?.checkpoint?.();
+      }
+      return played;
+    }
     catch (error) { try { await this.cleanup; } catch {} throw error; }
   }
   private async prepare(node: StoryNode, context: StoryPlaybackContext): Promise<void> {

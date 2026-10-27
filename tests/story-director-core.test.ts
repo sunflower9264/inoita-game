@@ -84,6 +84,19 @@ test('a following script run releases the previous stage instead of inheriting i
     '第二段脚本要先收起上一段舞台，再从正式世界取景');
 });
 
+test('a settled story playback asks the world to regroup friendly units once',async()=>{
+  let settles=0,busyAtSettle:boolean|undefined;
+  const order:string[]=[];
+  const play=node('play');
+  const presentation:StoryPresentationPort={begin(){},async execute(){},async finish(){},async release(){}};
+  const world:StoryWorldPort={capture:()=>undefined,restore:async()=>{},checkpoint:()=>{order.push('checkpoint');},project:async()=>{},
+    settle:()=>{settles++;busyAtSettle=director.busy;order.push('settle');}};
+  const h=harness([play],presentation,world),director=h.director;
+  await director.start();
+  assert.equal(settles,1);assert.equal(busyAtSettle,false,'收尾时导演已经不再是忙碌状态');
+  assert.deepEqual(order.slice(-2),['settle','checkpoint'],'收拢后的站位要写进事件检查点');
+});
+
 test('a hidden quest popup action is skipped without blocking the node',async()=>{
   const popup=node('popup',[],{type:'next',target:{script:'demo',node:'after'}});
   popup.presentation=[{type:'quest-popup',kind:'complete',quest:'quest-61'}];

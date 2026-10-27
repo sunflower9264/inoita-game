@@ -404,6 +404,7 @@ function installSession(session: Session): void {
     restore: async (snapshot, signal) => { await worldScene()?.restoreStoryWorld(snapshot, signal); },
     project: async (stage, signal) => { await worldScene()?.projectStoryWorld(stage, signal); },
     checkpoint: () => worldScene()?.checkpointStoryWorld(),
+    settle: () => worldScene()?.settleStoryPlayback(),
     prepare: async (commands, signal, stage, script) => {
       const scene = worldScene();
       // 完整进图素材在这里只发起、不等待：当前对白/演出不该被整图加载拖住，

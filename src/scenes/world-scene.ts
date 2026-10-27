@@ -1452,6 +1452,16 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
     await this.restartStoryWorld(state.location,signal,state.world,state.generatedEntities,false,state.scene);
     signal.throwIfAborted();if(state.audio)this.app.audio?.restoreStoryAudio(state.audio);
   }
+  /**
+   * 剧情正常交还操作权后，把被剧情障碍或战斗留在远处的友方单位收拢到主角身边。
+   * 取消、换图、回滚和菜单仍然走各自的快照/落位路径，不在这里重复移动。
+   */
+  settleStoryPlayback():void {
+    if(this.destroyed||this.loadingWorld||this.stageOccluded||!this.map||!this.player||!this.movement||!this.combat)return;
+    if(this.app.ui?.mode!=='game'||this.app.suspended)return;
+    if(this.app.director?.busy)return;
+    this.combat.settleFriendlyUnitsAroundHero();
+  }
   async projectStoryWorld(stage:StoryStageSnapshot|undefined,signal:AbortSignal,restoredLocation?:TravelDestination):Promise<void>{
     signal.throwIfAborted();
     const location=this.app.session.storyWorld.currentLocation;

@@ -148,6 +148,18 @@ test('defeat checkpoint restores complete world state and closes its panel befor
   assert.deepEqual(calls,['input','cancel','session','world','close','retry']);
 });
 
+test('story settlement only regroups friendly units while the formal game world is active',()=>{
+  const f=fixture();let settles=0;
+  const app=f.state.app as unknown as {ui:{mode:string;setWorldRebuildCover(covered:boolean):void};suspended?:boolean};
+  Object.assign(app.ui,{mode:'game'});app.suspended=false;
+  (f.state.combat as typeof f.state.combat & {settleFriendlyUnitsAroundHero():void}).settleFriendlyUnitsAroundHero=()=>{settles++;};
+  f.scene.settleStoryPlayback();assert.equal(settles,1);
+  app.ui.mode='menu';f.scene.settleStoryPlayback();assert.equal(settles,1,'菜单界面不能移动主角');
+  app.ui.mode='game';app.suspended=true;f.scene.settleStoryPlayback();assert.equal(settles,1,'后台挂起时不移动');
+  app.suspended=false;(app as typeof app & {director?:{busy:boolean}}).director={busy:true};
+  f.scene.settleStoryPlayback();assert.equal(settles,1,'下一段演出已经接管时不抢着移动');
+});
+
 test('cross-map story projection rebuilds the world without covering the stage with loading',async()=>{
   const f=fixture();f.location({map:'destination',x:80,y:90,facing:'south'});
   await f.scene.projectStoryWorld(undefined,new AbortController().signal);

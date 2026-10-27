@@ -12,7 +12,9 @@ hook.deregister();
 
 const body={x:-8,y:-8,width:16,height:16};
 interface TestVisual { id:string; actor:{collision:typeof body;clips:Record<string,never>}; container:{active:boolean;visible:boolean} }
-interface TestAlly { id:string; visual:TestVisual; member:{player:{health:number}}; facing:'south'; ai:{cancel():void} }
+interface TestAlly { id:string; visual:TestVisual; member:{player:{health:number}}; facing:'south'; ai:{cancel():void;actionState():string;selectedTargetId():string|undefined} }
+interface TestEnemy { key:string; visual:TestVisual; facing:'south'; summonedBy?:string; summonRemainingMs?:number;
+  controller?:{cancel():void;actionState():string} }
 
 function fixture(options:{sealed?:boolean;wall?:boolean}={}){
   const blocked=Array<boolean>(40*40).fill(!!options.sealed);
@@ -38,20 +40,23 @@ function fixture(options:{sealed?:boolean;wall?:boolean}={}){
       assert.equal(navigation.canPlaceBody(actor.shape(),point,actor),true,'落点整盒不能压地形或叠人');
       Object.assign(positions.get(visual)!,point);moved.push(visual.id);
     },
+    placeAll:(values:{visual:TestVisual;position:Point}[])=>{
+      for(const value of values){Object.assign(positions.get(value.visual)!,value.position);moved.push(value.visual.id);}
+    },
     stop:()=>{},
   };
   const party={activeIds:['player','companion','second'],controlledId:'companion',
     switchControl:()=>{switches+=1;return true;}};
   function ally(id:string,point:Point):TestAlly{
     const visual=addVisual(id,point);
-    return {id,visual,member:{player:{health:50}},facing:'south',ai:{cancel(){cancelled.push(id);}}};
+    return {id,visual,member:{player:{health:50}},facing:'south',ai:{cancel(){cancelled.push(id);},actionState:()=> 'idle',selectedTargetId:()=>undefined}};
   }
   const allies=[ally('companion',{x:64,y:64}),ally('second',{x:600,y:600})];
   const state={app:{session:{party}},scene:{player:hero,facing:'south'},movement,allies,
-    fallen:new Set<string>(),closed:false};
+    arena:[] as TestEnemy[],pendingDefeats:new Set<string>(),fallen:new Set<string>(),closed:false};
   const combat=Object.setPrototypeOf(state,WorldCombat.prototype) as unknown as InstanceType<typeof WorldCombat>;
   return {combat,navigation,positions,actors,party,hero,allies,moved,cancelled,fallen:state.fallen,
-    switches:()=>switches};
+    addVisual,arena:state.arena,pendingDefeats:state.pendingDefeats,switches:()=>switches};
 }
 
 test('regrouping pulls every living ally beside the hero without changing the controlled member',()=>{
@@ -78,6 +83,51 @@ test('a stuck follower is pulled beside the controlled member without moving the
   assert.ok(Math.hypot(point.x-hero.x,point.y-hero.y)<=64,'收拢落点应该在队长身边');
   assert.ok(f.cancelled.includes('second'),'收拢前要清掉这名队员的旧寻路');
   assert.deepEqual(f.positions.get(other.visual),otherBefore,'只移动卡住的那名队员');
+});
+
+test('story settlement moves far or trapped allies and friendly summons, but not nearby or hostile units',()=>{
+  const f=fixture();f.party.controlledId='player';
+  Object.defineProperty(f.combat,'memberOf',{value:(id:string)=>id==='player'?{player:{health:100}}:undefined});
+  Object.defineProperty(f.combat,'isActorAlive',{value:(id:string)=>id==='summon-1'});
+  let summonCancels=0;
+  const summonVisual=f.addVisual('summon',{x:80,y:80});
+  f.arena.push({key:'summon-1',visual:summonVisual,facing:'south',summonedBy:'player',
+    controller:{cancel(){summonCancels++;},actionState:()=> 'idle'}});
+  const hostileVisual=f.addVisual('hostile',{x:300,y:300});
+  f.arena.push({key:'hostile',visual:hostileVisual,facing:'south'});
+  const near=f.allies[1]!,nearPosition=f.positions.get(near.visual)!;
+  nearPosition.x=460;nearPosition.y=500;
+  const far=f.allies[0]!,hostileBefore={...f.positions.get(hostileVisual)!};
+  f.combat.settleFriendlyUnitsAroundHero();
+  const hero=f.positions.get(f.hero)!;
+  for(const visual of [far.visual,summonVisual]){
+    const point=f.positions.get(visual)!;
+    assert.ok(Math.hypot(point.x-hero.x,point.y-hero.y)<=64,`${visual.id} 应该被收拢到主角身边`);
+  }
+  assert.deepEqual(f.positions.get(near.visual),{x:460,y:500},'已经在主角身边的队员不移动');
+  assert.deepEqual(f.positions.get(hostileVisual),hostileBefore,'敌对单位不受剧情收尾影响');
+  assert.equal(summonCancels,1);
+});
+
+test('story settlement does not pull allies while a battle target is active',()=>{
+  const f=fixture();f.party.controlledId='player';
+  (f.combat as unknown as {focusTargetId?:string}).focusTargetId='enemy-target';
+  const far=f.allies[0]!,before={...f.positions.get(far.visual)!};
+  f.combat.settleFriendlyUnitsAroundHero();
+  assert.deepEqual(f.positions.get(far.visual),before);
+  assert.ok(!f.moved.includes(far.id));
+});
+
+test('stage-only hidden combat actors do not disable or move the formal battle enemy',()=>{
+  const f=fixture();
+  const visual=f.addVisual('enemy-shin',{x:100,y:100});
+  f.arena.push({key:'enemy-shin',visual,facing:'south'});
+  Object.defineProperty(f.combat,'isActorAlive',{value:()=>true});
+  f.combat.adoptStoryPositions([
+    {id:'enemy:enemy-shin',actor:'enemy-shin-1',enemyKey:'enemy-shin',x:200,y:200,facing:'south',visible:false,stageHidden:true},
+  ]);
+  assert.deepEqual(f.positions.get(visual),{x:100,y:100},'仅为舞台隐藏的敌人不能把正式敌人停用或挪走');
+  assert.ok(!f.moved.includes('enemy-shin'));
 });
 
 test('regrouping never places an ally on the other side of a wall',()=>{

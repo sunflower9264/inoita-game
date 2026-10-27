@@ -2005,6 +2005,45 @@ captureStoryActors():SceneActorState[] {
       setCharacterClip(this.scene,ally.visual,`idle-${ally.facing}`,true);
     }
   }
+  /** 是否该在剧情收尾时把单位拉回主角身边：太远，或整盒已经不合法的位置。 */
+  private shouldSettleFriendly(visual:CharacterVisual,actor:NavigationActor):boolean {
+    const position=this.movement!.position(visual),hero=this.movement!.position(this.player);
+    if(Math.hypot(position.x-hero.x,position.y-hero.y)>64)return true;
+    const navigation=this.movement!.navigation;
+    return !navigation.terrainFree(position)||!navigation.canPlaceBody(actor.shape(),position,actor);
+  }
+  /**
+   * 剧情正常结束后，把掉队或被剧情障碍困住的佣兵、友方召唤物收拢到主角身边。
+   * 只处理远离或位置非法的单位；已经站好的队形和正在攻击/施法的单位不动。
+   */
+  settleFriendlyUnitsAroundHero():void {
+    if(this.closed||!this.movement||!this.scene.player)return;
+    // 战斗编组期间不做剧情收尾；正在追击的队员也会在下面单独跳过。
+    if(this.focusTargetId||this.app.session.storyWorld?.activeEncounters.length)return;
+    for(const id of this.activeParty){
+      if(id==='player')continue;
+      const ally=combatActor(this.allies,id,actor=>actor.id);
+      if(!ally||!ally.member.player.health||this.fallen.has(id)||!ally.visual.container.active)continue;
+      const actor=this.movement.actor(ally.visual);
+      if(ally.ai.actionState()!=='idle'||ally.ai.selectedTargetId()||!this.shouldSettleFriendly(ally.visual,actor))continue;
+      const landing=this.partyLanding(actor.shape(),actor);
+      if(!landing)continue;
+      ally.ai.cancel();this.movement.place(ally.visual,landing);
+      setCharacterClip(this.scene,ally.visual,`idle-${ally.facing}`,true);
+    }
+    for(const enemy of this.arena){
+      if(!enemy.summonedBy||!this.memberOf(enemy.summonedBy)||this.pendingDefeats.has(enemy.key)
+        ||!this.isActorAlive(enemy.key)||!enemy.visual.container.active)continue;
+      if(enemy.summonRemainingMs!==undefined&&enemy.summonRemainingMs<=0)continue;
+      if(enemy.controller&&'actionState' in enemy.controller&&enemy.controller.actionState()!=='idle')continue;
+      const actor=this.movement.actor(enemy.visual);
+      if(!this.shouldSettleFriendly(enemy.visual,actor))continue;
+      const landing=this.partyLanding(actor.shape(),actor);
+      if(!landing)continue;
+      enemy.controller?.cancel();this.movement.place(enemy.visual,landing);
+      setCharacterClip(this.scene,enemy.visual,`idle-${enemy.facing}`,true);
+    }
+  }
   /**
    * 单个佣兵跟随队长长时间没有进展时，把他收拢到队长旁边的合法落点。
    * 与剧情转场后的整队收拢共用落点规则，但只动这一名队员。
