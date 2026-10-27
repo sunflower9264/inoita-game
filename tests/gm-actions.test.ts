@@ -206,10 +206,9 @@ test('recoverParty heals living members and leaves fallen ones to the combat por
   assert.equal(member.player.health, 0, '没有战斗场景时不擅自复活');
 });
 
-test('items excludes expansion bags and pickup-only items, filters and reports owned counts', () => {
+test('items excludes pickup-only items, filters and reports owned counts', () => {
   const { session, gm } = harness();
   const all = gm.items();
-  assert.ok(!all.some(entry => entry.id === 'handbag'));
   assert.ok(!all.some(entry => entry.id === 'mana-gem'));
   assert.ok(all.length > 1000);
 
@@ -234,7 +233,7 @@ test('giveItem adds the requested quantity and refuses excluded items and bad co
   assert.equal(result.total, before + 3);
   assert.equal(session.bag.count('healing-potion-s'), before + 3);
 
-  for (const item of ['handbag', 'small-bag', 'mana-gem', 'nope']) {
+  for (const item of ['mana-gem', 'nope']) {
     assert.equal(gm.giveItem(item, 1).ok, false, item);
   }
   for (const quantity of [0, -1, 1.5, 1000]) {

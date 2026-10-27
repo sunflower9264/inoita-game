@@ -199,7 +199,7 @@ const effectLayer=shape<EffectLayer>({key:text,file,operations:array(oneOf(...EF
 const effectClip=shape<EffectClip>({version:integer,frameWidth:positive,frameHeight:positive,frames:positive,originX:number,originY:number,frameRate:positive,mirrorX:boolean,layers:array(effectLayer)});
 const itemCatalog=shape<ItemCatalog>({items:record(object({name:text,description:text,descriptionParts:optional(descriptionParts),category:oneOf(...ITEM_CATEGORIES),icon:file,groundSprite:object({file,width:count,height:count,anchorX:integer,anchorY:integer}),
   pickup:optional(object({kind:oneOf('party-mana'),percentOfCollectorMaxMana:positive,hitDrop:object({rollMaximum:count,skillThreshold:count,weaponThresholds:record(integer),jitterPx:integer,directions:array(object({name:text,x:number,y:number,clip:effectClip}))})})),
-  kind:text,typeName:text,bagSlots:optional(count),stackable:boolean,discardable:boolean,sellable:boolean,priceKind:oneOf('weapon','armor','accessory','fixed'),pricePremium:boolean,shortcut:boolean,level:integer,basePrice:integer,storeListed:boolean,
+  kind:text,typeName:text,stackable:boolean,discardable:boolean,sellable:boolean,priceKind:oneOf('weapon','armor','accessory','fixed'),pricePremium:boolean,shortcut:boolean,level:integer,basePrice:integer,storeListed:boolean,
   equipment:optional(object({slot:oneOf(...EQUIPMENT_SLOTS),classes:strings,twoHanded:boolean,dualWield:boolean,locked:boolean,socketCapacity:integer,enchantable:boolean,
     description:optional(object({showEnhancementUses:boolean,attackSpeed:optional(text),classAttributes:descriptionParts}))})),
   use:optional(object({kind:oneOf(...ITEM_USES),recovery:optional(variant('mode',{amount:object({mode:oneOf('amount'),minHealth:count,maxHealth:count,restoresMana:boolean,cooldownMs:count}),rate:object({mode:oneOf('rate'),ratePercent:count,restoresMana:boolean,cooldownMs:count})})),regenerate:optional(object({durationMs:count,healthRecoveryPerPulse:count,manaRecoveryPerPulse:count})),rewards:optional(array(object({item:text,quantity:count}))),classId:optional(text),elite:optional(boolean),recipes:optional(strings),
@@ -211,8 +211,6 @@ export function parseItemCatalog(value:unknown):ItemCatalog {
   const classes=Object.keys(result.startingEquipment);
   requireValue(classes.length===6,'items.startingEquipment','需要六个职业');
   for(const [id,item]of Object.entries(result.items)) {
-    requireValue((item.kind==='bag')===!!item.bagSlots,id,'背包需要定义格数');
-    if(item.bagSlots)requireValue([4,8,12,16].includes(item.bagSlots)&&!item.stackable&&!item.use&&!item.equipment,id,'背包格数无效');
     requireValue(!!item.equipment===(item.category==='equipment'),id,'装备分类与穿戴规则不一致');
     if(item.equipment){requireValue(!item.stackable,id,'装备按实例存放');for(const key of item.equipment.classes)requireValue(classes.includes(key),id,'职业引用不存在');}
     if(item.pickup){

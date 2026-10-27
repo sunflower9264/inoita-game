@@ -12,7 +12,7 @@ import type { CompanionCatalog } from '../src/domain/party.ts';
 
 const read=<T>(name:string):T=>JSON.parse(readFileSync(new URL(`../public/content/${name}.json`,import.meta.url),'utf8')) as T;
 const items=read<ItemCatalog>('items'),campaign=read<Campaign>('campaign');
-const normalItems=Object.keys(items.items).filter(id=>items.items[id].category!=='quest'&&!items.items[id].pickup&&!items.items[id].bagSlots);
+const normalItems=Object.keys(items.items).filter(id=>items.items[id].category!=='quest'&&!items.items[id].pickup);
 const questItems=Object.keys(items.items).filter(id=>items.items[id].category==='quest');
 const makeBag=()=>new Bag(()=>{},items,'assassin');
 function makeSession(id='quest-181'):Session {
@@ -31,17 +31,17 @@ test('ordinary and quest inventories grow past sixteen cells and survive JSON re
   assert.deepEqual(restored.captureState(),bag.captureState());
 });
 
-test('task 181 grants its handbag directly once with more than sixteen ordinary items',()=>{
+test('task 181 grants replacement potions directly once with more than sixteen ordinary items',()=>{
   const run=makeSession();
-  assert.deepEqual(run.definition('quest-181')!.rewards!.items,[{item:'handbag',quantity:1}]);
+  assert.deepEqual(run.definition('quest-181')!.rewards!.items,[{item:'healing-potion-m',quantity:2}]);
   for(const id of normalItems.slice(0,32))run.bag.add(id);
   assert.equal(run.accept('quest-181'),true);
-  const goal=run.definition('quest-181')!.goals[0];
+  const before=run.itemCount('healing-potion-m'),goal=run.definition('quest-181')!.goals[0];
   for(let index=0;index<goal.quantity;index++)run.enemyDefeated({id:`mosquito-${index}`,enemyId:goal.target,x:8,y:8});
   assert.equal(run.complete('quest-181'),true);
-  assert.equal(run.itemCount('handbag'),1);
+  assert.equal(run.itemCount('healing-potion-m'),before+2);
   assert.equal(groundLootFor(run).forMap(campaign.start.map).length,0);
-  assert.equal(run.complete('quest-181'),false);assert.equal(run.itemCount('handbag'),1);
+  assert.equal(run.complete('quest-181'),false);assert.equal(run.itemCount('healing-potion-m'),before+2);
   run.bag.verifyConsistency();
 });
 
@@ -58,13 +58,12 @@ test('story companion equipment returns beyond sixteen cells and remains saveabl
   assert.deepEqual(restored.captureState(),run.captureState());
 });
 
-test('task 88 retains the native small bag as a normal physical reward',()=>{
+test('task 88 grants replacement potions as a normal physical reward',()=>{
   const run=makeSession('quest-88'),quest=run.definition('quest-88')!;
-  assert.deepEqual(quest.rewards!.items,[{item:'small-bag',quantity:1}]);
+  assert.deepEqual(quest.rewards!.items,[{item:'healing-potion-l',quantity:2}]);
   assert.equal(run.accept(quest.id),true);run.bag.add(quest.goals[0].target,quest.goals[0].quantity);run.emit();
-  assert.equal(run.complete(quest.id),true);assert.equal(run.itemCount('small-bag'),1);
-  // 它现在是背包里的普通物品：留在网格里，不需要再「装备」到哪儿去。
-  assert.equal(run.bag.entries.filter(entry=>entry.item==='small-bag').length,1);
+  assert.equal(run.complete(quest.id),true);assert.equal(run.itemCount('healing-potion-l'),2);
+  assert.equal(groundLootFor(run).forMap(campaign.start.map).length,0);
   run.bag.verifyConsistency();
 });
 

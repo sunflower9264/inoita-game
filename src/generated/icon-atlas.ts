@@ -2,7 +2,7 @@
 export const UI_ICON_ATLAS_FILE = "assets/ui/menu-icons.png";
 export const UI_ICON_ATLAS_DATA = "assets/ui/menu-icons.json";
 export const UI_ICON_ATLAS_KEY = "interface:assets/ui/menu-icons.png";
-export const UI_ICON_SOURCE_DIGEST = "fec92e1d96ed620ad5a35a53db51dddeb82c943e4c3826196eee5bed09568983";
+export const UI_ICON_SOURCE_DIGEST = "31a89fcddd211c9e5018152291dc3cc5513f6ae735367ce78db3662f208989f8";
 export const UI_ICON_FRAMES: Readonly<Record<string, string>> = {
   "assets/skills/aimed-shot.png": "assets/skills/aimed-shot.png",
   "assets/skills/ambush.png": "assets/skills/ambush.png",
@@ -118,7 +118,6 @@ export const UI_ICON_FRAMES: Readonly<Record<string, string>> = {
   "assets/skills/weapon-specializing.png": "assets/skills/weapon-specializing.png",
   "assets/skills/whist.png": "assets/skills/whist.png",
   "assets/skills/wrath-of-darkness.png": "assets/skills/wrath-of-darkness.png",
-  "assets/ui/items/item_001.png-1.png": "assets/ui/items/item_001.png-1.png",
   "assets/ui/items/item_001.png-10.png": "assets/ui/items/item_001.png-10.png",
   "assets/ui/items/item_001.png-11.png": "assets/ui/items/item_001.png-11.png",
   "assets/ui/items/item_001.png-12.png": "assets/ui/items/item_001.png-12.png",

@@ -53,7 +53,6 @@ test('native weapon and armor categories are exact, independent of equipment slo
   }
   assert.equal(open(s).shop.categories.length,0);assert.throws(()=>weapons.selectCategory('necklace'));
   assert.equal(Object.keys(shops.shops).length,18);
-  for(const shop of Object.values(shops.shops))assert.ok(!shop.fixedStock.some(id=>/^(handbag|small-bag)$/.test(id)));
 });
 
 test('unlimited equipment copies keep the displayed grade and attributes, with separate identities',()=>{

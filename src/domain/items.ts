@@ -51,8 +51,6 @@ export interface ManaPickup {
     directions:{name:string;x:number;y:number;clip:EffectClip}[]};
 }
 export interface ItemDefinition extends StoryItem {
-  /** Slots supplied by this physical bag after installation in an extension slot. */
-  bagSlots?:number;
   descriptionParts?: DescriptionTextPart[];
   pickup?:ManaPickup;
   groundSprite: GroundItemSprite;

@@ -305072,8 +305072,8 @@
         "money": 0,
         "items": [
           {
-            "item": "small-bag",
-            "quantity": 1
+            "item": "healing-potion-l",
+            "quantity": 2
           }
         ]
       },
@@ -314769,8 +314769,8 @@
         "money": 0,
         "items": [
           {
-            "item": "handbag",
-            "quantity": 1
+            "item": "healing-potion-m",
+            "quantity": 2
           }
         ]
       },

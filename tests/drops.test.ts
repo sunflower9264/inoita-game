@@ -23,31 +23,13 @@ test('fixed rewards and coin amount use independent death rolls',()=>{
   ]);
 });
 
-test('a successful random slot can select a level tier, excluded bag, or empty range',()=>{
+test('a successful random slot can select a level tier, an empty slot, or empty range',()=>{
   const rule:EnemyDropRule={level:20,pool:'ordinary',rolls:1,chances:{...chances(),consumable:9999},fixed:[]};
   const data=catalog(rule);
   assert.deepEqual(rollEnemyDrops(data,'enemy',20,random(0,0)),[{kind:'item',item:'potion',quantity:1}]);
   assert.deepEqual(rollEnemyDrops(data,'enemy',20,random(0,.55)),[]);
   assert.deepEqual(rollEnemyDrops(data,'enemy',20,random(0,.9)),[]);
   assert.equal(parseDrops(data,items,['enemy']).enemies.enemy.pool,'ordinary');
-});
-
-test('published drop pools keep bag weights as empty results instead of dropping them',()=>{
-  const read=<T>(name:string)=>JSON.parse(readFileSync(new URL(`../public/content/${name}.json`,import.meta.url),'utf8')) as T;
-  const items=read<ItemCatalog>('items'),drops=read<DropCatalog>('drops');
-  const bags=new Set(Object.entries(items.items).filter(([,item])=>item.kind==='bag').map(([id])=>id));
-  assert.ok(bags.size>=4,'背包类物品仍保留在物品目录');
-  const seen:string[]=[];
-  for(const [poolName,pool] of Object.entries(drops.pools))for(const choices of Object.values(pool))for(const choice of choices??[]){
-    for(const id of choice.tiers?choice.tiers.map(tier=>tier.item):[choice.item]){
-      if(id&&bags.has(id))seen.push(`${poolName}:${id}`);
-    }
-  }
-  for(const [enemyId,rule] of Object.entries(drops.enemies))for(const choice of rule.fixed){
-    if(bags.has(choice.item))seen.push(`${enemyId}:${choice.item}`);
-  }
-  assert.deepEqual(seen,[],'掉落池与固定掉落不再产出扩容背包');
-  assert.ok(drops.pools.ordinary.misc?.some(choice=>choice.item===null),'原版权重保留为空结果，不把概率让给别的物品');
 });
 
 test('fixed-only enemies settle three independent drop passes',()=>{

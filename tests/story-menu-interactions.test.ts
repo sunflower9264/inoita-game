@@ -1423,7 +1423,6 @@ test('the GM item page scrolls addable items, shows details and gives a chosen q
 
   const slots = () => f.scene.nodes.filter(node => node.shown && String(node.getData('label') ?? '').startsWith('道具 '));
   assert.equal(slots().length, gm.items().length, '所有可发放物品都在同一个滚动列表里');
-  assert.ok(!slots().some(node => node.getData('label') === '道具 handbag'));
   assert.ok(!slots().some(node => node.getData('label') === '道具 mana-gem'));
 
   f.scene.click(f.scene.button('过滤 装备'));

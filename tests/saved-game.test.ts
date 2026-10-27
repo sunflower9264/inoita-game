@@ -45,6 +45,16 @@ test('the previous published save format restores without its missing scene snap
   assert.deepEqual(saved,before,'升级不改写槽里的原件');
 });
 
+test('old saves containing removed expansion bags migrate to consumables',()=>{
+  const saved=record(),bag=saved.session.bag;
+  const equipped=new Set([...Object.values(bag.worn),...bag.companionEquipment.flatMap(([,equipment])=>Object.values(equipment))]);
+  const entry=bag.instances.find(value=>!equipped.has(value.id))!;
+  entry.item='handbag';
+  const before=structuredClone(saved),candidate=prepareSavedGame(saved,content);
+  assert.equal(candidate.session.bag.get(entry.id)?.item,'healing-potion-m');
+  assert.deepEqual(saved,before,'旧档迁移不改写槽里的原件');
+});
+
 test('invalid class, map, position and actors are rejected without changing the saved input',()=>{
   for(const change of [
     (game:ReturnType<typeof record>)=>{game.summary.classId='missing';},

@@ -40,9 +40,31 @@ function upgradeSavedGame(game:SaveGame<StoryWorldViewSnapshot>):SaveGame<StoryW
   }
   return upgraded;
 }
+/** 已删除的扩容背包在旧档里换成可用的消耗品，避免删内容后旧进度读不出来。 */
+const LEGACY_BAG_REPLACEMENTS:Record<string,string>={
+  handbag:'healing-potion-m','small-bag':'healing-potion-l',backpack:'healing-potion-xl','infinity-bag':'elixir'};
+function migrateLegacyBagItems(game:SaveGame<StoryWorldViewSnapshot>):SaveGame<StoryWorldViewSnapshot>{
+  const session=game.session,legacy=(id:string|undefined)=>!!id&&LEGACY_BAG_REPLACEMENTS[id]!==undefined;
+  const needsMigration=
+    session.bag.instances.some(entry=>legacy(entry.item))||
+    session.bag.shortcuts.some(([,row])=>row.some(slot=>slot?.kind==='item'&&legacy(slot.id)))||
+    session.receipts.some(receipt=>receipt.reward.items.some(item=>legacy(item.item)))||
+    session.groundLoot.drops.some(drop=>drop.reward.kind==='item'&&(legacy(drop.reward.item)||legacy(drop.reward.instance?.item)));
+  if(!needsMigration)return game;
+  const migrated=structuredClone(game),s=migrated.session;
+  const replace=(id:string)=>LEGACY_BAG_REPLACEMENTS[id]??id;
+  for(const entry of s.bag.instances)entry.item=replace(entry.item);
+  for(const [,row] of s.bag.shortcuts)for(const slot of row)if(slot?.kind==='item')slot.id=replace(slot.id);
+  for(const receipt of s.receipts)for(const item of receipt.reward.items)item.item=replace(item.item);
+  for(const drop of s.groundLoot.drops)if(drop.reward.kind==='item'){
+    drop.reward.item=replace(drop.reward.item);
+    if(drop.reward.instance)drop.reward.instance.item=replace(drop.reward.instance.item);
+  }
+  return migrated;
+}
 /** 候选会话独立于当前游戏，坏记录在切换场景之前被拒绝。 */
 export function prepareSavedGame(game:SaveGame<StoryWorldViewSnapshot>,content:SavedGameContent){
-  const upgraded=upgradeSavedGame(game);
+  const upgraded=migrateLegacyBagItems(upgradeSavedGame(game));
   const selected=content.storyClasses.classes.find(entry=>entry.id===upgraded.summary.classId);
   if(!selected)throw new Error('存档记录的职业在当前内容里不存在');
   const world=structuredClone(upgraded.world),location=world?.location;

@@ -273,7 +273,7 @@ export class GmPanel {
     // 详情画在装配方提供的说明层上（与背包详情同一套面板）；关闭后重画本页。
     if (this.itemDetail && this.references.itemDetail)
       this.references.itemDetail(this.itemDetail, () => { this.itemDetail = undefined; this.hooks.render(); });
-    return `共 ${entries.length} 件；不含扩容背包与地面拾取物品。`;
+    return `共 ${entries.length} 件；不含地面拾取物品。`;
   }
 
   private stepQuantity(delta: number): void {

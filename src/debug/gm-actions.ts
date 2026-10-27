@@ -160,7 +160,7 @@ export interface GmActions {
   setInvincible(id: string, enabled: boolean): GmResult;
   /** 切换某个角色的技能无冷却。 */
   setNoCooldown(id: string, enabled: boolean): GmResult;
-  /** 可发放物品：排除扩容背包与地面拾取物。 */
+  /** 可发放物品：排除只能地面拾取的物品。 */
   items(filter?: GmItemFilter): readonly GmItemEntry[];
   /** 把指定数量加入背包。 */
   giveItem(item: string, quantity?: number): GmGiveResult;
@@ -470,7 +470,7 @@ export function createGmActions(ports: GmPorts): GmActions {
       const definitions = session.bag.catalog.items;
       const counts = session.bag.counts;
       const eligible = Object.entries(definitions).filter(([, definition]) =>
-        definition.kind !== 'bag' && !definition.pickup && (filter === 'all' || definition.category === filter));
+        !definition.pickup && (filter === 'all' || definition.category === filter));
       // 与背包整理共用同一套「分类 → 中文自然序 → id」，面板和 CLI 看到的顺序一致。
       return organizedInventory(new Map(eligible.map(([id]) => [id, 1] as const)), definitions)
         .map(([id]) => {
@@ -482,7 +482,6 @@ export function createGmActions(ports: GmPorts): GmActions {
     giveItem: (item, quantity = 1) => run('giveItem', [item, quantity], () => {
       const definition = session.bag.catalog.items[item];
       if (!definition) return { ok: false, reason: `未找到物品：${item}` };
-      if (definition.kind === 'bag') return { ok: false, reason: '扩容背包不通过 GM 发放' };
       if (definition.pickup) return { ok: false, reason: '该物品只能在地面拾取，不能直接发放' };
       if (!Number.isSafeInteger(quantity) || quantity <= 0) return { ok: false, reason: '数量必须是正整数' };
       if (quantity > 999) return { ok: false, reason: '单次最多发放 999 个' };
