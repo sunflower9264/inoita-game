@@ -5,6 +5,8 @@ import {readFileSync} from 'node:fs';
 import test from 'node:test';
 import type {ActionPlayback} from '../src/domain/combat.ts';
 import type {SkillFeedbackEvent,BattleCatalog,SkillAction} from '../src/domain/battle.ts';
+import type {CombatFeedbackSelection} from '../src/domain/combat-feedback.ts';
+import {displaySettings} from '../src/application/display-settings.ts';
 import {skillEffectNames,skillSoundNames} from '../src/domain/skill-action.ts';
 import {CombatCooldownStore} from '../src/domain/combat-cooldowns.ts';
 const hook=registerHooks({resolve(specifier,context,next){return specifier==='phaser'
@@ -48,6 +50,34 @@ test('mercenary basic attacks use their own weapon sound instead of staying sile
   Reflect.get(WorldCombat.prototype,'showHit').call(host,
     {casterId:'companion',targetId:'enemy-x'},{kind:'hit',damage:1},{sound:true});
   assert.deepEqual(calls,[['sword','hit','enemy-x']]);
+});
+
+test('world hit feedback follows the critical decoration preference',t=>{
+  displaySettings.setCriticalDecorations(false);
+  t.after(()=>displaySettings.setCriticalDecorations(true));
+  const shown:CombatFeedbackSelection[]=[];let flashes=0;
+  const host=Object.setPrototypeOf({
+    controlledId:'player',arena:[{key:'enemy-x',definition:{id:'enemy-x'}}],
+    memberOf:(id:string)=>id==='player'?{id}:undefined,
+    hero:{bag:{equipmentFor:()=>({}),equipmentItems:()=>({})}},
+    app:{items:{items:{}},battleCatalog:catalog,audio:{playerHit:()=>{},monsterAttack:()=>{}}},
+    visualOf:()=>({container:{active:true}}),
+    feedback:{show:(_event:unknown,_target:unknown,selection:CombatFeedbackSelection)=>shown.push(selection)},
+    statusColors:{flash:()=>{flashes++;}},
+    scene:{events:{emit:()=>{}}},
+  },WorldCombat.prototype);
+  const hit={casterId:'player',targetId:'enemy-x'},show=()=>Reflect.get(WorldCombat.prototype,'showHit').call(host,hit,
+    {kind:'critical',damage:10},{sound:true});
+  show();
+  assert.equal(flashes,1);
+  assert.deepEqual(shown[0]!.impacts,[{name:catalog.feedback.criticalImpact,attached:true}]);
+  assert.equal(shown[0]!.digitEffect,catalog.feedback.digits.enemyCritical[0]);
+  displaySettings.setCriticalDecorations(true);
+  show();
+  const names=shown[1]!.impacts.map(effect=>effect.name);
+  assert.deepEqual(names.slice(0,2),[catalog.feedback.criticalImpact,catalog.feedback.criticalRing]);
+  assert.equal(names.length,3);
+  assert.ok(catalog.feedback.criticalBursts.includes(names[2]!));
 });
 
 test('skill camera feedback reuses all six native world-pixel offsets and resets cleanly on restart',()=>{

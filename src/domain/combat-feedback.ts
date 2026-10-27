@@ -36,14 +36,17 @@ export interface CombatFeedbackSelection {
 }
 /** Resolve shared combat randomness before rendering visibility or digit-pool capacity can reject an effect. */
 export function selectFeedbackAssets(event:CombatHitFeedback,definition:CombatFeedbackDefinition,
-  random:()=>number=Math.random):CombatFeedbackSelection {
+  random:()=>number=Math.random,criticalDecorations=true):CombatFeedbackSelection {
   const plan=feedbackPlan(event),selection:CombatFeedbackSelection={impacts:[]};
   const choose=(values:readonly string[])=>values.length===1?values[0]!:values[Math.floor(random()*values.length)]!;
   if(plan.impact==='miss')selection.impacts.push({name:definition.missEffect,attached:true});
   if(plan.impact==='normal')selection.impacts.push({name:event.style==='skill'?definition.skillImpact:choose(definition.normalImpacts),attached:true});
   if(plan.impact==='critical'){
-    selection.impacts.push({name:event.style==='skill'?definition.skillImpact:definition.criticalImpact,attached:true},
-      {name:definition.criticalRing,attached:true},{name:choose(definition.criticalBursts),attached:false});
+    // 关闭装饰也先抽一次爆闪，保证后续战斗随机序列与开启时一致。
+    const burst=choose(definition.criticalBursts);
+    selection.impacts.push({name:event.style==='skill'?definition.skillImpact:definition.criticalImpact,attached:true});
+    if(criticalDecorations)selection.impacts.push(
+      {name:definition.criticalRing,attached:true},{name:burst,attached:false});
   }
   if(plan.digits)selection.digitEffect=choose(definition.digits[plan.digitStyle]);
   return selection;

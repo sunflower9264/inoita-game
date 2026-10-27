@@ -1,4 +1,5 @@
 import { UI_EVENTS } from '../src/application/ui-events.ts';
+import { displaySettings } from '../src/application/display-settings.ts';
 import {parseCrafting} from '../src/domain/crafting.ts';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -131,7 +132,7 @@ const { StoryUI } = await import('../src/ui/story-ui.ts');
 hook.deregister();
 Object.defineProperties(globalThis, {
   window: { value: { devicePixelRatio: 1 }, configurable: true },
-  document: { value: { getElementById: (id: string) => id === 'safe-area' ? {} : null, addEventListener() {}, removeEventListener() {} }, configurable: true },
+  document: { value: { documentElement: {}, getElementById: (id: string) => id === 'safe-area' ? {} : null, addEventListener() {}, removeEventListener() {} }, configurable: true },
   getComputedStyle: { value: () => ({ paddingLeft: '0', paddingRight: '0', paddingTop: '0', paddingBottom: '0' }), configurable: true }
 });
 
@@ -438,6 +439,8 @@ test('character titles stay clear of content-frame shadows and all attribute lab
 });
 
 test('system exposes load alongside save while settings keeps the working display and audio preferences',t=>{
+  displaySettings.setCriticalDecorations(true);
+  t.after(()=>displaySettings.setCriticalDecorations(true));
   const f=fixture();t.after(f.cleanup);
   const audio={settings:{music:true,effects:true},setEnabled(channel:'music'|'effects',enabled:boolean){this.settings[channel]=enabled;}};
   Object.defineProperty(f.app,'audio',{value:audio});
@@ -449,15 +452,14 @@ test('system exposes load alongside save while settings keeps the working displa
   assert.equal(f.scene.buttons('读取存档').length,0);assert.equal(f.scene.buttons('读档').length,0);
   assert(!f.scene.texts().some(text=>text.includes('语言')||text.includes('简体中文')));
   assert(f.scene.texts().includes('音乐'));assert(f.scene.texts().includes('音效'));
-  // 环境设置里音乐、音效、帧率显示三个开关的标签都是「开启／关闭」，按行位置各取一个；
+  // 环境设置里音乐、音效、帧率显示、暴击光效四个开关的标签都是「开启／关闭」，按行位置各取一个；
   // 每次点击都会重画整块面板，所以要重新查。
   const toggle=(y:number)=>f.scene.buttons('开启').concat(f.scene.buttons('关闭')).find(node=>node.y===y)!;
-  const rows={music:80,effects:170,fps:260} as const;
-  assert([rows.music,rows.effects,rows.fps].every(y=>toggle(y)),'音乐、音效与帧率显示各有一个开关');
-  // 操作设置曾经压在帧率显示上（两块同在 y≈300）；四行按 90 行距排，谁也不盖谁。
-  const control=f.scene.button('操作设置'),fpsToggle=toggle(rows.fps);
-  assert(control.y>=fpsToggle.y+fpsToggle.input!.hitArea.height,'操作设置排在帧率显示下方');
-  assert(control.y+control.input!.hitArea.height<=431,'操作设置也在内容区内');
+  const rows={music:80,effects:170,fps:260,critical:350} as const;
+  assert([rows.music,rows.effects,rows.fps,rows.critical].every(y=>toggle(y)),'音乐、音效、帧率显示与暴击光效各有一个开关');
+  // 设置项按 90 行距排，谁也盖不住谁；操作设置位于滚动内容末尾，不要求在首屏视口内。
+  const control=f.scene.button('操作设置'),criticalToggle=toggle(rows.critical);
+  assert(control.y>=criticalToggle.y+criticalToggle.input!.hitArea.height,'操作设置排在暴击光效下方');
   // 设置页在滚动区里，拖动过的抬手不能算点击。
   f.scene.press(toggle(rows.effects));
   f.scene.input.activePointer.y-=40;
@@ -470,6 +472,12 @@ test('system exposes load alongside save while settings keeps the working displa
   assert.equal(audio.settings.effects,false);
   assert.deepEqual(f.scene.buttons('关闭').map(node=>node.y).sort((a,b)=>a-b),[rows.music,rows.effects],'两个音频开关都关上了');
   assert.equal(toggle(rows.fps).getData('label'),'开启','帧率显示是画面偏好，不受音频开关影响');
+  assert.equal(toggle(rows.critical).getData('label'),'开启','暴击光效不受音频开关影响');
+  f.scene.click(toggle(rows.critical));
+  assert.equal(displaySettings.criticalDecorations,false);
+  assert.equal(toggle(rows.critical).getData('label'),'关闭');
+  assert.equal(toggle(rows.fps).getData('label'),'开启','暴击光效与帧率显示互不影响');
+  assert.equal(audio.settings.music,false);assert.equal(audio.settings.effects,false);
 });
 
 test('organise sits above and centered on the all-items category without overlapping its frame', t => {
@@ -828,7 +836,10 @@ function editingControl(f: ReturnType<typeof fixture>, id: ControlId) {
   assert.equal(objects.length,1,`唯一可拖动控件 ${id}`);return objects[0]!;
 }
 function openControls(f: ReturnType<typeof fixture>) {
-  f.menu.show('settings');f.scene.click(f.scene.button('操作设置'));
+  f.menu.show('settings');
+  const control=f.scene.button('操作设置');
+  f.internals.body.scrolls.at(-1)?.reveal(control as unknown as Phaser.GameObjects.Container);
+  f.scene.click(control);
 }
 
 test('control editor hides the menu, keeps the shade and HUD buttons, previews the controlled actor and returns to settings',t=>{

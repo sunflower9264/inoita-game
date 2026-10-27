@@ -1,5 +1,6 @@
 import { SCENE_KEYS } from '../application/scene-keys.ts';
 import { controlSettings } from '../application/control-settings.ts';
+import { displaySettings } from '../application/display-settings.ts';
 import { fullscreenActive, fullscreenStatus, onFullscreenChange, setFullscreen } from '../application/fullscreen.ts';
 import Phaser from 'phaser';
 import type { MenuContext } from '../application/ports.ts';
@@ -123,6 +124,9 @@ export class MenuScene extends Phaser.Scene {
           const enabled=this.app.audio?.settings[channel]??true;
           rows.push({label,value:enabled?'开':'关',action:()=>{this.app.audio?.setEnabled(channel,!enabled);this.render();}});
         }
+        const decorations=displaySettings.criticalDecorations;
+        rows.push({label:'暴击光效',value:decorations?'开':'关',
+          action:()=>{displaySettings.setCriticalDecorations(!decorations);this.render();}});
         // 全屏是浏览器能力；不支持的环境显示为不可用，APK 壳已经隐藏系统栏，显示为已全屏。
         const fullscreen=fullscreenStatus();
         if(fullscreen==='available'){

@@ -1,3 +1,4 @@
+import {displaySettings} from '../application/display-settings.ts';
 import {applyStoryEnemyRemovals} from '../domain/world-enemies.ts';
 import type {PreparedSceneVisit,SceneActorState} from '../domain/scene-snapshot.ts';
 import {combatFollowUp,type CombatFollowUpPort} from '../domain/combat-follow-ups.ts';
@@ -1734,7 +1735,7 @@ captureStoryActors():SceneActorState[] {
       casterControlled:event.casterId===this.controlledId,targetParty:!!this.memberOf(event.targetId),
       targetFriendly:!!this.memberOf(event.targetId)||!!this.memberOf(target?.summonedBy??''),
       involvesControlled:belongsToControlled(event.casterId)||belongsToControlled(event.targetId)};
-    const selection=selectFeedbackAssets(feedback,this.app.battleCatalog.feedback);
+    const selection=selectFeedbackAssets(feedback,this.app.battleCatalog.feedback,Math.random,displaySettings.criticalDecorations);
     const visual=this.visualOf(event.targetId);if(!visual?.container.active)return;
     this.feedback.show(feedback,visual,selection);
     if(feedbackPlan(feedback).flash)this.statusColors.flash(visual,this.scene);

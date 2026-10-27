@@ -51,6 +51,25 @@ test('critical burst selection preserves all layers and detaches only the burst'
     impacts:[{name:'critical',attached:true},{name:'ring',attached:true},{name:'burst-3',attached:false}],digitEffect:'enemy-critical'});
 });
 
+test('critical decorations can be omitted without changing the random stream',()=>{
+  const critical={...event,hit:{kind:'critical' as const,damage:70}};
+  const pool={...definition,digits:{...definition.digits,enemyCritical:['crit-0','crit-1','crit-2','crit-3']}};
+  const run=(decorations:boolean)=>{
+    const values=[.99,.5];let draws=0;
+    const selected=selectFeedbackAssets(critical,pool,()=>values[draws++]!,decorations);
+    return {selected,draws};
+  };
+  const on=run(true),off=run(false);
+  assert.deepEqual(on.selected.impacts,[
+    {name:'critical',attached:true},{name:'ring',attached:true},{name:'burst-3',attached:false}]);
+  assert.equal(on.selected.digitEffect,'crit-2');
+  assert.deepEqual(off.selected.impacts,[{name:'critical',attached:true}]);
+  assert.equal(off.selected.digitEffect,'crit-2','关闭装饰仍消费爆闪随机数，数字选择不漂移');
+  assert.equal(on.draws,2);assert.equal(off.draws,2);
+  const skill=selectFeedbackAssets({...critical,style:'skill'},pool,()=>.99,false);
+  assert.deepEqual(skill.impacts,[{name:'skill',attached:true}]);
+});
+
 test('native miss, block, periodic and critical feedback stay distinct',()=>{
   assert.deepEqual(feedbackPlan({...event,hit:{kind:'miss',damage:0}}),{digits:true,digitStyle:'miss',impact:'miss',flash:false,shake:false});
   assert.deepEqual(feedbackPlan({...event,hit:{kind:'critical',damage:70}}),{digits:true,digitStyle:'enemyCritical',impact:'critical',flash:true,shake:true});

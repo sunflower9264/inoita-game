@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {registerHooks} from 'node:module';
 import {SaveSlots,SAVE_FORMAT} from '../src/domain/save-game.ts';
+import {displaySettings} from '../src/application/display-settings.ts';
 import type {MenuContext} from '../src/application/ports.ts';
 import type {StoryWorldViewSnapshot} from '../src/scenes/world-scene.ts';
 const hook=registerHooks({resolve(specifier,context,next){return specifier==='phaser'?{url:'data:text/javascript,export default {Scene:class{},BlendModes:{}}',shortCircuit:true}:next(specifier,context);}});
@@ -163,14 +164,24 @@ test('title settings keeps every row inside a scrolling panel',()=>{
   assert(f.view.texts.includes('背景音乐'));assert(f.view.texts.includes('音效'));
   assert(!f.view.texts.some(text=>text.includes('语言')||text.includes('简体中文')));
   assert.deepEqual(f.view.buttons.map(button=>button.getData('label')),
-    ['返回主菜单','背景音乐：开','音效：开','全屏：不支持','移动方式：虚拟摇杆']);
+    ['返回主菜单','背景音乐：开','音效：开','暴击光效：开','全屏：不支持','移动方式：虚拟摇杆']);
   // 选项挂在面板内侧的滚动区：边框不滚，行数再多也只滚动，不会画到边线上。
   const scroll=f.view.scrolls.at(-1);assert.ok(scroll);
   assert.deepEqual([scroll.x,scroll.y,scroll.width,scroll.height],[240,190,720,297]);
   const rows=f.view.buttons.filter(button=>String(button.getData('label')).includes('：'));
-  assert.equal(rows.length,4);
+  assert.equal(rows.length,5);
   assert(rows.every(row=>row.y>=0&&row.y+row.height<=scroll.extent),'每一行都在滚动内容的高度内');
-  assert(scroll.extent>scroll.height,'四行排不进可视区时靠滚动查看');
+  assert(scroll.extent>scroll.height,'五行排不进可视区时靠滚动查看');
+});
+
+test('title settings toggles critical light effects',t=>{
+  displaySettings.setCriticalDecorations(true);
+  t.after(()=>displaySettings.setCriticalDecorations(true));
+  const f=fixture();f.click('环境设置');
+  assert(f.view.buttons.some(button=>button.getData('label')==='暴击光效：开'));
+  f.click('暴击光效：开');
+  assert(f.view.buttons.some(button=>button.getData('label')==='暴击光效：关'));
+  assert.equal(displaySettings.criticalDecorations,false);
 });
 
 test('challenge mode is disabled and is excluded from native keyboard focus',()=>{

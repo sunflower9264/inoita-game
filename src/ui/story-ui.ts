@@ -464,8 +464,15 @@ export class StoryUI {
     v.text('帧率显示',260,275,0,25,undefined,content);
     const fps=displaySettings.fps;
     v.button(fps?'开启':'关闭',485,260,220,66,()=>{displaySettings.setFps(!fps);this.render();},{parent:content});
+    // 暴击光环和爆闪只影响画面，默认开启；不影响暴击冲击、数字、震屏或音效。
+    v.text('暴击光效',260,365,0,25,undefined,content);
+    const decorations=displaySettings.criticalDecorations;
+    v.button(decorations?'开启':'关闭',485,350,220,66,()=>{
+      displaySettings.setCriticalDecorations(!decorations);
+      this.render();
+    },{parent:content});
     // 全屏是浏览器能力；不支持的环境显示为不可用，APK 壳已经隐藏系统栏，显示为已全屏。
-    let rowTop=350;
+    let rowTop=440;
     const fullscreen=fullscreenStatus();
     v.text('全屏',260,rowTop+15,0,25,undefined,content);
     if(fullscreen==='available'){
