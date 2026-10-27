@@ -69,7 +69,7 @@ function fixture(){
       magicDamageRate:0,stealthDamageRate:0,primaryAttributes:primary}),
     movement:{position:()=>({x:0,y:0}),actor:()=>({shape:()=>({collision:{}})}),stop:()=>{},setEnabled:()=>{}},
     scene:{facing:'south',events:{emit:()=>order.push('contact')},map:{id:'test'},refreshCombatTarget:()=>{}},
-    app:{audio:{monsterDeath:()=>order.push('enemy-death-sound')},session:{}},
+    app:{audio:{monsterDeath:()=>order.push('enemy-death-sound')},session:{enemyVitals:()=>({})}},
     roster:{enemySnapshot:()=>({...enemyState}),setEnemyHealth:(_id:string,value:number)=>{enemyState.health=Math.max(0,Math.min(100,value));},source:()=>undefined,
       refresh:()=>({added:[],removed:[]})},
     outcomes:{cancelDeath:()=>{},vanish:(_id:string,_visual:unknown,finish:()=>void)=>finish()},
@@ -86,6 +86,25 @@ function fixture(){
     :call('skillUnit',{casterId:'player',targetId,cueIndex:0,skill:{id:'test-strike',action:{combatUnits:[unit]}}});
   return {host,members,enemyState,order,conditions,fallen,call,direct,hit,onReaction:(callback:()=>void)=>{react=callback;}};
 }
+
+test('a capture conversion removes the source enemy instead of leaving a one-HP corpse',()=>{
+  const run=fixture();let healthWrites=0;
+  Object.assign(run.host.app,{director:{healthChanged:()=>true},
+    session:{enemyVitals:()=>({capture:{map:'test',visit:0}})}});
+  run.host.roster.setEnemyHealth=()=>{healthWrites++;};
+  run.direct('enemy',500);
+  assert.ok(run.order.includes('enemy-removed'),'捕捉后源怪立刻退场');
+  assert.equal(healthWrites,0,'不再把源怪写成 1 点血留在场上');
+});
+
+test('a story event interruption still leaves the enemy at one HP for the cutscene',()=>{
+  const run=fixture();const writes:number[]=[];
+  Object.assign(run.host.app,{director:{healthChanged:()=>true},session:{enemyVitals:()=>({})}});
+  run.host.roster.setEnemyHealth=(_id:string,value:number)=>{writes.push(value);};
+  run.direct('enemy',500);
+  assert.deepEqual(writes,[1]);
+  assert.equal(run.order.includes('enemy-removed'),false);
+});
 
 for(const kind of ['basic','skill'] as const){
   test(`${kind} host completes main damage after a nested hit reduces the attacker to zero`,()=>{

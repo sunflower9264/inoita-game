@@ -1079,6 +1079,9 @@ captureStoryActors():SceneActorState[] {
         const before=this.roster.enemySnapshot(targetEnemy.key,targetEnemy.definition,hero.level)!;
         const proposed=Math.max(0,before.health-hit.damage);
         const interrupted=hit.damage>0&&this.app.director?.healthChanged?.(targetEnemy.definition.id,before.health,proposed,before.maxHealth,{id:targetEnemy.key,map:this.scene.map!.id,x:targetEnemy.visual.container.x,y:targetEnemy.visual.container.y});
+        // 捕捉已完成：这一槽已经变成同格 NPC。源怪要立刻退场，否则同一串多段伤害
+        // 会接着打死只剩 1 点血的它，播死亡表现、结算击杀奖励和掉落。
+        if(interrupted&&this.app.session.enemyVitals(targetEnemy.key).capture){this.removeEnemy(targetEnemy.key);return;}
         const remaining=interrupted?Math.max(1,proposed):proposed;
         this.roster.setEnemyHealth(targetEnemy.key,remaining,targetEnemy.definition);
         if(before.health>0&&remaining===0)(this.hitResolution??=new CombatHitResolution()).deferDefeat(targetEnemy.key,()=>{
