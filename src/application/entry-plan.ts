@@ -59,6 +59,11 @@ function mapPlan(map: WorldMap, input: EntryPlanInput, scripts: readonly string[
   return { map, visuals, assets: [...visuals.assets, ...combat] };
 }
 
+/** 一次进图真正要交给加载器的资源；预取和 `open()` 共用这一份口径。 */
+export function entryPlanAssets(plan: EntryPlan): PendingAsset[] {
+  return [...plan.shared, ...plan.current.assets, ...(plan.residentCombat ?? [])];
+}
+
 export function buildEntryPlan(input: EntryPlanInput): EntryPlan {
   const { campaign } = input.inputs;
   const localEnemies = potentialMapEnemyIds(input.currentMap, input.inputs, { scripts: [] });

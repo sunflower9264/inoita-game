@@ -20,7 +20,7 @@ export interface StoryUI {
 /** 世界负责把已经提交的游戏状态投影到 Phaser 场景。 */
 export interface StoryWorldPort {
   normalize?(signal: AbortSignal): void | Promise<void>;
-  prepare?(commands: readonly StoryCommand[], signal: AbortSignal, stage?: StoryStage): Promise<void>;
+  prepare?(commands: readonly StoryCommand[], signal: AbortSignal, stage?: StoryStage, script?: string): Promise<void>;
   /** 演出前确认脚本可能经过的地图素材；缺则显示加载页等齐，保证演出结束后不再加载。 */
   prefetch?(scripts: readonly string[], signal: AbortSignal): void | Promise<void>;
   capture(): unknown;
@@ -265,7 +265,7 @@ export class StoryDirector {
     }
     await this.recover(context.signal);
     await this.world?.normalize?.(context.signal);
-    await this.world?.prepare?.(node.commands, context.signal, context.stage);
+    await this.world?.prepare?.(node.commands, context.signal, context.stage, script);
     if (context.stage && (node.stage || !this.presenting)) {
       await this.presentation?.begin(context.signal, context.stage); this.presenting = !!this.presentation;
       // `begin` 已经把这一幕画出来了；进图加载页到这里就可以收。

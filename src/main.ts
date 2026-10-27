@@ -404,10 +404,20 @@ function installSession(session: Session): void {
     restore: async (snapshot, signal) => { await worldScene()?.restoreStoryWorld(snapshot, signal); },
     project: async (stage, signal) => { await worldScene()?.projectStoryWorld(stage, signal); },
     checkpoint: () => worldScene()?.checkpointStoryWorld(),
-    prepare: async (commands, signal, stage) => {
-      for (const command of commands) if (command.type === 'travel') presenter.prefetchMap(command.destination.map);
+    prepare: async (commands, signal, stage, script) => {
+      const scene = worldScene();
+      // 完整进图素材在这里只发起、不等待：当前对白/演出不该被整图加载拖住，
+      // 真正换图前由 `projectStoryWorld` 的 `whenEntryPrefetched` 等它落地。
+      const prefetch = (map: string) => {
+        presenter.prefetchMap(map);
+        void scene?.prefetchStoryEntry(map, script, signal);
+      };
+      for (const command of commands) {
+        if (command.type === 'travel') prefetch(command.destination.map);
+        else if (command.type === 'world' && command.command.kind === 'travel') prefetch(command.command.destination.map);
+      }
       // 舞台自带的地图也会在收尾时变成 `travel`；不预取就会在演出后闪一次加载界面。
-      if (stage?.map) presenter.prefetchMap(stage.map);
+      if (stage?.map) prefetch(stage.map);
       signal.throwIfAborted();
     },
     prefetch: async (scripts, signal) => { await worldScene()?.ensureStoryAssets(scripts, signal); },

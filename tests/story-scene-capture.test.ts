@@ -172,7 +172,7 @@ test('formal cross-map handoff adopts the matching prepared visit only',async()=
   let received:unknown;
   const host=Object.assign(Object.create(WorldScene.prototype),{
     map:{id:'origin'},app:{session:{storyWorld:{currentLocation:{map:'destination',x:1,y:2,facing:'south'}}}},
-    scene:{isActive:()=>true},restartStoryWorld:async(...args:unknown[])=>{received=args[5];}
+    scene:{isActive:()=>true},prefetchStoryEntry:async()=>{},restartStoryWorld:async(...args:unknown[])=>{received=args[5];}
   });
   await host.projectStoryWorld({scene},new AbortController().signal);
   assert.equal(received,scene);

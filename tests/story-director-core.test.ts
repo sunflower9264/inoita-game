@@ -265,6 +265,17 @@ test('director waits for the world to prepare story assets before beginning the 
   assert.ok(calls.indexOf('begin')>0);
 });
 
+test('director hands the current script to the world prepare hook',async()=>{
+  const play=node('play');
+  let seen:string|undefined;
+  const h=harness([play],undefined,{
+    capture(){return {};},async restore(){},async project(){},checkpoint(){},
+    async prepare(_commands,_signal,_stage,script){seen=script;}
+  });
+  await h.director.start();
+  assert.equal(seen,'demo');
+});
+
 test('director recovers the full scene baseline after a failed node without recomputing its background',async()=>{
   const first=node('first',[],{type:'next',target:{script:'demo',node:'second'}});first.presentation=[stage];
   const second=node('second');second.presentation=[{type:'wait',durationMs:1}];

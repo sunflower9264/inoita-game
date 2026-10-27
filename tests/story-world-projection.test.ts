@@ -20,6 +20,7 @@ function fixture(){
     movement:{placeAll:(values:{position:{x:number;y:number}}[])=>{positions.push(values);for(const value of values){player.container.x=value.position.x;player.container.y=value.position.y;}}},
     combat:{regroupPartyAroundHero(){regroups++;},async projectStoryEnemies(){},async restoreState(){},adoptStoryPositions(actors:unknown[]){adopted.push(actors);}},
     loadAssets:async(...args:unknown[])=>{assetLoads.push(args);return {release(){}};},refreshState(){},syncHud(){},setClip(){},syncControlledCharacter(){},
+    entryPrefetches:new Map(),prefetchStoryEntry:async()=>{},
     scene:{isActive(){return stageActive;},restart(options:SceneOptions){restarts++;lastRestart=options;options.onReady?.();},stop(){stops++;}}
   };
   const scene=Object.setPrototypeOf(state,WorldScene.prototype) as unknown as InstanceType<typeof WorldScene>;
@@ -68,8 +69,12 @@ test('rollback and cross-map projection leave regrouping to the authoritative re
 test('cancellation before a queued formal restart starts rejects loading and prevents opening the old request',async()=>{
   const f=fixture();const controller=new AbortController();let queued:SceneOptions|undefined;
   f.state.scene.restart=(options:SceneOptions)=>{queued=options;};f.location({map:'destination',x:80,y:90,facing:'south'});
-  const load=f.scene.projectStoryWorld(undefined,controller.signal);controller.abort(new DOMException('cancelled','AbortError'));
-  await assert.rejects(load,{name:'AbortError'});assert.ok(queued);
+  const load=f.scene.projectStoryWorld(undefined,controller.signal);
+  // 预取屏障先让出一帧，restart 才会排队；之后再模拟“已排队但新场景还没打开”的取消。
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.ok(queued,'restart 已排队');
+  controller.abort(new DOMException('cancelled','AbortError'));
+  await assert.rejects(load,{name:'AbortError'});
   f.scene.options=queued;f.scene.create();assert.equal(f.stops(),1);
 });
 
@@ -147,6 +152,20 @@ test('cross-map story projection rebuilds the world without covering the stage w
   const f=fixture();f.location({map:'destination',x:80,y:90,facing:'south'});
   await f.scene.projectStoryWorld(undefined,new AbortController().signal);
   assert.equal(f.restarts(),1);assert.equal(f.lastRestart()?.silentEntry,true);
+});
+
+test('a cross-map projection waits for the destination entry prefetch before rebuilding',async()=>{
+  const f=fixture();f.location({map:'destination',x:80,y:90,facing:'south'});
+  let release!:()=>void,requested='';
+  const gate=new Promise<void>(resolve=>{release=resolve;});
+  Object.assign(f.state,{prefetchStoryEntry:(mapId:string)=>{requested=mapId;return gate;}});
+  const load=f.scene.projectStoryWorld(undefined,new AbortController().signal);
+  await Promise.resolve();
+  assert.equal(requested,'destination');
+  assert.equal(f.restarts(),0,'预取完成前不重建');
+  release();
+  await load;
+  assert.equal(f.restarts(),1);
 });
 
 test('a map change without the cinematic stage still shows the loading screen',async()=>{
