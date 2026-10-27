@@ -3,7 +3,7 @@ import test from 'node:test';
 import type {ActorDefinition} from '../src/domain/content.ts';
 import type {SceneActorState,SceneSnapshot} from '../src/domain/scene-snapshot.ts';
 import type {PerformanceAction,StoryCastMember,StoryStage} from '../src/domain/story-performance.ts';
-import {applyStorySceneAction,boundSceneActor,findSceneActor,resolveStoryScene,syncStoryScene} from '../src/domain/story-scene.ts';
+import {applyStorySceneAction,boundSceneActor,findSceneActor,hideUnboundCombatActors,resolveStoryScene,syncStoryScene} from '../src/domain/story-scene.ts';
 
 const actor=(id:string,extra:Partial<SceneActorState>={}):SceneActorState=>({id,actor:id,x:10,y:20,facing:'south',visible:true,...extra});
 const member=(id:string,extra:Partial<StoryCastMember>={}):StoryCastMember=>({id,actor:id,x:0,y:0,facing:'south',visible:false,binding:'world',...extra});
@@ -104,6 +104,26 @@ test('a temporary performer sharing an appearance cannot take over an explicitly
   assert.deepEqual([persistent.x,persistent.y],[60,70]);
   assert.deepEqual([temporary.x,temporary.y],[80,90]);
   assert.equal(temporary.worldEntityId,undefined);
+});
+
+test('unbound combat actors stay in the world instead of appearing in the story stage',()=>{
+  const enemy=actor('enemy:shin',{actor:'enemy-shin-1',enemyId:'enemy-shin-1',enemyKey:'encounter',x:139,y:152,visible:true});
+  const snapshot=resolveStoryScene(stage([member('shinty',{actor:'shinty',characterId:'npc-56',binding:undefined,x:168,y:168,visible:true})]),source([enemy]));
+  hideUnboundCombatActors(snapshot);
+  assert.equal(snapshot.scene.actors.find(candidate=>candidate.enemyKey==='encounter')!.visible,false);
+  assert.equal(boundSceneActor(snapshot,'shinty')!.visible,true);
+});
+test('a combat actor explicitly named by the current cast stays visible',()=>{
+  const enemy=actor('enemy:shin',{actor:'enemy-shin-1',enemyId:'enemy-shin-1',enemyKey:'encounter',x:139,y:152,visible:true});
+  const snapshot=resolveStoryScene(stage([member('shin',{actor:'enemy-shin-1',enemyId:'enemy-shin-1',binding:undefined,x:139,y:152,visible:true})]),source([enemy]));
+  hideUnboundCombatActors(snapshot);
+  assert.equal(boundSceneActor(snapshot,'shin')!.visible,true);
+});
+test('an unbound friendly summon remains part of the party scene',()=>{
+  const summon=actor('enemy:summon',{actor:'hell-soldier',enemyId:'enemy-hell-s-pawn-1',enemyKey:'summon',summonedBy:'player',x:20,y:20,visible:true});
+  const snapshot=resolveStoryScene(stage(),source([summon]));
+  hideUnboundCombatActors(snapshot);
+  assert.equal(snapshot.scene.actors.find(candidate=>candidate.enemyKey==='summon')!.visible,true);
 });
 
 test('appearance instance IDs survive action replay and keep distinct created identities',()=>{

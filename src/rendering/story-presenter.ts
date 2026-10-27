@@ -1,4 +1,4 @@
-import { applyStorySceneAction, resolveStoryScene, syncStoryScene } from '../domain/story-scene.ts';
+import { applyStorySceneAction, hideUnboundCombatActors, resolveStoryScene, syncStoryScene } from '../domain/story-scene.ts';
 import { prepareSceneVisit } from '../domain/scene-visit.ts';
 import { parseDrops } from '../domain/drops.ts';
 import type { SceneSnapshot } from '../domain/scene-snapshot.ts';
@@ -228,6 +228,7 @@ export class StoryPresenter implements StoryPresentationPort {
       this.rememberScene(source);
       snapshot = resolveStoryScene({ ...declaration, map }, source);
     }
+    snapshot = hideUnboundCombatActors(snapshot);
     if (!this.appearance) throw new Error('剧情玩家外观尚未准备好');
     await this.scene().showStage(snapshot, signal, this.appearance);
     signal.throwIfAborted();

@@ -373,7 +373,8 @@ export class WorldCombat {
 adoptStoryPositions(actors:readonly SceneActorState[]):void {
     const placements:{visual:CharacterVisual;position:{x:number;y:number};enabled:boolean}[]=[];
     for(const actor of actors){
-      if(actor.removed||actor.unpositioned)continue;
+      // 舞台只是为了不画重复敌人而临时隐藏的演员，不代表正式战斗里的显隐/停用。
+      if(actor.removed||actor.unpositioned||actor.stageHidden)continue;
       const ally=actor.memberId&&this.allies.find(ally=>ally.id===actor.memberId);
       const enemy=actor.enemyKey&&this.arena.find(enemy=>enemy.key===actor.enemyKey);
       const visual=ally?ally.visual:enemy?enemy.visual:undefined;

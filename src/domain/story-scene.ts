@@ -11,6 +11,22 @@ export function findSceneActor(scene: SceneSnapshot, member: StoryCastMember): S
   return matches.find(actor => !actor.unpositioned) ?? matches[0];
 }
 
+/**
+ * 舞台只负责本幕 cast 点名的战斗演员；正式世界里的其它敌人/召唤物继续由战斗层绘制。
+ * 不删除它们，只把快照里的显示关掉——舞台释放后战斗仍按原状态继续。
+ */
+export function hideUnboundCombatActors(snapshot: StoryStageSnapshot): StoryStageSnapshot {
+  const bound = new Set(snapshot.bindings.map(([, id]) => id));
+  // 友方召唤物属于队伍画面，即使本幕没有点名也继续显示；敌对/中立战斗演员必须点名。
+  const partyOwners = new Set(['player', ...snapshot.scene.actors.flatMap(actor => actor.memberId ? [actor.memberId] : [])]);
+  for (const actor of snapshot.scene.actors){
+    if (!(actor.enemyKey || actor.enemyId)) continue;
+    actor.stageHidden = !bound.has(actor.id) && !(actor.summonedBy && partyOwners.has(actor.summonedBy));
+    if (actor.stageHidden) actor.visible = false;
+  }
+  return snapshot;
+}
+
 function newId(scene: SceneSnapshot, alias: string): string {
   const base = `story:${alias}`;
   let id = base, index = 1;

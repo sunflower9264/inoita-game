@@ -38245,6 +38245,14 @@
             {
               "type": "world",
               "command": {
+                "kind": "remove-enemy",
+                "enemyId": "enemy-shin-1",
+                "all": false
+              }
+            },
+            {
+              "type": "world",
+              "command": {
                 "kind": "remove-character",
                 "characterId": "npc-81",
                 "map": "old-sanctuary-54cffd62",

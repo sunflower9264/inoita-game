@@ -15,6 +15,8 @@ export interface SceneActorState {
   y: number;
   facing: Facing;
   visible: boolean;
+  /** 舞台为防重复而临时隐藏；把舞台位置采纳回正式世界时必须跳过。 */
+  stageHidden?: boolean;
   /** 队伍跟随者：主角不可见时默认一并隐藏；被剧情显式显隐后不再跟随。 */
   followsPlayer?: boolean;
   /** 主角隐藏期间暂存的自身可见性，主角重新出现时恢复（阵亡队员仍是不可见）。 */
@@ -62,7 +64,7 @@ export function validateSceneSnapshot(value: unknown): asserts value is SceneSna
     ids.add(actor.id as string);
     for (const key of ['characterId','worldEntityId','memberId','enemyKey','enemyId','summonedBy'])
       if (actor[key] !== undefined && !nonempty(actor[key])) at(`${key} 必须是非空字符串`);
-    for (const key of ['flip','unpositioned','removed','animationPlaying'])
+    for (const key of ['flip','unpositioned','removed','animationPlaying','stageHidden'])
       if (actor[key] !== undefined && typeof actor[key] !== 'boolean') at(`${key} 必须是布尔值`);
     if (actor.alpha !== undefined && (!finite(actor.alpha) || actor.alpha < 0 || actor.alpha > 1)) at('alpha 必须在 0..1');
     if (actor.animationProgress !== undefined && (!finite(actor.animationProgress) || actor.animationProgress < 0 || actor.animationProgress > 1)) at(`animationProgress 必须在 0..1（当前 ${String(actor.animationProgress)}）`);

@@ -3,10 +3,13 @@ import { readFileSync } from 'node:fs';
 import { setImmediate } from 'node:timers/promises';
 import test from 'node:test';
 import type { Campaign } from '../src/domain/campaign.ts';
+import type { WorldMap } from '../src/domain/content.ts';
 import { Session } from '../src/domain/session.ts';
 import { StoryDirector, type StoryUI } from '../src/domain/story-director.ts';
+import { WorldEnemyRoster, applyStoryEnemyRemovals } from '../src/domain/world-enemies.ts';
 
 const campaign = JSON.parse(readFileSync(new URL('../public/content/campaign.json', import.meta.url), 'utf8')) as Campaign;
+const sanctuary = JSON.parse(readFileSync(new URL('../public/content/maps/old-sanctuary-54cffd62.json', import.meta.url), 'utf8')) as WorldMap;
 const ui: StoryUI = {async dialogue(){}, async choice(_prompt,options){return options[0];}, async questPopup(){},closeDialogue(){},skipDialogue(){},toast(){}};
 const presentation = {begin(){},async execute(){},async finish(){},async release(){}};
 async function settled(director: StoryDirector): Promise<void> {
@@ -71,6 +74,35 @@ test('native low-health triggers require crossing 30%, respect conditions, and s
   assert.equal(session.storyWorld.hasFlag('threshold-played'),true);
   assert.equal(director.healthChanged('boss',100,0,100),false);
   director.dispose();
+});
+
+test('every health-below-30 battle event removes the enemy that triggered it',()=>{
+  for(const event of campaign.events.filter(candidate=>candidate.source==='battle'&&candidate.key?.startsWith('health-below-30:'))){
+    const key=event.key;if(!key||!key.startsWith('health-below-30:'))continue;
+    const enemyId=key.slice('health-below-30:'.length);
+    const commands=campaign.scripts[event.script].nodes.flatMap(node=>node.commands);
+    assert.ok(commands.some(command=>command.type==='world'&&command.command.kind==='remove-enemy'
+      &&command.command.enemyId===enemyId),`${event.id} 必须结束 ${enemyId} 的遭遇，否则后续演出会复制战斗敌人`);
+  }
+});
+
+test('event-55 remove-enemy completes the active Shinty encounter',()=>{
+  const session=new Session(campaign);
+  session.applyStoryCommands([
+    {type:'travel',destination:{map:sanctuary.id,x:128,y:160,facing:'south'}},
+    {type:'world',command:{kind:'encounter',encounter:{id:'event-54-battle',map:sanctuary.id,status:'active',
+      spawns:[{id:'enemy-0',enemyId:'enemy-shin-1',x:280,y:216}]}}},
+  ]);
+  const roster=new WorldEnemyRoster(session,sanctuary,[],20);
+  const spawn=roster.enemies.find(value=>value.enemyId==='enemy-shin-1');
+  assert.ok(spawn,'战斗遭遇应先出现在名册里');
+  const remove=campaign.scripts['event-55'].nodes.flatMap(node=>node.commands).find(command=>
+    command.type==='world'&&command.command.kind==='remove-enemy'&&command.command.enemyId==='enemy-shin-1');
+  assert.ok(remove,'event-55 必须交接战斗结束');
+  session.applyStoryCommands([remove]);
+  applyStoryEnemyRemovals(session,sanctuary.id,roster.enemies,key=>roster.removeEnemy(key));
+  assert.equal(session.enemyVitals(spawn.key).deadUntil,'permanent');
+  assert.deepEqual(roster.completedEncounters().map(encounter=>encounter.id),['event-54-battle']);
 });
 
 test('death and health condition scenes begin on the battle map before any explicit native map change',()=>{
