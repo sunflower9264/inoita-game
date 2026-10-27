@@ -510,8 +510,12 @@ test('a new game follows the main story through the ending and all five memory l
     assert.equal(h.session.status('quest-208'), 'active');
     await h.travel('eldorn-gateway-ccbaaf87'); await h.region('event-241');
     assert.equal(h.session.status('quest-209'), 'active');
+    h.recordStages();
     await h.travel('eldorn-forest-3-6672bfd8'); await h.region('event-242');
     await h.defeat('enemy-shin-3');
+    const shintyOverlaps=h.stageRecords().filter(stage=>stage.map==='eldorn-forest-3-6672bfd8'
+      &&stage.scene.actors.filter(actor=>actor.visible&&['shinty','enemy-shin-3'].includes(actor.actor)).length>1);
+    assert.equal(shintyOverlaps.length,0,'战斗替身不能跟着下一段演出留下，和剧情里的鑫迪重叠');
     assert.equal(h.session.status('quest-224'), 'active');
     await h.defeat('enemy-chasers-adjutant-1'); await h.defeat('enemy-tindalrose-1');
     for (let count = 0; count < 4; count++) await h.defeat('enemy-chasers-elite-crew-member-1');

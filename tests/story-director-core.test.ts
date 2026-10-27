@@ -68,6 +68,22 @@ test('a first stage inheriting the current map is drawn by execute instead of be
   assert.deepEqual(order,['begin:true','execute:stage','execute:wait'],'首幕只由 execute 画一次');
 });
 
+test('a following script run releases the previous stage instead of inheriting its temporary actors',async()=>{
+  const first=node('first'),second=node('second');
+  first.presentation=[{...stage}];second.presentation=[{...stage,map:'shadow-hall'}];
+  const campaign:Campaign={...structuredClone(base),events:[
+      {id:'first-event',source:'start',script:'first'},{id:'second-event',source:'start',script:'second'}],
+    scripts:{...structuredClone(base.scripts),first:{entry:'first',nodes:[first]},second:{entry:'second',nodes:[second]}}};
+  const session=new Session(campaign),log:string[]=[];
+  const presentation:StoryPresentationPort={begin(_signal,value){log.push('begin:'+(value?.map??'world'));},
+    async execute(action){log.push('execute:'+action.type);},async finish(){},async release(){log.push('release');}};
+  const ui:StoryUI={async dialogue(){},async choice(_prompt,options){return options[0];},async questPopup(){},toast(){},closeDialogue(){},skipDialogue(){}};
+  const director=new StoryDirector(campaign,session,ui,()=>{},presentation);
+  try{await director.start();}finally{director.dispose();}
+  assert.deepEqual(log.slice(0,5),[`begin:${base.start.map}`,'execute:stage','release','begin:shadow-hall','execute:stage'],
+    '第二段脚本要先收起上一段舞台，再从正式世界取景');
+});
+
 test('a hidden quest popup action is skipped without blocking the node',async()=>{
   const popup=node('popup',[],{type:'next',target:{script:'demo',node:'after'}});
   popup.presentation=[{type:'quest-popup',kind:'complete',quest:'quest-61'}];

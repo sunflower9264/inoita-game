@@ -47,6 +47,8 @@ export class StoryDirector {
   private choosing = false;
   private confirming = false;
   private presenting = false;
+  /** 当前舞台属于哪个剧情运行；换了一段脚本就从正式世界重新取景，避免继承上一段的临时演员。 */
+  private presentationRun?: string;
   private presentationStarted = false;
   /** 手动播放（交付、对话）期间产生的会话变化，等这次播放完全收起后再开演。 */
   private readonly deferredTriggers: (()=>void)[] = [];
@@ -211,7 +213,7 @@ export class StoryDirector {
       } finally {
         try { await this.presentation?.release?.(); }
         finally {
-          this.presenting = false;
+          this.presenting = false; this.presentationRun = undefined;
           if (!this.runtime.busy && !this.manualBusy && !this.debugJumpPending) {
             this.context = undefined; this.choosing = false; this.confirming = false;
             this.ui.closeDialogue(); this.setLocked(false);
@@ -252,6 +254,13 @@ export class StoryDirector {
   }
   private async prepare(node: StoryNode, context: StoryPlaybackContext): Promise<void> {
     await this.cleanup.catch(() => {}); context.signal.throwIfAborted(); this.context = context;
+    // 上一段脚本可能因为等待战斗而没有收起舞台。新脚本必须先交还上一段的临时演员，
+    // 再从正式世界重新取景；否则战斗用的替身会跟着下一段演出留下，和剧情角色重叠。
+    if (this.presenting && this.presentationRun !== undefined && this.presentationRun !== context.runId) {
+      this.release();
+      await this.cleanup;
+    }
+    context.signal.throwIfAborted();
     // 演出前确认这条脚本会经过的地图素材；缺则先加载，避免演出结束后再等。
     if (this.prefetchedRun !== context.runId) {
       this.prefetchedRun = context.runId;
@@ -269,7 +278,7 @@ export class StoryDirector {
     if (context.stage && (node.stage || !this.presenting)) {
       await this.presentation?.begin(context.signal, context.stage); this.presenting = !!this.presentation;
       // `begin` 已经把这一幕画出来了；进图加载页到这里就可以收。
-      if (this.presenting) this.markPresentationStarted();
+      if (this.presenting) { this.presentationRun = context.runId; this.markPresentationStarted(); }
     }
   }
   private async recover(signal: AbortSignal): Promise<void> {
@@ -277,7 +286,10 @@ export class StoryDirector {
     if (this.recovery) {
       const recovery = this.recovery;
       if (recovery.world !== undefined) await this.world?.restore(recovery.world, signal);
-      if (recovery.stage) { await this.presentation?.restoreStage?.(recovery.stage, signal); this.presenting = true; }
+      if (recovery.stage) {
+        await this.presentation?.restoreStage?.(recovery.stage, signal);
+        this.presenting = true; this.presentationRun = this.context?.runId;
+      }
       this.recovery = undefined;
     }
     await this.project(signal);
@@ -302,7 +314,7 @@ export class StoryDirector {
       await this.presentation.begin(signal, declaredStage,
         action.type === 'fade' && action.opacity === 1 && action.durationMs === 0 ? { opacity: action.opacity, color: action.color } : undefined,
         firstStage);
-      this.presenting = true;
+      this.presenting = true; this.presentationRun = this.context?.runId;
       drawingFirstStage = firstStage;
       // 首幕由紧随其后的 `execute` 画出；其它动作在 `begin` 里已经画出基线画面。
       if (!drawingFirstStage) this.markPresentationStarted();
@@ -369,7 +381,7 @@ export class StoryDirector {
       this.travelApplied = true;
     }
     await this.world?.project(this.projectionStage, signal); signal.throwIfAborted();
-    if (this.travelPending && this.presenting) { await this.presentation?.release?.(); this.presenting = false; }
+    if (this.travelPending && this.presenting) { await this.presentation?.release?.(); this.presenting = false; this.presentationRun = undefined; }
     this.world?.checkpoint(); this.projectionPending = false; this.travelPending = undefined; this.travelApplied = false;
   }
   private occurrence(source: StoryTriggerSource, key?: string, map?: string, entity?: string): StoryOccurrence {

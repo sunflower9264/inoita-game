@@ -49,6 +49,7 @@ export function playthrough(saved?:SessionState){
   const scenes=new Map<string,SceneSnapshot>(),committedScenes=new Map<string,SceneSnapshot>();
   const remember=()=>{if(stage)scenes.set(stage.map,structuredClone(stage.scene));};
   const lines:string[]=[],popups:string[]=[],actions:PerformanceAction[]=[],errors:unknown[]=[];
+  let stageRecords:StoryStageSnapshot[]|undefined;
   const entities=():EntityPlacement[]=>{
     const map=maps.get(session.storyWorld.currentLocation!.map)!;
     const authored=campaign.placements.filter(entity=>entity.map===map.id);
@@ -80,8 +81,9 @@ export function playthrough(saved?:SessionState){
     },
     async execute(action){
       actions.push(action);
-      if(action.type==='stage'){stage=resolve(action);return;}
-      if(stage)stage=applyStorySceneAction(stage,action);
+      if(action.type==='stage')stage=resolve(action);
+      else if(stage)stage=applyStorySceneAction(stage,action);
+      if(stage&&stageRecords)stageRecords.push(structuredClone(stage));
     },
     // 失败重试与读档恢复共用这条入口：与真实 presenter 一样，用快照重建已访问地图清单，
     // 而不是只把演员名单塞回去。以前缺少这一项，重试会静默跳过场景恢复。
@@ -573,5 +575,7 @@ export function playthrough(saved?:SessionState){
   };
   /** 地面掉落查询：验收工具用它核对某个生成点有没有产出。 */
   const groundDrops=(map:string)=>groundLootFor(session).forMap(map);
-  return {session,director,region,travel,useExit,approach,talk,defeat,damage,wait,pickup,idle,entities,lines,popups,actions,groundDrops,clearEnemy,choices:(values:string[])=>{choiceQueue=values;}};
+  return {session,director,region,travel,useExit,approach,talk,defeat,damage,wait,pickup,idle,entities,lines,popups,actions,groundDrops,clearEnemy,
+    recordStages:()=>{stageRecords=[];},stageRecords:()=>stageRecords??[],
+    choices:(values:string[])=>{choiceQueue=values;}};
 }
