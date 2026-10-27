@@ -11,20 +11,20 @@ hook.deregister();
 
 function fixture(){
   let location:undefined|{map:string;x:number;y:number;facing:'south'};
-  let stageActive=true;let projected:unknown[]=[];let lastRestart:SceneOptions|undefined;
-  const assetLoads:unknown[][]=[];
+  let stageActive=true;let worldCovered=true;let projected:unknown[]=[];let lastRestart:SceneOptions|undefined;
+  const assetLoads:unknown[][]=[],coverCalls:boolean[]=[];
   const player={container:{active:true,x:10,y:20},entity:{id:'player'}};
   const positions:unknown[]=[],adopted:unknown[][]=[];let restarts=0,stops=0,regroups=0;
   const state={map:{id:'home',name:'Home'},player,baseEntities:[],characters:[] as unknown[],entities:[],storyEntityAssets:[],projectedActorIds:new Set(),destroyed:false,
-    app:{campaign:{placements:[]},session:{storyWorld:{get currentLocation(){return location;},projectEntities:()=>projected,actorAppearance:(actor:string)=>actor,entity:()=>undefined},visible:()=>true},world:{actors:{} as Record<string,unknown>}},
+    app:{campaign:{placements:[]},session:{storyWorld:{get currentLocation(){return location;},projectEntities:()=>projected,actorAppearance:(actor:string)=>actor,entity:()=>undefined},visible:()=>true},world:{actors:{} as Record<string,unknown>},ui:{setWorldRebuildCover:(covered:boolean)=>{coverCalls.push(covered);}}},
     movement:{placeAll:(values:{position:{x:number;y:number}}[])=>{positions.push(values);for(const value of values){player.container.x=value.position.x;player.container.y=value.position.y;}}},
     combat:{regroupPartyAroundHero(){regroups++;},async projectStoryEnemies(){},async restoreState(){},adoptStoryPositions(actors:unknown[]){adopted.push(actors);}},
     loadAssets:async(...args:unknown[])=>{assetLoads.push(args);return {release(){}};},refreshState(){},syncHud(){},setClip(){},syncControlledCharacter(){},
     entryPrefetches:new Map(),prefetchStoryEntry:async()=>{},
-    scene:{isActive(){return stageActive;},restart(options:SceneOptions){restarts++;lastRestart=options;options.onReady?.();},stop(){stops++;}}
+    scene:{isActive(){return stageActive;},get(){return {worldCovered};},restart(options:SceneOptions){restarts++;lastRestart=options;options.onReady?.();},stop(){stops++;}}
   };
   const scene=Object.setPrototypeOf(state,WorldScene.prototype) as unknown as InstanceType<typeof WorldScene>;
-  return {scene,state,positions,adopted,location:(value:typeof location)=>{location=value;},stageActive:(value:boolean)=>{stageActive=value;},projected:(value:unknown[])=>{projected=value;},restarts:()=>restarts,stops:()=>stops,regroups:()=>regroups,lastRestart:()=>lastRestart,assetLoads};
+  return {scene,state,positions,adopted,location:(value:typeof location)=>{location=value;},stageActive:(value:boolean)=>{stageActive=value;},covered:(value:boolean)=>{worldCovered=value;},coverCalls:()=>coverCalls,projected:(value:unknown[])=>{projected=value;},restarts:()=>restarts,stops:()=>stops,regroups:()=>regroups,lastRestart:()=>lastRestart,assetLoads};
 }
 
 test('a cinematic stage cannot travel the formal map or adopt uncommitted player positions',async()=>{
@@ -152,6 +152,7 @@ test('cross-map story projection rebuilds the world without covering the stage w
   const f=fixture();f.location({map:'destination',x:80,y:90,facing:'south'});
   await f.scene.projectStoryWorld(undefined,new AbortController().signal);
   assert.equal(f.restarts(),1);assert.equal(f.lastRestart()?.silentEntry,true);
+  assert.deepEqual(f.coverCalls(),[],'舞台已经遮住世界，不再加 UI 黑幕');
 });
 
 test('a cross-map projection waits for the destination entry prefetch before rebuilding',async()=>{
@@ -168,10 +169,41 @@ test('a cross-map projection waits for the destination entry prefetch before reb
   assert.equal(f.restarts(),1);
 });
 
-test('a map change without the cinematic stage still shows the loading screen',async()=>{
-  const f=fixture();f.stageActive(false);f.location({map:'destination',x:80,y:90,facing:'south'});
+test('a map change without a covering stage uses the UI backdrop',async()=>{
+  const f=fixture();f.covered(false);f.stageActive(false);f.location({map:'destination',x:80,y:90,facing:'south'});
   await f.scene.projectStoryWorld(undefined,new AbortController().signal);
-  assert.equal(f.restarts(),1);assert.notEqual(f.lastRestart()?.silentEntry,true);
+  assert.equal(f.restarts(),1);assert.equal(f.lastRestart()?.silentEntry,true,'剧情跨图一律静默');
+  assert.deepEqual(f.coverCalls(),[true]);
+});
+
+test('an active but transparent stage also uses the UI backdrop',async()=>{
+  const f=fixture();f.covered(false);f.stageActive(true);f.location({map:'destination',x:80,y:90,facing:'south'});
+  await f.scene.projectStoryWorld(undefined,new AbortController().signal);
+  assert.equal(f.restarts(),1);assert.equal(f.lastRestart()?.silentEntry,true);
+  assert.deepEqual(f.coverCalls(),[true]);
+});
+
+test('a failed silent rebuild clears the UI backdrop',async()=>{
+  const f=fixture();f.covered(false);f.location({map:'destination',x:80,y:90,facing:'south'});
+  f.state.scene.restart=(options:SceneOptions)=>{options.onError?.(new Error('boom'));};
+  await assert.rejects(f.scene.projectStoryWorld(undefined,new AbortController().signal),/boom/);
+  assert.deepEqual(f.coverCalls(),[true,false]);
+});
+
+test('a timed-out silent rebuild aborts the in-flight scene',async t=>{
+  t.mock.timers.enable({apis:['setTimeout']});
+  try{
+    const f=fixture();f.covered(false);f.location({map:'destination',x:80,y:90,facing:'south'});
+    let queued:SceneOptions|undefined;
+    f.state.scene.restart=(options:SceneOptions)=>{queued=options;};
+    const load=f.scene.projectStoryWorld(undefined,new AbortController().signal);
+    await new Promise(resolve=>setImmediate(resolve));
+    assert.ok(queued,'restart 已排队');
+    t.mock.timers.tick(30000);
+    await assert.rejects(load,/剧情世界切换超时/);
+    assert.equal(queued!.signal?.aborted,true,'超时要中止新场景加载');
+    assert.deepEqual(f.coverCalls(),[true,false]);
+  }finally{t.mock.timers.reset();}
 });
 
 test('same-map appearance loading stays silent during a performance',async()=>{
@@ -188,4 +220,5 @@ test('defeat checkpoint recovery keeps the ordinary loading screen',async()=>{
   const f=fixture();f.location({map:'home',x:10,y:20,facing:'south'});
   await f.scene.restoreStoryWorld({location:{map:'destination',x:1,y:2,facing:'south'},generatedEntities:[]},new AbortController().signal);
   assert.equal(f.restarts(),1);assert.notEqual(f.lastRestart()?.silentEntry,true);
+  assert.deepEqual(f.coverCalls(),[],'读档恢复不走剧情黑幕');
 });

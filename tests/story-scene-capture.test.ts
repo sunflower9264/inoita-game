@@ -171,7 +171,7 @@ test('formal cross-map handoff adopts the matching prepared visit only',async()=
   const scene:SceneSnapshot={map:'destination',actors:[],visit:{generatedEntities:[],roster:{enemies:[],sequence:0,partySize:1},breakableRolls:[]}};
   let received:unknown;
   const host=Object.assign(Object.create(WorldScene.prototype),{
-    map:{id:'origin'},app:{session:{storyWorld:{currentLocation:{map:'destination',x:1,y:2,facing:'south'}}}},
+    map:{id:'origin'},app:{session:{storyWorld:{currentLocation:{map:'destination',x:1,y:2,facing:'south'}}},ui:{setWorldRebuildCover(){}}},
     scene:{isActive:()=>true},prefetchStoryEntry:async()=>{},restartStoryWorld:async(...args:unknown[])=>{received=args[5];}
   });
   await host.projectStoryWorld({scene},new AbortController().signal);

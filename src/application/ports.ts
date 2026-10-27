@@ -30,7 +30,7 @@ export interface StoryClassContext {
   syncLifecycle?: () => void;
 }
 
-type SceneUI = Pick<GameUI,'ready'|'locked'|'mode'|'loading'|'loaded'|'error'|'location'|'toast'|'showInstant'|'resetInput'|'setMode'|'showDefeat'|'closeDefeat'|'controlLayoutEditing'|'preloadPortraits'>;
+type SceneUI = Pick<GameUI,'ready'|'locked'|'mode'|'loading'|'loaded'|'error'|'location'|'toast'|'showInstant'|'resetInput'|'setMode'|'showDefeat'|'closeDefeat'|'controlLayoutEditing'|'preloadPortraits'|'setWorldRebuildCover'>;
 export interface StoryContext {
   readonly controlLayout:ControlLayoutPreferences;
   gmNoclip?: boolean;

@@ -50,17 +50,17 @@ export class FormalUiScene extends Phaser.Scene implements GameUiView {
     this.surface.enabled=()=>!this.app.ui.suspended;
     this.scale.on('resize',()=>{this.signature='';this.sync(this.app.ui);this.app.ui.reflowDialogue();});
     this.input.keyboard?.on('keydown',(event:KeyboardEvent)=>{
-      if(this.app.ui.suspended)return;
+      if(this.app.ui.suspended||this.app.ui.worldRebuildCover)return;
       if(this.app.ui.defeated&&event.key==='Escape'){event.preventDefault();this.app.ui.cancelDefeatConfirmation();return;}
       if(this.app.ui.quest){this.questPopup.key(event);return;}
       if(event.key==='Enter'||event.key===' '){if(this.app.ui.canSkip){event.preventDefault();this.app.ui.advance();return;}}
       this.surface.key(event);
     });
     this.input.on('pointerdown',(pointer:Phaser.Input.Pointer,objects:Phaser.GameObjects.GameObject[])=>{
-      if(!this.app.ui.defeated&&!objects.some(object=>object.getData('uiAction')))this.app.ui.pressDialogue(pointer.id);
+      if(!this.app.ui.defeated&&!this.app.ui.worldRebuildCover&&!objects.some(object=>object.getData('uiAction')))this.app.ui.pressDialogue(pointer.id);
     });
     this.input.on('pointerup',(pointer:Phaser.Input.Pointer)=>{
-      if(!this.app.ui.defeated)this.app.ui.releaseDialogue(pointer.id);
+      if(!this.app.ui.defeated&&!this.app.ui.worldRebuildCover)this.app.ui.releaseDialogue(pointer.id);
     });
     this.input.on('pointerupoutside',(pointer:Phaser.Input.Pointer)=>this.app.ui.cancelPress(pointer.id));
     this.game.canvas.addEventListener('pointercancel',this.cancelInput);this.game.events.once('destroy',()=>this.game.canvas.removeEventListener('pointercancel',this.cancelInput));
@@ -78,7 +78,7 @@ export class FormalUiScene extends Phaser.Scene implements GameUiView {
   private syncInstantMessage():void{
     const text=this.instantText,ui=this.app.ui;if(!text)return;
     const message=ui.instant.text;
-    const hidden=!message||!!ui.loadingState||ui.defeated||!!ui.dialogueLine||!!ui.choices||!!ui.quest;
+    const hidden=!message||!!ui.loadingState||ui.defeated||ui.worldRebuildCover||!!ui.dialogueLine||!!ui.choices||!!ui.quest;
     text.setVisible(!hidden);if(hidden)return;
     const point=instantMessagePoint(this.scale.width,this.scale.height);
     text.setText(message).setFontSize(24*(this.surface.root.scaleX||1)).setPosition(point.x,point.y).setAlpha(ui.instant.alpha);
@@ -162,22 +162,23 @@ export class FormalUiScene extends Phaser.Scene implements GameUiView {
   sync(ui:GameUI):void{
     if(!this.surface)return;
     const portrait=window.innerHeight>window.innerWidth;
-    const quest=ui.mode==='game'&&!portrait&&!ui.loadingState&&!ui.defeated?ui.quest:undefined;
+    const cover=ui.worldRebuildCover;
+    const quest=ui.mode==='game'&&!portrait&&!cover&&!ui.loadingState&&!ui.defeated?ui.quest:undefined;
     this.questPopup.sync(quest,this.app.storyInterface?.assets??{},id=>ui.questItemName?.(id)??id);
     const progress=Phaser.Math.Clamp(ui.loadingState?.progress??0,0,1);
-    const showSkip=ui.mode==='game'&&ui.ready&&!ui.suspended&&!portrait&&!ui.loadingState&&!ui.defeated&&!ui.choices&&!ui.quest&&!!this.app.director?.canSkip;
+    const showSkip=ui.mode==='game'&&ui.ready&&!ui.suspended&&!portrait&&!cover&&!ui.loadingState&&!ui.defeated&&!ui.choices&&!ui.quest&&!!this.app.director?.canSkip;
     const defeat=ui.defeatState;
     // 正文页不进整屏签名：同一句对白翻页时只换正文，不重建框、立绘和控件。
     const bodySignature=JSON.stringify([ui.page,ui.dialogueLine?.presentation]);
-    const signature=JSON.stringify([ui.mode,ui.loadingState?.label,!!ui.loadingState?.retry,ui.failed,ui.suspended,portrait,defeat,ui.toastMessage,ui.dialogueLine,ui.portraitFile,ui.canSkip,showSkip,ui.choices?.prompt,ui.choices?.options,ui.quest?.definition.id,ui.quest?.kind]);
+    const signature=JSON.stringify([ui.mode,ui.loadingState?.label,!!ui.loadingState?.retry,ui.failed,ui.suspended,portrait,cover,defeat,ui.toastMessage,ui.dialogueLine,ui.portraitFile,ui.canSkip,showSkip,ui.choices?.prompt,ui.choices?.options,ui.quest?.definition.id,ui.quest?.kind]);
     if(signature===this.signature){
       if(this.dialogueShell&&bodySignature!==this.dialogueBodySignature){this.dialogueBodySignature=bodySignature;this.renderDialogueBody(ui);}
       this.progressBar?.setSize(560*progress,5);return;
     }
     this.signature=signature;this.dialogueShell=false;
     const v=this.surface;v.clear();v.layout(0);this.dialogueRuns=[];this.dialogueLayout=undefined;this.progressBar=undefined;v.visible(true);
-    const modal=portrait||!!ui.loadingState||ui.defeated;
-    this.background.setVisible(modal).setSize(this.scale.width,this.scale.height).setFillStyle(0x000000,ui.defeated&&!portrait&&!ui.loadingState ? .65:1);
+    const modal=portrait||!!ui.loadingState||ui.defeated||cover;
+    this.background.setVisible(modal).setSize(this.scale.width,this.scale.height).setFillStyle(0x000000,ui.defeated&&!portrait&&!ui.loadingState&&!cover ? .65:1);
     this.blocker.setVisible((modal||!!ui.quest||!!ui.dialogueLine||!!ui.choices)).setSize(this.scale.width,this.scale.height);if(this.blocker.input)this.blocker.input.hitArea.setSize(this.scale.width,this.scale.height);
     this.cover?.destroy();this.cover=undefined;
     const block=()=>{const zone=this.add.zone(0,0,960,640).setOrigin(0).setInteractive();v.root.add(zone);};
@@ -202,7 +203,7 @@ export class FormalUiScene extends Phaser.Scene implements GameUiView {
         v.button('返回检查点',225,392,510,60,()=>ui.selectDefeatAction('checkpoint'),{guard});
       }
     }
-    else if(ui.choices&&!ui.quest){
+    else if(!cover&&ui.choices&&!ui.quest){
       block();const choices=ui.choices;
       // 选项竖排：整行宽度、按钮高度按标签实际换行后的高度算，文字不会压在按钮框外。
       const left=30,width=900,optionFontSize=22;
@@ -224,7 +225,7 @@ export class FormalUiScene extends Phaser.Scene implements GameUiView {
         const size=layout.options[index]!;
         v.button(option.label,0,size.y,width,size.height,()=>choices.choose(option),{parent:list.content,guard:list.guard});
       });
-    }else if(ui.dialogueLine&&!ui.quest){
+    }else if(!cover&&ui.dialogueLine&&!ui.quest){
       block();const edges=this.dialogueSafeEdges(),box=this.textBox(ui);if(ui.dialogueLine.presentation!=='screen'){
         const screen=screenCoverage(v);v.rect(screen.left,399,screen.width,218,0x000000,.7);const edge=this.app.storyInterface?.assets['dialogue-edge'];if(edge){v.image(edge,screen.left,399,screen.width,17);v.image(edge,screen.left,600,screen.width,17);}
         if(ui.portraitFile){const left=ui.dialogueLine.actor===ui.playerActor;v.image(ui.portraitFile,left?edges.left:edges.right,606,undefined,516).setOrigin(left?0:1,1);}
@@ -234,7 +235,7 @@ export class FormalUiScene extends Phaser.Scene implements GameUiView {
       this.dialogueShell=true;
     }
     if(showSkip){const skin=this.app.controlSkin;v.button('',this.dialogueSafeEdges().right-168,16,136,62,()=>this.app.director?.skip(),{image:skin?.skip?skin.skip:undefined,pressed:skin?.['skip-pressed'],guard:()=>ui.ready&&!ui.suspended&&!!this.app.director?.canSkip}).setData('label','跳过');}
-    if(ui.toastMessage&&!portrait&&!ui.loadingState&&!ui.defeated){v.rect(180,150,600,90,0x101d24,.95);v.text(ui.toastMessage,480,164,560,24).setOrigin(.5,0);}
+    if(ui.toastMessage&&!portrait&&!cover&&!ui.loadingState&&!ui.defeated){v.rect(180,150,600,90,0x101d24,.95);v.text(ui.toastMessage,480,164,560,24).setOrigin(.5,0);}
     this.dialogueBodySignature=bodySignature;
     v.layout(0);
   }

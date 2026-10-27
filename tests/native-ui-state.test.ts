@@ -18,6 +18,14 @@ test('scene time pauses the instant message too, and switching modes clears it',
   ui.suspended=true;ui.tick(5000);assert.equal(ui.instant.text,'魔法值正在缓慢的恢复。');
   ui.suspended=false;ui.tick(600);ui.setMode('menu');assert.equal(ui.instant.text,'');assert.equal(ui.instant.alpha,0);
 });
+test('world rebuild cover survives loading/loaded and is cleared by a mode switch',()=>{
+  const ui=new GameUI();let syncs=0;ui.view={sync(){syncs++;},renderText(){},paginate:(_ui,text)=>[{text,end:text.length}],portrait:async()=>undefined};
+  ui.setWorldRebuildCover(true);assert.equal(ui.worldRebuildCover,true);assert.equal(syncs,1);
+  ui.loading('正在准备剧情…');ui.loaded();assert.equal(ui.worldRebuildCover,true,'加载页状态不能清掉黑幕');
+  ui.setWorldRebuildCover(false);assert.equal(ui.worldRebuildCover,false);
+  ui.setWorldRebuildCover(true);ui.setMode('game');assert.equal(ui.worldRebuildCover,false,'切模式兜底清除');
+});
+
 test('closing a dialogue rejects its waiting page and prevents an old gesture advancing a new one',async()=>{
   const ui=new GameUI();ui.ready=true;const dialogue=ui.dialogue({text:'第一句',speaker:'',actor:null});await Promise.resolve();
   ui.pressDialogue(1);ui.closeDialogue();await assert.rejects(dialogue,{name:'AbortError'});let advanced=0;ui.pending=()=>advanced++;ui.releaseDialogue(1);await Promise.resolve();assert.equal(advanced,0);

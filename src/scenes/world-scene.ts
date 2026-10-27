@@ -339,15 +339,11 @@ export class WorldScene extends Phaser.Scene {
     // 不再先填满、再归零重来一次（那看起来就是第二个进度条）。
     const mapProgressEnd=plan.scripts.length?0.9:1;
     const missing=missingSceneAssets(this,planned).length;
-    // 静默重建只在素材齐全时成立；缺项说明进图计划没覆盖到这张图，必须让玩家看见真实加载，
-    // 不能把等待藏在舞台后面。
-    const silent = silentRequested && missing===0;
+    // 剧情驱动的跨图一律静默：目标图素材在 prepare 阶段已经发起预取，进图时仍缺的
+    // 也会在黑幕或舞台后面补完，不再回退成可见加载页。
+    const silent = silentRequested;
     if(silentRequested)globalThis.storyDiagnostics?.record('story-silent-entry-missing', { map: map.id, missing });
     if (silent) ui.resetInput();
-    else if (silentRequested) {
-      ui.loading('正在准备剧情…', 0);
-      globalThis.storyDiagnostics?.record('story-silent-entry-fallback', { map: map.id, missing });
-    }
     const loaded = await loadEntryPlan(plan, {
       load: (assets, progress) => loadSceneAssets(this, assets, progress, true),
       report: silent ? () => {} : (label, value) => ui.loading(label, value),
@@ -495,6 +491,10 @@ export class WorldScene extends Phaser.Scene {
       entryStory=() => director.retry();
     }
     await this.holdEntryLoading(entryStory, ui);
+    if(silentRequested){
+      this.app.ui.setWorldRebuildCover(false);
+      globalThis.storyDiagnostics?.record('story-rebuild-cover-end', { map: map.id });
+    }
   }
   /**
    * 进图即触发的剧情：加载页留到第一幕画出来再收。
@@ -998,6 +998,8 @@ export class WorldScene extends Phaser.Scene {
   failure(error: unknown): void {
     if (this.destroyed) return;
     console.error(error);
+    // 错误页在背景之上；先撤掉跨图黑幕，保证重试按钮可见。
+    this.app.ui.setWorldRebuildCover(false);
     this.app.ui.error(this.recordFailure(error), () => this.scene.restart(this.options));
   }
   /**
@@ -1406,13 +1408,18 @@ captureStoryScene():SceneSnapshot {
     signal.throwIfAborted();
     return new Promise((resolve,reject)=>{
       let finished=false,timer:ReturnType<typeof setTimeout>|undefined;
-      const done=(error?:unknown)=>{if(finished)return;finished=true;if(timer)clearTimeout(timer);signal.removeEventListener('abort',abort);if(error)reject(error);else resolve();};
+      // 子控制器：取消/超时真正中止新场景的加载。只 reject 的话，晚到的 open() 仍会跑完，
+      // 用 ui.loaded() 盖掉已经显示的错误页。
+      const controller=new AbortController();
+      const forwardAbort=()=>controller.abort(signal.reason);
+      if(signal.aborted)controller.abort(signal.reason);else signal.addEventListener('abort',forwardAbort,{once:true});
+      const done=(error?:unknown)=>{if(finished)return;finished=true;if(timer)clearTimeout(timer);signal.removeEventListener('abort',abort);signal.removeEventListener('abort',forwardAbort);if(error)reject(error);else resolve();};
       const abort=()=>done(signal.reason??new Error('剧情世界切换已取消'));
       signal.addEventListener('abort',abort,{once:true});
       // 场景重建既没报错也没就绪时（例如加载卡住），不能让调用方永远等下去。
-      timer=setTimeout(()=>done(new Error('剧情世界切换超时')),30000);
+      timer=setTimeout(()=>{const error=new Error('剧情世界切换超时');controller.abort(error);done(error);},30000);
       this.loadingWorld=true;
-      this.scene.restart({...location,checkpoint:world,generatedEntities,preparedScene,suppressEntry:true,silentEntry:silent,signal,onReady:()=>done(),onError:(error:unknown)=>done(error)} satisfies SceneOptions);
+      this.scene.restart({...location,checkpoint:world,generatedEntities,preparedScene,suppressEntry:true,silentEntry:silent,signal:controller.signal,onReady:()=>done(),onError:(error:unknown)=>done(error)} satisfies SceneOptions);
     });
   }
 private restoreScenePositions(snapshot:SceneSnapshot):void {
@@ -1453,9 +1460,22 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
       // 节点 prepare 阶段已经发起目标图预取；这里等它落地，保证换图时素材已齐。
       await this.whenEntryPrefetched(location.map, signal);
       signal.throwIfAborted();
-      // 只有演出舞台真的在画面上时才静默重建；纯对白换图没有舞台铺底，仍显示加载界面。
+      // 舞台真的遮住世界（worldCovered）时直接沿用；舞台未启动或仍透明时，
+      // 用常驻 UI 层的黑幕盖住重建过程。不能用 isActive 判断，首幕透明时世界仍可见。
+      const stageScene=this.scene.get?.(SCENE_KEYS.storyStage) as {worldCovered?:boolean}|undefined;
+      const covered=stageScene?.worldCovered===true;
+      if(!covered){
+        this.app.ui.setWorldRebuildCover(true);
+        globalThis.storyDiagnostics?.record('story-rebuild-cover', { map: location.map });
+      }
       const prepared=stage?.scene.map===location.map?stage.scene:undefined;
-      await this.restartStoryWorld(location,signal,undefined,undefined,this.scene.isActive(SCENE_KEYS.storyStage),prepared);
+      try{
+        // 剧情驱动的跨图一律静默；素材缺项由预取/静默加载补，不退回加载页。
+        await this.restartStoryWorld(location,signal,undefined,undefined,true,prepared);
+      }catch(error){
+        if(!covered)this.app.ui.setWorldRebuildCover(false);
+        throw error;
+      }
       return;
     }
     if(!this.map||!this.player||!this.movement)throw new Error('正式地图尚未就绪');

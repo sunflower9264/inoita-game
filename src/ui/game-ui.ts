@@ -47,6 +47,16 @@ export class GameUI {
   view?:GameUiView;
   loadingState?:{label:string;progress:number;retry?:()=>void;actionLabel?:string};
   toastMessage=''; private toastRemaining=0;
+  /** 剧情跨图静默重建期间的全屏黑幕；与会画进度条的 loadingState 分开。 */
+  private rebuildCover=false;
+  get worldRebuildCover():boolean{return this.rebuildCover;}
+  setWorldRebuildCover(covered:boolean):void{
+    if(this.rebuildCover===covered)return;
+    this.rebuildCover=covered;
+    if(covered)this.resetInput();
+    globalThis.storyDiagnostics?.record('story-rebuild-cover',{covered});
+    this.updateControls();
+  }
   /** 原版 `INSTANTMSGSYSTEM_Add` 的屏幕提示（泉水效果文本走这条），与 toast 各自独立。 */
   readonly instant=new InstantMessage();
   showInstant(message:string):void{this.instant.show(message);}
@@ -73,7 +83,7 @@ export class GameUI {
   setMode(mode:GameMode):void{
     this.controlLayoutEditing=false;
     this.closeDefeat();this.mode=mode;this.ready=false;this.failed=false;this.resetInput();
-    this.closeDialogue();this.cancelQuestPopup?.();this.toastMessage='';this.instant.clear();this.loadingState=undefined;this.updateControls();
+    this.closeDialogue();this.cancelQuestPopup?.();this.toastMessage='';this.instant.clear();this.loadingState=undefined;this.rebuildCover=false;this.updateControls();
   }
   lock(value:boolean,owner='interaction'):void{this.controls.lock(owner,value);if(value)this.resetInput();this.updateControls();}
   suspend(value:boolean):void{this.suspended=value;if(value)this.resetInput();this.updateControls();}
