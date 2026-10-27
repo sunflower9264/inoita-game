@@ -206,6 +206,31 @@ test('a follow search resumes across frames instead of restarting from the begin
   assert.equal(run.boundsCalls(),1,'算的过程中不能丢掉搜索重来');
 });
 
+test('a stale first waypoint is re-planned from the real feet instead of waiting for the next interval',()=>{
+  // 上报现场：佣兵被水井边缘挤偏 0.16px，旧路线第一个点 (224,632) 从真实脚点走不过去。
+  const run=setup();let plans=0;
+  run.member.position={x:215.83710015815083,y:632.1628998418491};
+  run.leader.position={x:464.36794334335286,y:637.9666840112111};
+  run.port.navigationBounds=()=>{plans++;return {x:0,y:0,width:640,height:720};};
+  run.port.canStand=point=>point.x>=8&&point.x<=632&&point.y>=8&&point.y<=712
+    &&!(point.x+8>224&&point.x-8<240&&point.y+8>640&&point.y-8<656);
+  run.ai.restoreState({accumulator:0,clock:0,nextPathAt:180,path:[{x:224,y:632},{x:232,y:632}],
+    destination:{...run.leader.position},destinationTarget:'player',destinationRange:3});
+  run.ai.update(60);
+  assert.equal(plans,1,'第一步失效时这一帧就重算');
+  for(let frame=0;frame<10&&!run.waypoint();frame++)run.ai.update(60);
+  assert.deepEqual(run.waypoint(),{x:216,y:632},'从真实脚点重新对齐到网格，再继续跟随');
+});
+test('a follower with no progress for the watchdog window is pulled beside the leader once',()=>{
+  const run=setup();let regroups=0;
+  run.port.regroup=()=>{regroups++;run.member.position={...run.leader.position};};
+  run.ai.update(60);
+  for(let frame=0;frame<40;frame++)run.ai.update(60);
+  assert.equal(regroups,1,'一直站着不能干等寻路，应该收拢到队长身边');
+  for(let frame=0;frame<20;frame++)run.ai.update(60);
+  assert.equal(regroups,1,'收拢后恢复普通跟随，不能反复传送');
+});
+
 test('party checkpoints restore the pending logic frame and cached navigation without sharing mutable points',()=>{
   const run=setup();run.ai.update(85);const saved=run.ai.captureState(),expected=structuredClone(saved);
   assert.equal(saved.accumulator,25);assert.equal(saved.clock,60);assert.ok(saved.path.length);

@@ -213,6 +213,8 @@ export class WorldCombat {
   private lastSkillReset?:number;
   /** 整盒校验拒绝的强制位移落点；正常应为空，出现时说明技能落点被挡。 */
   private relocationFailures: { id: string; position: Point }[] = [];
+  /** 跟随长时间没有进展、被收拢到队长身边的次数；用于上报排查。 */
+  private followerCatchUps = 0;
   constructor(scene:WorldScene,app:StoryContext,roster:WorldEnemyRoster,hero:BattleCharacter,drops:DropCatalog){
     this.scene=scene;this.app=app;this.roster=roster;this.hero=hero;this.drops=drops;
     this.threat=this.createThreatSystem();
@@ -358,6 +360,7 @@ export class WorldCombat {
         visible: enemy.visual.container.visible,
       })),
       relocationFailures: [...(this.relocationFailures ?? [])],
+      followerCatchUps: this.followerCatchUps,
     };
   }
   get canCheckpoint():boolean {
@@ -1888,6 +1891,7 @@ captureStoryActors():SceneActorState[] {
         const clearanceVisual=clearanceActorId?this.visualOf(clearanceActorId):visual;
         return !!clearanceVisual&&this.movement.canStand(clearanceVisual,position);
       },
+      regroup:()=>this.catchUpFollower(id),
       canPlaceBody:(position,clearanceActorId)=>this.canPlaceBodyAt(visual,position,clearanceActorId),
       canReach:position=>this.movement.navigation.path(this.movement.actor(visual),position,512)!==null,
       relocate:(position,clearance)=>this.relocateVisual(visual,position,clearance),face:setFacing,
@@ -1999,6 +2003,24 @@ captureStoryActors():SceneActorState[] {
       this.movement.place(ally.visual,landing);
       setCharacterClip(this.scene,ally.visual,`idle-${ally.facing}`,true);
     }
+  }
+  /**
+   * 单个佣兵跟随队长长时间没有进展时，把他收拢到队长旁边的合法落点。
+   * 与剧情转场后的整队收拢共用落点规则，但只动这一名队员。
+   */
+  private catchUpFollower(id:string):void {
+    if(this.closed||!this.movement||id==='player'||id===this.controlledId)return;
+    const ally=combatActor(this.allies,id,actor=>actor.id);
+    if(!ally||!ally.member.player.health||this.fallen.has(id)||!ally.visual.container.active)return;
+    const leader=this.controlledVisual;
+    if(!leader)return;
+    const actor=this.movement.actor(ally.visual);
+    const landing=choosePartyLanding(this.movement.navigation,actor.shape(),this.movement.position(leader),actor);
+    if(!landing)return;
+    ally.ai.cancel();
+    this.movement.place(ally.visual,landing);
+    setCharacterClip(this.scene,ally.visual,`idle-${ally.facing}`,true);
+    this.followerCatchUps++;
   }
   private syncControlled():void{
     const id=this.controlledId;

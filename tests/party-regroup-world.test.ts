@@ -68,6 +68,18 @@ test('regrouping pulls every living ally beside the hero without changing the co
   assert.deepEqual(f.moved.sort(),['companion','second']);
 });
 
+test('a stuck follower is pulled beside the controlled member without moving the rest of the party',()=>{
+  const f=fixture();f.party.controlledId='player';
+  const follower=f.allies[1]!,other=f.allies[0]!;
+  const otherBefore={...f.positions.get(other.visual)!};
+  Reflect.get(WorldCombat.prototype,'catchUpFollower').call(f.combat,'second');
+  const hero=f.positions.get(f.hero)!;
+  const point=f.positions.get(follower.visual)!;
+  assert.ok(Math.hypot(point.x-hero.x,point.y-hero.y)<=64,'收拢落点应该在队长身边');
+  assert.ok(f.cancelled.includes('second'),'收拢前要清掉这名队员的旧寻路');
+  assert.deepEqual(f.positions.get(other.visual),otherBefore,'只移动卡住的那名队员');
+});
+
 test('regrouping never places an ally on the other side of a wall',()=>{
   const f=fixture({wall:true});
   f.combat.regroupPartyAroundHero();
