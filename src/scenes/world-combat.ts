@@ -301,6 +301,9 @@ export class WorldCombat {
    * 「佣兵不动」「卡墙」「技能收不了尾」可能落在不同层，这里一次给全。
    */
   diagnostics() {
+    // 关闭中的战斗不再读现场：场景 shutdown 时显示对象先被销毁、移动世界也注销了它们，
+    // 这里再取位置会抛异常，而调用方是同步的界面刷新，异常会一路抛回游戏循环并卡住帧。
+    if(this.closed)return {closed:true};
     const now = (this.app.session.combatTick ?? 0) * LOGIC_FRAME_MS;
     const conditions = this.conditions.captureState();
     const own = <T>(pairs: [string, T[]][], id: string): T[] => pairs.find(([actor]) => actor === id)?.[1] ?? [];
