@@ -182,7 +182,7 @@ test('current saves preserve complete story scenes and reject actor-only scene c
   runtime.sequence=1;session.runtimeState=runtime;
   const slots=new SaveSlots<World>(memory());slots.write(0,record(session));
   const saved=slots.inspect(0);assert.equal(saved.kind,'ok');if(saved.kind!=='ok')return;
-  assert.equal(saved.game.format,34);assert.equal(saved.game.session.runtime.version,2);
+  assert.equal(saved.game.format,SAVE_FORMAT);assert.equal(saved.game.session.runtime.version,2);
   const restored=createSession();restoreSaveGame(restored,saved.game);
   assert.deepEqual(restored.runtimeState.runs[0].stage,stage);
   delete (saved.game.session.runtime.runs[0].stage as Partial<typeof stage>).scene;

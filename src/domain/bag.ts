@@ -1,6 +1,6 @@
 import { equipmentLevel, type EquipmentChaos } from './chaos-equipment.ts';
 import { ItemApplicationError, ITEM_NOTICE_TEXT, type ItemNotice } from './item-application.ts';
-import { SHORTCUT_ENTRY_COUNT, type ShortcutRow } from './shortcut-bar.ts';
+import { SHORTCUT_ENTRY_COUNT, dedupeSkillShortcuts, type ShortcutRow } from './shortcut-bar.ts';
 import { INVENTORY_POUCHES, organizedInventory, pouchFor, type InventoryPouch, type InventoryView } from './inventory.ts';
 import type { StoryItem } from './story-interface.ts';
 import { EQUIPMENT_SLOTS, USE_LABELS, USE_HANDLING, USE_INTERFACE_ONLY, USE_NOT_IMPLEMENTED, unimplementedItemUse, type Equipment, type EquipmentSlot, type ItemCatalog, type ItemInstance, type ItemResult } from './items.ts';
@@ -135,7 +135,7 @@ export class Bag {
     this.pouches=Object.fromEntries(Object.entries(restored.pouches).map(([view,cells])=>[view,cells.map(id=>id??undefined)])) as BagState['pouches'];
     this.all=restored.allCells.map(id=>id??undefined);this.worn=restored.worn;this.serial=restored.serial;
     this.companionEquipment.clear();for(const [owner,equipment] of restored.companionEquipment)this.companionEquipment.set(owner,equipment);
-    this.shortcuts.clear();for(const [owner,row] of restored.shortcuts)this.shortcuts.set(owner,row);
+    this.shortcuts.clear();for(const [owner,row] of restored.shortcuts)this.shortcuts.set(owner,dedupeSkillShortcuts(row));
     this.recipeBook=new Set(restored.recipes);this.lastResult=undefined;
     // Invalidate equipment operations prepared before the checkpoint was restored.
     this.revision++;
@@ -213,7 +213,7 @@ export class Bag {
   /** 写入整行快捷栏并通知订阅者。 */
   setShortcuts(owner:string,row:ShortcutRow):void {
     if(row.length!==SHORTCUT_ENTRY_COUNT)throw new Error('快捷栏格数无效');
-    this.shortcuts.set(owner,structuredClone(row));this.notify();
+    this.shortcuts.set(owner,dedupeSkillShortcuts(row));this.notify();
   }
   /**
    * 分类计数按 revision 缓存：背包没变时同一份 Map 直接复用。

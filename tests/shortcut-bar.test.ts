@@ -46,18 +46,34 @@ test('assigning overwrites the slot; the two groups are independent',()=>{
   for(const [page,slot] of [[-1,0],[2,0],[0,-1],[0,6],[0,.5]])assert.throws(()=>shortcuts.assign(page,slot,null),/快捷|技能组/);
 });
 
-test('groups are per character; cancelling clears the object from both groups at once',()=>{
+test('a skill moves to the last registered slot and keeps only one copy',()=>{
   const bag=create(),player=bar(bag),companion=bar(bag,'companion');
   player.assign(0,1,{kind:'skill',id:'dark-strike'});
+  player.assign(0,2,{kind:'skill',id:'dark-strike'});
+  assert.equal(player.page(0)[1],null,'同一组里换槽会清掉旧槽');
+  assert.deepEqual(player.page(0)[2],{kind:'skill',id:'dark-strike'});
   player.assign(1,3,{kind:'skill',id:'dark-strike'});
+  assert.equal(player.page(0)[2],null,'跨组换槽也清掉旧槽');
+  assert.deepEqual(player.page(1)[3],{kind:'skill',id:'dark-strike'});
+  assert.equal(player.row().filter(entry=>entry?.kind==='skill'&&entry.id==='dark-strike').length,1);
   companion.assign(0,1,{kind:'skill',id:'dark-strike'});
-  assert(player.assigned('skill','dark-strike'));
-  assert.equal(player.page(1)[3]&&companion.page(0)[1]!==null,true);
-  player.clearObject('skill','dark-strike');
-  assert(player.page(0).every(entry=>entry?.id!=='dark-strike'));
-  assert(player.page(1).every(entry=>entry?.id!=='dark-strike'));
   assert.deepEqual(companion.page(0)[1],{kind:'skill',id:'dark-strike'},'别人的快捷栏不受影响');
+  player.clearObject('skill','dark-strike');
   assert(!player.assigned('skill','dark-strike'));
+  assert.deepEqual(companion.page(0)[1],{kind:'skill',id:'dark-strike'});
+});
+test('items may still occupy multiple slots; restoring an old duplicate skill row keeps the last copy',()=>{
+  const bag=create(),shortcuts=bar(bag);
+  shortcuts.assign(0,0,{kind:'item',id:'healing-potion-s'});
+  shortcuts.assign(1,4,{kind:'item',id:'healing-potion-s'});
+  assert.deepEqual([shortcuts.page(0)[0],shortcuts.page(1)[4]],[{kind:'item',id:'healing-potion-s'},{kind:'item',id:'healing-potion-s'}]);
+  const state=bag.captureState(),row=emptyShortcutRow();
+  row[0]={kind:'skill',id:'dark-strike'};row[8]={kind:'skill',id:'dark-strike'};
+  state.shortcuts=[['player',row]];
+  bag.restoreState(state);
+  const restored=bar(bag);
+  assert.equal(restored.row().filter(entry=>entry?.kind==='skill'&&entry.id==='dark-strike').length,1);
+  assert.deepEqual(restored.page(1)[2],{kind:'skill',id:'dark-strike'},'旧行按后出现的槽位保留');
 });
 
 test('emptying an item stack clears its slot but leaves skills alone',()=>{

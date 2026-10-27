@@ -894,7 +894,10 @@ export class StoryUI {
   /** 点某一格就落格，已占用即覆盖；落完留在这一屏继续登记。 */
   private assignShortcut(slot:number):void{
     const edit=this.shortcutEdit;if(!edit)return;
-    this.shortcutBar().assign(edit.page,slot,{kind:edit.kind,id:edit.id});
+    const current=this.shortcutBar().page(edit.page)[slot];
+    // 技能槽再点一次就是取消；物品沿用原版行为，点击只重新落格。
+    const same=edit.kind==='skill'&&current?.kind==='skill'&&current.id===edit.id;
+    this.shortcutBar().assign(edit.page,slot,same?null:{kind:edit.kind,id:edit.id});
     this.render();
   }
   /** 另一处「取消快捷键」：把该对象从两组里一次清掉，对应 `PLAYER_RemoveShortcutAll`。 */

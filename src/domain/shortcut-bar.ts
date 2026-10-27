@@ -17,6 +17,20 @@ export type ShortcutRow = (ShortcutEntry | null)[];
 
 export const emptyShortcutRow = (): ShortcutRow => Array<ShortcutEntry | null>(SHORTCUT_ENTRY_COUNT).fill(null);
 
+/**
+ * 同一技能只保留最后一次登记：从行末往前扫，后出现的副本优先。
+ * 旧档没有登记时间，页 2/高槽位视为更新；物品沿用原来的“可占多格”规则。
+ */
+export function dedupeSkillShortcuts(row:ShortcutRow):ShortcutRow {
+  const result=row.map(entry=>entry?{...entry}:null),seen=new Set<string>();
+  for(let index=result.length-1;index>=0;index--){
+    const entry=result[index];
+    if(entry?.kind!=='skill')continue;
+    if(seen.has(entry.id))result[index]=null;else seen.add(entry.id);
+  }
+  return result;
+}
+
 /** 默认快捷栏：已学会的主动技能按职业次序排前五格，消耗品放第一组第六格。 */
 export function defaultShortcutRow(learnedActive: readonly string[], startingItem?: string): ShortcutRow {
   const row = emptyShortcutRow();
@@ -54,6 +68,9 @@ export class ShortcutBar {
     this.check(page);
     if (!Number.isInteger(slot) || slot < 0 || slot >= SHORTCUT_SLOT_COUNT) throw new Error('快捷位无效');
     const row = this.row(), start = page * SHORTCUT_SLOT_COUNT;
+    // 一个技能只能占一格；写到新槽时把旧槽一起清掉，目标槽随后写入（最后一次登记生效）。
+    if(entry?.kind==='skill')for(let index=0;index<row.length;index++)
+      if(row[index]?.kind==='skill'&&row[index]!.id===entry.id)row[index]=null;
     row[start + slot] = entry;
     this.bag.setShortcuts(this.owner, row);
   }

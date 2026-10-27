@@ -46,6 +46,23 @@ test('the previous published save format restores without its missing scene snap
   assert.deepEqual(saved,before,'升级不改写槽里的原件');
 });
 
+test('format 34 and 33 duplicate skill shortcuts collapse to the last registered slot',()=>{
+  for(const format of [34,33]){
+    const saved=record(),skillId=content.battleCatalog.classes.find(value=>value.id===saved.summary.classId)!.skills[0]!;
+    let playerRow=saved.session.bag.shortcuts.find(([owner])=>owner==='player')?.[1];
+    if(!playerRow){playerRow=emptyShortcutRow();saved.session.bag.shortcuts.push(['player',playerRow]);}
+    const original={kind:'skill' as const,id:skillId},row=emptyShortcutRow();
+    row[0]={...original};row[9]={...original};
+    for(let index=0;index<row.length;index++)playerRow[index]=row[index];
+    saved.format=format;
+    const before=structuredClone(saved),candidate=prepareSavedGame(saved,content);
+    const restored=candidate.session.bag.captureState().shortcuts.find(([owner])=>owner==='player')![1];
+    assert.equal(restored[0],null,'较早的副本被清掉');
+    assert.deepEqual(restored[9],original,'保留数组里最后出现的技能槽');
+    assert.deepEqual(saved,before,'迁移不改写原始存档');
+  }
+});
+
 test('old saves containing removed expansion bags migrate to consumables',()=>{
   const saved=record(),bag=saved.session.bag;
   const equipped=new Set([...Object.values(bag.worn),...bag.companionEquipment.flatMap(([,equipment])=>Object.values(equipment))]);

@@ -625,6 +625,28 @@ test('learning immediately redraws skill lock, rank, description and shortcut av
   assert(f.scene.texts().includes(`${skill.name} (LV 2)`), '同一技能页即时重绘当前等级说明');
 });
 
+test('a skill moves to the last registered shortcut and clicking that slot again cancels it',t=>{
+  const f=fixture();t.after(f.cleanup);const id='dark-strike',skill=battle.skills[id];
+  f.hero.addExperience(Number.MAX_SAFE_INTEGER);f.session.skills.learn(id);
+  f.menu.show('skills');f.scene.click(f.scene.button(skill.name));
+  if(f.scene.buttons('取消快捷键').length)f.scene.click(f.scene.button('取消快捷键'));
+  f.scene.click(f.scene.button('快捷键'));
+  const row=()=>f.session.bag.captureState().shortcuts.find(([owner])=>owner==='player')![1];
+  f.scene.click(f.scene.button('快捷位 1'));
+  f.scene.click(f.scene.button('快捷位 2'));
+  assert.equal(row()[0],null,'登记到新槽会清掉同一技能的旧槽');
+  assert.deepEqual(row()[1],{kind:'skill',id});
+  f.scene.click(f.scene.button('快捷位 2'));
+  assert.equal(row()[1],null,'再次点击已登记技能的槽位会取消');
+  assert.ok(f.internals.shortcutEdit,'取消后仍留在登记屏');
+  f.scene.click(f.scene.button('快捷位 3'));
+  f.scene.click(f.scene.button('切换技能组'));
+  f.scene.click(f.scene.button('快捷位 4'));
+  assert.equal(row()[2],null,'换到第二组也会清掉第一组的旧槽');
+  assert.deepEqual(row()[9],{kind:'skill',id});
+  assert.equal(row().filter(entry=>entry?.kind==='skill'&&entry.id===id).length,1);
+});
+
 test('companion equipment buttons validate the selected member and hero buttons retain class restrictions', async t => {
   const f = fixture(); t.after(f.cleanup); f.hero.addExperience(Number.MAX_SAFE_INTEGER);
   const member = f.recruit(), orb = f.add('crystal-orb'); f.select(member.id); f.menu.debugDescribe(orb.id);

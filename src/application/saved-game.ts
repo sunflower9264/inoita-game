@@ -9,6 +9,7 @@ import type {BattleCatalog} from '../domain/battle.ts';
 import type {CompanionCatalog} from '../domain/party.ts';
 import type {StoryWorldViewSnapshot} from '../scenes/world-scene.ts';
 import {validateSceneSnapshot} from '../domain/scene-snapshot.ts';
+import {dedupeSkillShortcuts} from '../domain/shortcut-bar.ts';
 
 export interface SavedGameContent {
   campaign:Campaign;world:WorldIndex;storyClasses:StoryClassCatalog;items:ItemCatalog;
@@ -19,6 +20,7 @@ interface LegacyStoryRun {stage?:Record<string,unknown>}
 /**
  * 旧存档升级链。33 → 34 时剧情运行时从 1 升到 2；旧舞台快照没有新版演出需要的
  * 场景和绑定，丢弃舞台让剧情从当前节点继续，其余进度原样保留。
+ * 34 → 35 把同一技能占多格的旧快捷栏收敛成最后一格。
  */
 const SAVE_UPGRADES:Record<number,SaveUpgrade>={
   33:game=>{
@@ -27,7 +29,14 @@ const SAVE_UPGRADES:Record<number,SaveUpgrade>={
       runtime.version=2;
       for(const run of runtime.runs??[])if(run.stage&&(!('scene' in run.stage)||!('bindings' in run.stage)))delete run.stage;
     }
-    game.format=SAVE_FORMAT;
+    game.format=34;
+  },
+  34:game=>{
+    for(const [,row] of game.session.bag.shortcuts){
+      const deduped=dedupeSkillShortcuts(row);
+      for(let index=0;index<row.length;index++)row[index]=deduped[index]??null;
+    }
+    game.format=35;
   },
 };
 function upgradeSavedGame(game:SaveGame<StoryWorldViewSnapshot>):SaveGame<StoryWorldViewSnapshot>{
