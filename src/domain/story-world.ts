@@ -113,7 +113,9 @@ export class StoryWorldState {
       projected.set(entity.id,{...entity,...override});
     }
     for(const entity of this.entities.values()){
-      if(entity.removed||entity.map!==map||entity.mapVisit!==undefined&&entity.mapVisit!==visit||!entity.actor||!this.actorVisible(map,entity.actor,entity.characterId)||entity.x===undefined||entity.y===undefined||projected.has(entity.id))continue;
+      if(entity.removed||entity.map!==map||entity.mapVisit!==undefined&&entity.mapVisit!==visit
+        ||!entity.id.startsWith('quest-npc-located-')&&located.has(entity.characterId??entity.actor)
+        ||!entity.actor||!this.actorVisible(map,entity.actor,entity.characterId)||entity.x===undefined||entity.y===undefined||projected.has(entity.id))continue;
       projected.set(entity.id,{...definitions.find(definition=>definition.id===entity.id),...entity,actor:entity.actor,x:entity.x,y:entity.y});
     }
     return [...projected.values()];
@@ -138,6 +140,11 @@ export class StoryWorldState {
       case 'place':{
         const entity=command.entity;
         if(!entity.id||!entity.map||!entity.actor||!Number.isFinite(entity.x)||!Number.isFinite(entity.y))throw new Error('剧情角色位置无效');
+        // 位置登记是这个角色在这张图上的最终摆放：同一角色先前的过场实例只是摆位过程，
+        // 留在世界里会和登记副本重叠成两个同名 NPC。旧存档里的重复实例由投影再挡一层。
+        if(entity.id.startsWith('quest-npc-located-')&&entity.characterId)
+          for(const [id,other] of this.entities)
+            if(other.id.startsWith('story-character-')&&other.characterId===entity.characterId&&other.map===entity.map&&!other.removed)this.entities.delete(id);
         // 常驻登记必须显式清掉旧的访问寿命：同一实例可能先由演出按 visit 登记，
         // 后续原版命令再把它永久摆出来；只靠对象展开会把旧的 mapVisit 留下来。
         this.entities.set(entity.id,{...this.entities.get(entity.id),...entity,removed:false,
@@ -150,8 +157,12 @@ export class StoryWorldState {
         return;
       }
       case 'remove-character':{
+        // 有位置登记时，这个角色在本图只有一个正式副本；旧存档遗留的过场副本一起撤下，
+        // 否则登记副本先被移除后，过场副本会重新露出来。
+        const registered=[...this.entities.values()].some(entity=>entity.id.startsWith('quest-npc-located-')
+          &&entity.characterId===command.characterId&&entity.map===command.map&&!entity.removed);
         for(const entity of this.entities.values())if(entity.characterId===command.characterId&&entity.map===command.map&&!entity.removed){
-          entity.removed=true;if(!command.all)break;
+          entity.removed=true;if(!command.all&&!registered)break;
         }
         // 地图静态摆放不在 `entities` 表里。只要本图这个角色已经没有任何可见的剧情实例，
         // 就记「本图缺少该角色」：场景刷新会同时隐藏静态副本并停掉碰撞。

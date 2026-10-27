@@ -27,6 +27,28 @@ test('visit-scoped story actors expire with the map visit while registered locat
   assert.deepEqual(world.projectEntities('cave',[]).map(entity=>entity.id),['quest-npc-located-npc-2']);
 });
 
+test('a location registration replaces earlier cinematic instances of the same character on its map',()=>{
+  const world=new StoryWorldState();
+  world.apply({kind:'place',scope:'visit',entity:{id:'story-character-10-15',map:'hall',actor:'darius',characterId:'npc-40',x:552,y:472}});
+  world.apply({kind:'place',entity:{id:'quest-npc-located-npc-40',map:'hall',actor:'darius',characterId:'npc-40',x:264,y:344}});
+  assert.deepEqual(world.projectEntities('hall',[]).map(entity=>[entity.id,entity.x,entity.y]),
+    [['quest-npc-located-npc-40',264,344]]);
+  assert.equal(world.entity('story-character-10-15'),undefined,'登记接管后旧过场实例不再留在世界状态');
+});
+
+test('a location registration hides duplicate cinematic instances from an older save and removal keeps them hidden',()=>{
+  const world=new StoryWorldState();
+  world.restoreState({entities:[
+    {id:'story-character-10-15',map:'hall',actor:'darius',characterId:'npc-40',x:552,y:472,visible:true},
+    {id:'story-character-npc-40',map:'hall',actor:'darius',characterId:'npc-40',x:264,y:344,visible:true},
+    {id:'quest-npc-located-npc-40',map:'hall',actor:'darius',characterId:'npc-40',x:264,y:344,visible:true},
+  ],exits:[],flags:[],choices:[],encounters:[],mapVisit:0});
+  assert.deepEqual(world.projectEntities('hall',[]).map(entity=>entity.id),['quest-npc-located-npc-40'],
+    '旧档里的重复实例仍由投影收敛成一个卓拉德');
+  world.apply({kind:'remove-character',characterId:'npc-40',map:'hall',all:false});
+  assert.deepEqual(world.projectEntities('hall',[]),[],'撤下登记副本时不能把同图的过场副本露出来');
+});
+
 test('a later persistent registration clears the visit lifetime left by a temporary one',()=>{
   const world=new StoryWorldState(),at=(map:string)=>({map,x:8,y:8,facing:'south' as const});
   world.apply({kind:'travel',destination:at('cave')});

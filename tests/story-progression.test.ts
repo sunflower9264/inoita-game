@@ -48,6 +48,11 @@ test('a new game reaches the original Grafton battle, report, teaching choices a
   await h.travel('shadow-hall');await h.talk('npc-54');
   assert.equal(h.session.status('knight-uniform'),'completed');
   assert.equal(h.director.runtime.eventStatus('event-10'),'completed');
+  assert.deepEqual(h.entities().filter(entity=>entity.characterId==='npc-40').map(entity=>[entity.id,entity.x,entity.y]),
+    [['quest-npc-located-npc-40',264,344]],'剧情过场演员和任务位置不能重叠成两个卓拉德');
+  assert.deepEqual(h.session.storyWorld.captureState().entities
+    .filter(entity=>entity.characterId==='npc-40'&&!entity.removed).map(entity=>entity.id),
+    ['quest-npc-located-npc-40'],'任务位置登记接管后不再保留同图的过场实例');
   assert.equal(h.session.itemCount('ectoplasm'),0);
   assert.ok(h.session.storyWorld.captureState().entities.some(entity=>entity.characterId==='npc-126'),'原版后续训练教官已登记');
   h.director.dispose();
