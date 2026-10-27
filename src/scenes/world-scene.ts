@@ -805,7 +805,7 @@ export class WorldScene extends Phaser.Scene {
     const bag=this.app.session.bag,entry=bag.entries.find(value=>value.item===itemId);
     if(!entry)return;
     if(['recover-health','regenerate'].includes(this.app.items.items[entry.item].use?.kind??''))this.combat?.useRecoveryItem(entry.id);
-    else try{bag.use(entry.id);}catch(error){this.app.ui.toast((error as Error).message);}
+    else try{bag.use(entry.id);}catch(error){this.app.ui.showInstant((error as Error).message);}
   }
   /** 剧情摆放的宝箱是一次性奖励：开启后跨地图访问都保持已开启。 */
   private chestOpened(character:Character):boolean {

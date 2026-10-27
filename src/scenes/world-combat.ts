@@ -2214,7 +2214,7 @@ captureStoryActors():SceneActorState[] {
     const overrides=costumeRecipe(this.app.wardrobe,this.app.items,this.hero.bag.equipmentItems(this.hero.bag.equipmentFor(this.controlledId)),member.classId,member===this.hero?undefined:(member as CompanionMember).definition.actor).actions;
     const selected=key&&key in overrides?overrides[key]:skill?.action;
     const action=selected&&skill?.action?{...selected,hitEffectStyle:skill.action.hitEffectStyle,usesSkillDamageBuff:skill.action.usesSkillDamageBuff,combatUnits:skill.action.combatUnits,repeat:skill.action.repeat?{...skill.action.repeat,restartAfterFrame:selected.repeat?.restartAfterFrame??skill.action.repeat.restartAfterFrame}:undefined}:selected;
-    if(key&&!action){this.app.ui.toast('该技能需要装备对应武器');return;}
+    if(key&&!action){this.app.ui.showInstant('该技能需要装备对应武器');return;}
     const configuration=this.controlledId==='player'?this.app.session.skills:(member as CompanionMember).skills;
     const level=key?configuration.draft(this.app.battleCatalog,member.classId).levels[key]:undefined;
     if(key&&!level)return;
