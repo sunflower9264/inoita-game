@@ -197,8 +197,9 @@ export class PartyController {
       }
     }
     // 队伍已开战但没有可攻击目标：走和玩家攻击键相同的默认普攻请求，
-    // 由 CombatController 自行索敌并接近；下一帧再从 snapshot 取选中的目标。
-    if(!target&&inCombat){this.combatController.request(undefined,undefined);return;}
+    // 由 CombatController 自行索敌并接近。附近没有敌人时不能停在这里等——
+    // 仍要回到队长身边，否则战斗发生在别处时佣兵会一直留在原地。
+    if(!target&&inCombat&&this.combatController.request(undefined,undefined)!=='no-target')return;
     if(target){
       const range=this.port.attackRange();
       if(attackDistance(actor.position,actor.bounds,target.position,target.bounds)<=range){

@@ -73,6 +73,13 @@ test('once the party is fighting, followers engage an enemy through the default 
   const run=setup();run.fighting();run.ai.update(60);
   assert.equal(run.plays.at(-1)?.target?.id,'enemy','默认普攻由 CombatController 自动索敌');
 });
+test('a companion with no enemy in range follows the leader instead of standing still in combat',()=>{
+  const run=setup();run.fighting();
+  run.enemy.position={x:600,y:600};run.enemy2.position={x:600,y:600};
+  run.ai.update(60);
+  assert.equal(run.plays.length,0,'附近没有敌人时默认普攻不能凭空出手');
+  assert.ok(run.waypoint(),'队伍在别处开战时，佣兵仍要跟向队长');
+});
 
 test('fighting companions pursue the controlled character target beyond their own search radius',()=>{
   const run=setup();run.enemy.position={x:160,y:32};run.fighting();run.shared('enemy');run.ai.update(60);
