@@ -28,20 +28,41 @@ export function readSafeArea(): { left: number; right: number; top: number; bott
   return value;
 }
 
+/**
+ * iOS 主屏应用冷启动时，`visualViewport` 可能先给出比实际屏幕矮一截的高度，
+ * 页面底部就会露出一条黑边；旋转一次屏幕后 WebKit 才重新测量。
+ * 主屏模式改用 CSS 的大视口单位，让 WebKit 按整屏高度排版；普通浏览器继续用
+ * `visualViewport`，键盘和地址栏变化时仍能及时收缩。
+ */
+function iosHomeScreenApp(): boolean {
+  return typeof navigator !== 'undefined' && (navigator as Navigator & {standalone?: boolean}).standalone === true;
+}
+function fullViewportHeightUnit(): string {
+  const supports = typeof CSS !== 'undefined' && typeof CSS.supports === 'function';
+  return supports && CSS.supports('height', '100lvh') ? '100lvh' : '100vh';
+}
 export function fitViewport(): void {
   // 只有视口重建时安全区才可能变；布局每帧读取时直接复用这次测量。
   safeAreaRevision++;
   const viewport = window.visualViewport;
   const { left, right, top, bottom } = readSafeArea();
-  const width = Math.max(1, viewport?.width ?? innerWidth);
-  const height = Math.max(1, viewport?.height ?? innerHeight);
   const frame = element('game-frame');
+  let width: number, height: number;
+  if (iosHomeScreenApp()) {
+    Object.assign(frame.style, { width: '100vw', height: fullViewportHeightUnit(), left: '0px', top: '0px' });
+    const bounds = frame.getBoundingClientRect();
+    width = Math.max(1, bounds.width || innerWidth);
+    height = Math.max(1, bounds.height || innerHeight);
+  } else {
+    width = Math.max(1, viewport?.width ?? innerWidth);
+    height = Math.max(1, viewport?.height ?? innerHeight);
+    Object.assign(frame.style, {
+      width: `${width}px`, height: `${height}px`,
+      left: `${viewport?.offsetLeft ?? 0}px`,
+      top: `${viewport?.offsetTop ?? 0}px`
+    });
+  }
   frame.style.setProperty('--story-unit', `${Math.min(width / UI_UNIT_WIDTH, height / UI_UNIT_HEIGHT)}px`);
-  Object.assign(frame.style, {
-    width: `${width}px`, height: `${height}px`,
-    left: `${viewport?.offsetLeft ?? 0}px`,
-    top: `${viewport?.offsetTop ?? 0}px`
-  });
   for (const [side, inset] of Object.entries({left, right, top, bottom})) {
     frame.style.setProperty(`--safe-${side}`, `${inset + 12}px`);
   }

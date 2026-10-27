@@ -32,6 +32,30 @@ test('viewport offsets and safe insets affect the frame and controls separately,
  }
 });
 
+test('iOS home-screen startup fills the screen even when visualViewport is reported short',()=>{
+ const names=['window','document','getComputedStyle','innerWidth','innerHeight','navigator','CSS'];
+ const globals=globalThis as unknown as Record<string, unknown>;
+ const original: [string, PropertyDescriptor | undefined][]=names.map(name=>[name,Object.getOwnPropertyDescriptor(globalThis,name)]);
+ const style:FakeStyle={setProperty(name,value){this[name]=value;}};
+ try {
+  globals.window={visualViewport:{width:844,height:372,offsetLeft:0,offsetTop:21},innerWidth:844,innerHeight:393};
+  globals.document={getElementById:(id:string)=>id==='game-frame'?{style,getBoundingClientRect:()=>({width:844,height:393})}:{}};
+  globals.getComputedStyle=()=>({paddingLeft:'0px',paddingRight:'0px',paddingTop:'0px',paddingBottom:'0px'});
+  Object.defineProperty(globalThis,'navigator',{configurable:true,value:{standalone:true}});
+  Object.defineProperty(globalThis,'CSS',{configurable:true,value:{supports:(property:string,value:string)=>property==='height'&&value==='100lvh'}});
+  fitViewport();
+  assert.deepEqual([style.width,style.height,style.left,style.top],['100vw','100lvh','0px','0px'],
+    '主屏模式按整屏排版，不跟随偏矮的 visualViewport');
+  assert.equal(parseFloat(String(style['--story-unit'])),Math.min(844/800,393/480));
+  (globals.CSS as {supports:()=>boolean}).supports=()=>false;fitViewport();
+  assert.equal(style.height,'100vh','不支持 lvh 的旧 WebKit 退回大视口 vh');
+ } finally {
+  for(const [name,descriptor] of original) {
+   if(descriptor)Object.defineProperty(globalThis,name,descriptor);else delete globals[name];
+  }
+ }
+});
+
 test('safe area is measured once until the viewport changes',()=>{
  const globals=globalThis as unknown as Record<string,unknown>;
  const original=['window','document','getComputedStyle'].map(name=>[name,Object.getOwnPropertyDescriptor(globalThis,name)] as const);
