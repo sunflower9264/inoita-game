@@ -83,6 +83,8 @@ export class PartyController {
   private clock=0;
   private nextPathAt=0;
   private path:Point[]=[];
+  /** 跨帧推进的寻路搜索；每帧只领一段预算，不能在预算用完时丢掉重来。 */
+  private search?:ReturnType<typeof createPathSearch>;
   private destination?:Point;
   private destinationTarget?:string;
   private destinationRange?:number;
@@ -103,6 +105,8 @@ export class PartyController {
     this.retaliation=state.retaliation;this.accumulator=state.accumulator;this.clock=state.clock;this.nextPathAt=state.nextPathAt;
     this.path=state.path.map(point=>({...point}));this.destination=state.destination?{...state.destination}:undefined;
     this.destinationTarget=state.destinationTarget;this.destinationRange=state.destinationRange;
+    // 搜索持有的是旧场地的闭包，读档后必须重新开始。
+    this.search=undefined;
   }
   onContact(event:AttackContact):void {
     if(this.disposed||event.targetId!==this.id||!counterattackReady(this.port.counterattack(),this.port.damageCount()))return;
@@ -113,9 +117,9 @@ export class PartyController {
     this.combatController.targetRemoved(targetId);
     if(this.retaliation===targetId)this.retaliation=undefined;
     if(this.destinationTarget!==targetId)return;
-    this.path=[];this.destination=undefined;this.destinationTarget=undefined;this.destinationRange=undefined;this.nextPathAt=0;this.port.stop();
+    this.path=[];this.search=undefined;this.destination=undefined;this.destinationTarget=undefined;this.destinationRange=undefined;this.nextPathAt=0;this.port.stop();
   }
-  cancel():void {this.combatController.cancel(true);this.retaliation=undefined;this.path=[];this.destination=undefined;this.destinationTarget=undefined;this.destinationRange=undefined;this.nextPathAt=0;this.accumulator=0;this.port.stop();}
+  cancel():void {this.combatController.cancel(true);this.retaliation=undefined;this.path=[];this.search=undefined;this.destination=undefined;this.destinationTarget=undefined;this.destinationRange=undefined;this.nextPathAt=0;this.accumulator=0;this.port.stop();}
   disable():void {this.cancel();}
   reset():void {this.cancel();this.combatController.reset();}
   dispose():void {this.cancel();this.disposed=true;this.combatController.dispose();}
@@ -203,25 +207,49 @@ export class PartyController {
     const capabilities=combatStateCapabilities(actor.states??[]);
     if(!capabilities.canMove||(actor.team!==leader.team&&!capabilities.canAutoApproach)){this.port.stop();return;}
     if(this.destinationTarget!==leader.id||this.destinationRange!==range){
-      this.path=[];this.destination=undefined;this.nextPathAt=0;
+      this.path=[];this.search=undefined;this.destination=undefined;this.nextPathAt=0;
       this.destinationTarget=leader.id;this.destinationRange=range;
     }
-    const moved=!this.destination||targetDistance(this.destination,leader.position)>=PARTY_REPATH_DISTANCE_PX;
-    if(this.clock>=this.nextPathAt&&(moved||!this.path.length||!this.nextWaypoint())){
+    // 搜索跨帧推进：寻路一次算不完时保留现场、下一帧接着算。以前每次重开搜索，
+    // 超过单帧预算的长路（远距离或要绕墙）永远算不出来，佣兵就停在原地不跟随。
+    if(this.search)this.advanceSearch(actor);
+    else if(this.clock>=this.nextPathAt&&(!this.destination
+      ||targetDistance(this.destination,leader.position)>=PARTY_REPATH_DISTANCE_PX
+      ||!this.path.length||!this.nextWaypoint())){
+      // 先领预算再建查询：没有预算的帧连地图边界都不该读。
       const granted=this.port.pathBudget?.take(PARTY_SEARCH_CAP)??PARTY_SEARCH_CAP;
-      if(granted>0){
-        this.nextPathAt=this.clock+PARTY_REPATH_INTERVAL_MS;this.destination={...leader.position};
-        const canStand=(point:Point)=>this.port.canStand(point);
-        const radius=Math.hypot(actor.bounds.width+leader.bounds.width,actor.bounds.height+leader.bounds.height)+range*8;
-        const result=createPathSearch(actor.position,{bounds:this.port.navigationBounds(),canStand,
-          isGoal:point=>canStand(point)&&attackDistance(point,actor.bounds,leader.position,leader.bounds)<=range,
-          heuristic:point=>Math.max(0,Math.hypot(point.x-leader.position.x,point.y-leader.position.y)-radius)}).step(granted);
-        if(result.status==='found')this.path=result.path;
-        else if(result.status==='unreachable'){this.path=[];this.nextPathAt=this.clock+PARTY_FAILED_PATH_MS;}
-        else this.nextPathAt=this.clock+LOGIC_FRAME_MS;
-      }else this.nextPathAt=this.clock+LOGIC_FRAME_MS;
+      if(granted>0)this.beginSearch(actor,leader,range,granted);
+      else this.nextPathAt=this.clock+LOGIC_FRAME_MS;
     }
     if(this.nextWaypoint())this.port.followPath(this.nextWaypoint);else this.port.stop();
+  }
+  private beginSearch(actor:Combatant,leader:Combatant,range:number,granted:number):void {
+    this.nextPathAt=this.clock+PARTY_REPATH_INTERVAL_MS;this.destination={...leader.position};
+    const canStand=(point:Point)=>this.port.canStand(point);
+    const radius=Math.hypot(actor.bounds.width+leader.bounds.width,actor.bounds.height+leader.bounds.height)+range*8;
+    this.search=createPathSearch(actor.position,{bounds:this.port.navigationBounds(),canStand,
+      isGoal:point=>canStand(point)&&attackDistance(point,actor.bounds,leader.position,leader.bounds)<=range,
+      heuristic:point=>Math.max(0,Math.hypot(point.x-leader.position.x,point.y-leader.position.y)-radius)});
+    this.stepSearch(actor,granted);
+  }
+  private advanceSearch(actor:Combatant):void {
+    const granted=this.port.pathBudget?.take(PARTY_SEARCH_CAP)??PARTY_SEARCH_CAP;
+    if(granted>0)this.stepSearch(actor,granted);
+  }
+  private stepSearch(actor:Combatant,granted:number):void {
+    const search=this.search;if(!search)return;
+    const result=search.step(granted);
+    if(result.status==='pending')return;
+    this.search=undefined;
+    if(result.status==='unreachable'){this.path=[];this.nextPathAt=this.clock+PARTY_FAILED_PATH_MS;return;}
+    // 搜索跨了几帧，角色可能被其他系统挪过；从离当前位置最近的点继续，别掉头走回起点。
+    let start=0,nearest=Infinity;
+    for(let index=0;index<result.path.length;index++){
+      const point=result.path[index]!,distance=Math.hypot(point.x-actor.position.x,point.y-actor.position.y);
+      if(distance>=nearest)break;
+      start=index;nearest=distance;
+    }
+    this.path=result.path.slice(start);
   }
   private readonly nextWaypoint=():Point|undefined=>{
     const actor=this.port.actor(this.id);if(!actor||this.disposed)return;

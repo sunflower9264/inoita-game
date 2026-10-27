@@ -195,6 +195,17 @@ test('a follow search yields when the shared budget is exhausted and retries lat
   run.port.pathBudget=undefined;run.ai.update(60);
   assert.equal(run.boundsCalls(),1,'预算恢复后再算');
 });
+test('a follow search resumes across frames instead of restarting from the beginning',()=>{
+  const run=setup();
+  run.port.pathBudget={take:limit=>Math.min(2,limit)};
+  run.ai.update(60);
+  assert.equal(run.boundsCalls(),1,'第一帧只开一次搜索');
+  assert.equal(run.waypoint(),undefined,'两格预算还算不完');
+  for(let frame=0;frame<300&&!run.waypoint();frame++)run.ai.update(60);
+  assert.ok(run.waypoint(),'跨帧累计的预算最终算出路径');
+  assert.equal(run.boundsCalls(),1,'算的过程中不能丢掉搜索重来');
+});
+
 test('party checkpoints restore the pending logic frame and cached navigation without sharing mutable points',()=>{
   const run=setup();run.ai.update(85);const saved=run.ai.captureState(),expected=structuredClone(saved);
   assert.equal(saved.accumulator,25);assert.equal(saved.clock,60);assert.ok(saved.path.length);
