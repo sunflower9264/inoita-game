@@ -3,6 +3,7 @@ import type {Campaign} from './campaign.ts';
 import {rollPlacement} from './chests.ts';
 import type {EntityPlacement, WorldIndex, WorldMap} from './content.ts';
 import type {DropCatalog} from './drops.ts';
+import {authoredPlacements, baseMapEntities, placementMayBeInactive, withoutReplacedStatic} from './map-placement.ts';
 import {NavigationWorld, mirroredCollision} from './navigation-world.ts';
 import {choosePartyLanding} from './party-placement.ts';
 import {QuestEnemyWatch} from './quest-enemies.ts';
@@ -22,10 +23,10 @@ export interface SceneVisitInputs {
 }
 
 /** 正式进图与剧情预备共用一次访问的宝箱、泉水和人物生成规则。 */
-export function generateMapEntities(map:WorldMap,campaign:Campaign,springs:SpringCatalog,level:number,random:()=>number):EntityPlacement[]{
-  const authored=campaign.placements.filter(entity=>entity.map===map.id);
-  const placed=map.entities.filter(entity=>!authored.some(other=>other.characterId&&entity.characterId
-    ?other.characterId===entity.characterId:other.actor===entity.actor))
+export function generateMapEntities(map:WorldMap,campaign:Campaign,springs:SpringCatalog,level:number,random:()=>number,
+  active:(entity:EntityPlacement)=>boolean=()=>true):EntityPlacement[]{
+  const authored=authoredPlacements(map,campaign);
+  const placed=baseMapEntities(map,campaign,active)
     .map(entity=>rollPlacement(entity,random)).filter(entity=>entity!==undefined);
   return [...placed,...authored].map(entity=>entity.spring
     ?{...entity,actor:rollSpring(springs,level,random).id}:{...entity});
@@ -39,8 +40,11 @@ export function prepareSceneVisit(inputs:SceneVisitInputs,map:WorldMap,player:Sc
   session.storyWorld.apply({kind:'travel',destination:{map:map.id,x:player.x,y:player.y,facing:player.facing}});
   session.enterMap(map.id,map.questItemSpawns??[],map,map.enemySpawns);
   const level=session.hero?.level??1;
-  const generatedEntities=generateMapEntities(map,campaign,springs,level,random);
-  const entities=session.storyWorld.projectEntities(map.id,generatedEntities,campaign.placements);
+  const generatedEntities=generateMapEntities(map,campaign,springs,level,random,
+    entity=>!placementMayBeInactive(entity));
+  const entities=session.storyWorld.projectEntities(map.id,
+    withoutReplacedStatic(generatedEntities,map,campaign,entity=>session.visible(entity)),
+    campaign.placements);
   const navigation=new NavigationWorld(map);
   const actors:SceneActorState[]=entities.map(entity=>{
     const original=world.actors[session.storyWorld.actorAppearance(entity.actor)];

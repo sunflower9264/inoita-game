@@ -1,6 +1,7 @@
 import {prepareCombatRestore} from '../domain/combat-snapshot.ts';
 import type {SceneActorState,SceneSnapshot} from '../domain/scene-snapshot.ts';
 import {generateMapEntities} from '../domain/scene-visit.ts';
+import {placementMayBeInactive, withoutReplacedStatic} from '../domain/map-placement.ts';
 import { SCENE_KEYS } from '../application/scene-keys.ts';
 import { StatusHud } from '../ui/phaser/status-hud.ts';
 import { worldZoom } from '../ui/viewport.ts';
@@ -306,8 +307,13 @@ export class WorldScene extends Phaser.Scene {
     this.dropCatalog=parseDrops(rawDrops,this.app.items,this.app.battleCatalog.enemies.map(enemy=>enemy.id));
     this.springCatalog=parseSprings(rawSprings);
     const generated=options.preparedScene?.visit?.generatedEntities??options.generatedEntities;
-    this.baseEntities=generated?structuredClone(generated):generateMapEntities(map,campaign,this.springCatalog,this.app.session.hero?.level??1,Math.random);
-    this.entities=this.app.session.storyWorld.projectEntities(map.id,this.baseEntities,this.app.campaign.placements);
+    // 正式地图保留全部静态候选，投影时再按当前剧情条件决定谁顶掉静态副本；
+    // 否则条件在本次访问中变化时，进图时删掉的静态人物不会回来，或者会与剧情人物重叠。
+    this.baseEntities=generated?structuredClone(generated):generateMapEntities(map,campaign,this.springCatalog,this.app.session.hero?.level??1,Math.random,
+      entity=>!placementMayBeInactive(entity));
+    this.entities=this.app.session.storyWorld.projectEntities(map.id,
+      withoutReplacedStatic(this.baseEntities,map,campaign,entity=>this.app.session.visible(entity)),
+      this.app.campaign.placements);
     // 入口只保证「落脚图」可玩；后续剧情地图交给 ensureStoryAssets 在开演前按需加载。
     // 玩家侧战斗资源只在首次进入世界时并入主批次，之后由常驻租约保持。
     // class stamp 防止某条遗漏的重置路径继续复用旧职业包。
@@ -1489,7 +1495,9 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
       return;
     }
     if(!this.map||!this.player||!this.movement)throw new Error('正式地图尚未就绪');
-    const projected=this.app.session.storyWorld.projectEntities(this.map.id,this.baseEntities,this.app.campaign.placements);
+    const projected=this.app.session.storyWorld.projectEntities(this.map.id,
+      withoutReplacedStatic(this.baseEntities,this.map,this.app.campaign,entity=>this.app.session.visible(entity)),
+      this.app.campaign.placements);
     const projectedActors=projected.map(entity=>this.app.session.storyWorld.actorAppearance(entity.actor));
     if(projected.some(entity=>entity.spring)&&this.springCatalog)projectedActors.push(this.springCatalog.empty);
     const needed=[...new Set(projectedActors)].filter(id=>!this.projectedActorIds.has(id));

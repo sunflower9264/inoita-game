@@ -11,6 +11,7 @@ import type {PerformanceAction, StoryStage, StoryStageSnapshot} from '../domain/
 import type {StoryEntityState} from '../domain/story-world.ts';
 import type {StoryNodeCommit, StoryPlaybackContext, StoryRuntimePort} from '../domain/story-runtime.ts';
 import {Session, type SessionState} from '../domain/session.ts';
+import {authoredPlacements, baseMapEntities} from '../domain/map-placement.ts';
 import {applyStorySceneAction, resolveStoryScene} from '../domain/story-scene.ts';
 import {storyCommitCommands} from '../domain/story-commit.ts';
 import {newStorySession} from '../domain/story-class.ts';
@@ -288,7 +289,8 @@ export class HeadlessStory {
   }
 
   private commit(commit: StoryNodeCommit): void {
-    const commands = storyCommitCommands(commit, this.session.storyWorld, this.getWorldChanges());
+    const commands = storyCommitCommands(commit, this.session.storyWorld, this.getWorldChanges(),
+      memberId=>!!this.session.party?.get(memberId));
     this.session.applyStoryCommands(commands, commit.checkpoint);
     this.committed();
   }
@@ -323,10 +325,8 @@ export class HeadlessStory {
     const map = this.maps.get(mapId);
     if (!map) throw new Error(`地图不存在：${mapId}`);
     const location = this.session.storyWorld.currentLocation ?? this.initialLocation;
-    const authored = this.campaign.placements.filter(entity => entity.map === mapId);
-    const base = map.entities.filter(entity => !authored.some(other =>
-      other.characterId && entity.characterId
-        ? other.characterId === entity.characterId : other.actor === entity.actor));
+    const authored = authoredPlacements(map, this.campaign);
+    const base = baseMapEntities(map, this.campaign, entity => this.session.visible(entity));
     const entities = this.session.storyWorld.projectEntities(mapId, [...base, ...authored], this.campaign.placements)
       .filter(entity => this.session.storyWorld.visible(entity.id)
         && (!('condition' in entity) || this.session.evaluateCondition(entity.condition as never)));

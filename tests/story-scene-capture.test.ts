@@ -7,6 +7,7 @@ import type {ActorDefinition, Facing} from '../src/domain/content.ts';
 import {validateSceneSnapshot, type SceneSnapshot} from '../src/domain/scene-snapshot.ts';
 import type {StoryStageSnapshot} from '../src/domain/story-performance.ts';
 import {prepareSceneVisit,generateMapEntities} from '../src/domain/scene-visit.ts';
+import {placementMayBeInactive} from '../src/domain/map-placement.ts';
 import {Session} from '../src/domain/session.ts';
 import {BattleCharacter, type CharacterStatsCatalog} from '../src/domain/character-stats.ts';
 import type {CompanionCatalog} from '../src/domain/party.ts';
@@ -103,6 +104,14 @@ test('scene snapshot rejects ambiguous identities and invalid reconstruction dat
   }
 });
 
+test('scene snapshot rejects two visible actors for one world instance',()=>{
+  const duplicate:SceneSnapshot={map:'camp',actors:[
+    {id:'first',actor:'guard',worldEntityId:'gate',x:1,y:2,facing:'south',visible:true},
+    {id:'second',actor:'guard',worldEntityId:'gate',x:3,y:4,facing:'south',visible:true},
+  ]};
+  assert.throws(()=>validateSceneSnapshot(duplicate),/演员实例重复.*world:gate/);
+});
+
 test('snapshot appearance validation accepts every published actor definition',()=>{
   const world=JSON.parse(readFileSync(new URL('../public/content/world.json',import.meta.url),'utf8'));
   const actors=Object.values(world.actors) as ActorDefinition[];
@@ -123,7 +132,8 @@ test('foreign map preparation isolates session state and formal adoption preserv
   const snapshot=prepareSceneVisit({session,campaign,world,battleCatalog,drops,springs},map,player,()=>0);
   validateSceneSnapshot(snapshot);
   assert.deepEqual(session.captureState(),before,'rendering a foreign stage must leave formal session untouched');
-  assert.deepEqual(snapshot.visit!.generatedEntities,generateMapEntities(map,campaign,springs,1,()=>0));
+  assert.deepEqual(snapshot.visit!.generatedEntities,generateMapEntities(map,campaign,springs,1,()=>0,
+    entity=>!placementMayBeInactive(entity)));
   assert(snapshot.actors.some(actor=>actor.enemyKey),'prepared scene materializes enemy instances');
   assert(snapshot.actors.some(actor=>actor.worldEntityId==='future-visit-npc'),'next-visit registrations appear in the prepared destination');
   assert(snapshot.actors.some(actor=>actor.worldEntityId&&snapshot.visit!.generatedEntities.some(entity=>entity.id===actor.worldEntityId&&entity.spring)),
