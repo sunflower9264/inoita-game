@@ -82,7 +82,7 @@
 | 代码形态 | 未 minify、未 tree-shake、模块间接层多 | minify + tree-shake + 单 chunk |
 | `campaign.json` | 作者态约 9.9 MB 原样 | 生产编译后 4.59 MB / gzip 0.51 MB |
 
-**手机上的性能结论只能基于 4002 或 APK。** 4003 只用于功能调试。测试前先确认 4002 在监听（`ss -ltnp | grep 4002`），没有就运行 `npm run serve` 或安装 APK。
+**手机上的性能结论只能基于 4002 或 APK。** 4003 只用于功能调试。测试前先确认 4002（nginx HTTPS）和 4004（静态服务）都在监听（`ss -ltnp | grep -E '4002|4004'`），没有就运行 `systemctl --user restart inoita-game` 并检查 nginx，或安装 APK。
 
 ### 1.4 测试基线与历史失败（审查时状态）
 

@@ -7,7 +7,7 @@ import { StatusHud } from '../ui/phaser/status-hud.ts';
 import { worldZoom } from '../ui/viewport.ts';
 import { OverheadStatus } from '../rendering/overhead-status.ts';
 import Phaser from 'phaser';
-import { ExitTrigger, overlapsFootRect } from '../domain/navigation.ts';
+import { ExitTrigger, findExitFreeSpawn, overlapsFootRect } from '../domain/navigation.ts';
 import { claimNearTrigger } from '../domain/story-trigger-occupancy.ts';
 import { NavigationWorld, collisionAt } from '../domain/navigation-world.ts';
 import { MovementWorld } from '../rendering/movement-world.ts';
@@ -157,6 +157,8 @@ export class WorldScene extends Phaser.Scene {
   facing: Facing = 'south';
   movement?: MovementWorld;
   private lastPlayerPosition?: { x: number; y: number };
+  /** 进图后先等方向输入回中，避免切图前按住的方向把人直接送回门口。 */
+  private entryInputGate = false;
   /** 当前地图的静态层；离开或重建时连图带合成纹理一起释放。 */
   private mapLayers?: MapLayerHandles;
   private unsubscribe?: () => void;
@@ -422,13 +424,21 @@ export class WorldScene extends Phaser.Scene {
       ?{x:options.x,y:options.y}
       :revised&&revised.map===map.id?{x:revised.x,y:revised.y}:{x:options.x,y:options.y};
     // 出生点优先按整个碰撞盒落位：窄足底只保证鞋底不压墙，身体仍可能探进相邻阻挡格。
-    const spawn = this.movement.navigation.nearestBody({ collision: appearance.collision }, requested)
+    const landing = this.movement.navigation.nearestBody({ collision: appearance.collision }, requested)
       ?? this.movement.navigation.nearest(appearance, requested);
+    // 落点只保证能站，可能正好贴着回程出口；再往地图内挪到安全距离，避免进图一步就被弹回。
+    const spawn = findExitFreeSpawn(landing, map.exits ?? [],
+      point => this.movement!.navigation.canPlaceBody({ collision: appearance.collision }, point));
     this.exitTrigger = new ExitTrigger(map.exits, spawn);
+    this.entryInputGate = true;
     this.player = this.createActor({ id: 'player', actor: campaign.start.actor, ...spawn });
     this.applyNoclip(this.player);
     this.lastPlayerPosition = { ...spawn };
     this.facing = options.facing === 'any' ? 'south' : options.facing || 'south';
+    // 落点被挪开后，会话里的逻辑位置也要跟着走，否则物理位置和剧情/触发读到的位置会分叉。
+    const currentLocation = this.app.session.storyWorld.currentLocation;
+    if (currentLocation?.map === map.id && (currentLocation.x !== spawn.x || currentLocation.y !== spawn.y))
+      this.app.session.movePlayer({ map: map.id, ...spawn, facing: this.facing });
     this.setClip(this.player, `idle-${this.facing}`);
     this.cameras.main.startFollow(this.player.container, true, 1, 1);
     const hero=this.app.session.hero;
@@ -1709,6 +1719,11 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
     if(this.combat?.castingSkill)return;
     const axis = this.stick?.axis ?? { x: 0, y: 0 };
     const length = Math.hypot(axis.x, axis.y);
+    // 进图时如果方向还按着，先停住，等松手回中一次再接受移动。
+    if (this.entryInputGate) {
+      if (length === 0) this.entryInputGate = false;
+      else { this.movement.stop(controlled); return; }
+    }
     // 原版按方向键移动会清当前目标（CHAR_SetTarget(ch,0)）：面板随之隐藏，普攻改在范围内重新选敌。
     if(length>0){this.combat?.cancelAttack();this.combat?.clearTarget();this.combat?.cancelAmbushOnDirection();this.autoAttack.release();}
     if(this.combat?.attackState!=='idle')return;

@@ -84,7 +84,7 @@
 
 所有移动使用 `NavigationWorld` 的通行查询和 `MovementWorld` 的物理执行。坐标统一为人物脚底世界像素。地形探测半径为 4 像素，实体使用各自镜像后的碰撞范围；隐藏或禁用实体释放占位。八像素八方向 A* 检查整段通行并防止斜穿墙角。普通行走仍按窄足底判定；出生、召唤和技能强制位移按整个碰撞盒判定，避免身体压进墙里。批量交换位置先检查整组最终状态，再提交。
 
-物理步完成后才判断交互与出口。出口使用实际脚点并记录出生防回跳状态，先离开出口再进入才能触发。显示插值只临时应用在绘制阶段，规则继续读取真实物理位置。走位受阻时重算路径；规则位置、演员动画和镜头分别由物理、AnimationManager 和 Camera 管理。
+物理步完成后才判断交互与出口。出口使用实际脚点；进图落点会先避开出口 24 像素，出口在玩家真正走出到达缓冲区之前保持锁定，走回来才触发。切图后方向输入要先回中一次，避免按住方向直接走回门口。显示插值只临时应用在绘制阶段，规则继续读取真实物理位置。走位受阻时重算路径；规则位置、演员动画和镜头分别由物理、AnimationManager 和 Camera 管理。
 
 `campaign.json` 的节点先播放 `presentation`，成功收尾后再同步提交 `commands` 与下一游标。任务、目标、事件、脚本和节点使用稳定 ID。`QuestBook` 按目标计数和周期结算，`StoryRuntime` 串行调度事件并保存调用栈，`StoryWorldState` 保存永久角色、门、标记、选择和落点。当前内容有505个任务、593条触发事件和693个流程图。入口图按触发条件确定；没有地图条件时，开场舞台继承当前地图。人物或同种敌人在其他事件中的登记地图用于预览与来源说明，实际切图由剧情中的 `travel` 命令驱动。任务链脚本由交付与接取解锁。
 
@@ -116,7 +116,7 @@
 
 ## 构建、缓存与部署
 
-- 4002 由 `npm run serve` 运行 `tools/serve-built.ts`，直接提供 `dist/`；4003 是 Vite 开发服务（`npm run dev`）。
+- 4002 由 nginx 终止 TLS 并转发到 `127.0.0.1:4004`；4004 由 `npm run serve` 运行 `tools/serve-built.ts`，直接提供 `dist/`；4003 是 Vite 开发服务（`npm run dev`）。
 - 静态服务在静态文件之前挂载 `tools/diagnostic-collector.mjs`，`POST /__diagnostics/report` 与开发服务共用同一套日志：`.diagnostics/client-errors.jsonl`。
 - `tools/build-version.ts` 对 `public/assets`、`public/content` 做内容哈希；构建时通过 `vite.config.ts` 的 `define` 注入 `__STORY_ASSET_VERSION__` / `__STORY_CONTENT_VERSION__`。加载边界只在 `content-loader.ts`、`audio-scene.ts`、`scene-assets.ts`、`game-audio.ts` 拼 `?v=`，不改内容字段、纹理键或音频键。
 - 缓存策略：`/bundles/*` 与版本匹配的 `/assets/*`、`/content/*` 返回 `immutable`；`index.html`、`diagnostics.js`、`manifest.webmanifest` 与旧版本/无版本资源返回 `no-cache` + ETag。静态服务支持 gzip、单段 Range、304、HEAD，构建替换 dist 的极短窗口返回 503。
@@ -128,7 +128,7 @@
 
 `?animation-debug` 直接进入独立动画场景，不创建剧情会话；它复用人物、换装、摇杆和移动世界。`?ui-debug` 进入界面检查场景。`render_game_to_text()` 提供当前场景的文本状态，用于诊断；入口与输出以 `main.ts` 和对应调试场景为准。
 
-单元测试验证规则及轻量表现替身，内容校验验证文件和契约。二者都不能证明真机画面、动作观感、实际音频和长时间资源占用。按根 `AGENTS.md` 选择相关用例；界面与真机验收使用 [4002 游戏入口](http://localhost:4002/) 或 `npm run serve`，用户明确要求后才运行浏览器自动化。
+单元测试验证规则及轻量表现替身，内容校验验证文件和契约。二者都不能证明真机画面、动作观感、实际音频和长时间资源占用。按根 `AGENTS.md` 选择相关用例；界面与真机验收使用 [4002 游戏入口](https://catgo.online:4002/)，用户明确要求后才运行浏览器自动化。
 
 ## 友方召唤物
 

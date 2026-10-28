@@ -231,7 +231,7 @@ export function playthrough(saved?:SessionState){
       movement:{position:()=>({...session.storyWorld.currentLocation!}),body:()=>({deltaXFinal:()=>0,deltaYFinal:()=>0})},
       // playerCannotAct 为真让 afterMovement 跳过换剪辑那一步：假角色进不了动画系统。
       combat:{controlledVisual:undefined,playerCannotAct:()=>true,attackState:'idle',facing:'south',afterMovement:()=>{}},
-      exitTrigger:new ExitTrigger(map.exits??[],{x:location.x,y:location.y}),
+      exitTrigger:new ExitTrigger(map.exits??[],{x:location.x,y:location.y},false),
       collectGroundLoot:()=>{},updateInteractionTarget:()=>{},syncHud:()=>{},prefetchVisibleExit:()=>{},
       playStory:(work:()=>Promise<boolean>)=>{void work().catch(error=>errors.push(error));},
       changeMap:(exit:MapExit)=>{
@@ -338,8 +338,9 @@ export function playthrough(saved?:SessionState){
     // 只能走目标出口，但同图自指向出口是原版用来连接互不连通区域的传送点：
     // `walk` 的图内传送依赖它们真的能触发，关掉就会把「要走传送才能到的出口」判成无路。
     const map=maps.get(location.map)!;
+    // 剧情路线是定向探测：视为玩家已走到目标出口前，不套用真实进图的到达缓冲区。
     host.exitTrigger=new ExitTrigger([exit,...(map.exits??[]).filter(candidate=>candidate!==exit&&candidate.destination===map.id)],
-      {x:location.x,y:location.y});
+      {x:location.x,y:location.y},false);
     try{await walk(point=>within(point,exit),`出口 ${exit.destination}`);}
     finally{host.exitTrigger=saved;}
   };

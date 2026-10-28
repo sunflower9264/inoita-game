@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { Session } from '../src/domain/session.ts';
 import { StoryDirector } from '../src/domain/story-director.ts';
 import type { StoryUI } from '../src/domain/story-director.ts';
-import { canStandOnTerrain, ExitTrigger } from '../src/domain/navigation.ts';
+import { canStandOnTerrain, ExitTrigger, findExitFreeSpawn, nearExit } from '../src/domain/navigation.ts';
 import { NavigationWorld } from '../src/domain/navigation-world.ts';
 import type { Campaign } from '../src/domain/campaign.ts';
 const campaign=JSON.parse(fs.readFileSync(new URL('../public/content/campaign.json',import.meta.url),'utf8')) as Campaign;
@@ -39,19 +39,38 @@ test('a GM focus restricts quest projections to the focused task',()=>{
  session.focusDebugQuest(undefined);
  assert.equal(session.forActor('janus','npc-55')[0]?.id,'cardinal-summons','结束调试后恢复完整投影');
 });
-test('exits trigger on entry, ignore stationary spawns, and rearm after leaving the entire exit area',()=>{
+test('an arrival next to an exit does not re-trigger before the player walks clear',()=>{
  const exits=[{x:32,y:32,width:16,height:16,destination:'next'},{x:32,y:48,width:16,height:16,destination:'next'}];
+ // 落点离出口只有 8 像素：向东一步就压住出口，也不能立刻回上一张图。
  const gate=new ExitTrigger(exits,{x:24,y:40});
- assert.equal(gate.update({x:23,y:40},true),null);
- assert.equal(gate.update({x:25,y:40},true),exits[0]);
- assert.equal(gate.update({x:40,y:48},true),null);
- gate.update({x:24,y:40},true);
+ assert.equal(gate.update({x:25,y:40},true),null,'贴门落点先锁住');
+ assert.equal(gate.update({x:40,y:40},true),null,'没离开 24 像素前仍然锁住');
+ // 走出缓冲区后重新武装；此时主动走回来才允许离开。
+ assert.equal(gate.update({x:0,y:40},true),null);
  assert.equal(gate.update({x:40,y:40},true),exits[0]);
- const spawned=new ExitTrigger(exits,{x:40,y:40});
- assert.equal(spawned.update({x:40,y:40},false),null);
- assert.equal(spawned.update({x:40,y:49},true),null);
- spawned.update({x:24,y:40},true);
- assert.equal(spawned.update({x:40,y:40},true),exits[0]);
+ // 触发后整簇门洞重新上锁，原地再调用不会重复触发。
+ assert.equal(gate.update({x:40,y:40},true),null);
+ gate.update({x:0,y:40},true);
+ assert.equal(gate.update({x:40,y:40},true),exits[0]);
+});
+
+test('an arrival point is moved clear of nearby exits',()=>{
+ const exits=[{x:32,y:32,width:16,height:16,destination:'next'}];
+ const spawn=findExitFreeSpawn({x:24,y:40},exits,()=>true);
+ assert.equal(nearExit(spawn,exits[0]!),false);
+ assert.ok(spawn.x<24||spawn.x>24||spawn.y<40||spawn.y>40,'落点确实被挪开');
+});
+
+test('an exit away from the arrival point still triggers on first entry',()=>{
+ const exit={x:96,y:32,width:16,height:16,destination:'next'},gate=new ExitTrigger([exit],{x:0,y:40});
+ assert.equal(gate.update({x:90,y:40},true),exit);
+});
+
+test('a spawn inside an exit requires walking clear of that doorway first',()=>{
+ const exit={x:32,y:32,width:16,height:16,destination:'next'},gate=new ExitTrigger([exit],{x:40,y:40});
+ assert.equal(gate.update({x:49,y:40},true),null,'还在缓冲区');
+ gate.update({x:0,y:40},true);
+ assert.equal(gate.update({x:40,y:40},true),exit);
 });
 test('the foot can reach a blocked edge exit from its walkable approach',()=>{
  const map={name:'fixture',tileSize:16,columns:4,rows:3,blocked:Array.from({length:12},(_,i)=>i%4===3)};

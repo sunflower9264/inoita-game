@@ -55,15 +55,57 @@ export function overlapsFootRect(point: Point, rectangle: GameRectangle): boolea
     && point.y + PLAYER_RADIUS > rectangle.y && point.y - PLAYER_RADIUS < rectangle.y + rectangle.height;
 }
 
-// 出生点落在出口范围内时，要先走出这个出口范围，回来才会再次触发。
+/**
+ * 进图后要先真正离开到达出口，再走回来，出口才会触发。
+ * 只判断“当前没压住”不够：落点常常只离回程出口一两像素，走一步就会弹回上一张图。
+ */
+export const EXIT_REARM_DISTANCE = 24;
+
+/** 落点是否仍处在出口的重新武装范围内；距离按脚点中心算。 */
+export function nearExit(point: Point, exit: GameRectangle, distance = EXIT_REARM_DISTANCE): boolean {
+  return point.x > exit.x - distance && point.x < exit.x + exit.width + distance
+    && point.y > exit.y - distance && point.y < exit.y + exit.height + distance;
+}
+
+/** 找一个能站、且离所有出口至少 `distance` 的落点；找不到时保留原点。 */
+export function findExitFreeSpawn(start: Point, exits: readonly GameRectangle[],
+  standable: (point: Point) => boolean, distance = EXIT_REARM_DISTANCE): Point {
+  if (!exits.some(exit => nearExit(start, exit, distance))) return start;
+  for (let radius = 8; radius <= distance * 4; radius += 8) {
+    for (let index = 0; index < 24; index += 1) {
+      const angle = index * Math.PI / 12;
+      const candidate = { x: start.x + Math.cos(angle) * radius, y: start.y + Math.sin(angle) * radius };
+      if (!exits.some(exit => nearExit(candidate, exit, distance)) && standable(candidate)) return candidate;
+    }
+  }
+  return start;
+}
+
 export class ExitTrigger<T extends GameRectangle = GameRectangle> {
   private readonly exits: T[];
+  /** 到达缓冲区模式：逐出口记录是否已离开落点附近。 */
+  private readonly guarded: boolean;
+  private readonly blocked: Set<T>;
+  /** 兼容模式（无头剧情走位）沿用旧的“整组出口一起武装”状态。 */
   private armed: boolean;
-  constructor(exits: T[], spawn: Point) { this.exits = exits; this.armed = !exits.some(exit => overlapsFootRect(spawn, exit)); }
+  constructor(exits: T[], spawn: Point, arrivalGuard = true) {
+    this.exits = exits;
+    this.guarded = arrivalGuard;
+    this.blocked = new Set(arrivalGuard ? exits.filter(exit => nearExit(spawn, exit)) : []);
+    this.armed = !arrivalGuard && !exits.some(exit => overlapsFootRect(spawn, exit));
+  }
   update(position: Point, moving: boolean, available: (exit:T)=>boolean = ()=>true): T | null {
-    const exit = this.exits.find(exit => available(exit)&&overlapsFootRect(position, exit));
-    if (!exit) { this.armed = true; return null; }
-    if (!this.armed || !moving) return null;
-    this.armed = false; return exit;
+    if (!this.guarded) {
+      const exit = this.exits.find(exit => available(exit)&&overlapsFootRect(position, exit));
+      if (!exit) { this.armed = true; return null; }
+      if (!this.armed || !moving) return null;
+      this.armed = false; return exit;
+    }
+    for (const exit of this.blocked) if (!nearExit(position, exit)) this.blocked.delete(exit);
+    const exit = this.exits.find(exit => !this.blocked.has(exit) && available(exit) && overlapsFootRect(position, exit));
+    if (!exit || !moving) return null;
+    // 整簇门洞都锁上，避免旁边相邻的出口格在同一位置接着触发。
+    for (const other of this.exits) if (nearExit(position, other)) this.blocked.add(other);
+    return exit;
   }
 }
