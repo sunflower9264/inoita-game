@@ -1,0 +1,23 @@
+{
+  "summary": {
+    "maps": 416,
+    "scripts": 693,
+    "stages": 719,
+    "castMembers": 1610,
+    "placeIds": 977,
+    "debugTasks": 487
+  },
+  "expected": {
+    "multipleSelectors": 0,
+    "characterOnly": 1365,
+    "templates": 385,
+    "explicitWorldRefs": 14,
+    "mapFromWorldStages": 387,
+    "mapFromWorldCasts": 538,
+    "placeIds": 977,
+    "duplicatePlaceIdsAcrossMaps": 106,
+    "duplicatePlaceCharacterIds": 0,
+    "ambiguous": 0
+  },
+  "reportHash": "27e80a93d1e467d2c24d1952e09e2db4cce9196dd3f9c1b80f812ee734b1c03f"
+}

@@ -23,6 +23,7 @@
     "test": "node tools/test.ts",
     "test:all": "node tools/test.ts --all",
     "validate:content": "node tools/validate-content.mjs",
+    "audit:story-actors": "node tools/audit-story-actors.ts",
     "debug-start": "node tools/debug-start/story-debug-start.ts --write",
     "debug-start:check": "node tools/debug-start/story-debug-start.ts --check",
     "report:assets": "node tools/asset-report.ts",
