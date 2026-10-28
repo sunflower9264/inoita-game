@@ -12,6 +12,7 @@ import { StoryDirector, type StoryUI } from '../../src/domain/story-director.ts'
 import { type PerformanceAction, type StoryPresentationPort, type StoryStage, type StoryStageSnapshot } from '../../src/domain/story-performance.ts';
 import { resolveStoryScene, applyStorySceneAction } from '../../src/domain/story-scene.ts';
 import { assertUniqueActorInstances } from '../../src/domain/actor-census.ts';
+import { assertScenePlan, planScene } from '../../src/domain/scene-plan.ts';
 import { prepareSceneVisit } from '../../src/domain/scene-visit.ts';
 import { authoredPlacements, baseMapEntities } from '../../src/domain/map-placement.ts';
 import { parseSprings } from '../../src/domain/springs.ts';
@@ -83,12 +84,16 @@ export function playthrough(saved?:SessionState){
         type:'stage',...session.storyWorld.currentLocation!,playerVisible:true,cast:[]});
       remember();committedScenes.set(stage.map,structuredClone(stage.scene));
       assertUniqueActorInstances(stage.scene.actors,`剧情舞台 ${stage.map}/begin`);
+      assertScenePlan(planScene(stage.scene,stage.bindings));
     },
     async execute(action){
       actions.push(action);
       if(action.type==='stage')stage=resolve(action);
       else if(stage)stage=applyStorySceneAction(stage,action);
-      if(stage)assertUniqueActorInstances(stage.scene.actors,`剧情舞台 ${stage.map}/${action.type}`);
+      if(stage){
+        assertUniqueActorInstances(stage.scene.actors,`剧情舞台 ${stage.map}/${action.type}`);
+        assertScenePlan(planScene(stage.scene,stage.bindings));
+      }
       if(stage&&stageRecords)stageRecords.push(structuredClone(stage));
     },
     // 失败重试与读档恢复共用这条入口：与真实 presenter 一样，用快照重建已访问地图清单，
@@ -101,6 +106,7 @@ export function playthrough(saved?:SessionState){
       committedScenes.clear();
       for(const [map,scene] of scenes)committedScenes.set(map,structuredClone(scene));
       assertUniqueActorInstances(stage.scene.actors,`剧情舞台 ${stage.map}/restore`);
+      assertScenePlan(planScene(stage.scene,stage.bindings));
     },
     getStageState(){return stage?structuredClone(stage):undefined;},
     getWorldChanges(){

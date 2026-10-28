@@ -1,5 +1,7 @@
 import { applyStorySceneAction, hideUnboundCombatActors, resolveStoryScene, syncStoryScene } from '../domain/story-scene.ts';
 import { prepareSceneVisit } from '../domain/scene-visit.ts';
+import { assertScenePlan, planScene } from '../domain/scene-plan.ts';
+import { diffSceneActors } from '../domain/scene-delta.ts';
 import { parseDrops } from '../domain/drops.ts';
 import type { SceneSnapshot } from '../domain/scene-snapshot.ts';
 import { SCENE_KEYS } from '../application/scene-keys.ts';
@@ -119,13 +121,14 @@ export class StoryPresenter implements StoryPresentationPort {
     const changes: StoryEntityState[] = [];
     for (const [map, scene] of this.scenes) {
       const before = this.committedScenes.get(map);
-      for (const actor of scene.actors) {
+      for (const change of diffSceneActors(before, scene).changes) {
+        if (change.kind === 'remove' || !change.after) continue;
+        const actor = change.after;
         // 舞台为了不画重复演员而临时隐藏的副本不属于正式世界改动。
         if (!actor.worldEntityId || actor.unpositioned || actor.stageHidden) continue;
-        const original = before?.actors.find(previous => previous.id === actor.id);
-        if (original && original.worldEntityId === actor.worldEntityId && original.actor === actor.actor
-          && original.x === actor.x && original.y === actor.y && original.facing === actor.facing
-          && original.visible === actor.visible) continue;
+        if (change.before && change.before.worldEntityId === actor.worldEntityId
+          && change.before.actor === actor.actor && change.before.x === actor.x && change.before.y === actor.y
+          && change.before.facing === actor.facing && change.before.visible === actor.visible) continue;
         changes.push({ id: actor.worldEntityId, map, actor: actor.actor,
           ...(actor.characterId ? { characterId: actor.characterId } : {}),
           x: actor.x, y: actor.y, facing: actor.facing, visible: actor.visible });
@@ -230,6 +233,7 @@ export class StoryPresenter implements StoryPresentationPort {
       snapshot = resolveStoryScene({ ...declaration, map }, source);
     }
     snapshot = hideUnboundCombatActors(snapshot);
+    assertScenePlan(planScene(snapshot.scene, snapshot.bindings));
     if (!this.appearance) throw new Error('剧情玩家外观尚未准备好');
     await this.scene().showStage(snapshot, signal, this.appearance);
     signal.throwIfAborted();
