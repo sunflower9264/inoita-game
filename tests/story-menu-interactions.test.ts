@@ -658,6 +658,24 @@ test('companion equipment buttons validate the selected member and hero buttons 
   assert.notEqual(f.session.bag.equipment['main-hand'], other.id);
 });
 
+test('rings fill the first empty ring slot and ask which one to replace when both are full', async t => {
+  const f = fixture(); t.after(f.cleanup); f.hero.addExperience(Number.MAX_SAFE_INTEGER);
+  const first = f.add('ferrule'), second = f.add('copper-ring'), third = f.add('crystal-ring');
+  const equip = async (id: string) => { f.menu.debugDescribe(id); f.scene.click(f.scene.button('装备')); await Promise.resolve(); };
+  await equip(first.id);
+  assert.equal(f.session.bag.equipment['ring'], first.id);
+  assert.equal(f.session.bag.equipment['accessory'], undefined, '第二个戒指槽位应优先填空位');
+  await equip(second.id);
+  assert.equal(f.session.bag.equipment['ring'], first.id, '第二枚戒指不能顶掉第一枚');
+  assert.equal(f.session.bag.equipment['accessory'], second.id);
+  f.menu.debugDescribe(third.id);
+  assert.equal(f.scene.buttons('装备').filter(button => button.input?.enabled).length, 0, '两格都满时不再自动替换');
+  assert.ok(f.scene.button('替换戒指'));
+  f.scene.click(f.scene.button('替换饰品')); await Promise.resolve();
+  assert.equal(f.session.bag.equipment['ring'], first.id);
+  assert.equal(f.session.bag.equipment['accessory'], third.id, '替换动作只改用户选择的槽位');
+});
+
 test('bag drags onto an equipment slot only equip what the selected member can use', async t => {
   const f = fixture(); t.after(f.cleanup); f.hero.addExperience(Number.MAX_SAFE_INTEGER);
   const dragTo = (id: string, label = '主手') => {

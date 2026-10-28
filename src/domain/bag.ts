@@ -331,6 +331,18 @@ export class Bag {
     if(rule.slot==='ring')slots.push('accessory');
     return slots;
   }
+  /** 这件物品能装备且当前为空的槽位；没有空位时返回 undefined。 */
+  emptyEquipSlot(id:string,owner='player',classId=this.classId,level?:number):EquipmentSlot|undefined {
+    const equipment=this.equipmentFor(owner);
+    return this.slotsFor(id,classId).find(slot=>!equipment[slot]
+      &&this.planEquipStep(id,slot,owner,classId,level).problem===undefined);
+  }
+
+  /** 这件物品实际可装备的槽位；职业、等级或槽位规则不满足的会被过滤掉。 */
+  equippableSlots(id:string,owner='player',classId=this.classId,level?:number):EquipmentSlot[] {
+    return this.slotsFor(id,classId).filter(slot=>this.planEquipStep(id,slot,owner,classId,level).problem===undefined);
+  }
+
   /**
    * 只读的装备判定：可以装备时返回 undefined，否则返回不能装备的原因。
    * 与 `planEquip` 共用同一次计算，界面用它禁用按钮并显示原因，不复制规则。

@@ -1105,8 +1105,18 @@ export class StoryUI {
     const bag=this.session!.bag,item=bag.catalog.items[entry.item],assets=this.app.menuPanels.assets,actions:BagMenuAction[]=[];
     if(worn)actions.push({label:'卸下',image:assets['item-unequip'],run:()=>void this.changeEquipment(undefined,worn)});
     else{
-      const member=this.member()!,slot=bag.slotsFor(entry.id,member.classId)[0];
-      if(slot)actions.push({label:'装备',image:assets['item-equip'],run:()=>void this.changeEquipment(entry.id,slot),disabled:bag.equipProblem(entry.id,slot,this.selectedMemberId,member.classId,member.level)!==undefined});
+      const member=this.member()!;
+      const slots=bag.equippableSlots(entry.id,this.selectedMemberId,member.classId,member.level);
+      const empty=bag.emptyEquipSlot(entry.id,this.selectedMemberId,member.classId,member.level);
+      const slotName=(slot:EquipmentSlot)=>this.app.menuPanels.equipmentSlots.find(value=>value.id===slot)?.name??slot;
+      if(empty)actions.push({label:'装备',image:assets['item-equip'],run:()=>void this.changeEquipment(entry.id,empty)});
+      else if(slots.length===1)actions.push({label:'装备',image:assets['item-equip'],run:()=>void this.changeEquipment(entry.id,slots[0]!)});
+      else if(slots.length>1)for(const slot of slots)
+        actions.push({label:`替换${slotName(slot)}`,image:assets['item-equip'],run:()=>void this.changeEquipment(entry.id,slot)});
+      else{
+        const fallback=bag.slotsFor(entry.id,member.classId)[0];
+        if(fallback)actions.push({label:'装备',image:assets['item-equip'],run:()=>{},disabled:true});
+      }
     }
     if(item.use&&!NON_MENU_USE_KINDS.has(item.use.kind)&&!worn)actions.push({label:USE_LABELS[item.use.kind],image:assets['item-use'],run:()=>this.beginOperation(entry.id),disabled:!!this.itemUseProblem(entry)});
     // 快捷键：与技能页同一套文案与同一屏。已配到任一组的这枚按钮改成「取消快捷键」，点了直接清掉
