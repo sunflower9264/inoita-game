@@ -159,6 +159,7 @@ export function validateStoryStageSnapshot(value: unknown): asserts value is Sto
   const bindings = new Map(stage.bindings), actors = new Map(stage.scene.actors.map(actor => [actor.id, actor]));
   const aliases = new Set(['player', ...stage.cast.map(member => member.id)]);
   if (bindings.get('player') !== 'player' || bindings.size !== stage.bindings.length || bindings.size !== aliases.size
+    || new Set(bindings.values()).size !== bindings.size
     || [...bindings].some(([alias, id]) => !aliases.has(alias) || !actors.has(id))) throw new Error('剧情检查点演员绑定缺失或重复');
   const player = actors.get('player')!;
   if (player.x !== stage.x || player.y !== stage.y || player.facing !== stage.facing || player.visible !== stage.playerVisible)

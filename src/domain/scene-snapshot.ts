@@ -1,5 +1,6 @@
 import type {ActorDefinition, ClipName, EntityPlacement, Facing} from './content.ts';
 import type {EnemyRoster} from './enemy-roster.ts';
+import {assertUniqueActorInstances} from './actor-census.ts';
 
 /** 一次地图访问里实际存在的对象；演员名只是脚本对这些对象的引用。 */
 export interface SceneActorState {
@@ -94,6 +95,7 @@ export function validateSceneSnapshot(value: unknown): asserts value is SceneSna
       if (key === 'collision' && (!finite((shape as Record<string, unknown>).width) || !finite((shape as Record<string, unknown>).height))) at(`appearance.${key} 无效`);
     }
   }
+  assertUniqueActorInstances(snapshot.actors as SceneActorState[], '剧情场景快照');
 }
 
 export function validatePreparedSceneVisit(value: unknown): asserts value is PreparedSceneVisit {

@@ -120,7 +120,8 @@ export class StoryPresenter implements StoryPresentationPort {
     for (const [map, scene] of this.scenes) {
       const before = this.committedScenes.get(map);
       for (const actor of scene.actors) {
-        if (!actor.worldEntityId || actor.unpositioned) continue;
+        // 舞台为了不画重复演员而临时隐藏的副本不属于正式世界改动。
+        if (!actor.worldEntityId || actor.unpositioned || actor.stageHidden) continue;
         const original = before?.actors.find(previous => previous.id === actor.id);
         if (original && original.worldEntityId === actor.worldEntityId && original.actor === actor.actor
           && original.x === actor.x && original.y === actor.y && original.facing === actor.facing

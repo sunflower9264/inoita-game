@@ -1,14 +1,44 @@
 import type { SceneActorState, SceneSnapshot } from './scene-snapshot.ts';
 import type { PerformanceAction, StoryCastMember, StoryStage, StoryStageSnapshot } from './story-performance.ts';
 import {faceTarget} from './basic-attack.ts';
+import {assertUniqueActorInstances} from './actor-census.ts';
 
-/** 先按实例找人，再按人物/队员/怪物身份查找。外观只能用于没有身份的手写演员。 */
+/**
+ * 先按实例找人，再按人物/队员/怪物身份查找。外观只能用于没有身份的手写演员。
+ *
+ * 人物编号不是实例编号：同一张图上可能有多名同编号士兵、几扇同形石门。只有一个候选时
+ * 可以直接绑定；多个候选时用舞台声明的落点找最近的一个，距离并列或根本没有落点时
+ * 说明内容写得不唯一，必须让内容补 `worldEntityId`，不能静默拿第一个。
+ */
 export function findSceneActor(scene: SceneSnapshot, member: StoryCastMember): SceneActorState | undefined {
   if (member.worldEntityId) return scene.actors.find(actor => !actor.removed && actor.worldEntityId === member.worldEntityId);
   const matches = scene.actors.filter(actor => !actor.removed && (member.memberId ? actor.memberId === member.memberId
     : member.characterId ? actor.characterId === member.characterId
     : member.enemyId ? actor.enemyId === member.enemyId : actor.actor === member.actor));
-  return matches.find(actor => !actor.unpositioned) ?? matches[0];
+  const positioned = matches.filter(actor => !actor.unpositioned);
+  const candidates = positioned.length ? positioned : matches;
+  if (candidates.length <= 1) return candidates[0];
+  // 原版位置登记（quest-npc-located-*）是该角色在这张图上的正式副本；
+  // 旧过场或静态地图里留下的同名副本应让位，不能和登记副本同时出现。
+  const registered = candidates.filter(actor => actor.worldEntityId?.startsWith('quest-npc-located-'));
+  if (registered.length === 1) return registered[0];
+  const hasDeclarationPosition = !member.unpositioned && Number.isFinite(member.x) && Number.isFinite(member.y)
+    && !(member.x === 2048 && member.y === 2048);
+  if (hasDeclarationPosition) {
+    const ranked = candidates.map(actor => ({actor, distance: Math.hypot(actor.x - member.x, actor.y - member.y)}))
+      .sort((left, right) => left.distance - right.distance);
+    if (ranked[1].distance - ranked[0].distance > 1e-6) return ranked[0].actor;
+  }
+  // 敌人编号是刷新类型，不是单只实例：同一张图上可以同时有几只同种怪物。
+  // 没有位置可区分时沿用原版的第一只；有位置时上面的最近距离优先。
+  // 人物编号不同，它可能对应多个同名 NPC，不能用同样办法静默取第一只。
+  if (member.enemyId) return candidates[0];
+  // 未落位、不可见的世界演员是“等待脚本创建”的模板（例如一群路障共用一个别名）。
+  // 这时不抢现有副本，先建一个离场占位；后续 appear/create 会再绑定真正实例。
+  if (member.unpositioned && !member.visible && !member.memberId) return undefined;
+  const selector = member.characterId ? `characterId=${member.characterId}` : member.memberId ? `memberId=${member.memberId}`
+    : `actor=${member.actor}`;
+  throw new Error(`剧情演员来源不唯一：${member.id}（${selector}）候选 ${candidates.map(actor => `${actor.id}@${actor.x},${actor.y}`).join('、')}；请补 worldEntityId`);
 }
 
 /**
@@ -83,6 +113,7 @@ export function syncStoryScene(snapshot: StoryStageSnapshot): StoryStageSnapshot
       memberId: actor.memberId, enemyId: actor.enemyId, x: actor.x, y: actor.y, facing: actor.facing,
       visible: actor.visible, unpositioned: actor.unpositioned };
   });
+  assertUniqueActorInstances(snapshot.scene.actors, '剧情舞台');
   return snapshot;
 }
 
@@ -115,7 +146,28 @@ export function resolveStoryScene(declaration: StoryStage, source: SceneSnapshot
       controlIndependently(actor);
       actor.visible = member.visible;
     }
+    const owner = bindings.find(([, id]) => id === actor.id);
+    if (owner) throw new Error(`剧情演员重复绑定：${member.id} 与 ${owner[0]} 指向 ${actor.id}`);
     bindings.push([member.id, actor.id]);
+  }
+  // 同一角色可能同时以“地图人物”“队伍成员”或“位置登记副本”几份状态存在：
+  // 刚入队时世界摆放还没被移除，或旧过场/静态地图里留下了同名副本。本幕点名了
+  // 权威来源后，其余未绑定的同名副本只在本幕临时隐藏，不写回正式世界。
+  const boundIds = new Set(bindings.map(([, id]) => id));
+  for (const member of declaration.cast) {
+    const boundId = bindings.find(([alias]) => alias === member.id)?.[1];
+    const actor = boundId ? scene.actors.find(candidate => candidate.id === boundId) : undefined;
+    const registered = !!actor?.worldEntityId?.startsWith('quest-npc-located-');
+    // 只有真正的队伍实例（member: 前缀）才盖过地图副本；尚未入队时创建的是
+    // story: 占位演员，此时地图上的 NPC 仍然应该按剧情正常显示。
+    if (!actor || (!registered && (!actor.id.startsWith('member:') || actor.memberId === 'player'))) continue;
+    for (const other of scene.actors) {
+      if (other === actor || boundIds.has(other.id) || !other.worldEntityId || other.removed) continue;
+      const sameCharacter = member.characterId ? other.characterId === member.characterId : other.actor === member.actor;
+      if (!sameCharacter) continue;
+      other.visible = false;
+      other.stageHidden = true;
+    }
   }
   const { mapFromWorld: _dynamic, resetActors: _reset, ...stage } = declaration;
   return syncStoryScene({ ...stage, map: scene.map, scene, bindings });
@@ -128,6 +180,8 @@ export function boundSceneActor(snapshot: StoryStageSnapshot, target: string): S
 
 function bind(snapshot: StoryStageSnapshot, alias: string, actor: SceneActorState): void {
   snapshot.bindings = snapshot.bindings.filter(([name]) => name !== alias);
+  const owner = snapshot.bindings.find(([, id]) => id === actor.id);
+  if (owner) throw new Error(`剧情演员重复绑定：${alias} 与 ${owner[0]} 指向 ${actor.id}`);
   snapshot.bindings.push([alias, actor.id]);
 }
 

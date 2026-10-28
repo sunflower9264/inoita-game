@@ -3,6 +3,7 @@ import type { Campaign } from '../domain/campaign.ts';
 import type { AudioCatalog } from './game-audio.ts';
 import { storyExitTargets, type StoryNodeRef } from '../domain/story-graph.ts';
 import type { PerformanceAction } from '../domain/story-performance.ts';
+import { mapPlacementCandidates } from '../domain/map-placement.ts';
 import { NavigationWorld, type NavigationActor, type Placement } from '../domain/navigation-world.ts';
 
 /** 加载时核对演出引用；构建提供地图后同时检查整段走位。 */
@@ -50,6 +51,25 @@ export function validateStoryPerformance(world: WorldIndex, campaign: Campaign, 
         }
         if (maps && !dynamicMap) {
           const map = maps.get(mapId); ensure(map, `地图未载入 ${mapId}`);
+          // 人物编号可能对应多个地图实体。舞台没有唯一实例键时，至少要求本图只有一个
+          // 候选；多个候选必须补 worldEntityId，不能等运行时“碰巧拿第一个”。
+          const candidates = mapPlacementCandidates(map!, campaign);
+          const bound = new Map<string, string>();
+          for (const member of action.cast) {
+            if (member.memberId || member.enemyId) continue;
+            const matches = member.worldEntityId
+              ? candidates.filter(entity => entity.id === member.worldEntityId)
+              : member.characterId
+                ? candidates.filter(entity => entity.characterId === member.characterId)
+                : candidates.filter(entity => entity.actor === member.actor);
+            if (matches.length > 1)
+              ensure(false, `人物来源不唯一 ${member.id}（${member.characterId ?? member.actor}）：${matches.slice(0, 6).map(entity => entity.id).join('、')}；请补 worldEntityId`);
+            if (matches.length === 1) {
+              const owner = bound.get(matches[0].id);
+              ensure(!owner, `人物实例重复绑定 ${owner} / ${member.id}（${matches[0].id}）`);
+              bound.set(matches[0].id, member.id);
+            }
+          }
           navigation = new NavigationWorld(map!);
           for (const id of cast.keys()) {
             const actor: NavigationActor = { shape: () => world.actors[cast.get(id)!.actor], position: () => cast.get(id)!, enabled: () => cast.get(id)!.visible && !cast.get(id)!.scenery };

@@ -151,3 +151,85 @@ test('pose reduction preserves a held last frame and resumes idle for a non-held
   player=boundSceneActor(snapshot,'player')!;
   assert.deepEqual([player.clip,player.animationProgress,player.animationPlaying],['idle-south',0,true]);
 });
+
+test('an ambiguous character number fails instead of taking the first matching actor',()=>{
+  const snapshot=source([
+    actor('entity:left',{actor:'guard',characterId:'guard-character',worldEntityId:'left',x:20,y:20}),
+    actor('entity:right',{actor:'guard',characterId:'guard-character',worldEntityId:'right',x:200,y:200}),
+  ]);
+  assert.throws(()=>resolveStoryScene(stage([
+    member('guard',{characterId:'guard-character',x:2048,y:2048}),
+  ]),snapshot),/剧情演员来源不唯一.*guard-character.*left.*right/);
+});
+
+test('a positioned declaration picks the uniquely nearest candidate',()=>{
+  const snapshot=resolveStoryScene(stage([
+    member('guard',{characterId:'guard-character',binding:undefined,x:22,y:20,visible:true}),
+  ]),source([
+    actor('entity:left',{actor:'guard',characterId:'guard-character',worldEntityId:'left',x:20,y:20}),
+    actor('entity:right',{actor:'guard',characterId:'guard-character',worldEntityId:'right',x:200,y:200}),
+  ]));
+  assert.equal(boundSceneActor(snapshot,'guard')?.id,'entity:left');
+});
+
+test('two aliases cannot resolve to one actor and silently draw one of them twice',()=>{
+  assert.throws(()=>resolveStoryScene(stage([
+    member('first',{characterId:'guard-character'}),
+    member('second',{characterId:'guard-character'}),
+  ]),source([
+    actor('entity:guard',{actor:'guard',characterId:'guard-character',worldEntityId:'guard'}),
+  ])),/剧情演员重复绑定/);
+});
+
+test('a party member named together with its map copy leaves only the party instance visible',()=>{
+  const snapshot=resolveStoryScene(stage([
+    member('story-olaf',{actor:'olaf',memberId:'story-mercenary-olaf',characterId:'npc-249',x:40,y:50,visible:true}),
+  ]),source([
+    actor('member:story-mercenary-olaf',{actor:'olaf',memberId:'story-mercenary-olaf',x:40,y:50}),
+    actor('entity:story-character-npc-249',{actor:'olaf',characterId:'npc-249',worldEntityId:'story-character-npc-249',x:40,y:50}),
+  ]));
+  const party=snapshot.scene.actors.find(candidate=>candidate.memberId==='story-mercenary-olaf')!;
+  const worldCopy=snapshot.scene.actors.find(candidate=>candidate.worldEntityId==='story-character-npc-249')!;
+  assert.equal(party.visible,true);
+  assert.equal(worldCopy.visible,false);
+  assert.equal(worldCopy.stageHidden,true);
+});
+
+test('a companion alias before joining does not hide the map NPC',()=>{
+  const snapshot=resolveStoryScene(stage([
+    member('story-olaf',{actor:'olaf',memberId:'story-mercenary-olaf',characterId:'npc-249',x:40,y:50,visible:true}),
+  ]),source([
+    actor('entity:story-character-npc-249',{actor:'olaf',characterId:'npc-249',worldEntityId:'story-character-npc-249',x:40,y:50}),
+  ]));
+  const worldCopy=snapshot.scene.actors.find(candidate=>candidate.worldEntityId==='story-character-npc-249')!;
+  assert.equal(worldCopy.visible,true,'尚未入队时地图上的 NPC 仍应显示');
+  assert.notEqual(worldCopy.stageHidden,true);
+});
+
+test('an unpositioned hidden template does not steal one of several matching map actors',()=>{
+  const snapshot=resolveStoryScene(stage([
+    member('template',{actor:'boulder',characterId:'boulder-character',unpositioned:true,visible:false,x:2048,y:2048}),
+  ]),source([
+    actor('entity:first',{actor:'boulder',characterId:'boulder-character',worldEntityId:'first'}),
+    actor('entity:second',{actor:'boulder',characterId:'boulder-character',worldEntityId:'second'}),
+  ]));
+  const template=boundSceneActor(snapshot,'template')!;
+  assert.equal(template.unpositioned,true);
+  assert.notEqual(template.id,'entity:first');
+  assert.notEqual(template.id,'entity:second');
+});
+
+test('a registered location wins over the older static copy of the same character',()=>{
+  const snapshot=resolveStoryScene(stage([
+    member('boulder',{actor:'boulder',characterId:'npc-100',x:520,y:88}),
+  ]),source([
+    actor('entity:boulder2-static',{actor:'boulder',characterId:'npc-100',worldEntityId:'boulder2-static',x:504,y:72}),
+    actor('entity:quest-npc-located-npc-100',{actor:'boulder',characterId:'npc-100',worldEntityId:'quest-npc-located-npc-100',x:520,y:88}),
+  ]));
+  const registered=snapshot.scene.actors.find(candidate=>candidate.worldEntityId==='quest-npc-located-npc-100')!;
+  const stale=snapshot.scene.actors.find(candidate=>candidate.worldEntityId==='boulder2-static')!;
+  assert.equal(boundSceneActor(snapshot,'boulder')?.id,registered.id);
+  assert.equal(registered.visible,true);
+  assert.equal(stale.visible,false);
+  assert.equal(stale.stageHidden,true);
+});

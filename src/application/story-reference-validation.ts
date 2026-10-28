@@ -47,9 +47,19 @@ export function validateStoryReferences(campaign:Campaign,world:WorldIndex,battl
    * 所以舞台与实体必须同图：跨图绑定会把这个 NPC 从原图抹掉、再放到舞台上，而且全程不报错。
    * 摆放点优先于地图实体——它是剧情侧的权威声明。
    */
-  const entityMaps=new Map<string,string>([
-    ...[...maps.values()].flatMap(map=>map.entities.map(entity=>[entity.id,map.id] as const)),
-    ...[...campaign.placements,...campaign.mapEntryPlacements??[]].map(entity=>[entity.id,entity.map] as const)]);
+  // 世界实体 ID 只在单张地图内唯一：同一扇石门的编号可以在多个地图重复。
+  // 因此这里记录每个实体出现过的地图集合，舞台绑定只要在本图出现就能通过。
+  const entityMaps=new Map<string,Set<string>>();
+  const rememberEntityMap=(id:string,map:string):void=>{
+    const homes=entityMaps.get(id);
+    if(homes)homes.add(map);else entityMaps.set(id,new Set([map]));
+  };
+  for(const map of maps.values())for(const entity of map.entities)rememberEntityMap(entity.id,map.id);
+  for(const entity of [...campaign.placements,...campaign.mapEntryPlacements??[]])rememberEntityMap(entity.id,entity.map);
+  const checkEntityMap=(id:string,map:string,message:string):void=>{
+    const homes=entityMaps.get(id);
+    ensure(homes===undefined||homes.has(map),`${message}：${id} 在 ${[...homes??[]].join('/')}，舞台在 ${map}`);
+  };
   const actors=new Set(Object.keys(world.actors)),enemies=new Set(battle.enemies.map(enemy=>enemy.id));
   const exits=new Map([...maps.values()].flatMap(map=>map.exits.map(exit=>[storyExitId(map.id,exit),map.id] as const)));
   const commands:StoryCommand[]=[...Object.values(campaign.scripts).flatMap(script=>script.nodes.flatMap(node=>node.commands)),
@@ -130,12 +140,10 @@ export function validateStoryReferences(campaign:Campaign,world:WorldIndex,battl
     const nodeStageMap=nodeStage&&!nodeStage.mapFromWorld?nodeStage.map:undefined;
     if(nodeStageMap)for(const action of node.presentation){
       if(action.type==='appear'&&action.worldEntityId){
-        const home=entityMaps.get(action.worldEntityId);
-        ensure(home===undefined||home===nodeStageMap,`出场实体跨越地图：${action.worldEntityId} 在 ${home}，舞台在 ${nodeStageMap}`);
+        checkEntityMap(action.worldEntityId,nodeStageMap,'出场实体跨越地图');
       }
       if(action.type==='world-object'&&action.command.kind==='place'&&action.command.mapFromStage){
-        const home=entityMaps.get(action.command.entity.id);
-        ensure(home===undefined||home===nodeStageMap,`演出摆放跨越地图：${action.command.entity.id} 在 ${home}，舞台在 ${nodeStageMap}`);
+        checkEntityMap(action.command.entity.id,nodeStageMap,'演出摆放跨越地图');
       }
     }
     const stages=[...(node.stage?[node.stage]:[]),...node.presentation.filter(action=>action.type==='stage')];
@@ -145,9 +153,8 @@ export function validateStoryReferences(campaign:Campaign,world:WorldIndex,battl
       ensure(new Set(bindings).size===bindings.length,'同一舞台重复绑定世界实体 '+node.id);
       for(const id of bindings){
         ensure(entities.has(id),'舞台世界实体不存在 '+id);
-        const home=entityMaps.get(id);
         // `place` 命令临时创建的实体没有静态归属，只做存在性检查。
-        ensure(home===undefined||home===stage.map,`舞台绑定跨越地图：${id} 在 ${home}，舞台在 ${stage.map}`);
+        checkEntityMap(id,stage.map,'舞台绑定跨越地图');
       }
     }
   }

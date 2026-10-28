@@ -11,7 +11,9 @@ import { newStorySession } from '../../src/domain/story-class.ts';
 import { StoryDirector, type StoryUI } from '../../src/domain/story-director.ts';
 import { type PerformanceAction, type StoryPresentationPort, type StoryStage, type StoryStageSnapshot } from '../../src/domain/story-performance.ts';
 import { resolveStoryScene, applyStorySceneAction } from '../../src/domain/story-scene.ts';
+import { assertUniqueActorInstances } from '../../src/domain/actor-census.ts';
 import { prepareSceneVisit } from '../../src/domain/scene-visit.ts';
+import { authoredPlacements, baseMapEntities } from '../../src/domain/map-placement.ts';
 import { parseSprings } from '../../src/domain/springs.ts';
 import type { SceneSnapshot } from '../../src/domain/scene-snapshot.ts';
 import { WorldEnemyRoster } from '../../src/domain/world-enemies.ts';
@@ -52,8 +54,8 @@ export function playthrough(saved?:SessionState){
   let stageRecords:StoryStageSnapshot[]|undefined;
   const entities=():EntityPlacement[]=>{
     const map=maps.get(session.storyWorld.currentLocation!.map)!;
-    const authored=campaign.placements.filter(entity=>entity.map===map.id);
-    const base=map.entities.filter(entity=>!authored.some(other=>other.characterId&&entity.characterId?other.characterId===entity.characterId:other.actor===entity.actor));
+    const authored=authoredPlacements(map,campaign);
+    const base=baseMapEntities(map,campaign,entity=>session.visible(entity));
     return session.storyWorld.projectEntities(map.id,[...base,...authored],campaign.placements)
       .filter(entity=>session.storyWorld.visible(entity.id)&&(!('condition' in entity)||session.evaluateCondition(entity.condition as import('../../src/domain/story-condition.ts').StoryCondition)));
   };
@@ -78,11 +80,13 @@ export function playthrough(saved?:SessionState){
       stage=restored&&'scene' in restored?structuredClone(restored):resolve(restored??{
         type:'stage',...session.storyWorld.currentLocation!,playerVisible:true,cast:[]});
       remember();committedScenes.set(stage.map,structuredClone(stage.scene));
+      assertUniqueActorInstances(stage.scene.actors,`剧情舞台 ${stage.map}/begin`);
     },
     async execute(action){
       actions.push(action);
       if(action.type==='stage')stage=resolve(action);
       else if(stage)stage=applyStorySceneAction(stage,action);
+      if(stage)assertUniqueActorInstances(stage.scene.actors,`剧情舞台 ${stage.map}/${action.type}`);
       if(stage&&stageRecords)stageRecords.push(structuredClone(stage));
     },
     // 失败重试与读档恢复共用这条入口：与真实 presenter 一样，用快照重建已访问地图清单，
@@ -94,12 +98,13 @@ export function playthrough(saved?:SessionState){
       scenes.set(saved.map,structuredClone(saved.scene));
       committedScenes.clear();
       for(const [map,scene] of scenes)committedScenes.set(map,structuredClone(scene));
+      assertUniqueActorInstances(stage.scene.actors,`剧情舞台 ${stage.map}/restore`);
     },
     getStageState(){return stage?structuredClone(stage):undefined;},
     getWorldChanges(){
       remember();
       return [...scenes].flatMap(([map,scene])=>scene.actors.flatMap(actor=>{
-        if(!actor.worldEntityId||actor.unpositioned)return [];
+        if(!actor.worldEntityId||actor.unpositioned||actor.stageHidden)return [];
         const previous=committedScenes.get(map)?.actors.find(value=>value.id===actor.id);
         if(previous&&previous.worldEntityId===actor.worldEntityId&&previous.actor===actor.actor
           &&previous.x===actor.x&&previous.y===actor.y&&previous.facing===actor.facing&&previous.visible===actor.visible)return [];

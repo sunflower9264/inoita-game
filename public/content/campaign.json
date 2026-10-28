@@ -40341,7 +40341,8 @@
                   "facing": "south",
                   "visible": false,
                   "unpositioned": true,
-                  "inheritPosition": true
+                  "inheritPosition": true,
+                  "worldEntityId": "barricade-307ed4dd-005"
                 }
               ],
               "mapFromWorld": true,
@@ -44067,7 +44068,8 @@
                   "facing": "south",
                   "visible": false,
                   "unpositioned": true,
-                  "inheritPosition": true
+                  "inheritPosition": true,
+                  "worldEntityId": "gateway-a8e8889c-011"
                 }
               ],
               "mapFromWorld": true
@@ -91128,7 +91130,8 @@
                   "facing": "south",
                   "visible": false,
                   "unpositioned": true,
-                  "inheritPosition": true
+                  "inheritPosition": true,
+                  "worldEntityId": "steel-door-185c9338-000"
                 }
               ],
               "resetActors": true
@@ -100140,7 +100143,8 @@
                   "x": 136,
                   "y": 152,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "collapsed-berkel-soldier-97792716-003"
                 },
                 {
                   "id": "story-collapsed-berkel-soldier-0112e6b6-84",
@@ -130165,7 +130169,8 @@
                   "facing": "south",
                   "visible": false,
                   "unpositioned": true,
-                  "inheritPosition": true
+                  "inheritPosition": true,
+                  "worldEntityId": "boulder3-dc017f0f-005"
                 },
                 {
                   "id": "story-tindalrose-3aed1899",
@@ -135339,7 +135344,8 @@
                   "facing": "south",
                   "visible": false,
                   "unpositioned": true,
-                  "inheritPosition": true
+                  "inheritPosition": true,
+                  "worldEntityId": "stone-gate-3619bd16-007"
                 },
                 {
                   "id": "fence-7de349c8",
@@ -135351,7 +135357,8 @@
                   "facing": "south",
                   "visible": false,
                   "unpositioned": true,
-                  "inheritPosition": true
+                  "inheritPosition": true,
+                  "worldEntityId": "fence-7de349c8-001"
                 }
               ],
               "resetActors": true
@@ -138270,7 +138277,8 @@
                   "facing": "south",
                   "visible": false,
                   "unpositioned": true,
-                  "inheritPosition": true
+                  "inheritPosition": true,
+                  "worldEntityId": "collapsed-berkel-soldier-97792716-003"
                 },
                 {
                   "id": "story-collapsed-berkel-soldier-0112e6b6-84",
@@ -161853,7 +161861,8 @@
                   "facing": "south",
                   "visible": false,
                   "unpositioned": true,
-                  "inheritPosition": true
+                  "inheritPosition": true,
+                  "worldEntityId": "boulder-49479eb3-006"
                 }
               ],
               "resetActors": true
@@ -188276,7 +188285,8 @@
                   "facing": "south",
                   "visible": false,
                   "unpositioned": true,
-                  "inheritPosition": true
+                  "inheritPosition": true,
+                  "worldEntityId": "steel-door-185c9338-006"
                 }
               ],
               "retainPlayerPosition": true
@@ -190441,7 +190451,8 @@
                   "x": 344,
                   "y": 328,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "collapsed-berkel-soldier-97792716-007"
                 },
                 {
                   "id": "collapsed-berkel-soldier-2c527b41",
@@ -193924,7 +193935,8 @@
                   "facing": "south",
                   "visible": false,
                   "unpositioned": true,
-                  "inheritPosition": true
+                  "inheritPosition": true,
+                  "worldEntityId": "steel-door-185c9338-006"
                 }
               ],
               "mapFromWorld": true
@@ -197176,7 +197188,8 @@
                   "x": 168,
                   "y": 136,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "collapsed-berkel-soldier-97792716-003"
                 },
                 {
                   "id": "story-collapsed-berkel-soldier-0112e6b6-84",
@@ -244461,7 +244474,8 @@
                   "x": 200,
                   "y": 568,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "collapsed-berkel-soldier-97792716-003"
                 },
                 {
                   "id": "story-collapsed-berkel-soldier-0112e6b6-84",
