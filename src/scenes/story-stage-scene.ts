@@ -4,6 +4,7 @@ import type { StoryContext } from '../application/ports.ts';
 import type { AssetLease } from '../application/assets.ts';
 import type { ActorDefinition, Facing, WorldMap } from '../domain/content.ts';
 import { validateStoryStageSnapshot, type StoryCurtain, type StoryStageSnapshot } from '../domain/story-performance.ts';
+import { assertScenePlan,planScene } from '../domain/scene-plan.ts';
 import { NavigationWorld } from '../domain/navigation-world.ts';
 import { MovementWorld } from '../rendering/movement-world.ts';
 import { characterAssets, type CharacterVisual } from '../rendering/characters.ts';
@@ -98,6 +99,8 @@ export class StoryStageScene extends Phaser.Scene {
   /** 新地图加载完成前保留上一幅画面；迟到的加载只释放自己的租约。 */
   async showStage(stage: StoryStageSnapshot, signal: AbortSignal, playerAppearance?: ActorDefinition): Promise<void> {
     signal.throwIfAborted(); validateStoryStageSnapshot(stage);
+    const plan=planScene(stage.scene,stage.bindings);assertScenePlan(plan);
+    const actors=plan.actors.map(entry=>entry.actor);
     const revision = ++this.revision;
     const reference = this.app.world.maps.find(map => map.id === stage.map);
     if (!reference) throw new Error('这片区域的资源尚未准备好');
@@ -105,7 +108,7 @@ export class StoryStageScene extends Phaser.Scene {
     signal.throwIfAborted();
     const appearances = new Map<string, ActorDefinition>();
     const needed: PendingAsset[] = [...mapSurfaceAssets(map, this.app.world.props), ...effectAssets(this.app.world.storyEffects ?? {})];
-    for (const actor of stage.scene.actors) {
+    for (const actor of actors) {
       const appearance = actor.appearance ?? (actor.id === 'player' ? playerAppearance : undefined)
         ?? this.app.world.actors[this.app.session.storyWorld.actorAppearance(actor.actor)];
       if (!appearance) throw new Error('角色资源缺失：' + actor.actor);
@@ -129,7 +132,7 @@ export class StoryStageScene extends Phaser.Scene {
     let nextCharacters = new Map<string, CharacterVisual>();
     try {
       guard();
-      for (const actor of stage.scene.actors) {
+      for (const actor of actors) {
         const memberId = actor.id === 'player' ? 'player' : actor.memberId;
         if (!memberId) continue;
         const member = memberId === 'player' ? undefined : this.app.session.party?.get(memberId);
@@ -148,9 +151,9 @@ export class StoryStageScene extends Phaser.Scene {
       }
       nextLayers = drawStoryMap(this, map);
       nextMovement = new MovementWorld(this, new NavigationWorld(map));
-      nextCharacters = drawStoryCharacters(this, stage.scene.actors, appearances);
+      nextCharacters = drawStoryCharacters(this, actors, appearances);
       const bound = new Set(stage.bindings.map(([, id]) => id));
-      for (const actor of stage.scene.actors) {
+      for (const actor of actors) {
         const visual = nextCharacters.get(actor.id)!;
         const controlled = bound.has(actor.id);
         nextMovement.register(visual, controlled, false, actor.id === 'player' || actor.memberId || actor.summonedBy ? 'party' : undefined);
@@ -202,10 +205,12 @@ export class StoryStageScene extends Phaser.Scene {
   /** 动作中新增对象只补对象，不重建地图、镜头或正在播放的动作。 */
   ensureActors(stage: StoryStageSnapshot): void {
     if (!this.movement || this.map?.id !== stage.map) throw new Error('演出对象与当前舞台地图不一致');
+    const plan=planScene(stage.scene,stage.bindings);assertScenePlan(plan);
+    const actors=plan.actors.map(entry=>entry.actor);
     const bound = new Set(stage.bindings.map(([, id]) => id));
     const created = new Map<string, CharacterVisual>();
     try {
-      for (const actor of stage.scene.actors) {
+      for (const actor of actors) {
         const existing = this.characters.get(actor.id);
         const appearance = actor.appearance ?? this.app.world.actors[this.app.session.storyWorld.actorAppearance(actor.actor)];
         const equipped = actor.id === 'player' || !!actor.memberId;
@@ -226,7 +231,7 @@ export class StoryStageScene extends Phaser.Scene {
       }
       throw error;
     }
-    const ids = new Set(stage.scene.actors.map(actor => actor.id));
+    const ids = new Set(actors.map(actor => actor.id));
     for (const [id, visual] of this.characters) if (!ids.has(id) || created.has(id)) {
       this.movement.remove(visual);
       if (visual.container.scene) visual.container.destroy();
@@ -234,7 +239,7 @@ export class StoryStageScene extends Phaser.Scene {
     }
     for (const [id, visual] of created) this.characters.set(id, visual);
     this.player = this.characters.get('player');
-    for (const actor of stage.scene.actors) {
+    for (const actor of actors) {
       const visual = this.characters.get(actor.id)!;
       this.movement.register(visual, bound.has(actor.id), false, actor.id === 'player' || actor.memberId || actor.summonedBy ? 'party' : undefined);
       this.movement.setGhost(visual, bound.has(actor.id));
