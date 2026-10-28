@@ -3,7 +3,7 @@ import type {Campaign} from './campaign.ts';
 import {rollPlacement} from './chests.ts';
 import type {EntityPlacement, WorldIndex, WorldMap} from './content.ts';
 import type {DropCatalog} from './drops.ts';
-import {authoredPlacements, baseMapEntities, placementMayBeInactive, withoutReplacedStatic} from './map-placement.ts';
+import {authoredPlacements, baseMapEntities, placementMayBeInactive, resolveMapActors} from './map-placement.ts';
 import {NavigationWorld, mirroredCollision} from './navigation-world.ts';
 import {choosePartyLanding} from './party-placement.ts';
 import {QuestEnemyWatch} from './quest-enemies.ts';
@@ -43,7 +43,7 @@ export function prepareSceneVisit(inputs:SceneVisitInputs,map:WorldMap,player:Sc
   const generatedEntities=generateMapEntities(map,campaign,springs,level,random,
     entity=>!placementMayBeInactive(entity));
   const entities=session.storyWorld.projectEntities(map.id,
-    withoutReplacedStatic(generatedEntities,map,campaign,entity=>session.visible(entity)),
+    resolveMapActors({base:generatedEntities,map,campaign,active:entity=>session.visible(entity)}),
     campaign.placements);
   const navigation=new NavigationWorld(map);
   const actors:SceneActorState[]=entities.map(entity=>{

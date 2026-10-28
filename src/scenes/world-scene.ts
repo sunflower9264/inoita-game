@@ -1,7 +1,7 @@
 import {prepareCombatRestore} from '../domain/combat-snapshot.ts';
 import type {SceneActorState,SceneSnapshot} from '../domain/scene-snapshot.ts';
 import {generateMapEntities} from '../domain/scene-visit.ts';
-import {placementMayBeInactive, withoutReplacedStatic} from '../domain/map-placement.ts';
+import {placementMayBeInactive, resolveMapActors} from '../domain/map-placement.ts';
 import { SCENE_KEYS } from '../application/scene-keys.ts';
 import { StatusHud } from '../ui/phaser/status-hud.ts';
 import { worldZoom } from '../ui/viewport.ts';
@@ -313,7 +313,7 @@ export class WorldScene extends Phaser.Scene {
     this.baseEntities=generated?structuredClone(generated):generateMapEntities(map,campaign,this.springCatalog,this.app.session.hero?.level??1,Math.random,
       entity=>!placementMayBeInactive(entity));
     this.entities=this.app.session.storyWorld.projectEntities(map.id,
-      withoutReplacedStatic(this.baseEntities,map,campaign,entity=>this.app.session.visible(entity)),
+      resolveMapActors({base:this.baseEntities,map,campaign,active:entity=>this.app.session.visible(entity)}),
       this.app.campaign.placements);
     // 入口只保证「落脚图」可玩；后续剧情地图交给 ensureStoryAssets 在开演前按需加载。
     // 玩家侧战斗资源只在首次进入世界时并入主批次，之后由常驻租约保持。
@@ -1497,7 +1497,7 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
     }
     if(!this.map||!this.player||!this.movement)throw new Error('正式地图尚未就绪');
     const projected=this.app.session.storyWorld.projectEntities(this.map.id,
-      withoutReplacedStatic(this.baseEntities,this.map,this.app.campaign,entity=>this.app.session.visible(entity)),
+      resolveMapActors({base:this.baseEntities,map:this.map,campaign:this.app.campaign,active:entity=>this.app.session.visible(entity)}),
       this.app.campaign.placements);
     const projectedActors=projected.map(entity=>this.app.session.storyWorld.actorAppearance(entity.actor));
     if(projected.some(entity=>entity.spring)&&this.springCatalog)projectedActors.push(this.springCatalog.empty);

@@ -59,3 +59,13 @@ export function withoutReplacedStatic(
   return base.filter(entity => !staticIds.has(entity.id)
     || !activeAuthored.some(authored => replacesMapEntity(authored, entity)));
 }
+
+/** 正式地图、剧情预备图、无头回放和测试共用的地图演员合并入口。 */
+export function resolveMapActors(input: {
+  base: readonly EntityPlacement[];
+  map: WorldMap;
+  campaign: Campaign;
+  active: (entity: EntityPlacement) => boolean;
+}): EntityPlacement[] {
+  return withoutReplacedStatic(input.base, input.map, input.campaign, input.active);
+}
