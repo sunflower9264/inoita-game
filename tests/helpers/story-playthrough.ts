@@ -41,6 +41,8 @@ const drops=parseDrops(read('drops'),items,battle.enemies.map(enemy=>enemy.id));
 const springs=parseSprings(read('springs'));
 const maps=new Map(world.maps.map(ref=>[ref.id,read('maps/'+ref.id) as WorldMap]));
 const tick=()=>new Promise<void>(resolve=>setImmediate(resolve));
+/** 无头回放与现场表测试共用同一份解析后的内容。 */
+export const headlessContent={campaign,world,maps,items,battle,stats,storyClasses:classes,companions};
 
 /** Runs the real director and session. Only elapsed presentation time and combat damage are omitted. */
 export function playthrough(saved?:SessionState){

@@ -13,6 +13,7 @@ import type {StoryNodeCommit, StoryPlaybackContext, StoryRuntimePort} from '../d
 import {Session, type SessionState} from '../domain/session.ts';
 import {authoredPlacements, baseMapEntities} from '../domain/map-placement.ts';
 import {applyStorySceneAction, resolveStoryScene} from '../domain/story-scene.ts';
+import {assertUniqueActorInstances} from '../domain/actor-census.ts';
 import {storyCommitCommands} from '../domain/story-commit.ts';
 import {newStorySession} from '../domain/story-class.ts';
 import {StoryRuntime} from '../domain/story-runtime.ts';
@@ -245,8 +246,13 @@ export class HeadlessStory {
         value = this.choose(node, action);
         continue;
       }
-      if (action.type === 'stage') { this.stage = this.resolveStage(action); continue; }
+      if (action.type === 'stage') {
+        this.stage = this.resolveStage(action);
+        assertUniqueActorInstances(this.stage.scene.actors, `无头舞台 ${this.stage.map}/stage`);
+        continue;
+      }
       if (this.stage) this.stage = applyStorySceneAction(this.stage, action as PerformanceAction);
+      if (this.stage) assertUniqueActorInstances(this.stage.scene.actors, `无头舞台 ${this.stage.map}/${action.type}`);
     }
     return {choice: value, stage: this.stage};
   }
