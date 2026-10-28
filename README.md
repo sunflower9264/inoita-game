@@ -68,6 +68,7 @@ android/            Android WebView 壳（可选打包层）
 
 | 要做的工作 | 从哪里开始 |
 |---|---|
+| 先弄懂各模块怎么协作 | [模块原理入门](docs/module-guide.md) |
 | 改功能、规则或生命周期 | [架构与修改入口](docs/architecture.md) → 对应源码与测试 |
 | 写对白、任务、事件或地图条件 | [剧情与任务创作](docs/story-content.md) → `public/content/campaign.json` |
 | 改音乐、环境音与音效 | [音频说明](docs/audio.md) → `public/content/audio.json` |

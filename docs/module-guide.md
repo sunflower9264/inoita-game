@@ -354,7 +354,7 @@ GM 任务现场表也是用这条通道生成的：从新游戏开始，用真�
 常用命令：
 
 ```bash
-npm test -- tests/example.test.ts
+npm test -- tests/combat.test.ts
 npm run typecheck
 npm run validate:content
 npm run audit:story

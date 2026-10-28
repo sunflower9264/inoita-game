@@ -23,7 +23,7 @@
 
 `QuestBook.plan` 预备接取、交付或事实更新，`Session` 负责实际物品、经验及金币提交。接取物品和交回物品分别配置；奖励按主角职业选择，实际结算记录供完成窗口使用。
 
-`events` 统一声明 `source`、`script`、`condition` 和可选 `priority`。来源包括 start、map-entry、region、near、interaction、quest、inventory、choice、battle。区域需要 `map` 和 `region`，省略 key 时按事件 ID 触发；交互可限定 `entity`，任务及物品可用 `key` 限定对象。一般事件成功后播放一次；`repeat` 允许新发生再次触发。同一发生会按优先级依次重查候选条件，延期不完成事件。
+`events` 统一声明 `source`、`script`、`condition` 和可选 `priority`。来源包括 start、map-entry、region、near、interaction、quest、inventory、choice、battle、event。区域需要 `map` 和 `region`，省略 key 时按事件 ID 触发；交互可限定 `entity`，任务及物品可用 `key` 限定对象。一般事件成功后播放一次；`repeat` 允许新发生再次触发。同一发生会按优先级依次重查候选条件，延期不完成事件。
 
 条件可以使用 all、any、not 组合任务、事件、选择、标记和世界谓词。角色摆放 `condition`、事件 `condition`、任务 `availableWhen` 与出口 `exitRules[].condition` 共享这些规则。**角色摆放的 `condition` 是必填项**：常显写 `{"type":"always","value":true}`，漏写会在校验与构建阶段报错。区域触发保留条件表中的地图与矩形，包括覆盖进图落点和部分越界的有效区域。世界谓词包括 map、near-actor、near-entity、interaction 和 `region:<事件ID>`；对应资源和标记来源必须能够校验。
 
@@ -55,7 +55,7 @@
 
 出口包括 next、branch、choice、call、waitEncounter、defer 和 end。branch 检查包含本节点命令结果的条件；choice 保存选择并进入对应节点；call 调用共享脚本，then 指定返回节点。共享脚本的 end 在存在调用栈时返回，无调用栈时才完成整个流程。资源校验分别检查各分支的演员状态；运行还有连续节点预算和调用层级限制。
 
-游戏命令包括 quest、talk、interaction、item-give/take、flag、choice、party-join/leave、party-control、health、mana、equip、world、travel 和 encounter。health/mana 使用 `member` 与 `value`，后者是整数或 full；equip 使用 `member`、物品定义 `item` 和装备 `slot`，由现有穿戴规则选择背包中的实例。主角成员名是 player，剧情成员实例名是 `story-<伙伴定义ID>`。
+游戏命令包括 quest、talk、interaction、item-give/take/drop、money-give/take、flag、choice、party-join/leave、party-control、health、mana、equip、unequip-destroy、world、travel 和 encounter。health/mana 使用 `member` 与 `value`，后者是整数或 full；equip 使用 `member`、物品定义 `item` 和装备 `slot`，由现有穿戴规则选择背包中的实例。主角成员名是 player，剧情成员实例名是 `story-<伙伴定义ID>`。
 
 同一节点按命令声明顺序验证及执行，所以先给装备再穿戴、先入队再切控都可以表达。任何物品、角色或任务条件不满足，整个节点保留原状态和原游标。异步加载、对白、走位和弹窗在同步事务之外执行。
 

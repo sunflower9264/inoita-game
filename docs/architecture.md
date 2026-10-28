@@ -6,7 +6,7 @@
 
 ## 按任务找到代码
 
-下表路径均相对项目根目录。测试用 `npm test -- tests/<文件>.test.ts` 运行，可传多个文件；该命令先做一次类型检查。
+下表代码路径相对 `src/`，内容路径相对 `public/content/`；测试名对应 `tests/<名字>.test.ts`。测试用 `npm test -- tests/<文件>.test.ts` 运行，可传多个文件；该命令先做一次类型检查。
 
 | 要改什么 | 状态与规则入口 | 装配、表现和内容 | 优先查看的测试 |
 |---|---|---|---|
@@ -15,12 +15,12 @@
 | 技能效果与命中反应 | `combat-unit-execution.ts`、`combat-effect-executor.ts`、`combat-hit-resolution.ts`、`combat-reaction-pipeline.ts`、`combat-follow-ups.ts` | `world-combat.ts` 的状态与画面接口、`battle.json` | `skill-unit-runtime`、`skill-reaction-runtime`、对应技能测试 |
 | 冷却、状态、持续效果与恢复 | `session.ts`、`combat-clock.ts`、`combat-cooldowns.ts`、`combat-conditions.ts`、`combat-periodic.ts`、`combat-resources.ts` | `world-combat.ts`、`status-hud.json` | `combat-clock-runtime`、`combat-cooldowns`、`combat-state-runtime`、`combat-resources-runtime` |
 | 怪物与伙伴 AI（自动行为） | `enemy-ai.ts`、`party-ai.ts`、`combat-threat*.ts`、`world-enemies.ts` | `world-combat.ts`、`content/maps/`、`companions.json` | `enemy-ai`、`party-ai`、`world-enemies`、`world-threat` |
-| 移动、碰撞、出口、落位 | `navigation-world.ts`、`pathfinding.ts`、`walk-route.ts`、`navigation.ts` | `rendering/movement-world.ts`、`arcade-movement.ts`、`movement-interpolation.ts`、`scenes/world-scene.ts` | `movement`、`navigation-placement`、`map-entry`、`story-exit-gates` |
+| 移动、碰撞、出口、落位 | `navigation-world.ts`、`pathfinding.ts`、`walk-route.ts`、`navigation.ts` | `rendering/movement-world.ts`、`arcade-movement.ts`、`movement-interpolation.ts`、`scenes/world-scene.ts` | `movement`、`movement-world`、`navigation-placement`、`map-placement`、`story-exit-gates` |
 | 任务、剧情与永久世界 | `campaign.ts`、`quest-book.ts`、`story-runtime.ts`、`story-world.ts`、`story-director.ts` | `campaign.json`、`rendering/story-presenter.ts`、`scenes/story-stage-scene.ts` | `session-quest-core`、`story-runtime`、`story-director-core`、`story-stage-isolation` |
 | 背包、穿戴、人物成长 | `bag.ts`、`items.ts`、`character-stats.ts`、`attribute-allocation.ts`、`story-skills.ts` | `ui/story-ui.ts`、`rendering/wardrobe.ts`、`items.json`、`character-stats.json`、`wardrobe.json` | `bag`、`character-stats`、`wardrobe`、`story-skills` |
 | 掉落、宝箱、泉水、商店、融合 | `drops.ts`、`ground-loot.ts`、`chests.ts`、`springs.ts`、`shop.ts`、`crafting.ts` | `world-scene.ts`、`ui/phaser/shop-panel.ts`、`crafting-panel.ts`、对应内容目录 | `drops`、`chests`、`springs`、`shop`、`crafting` |
 | 快捷栏、状态栏、菜单和触控 | `shortcut-bar.ts`、`skill-configuration.ts`、`status-hud.ts`、`control-skin.ts` | `ui/phaser/`、`ui/story-ui.ts`、`rendering/hud.ts`、`ui/viewport.ts` | `shortcut-bar`、`status-hud`、`story-menu-interactions`、`viewport` |
-| 剧情调试导航与跳转 | `domain/story-debug.ts`、`debug/story-jump.ts`、`debug/gm-actions.ts` | `campaign.json` 的 `debugStory`、`ui/phaser/gm-panel.ts`；[调试说明](debugging.md) | `story-debug`、`story-debug-start`、`gm-actions`、`story-menu-interactions` |
+| 剧情调试导航与跳转 | `domain/story-debug.ts`、`debug/story-jump.ts`、`debug/gm-actions.ts` | `content/debug/start.json`（运行时挂到 `Campaign.debugStory`）、`ui/phaser/gm-panel.ts`；[调试说明](debugging.md) | `story-debug`、`story-debug-start`、`gm-actions`、`story-menu-interactions` |
 | 内容字段、引用与资源 | `domain/content.ts`、各内容类型 | `application/content-validation.ts`、`content-relations.ts`、`story-reference-validation.ts`、`story-performance-validation.ts` | `content`、对应目录测试；运行 `npm run validate:content` |
 | 音效和背景音乐 | `application/game-audio.ts` | `scenes/audio-scene.ts`、`content/audio.json` | `game-audio` |
 | 存档和安全检查点 | `save-game.ts`、`session-checkpoint.ts`、`session.ts`、`combat-snapshot.ts` | `application/saved-game*.ts`、`world-scene.ts`、`ui/phaser/save-board.ts` | `save-game`、`saved-game`、`checkpoint`、`combat-snapshot` |
@@ -29,7 +29,7 @@
 
 `StoryApp` 装配内容、会话、导演、音频、场景和界面。场景与界面通过 `application/ports.ts` 获取能力。`ControlState` 记录运行模式与操作锁；每个锁有自己的持有者，关闭时释放本人的锁。
 
-`QuestBookState` 使用版本3，保存按接取追加、完成时尾项替位的 `runningQuestIds`；任务掉落按这份运行顺序逐任务尝试。清支线只重置仍在池中的支线，已交付记录保持完成。
+`QuestBookState` 使用版本5，保存按接取追加、完成时尾项替位的 `runningQuestIds`；任务掉落按这份运行顺序逐任务尝试。清支线只重置仍在池中的支线，已交付记录保持完成。
 
 `Session` 是游戏会话的权威入口：它持有主角、队伍、背包、技能配置、任务、剧情游标、永久世界、金币、地面掉落、宝箱、泉水、商店、恢复药水时钟及共享战斗时钟和冷却。Phaser 场景负责把这些状态表现成地图、人物和界面。实时人物位置由 `MovementWorld` 的物理体持有；名单中的初始站位不是实时位置，捕获世界快照时才用物理坐标覆盖。
 
@@ -88,7 +88,7 @@
 
 `campaign.json` 的节点先播放 `presentation`，成功收尾后再同步提交 `commands` 与下一游标。任务、目标、事件、脚本和节点使用稳定 ID。`QuestBook` 按目标计数和周期结算，`StoryRuntime` 串行调度事件并保存调用栈，`StoryWorldState` 保存永久角色、门、标记、选择和落点。当前内容有505个任务、593条触发事件和693个流程图。入口图按触发条件确定；没有地图条件时，开场舞台继承当前地图。人物或同种敌人在其他事件中的登记地图用于预览与来源说明，实际切图由剧情中的 `travel` 命令驱动。任务链脚本由交付与接取解锁。
 
-电影 `story-stage` 拥有自己的地图、移动世界、换装与资源租约；舞台跨图不改变正式地图访问。演员 `id` 属于本次演出；`worldEntityId` 绑定正式世界实例，稳定人物身份决定绑定关系，显式落点也保留绑定。地图实体和舞台演员带 `authority`（来源）：`registered` 是剧情位置登记，代表角色在本图的正式副本；`npc` 是任务 NPC；`story` 是演出临时实例；`static` 是地图自带对象。旧内容没写这个字段时只在读取边界按 ID 解码一次，运行期按来源决定谁接管、谁隐藏，不再到处判断 ID 前缀。演员身份按来源实例键判重（地图实体、队伍成员、战斗敌人、纯剧情演员各用各的键），人物编号只用于查找、不算实例；同一人物编号匹配到多个地图实体时必须补 `worldEntityId`，找不到唯一来源就报错，不再静默取第一个。舞台、检查点和读档快照都走同一份演员普查，重复可见实例会在边界被拒绝；完整剧情回放会对每个舞台动作再查一次。`domain/actor-ref.ts` 定义带地图/遭遇/运行作用域的演员引用，`domain/scene-plan.ts` 从场景快照派生只读演员计划，`domain/scene-delta.ts` 按引用比较舞台差量；舞台渲染和正式世界回写开始消费这些结果，旧快照仍作为恢复检查点。发布前的剧情门禁是 `npm run audit:story`（身份台账、全部舞台动作、支线开幕、击倒/物品/交互支线、支线覆盖台账），需要连主线一起跑时用 `npm run audit:story:full`；发版前用 `npm run release:story` 串起内容校验、调试现场表、剧情门禁、存档升级、主线完整回放和构建。
+电影 `story-stage` 拥有自己的地图、移动世界、换装与资源租约；舞台跨图不改变正式地图访问。演员 `id` 属于本次演出；`worldEntityId` 绑定正式世界实例，稳定人物身份决定绑定关系，显式落点也保留绑定。地图实体和舞台演员带 `authority`（来源）：`registered` 是剧情位置登记，代表角色在本图的正式副本；`npc` 是任务 NPC；`story` 是演出临时实例；`static` 是地图自带对象。旧内容没写这个字段时只在读取边界按 ID 解码一次，运行期按来源决定谁接管、谁隐藏，不再到处判断 ID 前缀。演员身份按来源实例键判重（地图实体、队伍成员、战斗敌人、纯剧情演员各用各的键），人物编号只用于查找、不算实例；同一人物编号匹配到多个地图实体时，先按 `registered` 来源和舞台声明落点消歧；仍不唯一才要求补 `worldEntityId` 并报错，不再静默取第一个。舞台、检查点和读档快照都走同一份演员普查，重复可见实例会在边界被拒绝；完整剧情回放会对每个舞台动作再查一次。`domain/actor-ref.ts` 定义带地图/遭遇/运行作用域的演员引用，`domain/scene-plan.ts` 从场景快照派生只读演员计划，`domain/scene-delta.ts` 按引用比较舞台差量；舞台渲染和正式世界回写开始消费这些结果，旧快照仍作为恢复检查点。发布前的剧情门禁是 `npm run audit:story`（身份台账、全部舞台动作、支线开幕、击倒/物品/交互支线、支线覆盖台账），需要连主线一起跑时用 `npm run audit:story:full`；发版前用 `npm run release:story` 串起内容校验、调试现场表、剧情门禁、存档升级、主线完整回放和构建。
 
 宝箱、泉水与随机货架按正式地图访问管理：同图重建保留，跨图按各自规则刷新。宝箱按钮先按脚点曼哈顿距离 24px 找附近对象，执行时检查正面朝向；点击箱子使用脚底矩形间距的独立规则，见 `domain/chests.ts`。电影舞台的地图切换不触发这些刷新。
 
@@ -106,9 +106,9 @@
 
 `ContentLoader` 使用 `content-validation.ts` 校验已加载的目录。`tools/validate-content.mjs` 额外检查完整目录、图片、音频及跨文件关系；同一入口也接在 Vite 开发服务（4003）的启动和内容变化上。剧情引用与每条分支的演员、音频、路线、并行冲突由专用校验器检查。`tools/build.mjs` 先校验 `public/`，构建到临时目录，对构建前后的 `public/assets` 与 `public/content` 做内容哈希并比对，再把 `.build-meta.json` 写进产物、校验构建结果并替换 `dist/`。输出使用相对 base 与 `bundles/`，部署在站点根路径；公共资源 URL 在加载边界追加内容版本，供静态服务长缓存。
 
-内容运行时：`tools/content-build.ts` 在构建期把 `public/content` 转成运行时内容目录——全部 JSON minify；`battle.json` 的 90 个技能把 `details` 编译成 `display` 模板 + 每级 `displayValues`，全部 235 个技能/敌人动作预计算 `requiresTarget/effectNames/soundNames/summonNames/eventFrames`；`shops.equipment` 拆到 `shops-equipment.json`，并省略与 `character-stats.gradeVariants` 重复的 `variants`；`wardrobe.poses` 按动作 ID 拆成 `content/wardrobe/poses/*.json`，运行时 `Wardrobe.prepare()` 只取当前武器/职业实际用到的十几条，`pose-index.json` 供 dev/GM 完整校验。`tools/build.mjs` 用它替换 `dist/content` 并计算 `contentVersion`。生产构建注入 `__STORY_TRUST_CONTENT__`，`ContentLoader` 只做 `JSON.parse`；开发服务、Node 测试、`?gm` 与 `?validate` 仍执行完整 `parseX` 和跨文件校验。构建期 `validateContent` 是唯一权威校验入口，运行时不再重复。
+内容运行时：`tools/content-build.ts` 在构建期把 `public/content` 转成运行时内容目录——全部 JSON minify；`battle.json` 的 90 个技能把 `details` 编译成 `display` 模板 + 每级 `displayValues`，全部 236 个技能/敌人动作预计算 `requiresTarget/effectNames/soundNames/summonNames/eventFrames`；`shops.equipment` 拆到 `shops-equipment.json`，并省略与 `character-stats.gradeVariants` 重复的 `variants`；`wardrobe.poses` 按动作 ID 拆成 `content/wardrobe/poses/*.json`，运行时 `Wardrobe.prepare()` 只取当前武器/职业实际用到的十几条，`pose-index.json` 供 dev/GM 完整校验。`tools/build.mjs` 用它替换 `dist/content` 并计算 `contentVersion`。生产构建注入 `__STORY_TRUST_CONTENT__`，`ContentLoader` 只做 `JSON.parse`；开发服务、Node 测试、`?gm` 与 `?validate` 仍执行完整 `parseX` 和跨文件校验。构建期 `validateContent` 是唯一权威校验入口，运行时不再重复。
 
-菜单图片同样分两批：`gameMenuImageGroups()` 把菜单框架、职业预览和立绘放在 `core`，325 个物品图标与 90 个技能图标放进 `extra`。开局前只等 `core`，`extra` 在世界加载期间后台补；补完后 `StoryUI.refreshMenuAssets()` 重画已打开的菜单。素材校验把 `core` 与 `extra` 合起来作为完整清单。
+菜单图片同样分两批：`gameMenuImageGroups()` 把菜单框架、职业预览和立绘放在 `core`，323 个物品图标与 90 个技能图标放进 `extra`。开局前只等 `core`，`extra` 在世界加载期间后台补；补完后 `StoryUI.refreshMenuAssets()` 重画已打开的菜单。素材校验把 `core` 与 `extra` 合起来作为完整清单。
 
 地图 prop 走独立图集：`npm run atlas:props` 把 `world.props` 按 SHA-256 去重后打包为 `public/assets/props/atlas/props-0.png/json`，生成 `src/generated/prop-atlas.ts` 的 prop key → 页/frame 映射；`public/content/world.json` 和地图 JSON 完全不变。`mapSurfaceAssets()` 对每张有 feature 的地图只加入一次图集页，`drawMapLayers()` 用 `texture+frame` 绘制，`composeColorDodge()` 从 frame 的裁剪矩形取像素。原始 prop PNG 保留，`validate:content` 校验所有 763 个 prop、17,535 个 feature、帧尺寸/边界/摘要和图集新鲜度。
 

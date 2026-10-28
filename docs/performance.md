@@ -4,6 +4,7 @@
 - 对应提交：`891a357`（`main`）
 - 范围：整个游戏，不止战斗/资源/地图；含构建、存档、剧情、菜单、输入、安卓壳
 - 状态：审查记录与修复路线；P0.6 绿色基线与 P1.1 高频 emit 链路已于 2026-10-25 实施，见第 12 节。本文中的行号会随代码变化漂移，优先按函数名和文件检索
+- **读法**：第 0–11 节的体积、耗时和“待做”是 2026-10-25 的审查基线，不随之后的提交自动更新；第 12 节按日期记录已实施项。判断当前行为时以第 12 节和源码为准，尤其是启动校验、菜单图加载、演出时的世界场景和存档摘要
 - 方法：8 路只读模块审查 + 1 路综合评审；Node 内容统计/微基准；**未启动浏览器，未修改运行时代码**
 
 > 证据标签：**【已证实】** = 代码路径、内容统计或可复现微基准；**【估算】** = 按文件尺寸/帧矩形推算，量级可信但非绝对值；**【待测】** = 必须用真机 Performance/Renderer 面板确认。
@@ -12,16 +13,16 @@
 
 ## 0. 一页结论
 
-用户说“这个游戏应该不怎么吃性能”，这个判断是对的。当前卡顿主要不是设备弱，而是实现做了大量可避免的工作。按影响从大到小：
+用户说“这个游戏应该不怎么吃性能”，这个判断是对的。审查时卡顿主要不是设备弱，而是实现做了大量可避免的工作。以下按审查时的影响排序；第 12 节已修复的项目仍保留原始测量，作为基线。
 
 1. **纹理超集与请求风暴（首次进图/Boss 图最重）**
-   首次进图并集约 **4,248 个贴图键、约 2.1 GB 解码纹理下限**（优化前基线）；其中“常驻战斗包” **3,363 键 / 2,060 MB**，首次进图后永不释放。常驻包 **70% 的键是字节完全重复**的内容；四个大招占常驻包约七成；龙系 Boss 单角色全 clip **433 MB**、黑暗势力 Boss **287 MB**。加上 24.9 MB 内容 JSON、281 张剧情地图、678 张菜单图，首次进入前约有 **5,000+ 次资源请求**（世界加载 6 并发）。2026-10-26 已缩围到当前职业 + 41 个伙伴外观 + 共享特效，详见文末实施记录。
+   首次进图并集约 **4,248 个贴图键、约 2.1 GB 解码纹理下限**（优化前基线）；其中“常驻战斗包” **3,363 键 / 2,060 MB**，首次进图后永不释放。常驻包 **70% 的键是字节完全重复**的内容；四个大招占常驻包约七成；龙系 Boss 单角色全 clip **433 MB**、黑暗势力 Boss **287 MB**。审查时还叠加约 24.6 MB 作者态内容 JSON、281 张剧情地图、652 张菜单图，首次进入前约有 **5,000+ 次资源请求**（世界加载 6 并发）；生产构建现已跳过校验地图，菜单图也改为只阻塞 core。2026-10-26 已缩围到当前职业 + 41 个伙伴外观 + 共享特效，详见文末实施记录。
 
 2. **高频 emit 链路随背包变大而恶化（越到后期越卡）**
-   `StoryDirector.observeChanges` 每次 `session.emit()` 都遍历背包并逐件 `itemCount`，而 `Bag.count` 每次重建全量计数，复杂度 O(n²)。本机实测 **201 件 1.62 ms、801 件 19.2 ms / 次 emit**；战斗中每次掉血、每次恢复脉冲都会 emit。主角 `BattleCharacter.panel` 没有缓存，9 件装备时 **46 µs/次**，每帧多次调用。`healthChanged` 每次受击扫描 593 条事件；quest marker 每次通知约 **角色数 × 505** 次任务判断。
+   `StoryDirector.observeChanges` 每次 `session.emit()` 都遍历背包并逐件 `itemCount`，而 `Bag.count` 每次重建全量计数，复杂度 O(n²)。本机实测 **201 件 1.62 ms、801 件 19.2 ms / 次 emit**；战斗中每次掉血、每次恢复脉冲都会 emit。主角 `BattleCharacter.panel` 没有缓存，9 件装备时 **46 µs/次**，每帧多次调用。`healthChanged` 每次受击扫描 593 条事件；quest marker 每次通知约 **角色数 × 505** 次任务判断。（2026-10-25 已修，见第 12 节。）
 
 3. **敌人 A\* 无预算同步全图搜索（战斗卡死的直接机制）**
-   `enemy-ai.ts` 的 `findPath` 没传 `maxExpanded`，目标不可达时会把连通分量搜完。本机 50×57 图、46 actor 实测 **可达 2–17 ms、不可达 12–90 ms / 次**，每 180 ms 重试；`NavigationWorld.canStand` 每次分配 Map/矩形/shape，**11.9 µs/扩展**。`stepDelta` 上限 180 ms 仍允许一次渲染帧跑 3 个逻辑帧，会把尖峰放大 3 倍。
+   `enemy-ai.ts` 的 `findPath` 没传 `maxExpanded`，目标不可达时会把连通分量搜完。本机 50×57 图、46 actor 实测 **可达 2–17 ms、不可达 12–90 ms / 次**，每 180 ms 重试；`NavigationWorld.canStand` 每次分配 Map/矩形/shape，**11.9 µs/扩展**。`stepDelta` 上限 180 ms 仍允许一次渲染帧跑 3 个逻辑帧，会把尖峰放大 3 倍。（寻路已改为冻结快照 + 跨帧预算，见第 12 节。）
 
 4. **移动端绘制被“无图集 + 每批 1 纹理 + DPR 3”放大**
    每张地图只有 2 张整图 + 42（最大 134）个 feature Image，但移动端 Phaser 默认每批只允许 1 张纹理；按深度排序后每图 **47–127 次纹理切换**。手机画布约 2.6–3.0 MP，桌面 Retina 约 5.2 MP；canopy 抽样 64%–100% 全透明，仍是整屏 alpha pass。
@@ -30,17 +31,17 @@
    地面掉落每帧 `structuredClone` 最多 64 件；快捷栏/冷却每帧重算重画；`syncHud` 每帧构造 100–200 个临时对象；`syncDepth` 每帧对全部角色写 depth 并置排序脏位；`recoverResources` 每逻辑帧构建全 actor 属性，而恢复脉冲实际 1.86 s 一次；593 条剧情事件每帧全量扫描。
 
 6. **剧情/菜单/存档的“打开时卡一下”**
-   每句对白触发 3–4 次 `FormalUiScene.sync` 全量 clear/重建；演出时 WorldScene 没 sleep，和 StoryStageScene 两套场景同时 update/渲染。菜单每次点击整页重建，商店/合成/队伍存在双重建；滚动区遮罩每帧重做。存档页一次打开会全量 `JSON.parse` 22–33 次。
+   每句对白触发 3–4 次 `FormalUiScene.sync` 全量 clear/重建；审查时演出期间 WorldScene 没暂停，和 StoryStageScene 两套场景同时 update/渲染（现已按舞台遮罩暂停）。菜单每次点击整页重建，商店/合成/队伍存在双重建；滚动区遮罩每帧重做。存档页一次打开会全量 `JSON.parse` 22–33 次。（对白翻页、菜单重绘和存档摘要已部分修复，见第 12 节。）
 
-**最可能立即见效的七件事**：
+**最可能立即见效的七件事**（审查时建议；多数已在第 12 节实施）：
 
 1. 先把手机测试从 4003 开发服务切到 **4002 构建产物或 APK**，并加低频帧时间采样。
 2. 修高频 emit 链：`observeChanges` 去 O(n²)、`BattleCharacter.panel` 缓存、事件/任务索引。
 3. 敌人/队伍寻路改成冻结快照 + 跨帧增量 + **全局每渲染帧扩展预算**，并修 `canStand` 分配。
 4. 纹理内容去重（预计 **-846 MB / -2,693 键**，零画质）+ 常驻包缩围 + 返回菜单释放。
-5. 生产环境删除运行期重复语义校验；不再 fetch 281 张剧情地图；`campaign.json` 构建期 minify（9.46 → 4.28 MB）。
+5. 生产环境删除运行期重复语义校验；不再 fetch 281 张剧情地图；`campaign.json` 构建期 minify（作者态 9.47 → 生产 4.59 MB）。已完成。
 6. 逐帧脏检查：掉落、快捷栏/冷却、syncHud、recoverResources、syncDepth、静态 body。
-7. 剧情/菜单：演出时睡掉 WorldScene；对白增量更新；菜单 render 合并；滚动遮罩静态化；存档摘要缓存。
+7. 剧情/菜单：舞台遮住世界时暂停正式世界；对白增量更新；菜单 render 合并；滚动遮罩静态化；存档摘要缓存。前两项和遮罩、摘要已完成。
 
 **JSON 结论（详见第 6 节）**：保留“数据是数据”，但停止把导出的原始 JSON 当运行时格式。作者态 JSON → 构建期校验/编译/拆分 → 运行时紧凑 IR + TS/Phaser 消费。技能保留 JSON 作者态合理，但数值、行为事件、预格式化展示文本要分开；`details/valueParts` 应从数值派生。
 
@@ -74,20 +75,21 @@
 
 | 维度 | 4003 Vite dev | 4002 dist |
 |---|---|---|
-| JS 模块数 | **241 个**（240 src + 1 phaser 预打包） | 1 个入口 JS |
-| JS 原始体积 | **26.69 MB**（Phaser 21.0 MB + src 5.71 MB，含内联 sourcemap） | 2.31 MB |
-| 压缩 | 无 gzip | gzip 630 KB |
+| JS 模块数 | 审查时 **241 个**（240 src + 1 phaser 预打包） | 1 个入口 JS |
+| JS 原始体积 | 审查时 **26.69 MB**（Phaser 21.0 MB + src 5.71 MB，含内联 sourcemap） | 2026-10-28：2.55 MB |
+| 压缩 | 无 gzip | 2026-10-28：gzip 671 KB |
 | 缓存 | `no-cache` | bundles immutable；带 `?v=` 的资源 immutable |
 | 代码形态 | 未 minify、未 tree-shake、模块间接层多 | minify + tree-shake + 单 chunk |
-| `campaign.json` | 9.92 MB 原样 | gzip 637 KB |
+| `campaign.json` | 作者态约 9.9 MB 原样 | 生产编译后 4.59 MB / gzip 0.51 MB |
 
-**手机上的性能结论只能基于 4002 或 APK。** 4003 只用于功能调试。当前 4002 未监听、4003 在监听；测试前先启动 `npm run serve` 或安装 APK。
+**手机上的性能结论只能基于 4002 或 APK。** 4003 只用于功能调试。测试前先确认 4002 在监听（`ss -ltnp | grep 4002`），没有就运行 `npm run serve` 或安装 APK。
 
-### 1.4 当前测试是红的（前置事实）
+### 1.4 测试基线与历史失败（审查时状态）
 
-- `tests/` 有 361 个测试文件；`node tools/test.ts --all` 约 38 s，退出码 1。
-- ~~`tests/title-save-entry.test.ts` 单跑仍 2/11 失败~~ → **已修**（2026-10-25，11/11）。`tests/story-menu-interactions.test.ts` 的 fixture 也已补齐全屏监听所需的 `document` 替身，套件从 0/52 恢复到 39/52；剩余 13 条为既有失败。
-- 全量套件里仍有既有失败（战斗运行时 4 条、菜单 13 条等），改动前已在 HEAD 复现；后续改动需以“同文件失败数不增加”为准。
+- 审查时 `tests/` 有 361 个测试文件；截至 2026-10-28 是 392 个。
+- `tests/title-save-entry.test.ts` 审查时单跑 2/11 失败，已修；2026-10-28 运行 13 项全部通过。
+- `tests/story-menu-interactions.test.ts` 的 fixture 已补齐全屏监听所需的 `document` 替身；2026-10-28 运行 58 项全部通过。
+- 全量套件本轮没有重跑；改动时仍以“同文件失败数不增加”为准。
 
 ---
 
@@ -211,10 +213,10 @@
 - 普通 Image 没有渲染视锥剔除；85–136 个 feature 每帧都会提交，即使不在屏幕内。
 - canopy 抽样全透明像素：shadow-camp 99.3%、snowfield-1 99.9%、eternal-snowy-valley 100%、pendrik-village 94.1%、最大 canopy 64.0%。每帧仍是整屏 alpha pass。
 - `configureCanvas` 使用 `min(3, DPR)`；`worldZoom` 又把缩放乘回，逻辑视野不变，物理像素是 density² 倍。
-- `batchSize: 4096` 低于 Phaser 默认 16384；当前 quad 数远小于 4096，没有收益，属于无意义下调。
+- `batchSize: 4096` 低于 Phaser 默认 16384；当前 quad 数远小于 4096，没有收益，属于无意义下调。代码目前仍显式设置 4096，本条是待实施建议。
 - 物理：Arcade 默认 `useTree: true`，group vs group 用 RTree，不是全量两两检测；典型 body <50，不是主因。
 
-**修复方向**：先做地图 prop 图集（10–28 张/图 → 1–3 次切换）；canopy 包围盒裁边/分块跳过全透明块；DPR 上限/画质档（默认 2，低端 1.5，需视觉验收）；恢复 `batchSize` 默认；`autoMobileTextures` 只做 A/B 实验，不盲改。长期再评估 `SpriteGPULayer`/`TilemapGPULayer`，不要与图集同时上两套。
+**修复方向**：先做地图 prop 图集（10–28 张/图 → 1–3 次切换）；canopy 包围盒裁边/分块跳过全透明块；DPR 上限/画质档（默认 2，低端 1.5，需视觉验收）；恢复 `batchSize` 默认（尚未实施）；`autoMobileTextures` 只做 A/B 实验，不盲改。长期再评估 `SpriteGPULayer`/`TilemapGPULayer`，不要与图集同时上两套。
 
 ### 4.5 角色与特效渲染
 
@@ -248,15 +250,15 @@
 
 - 【已证实】`StoryRuntime` 事件按来源索引、QuestBook 写时复制、`session.quests` 按版本缓存、`refresh()` 无变化早退；条件求值、`waitEncounter` 状态机、对白分页/打字机算法都很便宜。**不要重写这些。**
 - 每句对白：`GameUI` 至少触发 3 次 `FormalUiScene.sync`，有立绘 4 次。✅ 同一句对白翻页时不再整屏重建（2026-10-25）：框、立绘、说话人和控件保留，正文 Text 按位置复用；新对白/换立绘/选项/弹窗仍整屏重建。长演出里**翻页**这部分的全量重建已消掉。
-- 演出时 `scene.launch('story-stage')` + `moveAbove`，WorldScene 没有 pause/sleep；舞台相机底色只是遮住，下层仍在 update/渲染（两套地图/角色/物理/相机）。
+- 演出时 `scene.launch('story-stage')` + `moveAbove`，审查时 WorldScene 没有 pause/sleep，两套地图/角色/物理/相机同时运行。2026-10-26 已改为：舞台真正遮住世界时隐藏正式世界主相机、暂停 Arcade 物理，并让世界 `update` 提前返回；舞台仍透明时正式世界继续运行（见第 12 节）。
 - 每个演出动作（face/appear/walk/leave/world-object）走 `captureStage()` + `applyStorySceneAction`，多次 `structuredClone`；全内容约 7,400 个这类动作。跨图演出 `scenes` 历史增长后，每次快照越来越贵。
 - 每个剧情节点：`capture()`（session + world + stage）、提交时克隆 commit/checkpoint/stage、`session.applyStoryCommands`（空批次 0.48–1.25 ms）等，组合约 1–3 ms/节点。
 - ✅ **已修（2026-10-25）** 每次受击 `healthChanged` 用 `campaign.events.find` 扫最多 593 条事件（实际只有 19 条 battle 事件）。事件表已按 `source`/`key` 预建索引。
 - 每次 emit 的 `observeChanges` 见 4.9（O(n²) 背包扫描）。
-- `campaign.json` 9.46 MB，压缩空白后 4.28 MB；运行时校验 + 两次图克隆约 250–300 ms（桌面 Node）。
+- `campaign.json` 作者态 9.47 MB，构建后 4.59 MB；dev/GM 路径的运行时校验 + 两次图克隆约 250–300 ms（桌面 Node），生产构建跳过校验。
 - 内容量：693 脚本、3,635 节点、25,568 演出动作、4,653 句对白、505 任务、593 事件。
 
-**修复方向**：演出时 sleep/暂停 WorldScene；对白 UI 增量更新（同立绘、仅文本变化不 clear）；`captureStage`/`committed` 用 diff，只对变化演员克隆；`healthChanged` 建 `(source,key)` 索引；`validateStoryGraph` 构建期做一次；`campaign.json` minify + 按章节拆；事件/任务预索引。
+**修复方向**：舞台遮住世界时暂停正式世界的相机与物理（已实施）；对白 UI 增量更新（同立绘、仅文本变化不 clear）；`captureStage`/`committed` 用 diff，只对变化演员克隆；`healthChanged` 建 `(source,key)` 索引；`validateStoryGraph` 构建期做一次；`campaign.json` minify + 按章节拆；事件/任务预索引。
 
 ### 4.8 菜单、背包、商店、合成与任务日志
 
@@ -264,11 +266,11 @@
 
 - 菜单图片 654–697 张、约 4.1–4.6 MB、解码约 15 MB，返回菜单释放；打开面板无网络 IO，这是正确的。
 - 每次点击/状态变化：`StoryUI.render()` 先清空 `surface/body/description/modal` 和所有 `ScrollArea`，再整页重画。✅ `show()` 末尾重复的 `sync()` 已去掉；商店买卖、队伍加入/移出、合成成功都不再重画第二次（2026-10-25）；失败路径仍本地重画以显示错误。✅ 会话通知按当前页的数据签名门控（2026-10-26）：签名没变就不重绘，背包/技能等页不再随战斗掉血反复重建。
-- 商店购买/出售、合成提交、队伍变更、恢复药水：session emit 触发一次 render，`changed()` 再一次，**同一次操作双重建**。
+- 审查时商店购买/出售、合成提交、队伍变更、恢复药水会让 session emit 触发一次 render，`changed()` 再一次，**同一次操作双重建**；商店、队伍与合成已在 2026-10-25 去掉第二次重画，见第 12 节。
 - 单次打开约 130–350 个 GameObjects、17–80 个 Phaser Text；每个 Text 有独立 canvas 纹理，3× DPR 下创建/销毁几十张高分辨率文字纹理会造成数 MB GPU 上传。
 - ✅ **已修（2026-10-25）** 滚动区在 WebGL 下用 `enableFilters + addMask`；`FilterMask` 默认每帧 `updateDynamicTexture`。现在 `autoUpdate=false`，只在遮罩几何变化时置 `needsUpdate`。
 - 存档页：`newestFirstSlots` 排序比较器反复 `inspect`，每行再 `inspect`，自动槽再 1 次，立绘再 10 次；一次打开约 **22–33 次全量 JSON.parse**。✅ 已加 `peek` 摘要缓存（2026-10-25）：排序/行/立绘只用摘要，同一份原文只解析一次；读档才 `inspect` 完整存档。
-- 非虚拟列表：任务日志按全部活跃组渲染；GM 道具页 1003 件全画（`ScrollArea.setVirtual` 已存在但未用）。
+- 非虚拟列表：任务日志按全部活跃组渲染；GM 道具页 998 件全画（`ScrollArea.setVirtual` 已存在但未用）。
 - 小开销：说明分隔线每 8 px 一个 Rectangle（353 宽约 44 个）；round band 每行 9 个对象；`save-board` 先画文字再 `setText` 重画；`MemberPanel` 每次数值变化重建 hitArea。
 - `status-hud.json`/`menu-panels.json` 是小型布局/皮肤数据，保留；不要扩成通用布局引擎。
 
@@ -284,7 +286,7 @@
 - ✅ **已修（2026-10-25）** **`BattleCharacter.panel` 无缓存**：每次读 `hero.player` 都 `calculateCharacter` + `bag.get`（每件装备 `structuredClone`）。2 件 11.8 µs、9 件 **46.2 µs/次**；`party.alive('player')` 9.2 µs。佣兵 `CompanionMember.panel` 有缓存，0.012 µs/次。现在按 `(bag.revision, level, panelRevision)` 缓存；同时修掉加点预览直接改写面板的隐患。
 - `Bag.entries`/`allCells`/`pouchCells` 全部深拷贝；UI 每次 render 各取一次，200 件时几百次 clone。
 - `StoryDirector` 构造 30.9 ms（图 `structuredClone` 21.1 ms + 图校验 9.1 ms）；运行时至少两个 StoryRuntime，约 60 ms 额外。
-- 数据重复：`shops.equipment` 与 `character-stats.equipment` 662 项完全重合、约 1.2 MB；`items.groundSprite` 1008 份对象只有 67 个唯一文件。
+- 数据重复：`shops.equipment` 与 `character-stats.equipment` 662 项完全重合、约 1.2 MB；`items.groundSprite` 998 份对象只有 67 个唯一文件。
 - 掉落/商店/合成单次计算很小（Boss 掉落 2–3 µs、普通商店 0.35 ms），不需要为帧率重写公式。
 - Wardrobe 每个场景/同伴一个实例，构造时遍历 3,623 个 sprites；换图重建，成本不大但可共享。
 
@@ -292,33 +294,33 @@
 
 ### 4.10 构建、校验、测试、APK 与诊断
 
-**结论：构建链路设计正确；问题是重复校验、运行期重复语义校验、资源未压缩/未拆包，以及测试红。**
+**结论：构建链路设计正确；审查时的问题是重复校验、运行期重复语义校验、资源未压缩/未拆包，以及测试失败。其中生产运行期校验、菜单图分批加载和测试失败已处理。**
 
-- `dist` 约 **237 MB / 12,168 文件**；入口 JS 2.31 MB（gzip 630 KB），Phaser min 1.38 MB 约占 60%；无 source map；单 chunk。
-- `npm run validate:content` **1.40 s**；`typecheck` 2.58 s；`npm run build` 内部 `validateContent(public)` + 复制 217 MB + 再 `validateContent(output)`，第二次是重复劳动（多约 1.4 s）。
-- **构建期已经调用 `validateStoryReferences` / `validateStoryPerformance`**（`content-relations.ts`）；运行期 `main.ts` 又跑一遍，还有 8 个内容校验器也是重复。生产环境应删运行时语义校验，只保留 parse/轻量 shape。
-- 构建期缺 `springs.json` 校验。
-- 全量测试 361 文件、38 s、退出码 1；`title-save-entry` 单跑 2/11 失败。
+- 审查时 `dist` 约 **237 MB / 12,168 文件**；截至 2026-10-28 是 **225 MB / 12,418 文件**。入口 JS 审查时 2.31 MB（gzip 630 KB），当前 2.55 MB（gzip 671 KB）；无 source map；单 chunk。
+- `npm run validate:content` **1.40 s**；`typecheck` 2.58 s；`npm run build` 内部 `validateContent(public)` + 复制产物 + 再 `validateContent(output)`，第二次是重复劳动（多约 1.4 s）。
+- **构建期已经调用 `validateStoryReferences` / `validateStoryPerformance`**（`content-relations.ts`）。生产构建现在按 `app.content.trusted` 跳过运行期语义校验，也不再为校验 fetch 剧情地图；dev、测试、`?gm`、`?validate` 仍执行完整校验（2026-10-26 实施）。
+- `springs.json` 已纳入构建期校验（`tools/validate-content.mjs` 调用 `parseSprings`）。
+- 审查时全量测试 361 文件、38 s、退出码 1；截至 2026-10-28 为 392 个测试文件，`title-save-entry` 单跑 13 项全部通过，全量套件本轮未重跑。
 - 诊断收集器不是每帧：`markFrame` 每帧只 3 次 `Date.now()`；snapshot/JSON/localStorage 只在错误/启动/停帧时发生。错误风暴时 `localStorage` 同步写最多约 384 KB，会放大阻塞；正常游玩不是主因。
-- 4003 dev 是 241 模块 / 26.69 MB JS；4002 是 2.31 MB / gzip 630 KB。手机性能必须以 4002/APK 为准。
+- 4003 dev 是未压缩的多模块 JS；4002 当前入口 2.55 MB / gzip 671 KB（2026-10-28）。手机性能必须以 4002/APK 为准。
 - 现成工具建议：图片优化 `sharp`/`cwebp`/`oxipng`/`pngquant`；图集 `free-tex-packer-core`/TexturePacker；brotli 预压缩；Vite `manualChunks` 拆 Phaser vendor；体积分析 `rollup-plugin-visualizer`。**不建议**整体替换现有 `shape<T>` 校验（编译期键绑定 + 中文错误路径是优势），也不建议换测试框架。
 
-**修复方向**：删除 build 第二次 `validateContent`；`springs.json` 纳入校验；生产删除运行期语义校验；菜单图懒加载；PNG/WebP 优化；Phaser vendor 拆分；逐文件 hash manifest（避免一个 PNG 变化重下全部素材）；诊断加低频帧时间采样与构建版本/DPR。
+**修复方向**：删除 build 第二次 `validateContent`；PNG/WebP 优化；Phaser vendor 拆分；逐文件 hash manifest（避免一个 PNG 变化重下全部素材）；诊断加构建版本/DPR。
 
 ### 4.11 启动与内容解析
 
-- `prepareStory` 一次加载 13 个内容目录，约 **24.9 MB**：campaign 9.46、wardrobe 4.57、battle 4.53、world 2.48、character-stats 1.43、shops 1.24、items 0.66、其余约 0.3 MB。
-- 同一阶段加载 **281 张剧情引用地图**（3.75 MB，281 次 fetch），跑 8 个内容校验器 + `validateStoryReferences` + `validateStoryPerformance`；本机约 **390 ms 主线程**（移动端 3–10 倍）。这还没算 `assetGap` 逐帧验收和 `loadSceneAssets` 的 `JSON.stringify` 去重。
-- 678 张菜单图在进入世界前全部预载（4.4 MB / 解码约 15 MB）。
+- `prepareStory` 一次加载 13 个内容目录。作者态约 **24.6 MB**：campaign 9.47、wardrobe 4.57、battle 4.53、world 2.48、character-stats 1.43、shops 1.24、items 0.66、其余约 0.2 MB。构建期会拆分并压缩：截至 2026-10-28，生产 `dist/content/` 中这 13 个文件合计约 **14.0 MB**（campaign 4.59、battle 4.06、world 2.47、character-stats 1.43、wardrobe 0.68、items 0.66）；wardrobe 动作和 shops 装备已拆成按需加载的独立文件。
+- 在 dev、测试、`?gm`、`?validate` 路径下，同一阶段还会加载 **281 张剧情引用地图**（281 次 fetch），跑 8 个内容校验器 + `validateStoryReferences` + `validateStoryPerformance`；本机约 **390 ms 主线程**（移动端 3–10 倍）。生产构建跳过这一步，不 fetch 这些地图。
+- 菜单图共 652 张（core 239、extra 413）。进入世界前只阻塞加载 core 和图标图集；extra 的物品/技能图标随后后台补，加载完重画已打开的菜单。
 - 地图 JSON 有 `ContentLoader` 永久缓存，同一张图第二次进入不会重新 fetch/parse；进图只重复 parse drops/springs（约 0.4 ms）。**地图 JSON 缓存不是瓶颈。**
-- `campaign.json` 有大量缩进空白：9.46 MB → minify 4.28 MB（gzip 0.65 MB）。
-- 内容规模：505 任务、593 事件、693 脚本、3,635 节点、25,568 演出动作；battle 90 技能、93 普攻、158 特效、553 敌人；items 1008；wardrobe 3,623 sprites、220 poses。
+- `campaign.json` 有大量缩进空白：作者态 9.47 MB → 生产 `dist` 4.59 MB（gzip 约 0.51 MB）。
+- 内容规模：505 任务、593 事件、693 脚本、3,635 节点、25,568 演出动作；battle 90 技能、93 普攻、158 特效、553 敌人；items 998；wardrobe 3,623 sprites、220 poses。
 
-**修复方向**：生产删运行时语义校验；不再 fetch 281 张地图；`campaign.json` 构建期 minify；菜单图按面板懒加载；技能/敌人/剧情按章节/地图/职业拆分；构建期预计算事件索引、可达脚本、演出素材清单。
+**修复方向**：技能/敌人/剧情按章节/地图/职业继续拆分；构建期预计算事件索引、可达脚本、演出素材清单。
 
 ### 4.12 调试与 GM
 
-`src/debug/`（GM 面板、headless story、story jump、catalog validation）只在 `?gm`/`?inspect`/dev 下使用；GM 道具页一次渲染 1003 件，但这是开发工具，不影响玩家。建议按 `import.meta.env.DEV` 动态导入，减少生产包体，但不是性能主因。
+`src/debug/`（GM 面板、headless story、story jump、catalog validation）只在 `?gm`/`?inspect`/dev 下使用；GM 道具页一次渲染当前目录的全部物品（998 件），但这是开发工具，不影响玩家。建议按 `import.meta.env.DEV` 动态导入，减少生产包体，但不是性能主因。
 
 ### 4.13 已排除 / 不要动
 
@@ -331,7 +333,7 @@
 - 构建 staging + 原子替换 + `.build-meta.json`、`serve-built.ts` 缓存/ETag/Range、APK 校验。
 - 诊断收集器的事件驱动设计。
 - `shape<T>` 自研结构校验（编译期键绑定 + 中文错误路径）。
-- PR `4b6dd64`：不是根因；`batchSize: 4096` 无收益，恢复默认即可。
+- PR `4b6dd64`：不是根因；`batchSize: 4096` 无收益，建议恢复默认（尚未实施，`main.ts` 仍显式设置 4096）。
 
 ---
 
@@ -354,7 +356,7 @@
 
 | | 保留 JSON 数据驱动 | 改为 TS/构建期编译 |
 |---|---|---|
-| 最强理由 | 内容规模大（505 任务、693 脚本、90 技能、553 敌人、1008 物品）；JSON 可 diff、可校验、可工具化；稳定 ID 供存档/剧情引用；非开发者也能改；原版导出可直接对照 | 导出已完成，运行时格式可以重新设计；TS 有编译期类型、重构、tree-shaking；行为是代码，通用 DSL 解释器等于第二套引擎；26 MB JSON + 运行时校验是纯浪费；现代构建管线可以生成紧凑产物 |
+| 最强理由 | 内容规模大（505 任务、693 脚本、90 技能、553 敌人、998 物品）；JSON 可 diff、可校验、可工具化；稳定 ID 供存档/剧情引用；非开发者也能改；原版导出可直接对照 | 导出已完成，运行时格式可以重新设计；TS 有编译期类型、重构、tree-shaking；行为是代码，通用 DSL 解释器等于第二套引擎；26 MB JSON + 运行时校验是纯浪费；现代构建管线可以生成紧凑产物 |
 | 适用条件 | 内容持续人工编辑、需要本地化/模组/外部工具、团队有内容作者 | 开发驱动、内容从导出生成、移动端加载/内存预算紧、行为复杂且特例多 |
 | 最大收益 | 作者效率、可审计、稳定契约、内容与代码分离 | 启动/内存/运行时开销下降、类型安全、少一层解释/校验、可按需拆包 |
 | 最大风险 | 运行时把作者格式当消费格式，解析/校验/分发成本高；DSL 越做越大 | 迁移成本高；失去非开发者编辑；TS 对象不一定比 JSON 更易维护；容易变成大爆炸重写 |
@@ -407,7 +409,7 @@
 | 技能行为（events/combatUnits/transition/followUp） | JSON DSL，运行时解释 | 构建期编译成紧凑 IR/TS 函数；新技能用 typed builder | 行为是代码；避免通用 DSL 解释器 |
 | Buff/状态/效果定义 | JSON 数据表 | 保留数据，构建期校验；执行用现有 executor | 数据为主，逻辑固定 |
 | 敌人定义（553） | `battle.json` 2.95 MB | 保留数据；按地图/等级拆分/索引；不要启动全载 | 大部分与当前地图无关 |
-| 剧情/任务/对白 | `campaign.json` 9.46 MB | 保留 JSON；构建期 minify/预索引/按章节拆；脚本已是编译节点图 | 内容量大、需要编辑/本地化；不建议生成 25k TS 动作 |
+| 剧情/任务/对白 | `campaign.json` 9.47 MB | 保留 JSON；构建期 minify/预索引/按章节拆；脚本已是编译节点图 | 内容量大、需要编辑/本地化；不建议生成 25k TS 动作 |
 | 物品/装备/商店/衣柜 | items/shops/wardrobe JSON | 保留数据；商店/衣柜按需懒加载；构建期合并重复数值 | 纯数据，不参与每帧 |
 | UI 布局（menu-panels/status-hud/control-skin） | 小 JSON | 保留；不要扩成通用布局引擎 | 小型皮肤/坐标数据；复杂布局在代码里 |
 | 存档 | JSON | 保留；摘要与全档分离 | 序列化格式本来就该是数据 |
@@ -470,11 +472,11 @@
 | 项 | 内容 | 产出 |
 |---|---|---|
 | P0.1 基线 | 手机统一测 4002/APK；清缓存冷启动/热启动；S1–S5 场景；同设备同网络 3 次取中位数 | 基线表 |
-| P0.2 帧时间采样 | 扩展现有 `game-diagnostics.ts`：PRE_STEP/POST_STEP/POST_RENDER 记录 update/render 时长；低频汇总 P50/P95/最长帧；错误上报带构建版本/DPR | `?perf` 或诊断字段 |
+| P0.2 帧时间采样 | 由 `public/diagnostics.js` 在 PRE_STEP/POST_STEP/POST_RENDER 记录 update/render 时长，`src/application/game-diagnostics.ts` 负责挂事件；低频汇总 P50/P95/最长帧；错误上报带构建版本/DPR | `?perf` 诊断字段 |
 | P0.3 资产归因 ✅ | `npm run report:assets` 扫描全部图片，按 SHA-256 分组并估算解码 MB，输出重复组与 Top 20 | 资产报告 |
-| P0.4 寻路基准 | 固定 50×57/46 actor 地图，测可达/不可达/拥挤三类；记录扩展数、p50/p95、最大耗时 | `tests/perf-pathfinding` 或脚本 |
+| P0.4 寻路基准 | 固定 50×57/46 actor 地图，测可达/不可达/拥挤三类；记录扩展数、p50/p95、最大耗时 | 待新增基准脚本（当前没有 `tests/perf-pathfinding`） |
 | P0.5 消融矩阵 | 真机逐项关闭：canopy、DPR 1.5/2、常驻包只留当前职业、AI step、HUD 重绘、音频 | 贡献排序 |
-| P0.6 绿色测试 ✅ | 先修当前红测试；至少让 `title-save-entry` 单跑通过 | 回归前置。已完成：11/11；菜单交互套件恢复 39/52 |
+| P0.6 绿色测试 ✅ | 先修当前红测试；至少让 `title-save-entry` 单跑通过 | 回归前置。2026-10-28：`title-save-entry` 13/13、`story-menu-interactions` 58/58 通过 |
 
 ### P1：低风险快赢（不改玩法/画质）
 
@@ -484,7 +486,7 @@
 4. ✅ **常驻包缩围（2026-10-26 已实施）**：只留当前主角职业 + 全部伙伴外观 + 共享特效；当前 `dist` 从 1,025 键 / 997 MB 降到 552–588 键 / 111–466 MB（按职业），键数平均 -44.5%、解码 MB 平均 -78.2%。上阵伙伴特效继续由每图计划/`syncAllies` 加载；回菜单/换会话释放并重置。
 5. ✅ **启动减负（2026-10-25 已实施）**：生产删运行期语义校验，构建期 minify 全部内容；不再 fetch 281 张地图；商店装备表、人物动作拆文件按需取；菜单物品/技能图标改为开局后后台补。仍需做：`campaign.json` 按章节/地图拆分。
 6. **逐帧脏检查（大部分完成，2026-10-25）**：✅ 掉落 revision + 按地图索引、`recoverResources` 早退、`syncDepth` 同值跳过、状态色/持续特效同值短路、重复 `setDepth` 删除、冷却签名、`setPaused` 同值、`syncHud` 目标状态按战斗帧缓存；仍待做：静态 body 跳过约束/插值、HUD 可见性同值短路、`WalkRoute` 重复采样。
-7. **剧情/菜单表现层（大部分完成，2026-10-25）**：✅ 滚动遮罩静态化、对白翻页增量、商店/队伍去重、存档摘要缓存；仍待做：演出 sleep WorldScene、合成成功后的第二次重画、菜单更彻底的局部重绘。
+7. **剧情/菜单表现层（大部分完成，2026-10-25）**：✅ 滚动遮罩静态化、对白翻页增量、商店/队伍去重、存档摘要缓存、舞台遮住世界时暂停正式世界；仍待做：合成成功后的第二次重画、菜单更彻底的局部重绘。
 
 ### P2：结构性改造
 
@@ -568,7 +570,7 @@
 - **剧情保留 JSON 节点图**：运行时消费的已经是编译后的节点图；不生成 25k TS 动作；做 minify/预索引/拆分/构建期校验。
 - **先去重/懒加载，后图集/压缩**：去重零画质、收益最大；图集/压缩需要内容管线，排在后面。
 - **UI 不引入重型框架**：Phaser 没有 UI kit；自研控件合理。列表虚拟化、静态遮罩、组件复用是代码优化，不需要 React/DOM 重写。
-- **恢复 `batchSize` 默认**：4096 < 16384，当前对象数下无收益；`autoMobileTextures` 只做 A/B 实验。
+- **恢复 `batchSize` 默认（尚未实施）**：4096 < 16384，当前对象数下无收益。`main.ts` 仍显式设置 4096，落地时删掉这一行即可；`autoMobileTextures` 只做 A/B 实验。
 - **音频保持预载**：BGM 和音效在进图/开战前预载，首次播放不能慢半拍；性能优化不得以延迟首次播放为代价。BGM 只保留上一首解码缓存，不做流式，也不收窄 `prepareCombat`。
 - **测量以 4002/APK 为准**：4003 只做功能调试。
 
@@ -595,13 +597,13 @@
 
 | 文件 | 大小 | 规模 |
 |---|---:|---|
-| `campaign.json` | 9.46 MB | 693 脚本、3,635 节点、25,568 演出动作、4,653 句对白、505 任务、593 事件 |
+| `campaign.json` | 9.47 MB（作者态） | 693 脚本、3,635 节点、25,568 演出动作、4,653 句对白、505 任务、593 事件 |
 | `wardrobe.json` | 4.57 MB | 3,623 sprites、220 poses、662 装备外观、375 variants |
 | `battle.json` | 4.53 MB | 6 职业、90 技能、93 普攻、158 特效、553 敌人 |
 | `world.json` | 2.48 MB | 416 地图、693 actors、763 props、12 portraits |
 | `character-stats.json` | 1.43 MB | 662 装备数值、105 级经验 |
 | `shops.json` | 1.24 MB | 18 商店、662 装备模板、416 地图商店等级 |
-| `items.json` | 0.66 MB | 1,008 物品、662 装备、325 唯一图标 |
+| `items.json` | 0.66 MB | 998 物品、662 装备、325 唯一图标 |
 | `audio.json` | 0.14 MB | 13 BGM、170 SE、416 地图音频 |
 | `maps/*.json` | 5.8 MB | 416 张；feature 平均 42、最大 134；实体平均 6.6、最大 32；出口平均 7.4、最大 36 |
 
@@ -616,7 +618,7 @@
 
 - 资产计划：`src/application/entry-plan.ts`、`src/rendering/map-assets.ts`、`src/rendering/combat-assets.ts`、`src/rendering/resident-combat-assets.ts`、`src/rendering/scene-assets.ts`、`src/application/assets.ts`
 - 寻路：`src/domain/enemy-ai.ts`、`src/domain/party-ai.ts`、`src/domain/friendly-summon-ai.ts`、`src/domain/navigation-world.ts`、`src/domain/pathfinding.ts`
-- 逐帧：`src/scenes/world-scene.ts`、`src/scenes/world-combat.ts`、`src/domain/ground-loot.ts`、`src/ui/phaser/action-controls.ts`、`src/rendering/movement-world.ts`、`src/rendering/combat-conditions.ts`
+- 逐帧：`src/scenes/world-scene.ts`、`src/scenes/world-combat.ts`、`src/domain/ground-loot.ts`、`src/ui/phaser/action-controls.ts`、`src/rendering/movement-world.ts`、`src/domain/combat-conditions.ts`
 - emit/存档：`src/domain/story-director.ts`、`src/domain/bag.ts`、`src/domain/character-stats.ts`、`src/domain/session.ts`、`src/domain/save-game.ts`、`src/ui/phaser/save-board.ts`
 - 表现层：`src/ui/story-ui.ts`、`src/scenes/formal-ui-scene.ts`、`src/rendering/story-presenter.ts`、`src/ui/phaser/widgets.ts`
 - 启动/校验：`src/main.ts`、`src/application/content-loader.ts`、`src/application/content-validation.ts`、`src/application/content-relations.ts`、`tools/validate-content.mjs`
@@ -836,7 +838,7 @@
 | 合成后第二次重画、HUD 可见性同值短路、buff 上限缓存 | 不做（单独） | 都是小浪费，零画质；buff 缓存还有读到旧上限的正确性风险。以后改到相关文件时顺手带上 |
 | 更完整的 revision 体系（条件、状态色、buff 循环、暂停） | 暂不做 | 没有测到热点；修订号漏给会读到旧状态，风险大于收益 |
 | 存档摘要与完整存档分离、检查点去重复复制 | 暂不做 | 要改 `SAVE_FORMAT`；摘要缓存已经缓解；没有存档页耗时数据 |
-| `campaign.json` 按章节/地图拆分 | 不做 | 已经 minify + gzip，约 637 KB；拆分会让剧情加载和事件索引复杂，收益不划算 |
+| `campaign.json` 按章节/地图拆分 | 不做 | 已经 minify + gzip，约 0.51 MB；拆分会让剧情加载和事件索引复杂，收益不划算 |
 | vendor 拆包、brotli、逐文件 hash manifest、删第二次校验 | 不做（现在） | 不影响运行时帧率；brotli 是服务器配置，vendor 拆包不减总量，第二次校验是安全网。只有冷启动网络成为问题时再做 brotli/manifest |
 | 剧情预索引、按章节/地图/职业打包 | 不做 | 长期内容管线工程；运行时已经消费编译后的节点图，当前没有加载瓶颈证据 |
 | 设备档位与降级（DPR、树冠、特效层、AI 预算） | 不做 | 没有设备数据；降级就是降画质/体验；维护多套路径不划算 |

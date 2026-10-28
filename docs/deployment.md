@@ -19,7 +19,7 @@ npm run build      # 校验 public/、构建 staging、写 .build-meta.json、�
 npm run deploy     # typecheck + build + 核对 4002 正在提供的版本
 ```
 
-`npm run deploy` 会读取 `dist/.build-meta.json`，请求 `http://127.0.0.1:4002/__build` 对比 `builtAt`、`assetVersion`、`contentVersion`，并抽查首页、入口 bundle 和版本化资源的缓存头。服务直接读磁盘，构建完成即生效，不需要重启进程；只有 `tools/serve-built.ts` 自身改动才需要重新启动服务。
+`npm run deploy` 会读取 `dist/.build-meta.json`，请求 `http://127.0.0.1:4002/__build` 对比 `builtAt`、`assetVersion`、`contentVersion`，并确认首页和入口 bundle 可访问、版本化资源返回 `immutable` 缓存头。服务直接读磁盘，构建完成即生效，不需要重启进程；只有静态服务自身代码改动才需要重启，包括 `tools/serve-built.ts`、它在启动时导入的 `tools/diagnostic-collector.mjs` 和 `tools/build-version.ts`。
 
 `npm run deploy` 要求本机 4002 已经在运行。没有服务时先执行 `npm run serve`，再重试。
 
