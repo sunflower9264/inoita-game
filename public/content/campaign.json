@@ -6456,7 +6456,8 @@
                   "x": 8,
                   "y": 168,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "berkel-soldier-48d3f50d-004"
                 },
                 {
                   "id": "berkel-soldier-787a0359",
@@ -6466,7 +6467,8 @@
                   "x": 8,
                   "y": 184,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "berkel-soldier-787a0359-001"
                 },
                 {
                   "id": "story-collapsed-berkel-soldier-0112e6b6",
@@ -7844,7 +7846,8 @@
                   "x": 184,
                   "y": 184,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "earl-grafton-002"
                 },
                 {
                   "id": "berkel-soldier-48d3f50d",
@@ -7854,7 +7857,8 @@
                   "x": 216,
                   "y": 232,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "berkel-soldier-48d3f50d-004"
                 },
                 {
                   "id": "berkel-soldier-787a0359",
@@ -7864,7 +7868,8 @@
                   "x": 216,
                   "y": 152,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "berkel-soldier-787a0359-001"
                 },
                 {
                   "id": "saint",
@@ -10429,7 +10434,8 @@
                   "x": 232,
                   "y": 296,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "quest-npc-located-npc-40"
                 }
               ],
               "resetActors": true
@@ -11459,7 +11465,8 @@
                   "x": 200,
                   "y": 216,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "quest-npc-located-npc-55"
                 },
                 {
                   "id": "sahir-3dd7b1b2",
@@ -14965,7 +14972,8 @@
                   "x": 552,
                   "y": 72,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "quest-npc-npc-60"
                 }
               ],
               "resetActors": true
@@ -19323,7 +19331,8 @@
                   "facing": "south",
                   "visible": false,
                   "unpositioned": true,
-                  "inheritPosition": true
+                  "inheritPosition": true,
+                  "worldEntityId": "quest-npc-located-npc-150"
                 },
                 {
                   "id": "story-goblin-s-lair-gateway-37bddba6",
@@ -20883,7 +20892,8 @@
                   "x": 104,
                   "y": 104,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-npc-164"
                 }
               ],
               "resetActors": true
@@ -21212,7 +21222,8 @@
                   "x": 104,
                   "y": 104,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-npc-164"
                 }
               ],
               "resetActors": true
@@ -22315,7 +22326,8 @@
                   "x": 360,
                   "y": 392,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "prisoner-1-42b30bce-006"
                 }
               ],
               "resetActors": true
@@ -25292,7 +25304,8 @@
                   "x": 136,
                   "y": 168,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "saint-011"
                 }
               ],
               "resetActors": true
@@ -26225,7 +26238,8 @@
                   "facing": "south",
                   "visible": false,
                   "unpositioned": true,
-                  "inheritPosition": true
+                  "inheritPosition": true,
+                  "worldEntityId": "quest-npc-npc-382"
                 },
                 {
                   "id": "story-boss-treasure-chest-59456ff6",
@@ -27523,7 +27537,8 @@
                   "x": 168,
                   "y": 296,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "quest-npc-located-npc-82"
                 },
                 {
                   "id": "collapsed-berkel-soldier-97792716",
@@ -27563,7 +27578,8 @@
                   "x": 184,
                   "y": 248,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "quest-npc-located-npc-246"
                 }
               ],
               "resetActors": true
@@ -29166,7 +29182,8 @@
                   "x": 200,
                   "y": 120,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "quest-npc-located-npc-82"
                 },
                 {
                   "id": "collapsed-berkel-soldier-97792716",
@@ -29206,7 +29223,8 @@
                   "x": 184,
                   "y": 248,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-located-npc-246"
                 },
                 {
                   "id": "story-eara-e221699c",
@@ -30439,7 +30457,8 @@
                   "x": 200,
                   "y": 408,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-located-npc-59"
                 }
               ]
             },
@@ -30933,7 +30952,8 @@
                   "x": 200,
                   "y": 408,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-located-npc-59"
                 },
                 {
                   "id": "story-alexander-ed2defb7",
@@ -32502,7 +32522,8 @@
                   "x": 536,
                   "y": 456,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-located-npc-190"
                 },
                 {
                   "id": "story-arnen-soldier-4d35dd27-68",
@@ -33969,7 +33990,8 @@
                   "x": 232,
                   "y": 424,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "quest-npc-located-npc-190"
                 },
                 {
                   "id": "berkel-soldier-787a0359",
@@ -41812,7 +41834,8 @@
                   "x": 120,
                   "y": 184,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-located-npc-197"
                 },
                 {
                   "id": "enemy-head-werewolf-1",
@@ -47978,7 +48001,8 @@
                   "x": 168,
                   "y": 248,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "quest-npc-located-npc-58"
                 },
                 {
                   "id": "nirniti-3c3ca603",
@@ -47988,7 +48012,8 @@
                   "x": 88,
                   "y": 200,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "quest-npc-located-npc-196"
                 }
               ],
               "resetActors": true
@@ -48812,7 +48837,8 @@
                   "facing": "south",
                   "visible": false,
                   "unpositioned": true,
-                  "inheritPosition": true
+                  "inheritPosition": true,
+                  "worldEntityId": "quest-npc-located-npc-221"
                 },
                 {
                   "id": "story-barricade-3a6fb726",
@@ -52371,7 +52397,8 @@
                   "x": 136,
                   "y": 200,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "quest-npc-located-npc-58"
                 },
                 {
                   "id": "nirniti-3c3ca603",
@@ -52381,7 +52408,8 @@
                   "x": 88,
                   "y": 200,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-located-npc-196"
                 }
               ],
               "resetActors": true
@@ -55531,7 +55559,8 @@
                   "x": 152,
                   "y": 88,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-located-npc-233"
                 },
                 {
                   "id": "amarok-harris-234",
@@ -55541,7 +55570,8 @@
                   "x": 120,
                   "y": 312,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-located-npc-234"
                 },
                 {
                   "id": "enemy-werewolf-1",
@@ -56346,7 +56376,8 @@
                   "facing": "south",
                   "visible": false,
                   "unpositioned": true,
-                  "inheritPosition": true
+                  "inheritPosition": true,
+                  "worldEntityId": "quest-npc-npc-354"
                 }
               ]
             },
@@ -57136,7 +57167,8 @@
                   "x": 184,
                   "y": 472,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-located-npc-250"
                 },
                 {
                   "id": "story-eara-e221699c",
@@ -60774,7 +60806,8 @@
                   "x": 664,
                   "y": 152,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "quest-npc-located-npc-288"
                 }
               ]
             },
@@ -65750,7 +65783,8 @@
                   "x": 360,
                   "y": 328,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-located-npc-318"
                 },
                 {
                   "id": "story-eara-e221699c",
@@ -74553,7 +74587,8 @@
                   "facing": "south",
                   "visible": false,
                   "unpositioned": true,
-                  "inheritPosition": true
+                  "inheritPosition": true,
+                  "worldEntityId": "quest-npc-located-npc-295"
                 },
                 {
                   "id": "story-bandit-door-1c5e3f89-296",
@@ -77045,7 +77080,8 @@
                   "x": 136,
                   "y": 200,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "ben-a380d77f-005"
                 },
                 {
                   "id": "captain-of-arnen-chasers-c9df1bc7",
@@ -78925,7 +78961,8 @@
                   "x": 152,
                   "y": 120,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "redhood-bandits-boss-5083cde5-004"
                 },
                 {
                   "id": "enemy-redhood-bandits-boss-1",
@@ -79821,7 +79858,8 @@
                   "x": 136,
                   "y": 200,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "ben-a380d77f-005"
                 }
               ],
               "resetActors": true
@@ -81442,7 +81480,8 @@
                   "x": 152,
                   "y": 104,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "captain-of-arnen-chasers-c9df1bc7-004"
                 },
                 {
                   "id": "enemy-pendrik-guard-1",
@@ -85152,7 +85191,8 @@
                   "x": 376,
                   "y": 248,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-located-npc-239"
                 },
                 {
                   "id": "story-ben-s-men-61d2f618-262",
@@ -104252,7 +104292,8 @@
                   "x": 168,
                   "y": 424,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-npc-626"
                 },
                 {
                   "id": "berkel-soldier-4e2d15b4",
@@ -113087,7 +113128,8 @@
                   "x": 216,
                   "y": 264,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-located-npc-54"
                 },
                 {
                   "id": "darius",
@@ -117164,7 +117206,8 @@
                   "x": 392,
                   "y": 248,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-npc-366"
                 }
               ],
               "resetActors": true
@@ -119885,7 +119928,8 @@
                   "x": 520,
                   "y": 440,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "dark-knight-guard-a2696d17-009"
                 },
                 {
                   "id": "dark-knight-guard-73d31196",
@@ -119895,7 +119939,8 @@
                   "x": 584,
                   "y": 440,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "dark-knight-guard-73d31196-010"
                 }
               ]
             },
@@ -120026,7 +120071,8 @@
                   "x": 616,
                   "y": 184,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "berkel-castle-knight-28dd5010-005"
                 }
               ]
             },
@@ -122844,7 +122890,8 @@
                   "x": 344,
                   "y": 392,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "girls-9762b8f5-005"
                 },
                 {
                   "id": "man-0e5eefd0",
@@ -122854,7 +122901,8 @@
                   "x": 264,
                   "y": 552,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "man-0e5eefd0-018"
                 },
                 {
                   "id": "village-woman-828eb08e-588",
@@ -122864,7 +122912,8 @@
                   "x": 280,
                   "y": 216,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "village-woman-828eb08e-003"
                 },
                 {
                   "id": "old-man-e1fa97be",
@@ -122874,7 +122923,8 @@
                   "x": 440,
                   "y": 504,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "old-man-e1fa97be-010"
                 },
                 {
                   "id": "village-man-389",
@@ -122884,7 +122934,8 @@
                   "x": 280,
                   "y": 552,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "quest-npc-located-npc-389"
                 },
                 {
                   "id": "story-kid-0e50a6f8",
@@ -122914,7 +122965,8 @@
                   "x": 280,
                   "y": 216,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "quest-npc-located-npc-387"
                 }
               ],
               "resetActors": true
@@ -123949,7 +124001,8 @@
                   "x": 280,
                   "y": 216,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-located-npc-387"
                 },
                 {
                   "id": "captain-of-arnen-chasers-c9df1bc7",
@@ -123959,7 +124012,8 @@
                   "x": 264,
                   "y": 392,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "quest-npc-located-npc-205"
                 },
                 {
                   "id": "story-arnen-soldier-4d35dd27-69",
@@ -128449,7 +128503,8 @@
                   "x": 248,
                   "y": 232,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "quest-npc-located-npc-413"
                 },
                 {
                   "id": "berkel-soldier-4e2d15b4",
@@ -137476,7 +137531,8 @@
                   "x": 408,
                   "y": 584,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "quest-npc-located-npc-418"
                 },
                 {
                   "id": "collapsed-berkel-soldier-2c527b41",
@@ -148890,7 +148946,8 @@
                   "x": 392,
                   "y": 264,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-located-npc-56"
                 },
                 {
                   "id": "story-eara-e221699c",
@@ -154829,7 +154886,8 @@
                   "x": 136,
                   "y": 264,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-located-npc-205"
                 },
                 {
                   "id": "story-woman-3369ef62",
@@ -160424,7 +160482,8 @@
                   "x": 232,
                   "y": 104,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "quest-npc-located-npc-455"
                 }
               ],
               "resetActors": true
@@ -161311,7 +161370,8 @@
                   "x": 232,
                   "y": 104,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "quest-npc-located-npc-455"
                 }
               ],
               "resetActors": true
@@ -162356,7 +162416,8 @@
                   "facing": "south",
                   "visible": false,
                   "unpositioned": true,
-                  "inheritPosition": true
+                  "inheritPosition": true,
+                  "worldEntityId": "quest-npc-located-npc-405"
                 },
                 {
                   "id": "enemy-forest-spider-1",
@@ -179077,7 +179138,8 @@
                   "x": 120,
                   "y": 216,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "quest-npc-located-npc-142"
                 }
               ],
               "resetActors": true
@@ -180549,7 +180611,8 @@
                   "x": 264,
                   "y": 120,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-npc-456"
                 }
               ],
               "resetActors": true
@@ -185917,7 +185980,8 @@
                   "x": 232,
                   "y": 504,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-npc-465"
                 },
                 {
                   "id": "melibael-9e462007",
@@ -185927,7 +185991,8 @@
                   "x": 648,
                   "y": 280,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-npc-467"
                 },
                 {
                   "id": "juradkiel-91bbd3f6",
@@ -185937,7 +186002,8 @@
                   "x": 248,
                   "y": 312,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-npc-468"
                 },
                 {
                   "id": "merchandise-dealer-6f429947",
@@ -185947,7 +186013,8 @@
                   "x": 216,
                   "y": 424,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "merchandise-dealer-6f429947-008"
                 },
                 {
                   "id": "story-snow-fey-s-guard-captain-04f37690",
@@ -190462,7 +190529,8 @@
                   "x": 264,
                   "y": 216,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "collapsed-berkel-soldier-2c527b41-005"
                 }
               ],
               "resetActors": true
@@ -194673,7 +194741,8 @@
                   "x": 504,
                   "y": 328,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-npc-495"
                 }
               ]
             },
@@ -199676,7 +199745,8 @@
                   "x": 200,
                   "y": 200,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "quest-npc-located-npc-55"
                 },
                 {
                   "id": "goshak-a258846f",
@@ -203002,7 +203072,8 @@
                   "x": 72,
                   "y": 216,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "quest-npc-located-npc-445"
                 },
                 {
                   "id": "story-eara-7c52b73b",
@@ -205559,7 +205630,8 @@
                   "x": 216,
                   "y": 232,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-npc-449"
                 }
               ],
               "resetActors": true
@@ -214521,7 +214593,8 @@
                   "x": 152,
                   "y": 136,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-located-npc-498"
                 },
                 {
                   "id": "story-lying-kiyan-75e14e3d",
@@ -226144,7 +226217,8 @@
                   "x": 264,
                   "y": 136,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "box-5f6f8808-005"
                 },
                 {
                   "id": "boulder3-dc017f0f",
@@ -227946,7 +228020,8 @@
                   "x": 120,
                   "y": 136,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-located-npc-478"
                 },
                 {
                   "id": "story-eara-e221699c",
@@ -230868,7 +230943,8 @@
                   "x": 120,
                   "y": 184,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "quest-npc-located-npc-451"
                 },
                 {
                   "id": "dominique-850ecc9b",
@@ -230878,7 +230954,8 @@
                   "x": 280,
                   "y": 328,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "quest-npc-located-npc-452"
                 },
                 {
                   "id": "story-eara-e221699c",
@@ -246395,7 +246472,8 @@
                   "x": 296,
                   "y": 280,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-npc-363"
                 },
                 {
                   "id": "robbins-76d09f5c",
@@ -246405,7 +246483,8 @@
                   "x": 424,
                   "y": 216,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-npc-362"
                 },
                 {
                   "id": "tony-bf373568",
@@ -246415,7 +246494,8 @@
                   "x": 216,
                   "y": 552,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-npc-361"
                 },
                 {
                   "id": "maria-a5ef27b3",
@@ -246425,7 +246505,8 @@
                   "x": 456,
                   "y": 472,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-npc-340"
                 },
                 {
                   "id": "weapon-researcher-jeff-154c1083",
@@ -246435,7 +246516,8 @@
                   "x": 616,
                   "y": 600,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-npc-338"
                 },
                 {
                   "id": "story-elinia-8ac11fea",
@@ -246457,7 +246539,8 @@
                   "facing": "south",
                   "visible": false,
                   "unpositioned": true,
-                  "inheritPosition": true
+                  "inheritPosition": true,
+                  "worldEntityId": "door-of-memories-1d4383e7-022"
                 }
               ],
               "resetActors": true
@@ -248580,7 +248663,8 @@
                   "x": 616,
                   "y": 360,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "berkel-soldier-48d3f50d-006"
                 }
               ]
             },
@@ -248680,7 +248764,8 @@
                   "x": 616,
                   "y": 360,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "berkel-soldier-48d3f50d-006"
                 },
                 {
                   "id": "berkel-soldier-787a0359",
@@ -248690,7 +248775,8 @@
                   "x": 616,
                   "y": 408,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "berkel-soldier-787a0359-007"
                 }
               ]
             },
@@ -250643,7 +250729,8 @@
                   "x": 408,
                   "y": 280,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "quest-npc-located-npc-603"
                 }
               ],
               "resetActors": true
@@ -255599,7 +255686,8 @@
                   "x": 392,
                   "y": 296,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "quest-npc-located-npc-604"
                 }
               ],
               "resetActors": true
@@ -256992,7 +257080,8 @@
                   "x": 120,
                   "y": 136,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "quest-npc-located-npc-490"
                 },
                 {
                   "id": "story-eara-e221699c",
@@ -262525,7 +262614,8 @@
                   "x": 376,
                   "y": 328,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "quest-npc-located-npc-605"
                 }
               ],
               "resetActors": true
@@ -267797,7 +267887,8 @@
                   "x": 344,
                   "y": 296,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "quest-npc-located-npc-606"
                 }
               ],
               "resetActors": true
@@ -274666,7 +274757,8 @@
                   "x": 72,
                   "y": 88,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-npc-602"
                 },
                 {
                   "id": "closed-door-1ce9564b",
@@ -274676,7 +274768,8 @@
                   "x": 264,
                   "y": 88,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-npc-613"
                 },
                 {
                   "id": "closed-door-e7764435",
@@ -274686,7 +274779,8 @@
                   "x": 456,
                   "y": 88,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-npc-614"
                 },
                 {
                   "id": "enemy-experimented-djinn-1",
@@ -275378,7 +275472,8 @@
                   "x": 184,
                   "y": 120,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-npc-616"
                 }
               ]
             },
@@ -276447,7 +276542,8 @@
                   "x": 200,
                   "y": 584,
                   "facing": "south",
-                  "visible": true
+                  "visible": true,
+                  "worldEntityId": "quest-npc-located-npc-632"
                 }
               ],
               "resetActors": true
@@ -276942,7 +277038,8 @@
                   "x": 232,
                   "y": 184,
                   "facing": "south",
-                  "visible": false
+                  "visible": false,
+                  "worldEntityId": "quest-npc-located-npc-598"
                 }
               ],
               "resetActors": true
