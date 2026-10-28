@@ -1,5 +1,8 @@
 import type { CombatUnit } from './battle.ts';
 
+/** 一次技能结算最多处理的目标数，包含重复命中的目标。 */
+export const MAX_SKILL_TARGETS = 16;
+
 export type SkillUnitOutcome = 'success' | 'failure' | 'skipped';
 
 export interface ResolvedSkillUnit {
@@ -28,13 +31,13 @@ export function resolveSkillUnitSequence(
   const results: ResolvedSkillUnit[] = [];
   for (const [cueIndex, unit] of units.entries()) {
     const bypassFailure = unit.effect === 'set-attribute' || unit.effect === 'clear-attribute';
-    const targets = port.targets(cueIndex).slice(0, 16);
+    const targets = port.targets(cueIndex).slice(0, MAX_SKILL_TARGETS);
     port.prepare?.(cueIndex);
     for (const targetId of targets) {
       const outcome = !bypassFailure && failedTargets.includes(targetId)
         ? 'skipped' : port.unit(cueIndex, targetId);
-      // Bypass units can fail again; repeated entries also consume the 16 slots.
-      if (outcome === 'failure' && failedTargets.length < 16) failedTargets.push(targetId);
+      // 无视失败状态的单位可以再次失败；重复的目标同样占用名额。
+      if (outcome === 'failure' && failedTargets.length < MAX_SKILL_TARGETS) failedTargets.push(targetId);
       const result = { cueIndex, targetId, outcome };
       results.push(result);
       port.resolved?.(result);

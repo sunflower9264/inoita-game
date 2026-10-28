@@ -1381,7 +1381,7 @@ captureStoryScene():SceneSnapshot {
       const player=character===this.player;
       const visible=session.storyWorld.actorVisible(this.map!.id,character.entity.actor,character.entity.characterId)
         &&session.visible(character.entity)&&!this.chestOpened(character);
-      const facing=player?this.facing:character.clipName?.match(/-(north|south|east|west)$/)?.[1] as Facing|undefined;
+      const facing=player?this.facing:character.facing??undefined;
       const animation=characterAnimationState(character);
       return {id:player?'player':`entity:${character.entity.id}`,actor:character.entity.actor,
         characterId:character.entity.characterId,worldEntityId:player?undefined:character.entity.id,

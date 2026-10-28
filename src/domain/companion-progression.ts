@@ -1,6 +1,6 @@
 import type { BattleCatalog, SkillLoadout } from './battle.ts';
 import type { PrimaryAttributes } from './character-stats.ts';
-import { PRIMARY_STATS } from './character-stats.ts';
+import { PRIMARY_STATS, primaryAttributesFrom } from './character-stats.ts';
 import { SkillConfiguration } from './skill-configuration.ts';
 
 export type CompanionGroupEffect = 'low-health-resistance'|'sword-damage'|'plate-defense'|'ancient-legendary-chance'|
@@ -56,11 +56,11 @@ export function generateCompanion(rules:CompanionGenerationRules,definition:{cla
   const groupPool=[...rules.groupPools[classId]],groupSkills:CompanionGroupEffect[]=[];
   for(let i=0;i<(quality<2?1:2)&&groupPool.length;i++)groupSkills.push(drawWithoutReplacement(groupPool,random));
   const dice=rules.statDice[classId][quality<2?'ordinary':'rare'];
-  const baseAttributes=Object.fromEntries(PRIMARY_STATS.map((stat,index)=>{
+  const baseAttributes=primaryAttributesFrom(Object.fromEntries(PRIMARY_STATS.map((stat,index)=>{
     const {sides,count}=dice[index];let value=0;
     for(let roll=0;roll<count;roll++)value+=randomInteger(random,1,sides);
     return [stat,value];
-  })) as unknown as PrimaryAttributes;
+  })));
   return {level,baseAttributes,skillCaps:caps,groupSkills};
 }
 

@@ -1,6 +1,25 @@
 /** 全局账本容量：3 人上阵加各自召唤物时，单敌最多约 6 条存在仇恨；256 留出伤害来源的余量。 */
 export const THREAT_CAPACITY=256;
 
+/** 超过这个矩形距离，伤害和治疗仇恨按远程权重折算。 */
+const REMOTE_THREAT_RANGE_UNITS=30;
+/** 远程伤害仇恨按 80% 计，近身保持 100%。 */
+const REMOTE_DAMAGE_THREAT_PERCENT=80;
+const NEARBY_DAMAGE_THREAT_PERCENT=100;
+/** 治疗仇恨权重：逐单位治疗量先乘权重，再除以一百万。 */
+const REMOTE_HEALING_THREAT_WEIGHT=15;
+const NEARBY_HEALING_THREAT_WEIGHT=20;
+const HEALING_THREAT_DIVISOR=1_000_000;
+/** 状态仇恨：施法者等级 × 200，再除以十万。 */
+const STATE_THREAT_PER_LEVEL=200;
+const STATE_THREAT_DIVISOR=100_000;
+/** 新目标要超过当前目标 110% 才切换，避免分数接近时反复改目标。 */
+const THREAT_SWITCH_PERCENT=110;
+/** 嘲讽把同阵营竞争者压到施法者分数的 80%。 */
+const TAUNT_RIVAL_CEILING_PERCENT=80;
+/** 超出视距后，每次资源脉冲先减半，再扣固定值。 */
+const DECAY_FLAT_PENALTY=10;
+
 interface ThreatEntry {
   ownerId:string;
   sourceId:string;
@@ -57,22 +76,23 @@ export function calculateDamageThreat(input:DamageThreatInput):number {
   const damage=integer(input.damage,'伤害'),range=distance(input.rectangleDistanceUnits);
   const rate=generationRate(input.generationRate);
   if(damage<1)return 0;
-  const adjusted=range>30?divide(Math.imul(damage,80),100):damage;
+  const percent=range>REMOTE_THREAT_RANGE_UNITS?REMOTE_DAMAGE_THREAT_PERCENT:NEARBY_DAMAGE_THREAT_PERCENT;
+  const adjusted=divide(Math.imul(damage,percent),100);
   return divide(Math.imul(adjusted,rate),1000);
 }
 
 /** 只用于动作治疗的实际 HP 变化；宿主先筛当前锁定被治疗者的敌人。 */
 export function calculateHealingThreat(input:HealingThreatInput):number {
   const healing=integer(input.actualHealing,'实际治疗量'),range=distance(input.rectangleDistanceUnits);
-  const weighted=Math.imul(healing,range>30?15:20);
-  return divide(Math.imul(weighted,generationRate(input.generationRate)),1000000);
+  const weight=range>REMOTE_THREAT_RANGE_UNITS?REMOTE_HEALING_THREAT_WEIGHT:NEARBY_HEALING_THREAT_WEIGHT;
+  return divide(Math.imul(Math.imul(healing,weight),generationRate(input.generationRate)),HEALING_THREAT_DIVISOR);
 }
 
 /** 宿主仅在直接动作状态成功且双方敌对时调用；Buff状态与嘲讽不走此入口。 */
 export function calculateStateThreat(input:StateThreatInput):number {
   const level=integer(input.casterLevel,'施法者等级');
   if(level<0)throw new Error('施法者等级必须非负');
-  return divide(Math.imul(Math.imul(level,200),generationRate(input.generationRate)),100000);
+  return divide(Math.imul(Math.imul(level,STATE_THREAT_PER_LEVEL),generationRate(input.generationRate)),STATE_THREAT_DIVISOR);
 }
 
 /** 全部敌方角色共用的有序账本；世界负责关系、目标有效性和共用脉冲。 */
@@ -128,7 +148,7 @@ export class ThreatLedger {
   decay(isBeyondSight:(ownerId:string,sourceId:string)=>boolean):void {
     for(let index=0;index<this.records.length;){
       const entry=this.records[index];
-      if(isBeyondSight(entry.ownerId,entry.sourceId))entry.score=(entry.score>>1)-10;
+      if(isBeyondSight(entry.ownerId,entry.sourceId))entry.score=(entry.score>>1)-DECAY_FLAT_PENALTY;
       if(entry.score<1)this.removeAt(index);
       else index++;
     }
@@ -143,7 +163,7 @@ export class ThreatLedger {
     }
     if(!maximum)return currentSourceId;
     const current=currentSourceId===undefined?undefined:this.score(ownerId,currentSourceId);
-    if(current!==undefined&&maximum.score<divide(Math.imul(current,110),100))return currentSourceId;
+    if(current!==undefined&&maximum.score<divide(Math.imul(current,THREAT_SWITCH_PERCENT),100))return currentSourceId;
     return maximum.sourceId;
   }
 
@@ -151,7 +171,7 @@ export class ThreatLedger {
   clampCompetitors(ownerId:string,casterId:string,isSameCasterFaction:(sourceId:string)=>boolean):boolean {
     const casterScore=this.score(ownerId,casterId);
     if(casterScore===undefined)return false;
-    const ceiling=divide(Math.imul(casterScore,80),100);
+    const ceiling=divide(Math.imul(casterScore,TAUNT_RIVAL_CEILING_PERCENT),100);
     for(const entry of this.records)
       if(entry.ownerId===ownerId&&entry.sourceId!==casterId&&entry.score>ceiling&&isSameCasterFaction(entry.sourceId))
         entry.score=ceiling;

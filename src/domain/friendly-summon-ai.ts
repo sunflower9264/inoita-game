@@ -6,6 +6,7 @@ import { combatStateCapabilities } from './combat-state.ts';
 import type { EnemyPort } from './enemy-ai.ts';
 import type { GameRectangle, Point } from './navigation.ts';
 import { canTraverse, createPathSearch, PATH_GRID_SIZE, type PathSearch } from './pathfinding.ts';
+import { stableSeed } from './stable-seed.ts';
 
 export type FriendlySummonRole = 'hell-soldier' | 'beast';
 export interface FriendlySummonTactics {
@@ -331,7 +332,7 @@ export class FriendlySummonController {
     const returning=this.returning;
     let landing:Point|undefined;
     if(kind==='follow'&&!returning||kind==='target'&&!this.remembered(this.fallbackTargets,target)){
-      let hash=0;for(const character of this.id)hash=(hash*31+character.charCodeAt(0))>>>0;
+      const hash=stableSeed(this.id);
       for(let attempt=0;attempt<8;attempt++){
         const angle=((hash+(kind==='follow'?this.followSlot:0)+attempt)%8)*Math.PI/4;
         const gap=kind==='follow'?FRIENDLY_SUMMON_AI.followStopPx:Math.max(0,(range-2)*8);

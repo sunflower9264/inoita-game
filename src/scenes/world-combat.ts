@@ -11,7 +11,7 @@ import {CombatRuntime} from '../domain/combat-runtime.ts';
 import {CombatActionDispatcher} from '../domain/combat-action-dispatcher.ts';
 import {executeSkillUnits} from '../domain/combat-unit-execution.ts';
 import {runActionDispatch as executeActionDispatch} from '../domain/action-dispatch.ts';
-import {type SkillUnitOutcome} from '../domain/skill-unit-sequence.ts';
+import {MAX_SKILL_TARGETS,type SkillUnitOutcome} from '../domain/skill-unit-sequence.ts';
 import {CombatThreatSystem,type CombatThreatActor,type CombatThreatRole} from '../domain/combat-threat-system.ts';
 import {equipmentThreatReduction} from '../domain/equipment-threat.ts';
 import {BuffLoopRenderer} from '../rendering/buff-loop-renderer.ts';
@@ -54,6 +54,10 @@ import { learnedSkillReactions,resolveSkillReactions,executeBloodThirstReaction,
 import { resolveBuffReactions,type BuffReactionEvent } from '../domain/buff-reactions.ts';
 import { resolvePeriodicEffect } from '../domain/combat-periodic.ts';
 import { healTargetScore,type HealSlot } from '../domain/heal-target.ts';
+import { stableSeed } from '../domain/stable-seed.ts';
+import { ACTIVE_PARTY_SLOT_COUNT } from '../domain/party-slots.ts';
+import type { StorySkillProgression } from '../domain/story-skills.ts';
+import type { CompanionSkillProgression } from '../domain/companion-progression.ts';
 import type { BattleBuffKey,BattleStatKey,BattleStateKey } from '../domain/battle-semantics.ts';
 import { passesChanceThreshold } from '../domain/action-state.ts';
 import {frameStateDurationProfile,resolveStateApplication,selectStateDurationProfile,type StateApplicationRequest} from '../domain/state-application.ts';
@@ -64,7 +68,7 @@ import { disturbanceCandidate } from '../domain/disturbance.ts';
 import { planSummonSpot } from '../domain/skill-geometry.ts';
 import { scaledBuffEffect, summonLifetimeFrames, summonOwnerStats, withLifetimeFrames, type SummonStats } from '../domain/summon-stats.ts';
 import { faceTarget, resolveBasicAttack } from '../domain/basic-attack.ts';
-import { skillPlaybackEvents, skillSoundNames } from '../domain/skill-action.ts';
+import { skillClipName, skillClips, skillPlaybackEvents, skillSoundNames } from '../domain/skill-action.ts';
 import { costumeRecipe, hasOffhandShield } from '../domain/wardrobe.ts';
 import type { ActorDefinition, Facing } from '../domain/content.ts';
 import type { BattleCharacter } from '../domain/character-stats.ts';
@@ -697,7 +701,7 @@ captureStoryActors():SceneActorState[] {
     const ownerBody=this.movement.actor(ownerVisual);
     const localFree=(point:Point)=>navigation.terrainFree(point)&&navigation.canPlace(body.shape(),point,body,
       [{actor:ownerBody,position:owner.position,enabled:false}]);
-    let seed=0;for(const character of enemy.key)seed=(seed*31+character.charCodeAt(0))>>>0;
+    const seed=stableSeed(enemy.key);
     for(const radius of [24,32,40,48])for(let index=0;index<8;index++){
       const angle=((index+seed%8)%8)*Math.PI/4;
       const point={x:owner.position.x+Math.cos(angle)*radius,y:owner.position.y+Math.sin(angle)*radius};
@@ -751,10 +755,6 @@ captureStoryActors():SceneActorState[] {
     const lifetime=selectStateDurationProfile({normal:{lastActiveFrame:30},targetShortened:{lastActiveFrame:15}},decision);
     this.conditions.applyStateFrames(targetId,'taunted',lifetime.lastActiveFrame,sourceId);
   }
-  /**
-   * 固定三槽接收者：按队伍槽顺序取前三名仍在战斗的成员。
-   * 与给 cue 用的 partyBuffSlots 不同，这里不筛显示形态也不看距离——原版这两处都是直接遍历槽位。
-   */
   /** 原版角色位 +0xc 的 bit2：打出过伤害后置位、初始化时清零，治疗选人据此降低优先级。 */
   private readonly dealtDamage=new Set<string>();
   /**
@@ -767,8 +767,12 @@ captureStoryActors():SceneActorState[] {
     const living=this.activeParty.filter(id=>(this.memberOf(id)?.player.health??0)>0);
     return living.length>0&&living.every(id=>this.dealtDamage.has(id));
   }
+  /**
+   * 固定三槽接收者：按队伍槽顺序取前三名仍在战斗的成员。
+   * 与给 cue 用的 partyBuffSlots 不同，这里不筛显示形态也不看距离——原版这两处都是直接遍历槽位。
+   */
   private activePartySlots():string[] {
-    return this.activeParty.slice(0,3).filter(id=>{
+    return this.activeParty.slice(0,ACTIVE_PARTY_SLOT_COUNT).filter(id=>{
       const member=this.memberOf(id);
       return !!member&&!this.fallen?.has(id)&&!this.pendingDefeats?.has(id)&&
         (member.player.health>0||!!this.hitResolution?.isAwaitingDefeat(id));
@@ -799,7 +803,7 @@ captureStoryActors():SceneActorState[] {
     return slots;
   }
   private partyBuffSlots():readonly (PartyBuffSlot<Combatant>|undefined)[] {
-    return this.activeParty.slice(0,3).map(id=>{
+    return this.activeParty.slice(0,ACTIVE_PARTY_SLOT_COUNT).map(id=>{
       const actor=this.combatant(id);if(!actor)return undefined;
       return {actor,active:!this.fallen.has(id)&&((this.memberOf(id)?.player.health??0)>0||!!this.hitResolution?.isAwaitingDefeat(id)),
         hasDisplay:!!this.visualOf(id)?.container.active};
@@ -807,6 +811,10 @@ captureStoryActors():SceneActorState[] {
   }
   private memberOf(id:string):BattleCharacter|CompanionMember|undefined{
     return id==='player'?this.hero:this.app.session.party?.get(id);
+  }
+  /** 主角的技能配置存放在会话里，佣兵自己持有。 */
+  private skillConfiguration(id:string,member:BattleCharacter|CompanionMember):StorySkillProgression|CompanionSkillProgression{
+    return id==='player'?this.app.session.skills:(member as CompanionMember).skills;
   }
   private isActorAlive(id:string):boolean {
     const member=this.memberOf(id),enemy=combatActor(this.arena,id,actor=>actor.key);
@@ -844,7 +852,7 @@ captureStoryActors():SceneActorState[] {
   private playAction(presenter:CombatPresenter,action:ActionPlayback,frame:(index:number)=>void,complete:()=>void):()=>void {
     this.awareness.action(action.caster,{state:'attacking',targetId:action.target?.id,skill:action.skill},action.target,(this.app.session.combatTick??0)*LOGIC_FRAME_MS);
     const visual=this.visualOf(action.caster.id)!;
-    const name=action.skill?(action.skill.clips?.[action.facing]??`skill-${action.skill.id}-${action.facing}`):action.basicAttack?.clips[action.facing];
+    const name=action.skill?(action.skill.clips?.[action.facing]??skillClipName(action.skill.id,action.facing)):action.basicAttack?.clips[action.facing];
     const clip=name?visual.actor.clips[name as keyof typeof visual.actor.clips]:undefined;
     const clear=presenter.play(action);
     const cancel=this.runtime.play(action,{sourceFrames:clip?.frames??1,frameDurationMs:action.basicAttack?.frameDurationMs??LOGIC_FRAME_MS},frame,complete);
@@ -967,7 +975,7 @@ captureStoryActors():SceneActorState[] {
       const caster=this.combatant(event.casterId),targeting=event.basicAttack.targeting;
       if(!caster||!targeting)return;
       const targets=resolveCueTargets(targeting,caster,undefined,this.combatants(),[],
-        this.actorAttribute(event.casterId,'attackRangeBonusUnits')).slice(0,16);
+        this.actorAttribute(event.casterId,'attackRangeBonusUnits')).slice(0,MAX_SKILL_TARGETS);
       for(const target of targets)this.attackContact({casterId:event.casterId,targetId:target.id,basicAttack:event.basicAttack});
     });
   }
@@ -1205,7 +1213,7 @@ captureStoryActors():SceneActorState[] {
   }
   private learnedReactionBuff(id:string,skillId:LearnedReactionSkill):SkillReactionBuff|undefined {
     const member=this.memberOf(id);if(!member)return;
-    const configuration=id==='player'?this.app.session.skills:(member as CompanionMember).skills;
+    const configuration=this.skillConfiguration(id,member);
     const level=configuration.draft(this.app.battleCatalog,member.classId).levels[skillId];
     if(!level||level<1)return;
     if(skillId==='whist'){
@@ -1246,7 +1254,7 @@ captureStoryActors():SceneActorState[] {
     let reactions:SkillReaction[]=[];
     if(event.kind!=='physical-attack-effects'&&event.kind!=='physical-revenge'&&event.kind!=='physical-instinct'&&event.kind!=='physical-defense-instinct'){
       const member=this.memberOf(event.ownerId);if(!member)return;
-      const configuration=event.ownerId==='player'?this.app.session.skills:(member as CompanionMember).skills;
+      const configuration=this.skillConfiguration(event.ownerId,member);
       reactions=learnedSkillReactions(this.app.battleCatalog,member.classId,configuration.draft(this.app.battleCatalog,member.classId),memberSkillGrowth(event.ownerId));
     }
     const commands=resolveSkillReactions(reactions,event,{random:Math.random,learnedBuff:(id,skill)=>this.learnedReactionBuff(id,skill)});
@@ -1279,7 +1287,7 @@ captureStoryActors():SceneActorState[] {
     return {catalog:this.app.battleCatalog,runtime:this.runtime,random:()=>Math.random(),active:()=>!this.closed&&!this.defeated,
       actor:id=>this.combatant(id),loadout:id=>{
         const member=this.memberOf(id);if(!member||!this.app.session)return;
-        const configuration=id==='player'?this.app.session.skills:(member as CompanionMember).skills;
+        const configuration=this.skillConfiguration(id,member);
         return configuration?{classId:member.classId,skills:configuration.draft(this.app.battleCatalog,member.classId)}:undefined;
       },casterStrikes:(id,strikes)=>{const presenter=view();if(presenter)this.dispatcherFor(presenter).casterStrikes(id,strikes);},
       flight:{actor:id=>this.combatant(id),emit:event=>view()?.renderFlight(event),effect:(name,position)=>view()?.renderEffect(name,'default',position)},
@@ -1563,7 +1571,7 @@ captureStoryActors():SceneActorState[] {
     const equipped=member.bag.equipmentItems(member.bag.equipmentFor(id));
     const main=equipped['main-hand'];
     const weapon=main?this.app.items.items[main]?.kind??'unarmed':'unarmed';
-    const configuration=id==='player'?this.app.session.skills:(member as CompanionMember).skills;
+    const configuration=this.skillConfiguration(id,member);
     const armor=equipped.body?this.app.items.items[equipped.body].kind:'';
     return [...passiveModifiers(this.app.battleCatalog,member.classId,configuration.draft(this.app.battleCatalog,member.classId),weapon,this.conditions.hasState(id,'stealthed'),memberSkillGrowth(id)),
       ...partyCombatModifiers(this.app.session.party?.groupModifiers()??{},weapon,armor,member.player.health,member.player.maxHealth)];
@@ -1848,7 +1856,7 @@ captureStoryActors():SceneActorState[] {
   private partySkillsFor(id:string):EnemyPlayableSkill[]{
     const member=this.memberOf(id)!;
     const character=this.app.battleCatalog.classes.find(value=>value.id===member.classId)!;
-    const configuration=id==='player'?this.app.session.skills:(member as CompanionMember).skills;
+    const configuration=this.skillConfiguration(id,member);
     const draft=configuration.draft(this.app.battleCatalog,member.classId);
     const actions=costumeRecipe(this.app.wardrobe,this.app.items,this.hero.bag.equipmentItems(this.hero.bag.equipmentFor(id)),member.classId).actions;
     return character.skills.flatMap(skillId=>{
@@ -1856,7 +1864,7 @@ captureStoryActors():SceneActorState[] {
       const action=skillId in actions?actions[skillId]:skill.action;
       if(!action||!level)return [];
       return [{id:skillId,name:skill.name,action:skill.action?{...action,hitEffectStyle:skill.action.hitEffectStyle,usesSkillDamageBuff:skill.action.usesSkillDamageBuff,combatUnits:skill.action.combatUnits,repeat:skill.action.repeat?{...skill.action.repeat,restartAfterFrame:action.repeat?.restartAfterFrame??skill.action.repeat.restartAfterFrame}:undefined}:action,level,manaCost:this.skillManaCost(id,skillId,level),frequency:0,
-        clips:{north:`skill-${skillId}-north`,south:`skill-${skillId}-south`,east:`skill-${skillId}-east`,west:`skill-${skillId}-west`}} as EnemyPlayableSkill];
+        clips:skillClips(skillId)} as EnemyPlayableSkill];
     });
   }
   private createPartyController(id:string,visual:CharacterVisual,presenter:CombatPresenter,attack:ReturnType<WorldCombat['equipmentAttack']>):{controller:CombatController;port:PartyPort}{
@@ -2282,11 +2290,11 @@ captureStoryActors():SceneActorState[] {
     const selected=key&&key in overrides?overrides[key]:skill?.action;
     const action=selected&&skill?.action?{...selected,hitEffectStyle:skill.action.hitEffectStyle,usesSkillDamageBuff:skill.action.usesSkillDamageBuff,combatUnits:skill.action.combatUnits,repeat:skill.action.repeat?{...skill.action.repeat,restartAfterFrame:selected.repeat?.restartAfterFrame??skill.action.repeat.restartAfterFrame}:undefined}:selected;
     if(key&&!action){this.app.ui.showInstant('该技能需要装备对应武器');return;}
-    const configuration=this.controlledId==='player'?this.app.session.skills:(member as CompanionMember).skills;
+    const configuration=this.skillConfiguration(this.controlledId,member);
     const level=key?configuration.draft(this.app.battleCatalog,member.classId).levels[key]:undefined;
     if(key&&!level)return;
     const manaCost=key?this.skillManaCost(this.controlledId,key,level):undefined;
-    const clips=this.controlledId==='player'?undefined:{north:`skill-${key}-north`,south:`skill-${key}-south`,east:`skill-${key}-east`,west:`skill-${key}-west`} as Record<Facing,import('../domain/content.ts').ClipName>;
+    const clips=this.controlledId==='player'||!key?undefined:skillClips(key);
     this.runtime.request({actorId:this.controlledId,mode:action?'manual':'normal',skill:action?{id:key!,action,level,manaCost,clips}:undefined});
   }
   cancelAttack(clearEffects=false):void{
@@ -2549,7 +2557,7 @@ captureStoryActors():SceneActorState[] {
   }
   private readVisiblePartyResources():void {
     if(this.closed||this.performanceHidden)return;
-    for(const id of this.activeParty.slice(0,3)){
+    for(const id of this.activeParty.slice(0,ACTIVE_PARTY_SLOT_COUNT)){
       const visual=this.visualOf(id);
       if(!visual?.container.active||!visual.container.visible||this.fallen.has(id))continue;
       this.readResourceCapacity(id,'maxHealth');

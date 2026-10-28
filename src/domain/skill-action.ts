@@ -1,5 +1,17 @@
 import {buffEffectNames} from './buff-effects.ts';
 import type { SkillAction, SkillEvent } from './battle.ts';
+import type { ClipName, Facing } from './content.ts';
+
+/** 技能动画统一命名为 skill-<技能编号>-<朝向>；内容没有自定义 clips 时使用。 */
+export function skillClipName(skillId: string, facing: Facing): ClipName {
+  return `skill-${skillId}-${facing}`;
+}
+
+/** 四个朝向的技能动画名，供只拿到技能编号的调用方使用。 */
+export function skillClips(skillId: string): Record<Facing, ClipName> {
+  return { north: skillClipName(skillId, 'north'), south: skillClipName(skillId, 'south'),
+    east: skillClipName(skillId, 'east'), west: skillClipName(skillId, 'west') };
+}
 
 /** 选敌方式里对敌的那几种；其余是自己、队友或治疗目标。 */
 const ENEMY_TARGETS: readonly string[] = ['current', 'enemy', 'area', 'target-area'];

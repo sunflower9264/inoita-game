@@ -2,7 +2,16 @@ import type { SkillDetail, SkillDisplayRow, SkillRank } from './battle.ts';
 import type { DescriptionTextPart } from './description-text.ts';
 
 const VALUE_COLOR = '#00b4ff';
-const VALUE_PATTERN = /^([^0-9+\-]*)([+-]?)(\d+(?:\.\d+)?)([\s\S]*)$/;
+const VALUE_PATTERN = /^(?<prefix>[^0-9+\-]*)(?<sign>[+-]?)(?<number>\d+(?:\.\d+)?)(?<suffix>[\s\S]*)$/;
+
+/** 把“伤害 +21.0%”拆成前缀、符号、数字和后缀；解析不出数值时失败，不返回半成品。 */
+function parseValueParts(value: string): { prefix: string; sign: string; number: string; suffix: string } {
+  const groups = VALUE_PATTERN.exec(value)?.groups;
+  if (!groups || groups.prefix === undefined || groups.sign === undefined
+    || groups.number === undefined || groups.suffix === undefined)
+    throw new Error(`技能详情无法解析数值：${value}`);
+  return { prefix: groups.prefix, sign: groups.sign, number: groups.number, suffix: groups.suffix };
+}
 
 export interface CompiledSkillDisplay {
   display: SkillDisplayRow[];
@@ -26,9 +35,8 @@ export function compileSkillDisplay(ranks: readonly SkillRank[]): CompiledSkillD
       const row = compileDetail(detail);
       if (JSON.stringify(row) !== JSON.stringify(display[index]))
         throw new Error(`技能 ${rank.level} 级详情行 ${index} 的展示格式与首级不一致`);
-      const match = VALUE_PATTERN.exec(detail.value);
-      if (!match) throw new Error(`技能详情无法解析数值：${detail.value}`);
-      const value = Math.abs(Number(match[2] + match[3]));
+      const parsed = parseValueParts(detail.value);
+      const value = Math.abs(Number(parsed.sign + parsed.number));
       if (detail.zeroValue !== undefined && formatSkillDetail(display[index]!, 0).text !== detail.zeroValue)
         throw new Error(`技能详情零值无法还原：${detail.value} / ${detail.zeroValue}`);
       values.push(value);
@@ -39,9 +47,8 @@ export function compileSkillDisplay(ranks: readonly SkillRank[]): CompiledSkillD
 }
 
 function compileDetail(detail: SkillDetail): SkillDisplayRow {
-  const match = VALUE_PATTERN.exec(detail.value);
-  if (!match) throw new Error(`技能详情无法解析数值：${detail.value}`);
-  const template = `${match[1]}${match[2]}{v}${match[4]}`;
+  const parsed = parseValueParts(detail.value);
+  const template = `${parsed.prefix}${parsed.sign}{v}${parsed.suffix}`;
   if (template.split('{v}').length !== 2) throw new Error(`技能详情模板必须恰好包含一个 {v}：${detail.value}`);
   const parts = detail.valueParts;
   if (parts && parts.length > 1) throw new Error(`技能详情 valueParts 只支持单段：${detail.value}`);
@@ -55,7 +62,7 @@ function compileDetail(detail: SkillDetail): SkillDisplayRow {
     ...(detail.effectIndex !== undefined ? { effectIndex: detail.effectIndex } : {}),
     ...(detail.valueSpacing !== undefined ? { valueSpacing: detail.valueSpacing } : {}),
     template,
-    decimals: (match[3]!.split('.')[1] ?? '').length,
+    decimals: (parsed.number.split('.')[1] ?? '').length,
     highlight: !!parts?.length,
     zeroText: detail.zeroValue ?? '0'
   };

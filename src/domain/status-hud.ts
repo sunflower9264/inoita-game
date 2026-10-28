@@ -83,9 +83,11 @@ export function memberColumnLayout(input:MemberColumnInput):MemberColumn {
   const row=memberHeight*size*scale;
   return {scale,tops:Array.from({length:count},(_,index)=>start+index*(row+gap))};
 }
-/** 剩余时长进入最后 30 逻辑帧后按全局计数闪烁（每 4 帧一个周期），槽位保留。 */
+/** 剩余时长进入最后 30 逻辑帧后开始闪烁，每 4 帧一个明暗周期，槽位保留。 */
+const BLINK_WINDOW_FRAMES=30;
+const BLINK_PERIOD_FRAMES=4;
 export function buffIconBlinking(remainingFrames:number,globalTick:number):boolean {
-  return remainingFrames<=30&&(globalTick>>2)%2===1;
+  return remainingFrames<=BLINK_WINDOW_FRAMES&&Math.floor(globalTick/BLINK_PERIOD_FRAMES)%2===1;
 }
 export interface TargetStatus { id:string; name:string; level:number; health:number; maxHealth:number; sceneLevel:boolean }
 

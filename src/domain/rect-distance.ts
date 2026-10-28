@@ -4,6 +4,9 @@ import type {Point} from './navigation.ts';
 interface RectBounds {x:number;y:number;width:number;height:number}
 export interface PlacedRect {position:Point;bounds:RectBounds}
 
+/** 原版一个格距对应的像素数。 */
+const PIXELS_PER_DISTANCE_UNIT = 8;
+
 function axisGap(aMin:number,aMax:number,bMin:number,bMax:number):number {
   return Math.max(0,Math.max(aMin-bMax,bMin-aMax));
 }
@@ -17,5 +20,5 @@ export function rectDistance(a:PlacedRect,b:PlacedRect):number {
                     b.position.x+b.bounds.x,b.position.x+b.bounds.x+b.bounds.width);
   const gapY=axisGap(a.position.y+a.bounds.y,a.position.y+a.bounds.y+a.bounds.height,
                     b.position.y+b.bounds.y,b.position.y+b.bounds.y+b.bounds.height);
-  return (gapY>>3)+(gapX>>3);
+  return Math.floor(gapY/PIXELS_PER_DISTANCE_UNIT)+Math.floor(gapX/PIXELS_PER_DISTANCE_UNIT);
 }

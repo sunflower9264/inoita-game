@@ -13,8 +13,12 @@ export interface CharacterVisual {
   container: Phaser.GameObjects.Container;
   layers: Phaser.GameObjects.Sprite[];
   clipName: ClipName | null;
+  /** 当前动画对应的朝向；动画名统一以 -<朝向> 结尾。 */
+  facing: Facing | null;
   flipped?: boolean;
 }
+
+const FACING_SUFFIX = /-(north|south|east|west)$/;
 
 export { characterAssets } from './combat-asset-descriptors.ts';
 
@@ -49,7 +53,7 @@ export function clipMirrored(clip: AnimationClip, actor: ActorDefinition, entity
 }
 
 export function createCharacter(scene: Phaser.Scene, actor: ActorDefinition, entity: EntityPlacement): CharacterVisual {
-  const character: CharacterVisual = { entity, actor, container: scene.add.container(entity.x, entity.y).setDepth(entity.y + .5), layers: [], clipName: null };
+  const character: CharacterVisual = { entity, actor, container: scene.add.container(entity.x, entity.y).setDepth(entity.y + .5), layers: [], clipName: null, facing: null };
   try { setCharacterClip(scene, character, 'idle-south'); return character; }
   catch (error) { character.container.destroy(); throw error; }
 }
@@ -63,7 +67,9 @@ function replaceLayers(scene: Phaser.Scene, character: CharacterVisual, name: Cl
   const clip = character.actor.clips[name];
   if (!clip) throw new Error(`角色动作缺少资源：${character.entity.actor}/${name}`);
   const flipped = clipMirrored(clip, character.actor, character.entity);
-  character.clipName = name; character.flipped = flipped;
+  character.clipName = name;
+  character.facing = (FACING_SUFFIX.exec(name)?.[1] as Facing | undefined) ?? null;
+  character.flipped = flipped;
   for (const sprite of character.layers) sprite.destroy(); character.layers = [];
   for (const layer of clip.layers) {
     // 按共同的脚底锚点镜像，而不是贴图中心。

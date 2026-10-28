@@ -10,6 +10,12 @@ export const PRIMARY_STATS = ['strength','dexterity','vitality','intelligence','
 export const DEFAULT_EQUIPMENT_GRADE = 2;
 export type PrimaryStat = typeof PRIMARY_STATS[number];
 export type PrimaryAttributes = Record<PrimaryStat,number>;
+
+/** 把按 PRIMARY_STATS 逐项算出的结果收回成固定字段的属性对象。 */
+export function primaryAttributesFrom(source: Readonly<Record<string,number>>): PrimaryAttributes {
+  return { strength:source.strength, dexterity:source.dexterity, vitality:source.vitality,
+    intelligence:source.intelligence, mentality:source.mentality };
+}
 export interface Modifier { stat: string; value: number }
 export interface ModifierRange { stat: string; min: number; max: number }
 /** `bonusChance` 是「再升一级」判定阈值的加成，只有特级卷轴有（原版 `+0x12c`）。 */

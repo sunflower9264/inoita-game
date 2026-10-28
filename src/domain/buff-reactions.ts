@@ -1,5 +1,6 @@
 import type {BattleBuffEffect} from './battle.ts';
 import type {BattleBuffKey,BattleStatKey,BattleStateKey} from './battle-semantics.ts';
+import {ACTIVE_PARTY_SLOT_COUNT} from './party-slots.ts';
 
 export interface BuffReactionBuff {
   key:BattleBuffKey;
@@ -79,7 +80,7 @@ export function resolveBuffReactions(reactions:readonly BuffReaction[],event:Buf
       sourceId:event.ownerId,targetId:event.opponentId,damage:event.hitDamage}));
   const targets=event.kind==='physical-avoidance'
     ?['miss','weapon-block','shield-block'].includes(event.outcome)?[event.ownerId]:[]
-    :event.outcome!=='miss'?event.partyIds.slice(0,3):[];
+    :event.outcome!=='miss'?event.partyIds.slice(0,ACTIVE_PARTY_SLOT_COUNT):[];
   return reactions.flatMap(reaction=>
     reaction.kind===event.kind&&'buff' in reaction?targets.map(targetId=>({kind:'apply-buff' as const,sourceId:event.ownerId,
       targetId,buff:reaction.buff})):[]);

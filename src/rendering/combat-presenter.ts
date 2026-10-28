@@ -4,10 +4,9 @@ import type {AttackPlacement,BattleCatalog,SkillVisualEffect,SkillEffectCue} fro
 import type {ActionPlayback,Combatant,SkillUnitHit} from '../domain/combat.ts';
 import type {SkillUnitOutcome} from '../domain/skill-unit-sequence.ts';
 import type {FlightEvent} from '../domain/combat-runtime.ts';
-import {skillRepeatSkippedFrames,skillSequence} from '../domain/skill-action.ts';
+import {skillClipName,skillRepeatSkippedFrames,skillSequence} from '../domain/skill-action.ts';
 import {attackSequence} from '../domain/basic-attack.ts';
 import {attackCycleFrames} from '../domain/combat-tempo.ts';
-import type {ClipName} from '../domain/content.ts';
 import type {Point} from '../domain/navigation.ts';
 import {clipMirrored,isCurrentLayers,playCharacterSequence,setCharacterClip,showIdlePose,type CharacterVisual} from './characters.ts';
 import {createEffect,setEffectClip} from './effects.ts';
@@ -40,7 +39,7 @@ export class CombatPresenter {
     const hidden=action.basicAttackWait?character.layers.map(layer=>({layer,visible:layer.visible})):[];
     if(action.basicAttackWait)for(const {layer} of hidden)layer.setVisible(false);
     else{
-      const name=action.skill?(action.skill.clips?.[action.facing]??`skill-${action.skill.id}-${action.facing}` as ClipName):action.basicAttack!.clips[action.facing];
+      const name=action.skill?(action.skill.clips?.[action.facing]??skillClipName(action.skill.id,action.facing)):action.basicAttack!.clips[action.facing];
       const clip=character.actor.clips[name]!;
       const attack=action.skill?undefined:action.basicAttack!;
       const sequence=attack?attack.timing==='fixed-animation'?attack.sequence[action.facing]:attackSequence(clip.frames,attackCycleFrames(attack.cycleFrames,0,attack.strikeFrame)):
@@ -65,7 +64,7 @@ export class CombatPresenter {
     const character=this.visual(action.caster.id);if(!character)return;
     if(action.basicAttack&&!action.skill){const clip=character.actor.clips[action.basicAttack.clips[action.facing]]!;showIdlePose(character,action.facing,index,clip.frames);}
     if(action.skill?.action.repeat){
-      const name=action.skill.clips?.[action.facing]??`skill-${action.skill.id}-${action.facing}` as ClipName;
+      const name=action.skill.clips?.[action.facing]??skillClipName(action.skill.id,action.facing);
       const clip=character.actor.clips[name];
       if(clip){
         const sequence=skillSequence(action.skill.action,action.skill.level??1,clip.frames);
@@ -100,7 +99,7 @@ export class CombatPresenter {
     }
   }
   private faceRepeatingAction(character:CharacterVisual,action:ActionPlayback,sequence:number[],frameDurationMs:number):void{
-    const name=action.skill!.clips?.[action.facing]??`skill-${action.skill!.id}-${action.facing}` as ClipName;
+    const name=action.skill!.clips?.[action.facing]??skillClipName(action.skill!.id,action.facing);
     if(character.clipName===name)return;
     const clip=character.actor.clips[name]!;
     const flipped=clipMirrored(clip,character.actor,character.entity);

@@ -1,5 +1,5 @@
 import { boundedHealth } from './status-hud.ts';
-import { calculateCharacter, PRIMARY_STATS, type CharacterPanel, type CharacterStatsCatalog, type PrimaryAttributes, type BattleCharacter } from './character-stats.ts';
+import { calculateCharacter, PRIMARY_STATS, primaryAttributesFrom, type CharacterPanel, type CharacterStatsCatalog, type PrimaryAttributes, type BattleCharacter } from './character-stats.ts';
 import type { SkillConfigurationState } from './skill-configuration.ts';
 import type { CounterattackMode } from './party-ai.ts';
 import { CompanionSkillProgression, generateCompanion, MERCENARY_CLASS_ORDER, randomInteger, weightedIndex, type CompanionGenerationRules, type CompanionGroupEffect, type CompanionGroupSkill, type GeneratedCompanion } from './companion-progression.ts';
@@ -103,7 +103,7 @@ export class CompanionMember {
     const cached=this.panelCache;
     if(cached&&cached.revision===this.bag.revision&&cached.level===this.currentLevel)return cached.panel;
     const base=this.stats.classes[this.definition.classId],total=this.growth[this.currentLevel-1]!;
-    const allocated=Object.fromEntries(PRIMARY_STATS.map(stat=>[stat,total[stat]-2*base[stat]+this.generated.baseAttributes[stat]])) as unknown as PrimaryAttributes;
+    const allocated=primaryAttributesFrom(Object.fromEntries(PRIMARY_STATS.map(stat=>[stat,total[stat]-2*base[stat]+this.generated.baseAttributes[stat]])));
     const equipped=this.bag.equipmentFor(this.id);
     const panel=calculateCharacter(this.stats,this.items,this.definition.classId,this.currentLevel,allocated,
       Object.fromEntries(Object.entries(equipped).map(([slot,item])=>[slot,this.bag.get(item!)])));
