@@ -12,7 +12,7 @@ import { StoryDirector, type StoryUI } from '../src/domain/story-director.ts';
 import { createGmActions, type GmCombatPort } from '../src/debug/gm-actions.ts';
 import { prepareTaskStart } from '../src/debug/story-jump.ts';
 import { questJournal } from '../src/domain/quest-journal.ts';
-import { organizedInventory } from '../src/domain/inventory.ts';
+import { organizedDebugInventory } from '../src/domain/inventory.ts';
 
 // 这个文件**故意不注册 phaser 替身**：`gm-actions.ts` 一旦引入 Phaser 或 UI 模块就会在这里炸，
 // 而无浏览器那条 agent 通道靠的就是「不引入」。这条约束由本文件的 import 本身守着。
@@ -219,9 +219,23 @@ test('items excludes pickup-only items, filters and reports owned counts', () =>
   const potion = all.find(entry => entry.id === 'healing-potion-s')!;
   assert.equal(potion.owned, session.bag.count('healing-potion-s'));
 
-  // 顺序与背包整理共用同一套规则。
-  const expected = organizedInventory(new Map(all.map(entry => [entry.id, 1] as const)), items.items).map(([id]) => id);
+  // 装备按种类连续成组，同组内等级从低到高。
+  const expected = organizedDebugInventory(new Map(all.map(entry => [entry.id, 1] as const)), items.items).map(([id]) => id);
   assert.deepEqual(all.map(entry => entry.id), expected);
+  const kinds = equipment.map(entry => items.items[entry.id]!.kind);
+  const seen = new Set<string>();
+  for (let index = 0; index < kinds.length; index += 1) {
+    const kind = kinds[index]!;
+    if (index > 0 && kind !== kinds[index - 1]) {
+      assert.ok(!seen.has(kind), `同类装备必须连续：${kind}`);
+      seen.add(kinds[index - 1]!);
+    }
+  }
+  for (let index = 1; index < equipment.length; index += 1) {
+    const previous = equipment[index - 1]!, current = equipment[index]!;
+    if (items.items[previous.id]!.kind === items.items[current.id]!.kind)
+      assert.ok(previous.level <= current.level, `同类装备按等级升序：${previous.id} / ${current.id}`);
+  }
 });
 
 test('giveItem adds the requested quantity and refuses excluded items and bad counts', () => {

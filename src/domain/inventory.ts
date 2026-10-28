@@ -94,3 +94,20 @@ export function organizedInventory(inventory: ReadonlyMap<string, number>, items
       names.compare(a.name, b.name) || (left < right ? -1 : left > right ? 1 : 0);
   });
 }
+
+type OrderableItem = StoryItem & { kind?: string; level?: number };
+
+/** 调试发放列表：装备按种类首次出现顺序分组，同组内等级从低到高；其它类别保持原顺序。 */
+export function organizedDebugInventory(inventory: ReadonlyMap<string, number>,
+  items: Readonly<Record<string, OrderableItem>>): [string, number][] {
+  const kindOrder = new Map<string, number>();
+  for (const item of Object.values(items))
+    if (item.category === 'equipment' && item.kind && !kindOrder.has(item.kind)) kindOrder.set(item.kind, kindOrder.size);
+  return organizedInventory(inventory, items).sort(([left], [right]) => {
+    const a = items[left], b = items[right];
+    const category = ITEM_CATEGORIES.indexOf(a.category) - ITEM_CATEGORIES.indexOf(b.category);
+    if (category || a.category !== 'equipment') return category;
+    return (kindOrder.get(a.kind ?? '') ?? kindOrder.size) - (kindOrder.get(b.kind ?? '') ?? kindOrder.size)
+      || (a.level ?? 0) - (b.level ?? 0);
+  });
+}

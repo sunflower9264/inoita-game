@@ -20,7 +20,7 @@ import type { Campaign } from '../domain/campaign.ts';
 import type { Session, SessionState } from '../domain/session.ts';
 import type { StoryDirector } from '../domain/story-director.ts';
 import type { ItemCategory } from '../domain/story-interface.ts';
-import { organizedInventory } from '../domain/inventory.ts';
+import { organizedDebugInventory } from '../domain/inventory.ts';
 
 export interface GmResult { ok: boolean; reason?: string }
 export interface GmStoryPreview extends GmResult {
@@ -601,8 +601,8 @@ export function createGmActions(ports: GmPorts): GmActions {
       const counts = session.bag.counts;
       const eligible = Object.entries(definitions).filter(([, definition]) =>
         !definition.pickup && (filter === 'all' || definition.category === filter));
-      // 与背包整理共用同一套「分类 → 中文自然序 → id」，面板和 CLI 看到的顺序一致。
-      return organizedInventory(new Map(eligible.map(([id]) => [id, 1] as const)), definitions)
+      // 装备先按种类分组、组内等级升序；其它物品保持「分类 → 中文自然序 → id」。
+      return organizedDebugInventory(new Map(eligible.map(([id]) => [id, 1] as const)), definitions)
         .map(([id]) => {
           const definition = definitions[id]!;
           return { id, name: definition.name, category: definition.category, icon: definition.icon,
