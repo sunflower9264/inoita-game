@@ -56,15 +56,3 @@ export function assertScenePlan(plan:ScenePlan):void {
     owner.set(actorId,alias);
   }
 }
-
-/** 比较两份计划的可见实例；用于 shadow 报告，不用于生产判断。 */
-export function diffScenePlans(left:ScenePlan,right:ScenePlan):{map:string;onlyLeft:string[];onlyRight:string[];changed:string[]} {
-  const leftKeys=new Set(left.visible.keys()),rightKeys=new Set(right.visible.keys());
-  return {
-    map:left.map,
-    onlyLeft:[...leftKeys].filter(key=>!rightKeys.has(key)),
-    onlyRight:[...rightKeys].filter(key=>!leftKeys.has(key)),
-    changed:[...leftKeys].filter(key=>rightKeys.has(key)
-      && left.visible.get(key)![0]!.actorId!==right.visible.get(key)![0]!.actorId),
-  };
-}

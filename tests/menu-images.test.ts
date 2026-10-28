@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { test } from 'node:test';
-import { gameMenuImageGroups, gameMenuImages, titleMenuImages } from '../src/application/menu-images.ts';
+import { gameMenuImageGroups, titleMenuImages } from '../src/application/menu-images.ts';
 import { COMMON_BUTTON_IMAGES } from '../src/ui/common-button.ts';
 
 const content = (name: string) => JSON.parse(readFileSync(resolve('public/content', `${name}.json`), 'utf8'));
@@ -14,10 +14,9 @@ test('game prepares every menu image from its content catalog', () => {
   const story = content('story-interface');
 
   const shops = content('shops');
-  const images = gameMenuImages(panels, items, battle, story, shops);
   const groups = gameMenuImageGroups(panels, items, battle, story, shops);
-  assert.equal(new Set(images).size, images.length, 'duplicate image');
-  assert.equal(new Set([...groups.core, ...groups.extra]).size, images.length, 'groups cover the full list');
+  const images = [...new Set([...groups.core, ...groups.extra])];
+  assert.equal(images.length, groups.core.length + groups.extra.length, 'duplicate image across groups');
   assert.ok(groups.core.includes(panels.assets['page-button-frame']), 'missing frame in core');
   assert.ok(!groups.core.includes(items.items[Object.keys(items.items)[0]].icon), 'item icons are background-loaded');
   assert.ok(groups.extra.includes(items.items[Object.keys(items.items)[0]].icon), 'missing item icon in extra');

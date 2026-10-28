@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type {SceneActorState,SceneSnapshot} from '../src/domain/scene-snapshot.ts';
 import {actorRefFromState,actorRefKey} from '../src/domain/actor-ref.ts';
-import {assertScenePlan,diffScenePlans,planScene} from '../src/domain/scene-plan.ts';
+import {assertScenePlan,planScene} from '../src/domain/scene-plan.ts';
 
 const actor=(id:string,extra:Partial<SceneActorState>={}):SceneActorState=>({
   id,actor:'guard',x:10,y:20,facing:'south',visible:true,...extra,
@@ -45,10 +45,3 @@ test('two aliases cannot point at the same plan actor',()=>{
   assert.throws(()=>assertScenePlan(plan),/场景计划演员重复绑定/);
 });
 
-test('plan diff reports only source instances missing or changed',()=>{
-  const left=planScene(snapshot([actor('one',{worldEntityId:'a'}),actor('two',{memberId:'ally'})]));
-  const right=planScene(snapshot([actor('one',{worldEntityId:'a'}),actor('other',{worldEntityId:'b'})]));
-  assert.deepEqual(diffScenePlans(left,right),{
-    map:'camp',onlyLeft:['party|ally'],onlyRight:['world|camp|b'],changed:[],
-  });
-});

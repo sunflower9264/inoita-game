@@ -28,23 +28,10 @@ export function actorRefKey(ref:ActorRef):string {
   }
 }
 
-export function sameActorRef(left:ActorRef,right:ActorRef):boolean {
-  return actorRefKey(left)===actorRefKey(right);
-}
-
 /** 旧 SceneActorState 的兼容适配器；新的计划/提交层只持有 ActorRef。 */
 export function actorRefFromState(actor:SceneActorState,context:ActorRefContext):ActorRef {
   if(actor.memberId)return {source:'party',memberId:actor.memberId};
   if(actor.enemyKey)return {source:'combat',map:context.map,encounterId:context.encounterId,enemyKey:actor.enemyKey};
   if(actor.worldEntityId)return {source:'world',map:context.map,entityId:actor.worldEntityId};
   return {source:'story',runId:context.runId??'scene',instanceId:actor.id};
-}
-
-export function actorRefDescription(ref:ActorRef):string {
-  switch(ref.source){
-    case 'world':return `world ${ref.map}/${ref.entityId}`;
-    case 'party':return `party ${ref.memberId}`;
-    case 'combat':return `combat ${ref.map}/${ref.encounterId??'-'}/${ref.enemyKey}`;
-    case 'story':return `story ${ref.runId}/${ref.instanceId}`;
-  }
 }

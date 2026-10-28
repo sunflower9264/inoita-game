@@ -40,8 +40,3 @@ export function gameMenuImageGroups(panels: MenuPanels, items: ItemCatalog, batt
   ])].filter(file => !coreSet.has(file));
   return { core: [...coreSet], extra };
 }
-/** 完整清单：校验素材引用、UI 调试场景等需要一次拿全的地方使用。 */
-export function gameMenuImages(panels: MenuPanels, items: ItemCatalog, battle: BattleCatalog, story: StoryInterface, shops:ShopCatalog): string[] {
-  const { core, extra } = gameMenuImageGroups(panels, items, battle, story, shops);
-  return [...new Set([...core, ...extra])];
-}

@@ -54,7 +54,6 @@ interface Candidate {script: string; node: string; action: 'accept' | 'script-re
 interface Trace {kind: string; [key: string]: unknown}
 
 export const digest = contentDigest;
-export const stableString = canonicalJson;
 
 /** 把原版脚本图上的候选入口、前置链和固定差点位整理成可回放的时间线。 */
 export class DebugTaskBuilder {
@@ -995,7 +994,3 @@ export function exitTargets(exit: StoryNodeRef | undefined | {type: string; [key
   return refs;
 }
 
-export function catalogMeta(sources: Record<string, string>, coverage: StoryDebugCatalog['meta']['coverage']) {
-  return {generator: 'story_debug_start.ts', interpreterVersion: INTERPRETER_VERSION,
-    semanticsVersion: SEMANTICS_VERSION, sourceHash: digest(sources), generatedAt: '', sources, coverage};
-}
