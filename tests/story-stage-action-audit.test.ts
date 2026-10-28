@@ -3,6 +3,7 @@ import test from 'node:test';
 import {assertUniqueActorInstances} from '../src/domain/actor-census.ts';
 import {mapPlacementCandidates} from '../src/domain/map-placement.ts';
 import {applyStorySceneAction,resolveStoryScene} from '../src/domain/story-scene.ts';
+import {assertScenePlan,planScene} from '../src/domain/scene-plan.ts';
 import type {SceneActorState} from '../src/domain/scene-snapshot.ts';
 import type {PerformanceAction,StoryStage} from '../src/domain/story-performance.ts';
 import {headlessContent} from './helpers/story-playthrough.ts';
@@ -27,6 +28,7 @@ test('every stage declaration can replay its local presentation without duplicat
         ];
         let snapshot=resolveStoryScene(stage,{map:stage.map,actors});
         assertUniqueActorInstances(snapshot.scene.actors,`${script}/${node.id}/stage`);
+        assertScenePlan(planScene(snapshot.scene,snapshot.bindings));
         for(const action of node.presentation??[] as PerformanceAction[]){
           if(action===stage)continue;
           if(action.type==='stage')break;
@@ -35,6 +37,7 @@ test('every stage declaration can replay its local presentation without duplicat
           snapshot=applyStorySceneAction(snapshot,action);
           actions++;
           assertUniqueActorInstances(snapshot.scene.actors,`${script}/${node.id}/${action.type}`);
+          assertScenePlan(planScene(snapshot.scene,snapshot.bindings));
         }
       }
     }

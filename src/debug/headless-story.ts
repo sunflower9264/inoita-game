@@ -14,6 +14,7 @@ import {Session, type SessionState} from '../domain/session.ts';
 import {authoredPlacements, baseMapEntities} from '../domain/map-placement.ts';
 import {applyStorySceneAction, resolveStoryScene} from '../domain/story-scene.ts';
 import {assertUniqueActorInstances} from '../domain/actor-census.ts';
+import {assertScenePlan,planScene} from '../domain/scene-plan.ts';
 import {storyCommitCommands} from '../domain/story-commit.ts';
 import {newStorySession} from '../domain/story-class.ts';
 import {StoryRuntime} from '../domain/story-runtime.ts';
@@ -249,10 +250,14 @@ export class HeadlessStory {
       if (action.type === 'stage') {
         this.stage = this.resolveStage(action);
         assertUniqueActorInstances(this.stage.scene.actors, `无头舞台 ${this.stage.map}/stage`);
+        assertScenePlan(planScene(this.stage.scene,this.stage.bindings));
         continue;
       }
       if (this.stage) this.stage = applyStorySceneAction(this.stage, action as PerformanceAction);
-      if (this.stage) assertUniqueActorInstances(this.stage.scene.actors, `无头舞台 ${this.stage.map}/${action.type}`);
+      if (this.stage) {
+        assertUniqueActorInstances(this.stage.scene.actors, `无头舞台 ${this.stage.map}/${action.type}`);
+        assertScenePlan(planScene(this.stage.scene,this.stage.bindings));
+      }
     }
     return {choice: value, stage: this.stage};
   }
