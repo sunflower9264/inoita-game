@@ -197,7 +197,11 @@ test('the version number sits bottom-right at menu-button size and toggles GM',(
   const node=f.view.textNodes.find(text=>text.value==='v0.0.1');assert.ok(node);
   assert.equal(node.size,36,'版本号与主菜单按钮同字号');
   assert.deepEqual(node.origin,[1,1],'以右下角为锚点');
-  assert.equal(node.x,1180);assert.equal(node.y,628);
+  assert.equal(node.x,1180);assert.equal(node.y,612);
+  const notice=f.view.textNodes.find(text=>text.value.includes('同人作品'));assert.ok(notice,'版本号下方有同人作品说明');
+  assert.equal(notice.size,14);
+  assert.deepEqual(notice.origin,[1,1]);
+  assert.equal(notice.x,1180);assert.ok(notice.y>612,'说明在版本号下方');
   assert.equal(gm.toggles,0);
 
   node.handlers.get('pointerdown')!();

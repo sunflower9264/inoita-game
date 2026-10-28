@@ -16,6 +16,8 @@ import type { AssetLease } from '../application/assets.ts';
 const art=(name:string)=>`/assets/ui/title-menu/${name}.png`;
 /** 标题页右下角展示的版本号；等用户要求时再改。 */
 const GAME_VERSION='v0.0.1';
+/** 版本号下方一行；说明作品性质，并提醒支持官方版本。 */
+const FAN_WORK_NOTICE='同人作品 · 仅供个人学习研究 · 请支持官方正版';
 export class MenuScene extends Phaser.Scene {
   readonly app:MenuContext;
   private surface?:UiSurface;
@@ -68,7 +70,8 @@ export class MenuScene extends Phaser.Scene {
    * 开关关闭时这一行不存在。
    */
   private addVersion(view:UiSurface):void {
-    const label=view.text(GAME_VERSION,1180,628,0,36).setOrigin(1,1);
+    const label=view.text(GAME_VERSION,1180,612,0,36).setOrigin(1,1);
+    view.text(FAN_WORK_NOTICE,1180,632,0,14,'#b8ab92').setOrigin(1,1);
     const gm=this.app.gmMode;if(!gm)return;
     label.setInteractive({useHandCursor:true});
     label.on('pointerdown',()=>{
