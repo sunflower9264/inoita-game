@@ -128,26 +128,30 @@ test('a friendly summon never appears on the story stage',()=>{
 
 test('an unbound mercenary stays in the world while a cast companion appears',()=>{
   const mercenary=actor('member:ally',{actor:'ally',memberId:'ally',followsPlayer:true,visible:true});
+  const unidentified=actor('member:lost',{actor:'ally',followsPlayer:true,visible:true});
   const castCompanion=actor('member:story-friend',{actor:'story-friend',memberId:'story-friend',followsPlayer:true,visible:true});
   const snapshot=resolveStoryScene(stage([
     member('story-friend',{actor:'story-friend',memberId:'story-friend',x:30,y:20,visible:true})
-  ]),source([mercenary,castCompanion]));
+  ]),source([mercenary,unidentified,castCompanion]));
   hideUnboundStageActors(snapshot);
   const unbound=snapshot.scene.actors.find(candidate=>candidate.id==='member:ally')!;
   assert.equal(unbound.visible,false);
   assert.equal(unbound.stageHidden,true);
+  const lost=snapshot.scene.actors.find(candidate=>candidate.id==='member:lost')!;
+  assert.equal(lost.visible,false,'缺少 memberId 的队伍前缀演员同样不能进舞台');
+  assert.equal(lost.stageHidden,true);
   const cast=boundSceneActor(snapshot,'story-friend')!;
   assert.equal(cast.visible,true);
   assert.equal(cast.stageHidden,false);
 });
 
-test('a story companion keeps appearing even when this stage does not name it',()=>{
+test('a companion not named by this stage stays in the world even if it joined through the story',()=>{
   const storyPartner=actor('member:story-friend',{actor:'story-friend',memberId:'story-friend',followsPlayer:true,visible:true});
   const snapshot=resolveStoryScene(stage(),source([storyPartner]));
-  hideUnboundStageActors(snapshot,new Set(['story-friend']));
-  const visible=snapshot.scene.actors.find(candidate=>candidate.id==='member:story-friend')!;
-  assert.equal(visible.visible,true);
-  assert.equal(visible.stageHidden,false);
+  hideUnboundStageActors(snapshot);
+  const hidden=snapshot.scene.actors.find(candidate=>candidate.id==='member:story-friend')!;
+  assert.equal(hidden.visible,false);
+  assert.equal(hidden.stageHidden,true);
 });
 
 test('appearance instance IDs survive action replay and keep distinct created identities',()=>{

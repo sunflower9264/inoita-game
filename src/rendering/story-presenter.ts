@@ -233,9 +233,7 @@ export class StoryPresenter implements StoryPresentationPort {
       this.rememberScene(source);
       snapshot = resolveStoryScene({ ...declaration, map }, source);
     }
-    const party = this.app.session?.party;
-    const storyMembers = new Set(party ? party.activeIds.filter(id => party.get(id)?.source === 'story') : []);
-    snapshot = hideUnboundStageActors(snapshot, storyMembers);
+    snapshot = hideUnboundStageActors(snapshot);
     assertScenePlan(planScene(snapshot.scene, snapshot.bindings));
     if (!this.appearance) throw new Error('剧情玩家外观尚未准备好');
     await this.scene().showStage(snapshot, signal, this.appearance);
