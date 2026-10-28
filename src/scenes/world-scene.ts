@@ -307,8 +307,9 @@ export class WorldScene extends Phaser.Scene {
     this.dropCatalog=parseDrops(rawDrops,this.app.items,this.app.battleCatalog.enemies.map(enemy=>enemy.id));
     this.springCatalog=parseSprings(rawSprings);
     const generated=options.preparedScene?.visit?.generatedEntities??options.generatedEntities;
-    // 正式地图保留全部静态候选，投影时再按当前剧情条件决定谁顶掉静态副本；
-    // 否则条件在本次访问中变化时，进图时删掉的静态人物不会回来，或者会与剧情人物重叠。
+    // 正式地图保留“条件可能变化”的静态候选，投影时再按当前剧情条件决定谁顶掉
+    // 静态副本；否则条件在本次访问中变化时，进图时删掉的静态人物不会回来，
+    // 或者会与剧情人物同时出现。
     this.baseEntities=generated?structuredClone(generated):generateMapEntities(map,campaign,this.springCatalog,this.app.session.hero?.level??1,Math.random,
       entity=>!placementMayBeInactive(entity));
     this.entities=this.app.session.storyWorld.projectEntities(map.id,
