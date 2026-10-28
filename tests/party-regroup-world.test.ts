@@ -55,7 +55,7 @@ function fixture(options:{sealed?:boolean;wall?:boolean}={}){
   const state={app:{session:{party}},scene:{player:hero,facing:'south'},movement,allies,
     arena:[] as TestEnemy[],pendingDefeats:new Set<string>(),fallen:new Set<string>(),closed:false};
   const combat=Object.setPrototypeOf(state,WorldCombat.prototype) as unknown as InstanceType<typeof WorldCombat>;
-  return {combat,navigation,positions,actors,party,hero,allies,moved,cancelled,fallen:state.fallen,
+  return {combat,navigation,positions,actors,party,hero,allies,moved,cancelled,fallen:state.fallen,app:state.app,
     addVisual,arena:state.arena,pendingDefeats:state.pendingDefeats,switches:()=>switches};
 }
 
@@ -107,6 +107,18 @@ test('story settlement moves far or trapped allies and friendly summons, but not
   assert.deepEqual(f.positions.get(near.visual),{x:460,y:500},'已经在主角身边的队员不移动');
   assert.deepEqual(f.positions.get(hostileVisual),hostileBefore,'敌对单位不受剧情收尾影响');
   assert.equal(summonCancels,1);
+});
+
+test('story settlement still pulls idle units when the handoff encounter is already active',()=>{
+  const f=fixture();f.party.controlledId='player';
+  Object.assign(f.app.session,{storyWorld:{activeEncounters:[{id:'event-242-battle',status:'active'}]}});
+  const far=f.allies[0]!,before={...f.positions.get(far.visual)!};
+  f.combat.settleFriendlyUnitsAroundHero();
+  assert.notDeepEqual(f.positions.get(far.visual),before,'剧情开战时遭遇已 active，也不能吞掉闲置佣兵的收拢');
+  const hero=f.positions.get(f.hero)!;
+  const point=f.positions.get(far.visual)!;
+  assert.ok(Math.hypot(point.x-hero.x,point.y-hero.y)<=64,'遭遇 active 但未交战时佣兵应回到主角身边');
+  assert.ok(f.cancelled.includes(far.id),'收拢前要清掉旧寻路');
 });
 
 test('story settlement does not pull allies while a battle target is active',()=>{

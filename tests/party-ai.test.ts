@@ -230,12 +230,44 @@ test('a stale first waypoint is re-planned from the real feet instead of waiting
 });
 test('a follower with no progress for the watchdog window is pulled beside the leader once',()=>{
   const run=setup();let regroups=0;
-  run.port.regroup=()=>{regroups++;run.member.position={...run.leader.position};};
+  run.port.regroup=()=>{regroups++;run.ai.cancel();run.member.position={...run.leader.position};};
   run.ai.update(60);
   for(let frame=0;frame<40;frame++)run.ai.update(60);
   assert.equal(regroups,1,'一直站着不能干等寻路，应该收拢到队长身边');
   for(let frame=0;frame<20;frame++)run.ai.update(60);
   assert.equal(regroups,1,'收拢后恢复普通跟随，不能反复传送');
+});
+
+test('a companion chasing an unreachable focused enemy is pulled beside the leader once',()=>{
+  const run=setup();let regroups=0;
+  run.enemy.position={x:300,y:32};
+  run.port.canStand=point=>point.x>=8&&point.x<=120&&point.y>=8&&point.y<=88;
+  run.port.regroup=()=>{regroups++;run.ai.cancel();run.member.position={...run.leader.position};};
+  run.focus('enemy');
+  for(let frame=0;frame<70;frame++)run.ai.update(60);
+  assert.equal(regroups,1,'路径被地形封死时，追击目标也要收拢到队长身边');
+  for(let frame=0;frame<20;frame++)run.ai.update(60);
+  assert.equal(regroups,1,'目标仍不可达时也不能每 1.5 秒反复瞬移');
+});
+
+test('a default basic-attack approach with no progress is cancelled and recovered once',()=>{
+  const run=setup();let regroups=0;
+  run.enemy.position={x:80,y:32};run.enemy2.position={x:-100,y:-100};
+  run.port.moveToward=()=>{};
+  run.port.regroup=()=>{regroups++;run.ai.cancel();run.member.position={...run.leader.position};};
+  run.fighting();
+  for(let frame=0;frame<70;frame++)run.ai.update(60);
+  assert.equal(regroups,1,'默认普攻直线接近撞墙后也要取消接近并收拢');
+});
+
+test('a companion in combat without a target still recovers when the leader route is blocked',()=>{
+  const run=setup();let regroups=0;
+  run.enemy.position={x:300,y:32};run.enemy2.position={x:-100,y:-100};
+  run.port.canStand=point=>point.x>=8&&point.x<=120&&point.y>=8&&point.y<=88;
+  run.port.regroup=()=>{regroups++;run.ai.cancel();run.member.position={...run.leader.position};};
+  run.fighting();
+  for(let frame=0;frame<70;frame++)run.ai.update(60);
+  assert.equal(regroups,1,'战斗中没有目标时跟队长也不能每帧清空掉队计时');
 });
 
 test('party checkpoints restore the pending logic frame and cached navigation without sharing mutable points',()=>{

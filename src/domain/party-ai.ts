@@ -53,6 +53,8 @@ const PARTY_SEARCH_CAP = 384;
 const PARTY_FAILED_PATH_MS = 600;
 /** 跟随这么久没有任何位移，就当作被地形或人群卡住，不再干等寻路。 */
 const PARTY_FOLLOW_STUCK_MS = 1500;
+/** 追击目标被卡住并收拢后，先停一段时间，避免每次重选同一目标又立刻瞬移。 */
+const PARTY_CHASE_RECOVERY_MS = 2400;
 /** 位移超过这个距离才算“还在走”；碰撞抖动不算进展。 */
 const PARTY_FOLLOW_PROGRESS_PX = 4;
 /** 离队长还有这么远才值得收拢；贴身的轻微卡顿继续走寻路恢复。 */
@@ -98,6 +100,9 @@ export class PartyController {
   /** 跟随队长时的最近一次真实位移，用来判断是不是一直站着。 */
   private followProgress?:Point;
   private followProgressAt=0;
+  /** 追击敌人或自动接近时的最近一次真实位移；和队长跟随分开记录，战斗状态不会互相清零。 */
+  private chaseProgress?:{targetId:string;position:Point;since:number};
+  private chaseRecoveryUntil=0;
   private destination?:Point;
   private destinationTarget?:string;
   private destinationRange?:number;
@@ -120,6 +125,7 @@ export class PartyController {
     this.destinationTarget=state.destinationTarget;this.destinationRange=state.destinationRange;
     // 搜索持有的是旧场地的闭包，读档后必须重新开始。
     this.search=undefined;this.pathRetryAt=0;this.followProgress=undefined;this.followProgressAt=0;
+    this.chaseProgress=undefined;this.chaseRecoveryUntil=0;
   }
   onContact(event:AttackContact):void {
     if(this.disposed||event.targetId!==this.id||!counterattackReady(this.port.counterattack(),this.port.damageCount()))return;
@@ -134,7 +140,8 @@ export class PartyController {
     this.destination=undefined;this.destinationTarget=undefined;this.destinationRange=undefined;this.nextPathAt=0;this.port.stop();
   }
   cancel():void {this.combatController.cancel(true);this.retaliation=undefined;this.path=[];this.search=undefined;this.pathRetryAt=0;
-    this.followProgress=undefined;this.followProgressAt=0;this.destination=undefined;this.destinationTarget=undefined;this.destinationRange=undefined;
+    this.followProgress=undefined;this.followProgressAt=0;this.chaseProgress=undefined;this.chaseRecoveryUntil=0;
+    this.destination=undefined;this.destinationTarget=undefined;this.destinationRange=undefined;
     this.nextPathAt=0;this.accumulator=0;this.port.stop();}
   disable():void {this.cancel();}
   reset():void {this.cancel();this.combatController.reset();}
@@ -162,19 +169,28 @@ export class PartyController {
     }
     this.combatController.update();
     if(!combatStateCapabilities(actor.states??[]).canAct){this.path=[];this.port.stop();this.followProgress=undefined;this.followProgressAt=0;return;}
-    if(this.combatController.actionState()!=='idle')return;
+    const actionState=this.combatController.actionState();
+    // 默认普攻由 CombatController 直线接近目标；撞上剧情障碍时不会自己寻路。
+    // 这里只在接近阶段做无进展检测，取消接近后交给下面的收拢兜底。
+    if(actionState==='approaching'){
+      this.trackChaseProgress(actor,this.combatController.selectedTargetId()??'approach');
+      return;
+    }
+    if(actionState!=='idle')return;
     if(this.port.counterattack()===0)this.retaliation=undefined;
     const inCombat=this.port.inCombat();
+    const recovering=this.clock<this.chaseRecoveryUntil;
     // 优先级：显式集火 > 自己被谁打 > 主操作角色正在打的目标 > 自己上一轮选中的目标。
-    const target=this.hostileTarget(actor,[
+    const target=recovering?undefined:this.hostileTarget(actor,[
       this.port.focusTarget(),
       this.retaliation,
       inCombat?this.port.partyTarget?.():undefined,
       inCombat?this.combatController.selectedTargetId():undefined
     ]);
     if(!target)this.retaliation=undefined;
-    // 追赶目标或交战时重新计时，脱战后回到队长身边从当前状态重新判断是否卡住。
-    if(target||inCombat){this.followProgress=undefined;this.followProgressAt=0;}
+    // 重新选中目标时清掉旧的队长跟随计时；没有目标但处于战斗时仍走队长跟随，
+    // 这条计时不能被 inCombat 每帧清零，否则掉队收拢在战斗中永远等不到触发。
+    if(target){this.followProgress=undefined;this.followProgressAt=0;}
     // 队伍未进入战斗时只跟随，不放任何主动技能；召唤物之类的无目标技能也不例外。
     if(inCombat){
       const cooldowns=this.combatController.snapshot().cooldowns;
@@ -199,14 +215,19 @@ export class PartyController {
     // 队伍已开战但没有可攻击目标：走和玩家攻击键相同的默认普攻请求，
     // 由 CombatController 自行索敌并接近。附近没有敌人时不能停在这里等——
     // 仍要回到队长身边，否则战斗发生在别处时佣兵会一直留在原地。
-    if(!target&&inCombat&&this.combatController.request(undefined,undefined)!=='no-target')return;
+    // 收拢后的短暂恢复期不再自动索敌，避免同一面墙前反复瞬移。
+    if(!target&&inCombat&&!recovering&&this.combatController.request(undefined,undefined)!=='no-target')return;
     if(target){
       const range=this.port.attackRange();
       if(attackDistance(actor.position,actor.bounds,target.position,target.bounds)<=range){
-        this.path=[];this.combatController.requestTarget(target.id);
-      }else this.follow(actor,target,range);
+        this.chaseProgress=undefined;this.path=[];this.combatController.requestTarget(target.id);
+      }else{
+        if(this.trackChaseProgress(actor,target.id))return;
+        this.follow(actor,target,range);
+      }
       return;
     }
+    this.chaseProgress=undefined;
     const leader=this.port.leader();
     if(!leader||leader.id===actor.id||attackDistance(actor.position,actor.bounds,leader.position,leader.bounds)<PARTY_FOLLOW_DISTANCE_UNITS){
       this.path=[];this.port.stop();this.followProgress=undefined;this.followProgressAt=0;return;
@@ -222,6 +243,35 @@ export class PartyController {
     return undefined;
   }
   private roll(threshold:number):boolean{return 1+Math.floor(this.random()*99)<threshold;}
+  /**
+   * 追击敌人或自动接近时，连续一段时间没有真实位移就收拢一次。
+   *
+   * 目标追击和默认普攻的直线接近都不走“跟随队长”分支；如果没有这条兜底，
+   * 被剧情障碍封在入口的佣兵会一直重算同一条不可达路线。收拢后短暂停手，
+   * 避免目标仍然不可达时每 1.5 秒重复瞬移。
+   */
+  private trackChaseProgress(actor:Combatant,targetId:string):boolean {
+    if(!this.port.regroup||this.clock<this.chaseRecoveryUntil)return false;
+    const previous=this.chaseProgress;
+    if(!previous||previous.targetId!==targetId){
+      this.chaseProgress={targetId,position:{...actor.position},since:this.clock};
+      return false;
+    }
+    if(Math.hypot(actor.position.x-previous.position.x,actor.position.y-previous.position.y)>=PARTY_FOLLOW_PROGRESS_PX){
+      previous.position={...actor.position};previous.since=this.clock;return false;
+    }
+    // 路径搜索还在跨帧推进时先不算卡住；搜索结束后如果仍没动，计时继续。
+    if(this.search)return false;
+    if(this.clock-previous.since<PARTY_FOLLOW_STUCK_MS)return false;
+    this.chaseProgress=undefined;
+    this.retaliation=undefined;
+    this.path=[];this.search=undefined;this.pathRetryAt=0;this.destination=undefined;
+    this.destinationTarget=undefined;this.destinationRange=undefined;this.nextPathAt=0;
+    this.combatController.cancel(true);this.port.stop();this.port.regroup?.();
+    // 宿主的收拢会调用本控制器的 cancel()；冷却必须放在收拢之后，否则会被清掉。
+    this.chaseRecoveryUntil=this.clock+PARTY_CHASE_RECOVERY_MS;
+    return true;
+  }
   private follow(actor:Combatant,leader:Combatant,range:number,regroup=false):void {
     const capabilities=combatStateCapabilities(actor.states??[]);
     if(!capabilities.canMove||(actor.team!==leader.team&&!capabilities.canAutoApproach)){

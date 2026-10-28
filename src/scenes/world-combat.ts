@@ -2018,8 +2018,10 @@ captureStoryActors():SceneActorState[] {
    */
   settleFriendlyUnitsAroundHero():void {
     if(this.closed||!this.movement||!this.scene.player)return;
-    // 战斗编组期间不做剧情收尾；正在追击的队员也会在下面单独跳过。
-    if(this.focusTargetId||this.app.session.storyWorld?.activeEncounters.length)return;
+    // 剧情末节点 waitEncounter 会先把遭遇置为 active；这表示战斗即将开始，
+    // 不表示佣兵已经交战。因此这里只挡玩家已指派的战斗目标，真正的追击、
+    // 施法单位由下面的逐单位状态检查跳过。
+    if(this.focusTargetId)return;
     for(const id of this.activeParty){
       if(id==='player')continue;
       const ally=combatActor(this.allies,id,actor=>actor.id);

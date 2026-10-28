@@ -97,6 +97,20 @@ test('a settled story playback asks the world to regroup friendly units once',as
   assert.deepEqual(order.slice(-2),['settle','checkpoint'],'收拢后的站位要写进事件检查点');
 });
 
+test('a story that ends into waitEncounter still settles while the encounter is active',async()=>{
+  const battle=node('battle',[],{type:'waitEncounter',encounter:{id:'shin-battle',map:base.start.map,status:'prepared',spawns:[]},
+    outcomes:{won:{script:'demo',node:'after'}}});
+  const after=node('after'),order:string[]=[];
+  let activeAtSettle=-1;
+  const presentation:StoryPresentationPort={begin(){},async execute(){},async finish(){},async release(){}};
+  const world:StoryWorldPort={capture:()=>undefined,restore:async()=>{},checkpoint:()=>{order.push('checkpoint');},project:async()=>{},
+    settle:()=>{activeAtSettle=h.session.storyWorld.activeEncounters.length;order.push('settle');}};
+  const h=harness([battle,after],presentation,world);
+  await h.director.start();
+  assert.equal(activeAtSettle,1,'waitEncounter 已经创建 active 遭遇时，剧情收尾仍要通知世界');
+  assert.deepEqual(order.slice(-2),['settle','checkpoint'],'收拢发生在检查点之前');
+});
+
 test('a hidden quest popup action is skipped without blocking the node',async()=>{
   const popup=node('popup',[],{type:'next',target:{script:'demo',node:'after'}});
   popup.presentation=[{type:'quest-popup',kind:'complete',quest:'quest-61'}];
