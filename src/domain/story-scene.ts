@@ -43,16 +43,21 @@ export function findSceneActor(scene: SceneSnapshot, member: StoryCastMember): S
 }
 
 /**
- * 舞台只负责本幕 cast 点名的战斗演员；正式世界里的其它敌人/召唤物继续由战斗层绘制。
- * 不删除它们，只把快照里的显示关掉——舞台释放后战斗仍按原状态继续。
+ * 舞台只负责本幕 cast 点名的演员；正式世界里的其它敌人、召唤物和佣兵继续由战斗层绘制。
+ * 剧情伙伴（队伍里 source 为 story 的成员）不点名也保留。不删除这些状态，只把快照里的
+ * 显示关掉——舞台释放后战斗仍按原状态继续。
  */
-export function hideUnboundCombatActors(snapshot: StoryStageSnapshot): StoryStageSnapshot {
+export function hideUnboundStageActors(snapshot: StoryStageSnapshot,
+  storyMemberIds: ReadonlySet<string> = new Set()): StoryStageSnapshot {
   const bound = new Set(snapshot.bindings.map(([, id]) => id));
-  // 友方召唤物属于队伍画面，即使本幕没有点名也继续显示；敌对/中立战斗演员必须点名。
-  const partyOwners = new Set(['player', ...snapshot.scene.actors.flatMap(actor => actor.memberId ? [actor.memberId] : [])]);
+  // 演出舞台只显示本幕点名的演员。召唤物一律不出现；佣兵未点名时留在正式世界，
+  // 剧情伙伴即使这一幕没点名也继续显示，避免伙伴在过场里无故消失。
   for (const actor of snapshot.scene.actors){
-    if (!(actor.enemyKey || actor.enemyId)) continue;
-    actor.stageHidden = !bound.has(actor.id) && !(actor.summonedBy && partyOwners.has(actor.summonedBy));
+    const partyMember = !!actor.memberId && actor.memberId !== 'player';
+    const combatant = !!(actor.enemyKey || actor.enemyId);
+    if (!actor.summonedBy && !partyMember && !combatant) continue;
+    const storyPartner = partyMember && storyMemberIds.has(actor.memberId!);
+    actor.stageHidden = !!actor.summonedBy || (!bound.has(actor.id) && !storyPartner);
     if (actor.stageHidden) actor.visible = false;
   }
   return snapshot;

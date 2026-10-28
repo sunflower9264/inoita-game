@@ -1,4 +1,4 @@
-import { applyStorySceneAction, hideUnboundCombatActors, resolveStoryScene, syncStoryScene } from '../domain/story-scene.ts';
+import { applyStorySceneAction, hideUnboundStageActors, resolveStoryScene, syncStoryScene } from '../domain/story-scene.ts';
 import { prepareSceneVisit } from '../domain/scene-visit.ts';
 import { assertScenePlan, planScene } from '../domain/scene-plan.ts';
 import { diffSceneActors } from '../domain/scene-delta.ts';
@@ -233,7 +233,9 @@ export class StoryPresenter implements StoryPresentationPort {
       this.rememberScene(source);
       snapshot = resolveStoryScene({ ...declaration, map }, source);
     }
-    snapshot = hideUnboundCombatActors(snapshot);
+    const party = this.app.session?.party;
+    const storyMembers = new Set(party ? party.activeIds.filter(id => party.get(id)?.source === 'story') : []);
+    snapshot = hideUnboundStageActors(snapshot, storyMembers);
     assertScenePlan(planScene(snapshot.scene, snapshot.bindings));
     if (!this.appearance) throw new Error('剧情玩家外观尚未准备好');
     await this.scene().showStage(snapshot, signal, this.appearance);

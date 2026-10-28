@@ -207,6 +207,8 @@ locked → available → active → ready → completed
 
 `StoryStageScene` 只负责画。它不应该直接修改 `Session` 的任务或世界；演出结束时的提交由导演完成。
 
+舞台只画本幕 `cast` 点名的演员。正式世界里的召唤物一律不进入演出画面；普通佣兵未点名时也留在正式世界。队伍里 `source` 为 `story` 的剧情伙伴例外，即使这一幕没有点名也继续显示，避免过场里伙伴突然消失。
+
 ## ActorRef、ScenePlan 与演员身份
 
 主要文件：`src/domain/actor-ref.ts`、`src/domain/actor-census.ts`、`src/domain/scene-plan.ts`、`src/domain/scene-snapshot.ts`、`src/domain/story-scene.ts`
