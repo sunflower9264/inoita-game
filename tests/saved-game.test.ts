@@ -19,6 +19,24 @@ function record(index=0){
   return captureSaveGame(session,world,saveSummary(session,{id:map.id,name:map.name},{name:character.name,portrait:'assets/ui/menus/character-kiyan.png'}));
 }
 
+test('format 36 saves keep their cached stage appearances through the upgrade',()=>{
+  const saved=record(),script=Object.keys(content.campaign.scripts)[0],definition=content.campaign.scripts[script];
+  const actor=content.world.actors[content.campaign.start.actor]!;
+  const map=saved.world.location.map;
+  saved.format=36;
+  const runtime=saved.session.runtime as unknown as {version:number;runs:unknown[]};
+  runtime.version=2;
+  runtime.runs=[{id:'legacy-visual-stage',script,occurrence:'legacy-visual',cursor:{script,node:definition.entry},status:'running',
+    stage:{type:'stage',map,x:saved.world.location.x,y:saved.world.location.y,facing:'west',playerVisible:true,cast:[],
+      bindings:[['player','player']],scene:{map,actors:[{id:'player',actor:actor.id,memberId:'player',
+        x:saved.world.location.x,y:saved.world.location.y,facing:'west',visible:true,appearance:structuredClone(actor)}]}}}];
+  const before=structuredClone(saved),candidate=prepareSavedGame(saved,content);
+  const stage=candidate.session.runtimeState.runs[0]!.stage!;
+  assert.equal(candidate.session.runtimeState.version,2,'旧档保留原来的完整快照版本');
+  assert.deepEqual(stage.scene.actors[0]!.appearance,actor,'旧档的缓存外观仍可用于恢复');
+  assert.deepEqual(saved,before,'升级不改写槽里的原件');
+});
+
 test('each class restores into a fresh candidate and retains its destination, resources and inventory',()=>{
   for(let index=0;index<content.storyClasses.classes.length;index++){
     const saved=record(index),before=structuredClone(saved),candidate=prepareSavedGame(saved,content);

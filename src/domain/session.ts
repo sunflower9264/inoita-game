@@ -23,6 +23,7 @@ import { evaluateStoryCondition, storyConditionReferences, type StoryCondition, 
 import { StoryWorldState, type StoryWorldSnapshot } from './story-world.ts';
 import type { StoryCommand } from './story-graph.ts';
 import { StoryRuntime, type StoryRuntimeSnapshot } from './story-runtime.ts';
+import { toPlaybackCheckpoint } from './playback-checkpoint.ts';
 import type { StoryPlayerState } from './story-interface.ts';
 import { LOGIC_FRAME_MS, type BattleCatalog } from './battle.ts';
 import { BattleCharacter, type BattleCharacterState, type CharacterStatsCatalog } from './character-stats.ts';
@@ -284,11 +285,12 @@ export class Session {
   }
 
   captureState():SessionState { return this.captureStateWith(this.questBook.captureState()); }
-  /** 存档用：GM 调试钉住只是现场状态，不写进玩家存档。 */
+  /** 存档用：GM 调试钉住只是现场状态；舞台演员外观也不是持久数据，写档前剥离。 */
   capturePersistentState():SessionState {
     const state=this.captureState();
     if(state.questBook.debugPins?.length)delete state.questBook.debugPins;
     delete state.debugFocusQuest;
+    state.runtime=toPlaybackCheckpoint(state.runtime);
     return state;
   }
   /**
@@ -483,7 +485,7 @@ export class Session {
         // 捕捉目标只在这次进图有效：`place` 按 `scope` 决定访问寿命，传进命令里的 `mapVisit`
         // 会被它覆盖；不带 scope 的话，离图后 NPC 还留在世界里，可捕捉状态却已随进图清掉。
         {type:'world',command:{kind:'place',scope:'visit',entity:{id:'quest-target:'+source.id,map:source.map,actor:match.change.actor,
-          characterId:match.quest.goals.find(goal=>goal.id===match.change.goal)?.characterId,
+          characterId:match.quest.goals.find(goal=>goal.id===match.change.goal)?.characterId,authority:'story',
           x:source.x,y:source.y,visible:true,hint:match.change.interactText||match.change.changedText}}},
       ]);
       // 转换不会调用原版死亡重置；本次地图仍占用源槽，离图后重新登记。

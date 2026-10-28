@@ -5,6 +5,7 @@ import test from 'node:test';
 import { BattleCharacter, type CharacterStatsCatalog } from '../src/domain/character-stats.ts';
 import type { BattleCatalog } from '../src/domain/battle.ts';
 import type { Campaign } from '../src/domain/campaign.ts';
+import type { ActorDefinition } from '../src/domain/content.ts';
 import type { ItemCatalog } from '../src/domain/items.ts';
 import type { CompanionCatalog } from '../src/domain/party.ts';
 import { Session, DEFAULT_ENEMY_RESPAWN_MS } from '../src/domain/session.ts';
@@ -167,10 +168,11 @@ test('a debug-pinned quest is stripped from the player save and restores at its 
   assert.equal(loaded.status('quest-197'),'ready','读回来是正常任务模型的状态');
 });
 
-test('current saves preserve complete story scenes and reject actor-only scene checkpoints',()=>{
+test('current saves keep playback state but resolve actor appearances again on load',()=>{
   const session=createSession(),script=Object.keys(campaign.scripts)[0],definition=campaign.scripts[script];
+  const portalAppearance:ActorDefinition={id:'portal',name:'传送门',description:'',clips:{},portrait:null};
   const stage=stageSnapshot({type:'stage',...campaign.start,facing:'south',playerVisible:true,cast:[]},[
-    {id:'entity:portal',actor:'portal',x:48,y:64,facing:'south',visible:true},
+    {id:'entity:portal',actor:'portal',x:48,y:64,facing:'south',visible:true,appearance:portalAppearance,clip:'idle-south'},
     {id:'entity:spring',actor:'spring-empty',x:80,y:64,facing:'south',visible:true},
   ]);
   stage.scenes=[{map:'training-dungeon-one',actors:[
@@ -182,10 +184,16 @@ test('current saves preserve complete story scenes and reject actor-only scene c
   runtime.sequence=1;session.runtimeState=runtime;
   const slots=new SaveSlots<World>(memory());slots.write(0,record(session));
   const saved=slots.inspect(0);assert.equal(saved.kind,'ok');if(saved.kind!=='ok')return;
-  assert.equal(saved.game.format,SAVE_FORMAT);assert.equal(saved.game.session.runtime.version,2);
+  assert.equal(saved.game.format,SAVE_FORMAT);assert.equal(saved.game.session.runtime.version,3);
+  const savedStage=saved.game.session.runtime.runs[0]!.stage!;
+  assert.equal(savedStage.scene.actors.find(actor=>actor.id==='entity:portal')!.appearance,undefined,
+    '存档不重复保存可重建的完整外观');
+  assert.equal(savedStage.scene.actors.find(actor=>actor.id==='entity:portal')!.clip,'idle-south',
+    '演出姿态仍留在检查点里');
   const restored=createSession();restoreSaveGame(restored,saved.game);
-  assert.deepEqual(restored.runtimeState.runs[0].stage,stage);
-  delete (saved.game.session.runtime.runs[0].stage as Partial<typeof stage>).scene;
+  const expected=structuredClone(stage);delete expected.scene.actors.find(actor=>actor.id==='entity:portal')!.appearance;
+  assert.deepEqual(restored.runtimeState.runs[0]!.stage,expected);
+  delete (saved.game.session.runtime.runs[0]!.stage as Partial<typeof stage>).scene;
   assert.throws(()=>restoreSaveGame(createSession(),saved.game),/场景快照/);
 });
 

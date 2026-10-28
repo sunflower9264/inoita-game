@@ -20,7 +20,8 @@ interface StoryRun {
 }
 interface StoryPendingOccurrence { occurrence: StoryOccurrence; nextEventIndex: number }
 export interface StoryRuntimeSnapshot {
-  version: 2;
+  /** 2 = 运行中的完整快照；3 = 存档检查点，演员外观已剥离。 */
+  version: 2 | 3;
   sequence: number;
   runs: StoryRun[];
   completedEvents: string[];
@@ -124,7 +125,7 @@ export class StoryRuntime {
   runScript(id: string): string | undefined { return this.state.runs.find(run => run.id === id)?.cursor.script; }
   prepareRestore(snapshot: StoryRuntimeSnapshot): StoryRuntimeSnapshot {
     const result = clone(snapshot);
-    if (result.version !== 2 || !Number.isSafeInteger(result.sequence) || result.sequence < 0) throw new Error('剧情检查点版本或序号无效');
+    if ((result.version !== 2 && result.version !== 3) || !Number.isSafeInteger(result.sequence) || result.sequence < 0) throw new Error('剧情检查点版本或序号无效');
     const ids = new Set<string>();
     const activeEvents = new Set<string>();
     for (const run of result.runs) {

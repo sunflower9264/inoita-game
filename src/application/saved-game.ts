@@ -67,6 +67,10 @@ const SAVE_UPGRADES:Record<number,SaveUpgrade>={
     }
     game.format=36;
   },
+  /** 37 只改变写档方式：舞台外观不再写入，读档时重新解析。旧档里的完整外观仍然可读。 */
+  36:game=>{
+    game.format=37;
+  },
 };
 function upgradeSavedGame(game:SaveGame<StoryWorldViewSnapshot>):SaveGame<StoryWorldViewSnapshot>{
   if(game.format===SAVE_FORMAT)return game;
