@@ -21,7 +21,7 @@
 | `handoverItems` | 完成时交回物品；`quantity` 扣固定数量，`all-matching` 扣当前所有匹配物品 |
 | `itemCompletion: equipped-item-shortcut` | 该任务采用有序目标的穿戴例外；通常物品任务按全部目标判断 |
 
-`QuestBook.plan` 预备接取、交付或事实更新，`Session` 负责实际物品、经验及金币提交。接取物品和交回物品分别配置；奖励按主角职业选择，实际结算记录供完成窗口使用。
+`QuestBook.plan` 预备接取、交付或事实更新，`Session` 负责实际物品、经验及金币提交。接取物品和交回物品分别配置；奖励按主角职业选择，实际结算记录供完成窗口使用。体验版把任务奖励里的金币和敌人/宝箱掉落的金币统一按 10 倍发放；剧情里的 `money-give`、商店出售价格和 GM 加金币不受影响。
 
 `events` 统一声明 `source`、`script`、`condition` 和可选 `priority`。来源包括 start、map-entry、region、near、interaction、quest、inventory、choice、battle、event。区域需要 `map` 和 `region`，省略 key 时按事件 ID 触发；交互可限定 `entity`，任务及物品可用 `key` 限定对象。一般事件成功后播放一次；`repeat` 允许新发生再次触发。同一发生会按优先级依次重查候选条件，延期不完成事件。
 

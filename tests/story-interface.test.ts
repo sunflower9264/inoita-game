@@ -113,7 +113,7 @@ test('main quest rewards grant experience, coins and class armor once',()=>{
     session.accept('knight-uniform');
     for(const spawn of spiritSpawns){session.enemyDefeated(spawn);dropSpirit(session,spawn);collectSpirit(session,spawn);}
     assert.equal(session.complete('knight-uniform'),true);
-    assert.equal(session.money,20);
+    assert.equal(session.money,200);
     assert.equal(session.itemCount(expectedArmor),1);
     for(const other of new Set(Object.values(armor)))if(other!==expectedArmor)assert.equal(session.itemCount(other),0);
     assert.equal(hero.level,expected.level);

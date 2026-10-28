@@ -143,6 +143,8 @@ locked → available → active → ready → completed
 
 任务完成不等于“演出播完”。任务可能需要移动、触发、战斗、交付；必须以 `QuestBook` 的状态为准。
 
+体验版的金币获取有一套统一的放大规则：敌人和宝箱掉落、任务金币奖励都按 10 倍发放，`src/domain/economy.ts` 是这份倍率的唯一来源。剧情 `money-give`、商店出售和 GM 加金币不走这条倍率。
+
 ## StoryWorld：永久世界
 
 主要文件：`src/domain/story-world.ts`

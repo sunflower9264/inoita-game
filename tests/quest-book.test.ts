@@ -54,7 +54,7 @@ test('original quest 223 unlocks after accepting both predecessors, without requ
   assert.equal(book.status('quest-223'), 'available'); assert.equal(book.status('quest-215'), 'active');
   commit({ type: 'accept', quest: 'quest-223' }); assert.equal(inventory.get('hunters-possessions'), 1);
   assert.equal(book.status('quest-223'), 'ready');
-  assert.deepEqual(commit({ type: 'complete', quest: 'quest-223' }).rewards[0].reward, { experience: 12540, money: 510, items: [] });
+  assert.deepEqual(commit({ type: 'complete', quest: 'quest-223' }).rewards[0].reward, { experience: 12540, money: 5100, items: [] });
 });
 
 test('original quest 168 completes only on successful recruitment using the warrior emblem', () => {
@@ -103,7 +103,7 @@ test('repeated multi-goal quests reject old cycles and duplicates, while respawn
   commit({ type: 'fact', fact: { kind: 'interact', target: 'nest', occurrence: { source: 'interaction', sequence: 1 } } });
   assert.equal(book.status('repeat-hunt'), 'ready');
   const settlement = commit({ type: 'complete', quest: 'repeat-hunt', cycle: 0 });
-  assert.deepEqual(settlement.rewards, [{ quest: 'repeat-hunt', cycle: 0, reward: { experience: 10, money: 5, items: [] } }]);
+  assert.deepEqual(settlement.rewards, [{ quest: 'repeat-hunt', cycle: 0, reward: { experience: 10, money: 50, items: [] } }]);
   assert.equal(book.status('repeat-hunt'), 'available');
   assert.equal(book.state('repeat-hunt')!.cycle, 1); assert.equal(book.completedCycles('repeat-hunt'), 1);
   assert.throws(() => book.plan({ type: 'complete', quest: 'repeat-hunt', cycle: 0 }), /周期/);

@@ -19,7 +19,7 @@ test('fixed rewards and coin amount use independent death rolls',()=>{
   const rule:EnemyDropRule={level:30,pool:'ordinary',rolls:1,chances:{...chances(),money:9999,fixed:9999},
     fixed:[{item:'scale',weight:400},{item:'cloak',weight:600}]};
   assert.deepEqual(rollEnemyDrops(catalog(rule),'enemy',30,random(0,.5,0,.75)),[
-    {kind:'money',amount:21},{kind:'item',item:'cloak',quantity:1}
+    {kind:'money',amount:210},{kind:'item',item:'cloak',quantity:1}
   ]);
 });
 

@@ -1,5 +1,6 @@
 import type { QuestGroupDefinition, QuestReward, QuestRewardReceipt, QuestStatus } from './content.ts';
 import { evaluateStoryCondition, storyConditionReferences, type StoryCondition, type StoryConditionContext } from './story-condition.ts';
+import { moneyGain } from './economy.ts';
 
 /**
  * 已接取的三个状态。`QuestBook.accepted` 与任务日志的过滤共用这一份，
@@ -359,7 +360,7 @@ export class QuestBook {
       for (const [item, quantity] of required) if (count(item) < quantity) throw new Error(`交付物品 ${item} 不足`);
       for (const [item, quantity] of required) { balances.set(item, count(item) - quantity); add(removals, item, quantity); }
       const reward = quest.rewards;
-      const receipt: QuestRewardReceipt = { experience: reward?.experience ?? 0, money: reward?.money ?? 0,
+      const receipt: QuestRewardReceipt = { experience: reward?.experience ?? 0, money: moneyGain(reward?.money ?? 0),
         items: (reward?.items ?? []).filter(item => !item.classIds || !!context.classId && item.classIds.includes(context.classId))
           .map(({ item, quantity }) => ({ item, quantity })) };
       rewards.push({ quest: quest.id, cycle: state.cycle, reward: receipt });

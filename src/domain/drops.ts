@@ -2,6 +2,7 @@ import type { ItemCatalog, ItemInstance } from './items.ts';
 import type { ChestKind } from './content.ts';
 import type { CharacterStatsCatalog, EquipmentGradeSeed } from './character-stats.ts';
 import { rollGrade, staticGrade, type GradeProfile } from './equipment-grade.ts';
+import { moneyGain } from './economy.ts';
 
 type DropCategory = 'consumable' | 'upgrade' | 'crafting' | 'misc';
 type DropChance = 'money' | 'equipment' | DropCategory | 'unique' | 'fixed';
@@ -298,7 +299,7 @@ function rollDropRule(catalog:DropCatalog,rule:EnemyDropRule,playerLevel:number,
     if(!success(rule.chances[kind],level,playerLevel,random,bonus??0,loot?.itemChance??0))continue;
     if(kind==='money'){
       const percent=50+draw(random,51);
-      result.rewards.push({kind:'money',amount:Math.max(1,3+Math.floor(4*level*percent/500))});
+      result.rewards.push({kind:'money',amount:moneyGain(Math.max(1,3+Math.floor(4*level*percent/500)))});
     }else if(kind==='equipment')add(pickEquipment(catalog,level,random,loot?.maxItemLevel),true,false);
     else if(kind==='unique')add(pickUnique(catalog,level,random,loot?.maxItemLevel),false,true);
     else if(kind==='fixed'){
