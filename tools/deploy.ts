@@ -43,7 +43,8 @@ async function remoteBuild(base: string): Promise<{ meta?: BuildMeta; error?: st
 }
 
 function parseArgs(argv: string[]): { base: string; skipBuild: boolean } {
-  let base = 'http://127.0.0.1:4002', skipBuild = false;
+  // 本机 4002 现在由 nginx 终止 TLS，再转发到 127.0.0.1:4004 的静态服务。
+  let base = process.env.STORY_DEPLOY_URL ?? 'https://catgo.online:4002', skipBuild = false;
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index]!;
     if (value === '--skip-build') skipBuild = true;
@@ -89,12 +90,12 @@ async function main(): Promise<number> {
   const remote = await remoteBuild(base);
   if (!remote.meta) {
     console.error(`构建完成，但 ${base} 的打包服务没有响应（${remote.error ?? '未知原因'}）。`);
-    console.error('启动：systemctl --user start inoitia-game，或 cd story-game && npm run serve');
+    console.error('启动：systemctl --user restart inoita-game，或在项目根目录运行 npm run serve');
     return 2;
   }
   const compared = compareBuild(local, remote.meta);
   if (!compared.ok) {
-    console.error(`4002 仍在提供旧构建：${compared.reason}`);
+    console.error(`${base} 仍在提供旧构建：${compared.reason}`);
     console.error('如果服务刚启动或构建刚刚替换，请重跑本脚本；否则检查服务是否指向 dist/。');
     return 3;
   }

@@ -65,16 +65,17 @@ npm test -- tests/example.test.ts
 
 | 端口 | 服务 | 启动方式 | 地址 |
 |---|---|---|---|
-| 4002 | 打包后的静态服务（`dist/`） | `npm run serve` | http://localhost:4002/ |
+| 4002 | HTTPS 入口（nginx 终止 TLS，转发到 4004） | 系统 nginx | https://catgo.online:4002/ |
+| 4004 | 打包后的静态服务（`dist/`，仅本机） | `npm run serve` | http://127.0.0.1:4004/ |
 | 4003 | Vite 开发服务（读源码） | `npm run dev` | http://localhost:4003/ |
 
 端口上已经有监听就说明服务已经启动，直接访问即可，不要再起一个。重复启动只会撞端口失败。不确定当前跑着什么时先看：
 
 ```bash
-ss -ltnp | grep -E '4002|4003'
+ss -ltnp | grep -E '4002|4003|4004'
 ```
 
-在根目录运行 `npm run build` 生成 `dist/`；`npm run deploy` 会做类型检查、构建，并核对 4002 正在提供的版本。4002 服务直接读磁盘，构建完成即生效，不需要重启；只有静态服务自身改动才需要重启。
+在根目录运行 `npm run build` 生成 `dist/`；`npm run deploy` 会做类型检查、构建，并通过 `https://catgo.online:4002` 核对正在提供的版本。4004 静态服务直接读磁盘，构建完成即生效，不需要重启；只有静态服务自身改动才需要重启。
 
 ## 5. 目录导航
 
@@ -96,6 +97,7 @@ public/                原样复制进构建产物的静态资源和内容
   assets/              图片与音频素材
 tests/                 单元测试（*.test.ts）与独立构建验证
 tools/                 构建、校验、调试现场表生成、静态服务、APK 打包
+deploy/                nginx 站点等部署配置
 docs/                  架构、剧情创作、音频、部署、调试与诊断
 android/               Android WebView 壳（可选）
 .agents/skills/        Phaser 4 开发技能
@@ -113,8 +115,8 @@ npm run debug-start:check          # 只检查 GM 任务现场表是否过期
 npm run test:all                   # 用户明确要求全量单元测试时
 npm run test:standalone            # 独立安装、类型检查与构建验收
 npm run build                      # 校验并替换 dist/
-npm run deploy                     # 类型检查 + 构建 + 核对 4002 版本
-npm run serve                      # 前台启动打包静态服务（默认 4002）
+npm run deploy                     # 类型检查 + 构建 + 核对 HTTPS 入口版本
+npm run serve                      # 前台启动打包静态服务（默认 4004）
 npm run dev                        # 开发服务器 http://localhost:4003/
 npm run apk                        # 打包 Android 安装包
 npm run verify:apk                 # 校验 APK 产物

@@ -329,8 +329,8 @@ export interface StartedServer { server: Server; port: number }
 
 export async function startGameServer(options: GameServerOptions & { port?: number; host?: string }): Promise<StartedServer> {
   const server = createGameServer(options);
-  const port = options.port ?? 4002;
-  const host = options.host ?? '0.0.0.0';
+  const port = options.port ?? 4004;
+  const host = options.host ?? '127.0.0.1';
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject);
     server.listen(port, host, () => {
@@ -342,7 +342,7 @@ export async function startGameServer(options: GameServerOptions & { port?: numb
 }
 
 function cliOptions(argv: string[]): { port: number; host: string } {
-  let port = 4002, host = '0.0.0.0';
+  let port = 4004, host = '127.0.0.1';
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index]!;
     if (value === '--port') port = Number(argv[++index]);
@@ -363,7 +363,7 @@ if (invoked) {
     const stop = () => { server.close(() => process.exit(0)); setTimeout(() => process.exit(1), 5000).unref(); };
     process.on('SIGINT', stop); process.on('SIGTERM', stop);
   }).catch(error => {
-    console.error(`4002 打包服务启动失败：${error instanceof Error ? error.message : String(error)}`);
+    console.error(`打包服务启动失败：${error instanceof Error ? error.message : String(error)}`);
     process.exit(1);
   });
 }

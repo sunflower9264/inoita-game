@@ -44,4 +44,4 @@ npm run validate:content
 npm run build
 ```
 
-实际画面和战斗观感在游戏入口（默认 4002）验收。
+实际画面和战斗观感在游戏入口 https://catgo.online:4002/ 验收。

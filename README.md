@@ -21,8 +21,8 @@ npm run dev
 ```bash
 npm run dev                 # Vite 开发服务，4003
 npm run build               # 校验内容后构建到 dist/
-npm run serve               # 前台静态服务，默认 4002
-npm run deploy              # 类型检查 + 构建 + 核对 4002 版本
+npm run serve               # 前台静态服务，默认 4004
+npm run deploy              # 类型检查 + 构建 + 核对 HTTPS 入口版本
 npm run typecheck           # 只做 TypeScript 类型检查
 npm test -- tests/combat.test.ts   # 类型检查 + 指定测试文件
 npm run test:all            # 全量单元测试
@@ -32,7 +32,7 @@ npm run apk                 # 打包 Android 安装包
 npm run verify:apk          # 校验 APK 产物
 ```
 
-`npm run deploy` 需要本机 4002 静态服务已经在运行。构建产物在 `dist/`，服务直接读磁盘，构建完成即生效。
+本机访问地址是 https://catgo.online:4002/：nginx 终止 TLS 后转发到 127.0.0.1:4004 的静态服务。`npm run deploy` 需要 nginx 和 4004 静态服务都在运行。构建产物在 `dist/`，服务直接读磁盘，构建完成即生效。
 
 ## 目录结构
 
