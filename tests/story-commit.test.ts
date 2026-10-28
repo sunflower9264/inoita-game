@@ -27,6 +27,17 @@ const placesOf = (commands: readonly StoryCommand[], id = ENTITY.id): number =>
   commands.filter(command => command.type === 'world' && command.command.kind === 'place'
     && command.command.entity.id === id).length;
 
+test('a stage cast that also names a party member removes the map NPC copy', () => {
+  const stage = stageSnapshot({type:'stage',map:ENTITY.map,x:1,y:2,facing:'south',playerVisible:true,
+    cast:[{id:'olaf',actor:'olaf',characterId:'npc-249',memberId:'story-mercenary-olaf',x:1,y:2,facing:'south',visible:true}]});
+  const commands = storyCommitCommands(commit([], stage), world(), []);
+  assert.ok(commands.some(command => command.type==='world' && command.command.kind==='remove-character'
+    && command.command.characterId==='npc-249' && command.command.map===ENTITY.map && command.command.all));
+  const beforeJoin = storyCommitCommands(commit([], stage), world(), [], () => false);
+  assert.equal(beforeJoin.some(command => command.type==='world' && command.command.kind==='remove-character'
+    && command.command.characterId==='npc-249'), false, '尚未加入队伍时不隐藏地图 NPC');
+});
+
 test('implicit stage bindings do not revive an entity the script removed', () => {
   const state = world();
   state.apply({ kind: 'remove', id: ENTITY.id });

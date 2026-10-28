@@ -367,7 +367,8 @@ export class StoryDirector {
     return { choice: value, stage: this.presenting ? this.presentation?.getStageState?.() : undefined };
   }
   private commit(commit: StoryNodeCommit): void {
-    const commands=storyCommitCommands(commit,this.session.storyWorld,this.presenting?this.presentation?.getWorldChanges?.()??[]:[]);
+    const commands=storyCommitCommands(commit,this.session.storyWorld,this.presenting?this.presentation?.getWorldChanges?.()??[]:[],
+      memberId=>!!this.session.party?.get(memberId));
     const run=commit.checkpoint.runs.find(candidate=>candidate.id===commit.runId);
     const stage=commit.stage??run?.stage;
     const explicitTravel=commit.commands.flatMap(command=>command.type==='travel'?[command.destination]

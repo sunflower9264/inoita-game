@@ -3,7 +3,8 @@ import type { StoryNodeCommit } from './story-runtime.ts';
 import type { StoryWorldState, StoryEntityState } from './story-world.ts';
 
 /** 正常演出和调试预演共用角色落位、转场及事件完成的提交规则。 */
-export function storyCommitCommands(commit: StoryNodeCommit, world: StoryWorldState, changes: readonly StoryEntityState[]): StoryCommand[] {
+export function storyCommitCommands(commit: StoryNodeCommit, world: StoryWorldState, changes: readonly StoryEntityState[],
+  hasPartyMember: (memberId: string) => boolean = () => true): StoryCommand[] {
   let commands = [...commit.commands];
   const run = commit.checkpoint.runs.find(candidate => candidate.id === commit.runId);
   const explicitTravel = commands.some(command => command.type === 'travel' || command.type === 'world' && command.command.kind === 'travel');
@@ -27,6 +28,12 @@ export function storyCommitCommands(commit: StoryNodeCommit, world: StoryWorldSt
     if(existing?.map&&existing.map!==map)return [projected];
     return [{type:'world',command:{kind:'remove',id:previousId}},projected];
   });
+  // 舞台同时点名了队伍成员和人物编号，说明这个 NPC 已经由队伍系统接管。
+  // 收尾时把同图的地图副本隐藏，否则回到正式地图会看到队伍成员和旧 NPC 两份。
+  for (const member of stage?.cast ?? []) {
+    if (!member.memberId || !member.characterId || !hasPartyMember(member.memberId)) continue;
+    commands.push({type:'world',command:{kind:'remove-character',characterId:member.characterId,map:stage!.map,all:true}});
+  }
   const bindings: StoryCommand[] = [];
   for (const entity of changes) {
     if (!entity.map || !entity.actor || entity.x === undefined || entity.y === undefined) throw new Error('绑定剧情角色缺少地图与位置');
