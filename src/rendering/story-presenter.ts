@@ -131,6 +131,7 @@ export class StoryPresenter implements StoryPresentationPort {
           && change.before.facing === actor.facing && change.before.visible === actor.visible) continue;
         changes.push({ id: actor.worldEntityId, map, actor: actor.actor,
           ...(actor.characterId ? { characterId: actor.characterId } : {}),
+          ...(actor.authority ? { authority: actor.authority } : {}),
           x: actor.x, y: actor.y, facing: actor.facing, visible: actor.visible });
       }
     }

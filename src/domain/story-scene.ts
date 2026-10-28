@@ -2,6 +2,7 @@ import type { SceneActorState, SceneSnapshot } from './scene-snapshot.ts';
 import type { PerformanceAction, StoryCastMember, StoryStage, StoryStageSnapshot } from './story-performance.ts';
 import {faceTarget} from './basic-attack.ts';
 import {assertUniqueActorInstances} from './actor-census.ts';
+import {placementAuthority} from './actor-authority.ts';
 
 /**
  * 先按实例找人，再按人物/队员/怪物身份查找。外观只能用于没有身份的手写演员。
@@ -18,9 +19,9 @@ export function findSceneActor(scene: SceneSnapshot, member: StoryCastMember): S
   const positioned = matches.filter(actor => !actor.unpositioned);
   const candidates = positioned.length ? positioned : matches;
   if (candidates.length <= 1) return candidates[0];
-  // 原版位置登记（quest-npc-located-*）是该角色在这张图上的正式副本；
+  // 位置登记（authority=registered）是该角色在这张图上的正式副本；
   // 旧过场或静态地图里留下的同名副本应让位，不能和登记副本同时出现。
-  const registered = candidates.filter(actor => actor.worldEntityId?.startsWith('quest-npc-located-'));
+  const registered = candidates.filter(actor => placementAuthority(actor) === 'registered');
   if (registered.length === 1) return registered[0];
   const hasDeclarationPosition = !member.unpositioned && Number.isFinite(member.x) && Number.isFinite(member.y)
     && !(member.x === 2048 && member.y === 2048);
@@ -66,6 +67,7 @@ function newId(scene: SceneSnapshot, alias: string): string {
 
 function actorFrom(member: StoryCastMember, id: string): SceneActorState {
   return { id, actor: member.actor, characterId: member.characterId, worldEntityId: member.worldEntityId,
+    authority: member.worldEntityId ? undefined : 'story',
     memberId: member.memberId, enemyId: member.enemyId, x: member.x, y: member.y, facing: member.facing,
     visible: member.visible, unpositioned: member.unpositioned };
 }
@@ -157,7 +159,7 @@ export function resolveStoryScene(declaration: StoryStage, source: SceneSnapshot
   for (const member of declaration.cast) {
     const boundId = bindings.find(([alias]) => alias === member.id)?.[1];
     const actor = boundId ? scene.actors.find(candidate => candidate.id === boundId) : undefined;
-    const registered = !!actor?.worldEntityId?.startsWith('quest-npc-located-');
+    const registered = !!actor && placementAuthority(actor) === 'registered';
     // 只有真正的队伍实例（member: 前缀）才盖过地图副本；尚未入队时创建的是
     // story: 占位演员，此时地图上的 NPC 仍然应该按剧情正常显示。
     if (!actor || (!registered && (!actor.id.startsWith('member:') || actor.memberId === 'player'))) continue;

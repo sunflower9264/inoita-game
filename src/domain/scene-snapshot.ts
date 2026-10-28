@@ -1,4 +1,4 @@
-import type {ActorDefinition, ClipName, EntityPlacement, Facing} from './content.ts';
+import type {ActorDefinition, ClipName, EntityPlacement, Facing, PlacementAuthority} from './content.ts';
 import type {EnemyRoster} from './enemy-roster.ts';
 import {assertUniqueActorInstances} from './actor-census.ts';
 
@@ -8,6 +8,8 @@ export interface SceneActorState {
   actor: string;
   characterId?: string;
   worldEntityId?: string;
+  /** 世界实体由谁放下；用于区分位置登记、任务 NPC 和演出实例。 */
+  authority?: PlacementAuthority;
   memberId?: string;
   enemyKey?: string;
   enemyId?: string;
@@ -65,6 +67,7 @@ export function validateSceneSnapshot(value: unknown): asserts value is SceneSna
     ids.add(actor.id as string);
     for (const key of ['characterId','worldEntityId','memberId','enemyKey','enemyId','summonedBy'])
       if (actor[key] !== undefined && !nonempty(actor[key])) at(`${key} 必须是非空字符串`);
+    if (actor.authority !== undefined && !['registered','npc','story','static'].includes(actor.authority as string)) at('authority 无效');
     for (const key of ['flip','unpositioned','removed','animationPlaying','stageHidden'])
       if (actor[key] !== undefined && typeof actor[key] !== 'boolean') at(`${key} 必须是布尔值`);
     if (actor.alpha !== undefined && (!finite(actor.alpha) || actor.alpha < 0 || actor.alpha > 1)) at('alpha 必须在 0..1');

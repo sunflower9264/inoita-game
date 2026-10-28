@@ -4,6 +4,7 @@ import {rollPlacement} from './chests.ts';
 import type {EntityPlacement, WorldIndex, WorldMap} from './content.ts';
 import type {DropCatalog} from './drops.ts';
 import {authoredPlacements, baseMapEntities, placementMayBeInactive, resolveMapActors} from './map-placement.ts';
+import {placementAuthority} from './actor-authority.ts';
 import {NavigationWorld, mirroredCollision} from './navigation-world.ts';
 import {choosePartyLanding} from './party-placement.ts';
 import {QuestEnemyWatch} from './quest-enemies.ts';
@@ -27,8 +28,9 @@ export function generateMapEntities(map:WorldMap,campaign:Campaign,springs:Sprin
   active:(entity:EntityPlacement)=>boolean=()=>true):EntityPlacement[]{
   const authored=authoredPlacements(map,campaign);
   const placed=baseMapEntities(map,campaign,active)
-    .map(entity=>rollPlacement(entity,random)).filter(entity=>entity!==undefined);
-  return [...placed,...authored].map(entity=>entity.spring
+    .map(entity=>rollPlacement(entity,random)).filter(entity=>entity!==undefined)
+    .map(entity=>({...entity,authority:'static' as const}));
+  return [...placed,...authored.map(entity=>({...entity,authority:placementAuthority(entity)}))].map(entity=>entity.spring
     ?{...entity,actor:rollSpring(springs,level,random).id}:{...entity});
 }
 
@@ -54,6 +56,7 @@ export function prepareSceneVisit(inputs:SceneVisitInputs,map:WorldMap,player:Sc
     const visible=session.visible(entity)&&session.storyWorld.actorVisible(map.id,entity.actor,entity.characterId)
       &&!(original.chest&&session.chests.isOpened(map.id,entity.id,session.storyWorld.isPlaced(entity.id)));
     return {id:`entity:${entity.id}`,actor:entity.actor,worldEntityId:entity.id,characterId:entity.characterId,
+      authority:placementAuthority(entity),
       x:entity.x,y:entity.y,
       facing:session.storyWorld.entity(entity.id)?.facing??(entity.flip&&appearance.clips['idle-east']?'east':'south'),
       visible,flip:entity.flip,

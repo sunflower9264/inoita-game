@@ -3,6 +3,12 @@
 /** 人物朝向，对应素材的四个动作方向。 */
 export type Facing = 'north' | 'south' | 'east' | 'west';
 
+/**
+ * 一个可见对象是谁放下的：位置登记、任务 NPC、演出实例或地图静态对象。
+ * 旧内容没有写这个字段时，读取层按 ID 解码一次。
+ */
+export type PlacementAuthority = 'registered' | 'npc' | 'story' | 'static';
+
 /** 出口可以要求人物按某个朝向进入，`any` 表示不限定。 */
 export type ExitFacing = Facing | 'any';
 
@@ -173,6 +179,8 @@ export interface VisibilityRules {
 /** 地图或剧情放下的一个人物。剧情放置的会覆盖地图上同名的静态人物。 */
 export interface EntityPlacement extends VisibilityRules {
   actor: string;
+  /** 这个对象由谁放下；缺省时由 `placementAuthority` 按 ID 兼容解码。 */
+  authority?: PlacementAuthority;
   /** 人物身份；多个不同人物可以共用同一套 actor 素材。 */
   characterId?: string;
   x: number;

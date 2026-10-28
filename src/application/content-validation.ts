@@ -31,6 +31,7 @@ import type { StateApplicationRules } from '../domain/state-application.ts';
 import type { BuffReactionBuff } from '../domain/buff-reactions.ts';
 import { STORY_TRIGGER_SOURCES, validateStoryGraph, type StoryCommand, type StoryNodeRef } from '../domain/story-graph.ts';
 import { storyConditionReferences, type StoryCondition } from '../domain/story-condition.ts';
+import { placementAuthority } from '../domain/actor-authority.ts';
 
 type Check = (value: unknown, path: string) => void;
 function requireValue(condition: unknown, path: string, message: string): asserts condition {
@@ -466,7 +467,7 @@ const storyCondition:Check=(v,p)=>{
   requireValue(checks[type],p,'未定义剧情条件');checks[type](v,p);
 };
 const visibility={id:text,condition:optional(storyCondition)};
-const entity={...visibility,actor:text,characterId:optional(text),x:number,y:number,flip:optional(boolean),name:optional(text),hint:optional(text),objective:optional(text),collectible:optional(boolean),afterInteractScript:optional(text),
+const entity={...visibility,actor:text,characterId:optional(text),authority:optional(oneOf('registered','npc','story','static')),x:number,y:number,flip:optional(boolean),name:optional(text),hint:optional(text),objective:optional(text),collectible:optional(boolean),afterInteractScript:optional(text),
   appear:optional(object({atMost:diceFace})),downgrade:optional(object({atLeast:diceFace,actor:text})),spring:optional(boolean)};
 const enemySpawn={respawn:optional((v,p)=>requireValue(v===false,p,'一次性敌人不可刷新')),id:text,enemyId:text,x:number,y:number,tierLevel:optional(count),breakableEligible:optional(boolean)};
 const campaignEnemy={...enemySpawn,map:text,activeQuest:text,rewardItem:text,respawn:(value:unknown,path:string)=>requireValue(value===false,path,'任务敌人不可刷新')};
@@ -536,7 +537,7 @@ const encounter=shape<StoryEncounter>({id:text,definitionId:optional(text),map:t
 const worldCommand:Check=(v,p)=>{
   requireValue(v&&typeof v==='object',p,'需要世界命令');const kind=(v as {kind:string}).kind;
   const checks:Record<string,Check>={
-    place:object({kind:oneOf('place'),scope:optional(oneOf('visit')),mapFromStage:optional(boolean),entity:object({id:text,map:text,actor:text,characterId:optional(text),x:number,y:number,facing:optional(facing),visible:optional(boolean),removed:optional(boolean),hint:optional(text)})}),
+    place:object({kind:oneOf('place'),scope:optional(oneOf('visit')),mapFromStage:optional(boolean),entity:object({id:text,map:text,actor:text,characterId:optional(text),authority:optional(oneOf('registered','npc','story','static')),x:number,y:number,facing:optional(facing),visible:optional(boolean),removed:optional(boolean),hint:optional(text)})}),
     show:object({kind:oneOf('show'),id:text}),hide:object({kind:oneOf('hide'),id:text}),remove:object({kind:oneOf('remove'),id:text}),
     'remove-character':object({kind:oneOf('remove-character'),characterId:text,map:text,mapFromStage:optional(boolean),all:boolean}),
     'actor-visibility':object({kind:oneOf('actor-visibility'),map:text,actor:text,characterId:optional(text),visible:boolean}),
@@ -598,7 +599,7 @@ const debugPair=(first:Check,second:Check):Check=>(v,p)=>{
   first(v[0],`${p}[0]`);second(v[1],`${p}[1]`);
 };
 const debugSequence=array(debugPair(text,count));
-const debugEntity=object({id:text,map:optional(text),actor:optional(text),characterId:optional(text),mapVisit:optional(integer),
+const debugEntity=object({id:text,map:optional(text),actor:optional(text),characterId:optional(text),authority:optional(oneOf('registered','npc','story','static')),mapVisit:optional(integer),
   x:optional(number),y:optional(number),facing:optional(facing),visible:optional(boolean),removed:optional(boolean),hint:optional(text)});
 const debugEncounter=object({id:text,definitionId:optional(text),map:text,mapFromStage:optional(boolean),
   status:oneOf('prepared','active','won','lost'),spawns:array(object({id:text,enemyId:text,x:number,y:number}))});
@@ -866,7 +867,7 @@ export function parseMap(value:unknown):WorldMap{
   return result;
 }
 export function parseCampaign(value:unknown):Campaign {
-  campaign(value,'campaign'); const result=value as Campaign;
+  campaign(value,'campaign'); const result=structuredClone(value) as Campaign;
   validateStoryGraph(result);
   unique(result.quests.map(q=>q.id),'quests');
   unique(result.questGroups.map(group=>group.id),'campaign.questGroups');
@@ -942,6 +943,10 @@ export function parseCampaign(value:unknown):Campaign {
   };for(const id of questIds)visit(id);
   for(const enemy of result.enemyPlacements??[])
     requireValue(questIds.has(enemy.activeQuest),enemy.id,'任务敌人引用了不存在的任务');
+  // 旧内容只有 ID 和可选的位置访问寿命；解析时把对象来源写成字段，运行期不再猜前缀。
+  for(const entity of [...result.placements,...result.mapEntryPlacements??[]]) entity.authority??=placementAuthority(entity);
+  for(const script of Object.values(result.scripts))for(const node of script.nodes)for(const command of node.commands)
+    if(command.type==='world'&&command.command.kind==='place')command.command.entity.authority??=placementAuthority(command.command.entity);
   validateStoryDebug(result);
   return result;
 }

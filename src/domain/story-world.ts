@@ -1,11 +1,13 @@
 import {BATTLE_BUFF_KEYS,type BattleBuffKey} from './battle-semantics.ts';
-import type { EntityPlacement, Facing, MapExit, TravelDestination } from './content.ts';
+import type { EntityPlacement, Facing, MapExit, PlacementAuthority, TravelDestination } from './content.ts';
+import { placementAuthority } from './actor-authority.ts';
 
 export interface StoryEntityState {
   id:string;
   map?:string;
   actor?:string;
   characterId?:string;
+  authority?:PlacementAuthority;
   mapVisit?:number;
   x?:number;
   y?:number;
@@ -103,10 +105,10 @@ export class StoryWorldState {
   enemyAvailable(map:string,enemyId:string):boolean{return !this.flags.has(JSON.stringify(['absent-enemy',map,enemyId]));}
   projectEntities(map:string,base:readonly EntityPlacement[],definitions:readonly EntityPlacement[]=base,visit=this.mapVisit):EntityPlacement[]{
     const projected=new Map<string,EntityPlacement>();
-    const located=new Set([...this.entities.values()].filter(entity=>entity.id.startsWith('quest-npc-located-')&&entity.map===map&&!entity.removed
+    const located=new Set([...this.entities.values()].filter(entity=>placementAuthority(entity)==='registered'&&entity.map===map&&!entity.removed
       &&(entity.mapVisit===undefined||entity.mapVisit===visit)).map(entity=>entity.characterId??entity.actor));
     for(const entity of base){
-      if(!entity.id.startsWith('quest-npc-located-')&&located.has(entity.characterId??entity.actor))continue;
+      if(placementAuthority(entity)!=='registered'&&located.has(entity.characterId??entity.actor))continue;
       const stored=this.entities.get(entity.id);
       const override=stored?.mapVisit!==undefined&&stored.mapVisit!==visit?undefined:stored;
       if(override?.removed||(override?.map&&override.map!==map)||!this.actorVisible(map,override?.actor??entity.actor,override?.characterId??entity.characterId))continue;
@@ -114,7 +116,7 @@ export class StoryWorldState {
     }
     for(const entity of this.entities.values()){
       if(entity.removed||entity.map!==map||entity.mapVisit!==undefined&&entity.mapVisit!==visit
-        ||!entity.id.startsWith('quest-npc-located-')&&located.has(entity.characterId??entity.actor)
+        ||placementAuthority(entity)!=='registered'&&located.has(entity.characterId??entity.actor)
         ||!entity.actor||!this.actorVisible(map,entity.actor,entity.characterId)||entity.x===undefined||entity.y===undefined||projected.has(entity.id))continue;
       projected.set(entity.id,{...definitions.find(definition=>definition.id===entity.id),...entity,actor:entity.actor,x:entity.x,y:entity.y});
     }
@@ -142,12 +144,12 @@ export class StoryWorldState {
         if(!entity.id||!entity.map||!entity.actor||!Number.isFinite(entity.x)||!Number.isFinite(entity.y))throw new Error('剧情角色位置无效');
         // 位置登记是这个角色在这张图上的最终摆放：同一角色先前的过场实例只是摆位过程，
         // 留在世界里会和登记副本重叠成两个同名 NPC。旧存档里的重复实例由投影再挡一层。
-        if(entity.id.startsWith('quest-npc-located-')&&entity.characterId)
+        if(placementAuthority(entity)==='registered'&&entity.characterId)
           for(const [id,other] of this.entities)
-            if(other.id.startsWith('story-character-')&&other.characterId===entity.characterId&&other.map===entity.map&&!other.removed)this.entities.delete(id);
+            if(placementAuthority(other)==='story'&&other.characterId===entity.characterId&&other.map===entity.map&&!other.removed)this.entities.delete(id);
         // 常驻登记必须显式清掉旧的访问寿命：同一实例可能先由演出按 visit 登记，
         // 后续原版命令再把它永久摆出来；只靠对象展开会把旧的 mapVisit 留下来。
-        this.entities.set(entity.id,{...this.entities.get(entity.id),...entity,removed:false,
+        this.entities.set(entity.id,{...this.entities.get(entity.id),...entity,authority:placementAuthority(entity),removed:false,
           mapVisit:command.scope==='visit'?this.mapVisit+(entity.map!==this.location?.map?1:0):undefined});
         // 任何可见登记都会把角色明确摆出来，撤销这张图上「角色不在场」的旧标记：
         // 事件常先 remove-character 再在后面的节点里重新登记（event-162 → event-163 的波西娅）。
@@ -159,7 +161,7 @@ export class StoryWorldState {
       case 'remove-character':{
         // 有位置登记时，这个角色在本图只有一个正式副本；旧存档遗留的过场副本一起撤下，
         // 否则登记副本先被移除后，过场副本会重新露出来。
-        const registered=[...this.entities.values()].some(entity=>entity.id.startsWith('quest-npc-located-')
+        const registered=[...this.entities.values()].some(entity=>placementAuthority(entity)==='registered'
           &&entity.characterId===command.characterId&&entity.map===command.map&&!entity.removed);
         for(const entity of this.entities.values())if(entity.characterId===command.characterId&&entity.map===command.map&&!entity.removed){
           entity.removed=true;if(!command.all&&!registered)break;
@@ -225,6 +227,7 @@ export class StoryWorldState {
       if(ids.some(id=>!id)||new Set(ids).size!==ids.length)throw new Error('剧情'+name+'标识重复或无效');
     for(const entity of result.entities){
       if(entity.characterId!==undefined&&(typeof entity.characterId!=='string'||!entity.characterId))throw new Error('剧情人物身份无效');
+      if(entity.authority!==undefined&&!['registered','npc','story','static'].includes(entity.authority))throw new Error('剧情角色来源无效');
       if(entity.mapVisit!==undefined&&(!Number.isSafeInteger(entity.mapVisit)||entity.mapVisit<0))throw new Error('剧情临时物件访问版本无效');
       if((entity.x!==undefined&&!Number.isFinite(entity.x))||(entity.y!==undefined&&!Number.isFinite(entity.y)))throw new Error('剧情角色快照位置无效');
       if(entity.facing!==undefined&&!['north','south','east','west'].includes(entity.facing))throw new Error('剧情角色快照朝向无效');

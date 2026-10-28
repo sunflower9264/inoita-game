@@ -1,6 +1,7 @@
 import type { StoryCommand } from './story-graph.ts';
 import type { StoryNodeCommit } from './story-runtime.ts';
 import type { StoryWorldState, StoryEntityState } from './story-world.ts';
+import { placementAuthority } from './actor-authority.ts';
 
 /** 正常演出和调试预演共用角色落位、转场及事件完成的提交规则。 */
 export function storyCommitCommands(commit: StoryNodeCommit, world: StoryWorldState, changes: readonly StoryEntityState[],
@@ -42,7 +43,8 @@ export function storyCommitCommands(commit: StoryNodeCommit, world: StoryWorldSt
     if(existing?.removed)continue;
     if(existing?.map&&existing.map!==entity.map)continue;
     const persistent=existing?.map&&existing.actor&&existing.mapVisit===undefined;
-    bindings.push({type:'world',command:{kind:'place',...(!persistent?{scope:'visit' as const}:{}),entity:{...entity,map:entity.map,actor:entity.actor,x:entity.x,y:entity.y}}});
+    bindings.push({type:'world',command:{kind:'place',...(!persistent?{scope:'visit' as const}:{}),entity:{...entity,
+      authority:entity.authority??placementAuthority(entity),map:entity.map,actor:entity.actor,x:entity.x,y:entity.y}}});
   }
   commands.unshift(...bindings);
   // `retainPlayerPosition` 只说明这一幕从主角真实站位起步，不意味着整段都没动过他：

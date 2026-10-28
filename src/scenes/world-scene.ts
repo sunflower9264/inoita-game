@@ -1385,6 +1385,7 @@ captureStoryScene():SceneSnapshot {
       const animation=characterAnimationState(character);
       return {id:player?'player':`entity:${character.entity.id}`,actor:character.entity.actor,
         characterId:character.entity.characterId,worldEntityId:player?undefined:character.entity.id,
+        authority:player?undefined:character.entity.authority,
         memberId:player?'player':undefined,...this.movement!.position(character),facing:facing??'south',visible,
         flip:character.entity.flip,appearance:structuredClone(character.actor),clip:character.clipName??undefined,
         alpha:character.container.alpha,animationProgress:animation.progress,
