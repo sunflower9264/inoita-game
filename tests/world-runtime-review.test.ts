@@ -128,7 +128,7 @@ test('finishing cinematic presentation leaves formal player and companion camera
 test('a controlled companion already inside an exit must leave it before the performance can trigger travel again',()=>{
   const exit={x:64,y:0,width:32,height:64,destination:'next-map',spawn:{x:8,y:8},facing:'east' as const};
   const companion={container:{active:true,x:80,y:32}};
-  const state={player:{container:{active:true,x:32,y:32}},combat:{controlledVisual:companion},map:{exits:[exit]},
+  const state={app:{gmNoclip:false},player:{container:{active:true,x:32,y:32}},combat:{controlledVisual:companion},map:{exits:[exit]},
     movement:{position:()=>({x:80,y:32})},cameras:{main:{startFollow(){}}},refreshLoadout(){},refreshCombatTarget(){},syncHud(){}};
   const scene=Object.setPrototypeOf(state,WorldScene.prototype) as unknown as InstanceType<typeof WorldScene>;
   scene.syncControlledCharacter(true);
