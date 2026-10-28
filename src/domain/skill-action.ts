@@ -44,6 +44,11 @@ export function skillEffectNames(action: SkillAction): string[] {
     for(const visual of unit.effect==='summon'?unit.appearanceEffects??[]:[])names.add(visual.effect);
     if(unit.effect==='buff')for(const rank of unit.ranks){
       for(const name of buffEffectNames(rank.effect))names.add(name);
+      // 增益本身还能携带反应：物理命中后回蓝的直接特效就挂在这里，不属于 buff 外观。
+      for(const reaction of rank.effect.reactions??[]){
+        if(reaction.kind==='mana-on-physical-success')names.add(reaction.effect);
+        else if('buff' in reaction)for(const name of buffEffectNames(reaction.buff.effect))names.add(name);
+      }
     }
   }
   if (action.transition?.casterStrikes?.effect) names.add(action.transition.casterStrikes.effect);

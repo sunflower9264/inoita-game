@@ -83,7 +83,9 @@ export class MenuScene extends Phaser.Scene {
     if(gm.on)view.text('调试：开',8,610,0,18);
   }
   private render():void {
-    const view=this.surface!;view.clear();this.modal?.clear();
+    // 异步目录加载和指针回调可能在场景关闭后才回来；surface 此时已经销毁。
+    if(!this.surface||!this.sys.isActive())return;
+    const view=this.surface;view.clear();this.modal?.clear();
     // 删除确认或改名输入开着时，存档页整块不接受输入。
     const guard=()=>this.app.ui.ready&&!this.app.ui.suspended&&this.sys.isActive()&&this.deleteConfirm===undefined&&this.renameRef===undefined;view.enabled=guard;
     const button=(label:string,x:number,y:number,w:number,h:number,action:()=>void,fontSize=36,parent?:Phaser.GameObjects.Container)=>view.button(label,x,y,w,h,action,{fontSize,guard,parent});

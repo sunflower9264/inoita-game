@@ -37,6 +37,12 @@ function frameLimit(action: SkillAction): number {
   return Math.max(0, ...eventFrames, repeatFrames) + 5;
 }
 
+test('action effects include reactions embedded in buff units', () => {
+  const action = source.skills['spiritual-blade']!.action!;
+  assert.ok(skillEffectNames(action).includes('mana-recovery'),
+    '物理命中回蓝的反应特效必须进入预载名单');
+});
+
 test('action IR preserves every derived field and event lookup', () => {
   const actions = allActions(source);
   assert.ok(actions.length > 0);
