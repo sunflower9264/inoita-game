@@ -8,7 +8,8 @@ import type {CharacterStatsCatalog} from '../domain/character-stats.ts';
 import type {BattleCatalog} from '../domain/battle.ts';
 import type {CompanionCatalog} from '../domain/party.ts';
 import type {StoryWorldViewSnapshot} from '../scenes/world-scene.ts';
-import {validateSceneSnapshot} from '../domain/scene-snapshot.ts';
+import {validateSceneSnapshot,type SceneActorState} from '../domain/scene-snapshot.ts';
+import {duplicateVisibleActors} from '../domain/actor-census.ts';
 import {dedupeSkillShortcuts} from '../domain/shortcut-bar.ts';
 
 export interface SavedGameContent {
@@ -17,10 +18,28 @@ export interface SavedGameContent {
 }
 type SaveUpgrade = (game:SaveGame<StoryWorldViewSnapshot>)=>void;
 interface LegacyStoryRun {stage?:Record<string,unknown>}
+type LegacyScene = {actors?:unknown};
+function duplicateSceneActors(scene:unknown):SceneActorState[][] {
+  if(!scene||typeof scene!=='object')return [];
+  const actors=(scene as LegacyScene).actors;
+  if(!Array.isArray(actors))return [];
+  return [...duplicateVisibleActors(actors as SceneActorState[]).values()];
+}
+function hideDuplicateSceneActors(scene:unknown):void {
+  for(const same of duplicateSceneActors(scene))for(const actor of same.slice(1))actor.visible=false;
+}
+function stageHasDuplicateActors(stage:unknown):boolean {
+  if(!stage||typeof stage!=='object')return false;
+  const value=stage as {scene?:unknown;scenes?:unknown};
+  if(duplicateSceneActors(value.scene).length)return true;
+  return Array.isArray(value.scenes)&&value.scenes.some(scene=>duplicateSceneActors(scene).length>0);
+}
 /**
  * 旧存档升级链。33 → 34 时剧情运行时从 1 升到 2；旧舞台快照没有新版演出需要的
  * 场景和绑定，丢弃舞台让剧情从当前节点继续，其余进度原样保留。
  * 34 → 35 把同一技能占多格的旧快捷栏收敛成最后一格。
+ * 35 → 36 收紧演员校验：世界场景里重复的同一实例只保留第一份；正在播放的舞台
+ * 如果带重复演员，丢弃舞台快照，让剧情从当前节点继续而不是拒绝整份存档。
  */
 const SAVE_UPGRADES:Record<number,SaveUpgrade>={
   33:game=>{
@@ -37,6 +56,16 @@ const SAVE_UPGRADES:Record<number,SaveUpgrade>={
       for(let index=0;index<row.length;index++)row[index]=deduped[index]??null;
     }
     game.format=35;
+  },
+  35:game=>{
+    hideDuplicateSceneActors(game.world?.scene);
+    const runtime=game.session.runtime as unknown as {runs?:unknown[]}|undefined;
+    for(const run of runtime?.runs??[]){
+      if(!run||typeof run!=='object')continue;
+      const value=run as {stage?:unknown};
+      if(stageHasDuplicateActors(value.stage))delete value.stage;
+    }
+    game.format=36;
   },
 };
 function upgradeSavedGame(game:SaveGame<StoryWorldViewSnapshot>):SaveGame<StoryWorldViewSnapshot>{

@@ -63,6 +63,22 @@ test('format 34 and 33 duplicate skill shortcuts collapse to the last registered
   }
 });
 
+test('format 35 saves hide duplicate world actors and drop a duplicate story stage',()=>{
+  const saved=record(),script=Object.keys(content.campaign.scripts)[0],definition=content.campaign.scripts[script];
+  saved.format=35;
+  const player=saved.world.scene!.actors[0]!,duplicate={...player,id:'duplicate-player'};
+  saved.world.scene!.actors.push(duplicate);
+  const runtime=saved.session.runtime as unknown as {version:number;runs:unknown[]};
+  runtime.runs=[{id:'duplicate-stage',script,occurrence:'duplicate',cursor:{script,node:definition.entry},status:'running',
+    stage:{type:'stage',map:saved.world.location.map,x:saved.world.location.x,y:saved.world.location.y,facing:'west',
+      playerVisible:true,cast:[],bindings:[['player','player']],
+      scene:{map:saved.world.location.map,actors:[player,{...player,id:'duplicate-player'}]}}}];
+  const before=structuredClone(saved),candidate=prepareSavedGame(saved,content);
+  assert.equal(candidate.world.scene!.actors.find(actor=>actor.id==='duplicate-player')!.visible,false);
+  assert.equal(candidate.session.runtimeState.runs[0]!.stage,undefined,'重复演员的旧舞台不恢复');
+  assert.deepEqual(saved,before,'迁移不改写原始存档');
+});
+
 test('old saves containing removed expansion bags migrate to consumables',()=>{
   const saved=record(),bag=saved.session.bag;
   const equipped=new Set([...Object.values(bag.worn),...bag.companionEquipment.flatMap(([,equipment])=>Object.values(equipment))]);
