@@ -24,6 +24,8 @@
     "test:all": "node tools/test.ts --all",
     "validate:content": "node tools/validate-content.mjs",
     "audit:story-actors": "node tools/audit-story-actors.ts",
+    "audit:story": "node tools/test.ts tests/story-actor-ledger.test.ts tests/story-cast-audit.test.ts tests/story-stage-action-audit.test.ts tests/story-side-actor-audit.test.ts tests/story-side-defeat-quests.test.ts tests/story-side-item-quests.test.ts tests/story-side-interaction-quests.test.ts",
+    "audit:story:full": "npm run audit:story && node tools/test.ts tests/story-chapters.test.ts",
     "debug-start": "node tools/debug-start/story-debug-start.ts --write",
     "debug-start:check": "node tools/debug-start/story-debug-start.ts --check",
     "report:assets": "node tools/asset-report.ts",
