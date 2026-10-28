@@ -35,8 +35,13 @@ export interface GmStoryJumpResult extends GmResult {
   gap?: StoryDebugGap;
 }
 export interface GmEndDebugResult extends GmResult { focus?: string }
-/** 面板据此显示「调试现场：自动存档已暂停」与「结束调试」。 */
+/** 面板据此显示「调试现场：自动存档已暂停」与「结束本次调试」。 */
 export interface GmDebugState { focus?: string; autoSavePaused: boolean }
+/** 进入调试前的世界视图；动作层不依赖 Phaser，场景快照保持不透明。 */
+export interface GmDebugWorldPort {
+  capture(): unknown | undefined;
+  restore(snapshot: unknown): Promise<GmResult>;
+}
 /** 脱困结果带前后位置，面板与 agent 都能确认搬到了哪里。 */
 export interface GmRescueResult extends GmResult { from?: unknown; to?: unknown; moved?: boolean }
 
@@ -117,6 +122,10 @@ export interface GmPorts {
   travel?: (map: string, position?: { x: number; y: number }) => Promise<GmResult>;
   /** 调试现场的存档暂停与恢复；没有存档系统时省略。 */
   persistence?: GmPersistencePort;
+  /** 进入调试前的世界视图，用于任务完成后恢复正式地图。 */
+  debugWorld?: GmDebugWorldPort;
+  /** 调试收尾成功后打开设置里的调试剧情页。 */
+  onDebugStory?: () => void;
   setNoclip?: (enabled: boolean) => GmResult;
   isNoclip?: () => boolean;
   setSpeedMultiplier?: (multiplier: number) => GmResult;
@@ -138,8 +147,8 @@ const LOG_LIMIT = 40;
 export interface GmActions {
   previewStory(target: StoryDebugTarget): Promise<GmStoryPreview>;
   jumpStory(target: StoryDebugTarget): Promise<GmStoryJumpResult>;
-  /** 结束调试：清掉任务焦点、恢复自动存档、重抓检查点并请求一次正常存档。 */
-  endStoryDebug(): GmEndDebugResult;
+  /** 结束调试：恢复进入前状态、恢复自动存档并回到调试剧情页。 */
+  endStoryDebug(): Promise<GmEndDebugResult>;
   /** 当前调试现场状态；面板显示存档暂停提示用。 */
   storyDebug(): GmDebugState;
   /** 机器可读的会话摘要。面板、上报、agent 读状态共用这一份。 */
@@ -210,6 +219,92 @@ export function createGmActions(ports: GmPorts): GmActions {
     catch (error) { result = { ok: false, reason: error instanceof Error ? error.message : String(error) } as T; }
     record(call, args, result);
     return result;
+  };
+
+  interface DebugRun {
+    quest: string;
+    origin: SessionState;
+    world?: unknown;
+    baseline: { status: string; cycle: number; completedCycles: number };
+    started: boolean;
+    pending: boolean;
+    unsubscribe?: () => void;
+    timer?: ReturnType<typeof setTimeout>;
+    finishing?: Promise<GmEndDebugResult>;
+  }
+  let debugRun: DebugRun | undefined;
+
+  const debugTaskCompleted = (run: DebugRun): boolean => {
+    const progress = session.quests.get(run.quest);
+    if (!progress) return false;
+    if (progress.completedCycles > run.baseline.completedCycles) return true;
+    return progress.status === 'completed' && run.baseline.status !== 'completed';
+  };
+
+  const runIdle = (): boolean => !session.storyWorld.activeEncounters.length
+    && !session.runtimeState.runs.some(run => !!run.waiting);
+
+  const finishDebugRun = async (run: DebugRun, openStory: boolean): Promise<GmEndDebugResult> => {
+    if (run.finishing) return run.finishing;
+    run.finishing = (async (): Promise<GmEndDebugResult> => {
+      run.unsubscribe?.(); run.unsubscribe = undefined;
+      if (run.timer) { clearTimeout(run.timer); run.timer = undefined; }
+      const debugSession = session.captureState();
+      const debugWorld = ports.debugWorld?.capture();
+      const restore = async (): Promise<GmEndDebugResult> => {
+        session.restoreState(run.origin);
+        session.focusDebugQuest(undefined);
+        if (ports.debugWorld && run.world !== undefined) {
+          const restored = await ports.debugWorld.restore(run.world);
+          if (!restored.ok) return { ok: false, reason: restored.reason ?? '恢复调试前地图失败' };
+        }
+        return { ok: true, focus: run.quest };
+      };
+      let result: GmEndDebugResult;
+      try {
+        result = director ? await director.debugJump(restore) : await restore();
+      } catch (error) {
+        result = { ok: false, reason: `恢复调试前状态失败：${error instanceof Error ? error.message : String(error)}` };
+      }
+      if (result.ok) {
+        debugRun = undefined;
+        try {
+          ports.persistence?.resume();
+          if (openStory) ports.onDebugStory?.();
+        } catch (error) {
+          return { ok: false, reason: `调试已恢复，但自动存档恢复失败：${error instanceof Error ? error.message : String(error)}` };
+        }
+        return result;
+      }
+      // 恢复失败时不要把半恢复的会话留在正常存档里：退回调试现场，继续暂停自动存档。
+      try { session.restoreState(debugSession); } catch { /* 保留当前可用的诊断信息 */ }
+      try { if (ports.debugWorld && debugWorld !== undefined) await ports.debugWorld.restore(debugWorld); } catch { /* 同上 */ }
+      run.finishing = undefined;
+      debugRun = run;
+      if (!run.unsubscribe) watchDebugRun(run);
+      return result;
+    })();
+    return run.finishing;
+  };
+
+  const scheduleDebugFinish = (run: DebugRun): void => {
+    if (run.finishing || debugRun !== run) return;
+    if (!run.started) { run.pending = true; return; }
+    if (!runIdle()) {
+      if (!run.timer) run.timer = setTimeout(() => { run.timer = undefined; scheduleDebugFinish(run); }, 250);
+      return;
+    }
+    void finishDebugRun(run, true).then(result => {
+      if (!result.ok) record('finishDebugRun', [], result);
+    });
+  };
+
+  const watchDebugRun = (run: DebugRun): void => {
+    run.unsubscribe = session.subscribe(() => {
+      if (debugRun !== run || run.finishing || !debugTaskCompleted(run)) return;
+      run.pending = true;
+      if (run.started) scheduleDebugFinish(run);
+    });
   };
 
   const questDigest = () => {
@@ -347,8 +442,18 @@ export function createGmActions(ports: GmPorts): GmActions {
     jumpStory: target => runAsync('jumpStory', [target], async (): Promise<GmStoryJumpResult> => {
       if (!director) return {ok:false,reason:'当前会话还没有装配剧情导演'};
       if (jumping) return {ok:false,reason:'正在准备剧情，请稍候'};
+      if (debugRun) return {ok:false,reason:'当前已有调试现场，请先结束本次调试'};
       jumping = true;
       const gaps = () => { const gap = debugGapFor(campaign, target.quest); return gap ? { gap } : {}; };
+      let origin: SessionState | undefined;
+      let originWorld: unknown;
+      let installed = false;
+      const restoreOrigin = async (): Promise<void> => {
+        if (!origin) return;
+        session.restoreState(origin);
+        if (ports.debugWorld && originWorld !== undefined) await ports.debugWorld.restore(originWorld);
+        ports.persistence?.resume();
+      };
       try {
         // 准备、安装与切图都在导演的调试锁里完成；开幕演出等锁放开后再开演，
         // 否则演出里的选项和操作会被同一把锁挡住。
@@ -356,10 +461,12 @@ export function createGmActions(ports: GmPorts): GmActions {
           ports.onStoryPreparation?.(true);
           try {
             const prepared = await prepareTaskStart(session, target);
-            const previous = session.captureState();
+            origin = session.captureState();
+            originWorld = ports.debugWorld?.capture();
             // 调试现场不写玩家存档：先停掉待写与重试，安装时任务变化也不再排队。
             ports.persistence?.suspend();
             session.restoreState(prepared);
+            installed = true;
             const location = prepared.storyWorld.location;
             if (ports.travel && location) {
               try {
@@ -367,32 +474,55 @@ export function createGmActions(ports: GmPorts): GmActions {
                 // 切图失败会把会话退回原处（通常就是玩家当前站的地图），原因要如实带出去，
                 // 否则表现只是「人还在原地」，看不出是没进成这段剧情。
                 if (!moved.ok) {
-                  session.restoreState(previous); ports.persistence?.resume();
+                  await restoreOrigin();
+                  installed = false;
                   return {ok:false, reason:`没能进入剧情所在地图：${moved.reason??'未知原因'}`, ...gaps()};
                 }
               } catch (error) {
-                session.restoreState(previous); ports.persistence?.resume(); throw error;
+                await restoreOrigin();
+                installed = false;
+                throw error;
               }
             }
             return {ok:true};
           } finally { ports.onStoryPreparation?.(false); }
         });
         if (!result.ok) return {ok:false, reason:result.reason, ...gaps()};
+        if (!origin) throw new Error('调试现场缺少进入前状态');
         const task = debugTask(campaign, target);
+        const progress = session.quests.get(target.quest);
+        const run: DebugRun = {
+          quest: target.quest, origin, world: originWorld,
+          baseline: { status: progress?.status ?? 'locked', cycle: progress?.cycle ?? 0, completedCycles: progress?.completedCycles ?? 0 },
+          started: false, pending: false,
+        };
+        debugRun = run;
+        watchDebugRun(run);
         const play = task.play;
         if (play?.script) {
           try { await director.script(play.script, play.node); }
           catch (error) {
+            await finishDebugRun(run, false);
             return {ok:false, reason:`开幕演出未能播放：${error instanceof Error ? error.message : String(error)}`, ...gaps()};
           }
         }
+        run.started = true;
+        if (run.pending) scheduleDebugFinish(run);
         return {ok:true, ...(task.sourceHash ? { sourceHash: task.sourceHash } : {}),
           ...(task.accept ? { accept: task.accept } : {}), ...(play ? { play } : {})};
+      } catch (error) {
+        if (installed) {
+          try { await restoreOrigin(); }
+          catch { /* 保留原始失败原因 */ }
+        }
+        return {ok:false, reason:error instanceof Error ? error.message : String(error), ...gaps()};
       } finally { jumping = false; }
     }),
-    endStoryDebug: () => run('endStoryDebug', [], () => {
+    endStoryDebug: () => runAsync('endStoryDebug', [], async (): Promise<GmEndDebugResult> => {
+      if (debugRun) return finishDebugRun(debugRun, true);
       const focus = session.debugFocusQuest;
       if (!focus) return {ok:false, reason:'当前没有调试现场'};
+      // 兼容没有进入前快照的旧调试状态：至少退出调试焦点并恢复自动存档。
       session.focusDebugQuest(undefined);
       try { ports.persistence?.resume(); }
       catch (error) { return {ok:false, reason:`恢复存档失败：${error instanceof Error ? error.message : String(error)}`}; }

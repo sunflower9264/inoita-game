@@ -1248,7 +1248,7 @@ test('save refusal distinguishes a debug scene from map loading and a missing wo
   const f=fixture();t.after(f.cleanup);
   f.app.captureSaveWorld=()=>({ok:false,reason:'debug'});
   f.menu.show('save');f.scene.click(f.scene.button('存档槽 1'));
-  assert(f.scene.texts().includes('调试现场不能存档，请先在调试面板点「结束调试」。'));
+  assert(f.scene.texts().includes('调试现场不能存档，请先在调试面板点「结束本次调试」。'));
   f.scene.click(f.scene.button('确认'));
   f.app.captureSaveWorld=()=>({ok:false,reason:'loading'});
   f.menu.show('save');f.scene.click(f.scene.button('存档槽 1'));
@@ -1367,6 +1367,21 @@ test('the GM story page lists tasks and enters the selected one without exposing
   const target=last.args[0] as {quest:string};
   assert(campaign.debugStory!.tasks.some(task=>task.quest===target.quest));
   assert(texts().includes('未能进入任务：当前会话还没有装配剧情导演'));
+});
+
+test('openDebugStory returns to the story tab without opening a completion dialog', async t => {
+  const f=fixture();t.after(f.cleanup);
+  const gm=createGmActions({session:f.session,campaign,report:async()=>true});
+  gm.previewStory=async target=>({ok:true,preview:{quest:target.quest,phase:'available',location:campaign.start}});
+  Object.defineProperty(f.app,'gm',{value:gm,configurable:true});
+  f.menu.show('debug');f.scene.click(f.scene.button('调试页 人物'));
+  assert.ok(f.scene.button('调试页 剧情'));
+  f.menu.openDebugStory();
+  const texts=()=>f.scene.texts().join(' ');
+  assert.ok(f.scene.button('分类 主线'),'应回到剧情页');
+  assert.ok(f.scene.button('进入任务'),'剧情页操作仍可用');
+  assert(!texts().includes('调试已结束'),'不应弹出调试结束提示');
+  assert(!texts().includes('自动承接'),'不应自动承接下一任务');
 });
 
 test('task previews keep late results on their own selection and disable unprepared entries',async t=>{

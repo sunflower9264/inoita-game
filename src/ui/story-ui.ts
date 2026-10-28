@@ -64,7 +64,7 @@ const COUNTERATTACK_LABELS=['未启用','延迟','启用'];
 const SHORTCUT_PROMPT='请选择要设置的快捷键。';
 /** 存档结果与「不能存取」的提示文本，原版取文本表 35331／35332／35342 条。 */
 const SAVE_DONE='保存成功',SAVE_FAILED='保存失败',SAVE_UNAVAILABLE='在当前的地图中无法进行存档。';
-const SAVE_UNAVAILABLE_DEBUG='调试现场不能存档，请先在调试面板点「结束调试」。';
+const SAVE_UNAVAILABLE_DEBUG='调试现场不能存档，请先在调试面板点「结束本次调试」。';
 const SAVE_UNAVAILABLE_LOADING='地图正在载入，请稍后再存档。';
 const saveUnavailableNotice=(reason:SaveWorldReason):string=>reason==='debug'?SAVE_UNAVAILABLE_DEBUG
   :reason==='loading'?SAVE_UNAVAILABLE_LOADING:SAVE_UNAVAILABLE;
@@ -194,6 +194,14 @@ export class StoryUI {
     if(this.page!==page){this.itemResult=undefined;this.cancelOperation();this.adjusting=false;this.notice='';}
     // render() 末尾已经 sync 过；这里再调一次会把整层再排版一遍。
     this.page=page;this.render();
+  }
+  /** 调试收尾后回到设置里的调试剧情页，保留面板原来的筛选与选中任务。 */
+  openDebugStory():void{
+    if(!this.app.gm)return;
+    // 收尾可能刚好还在释放导演锁；菜单关着时稍后再试，避免这次回页被 quietly 丢掉。
+    if(!this.open&&this.app.ui.locked){setTimeout(()=>this.openDebugStory(),100);return;}
+    this.show('debug');
+    this.gmPanel?.showStoryPage();
   }
   openCrafting(actorId:string):void {
     if(!this.session||!this.app.crafting||this.world?.actors[actorId]?.service!=='fusion-machine'||this.app.ui.mode!=='game')return;

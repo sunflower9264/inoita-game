@@ -111,6 +111,7 @@ export class GmPanel {
   private page: GmPage = 'status';
   private filter: StoryFilter = 'main';
   private result = '';
+  private ending = false;
   private selectedQuest?: string;
   private selectedGap?: number;
   private storyCatalog?: StoryTaskRow[];
@@ -136,6 +137,13 @@ export class GmPanel {
   // 项目启用 `erasableSyntaxOnly`：不能用构造函数参数属性，字段显式声明再赋值。
   constructor(gm: GmActions, campaign: Campaign, hooks: GmPanelHooks, references: GmReferences = {}) {
     this.gm = gm; this.campaign = campaign; this.hooks = hooks; this.references = references;
+  }
+
+  /** 收尾成功后由装配层调用：保留筛选与选中任务，只切回剧情页。 */
+  showStoryPage(): void {
+    this.page = 'story';
+    this.result = '';
+    this.hooks.render();
   }
 
   render(body: UiSurface): void {
@@ -341,7 +349,8 @@ export class GmPanel {
     STORY_FILTERS.forEach(([value,label],index)=>body.button(label,60+index*110,54,104,30,()=>{
       if(this.filter===value)return;this.filter=value;this.storyScroll=0;this.storyIntroScroll=0;this.selectedGap=undefined;this.hooks.render();
     },{selected:this.filter===value,fontSize:17}).setData('label',`分类 ${label}`));
-    if (debug.focus) body.button('结束调试',660,54,150,30,()=>this.onEndDebug()).setData('label','结束调试');
+    if (debug.focus) body.button(this.ending ? '正在结束调试…' : '结束本次调试',660,54,150,30,
+      ()=>this.onEndDebug(),{disabled:this.ending}).setData('label','结束本次调试');
     const list=body.scroll(60,100,352,336);list.onScroll=()=>{this.storyScroll=list.scrollTop;};list.setHeight(rows.length*54);
     list.setVirtual(rows.length,54,(first,last)=>{
       for(let index=first;index<last;index++){
@@ -560,8 +569,12 @@ export class GmPanel {
     });
   }
   private onEndDebug(): void {
-    const result=this.gm.endStoryDebug();
-    this.result=result.ok?'已结束调试，自动存档恢复':`结束调试失败：${result.reason}`;
-    this.hooks.render();
+    if(this.ending)return;
+    this.ending=true;this.result='正在恢复进入调试前的状态…';this.hooks.render();
+    void this.gm.endStoryDebug().then(result=>{
+      this.ending=false;
+      this.result=result.ok?'已结束调试，自动存档恢复':`结束调试失败：${result.reason}`;
+      this.hooks.render();
+    });
   }
 }

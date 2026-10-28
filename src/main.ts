@@ -476,6 +476,23 @@ function installSession(session: Session): void {
         autoSaver?.request('quest');
       },
     },
+    debugWorld: {
+      capture: () => {
+        try { return worldScene()?.captureStoryWorld(); }
+        catch { return undefined; }
+      },
+      restore: async snapshot => {
+        const scene = worldScene();
+        if (!scene) return { ok: false, reason: '不在游戏场景里' };
+        try {
+          await scene.restoreStoryWorld(snapshot as StoryWorldViewSnapshot, new AbortController().signal);
+          return { ok: true };
+        } catch (error) {
+          return { ok: false, reason: error instanceof Error ? error.message : String(error) };
+        }
+      },
+    },
+    onDebugStory: () => app.storyUI.openDebugStory(),
     combat: {
       setInvincible: (id, enabled) => {
         const scene = worldScene();

@@ -387,11 +387,128 @@ test('a hand-written start table is applied verbatim and the opening play runs t
   assert.deepEqual(persistence, ['suspend']);
   assert.deepEqual(gm.storyDebug(), { focus: DEBUG_START_QUEST, autoSavePaused: true });
 
-  const ended = gm.endStoryDebug();
+  const ended = await gm.endStoryDebug();
   assert.equal(ended.ok, true);
   assert.deepEqual(persistence, ['suspend', 'resume']);
   assert.deepEqual(gm.storyDebug(), { focus: undefined, autoSavePaused: false });
-  assert.equal(gm.endStoryDebug().ok, false, '没有调试现场时如实失败');
+  assert.equal((await gm.endStoryDebug()).ok, false, '没有调试现场时如实失败');
+  director.dispose();
+});
+
+test('a debug task only opens the scene until its own quest truly completes, then restores the original session', async () => {
+  const debugCampaign = startTableCampaign();
+  const quest = debugCampaign.quests.find(value => value.id === DEBUG_START_QUEST)!;
+  quest.completion = 'story';
+  quest.goals = [];
+  const session = newStorySession(debugCampaign,
+    (world.actors as never as Record<string, never>)[debugCampaign.start.actor]!, classes.classes[0]!, items, stats, battle, companions);
+  session.bag.add(DEBUG_START_ITEM, 3);
+  const baseline = session.captureState();
+  const order: string[] = [];
+  let openedStory = 0;
+  let resolveStory!: () => void;
+  const storyOpened = new Promise<void>(resolve => { resolveStory = resolve; });
+  const director = new StoryDirector(debugCampaign, session, ui, () => {}, presentation);
+  const gm = createGmActions({
+    session, campaign: debugCampaign, director, status: () => ({}),
+    persistence: { suspend: () => order.push('suspend'), resume: () => order.push('resume') },
+    debugWorld: {
+      capture: () => { order.push('capture-world'); return { origin: true }; },
+      restore: async () => { order.push('restore-world'); return { ok: true }; },
+    },
+    onDebugStory: () => { openedStory++; resolveStory(); },
+    report: async () => true,
+  });
+  const started = await gm.jumpStory({ quest: DEBUG_START_QUEST });
+  assert.equal(started.ok, true, started.reason);
+  assert.equal(session.status(DEBUG_START_QUEST), 'active', '开幕演出结束不等于任务完成');
+  assert.equal(gm.storyDebug().focus, DEBUG_START_QUEST);
+  assert.equal(openedStory, 0);
+
+  // “待交付”不是完成，不能提前收尾；真正完成（脚本完成/交付）后才自动收尾。
+  session.applyStoryCommands([{ type: 'quest', command: { type: 'script-ready', quest: DEBUG_START_QUEST } }]);
+  await new Promise<void>(resolve => setTimeout(resolve, 50));
+  assert.equal(openedStory, 0, '任务变成待交付还不能结束调试');
+  assert.equal(gm.storyDebug().focus, DEBUG_START_QUEST);
+
+  // 真实任务完成（不是 opening 脚本返回）后才自动收尾。
+  session.applyStoryCommands([{ type: 'quest', command: { type: 'script-complete', quest: DEBUG_START_QUEST } }]);
+  await Promise.race([storyOpened, new Promise<void>((_, reject) => setTimeout(() => reject(new Error('调试没有自动收尾')), 2000))]);
+  assert.equal(openedStory, 1);
+  assert.equal(gm.storyDebug().focus, undefined);
+  assert.deepEqual(session.captureState(), baseline, '收尾应恢复进入调试前的完整会话');
+  assert.deepEqual(order.slice(0, 1), ['capture-world']);
+  assert.deepEqual(order.slice(-2), ['restore-world', 'resume']);
+  director.dispose();
+});
+
+test('manual end restores the origin even when the debug task never completes', async () => {
+  const debugCampaign = startTableCampaign();
+  const session = newStorySession(debugCampaign,
+    (world.actors as never as Record<string, never>)[debugCampaign.start.actor]!, classes.classes[0]!, items, stats, battle, companions);
+  session.bag.add(DEBUG_START_ITEM, 3);
+  const baseline = session.captureState();
+  let worldRestores = 0;
+  const director = new StoryDirector(debugCampaign, session, ui, () => {}, presentation);
+  const gm = createGmActions({
+    session, campaign: debugCampaign, director, status: () => ({}),
+    persistence: { suspend: () => {}, resume: () => {} },
+    debugWorld: { capture: () => ({ origin: true }), restore: async () => { worldRestores++; return { ok: true }; } },
+    report: async () => true,
+  });
+  assert.equal((await gm.jumpStory({ quest: DEBUG_START_QUEST })).ok, true);
+  assert.equal((await gm.endStoryDebug()).ok, true);
+  assert.equal(worldRestores, 1);
+  assert.deepEqual(session.captureState(), baseline);
+  assert.equal(gm.storyDebug().focus, undefined);
+  director.dispose();
+});
+
+test('a failed opening performance restores the origin instead of leaving a paused debug session', async () => {
+  const debugCampaign = startTableCampaign();
+  const session = newStorySession(debugCampaign,
+    (world.actors as never as Record<string, never>)[debugCampaign.start.actor]!, classes.classes[0]!, items, stats, battle, companions);
+  session.bag.add(DEBUG_START_ITEM, 3);
+  const baseline = session.captureState();
+  const events: string[] = [];
+  let worldRestores = 0;
+  const director = new StoryDirector(debugCampaign, session, ui, () => {}, presentation);
+  director.script = async () => { throw new Error('测试开幕失败'); };
+  const gm = createGmActions({
+    session, campaign: debugCampaign, director, status: () => ({}),
+    persistence: { suspend: () => events.push('suspend'), resume: () => events.push('resume') },
+    debugWorld: { capture: () => ({ origin: true }), restore: async () => { worldRestores++; return { ok: true }; } },
+    report: async () => true,
+  });
+  const result = await gm.jumpStory({ quest: DEBUG_START_QUEST });
+  assert.equal(result.ok, false);
+  assert.match(result.reason ?? '', /测试开幕失败/);
+  assert.equal(worldRestores, 1);
+  assert.deepEqual(session.captureState(), baseline);
+  assert.equal(gm.storyDebug().focus, undefined);
+  assert.deepEqual(events, ['suspend', 'resume']);
+  director.dispose();
+});
+
+test('a failed restore keeps the debug session and leaves auto saving paused', async () => {
+  const debugCampaign = startTableCampaign();
+  const session = newStorySession(debugCampaign,
+    (world.actors as never as Record<string, never>)[debugCampaign.start.actor]!, classes.classes[0]!, items, stats, battle, companions);
+  session.bag.add(DEBUG_START_ITEM, 3);
+  let resumes = 0;
+  const director = new StoryDirector(debugCampaign, session, ui, () => {}, presentation);
+  const gm = createGmActions({
+    session, campaign: debugCampaign, director, status: () => ({}),
+    persistence: { suspend: () => {}, resume: () => { resumes++; } },
+    debugWorld: { capture: () => ({ origin: true }), restore: async () => ({ ok: false, reason: '测试恢复失败' }) },
+    report: async () => true,
+  });
+  assert.equal((await gm.jumpStory({ quest: DEBUG_START_QUEST })).ok, true);
+  const ended = await gm.endStoryDebug();
+  assert.equal(ended.ok, false);
+  assert.match(ended.reason ?? '', /测试恢复失败/);
+  assert.equal(resumes, 0);
+  assert.equal(gm.storyDebug().focus, DEBUG_START_QUEST);
   director.dispose();
 });
 
