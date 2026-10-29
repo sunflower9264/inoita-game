@@ -260,6 +260,8 @@ export interface WorldMap {
   rows: number;
   /** 按行存储的地形阻挡，长度是 `columns * rows`。 */
   blocked: boolean[];
+  /** 水格索引（row * columns + col）；脚点落在水格时移动速度减半。缺省表示没有水。 */
+  water?: number[];
   ground: string;
   canopy: string;
   features: MapFeature[];

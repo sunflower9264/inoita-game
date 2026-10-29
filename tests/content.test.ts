@@ -76,6 +76,7 @@ test('all exported maps have matching dimensions, assets, actors and valid desti
  for(const item of world.maps) {
   const map=read(item.file);
   assert.equal(map.blocked.length,map.columns*map.rows);assert.equal(map.width,map.columns*map.tileSize);
+  if(map.water!==undefined)assert.ok(map.water.every((cell,index)=>cell>=0&&cell<map.columns*map.rows&&(index===0||cell>map.water![index-1]!)),`${map.id} water`);
   assert.ok(fs.existsSync(path.join(root,map.ground)));assert.ok(fs.existsSync(path.join(root,map.canopy)));
   for(const entity of map.entities)assert.ok(world.actors[entity.actor],entity.actor);
   for(const exit of map.exits) {

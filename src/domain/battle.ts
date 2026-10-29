@@ -433,6 +433,8 @@ export interface EnemyBehavior {
 export interface EnemyDefinition {
   stateRules?:StateApplicationRules;
   acceptsBuffs?:boolean;
+  /** 原版怪物记录的涉水豁免位：飞行、浮空等单位进水不减速。 */
+  waterImmune?:boolean;
   defeatPresentation?: 'vanish';
   /** 空值表示采用场景等级。 */
   level:number|null;

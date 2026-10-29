@@ -73,12 +73,18 @@ export class NavigationWorld {
   readonly bounds: GameRectangle;
   readonly name: string;
   private readonly terrain?: CollisionMap;
+  private readonly water?: Uint8Array;
   private readonly actors = new Set<NavigationActor>();
   private terrainComponents?: { cols: number; rows: number; labels: Int32Array };
   constructor(terrain: CollisionMap | { name: string; bounds: GameRectangle }) {
     this.name = terrain.name;
     this.terrain = 'tileSize' in terrain ? terrain : undefined;
     this.bounds = 'bounds' in terrain ? { ...terrain.bounds } : { x: 0, y: 0, width: terrain.columns * terrain.tileSize, height: terrain.rows * terrain.tileSize };
+    if (this.terrain?.water?.length) {
+      // 内容用索引列表存水格，查询时只读这张同尺寸的位图。
+      this.water = new Uint8Array(this.terrain.columns * this.terrain.rows);
+      for (const cell of this.terrain.water) this.water[cell] = 1;
+    }
   }
   register(actor: NavigationActor): () => void { this.actors.add(actor); return () => this.actors.delete(actor); }
   /**
@@ -88,6 +94,15 @@ export class NavigationWorld {
   prepareTerrainRouting(): void { this.terrainComponents ??= this.buildTerrainComponents(); }
   terrainFree(point: Point): boolean {
     return terrainFreeAt(this.bounds,this.terrain,point);
+  }
+  /** 脚点所在格是不是水；越界和没有水格的图都返回 false。 */
+  isWater(point: Point): boolean {
+    const map = this.terrain;
+    if (!map || !this.water) return false;
+    const column = Math.floor((point.x - this.bounds.x) / map.tileSize);
+    const row = Math.floor((point.y - this.bounds.y) / map.tileSize);
+    if (column < 0 || row < 0 || column >= map.columns || row >= map.rows) return false;
+    return this.water[row * map.columns + column] === 1;
   }
   /** 分帧搜索读取同一时刻的完整通行状态；执行路径时仍使用实时 canStand 检查。 */
   captureStandability(actor:NavigationActor):NavigationQuerySnapshot {

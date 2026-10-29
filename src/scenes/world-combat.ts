@@ -1687,7 +1687,10 @@ captureStoryActors():SceneActorState[] {
   }
   private movementSpeed(actorId:string,baseSpeed:number):number {
     const mult = (actorId === this.controlledId || this.activeParty.includes(actorId)) ? (this.app.gmSpeedMultiplier ?? 1) : 1;
-    return Math.max(0,Math.trunc(baseSpeed*mult*this.conditions.attribute(actorId,'moveSpeed',1000)/1000));
+    const visual=this.visualOf(actorId),enemy=combatActor(this.arena,actorId,actor=>actor.key);
+    // 原版在水格上把最终移速减半；带涉水豁免位的飞行、浮空单位不受影响。
+    const water=!!visual&&!enemy?.definition.waterImmune&&this.movement.navigation.isWater(this.movement.position(visual));
+    return Math.max(0,Math.trunc(baseSpeed*mult*this.conditions.attribute(actorId,'moveSpeed',1000)/1000*(water?0.5:1)));
   }
   private resourceCapacityInputs(id:string):{base:{maxHealth:number;maxMana:number};passives:PassiveModifier[]}|undefined {
     const member=this.memberOf(id),enemy=combatActor(this.arena,id,actor=>actor.key);

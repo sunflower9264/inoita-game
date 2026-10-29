@@ -20,6 +20,8 @@ export interface CollisionMap {
   columns: number;
   rows: number;
   blocked: boolean[];
+  /** 水格索引（row * columns + col）；脚点落在水格时移动速度减半。 */
+  water?: readonly number[];
 }
 
 /** 矩形覆盖到的地形格子是否都存在且可站。 */
