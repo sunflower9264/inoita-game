@@ -20,7 +20,7 @@ test('mana pickup restores every living party slot using the collector maximum a
   recovery.use(bag,bag.entries.find(entry=>entry.item==='healing-potion-s')!.id,
     [{id:'player',player:{health:1,maxHealth:100,mana:0,maxMana:100},setHealth:()=>{},setMana:()=>{}}],'player');
   const before=recovery.cooldown;assert.equal(before.cooling,true);
-  const result=recoverManaPickup(pickup,party,'ally');
+  const result=recoverManaPickup(pickup,party,'ally')!;
   assert.equal(result.amount,100);
   assert.deepEqual(party.map(m=>m.player.mana),[100,499,0]);
   assert.deepEqual(result.effects,['player','ally']);
@@ -28,13 +28,19 @@ test('mana pickup restores every living party slot using the collector maximum a
   party[0].player.mana=100;party[1].player.mana=500;
   const ground=new GroundLootStore();ground.add('map',0,0,[{kind:'item',item:'mana-gem',quantity:1}]);
   let effects:string[]=[];
-  ground.collectNearby('map',12,12,()=>{effects=recoverManaPickup(pickup,party,'ally').effects;});
+  ground.collectNearby('map',12,12,()=>{effects=recoverManaPickup(pickup,party,'ally')!.effects;});
   assert.deepEqual(effects,['ally']);assert.deepEqual(ground.forMap('map'),[]);
+});
+
+test('a dead collector yields no pickup instead of throwing from a frame callback',()=>{
+  const party=[member('player',0,100,0),member('ally',0,100)];
+  assert.equal(recoverManaPickup(pickup,party,'player'),undefined);
+  assert.equal(recoverManaPickup(pickup,party,'missing'),undefined);
 });
 
 test('mana pickup retains native ordered effect propagation and integer rounding',()=>{
   const party=[member('full-before',100,100),member('collector',0,101),member('full-after',50,50)];
-  const result=recoverManaPickup(pickup,party,'collector');
+  const result=recoverManaPickup(pickup,party,'collector')!;
   assert.equal(result.amount,20);assert.equal(party[1].player.mana,20);
   assert.deepEqual(result.effects,['collector','full-after']);
 });

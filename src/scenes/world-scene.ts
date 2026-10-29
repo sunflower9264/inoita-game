@@ -1262,7 +1262,7 @@ export class WorldScene extends Phaser.Scene {
     const session=this.app.session;
     if(reward.kind==='money'){session.gainMoney(reward.amount);return true;}
     const item=this.app.items.items[reward.item];
-    if(item?.pickup){if(!this.combat)return false;this.combat.collectMana(item.pickup);return true;}
+    if(item?.pickup){if(!this.combat)return false;return this.combat.collectMana(item.pickup);}
     if(reward.instance){session.bag.receiveDrop(reward.instance);return true;}
     session.bag.add(reward.item,reward.quantity);return true;
   }
@@ -1587,9 +1587,10 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
       const after=()=>{if(!this.destroyed&&!(this.app.session.party?.livingIds.length??this.app.session.player?.health??0))this.showCombatDefeat();};
       const failure=(error:unknown)=>{
         console.error(error);
-        this.app.ui.error(error instanceof Error?error.message:String(error),()=>{
-          this.app.ui.loaded();this.app.director.retry().then(after).catch(failure);
-        });
+        // 战败剧情没结算成功不能扣住阵亡界面：全灭时先把玩家送进可复活/读档的出口。
+        this.encounterResults.delete(encounter);
+        this.app.ui.toast(error instanceof Error?error.message:String(error));
+        after();
       };
       this.app.director.encounterResult(encounter,'lost',`result:${encounter}:lost`).then(after).catch(failure);return;
     }

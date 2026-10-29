@@ -6,9 +6,10 @@ interface ManaMember {
   player:Readonly<{health:number;mana:number;maxMana:number}>;
   setMana(value:number):void;
 }
-export function recoverManaPickup(pickup:ManaPickup,members:readonly ManaMember[],collectorId:string):{amount:number;effects:string[];restored:string[]} {
+export function recoverManaPickup(pickup:ManaPickup,members:readonly ManaMember[],collectorId:string):{amount:number;effects:string[];restored:string[]}|undefined {
   const collector=members.find(member=>member.id===collectorId);
-  if(!collector||collector.player.health<=0)throw new Error('拾取者不能行动');
+  // 结算失败只表示这枚宝石暂时收不了；不能从帧回调和剧情准备里抛异常。
+  if(!collector||collector.player.health<=0)return;
   const amount=Math.floor(collector.player.maxMana*pickup.percentOfCollectorMaxMana/100);
   const restored:string[]=[],effects:string[]=[];
   for(const member of members){

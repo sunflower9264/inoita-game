@@ -22,6 +22,7 @@ const phaser=registerHooks({resolve(specifier,context,next){
   `)}`}:next(specifier,context);
 }});
 const { WorldScene }=await import('../src/scenes/world-scene.ts');
+const { WorldCombat }=await import('../src/scenes/world-combat.ts');
 phaser.deregister();
 
 const read=<T>(file:string):T=>JSON.parse(readFileSync(new URL(`../public/${file}`,import.meta.url),'utf8')) as T;
@@ -42,7 +43,7 @@ function fixture(){
     combat:{
       // 模拟 normalizeForStory 里 pendingDefeats.flush() 把最后一杀的掉落补进 store；只结算一次。
       normalizeForStory:async()=>{if(!flushed){flushed=true;store.add(mapId,20,20,[{kind:'money',amount:7}]);}},
-      collectMana:()=>{mana++;},
+      collectMana:()=>{mana++;return true;},
     },
     groundLootView:{sync:()=>{synced++;}},
     pickupMessages:{enqueue:()=>{messages++;}},
@@ -73,4 +74,25 @@ test('story normalization is idempotent when the map is already empty',async()=>
   await run.scene.normalizeForStory(new AbortController().signal);
   assert.equal(run.session.money,money);
   assert.equal(run.synced(),synced,'没有可收的掉落时不再重建视图');
+});
+
+test('a mana gem stays on the ground instead of rejecting story preparation when nobody can collect it',async()=>{
+  const run=fixture();
+  (run.scene as unknown as {combat:{collectMana:()=>boolean}}).combat.collectMana=()=>false;
+  await run.scene.normalizeForStory(new AbortController().signal);
+  assert.deepEqual(run.store.forMap(run.mapId).map(drop=>drop.reward),[ {kind:'item',item:'mana-gem',quantity:1} ]);
+  assert.equal(run.session.money,12,'其他掉落照常入账');
+});
+
+test('mana collection falls back to a living member and leaves the gem when the whole party is down',()=>{
+  const pickup=items.items['mana-gem'].pickup!;
+  const member=(id:string,health:number,mana:number)=>({id,player:{health,mana,maxMana:100},setMana(this:{player:{mana:number}},value:number){this.player.mana=value;}});
+  const party=new Map([['player',member('player',0,0)],['ally',member('ally',10,0)]]);
+  const host={controlledId:'player',activeParty:['player','ally'],memberOf:(id:string)=>party.get(id),
+    visualOf:()=>undefined,outcomes:{recover(){}},app:{audio:{ui(){}}}};
+  const collect=Reflect.get(WorldCombat.prototype,'collectMana') as (this:unknown,pickup:unknown)=>boolean;
+  assert.equal(collect.call(host,pickup),true);
+  assert.equal(party.get('ally')!.player.mana,20);
+  party.get('player')!.player.health=0;party.get('ally')!.player.health=0;
+  assert.equal(collect.call(host,pickup),false,'全灭时不抛异常，让掉落留在原地');
 });

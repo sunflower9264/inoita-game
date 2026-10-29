@@ -263,11 +263,16 @@ export class WorldCombat {
     }
     return result;
   };
-  collectMana(pickup:ManaPickup):void {
+  collectMana(pickup:ManaPickup):boolean {
     const members=this.activeParty.map(id=>{const member=this.memberOf(id)!;return {id,player:member.player,setMana:(value:number)=>member.setMana(value)};});
-    const result=recoverManaPickup(pickup,members,this.controlledId);
+    // 操控者倒下的那一帧仍可能走到宝石上：改由第一个存活队员结算；全灭时把宝石留在原地。
+    const collectorId=[this.controlledId,...this.activeParty].find(id=>(this.memberOf(id)?.player.health??0)>0);
+    if(!collectorId)return false;
+    const result=recoverManaPickup(pickup,members,collectorId);
+    if(!result)return false;
     for(const id of result.effects){const visual=this.visualOf(id);if(visual)this.outcomes.recover(visual);}
     this.app.audio?.ui('heal');
+    return true;
   }
   private dropMana(casterId:string,damage:number,target:Point|undefined,rule:'skill'|'weapon'='weapon'):void {
     const map=this.scene.map;if(!map||!target)return;

@@ -148,6 +148,22 @@ test('defeat checkpoint restores complete world state and closes its panel befor
   assert.deepEqual(calls,['input','cancel','session','world','close','retry']);
 });
 
+test('a failed lost-outcome preview still opens the defeat panel',async t=>{
+  t.mock.method(console,'error',()=>{});
+  const messages:string[]=[];let shown=0;
+  const state={map:{id:'home'},destroyed:false,encounterResults:new Set<string>(),
+    app:{session:{storyWorld:{encounter:()=>({map:'home'})},party:{livingIds:[]},bag:{entries:[]}},
+      director:{runtime:{snapshot:()=>({runs:[{status:'waiting',waiting:{outcomes:{lost:true},encounter:'enc-1'}}]})},
+        async encounterResult(){throw new Error('拾取者不能行动');}},
+      ui:{showDefeat(){shown++;},closeDefeat(){},toast(message:string){messages.push(message);}}}};
+  const scene=Object.setPrototypeOf(state,WorldScene.prototype) as unknown as InstanceType<typeof WorldScene>;
+  scene.handleCombatDefeat();
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(shown,1,'剧情准备失败也必须给玩家阵亡界面');
+  assert.deepEqual(messages,['拾取者不能行动']);
+  assert.equal(state.encounterResults.has('enc-1'),false,'失败后允许下一次阵亡重试结算');
+});
+
 test('story settlement only regroups friendly units while the formal game world is active',()=>{
   const f=fixture();let settles=0;
   const app=f.state.app as unknown as {ui:{mode:string;setWorldRebuildCover(covered:boolean):void};suspended?:boolean};
