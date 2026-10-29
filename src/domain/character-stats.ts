@@ -4,6 +4,7 @@ import { boundedHealth } from './status-hud.ts';
 import { Bag, type BagRules } from './bag.ts';
 import type { ItemCatalog, ItemInstance } from './items.ts';
 import { calculateEffectiveDefense,calculateMagicResistance } from './physical-hit.ts';
+import { applyAttributeModifiers, type AttributeModifier } from './combat-operation.ts';
 
 export const PRIMARY_STATS = ['strength','dexterity','vitality','intelligence','mentality'] as const;
 /** 装备没有写默认品级时使用的档位。 */
@@ -111,6 +112,45 @@ const SECOND_CHANCE_NUMERATOR=1500,SECOND_CHANCE_OFFSET=5;
 /** 开槽先过 80% 判断，再按权重依次累加决定孔数。 */
 const SOCKET_CHANCE_PERCENT=80,SOCKET_WEIGHTS=[35,30,20,15];
 
+function hitRateFor(hitBase:number,hitBonus:number,level:number):number {
+  return trunc((hitBase*PER_MILLE+HIT_NUMERATOR)/(hitBase+level+HIT_LEVEL_OFFSET))+Math.max(0,hitBonus)+HIT_DISPLAY_BONUS;
+}
+function physicalResistanceFor(defense:number,level:number):number {
+  return trunc(PER_MILLE*defense/(defense+DEFENSE_WEIGHT_PER_LEVEL*(level+DEFENSE_LEVEL_OFFSET)));
+}
+function evasionRateFor(evasionBonus:number,dexterity:number,level:number):number {
+  return Math.min(RATE_CAP,PER_MILLE+Math.max(0,Math.min(RATE_CAP,evasionBonus))
+    -trunc((EVASION_LEVEL_FACTOR*level+EVASION_CONSTANT)/(EVASION_LEVEL_DIVISOR*level+dexterity+EVASION_DEXTERITY_OFFSET)));
+}
+
+/**
+ * 把常驻被动叠到人物状态页上。只改显示用的派生字段；`baseDefense` 和
+ * `baseMagicResistance` 保持原始值，战斗仍从基础值重新叠加，避免同一份被动算两次。
+ */
+export function effectiveCharacterPanel(panel:CharacterPanel,level:number,modifiers:readonly AttributeModifier[]):CharacterPanel {
+  const value=(key:string,base:number)=>applyAttributeModifiers(key,base,modifiers);
+  const defense=Math.max(0,value('defense',panel.baseDefense));
+  const defenseRate=Math.max(0,value('defenseRate',panel.defenseRate));
+  const effectiveDefense=calculateEffectiveDefense(defense,defenseRate);
+  const hitBase=value('hitBase',panel.hitBase),hitBonus=Math.max(0,value('hitBonus',panel.hitBonus));
+  const evasionBonus=Math.max(0,Math.min(RATE_CAP,value('evasionBonus',panel.evasionBonus)));
+  return {...panel,
+    physicalAttack:Math.max(0,value('physicalAttack',panel.physicalAttack)),
+    magicAttack:Math.max(0,value('magicAttack',panel.magicAttack)),
+    maxHealth:value('maxHealth',panel.maxHealth),maxMana:value('maxMana',panel.maxMana),
+    criticalRate:Math.max(0,value('criticalRate',panel.criticalRate)),
+    criticalDamage:Math.max(0,value('criticalDamage',panel.criticalDamage)),
+    criticalResistance:Math.max(0,value('criticalResistance',panel.criticalResistance)),
+    criticalDamageResistance:Math.max(0,value('criticalDamageResistance',panel.criticalDamageResistance)),
+    hitBase,hitBonus,hitRate:hitRateFor(hitBase,hitBonus,level),
+    defense:effectiveDefense,defenseRate,
+    physicalResistance:physicalResistanceFor(effectiveDefense,level)+value('physicalResistanceBonus',0),
+    magicResistance:calculateMagicResistance(value('magicResistance',panel.baseMagicResistance)),
+    evasionBonus,evasionRate:evasionRateFor(evasionBonus,panel.attributes.dexterity,level),
+    weaponBlock:Math.max(0,value('weaponBlock',panel.weaponBlock)),
+    shieldBlock:Math.max(0,value('shieldBlock',panel.shieldBlock))};
+}
+
 /** 固定种子只决定物品实例的初次掷骰；重算面板不会重新生成词条。 */
 function itemRandom(identity:string): (min:number,max:number)=>number {
   let seed=2166136261;
@@ -159,11 +199,11 @@ export function calculateCharacter(catalog:CharacterStatsCatalog, items:ItemCata
     evasionBonus:Math.max(0,Math.min(RATE_CAP,bonusOf('evasionBonus'))),
     criticalResistance:Math.max(0,bonusOf('criticalResistance')),criticalDamageResistance:Math.max(0,bonusOf('criticalDamageResistance')),
     criticalRate:Math.max(0,DEFAULT_CRITICAL_RATE+bonusOf('criticalRate')),
-    hitRate:trunc((hitBase*PER_MILLE+HIT_NUMERATOR)/(hitBase+level+HIT_LEVEL_OFFSET))+Math.max(0,bonusOf('hitBonus'))+HIT_DISPLAY_BONUS,
+    hitRate:hitRateFor(hitBase,Math.max(0,bonusOf('hitBonus')),level),
     criticalDamage:Math.max(0,DEFAULT_CRITICAL_DAMAGE+bonusOf('criticalDamage')),baseDefense,defense,defenseRate,
-    physicalResistance:trunc(PER_MILLE*defense/(defense+DEFENSE_WEIGHT_PER_LEVEL*(level+DEFENSE_LEVEL_OFFSET))),baseMagicResistance:bonusOf('magicResistance'),
+    physicalResistance:physicalResistanceFor(defense,level),baseMagicResistance:bonusOf('magicResistance'),
     magicResistance:calculateMagicResistance(bonusOf('magicResistance')),
-    evasionRate:Math.min(RATE_CAP,PER_MILLE+Math.max(0,Math.min(RATE_CAP,bonusOf('evasionBonus')))-trunc((EVASION_LEVEL_FACTOR*level+EVASION_CONSTANT)/(EVASION_LEVEL_DIVISOR*level+attributes.dexterity+EVASION_DEXTERITY_OFFSET))),
+    evasionRate:evasionRateFor(bonusOf('evasionBonus'),attributes.dexterity,level),
     weaponBlock:Math.max(0,DEFAULT_WEAPON_BLOCK+bonusOf('weaponBlock')),shieldBlock:Math.max(0,bonusOf('shieldBlock')),
     offhandShield:equipped['off-hand']!==undefined&&items.items[equipped['off-hand']!.item]?.kind==='shield'};
 }

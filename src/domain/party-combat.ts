@@ -1,5 +1,27 @@
+import type { BattleCatalog, SkillGrowthProfile, SkillLoadout } from './battle.ts';
 import type { CompanionGroupEffect } from './companion-progression.ts';
-import type { PassiveModifier } from './passive-skills.ts';
+import { passiveModifiers, type PassiveModifier } from './passive-skills.ts';
+
+export interface MemberCombatModifierInput {
+  catalog:BattleCatalog;
+  classId:string;
+  loadout:SkillLoadout;
+  weaponKind:string;
+  armorKind:string;
+  health:number;
+  maxHealth:number;
+  groupEffects:Partial<Record<CompanionGroupEffect,number>>;
+  stealthed?:boolean;
+  growth?:SkillGrowthProfile;
+}
+
+/** 角色常驻修正的唯一组装入口：职业被动在前，佣兵团技能在后。 */
+export function memberCombatModifiers(input:MemberCombatModifierInput):PassiveModifier[]{
+  return [
+    ...passiveModifiers(input.catalog,input.classId,input.loadout,input.weaponKind,input.stealthed??false,input.growth??'hero'),
+    ...partyCombatModifiers(input.groupEffects,input.weaponKind,input.armorKind,input.health,input.maxHealth)
+  ];
+}
 
 export function partyCombatModifiers(effects:Partial<Record<CompanionGroupEffect,number>>,weapon:string,armor:string,health:number,maxHealth:number):PassiveModifier[]{
   const result:PassiveModifier[]=[];

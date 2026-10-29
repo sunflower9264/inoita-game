@@ -9,7 +9,8 @@ import type Phaser from 'phaser';
 import { SHORTCUT_PAGE_COUNT, SHORTCUT_SLOT_COUNT, ShortcutBar, type ShortcutEntry } from '../domain/shortcut-bar.ts';
 import { SLOT_ICON_SIZE, ITEM_ICON_SIZE, PENDING_OFFSET, controlPlacement } from './phaser/action-controls.ts';
 import { AttributeAllocation } from '../domain/attribute-allocation.ts';
-import { PRIMARY_STATS, type PrimaryStat } from '../domain/character-stats.ts';
+import { effectiveCharacterPanel, PRIMARY_STATS, type PrimaryStat } from '../domain/character-stats.ts';
+import { memberCombatModifiers } from '../domain/party-combat.ts';
 import { characterCombatValues } from './character-values.ts';
 import type { StoryUIContext } from '../application/ports.ts';
 import type { Session } from '../domain/session.ts';
@@ -362,12 +363,13 @@ export class StoryUI {
     if(!session)return undefined;
     const party=session.party;
     const partyShape=`${party?.activeIds.join('|')??''}|${party?.controlledId??''}`;
+    const groupShape=JSON.stringify(Object.entries(party?.groupModifiers()??{}).sort());
     const member=this.member();
     const companion=this.selectedMemberId==='player'?undefined:party?.get(this.selectedMemberId);
     const bag=session.bag.revision,money=session.money;
     switch(this.page){
       case 'bag':return `bag|${this.selectedMemberId}|${bag}|${money}|${member?.level??0}|${partyShape}`;
-      case 'status':return `status|${this.selectedMemberId}|${bag}|${member?.level??0}|${JSON.stringify(member?.player??null)}|${session.hero?.skillPoints??0}|${session.hero?.statPoints??0}|${partyShape}`;
+      case 'status':return `status|${this.selectedMemberId}|${bag}|${member?.level??0}|${JSON.stringify(member?.player??null)}|${session.hero?.skillPoints??0}|${session.hero?.statPoints??0}|${partyShape}|${groupShape}`;
       case 'skills':return `skills|${this.selectedMemberId}|${bag}|${session.skills.version}|${companion?.skills.version??''}|${member?.level??0}|${session.hero?.skillPoints??0}|${partyShape}`;
       case 'party':{
         const detail=party?.activeIds.map(id=>{
@@ -677,7 +679,19 @@ export class StoryUI {
       }
     });
     v.button('',this.adjusting?846:661,0,67,67,()=>this.toggleAllocation(),{image:panels.assets[this.adjusting?'confirm':'character-adjust'],disabled:!hero}).setData('label',this.adjusting?'确认属性加点':'查看属性加点');
-    if(!this.adjusting){const values=characterCombatValues(panel);v.border(panels.assets,722,0,224,431);panels.character.combatLabels.forEach((label,index)=>{v.text(label,738,24+index*35,110,19);v.text(values[index],928,24+index*35,0,19).setOrigin(1,0);});}else v.button('能力初始化',571,376,257,48,()=>this.action(()=>this.resetAttributes()));
+    if(!this.adjusting){
+      const equipped=member.bag.equipmentItems(member.bag.equipmentFor(this.selectedMemberId));
+      const items=this.session!.bag.catalog.items,main=equipped['main-hand'];
+      const weapon=main?items[main]?.kind??'unarmed':'unarmed';
+      const armor=equipped.body?items[equipped.body].kind:'';
+      const modifiers=memberCombatModifiers({
+        catalog:this.app.battleCatalog,classId:member.classId,loadout:this.configuration().draft(this.app.battleCatalog,member.classId),
+        weaponKind:weapon,armorKind:armor,health:member.player.health,maxHealth:member.player.maxHealth,
+        groupEffects:this.session!.party?.groupModifiers()??{},growth:memberSkillGrowth(this.selectedMemberId)
+      });
+      const values=characterCombatValues(effectiveCharacterPanel(panel,member.level,modifiers));
+      v.border(panels.assets,722,0,224,431);panels.character.combatLabels.forEach((label,index)=>{v.text(label,738,24+index*35,110,19);v.text(values[index],928,24+index*35,0,19).setOrigin(1,0);});
+    }else v.button('能力初始化',571,376,257,48,()=>this.action(()=>this.resetAttributes()));
     v.text(`${panels.character.labels.statPoints} ${statPoints}`,this.adjusting?534:522,14,0,20,AREA_TEXT);
   }
   private toggleAllocation():void{

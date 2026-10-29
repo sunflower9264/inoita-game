@@ -419,6 +419,21 @@ test('party skill cells hide the zero badge and show the locked overlay instead'
   assert(rank.list.some(node=>node.texture.key===`interface:${panels.assets['skill-rank']}`),'已学会格保留等级角标');
 });
 
+test('status page shows party group magic resistance and drops it when the member leaves',t=>{
+  const f=fixture();t.after(f.cleanup);f.menu.show('status');
+  const value=()=>{
+    const label=[...f.scene.nodes].reverse().find(node=>node.shown&&node.text==='魔法抗性')!;
+    return Number(([...f.scene.nodes].reverse().find(node=>node.shown&&node.x===928&&node.y===label.y)!.text).replace('%',''));
+  };
+  const before=value();
+  const member=f.recruit('warlock');
+  member.generated.groupSkills.splice(0,member.generated.groupSkills.length,'magic-resistance');
+  f.menu.show('status');
+  assert.equal(Math.round((value()-before)*10)/10,3,'佣兵团技能 +30‰ 显示为 +3.0%');
+  f.session.party!.reserve(member.id);f.session.party!.dismiss(member.id);
+  assert.equal(value(),before,'佣兵离开名册后面板恢复');
+});
+
 test('character titles stay clear of content-frame shadows and all attribute labels are Chinese',t=>{
   const f=fixture();t.after(f.cleanup);
   f.menu.show('status');

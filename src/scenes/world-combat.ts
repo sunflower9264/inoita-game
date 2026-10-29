@@ -36,7 +36,7 @@ import type { NavigationActor, NavigationShape } from '../domain/navigation-worl
 import { overlapsFootRect } from '../domain/navigation.ts';
 import { PartyController, type PartyPort } from '../domain/party-ai.ts';
 import { PathBudget } from '../domain/path-budget.ts';
-import { partyCombatModifiers, partyProcSucceeds } from '../domain/party-combat.ts';
+import { memberCombatModifiers, partyProcSucceeds } from '../domain/party-combat.ts';
 import { reviveAtHealer } from '../domain/party-revival.ts';
 import type { ResourceCapacityKey, ResourceCapacities } from '../domain/combat-conditions.ts';
 import type { ItemResult } from '../domain/items.ts';
@@ -63,7 +63,7 @@ import { passesChanceThreshold } from '../domain/action-state.ts';
 import {frameStateDurationProfile,resolveStateApplication,selectStateDurationProfile,type StateApplicationRequest} from '../domain/state-application.ts';
 import {equipmentStateImmunity} from '../domain/equipment-state-immunity.ts';
 import { CombatConditions, type PeriodicTick } from '../domain/combat-conditions.ts';
-import { passiveModifiers, type PassiveModifier } from '../domain/passive-skills.ts';
+import type { PassiveModifier } from '../domain/passive-skills.ts';
 import { disturbanceCandidate } from '../domain/disturbance.ts';
 import { planSummonSpot } from '../domain/skill-geometry.ts';
 import { scaledBuffEffect, summonLifetimeFrames, summonOwnerStats, withLifetimeFrames, type SummonStats } from '../domain/summon-stats.ts';
@@ -1578,8 +1578,11 @@ captureStoryActors():SceneActorState[] {
     const weapon=main?this.app.items.items[main]?.kind??'unarmed':'unarmed';
     const configuration=this.skillConfiguration(id,member);
     const armor=equipped.body?this.app.items.items[equipped.body].kind:'';
-    return [...passiveModifiers(this.app.battleCatalog,member.classId,configuration.draft(this.app.battleCatalog,member.classId),weapon,this.conditions.hasState(id,'stealthed'),memberSkillGrowth(id)),
-      ...partyCombatModifiers(this.app.session.party?.groupModifiers()??{},weapon,armor,member.player.health,member.player.maxHealth)];
+    return memberCombatModifiers({
+      catalog:this.app.battleCatalog,classId:member.classId,loadout:configuration.draft(this.app.battleCatalog,member.classId),
+      weaponKind:weapon,armorKind:armor,health:member.player.health,maxHealth:member.player.maxHealth,
+      groupEffects:this.app.session.party?.groupModifiers()??{},stealthed:this.conditions.hasState(id,'stealthed'),growth:memberSkillGrowth(id)
+    });
   }
   private enemyFighter(key:string,definition:EnemyDefinition,playerLevel:number):PhysicalFighter|undefined {
     if(this.pendingDefeats.has(key))return;

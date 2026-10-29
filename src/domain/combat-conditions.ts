@@ -1,4 +1,4 @@
-import { applyCombatOperation } from './combat-operation.ts';
+import { applyAttributeModifiers, applyCombatOperation } from './combat-operation.ts';
 import { LOGIC_FRAME_MS,type CombatOperation,type BattleBuffEffect } from './battle.ts';
 import { calculateEffectiveDefense,calculateMagicResistance,type PhysicalFighter } from './physical-hit.ts';
 import type { PassiveModifier } from './passive-skills.ts';
@@ -334,9 +334,7 @@ export class CombatConditions {
   attribute(actorId:string,id:BattleStatKey,base:number,passives:readonly PassiveModifier[]=[]):number {
     const temporary=this.temporary.get(actorId)?.get(id);
     if(typeof temporary==='number')return temporary;
-    let value=base;
-    for(const modifier of passives)if(modifier.attribute===id)
-      value=applyCombatOperation(value,modifier.operation);
+    let value=applyAttributeModifiers(id,base,passives);
     const buffs=this.buffs.get(actorId);
     if(buffs?.size)for(const buff of [...buffs.values()].reverse()){
       for(const modifier of buff.effect.modifiers)if(modifier.attribute===id)
