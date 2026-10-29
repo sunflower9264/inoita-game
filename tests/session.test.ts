@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { Session } from '../src/domain/session.ts';
 import { StoryDirector } from '../src/domain/story-director.ts';
 import type { StoryUI } from '../src/domain/story-director.ts';
-import { canStandOnTerrain, ExitTrigger, findExitFreeSpawn, nearExit } from '../src/domain/navigation.ts';
+import { canStandOnTerrain, ExitTrigger } from '../src/domain/navigation.ts';
 import { NavigationWorld } from '../src/domain/navigation-world.ts';
 import type { Campaign } from '../src/domain/campaign.ts';
 const campaign=JSON.parse(fs.readFileSync(new URL('../public/content/campaign.json',import.meta.url),'utf8')) as Campaign;
@@ -52,13 +52,6 @@ test('an arrival next to an exit does not re-trigger before the player walks cle
  assert.equal(gate.update({x:40,y:40},true),null);
  gate.update({x:0,y:40},true);
  assert.equal(gate.update({x:40,y:40},true),exits[0]);
-});
-
-test('an arrival point is moved clear of nearby exits',()=>{
- const exits=[{x:32,y:32,width:16,height:16,destination:'next'}];
- const spawn=findExitFreeSpawn({x:24,y:40},exits,()=>true);
- assert.equal(nearExit(spawn,exits[0]!),false);
- assert.ok(spawn.x<24||spawn.x>24||spawn.y<40||spawn.y>40,'落点确实被挪开');
 });
 
 test('an exit away from the arrival point still triggers on first entry',()=>{

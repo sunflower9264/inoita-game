@@ -69,20 +69,6 @@ export function nearExit(point: Point, exit: GameRectangle, distance = EXIT_REAR
     && point.y > exit.y - distance && point.y < exit.y + exit.height + distance;
 }
 
-/** 找一个能站、且离所有出口至少 `distance` 的落点；找不到时保留原点。 */
-export function findExitFreeSpawn(start: Point, exits: readonly GameRectangle[],
-  standable: (point: Point) => boolean, distance = EXIT_REARM_DISTANCE): Point {
-  if (!exits.some(exit => nearExit(start, exit, distance))) return start;
-  for (let radius = 8; radius <= distance * 4; radius += 8) {
-    for (let index = 0; index < 24; index += 1) {
-      const angle = index * Math.PI / 12;
-      const candidate = { x: start.x + Math.cos(angle) * radius, y: start.y + Math.sin(angle) * radius };
-      if (!exits.some(exit => nearExit(candidate, exit, distance)) && standable(candidate)) return candidate;
-    }
-  }
-  return start;
-}
-
 export class ExitTrigger<T extends GameRectangle = GameRectangle> {
   private readonly exits: T[];
   /** 到达缓冲区模式：逐出口记录是否已离开落点附近。 */

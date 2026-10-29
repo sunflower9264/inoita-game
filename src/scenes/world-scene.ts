@@ -7,7 +7,7 @@ import { StatusHud } from '../ui/phaser/status-hud.ts';
 import { worldZoom } from '../ui/viewport.ts';
 import { OverheadStatus } from '../rendering/overhead-status.ts';
 import Phaser from 'phaser';
-import { ExitTrigger, findExitFreeSpawn, overlapsFootRect } from '../domain/navigation.ts';
+import { ExitTrigger, overlapsFootRect } from '../domain/navigation.ts';
 import { claimNearTrigger } from '../domain/story-trigger-occupancy.ts';
 import { NavigationWorld, collisionAt } from '../domain/navigation-world.ts';
 import { MovementWorld } from '../rendering/movement-world.ts';
@@ -424,18 +424,16 @@ export class WorldScene extends Phaser.Scene {
       ?{x:options.x,y:options.y}
       :revised&&revised.map===map.id?{x:revised.x,y:revised.y}:{x:options.x,y:options.y};
     // 出生点优先按整个碰撞盒落位：窄足底只保证鞋底不压墙，身体仍可能探进相邻阻挡格。
-    const landing = this.movement.navigation.nearestBody({ collision: appearance.collision }, requested)
+    const spawn = this.movement.navigation.nearestBody({ collision: appearance.collision }, requested)
       ?? this.movement.navigation.nearest(appearance, requested);
-    // 落点只保证能站，可能正好贴着回程出口；再往地图内挪到安全距离，避免进图一步就被弹回。
-    const spawn = findExitFreeSpawn(landing, map.exits ?? [],
-      point => this.movement!.navigation.canPlaceBody({ collision: appearance.collision }, point));
+    // 落点可以正压在回程出口上；出口在玩家走出到达缓冲区前保持锁定，走回来才触发。
     this.exitTrigger = new ExitTrigger(map.exits, spawn);
     this.entryInputGate = true;
     this.player = this.createActor({ id: 'player', actor: campaign.start.actor, ...spawn });
     this.applyNoclip(this.player);
     this.lastPlayerPosition = { ...spawn };
     this.facing = options.facing === 'any' ? 'south' : options.facing || 'south';
-    // 落点被挪开后，会话里的逻辑位置也要跟着走，否则物理位置和剧情/触发读到的位置会分叉。
+    // 落点被碰撞盒吸附后，会话里的逻辑位置也要跟着走，否则物理位置和剧情/触发读到的位置会分叉。
     const currentLocation = this.app.session.storyWorld.currentLocation;
     if (currentLocation?.map === map.id && (currentLocation.x !== spawn.x || currentLocation.y !== spawn.y))
       this.app.session.movePlayer({ map: map.id, ...spawn, facing: this.facing });
