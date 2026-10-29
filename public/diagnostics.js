@@ -188,6 +188,7 @@
     frameSampleCount = 0; frameSampleCursor = 0; lastFrameReport = Date.now();
   });
   document.addEventListener('webglcontextlost', event => record('webgl-context-lost', { status: event.statusMessage }), true);
+  document.addEventListener('webglcontextrestored', () => record('webgl-context-restored', {}), true);
   window.storyDiagnostics = {
     record, flush,
     setSnapshot(provider) { snapshot = provider; },

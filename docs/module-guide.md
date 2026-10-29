@@ -211,6 +211,8 @@ locked → available → active → ready → completed
 
 舞台只画主角和本幕 `cast` 点名的演员。正式世界里的召唤物一律不进入演出画面；佣兵和剧情伙伴都要被这一幕点名才出现，没点名的都留在正式世界。判断依据是舞台绑定，不是伙伴的招募来源。
 
+WebGL 上下文丢失后，Phaser 会自己重建普通图片、着色器和缓冲区，但不会重画衣柜用 `DynamicTexture` 合成的人物外观，也不会重做滚动区的静态遮罩。项目在 `restorewebgl` 事件里按原纹理键重画这些内容；角色和动画继续引用同一份外观，不需要重建场景。详情见 `docs/debugging.md` 的“画面恢复”。
+
 ## ActorRef、ScenePlan 与演员身份
 
 主要文件：`src/domain/actor-ref.ts`、`src/domain/actor-census.ts`、`src/domain/scene-plan.ts`、`src/domain/scene-snapshot.ts`、`src/domain/story-scene.ts`

@@ -2,6 +2,7 @@ import { UI_EVENTS } from '../../application/ui-events.ts';
 import Phaser from 'phaser';
 import { readSafeArea } from '../viewport.ts';
 import { loadSceneAssets, type PendingAsset } from '../../rendering/scene-assets.ts';
+import { onWebGLRestore } from '../../rendering/webgl-recovery.ts';
 import type { AssetLease } from '../../application/assets.ts';
 import { COMMON_BUTTON, COMMON_BUTTON_IMAGES } from '../common-button.ts';
 import { UI_ICON_ATLAS_DATA, UI_ICON_ATLAS_FILE, UI_ICON_ATLAS_KEY, UI_ICON_FRAMES } from '../../generated/icon-atlas.ts';
@@ -243,6 +244,7 @@ export class ScrollArea {
   private mask:Phaser.GameObjects.Rectangle;
   /** WebGL 遮罩的滤镜控制器；静态化后只在几何变化时重做遮罩纹理。 */
   private maskFilter?:{autoUpdate:boolean;needsUpdate:boolean};
+  private offRestore:()=>void=()=>{};
   private zone:Phaser.GameObjects.Zone;
   private offset=0;
   private extent=0;
@@ -261,6 +263,8 @@ export class ScrollArea {
       this.maskFilter=this.layer.filters!.external.addMask(this.mask,false,scene.cameras.main,'world');
       // FilterMask 默认每帧重做动态纹理；滚动区的遮罩只在缩放/安全区变化时改几何。
       this.maskFilter.autoUpdate=false;this.maskFilter.needsUpdate=true;
+      // 静态遮罩也依赖显存里的动态纹理；上下文恢复后要求下一次渲染重做一张。
+      this.offRestore=onWebGLRestore(scene,()=>{if(this.maskFilter)this.maskFilter.needsUpdate=true;});
     }
     else this.layer.setMask(this.mask.createGeometryMask());
     this.zone=scene.add.zone(0,0,1,1).setOrigin(0).setDepth(surface.depth+.5).setInteractive();
@@ -327,5 +331,5 @@ export class ScrollArea {
     if(this.zone.input)this.zone.input.hitArea.setSize(this.zone.width,this.zone.height);
     this.renderVirtual();
   }
-  destroy():void{const scene=this.surface.scene;scrollAreas.get(scene)?.delete(this);scene.input.off('pointerdown',this.down,this);scene.input.off('pointermove',this.move,this);scene.input.off('pointerup',this.up,this);scene.input.off('wheel',this.wheel,this);this.zone.destroy();this.layer.destroy(true);this.mask.destroy();}
+  destroy():void{this.offRestore();const scene=this.surface.scene;scrollAreas.get(scene)?.delete(this);scene.input.off('pointerdown',this.down,this);scene.input.off('pointermove',this.move,this);scene.input.off('pointerup',this.up,this);scene.input.off('wheel',this.wheel,this);this.zone.destroy();this.layer.destroy(true);this.mask.destroy();}
 }

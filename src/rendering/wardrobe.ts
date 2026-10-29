@@ -2,6 +2,7 @@ import type Phaser from 'phaser';
 import type { ActorDefinition, AnimationClip, ClipName } from '../domain/content.ts';
 import type { EquipmentSlot, ItemCatalog } from '../domain/items.ts';
 import { costumeRecipe, type CostumePart, type CostumePiece, type CostumePose, type WardrobeCatalog } from '../domain/wardrobe.ts';
+import { onWebGLRestore } from './webgl-recovery.ts';
 
 interface Outfit {
   actor: ActorDefinition;
@@ -9,6 +10,8 @@ interface Outfit {
   textures: string[];
   /** 正在显示这套外观的角色数；只有 0 才能回收纹理。 */
   users: number;
+  /** WebGL 上下文恢复后把显存里丢失的合成图重新画一遍。 */
+  redraw: () => void;
 }
 let serial = 0;
 
@@ -27,6 +30,7 @@ export class Wardrobe {
   private preparationRequest = new AbortController();
   private active = true;
   private readonly onShutdown = () => this.destroy();
+  private readonly offRestore: () => void;
   private current?: Outfit;
   /** 切换当前外观：旧外观的引用减一，新外观加一；同一套重复激活不重复计数。 */
   activate(outfit: Outfit): void {
@@ -41,13 +45,29 @@ export class Wardrobe {
       const texture=scene.textures.get(piece.texture);
       if(!texture.has(key))texture.add(key,0,piece.x,piece.y,piece.width,piece.height);
     }
+    this.offRestore=onWebGLRestore(scene,()=>this.redrawCached());
     scene.events.once('shutdown',this.onShutdown);
   }
   destroy(): void {
     if (!this.active) return;
     this.active = false;
+    this.offRestore();
     this.scene.events.off('shutdown', this.onShutdown);
     this.clear();
+  }
+  /** 上下文恢复只清空显存，不会丢 Texture 对象和动画帧；把仍在显示的外观按原键重画即可。 */
+  private redrawCached(): void {
+    if (!this.active) return;
+    for (const [signature, outfit] of this.cache) {
+      // 没人用的旧外观直接丢掉；再次需要时会按原配方重新合成，避免恢复瞬间重画整套缓存。
+      if (outfit !== this.current && outfit.users <= 0) {
+        this.dispose(outfit);
+        this.cache.delete(signature);
+        continue;
+      }
+      try { outfit.redraw(); }
+      catch (error) { console.warn('人物外观恢复失败', error); }
+    }
   }
   private dispose(outfit: Outfit): void {
     for(const key of outfit.textures) {
@@ -95,7 +115,7 @@ export class Wardrobe {
     finally{if(this.preparations.get(signature)===preparation)this.preparations.delete(signature);}
   }
   private async compose(base:ActorDefinition,recipe:ReturnType<typeof costumeRecipe>,signature:string,signal:AbortSignal):Promise<Outfit> {
-    const textures:string[]=[], clips:ActorDefinition['clips']={};
+    const textures:string[]=[], clips:ActorDefinition['clips']={}, paints:(()=>void)[]=[];
     const source=(part:CostumePart): {key:string;piece:CostumePiece} | undefined => {
       const variant=recipe.variants[part.part];
       if(!variant)return;
@@ -123,16 +143,25 @@ export class Wardrobe {
         const key=`outfit-${++serial}`,texture=this.scene.textures.addDynamicTexture(key,columns*width,Math.ceil(pose.frames.length/columns)*height);
         if(!texture)throw new Error('人物外观纹理创建失败');
         textures.push(key);
+        const stamps:{texture:string;frame:string;x:number;y:number;config:{originX:number;originY:number;scaleX:number;scaleY:number;angle:number;alpha:number}}[]=[];
         pose.frames.forEach((parts,index)=>{
           const x=index%columns*width,y=Math.floor(index/columns)*height;
           for(const part of parts) {
             const info=source(part);if(!info)continue;
-            texture.stamp(info.piece.texture,info.key,x+part.x-left,y+part.y-top,{originX:info.piece.anchorX/info.piece.width,
-              originY:info.piece.anchorY/info.piece.height,scaleX:part.scaleX,scaleY:part.scaleY,angle:part.angle,alpha:part.alpha});
+            stamps.push({texture:info.piece.texture,frame:info.key,x:x+part.x-left,y:y+part.y-top,
+              config:{originX:info.piece.anchorX/info.piece.width,originY:info.piece.anchorY/info.piece.height,
+                scaleX:part.scaleX,scaleY:part.scaleY,angle:part.angle,alpha:part.alpha}});
           }
           texture.add(String(index),0,x,y,width,height);
         });
-        texture.render();
+        const paint=()=>{
+          if(!this.scene.textures.exists(key))return;
+          texture.clear();
+          for(const stamp of stamps)texture.stamp(stamp.texture,stamp.frame,stamp.x,stamp.y,stamp.config);
+          texture.render();
+        };
+        paint();
+        paints.push(paint);
         const clip:AnimationClip={frameWidth:width,frameHeight:height,frames:pose.frames.length,originX:-left/width,originY:-top/height,
           frameRate:pose.frameRate,mirrorX:pose.mirrorX,layers:[{key,file:'',blend:'normal'}]};
         clips[name as ClipName]=clip;
@@ -156,7 +185,8 @@ export class Wardrobe {
         signal.throwIfAborted();
       }
       signal.throwIfAborted();
-      const outfit={actor:{...base,clips:{...base.clips,...clips}},preview,textures,users:0};
+      const outfit={actor:{...base,clips:{...base.clips,...clips}},preview,textures,users:0,
+        redraw:()=>{for(const paint of paints)paint();}};
       this.cache.set(signature,outfit);
       // 只回收无人引用的外观：换装后旧外观可能仍被队友或演出角色使用。
       while(this.cache.size>3){
@@ -165,6 +195,6 @@ export class Wardrobe {
         this.dispose(oldest[1]);this.cache.delete(oldest[0]);
       }
       return outfit;
-    } catch(error){this.dispose({actor:base,preview:'',textures,users:0});throw error;}
+    } catch(error){this.dispose({actor:base,preview:'',textures,users:0,redraw:()=>{}});throw error;}
   }
 }
