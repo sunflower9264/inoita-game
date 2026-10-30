@@ -5,6 +5,7 @@ import type { ItemCatalog } from '../domain/items.ts';
 import { storyActions } from '../domain/story-script.ts';
 import type { StoryPlace, StorySpot } from '../domain/story-graph.ts';
 import type { WardrobeCatalog } from '../domain/wardrobe.ts';
+import type { StoryEncounter } from '../domain/story-world.ts';
 import type { AudioCatalog } from './game-audio.ts';
 import { validateStoryPerformance } from './story-performance-validation.ts';
 import { validateStoryReferences } from './story-reference-validation.ts';
@@ -169,6 +170,23 @@ export function validateContentRelations(input: ContentRelations): void {
       if (line.portrait) ensure(world.portraits[line.portrait], `对白立绘缺失 ${line.portrait}`);
     }
   }
+
+  // 同一场遭遇里两条摆位完全一样，只会多出一只同样的敌人：那是复制出来的记录，不是设计。
+  // 跨摆位的重复（演出位 + 参战位）在这里判断不了——原版把同一只怪先摆台前、开打前撤下再摆到
+  // 开打格，两条记录的坐标本来就不同；那类重复由导出脚本的「切图作废旧单位」规则和剧情用例兜住。
+  const checkEncounter = (owner: string, encounter: StoryEncounter): void => {
+    const seen = new Set<string>();
+    for (const spawn of encounter.spawns) {
+      const key = `${spawn.enemyId}|${spawn.x}|${spawn.y}`;
+      ensure(!seen.has(key), `剧情 ${owner} 在同一格摆了两只 ${spawn.enemyId}`);
+      seen.add(key);
+    }
+  };
+  for (const [name, script] of Object.entries(campaign.scripts))
+    for (const node of script.nodes) {
+      if (node.exit.type === 'waitEncounter') checkEncounter(`${name}/${node.id}`, node.exit.encounter);
+      for (const command of node.commands) if (command.type === 'encounter') checkEncounter(`${name}/${node.id}`, command.encounter);
+    }
 
   validateStoryPerformance(world, campaign, maps, audio);
   validateStoryReferences(campaign, world, battle, maps, items);
