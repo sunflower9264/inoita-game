@@ -126,7 +126,8 @@ export class MenuScene extends Phaser.Scene {
         let rowTop=20;
         for(const [channel,label]of ([['music','背景音乐'],['effects','音效']]as const)){
           view.text(label,38,rowTop+12,0,34,undefined,content);
-          view.slider(channel,270,rowTop+33,150,this.app.audio?.settings[channel]??1,
+          // 轨道伸到面板右侧，百分比留在轨道右端。
+          view.slider(channel,270,rowTop+33,380,this.app.audio?.settings[channel]??1,
             value=>this.app.audio?.setVolume(channel,value),content);
           rowTop+=100;
         }
