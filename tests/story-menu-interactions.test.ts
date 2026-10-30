@@ -224,6 +224,7 @@ campaign.debugStory = read<Campaign['debugStory']>('debug/start');
 const panels = read<MenuPanels>('menu-panels'), content = read<StoryInterface>('story-interface');
 interface MenuInternals {
   selectedMemberId: string;
+  applying?: string;
   operation?: { entry: string; kind: 'use' | 'discard'; quantity: number };
   keyboardFocus?: Display;
   body: UiSurface;
@@ -574,6 +575,19 @@ test('companion bag rejects hero-only items at the button, direct entry and conf
     assert.deepEqual(f.session.captureState(), before, `${item} 确认前再次拒绝，库存与整队状态不变`);
     f.internals.operation = undefined;
   }
+});
+
+test('socket gems can be applied by tapping the target equipment', t => {
+  const f=fixture();t.after(f.cleanup);
+  const gem=f.add('novice-jewel'),dagger=f.add('basic-dagger');
+  f.session.bag.equip(dagger.id,'main-hand','player',f.hero.classId,f.hero.level);
+  f.menu.show('bag');
+  f.scene.click(f.scene.button('低级宝石'));
+  assert.equal(f.internals.applying,gem.id);
+  f.scene.click(f.scene.button('主手'));
+  assert.equal(f.session.bag.count('novice-jewel'),0);
+  assert.equal(f.session.bag.get(dagger.id)!.gems.length,1);
+  assert.equal(f.internals.applying,undefined);
 });
 
 test('hero bag still applies skill reset and supreme elixir', t => {
@@ -1135,24 +1149,24 @@ test('fusion menu selects or drags equipment, confirms once and blocks underlyin
   f.session.gainMoney(100000);
   for(const op of Object.values(f.app.crafting!.operations))for(const m of op.materials)f.add(m.item,m.quantity*4);
   const machine=Object.keys(world.actors).find(id=>world.actors[id].service==='fusion-machine')!;
-  f.menu.openCrafting(machine);f.scene.click(f.scene.button('深渊混沌'));
+  f.menu.openCrafting(machine);f.scene.click(f.scene.button('切换融合模式'));f.scene.click(f.scene.button('深渊混沌合成'));
   f.scene.click(f.scene.button(item.name));
   assert(f.scene.texts().some(text=>text.replace(/\n/g,'')==='深渊混沌道具只适用于混沌道具。'));
-  f.scene.key('Escape');f.scene.click(f.scene.button('混沌'));
+  f.scene.key('Escape');f.scene.click(f.scene.button('混沌合成'));
   f.scene.press(f.scene.button(item.name));f.scene.hold();f.scene.pointAt(f.scene.button('合成装备'));
   f.scene.input.activePointer.isDown=false;f.scene.input.emit('pointerup',f.scene.input.activePointer);
   assert(f.scene.texts().includes(item.name));
   const before=bag.captureState(),money=f.session.money;
   f.scene.click(f.scene.button('组合'));
   assert(f.scene.texts().includes('是否以当前的配方来合成？'));
-  assert.equal(f.scene.canHit(f.scene.button('深渊混沌')),false);
+  assert.equal(f.scene.canHit(f.scene.button('深渊混沌合成')),false);
   const no=f.scene.button('否');f.scene.click(no);assert.deepEqual(bag.captureState(),before);assert.equal(f.session.money,money);
   f.scene.click(f.scene.button('组合'));
   const yes=f.scene.button('是');f.scene.click(yes);
   assert.equal(bag.get(target)!.numbers!.chaos!.tier,'chaos');assert.equal(f.session.money,money-item.level*700);
   assert.deepEqual(bag.captureState().allCells,before.allCells);
   yes.getData('action')();assert.equal(f.session.money,money-item.level*700,'同一个确认按钮不会再次扣费');
-  f.scene.click(f.scene.button('深渊混沌'));f.scene.click(f.scene.button(item.name));f.scene.click(f.scene.button('组合'));f.scene.click(f.scene.button('是'));
+  f.scene.click(f.scene.button('深渊混沌合成'));f.scene.click(f.scene.button(item.name));f.scene.click(f.scene.button('组合'));f.scene.click(f.scene.button('是'));
   assert.equal(bag.get(target)!.numbers!.chaos!.tier,'epic-chaos');assert.equal(f.session.money,money-item.level*1600);
   f.menu.close();assert.equal(f.controls.locked,false);
 });
