@@ -1676,7 +1676,7 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
       if (character.entity.spring && this.map && this.app.session.springs.isEmpty(this.map.id, character.entity.id)) continue;
       // 宝箱按原版「身边 24 px」选目标；机关按真实碰撞盒贴边兜底。商店能隔着柜台
       // 说话，普通剧情/NPC 只放宽到贴身一格，避免隔两三格选中净化石这类目标。
-      const shop = !!this.app.shops.shops[character.entity.actor];
+      const shop = !!this.app.shops?.shops[character.entity.actor];
       if (!(character.actor.chest
         ? nearInteractable(controlled.container, character.container)
         : nearInteractive(controlled.container, character.container, character.actor.collision, !!character.entity.flip, shop ? SHOP_COUNTER_GAP : BODY_ADJACENT_GAP))) continue;

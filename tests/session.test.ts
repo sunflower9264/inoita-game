@@ -21,6 +21,7 @@ test('native assassination progress requires a defeat and markers follow its del
  assert.equal(session.marker('darius','npc-40'),'ready');
  assert.equal(session.complete('grafton-mission'),true);assert.equal(session.complete('grafton-mission'),false);
  assert.equal(session.marker('darius','npc-40'),null);
+ assert.equal(session.markerActor('darius','npc-40'),false,'任务完成后不再把交付人算作可交互对象');
  assert.equal(session.status('cardinal-summons'),'available');
  assert.equal(session.marker('janus','npc-55'),null,'event-granted quests have no offer marker before their script grants them');
 });

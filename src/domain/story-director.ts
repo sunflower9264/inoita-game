@@ -526,7 +526,10 @@ export class StoryDirector {
     // 不提供任务选择列表（`NPCSYSTEM_MakeFunctionList` 命中即返回，`ExeCurrentNpcTask` 只读槽 0）。
     const quest = this.session.npcQuestSlot(entity.actor, entity.characterId);
     if (!quest) {
-      await this.dialogue({ actor: entity.actor, speaker: entity.name ?? actor.name, text: entity.hint || actor.description || '一路小心。' });
+      // 没有闲话内容就不弹窗，避免所有无台词 NPC 都说同一句兜底话。
+      const text=entity.hint||actor.description;
+      if(!text)return;
+      await this.dialogue({ actor: entity.actor, speaker: entity.name ?? actor.name, text });
       return;
     }
     const status = this.session.status(quest.id);

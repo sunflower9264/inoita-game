@@ -695,9 +695,13 @@ export class Session {
     const values=this.markerActorProjection!.values,key=actor+'\0'+(characterId??'');
     if(!values.has(key)){
       const visibleFocus=!!focus;
-      values.set(key,this.campaign.quests.some(quest=>(!focus||quest.id===focus)
-        &&(this.matchesQuestActor(quest,actor,characterId,false)
-        ||this.matchesQuestActor(quest,actor,characterId,true))&&(visibleFocus||this.questBook.visible(quest.id))));
+      values.set(key,this.campaign.quests.some(quest=>{
+        const status=this.status(quest.id);
+        if(!['available','active','ready'].includes(status))return false;
+        return (!focus||quest.id===focus)
+          &&this.matchesQuestActor(quest,actor,characterId,status!=='available')
+          &&(visibleFocus||this.questBook.visible(quest.id));
+      }));
     }
     return values.get(key)!;
   }
