@@ -14,7 +14,7 @@ import { memberCombatModifiers } from '../domain/party-combat.ts';
 import { characterCombatValues } from './character-values.ts';
 import type { StoryUIContext } from '../application/ports.ts';
 import type { Session } from '../domain/session.ts';
-import type { WorldIndex } from '../domain/content.ts';
+import type { ActorDefinition, WorldIndex } from '../domain/content.ts';
 import type { StoryInterface } from '../domain/story-interface.ts';
 import type { CompanionMember } from '../domain/party.ts';
 import type { BattleClass, SkillLoadout } from '../domain/battle.ts';
@@ -51,7 +51,7 @@ import { skillDescriptionParts, skillLearningParts, skillNextLevelPreview } from
 import { drawDescriptionText } from './phaser/description-text.ts';
 import { tradeLayout } from './shop-layout.ts';
 import { splitMoney } from './money-display.ts';
-import { createCharacter } from '../rendering/characters.ts';
+import { createCharacter, type CharacterVisual } from '../rendering/characters.ts';
 
 type Page='status'|'bag'|'skills'|'party'|'quests'|'system'|'save'|'load'|'settings'|'shop'|'crafting'|'debug';
 const tabs:[Page,string][]=[['status','人物'],['bag','背包'],['skills','技能'],['party','队伍'],['quests','任务'],['system','系统']];
@@ -117,6 +117,11 @@ export class StoryUI {
   private craftingPanel?:CraftingPanel;private craftingActor?:string;
   private shopPanel?:ShopPanel;private partyPanel?:PartyPanel;private notice='';
   private keyboardFocus?:Phaser.GameObjects.Container;
+  /**
+   * 背包页那颗合成立绘。它按当前角色和身上装备拼出来，换人、换装备才重做；
+   * 翻物品、点格子引起的重画直接搬回来用——每次重建一批精灵正是背包卡顿的一大来源。
+   */
+  private bagPortrait?:{actor:ActorDefinition;visual:CharacterVisual};
   private scrollOffsets=new Map<string,number>();private scrollNames=new Map<string,ScrollArea>();
   private drag?:{entry:string;pointer:number;x:number;y:number;timer:Phaser.Time.TimerEvent;active:boolean;ghost?:Phaser.GameObjects.Image};private suppressClick=false;
   private drops:{object:Phaser.GameObjects.Container|Phaser.GameObjects.Image;entry?:string;slot?:EquipmentSlot;view?:InventoryView;cell?:number;craft?:boolean}[]=[];
@@ -261,7 +266,7 @@ export class StoryUI {
   }
   close():void{
     if(this.open&&this.requestAllocationExit(()=>this.close()))return;
-    if(!this.open)return;this.controlEditor?.close();this.app.ui.setControlLayoutEditing(false);this.cancelOperation();this.modalActive=false;this.shortcutEdit=undefined;this.shortcutScreen?.clear();this.backTab?.clear();this.shopPanel=undefined;this.craftingPanel=undefined;this.craftingActor=undefined;this.open=false;this.scrollNames.forEach((scroll,name)=>this.scrollOffsets.set(`${this.page}:${name}`,scroll.scrollTop));this.scrollNames.clear();this.body?.clear();this.description?.clear();if(this.surface&&this.body){this.surface.root.remove(this.body.root);this.surface.clear();this.surface.root.add(this.body.root);}this.keyboardFocus=undefined;this.surface?.visible(false);this.body?.visible(false);this.description?.visible(false);this.modal?.visible(false);this.shortcutScreen?.visible(false);this.backTab?.visible(false);this.backdrop?.setVisible(false);this.app.ui.resetInput();this.app.ui.lock(false,'story-menu');
+    if(!this.open)return;this.controlEditor?.close();this.app.ui.setControlLayoutEditing(false);this.cancelOperation();this.modalActive=false;this.shortcutEdit=undefined;this.shortcutScreen?.clear();this.backTab?.clear();this.shopPanel=undefined;this.bagPortrait?.visual.container.destroy();this.bagPortrait=undefined;this.craftingPanel=undefined;this.craftingActor=undefined;this.open=false;this.scrollNames.forEach((scroll,name)=>this.scrollOffsets.set(`${this.page}:${name}`,scroll.scrollTop));this.scrollNames.clear();this.body?.clear();this.description?.clear();if(this.surface&&this.body){this.surface.root.remove(this.body.root);this.surface.clear();this.surface.root.add(this.body.root);}this.keyboardFocus=undefined;this.surface?.visible(false);this.body?.visible(false);this.description?.visible(false);this.modal?.visible(false);this.shortcutScreen?.visible(false);this.backTab?.visible(false);this.backdrop?.setVisible(false);this.app.ui.resetInput();this.app.ui.lock(false,'story-menu');
   }
   private cancelOperation():void{this.cancelDrag();this.request.abort();this.request=new AbortController();this.busy=false;this.operation=undefined;this.itemNotice=undefined;this.skillReset=false;this.saveConfirm=undefined;this.loadConfirm=undefined;this.deleteConfirm=undefined;this.renameRef=undefined;this.prompt?.close();this.partyPanel?.close();this.craftingPanel?.close();this.modal?.clear();this.modal?.visible(false);}
   private key(event:KeyboardEvent):void{
@@ -387,7 +392,7 @@ export class StoryUI {
   }
   private renderNow():void{
     if(!this.open||!this.surface||!this.body||!this.session)return;
-    this.craftingPanel?.captureScroll();this.shopPanel?.captureScroll();this.questPanel?.captureScroll();this.partyPanel?.captureScroll();this.scrollNames.forEach((scroll,name)=>this.scrollOffsets.set(`${this.page}:${name}`,scroll.scrollTop));this.scrollNames.clear();this.surface.root.remove(this.body.root);this.surface.clear();this.body.clear();this.description?.clear();this.modal!.clear();this.surface.root.add(this.body.root);this.drops=[];this.keyboardFocus=undefined;
+    this.craftingPanel?.captureScroll();this.shopPanel?.captureScroll();this.questPanel?.captureScroll();this.partyPanel?.captureScroll();this.scrollNames.forEach((scroll,name)=>this.scrollOffsets.set(`${this.page}:${name}`,scroll.scrollTop));this.scrollNames.clear();this.surface.root.remove(this.body.root);this.surface.clear();if(this.bagPortrait)this.body.root.remove(this.bagPortrait.visual.container);this.body.clear();this.description?.clear();this.modal!.clear();this.surface.root.add(this.body.root);this.drops=[];this.keyboardFocus=undefined;
     if(!this.member()){this.discardAllocation();this.selectedMemberId='player';}const v=this.surface;
     this.body.root.setPosition(CONTENT_ORIGIN.x,CONTENT_ORIGIN.y);
     // 登记快捷键时菜单本体不画：只重画那一屏（它自己在 `sync` 里显示、菜单整块隐藏）。
@@ -1001,11 +1006,16 @@ export class StoryUI {
       if(appearance&&this.scene&&clip?.layers.every(layer=>this.scene!.textures.exists(layer.key))){
         // 合成立绘按预览洞缩放到刚好放得下、并在洞里居中：原版这个洞是 157×157（左框局部 129,110），
         // 立绘必须落在洞内，之前固定 3 倍放大、锚点 292,230 会让它探出洞外。
-        const character=createCharacter(this.scene,appearance,{id:'equipment-preview',actor:appearance.id,x:0,y:0}),bounds=character.container.getBounds(),
-          scale=Math.min(preview.width/Math.max(1,bounds.width),preview.height/Math.max(1,bounds.height));
-        character.container.setScale(scale).setPosition(preview.x+(preview.width-bounds.width*scale)/2-bounds.x*scale,
-          preview.y+(preview.height-bounds.height*scale)/2-bounds.y*scale);
-        v.root.add(character.container);
+        // 立绘只在换人、换装备时重做：点格子、翻物品都会重画背包页，每次重建一批精灵会让背包明显卡顿。
+        if(this.bagPortrait?.actor!==appearance){
+          this.bagPortrait?.visual.container.destroy();
+          const character=createCharacter(this.scene,appearance,{id:'equipment-preview',actor:appearance.id,x:0,y:0}),bounds=character.container.getBounds(),
+            scale=Math.min(preview.width/Math.max(1,bounds.width),preview.height/Math.max(1,bounds.height));
+          character.container.setScale(scale).setPosition(preview.x+(preview.width-bounds.width*scale)/2-bounds.x*scale,
+            preview.y+(preview.height-bounds.height*scale)/2-bounds.y*scale);
+          this.bagPortrait={actor:appearance,visual:character};
+        }
+        v.root.add(this.bagPortrait!.visual.container);
       }
       else v.image(this.selectedMemberId==='player'?panels.classes[member.classId].preview:art.partyIcon,214,110,157,157);
       for(const slot of panels.equipmentSlots){const entry=equipment[slot.id as EquipmentSlot],item=entry?bag.catalog.items[bag.get(entry)!.item]:undefined;const button=v.button('',85+slot.x,slot.y,74,74,()=>{if(!entry)return;this.selectItem(entry,'right');},{image:panels.assets['inventory-slot']});v.image(item?.icon??slot.emptyIcon,item?5:13,item?5:13,item?64:48,item?64:48,button);button.setData('label',slot.name);this.drops.push({object:button,entry,slot:slot.id as EquipmentSlot});}
