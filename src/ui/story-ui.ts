@@ -1,7 +1,7 @@
 import { UI_EVENTS } from '../application/ui-events.ts';
 import { displaySettings } from '../application/display-settings.ts';
 import { fullscreenActive, fullscreenStatus, onFullscreenChange, setFullscreen } from '../application/fullscreen.ts';
-import { controlSettings } from '../application/control-settings.ts';
+import { controlSettings, nextControlMode, type ControlMode } from '../application/control-settings.ts';
 import {CraftingPanel} from './phaser/crafting-panel.ts';
 import {EquipmentCrafting} from '../domain/crafting.ts';
 import {skillForGrowth,memberSkillGrowth} from '../domain/battle.ts';
@@ -57,6 +57,8 @@ import { createCharacter, type CharacterVisual } from '../rendering/characters.t
 
 type Page='status'|'bag'|'skills'|'party'|'quests'|'system'|'save'|'load'|'settings'|'shop'|'crafting'|'debug';
 const tabs:[Page,string][]=[['status','人物'],['bag','背包'],['skills','技能'],['party','队伍'],['quests','任务'],['system','系统']];
+/** 设置页「操作方式」一行上显示的当前选择。 */
+const CONTROL_MODE_LABELS:Record<ControlMode,string>={stick:'虚拟摇杆',dpad:'十字按键',keyboard:'电脑模式'};
 /** 原版按档位索引取 [9,8,7] 三张按钮图，0/1/2 依次对应。 */
 /** 原版菜单里正文与数值的米色：进绘制前调 `GRPX_SetFontColorFromRGB(0xe2,0xcb,0x9e)`。 */
 const AREA_TEXT='#e2cb9e';
@@ -528,14 +530,22 @@ export class StoryUI {
       v.button(label,485,rowTop,220,66,()=>{},{parent:content,disabled:true})
         .setData('label','全屏：'+label);
     }
-    // 操作方式统一在“操作设置”里改；键位映射只在电脑模式显示。
+    // 操作方式在本行点击轮换；触屏模式拖动控件位置，电脑模式改成键位映射。
+    rowTop+=90;
+    const modeLabel=CONTROL_MODE_LABELS[controlSettings.mode];
+    v.text('操作方式',260,rowTop+15,0,25,undefined,content);
+    v.button(modeLabel,485,rowTop,220,66,()=>{
+      controlSettings.setMode(nextControlMode(controlSettings.mode));
+      this.render();
+    },{parent:content}).setData('label',`操作方式：${modeLabel}`);
+    rowTop+=90;
     if(controlSettings.mode==='keyboard'){
-      rowTop+=90;
       v.text('键位设置',260,rowTop+15,0,25,undefined,content);
       v.button('修改键位',485,rowTop,220,66,()=>this.openKeyBindingEditor(),{parent:content});
+    }else{
+      v.text('控件位置',260,rowTop+15,0,25,undefined,content);
+      v.button('拖动调整',485,rowTop,220,66,()=>this.openControlEditor(),{parent:content});
     }
-    rowTop+=90;
-    v.button('操作设置',485,rowTop,220,66,()=>this.openControlEditor(),{parent:content});
     this.finishScroll('settings',scroll,rowTop+80);
   }
   /**

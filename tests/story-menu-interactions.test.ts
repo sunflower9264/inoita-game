@@ -477,9 +477,9 @@ test('system exposes load alongside save while settings keeps the working displa
   const toggle=(y:number)=>f.scene.buttons('开启').concat(f.scene.buttons('关闭')).find(node=>node.y===y)!;
   const rows={fps:260,critical:350} as const;
   assert(toggle(rows.fps));assert(toggle(rows.critical));
-  // 设置项按 90 行距排，谁也盖不住谁；操作设置位于滚动内容末尾，不要求在首屏视口内。
-  const control=f.scene.button('操作设置'),criticalToggle=toggle(rows.critical);
-  assert(control.y>=criticalToggle.y+criticalToggle.input!.hitArea.height,'操作设置排在暴击光效下方');
+  // 设置项按 90 行距排，谁也盖不住谁；操作方式位于滚动内容末尾，不要求在首屏视口内。
+  const control=f.scene.nodes.find(node=>node.shown&&node.getData('uiAction')&&String(node.getData('label')).startsWith('操作方式：'))!,criticalToggle=toggle(rows.critical);
+  assert(control.y>=criticalToggle.y+criticalToggle.input!.hitArea.height,'操作方式排在暴击光效下方');
   // 设置页在滚动区里，拖动过的抬手不能算点击。
   f.scene.press(toggle(rows.critical));
   f.scene.input.activePointer.y-=40;
@@ -909,8 +909,9 @@ function editingControl(f: ReturnType<typeof fixture>, id: ControlId) {
   assert.equal(objects.length,1,`唯一可拖动控件 ${id}`);return objects[0]!;
 }
 function openControls(f: ReturnType<typeof fixture>) {
+  controlSettings.setMode('stick');
   f.menu.show('settings');
-  const control=f.scene.button('操作设置');
+  const control=f.scene.button('拖动调整');
   f.internals.body.scrolls.at(-1)?.reveal(control as unknown as Phaser.GameObjects.Container);
   f.scene.click(control);
 }
@@ -935,12 +936,12 @@ test('control editor hides the menu, keeps the shade and HUD buttons, previews t
   }
   assert(editingControl(f,'slot-0').list.some(node=>node.texture.key===`interface:${icon}`),'读取实际操控者当前组的图标');
   assert(editingControl(f,'slot-1').list.some(node=>node.text==='7'));
-  const reset=f.scene.button('恢复默认'),close=f.scene.button('关闭操作设置');
+  const reset=f.scene.button('恢复默认'),close=f.scene.button('关闭控件位置');
   assert(reset.parentContainer!.depth>editingControl(f,'move').parentContainer!.depth,'工具栏在拖动控件上方');
   f.scene.click(close);
   assert.equal(f.controls.controlLayoutEditing,false);assert(f.controls.locked);
-  assert.equal(f.scene.buttons('操作设置').length,1);assert.equal(f.scene.buttons('恢复默认').length,0);
-  openControls(f);assert(f.scene.key('Escape'));assert.equal(f.scene.buttons('操作设置').length,1);
+  assert.equal(f.scene.buttons('拖动调整').length,1);assert.equal(f.scene.buttons('恢复默认').length,0);
+  openControls(f);assert(f.scene.key('Escape'));assert.equal(f.scene.buttons('拖动调整').length,1);
   assert(f.controls.locked);assert(f.scene.key('Escape'));assert.equal(f.controls.locked,false);
 });
 
@@ -960,35 +961,44 @@ test('control editor saves only on release, allows overlap, resets in place and 
   assert.deepEqual(f.app.controlLayout.snapshot(),{});assert(f.controls.controlLayoutEditing);
   const defaultLayout=resolveControlLayout(controlViewport(f.scene as unknown as Phaser.Scene));
   for(const id of CONTROL_IDS)assert.deepEqual([editingControl(f,id).x,editingControl(f,id).y],[defaultLayout[id].x,defaultLayout[id].y]);
-  // 工具栏现在还有三种操作方式按钮；从“恢复默认”继续往后 Tab 到关闭钮。
-  for(let index=0;index<4;index++)assert(f.scene.key('Tab'));
+  // 工具栏现在只有“恢复默认”和关闭钮；从“恢复默认”继续往后 Tab 到关闭钮。
+  assert(f.scene.key('Tab'));
   assert(f.scene.key('Enter'));assert.equal(f.controls.controlLayoutEditing,false);
 });
 
-test('control editor offers three operation modes and hides touch controls in computer mode',t=>{
+test('settings cycles operation modes in place and shows the matching editor entry',t=>{
   const f=fixture();t.after(f.cleanup);t.after(()=>controlSettings.setMode('stick'));
-  openControls(f);
+  controlSettings.setMode('stick');
+  f.menu.show('settings');
+  // 这些行在滚动区末尾，先滚到可见再点，和玩家实际操作的路径一致。
+  const clickRow=(label:string)=>{const row=f.scene.button(label);f.internals.body.scrolls.at(-1)?.reveal(row as unknown as Phaser.GameObjects.Container);f.scene.click(row);};
   const touchObjects=()=>f.scene.nodes.filter(node=>node.shown&&node.getData('controlId')).length;
-  assert.equal(touchObjects(),CONTROL_IDS.length);
   assert.equal(f.scene.buttons('操作方式：虚拟摇杆').length,1);
+  assert.equal(f.scene.buttons('拖动调整').length,1,'触屏模式提供控件位置入口');
+  assert.equal(f.scene.buttons('修改键位').length,0);
+
+  // 点一下换下一种：摇杆 → 十字 → 电脑模式 → 摇杆，全程留在设置页。
+  clickRow('操作方式：虚拟摇杆');
+  assert.equal(controlSettings.mode,'dpad');
   assert.equal(f.scene.buttons('操作方式：十字按键').length,1);
-  assert.equal(f.scene.buttons('操作方式：电脑模式').length,1);
+  assert.equal(f.scene.buttons('拖动调整').length,1);
 
-  f.scene.click(f.scene.button('操作方式：电脑模式'));
+  clickRow('操作方式：十字按键');
   assert.equal(controlSettings.mode,'keyboard');
-  assert.equal(touchObjects(),0,'电脑模式没有可拖动的触屏控件');
-  assert.equal(f.scene.buttons('恢复默认').length,0,'电脑模式不显示恢复默认');
-  assert(f.scene.texts().includes('电脑模式使用键鼠操作'));
-  f.scene.click(f.scene.button('关闭操作设置'));
-  assert.equal(f.scene.buttons('修改键位').length,1,'电脑模式设置页显示键位设置入口');
+  assert.equal(f.scene.buttons('操作方式：电脑模式').length,1);
+  assert.equal(f.scene.buttons('修改键位').length,1,'电脑模式显示键位设置入口');
+  assert.equal(f.scene.buttons('拖动调整').length,0);
 
-  openControls(f);
-  f.scene.click(f.scene.button('操作方式：虚拟摇杆'));
+  clickRow('操作方式：电脑模式');
   assert.equal(controlSettings.mode,'stick');
-  assert.equal(touchObjects(),CONTROL_IDS.length,'切回触屏恢复可拖控件');
+  assert.equal(f.scene.buttons('操作方式：虚拟摇杆').length,1);
+  assert.equal(f.scene.buttons('拖动调整').length,1);
+
+  // 触屏的“拖动调整”打开的就是可拖动控件面板。
+  clickRow('拖动调整');
+  assert(f.controls.controlLayoutEditing);
+  assert.equal(touchObjects(),CONTROL_IDS.length);
   assert.equal(f.scene.buttons('恢复默认').length,1);
-  f.scene.click(f.scene.button('关闭操作设置'));
-  assert.equal(f.scene.buttons('修改键位').length,0,'触屏模式隐藏键位设置入口');
 });
 
 test('control editor cancels unfinished drags on input cancellation, suspension, resize, leaving canvas and close',t=>{
@@ -1000,7 +1010,7 @@ test('control editor cancels unfinished drags on input cancellation, suspension,
     if(cancel==='suspend'){f.controls.suspend(true);f.controls.suspend(false);}
     if(cancel==='resize')f.scene.resize(1280,720);
     if(cancel==='outside')f.scene.input.emit('gameout');
-    if(cancel==='close')f.scene.click(f.scene.button('关闭操作设置'));
+    if(cancel==='close')f.scene.click(f.scene.button('关闭控件位置'));
     object.emit('dragend',pointer);
     assert.deepEqual(f.app.controlLayout.snapshot(),{move:{x:.25,y:.65}},cancel);
     if(cancel!=='close') {

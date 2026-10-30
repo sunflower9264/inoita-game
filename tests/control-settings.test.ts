@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
 import test from 'node:test';
 import {
-  ControlSettings, controlSettings, type ControlMode, type MoveControlStyle, type StorageLike
+  ControlSettings, controlSettings, nextControlMode, type ControlMode, type MoveControlStyle, type StorageLike
 } from '../src/application/control-settings.ts';
 import { KeyBindingPreferences } from '../src/application/key-bindings.ts';
 import type { KeyBinding } from '../src/domain/key-bindings.ts';
@@ -169,6 +169,12 @@ test('MoveStick switches between stick and dpad without calling removeInteractiv
 
   stick.destroy();
   controlSettings.setMoveStyle('stick');
+});
+
+test('nextControlMode cycles through the three operation modes in order', () => {
+  assert.equal(nextControlMode('stick'), 'dpad');
+  assert.equal(nextControlMode('dpad'), 'keyboard');
+  assert.equal(nextControlMode('keyboard'), 'stick');
 });
 
 test('control mode persists, keeps the last touch style, and reads legacy storage', () => {

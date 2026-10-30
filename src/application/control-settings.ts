@@ -5,6 +5,13 @@ export type MoveControlStyle = 'stick' | 'dpad';
 /** 当前操作方式：两种触屏样式加电脑键鼠模式。 */
 export type ControlMode = MoveControlStyle | 'keyboard';
 
+/** 设置页点击「操作方式」时按这个顺序轮换。 */
+export const CONTROL_MODES: readonly ControlMode[] = ['stick', 'dpad', 'keyboard'];
+
+export function nextControlMode(mode: ControlMode): ControlMode {
+  return CONTROL_MODES[(CONTROL_MODES.indexOf(mode) + 1) % CONTROL_MODES.length]!;
+}
+
 export interface StorageLike { getItem(key: string): string | null; setItem(key: string, value: string): void }
 
 function deviceStorage(): StorageLike | null {
