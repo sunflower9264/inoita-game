@@ -541,7 +541,7 @@ function runtimeDiagnostics(): Record<string, unknown> {
     mode: app.mode, ready: ui.ready, locked: ui.locked, lockOwners: ui.lockOwners,
     suspended: ui.suspended, defeatOpen: ui.defeatOpen, menuOpen: app.storyUI?.menuOpen ?? false,
     dialogue: !!ui.dialogueState, choice: !!ui.choices, questPopup: !!ui.quest,
-    editingControls: ui.controlLayoutEditing, loading: ui.loadingState?.label,
+    editingControls: ui.controlLayoutEditing, editingKeys: ui.keyBindingEditing, loading: ui.loadingState?.label,
     location: session?.storyWorld.currentLocation,
     player: session?.player, combatTick: session?.combatTick,
     session: session ? {

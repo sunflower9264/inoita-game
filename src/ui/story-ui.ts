@@ -30,6 +30,7 @@ import { GmPanel } from './phaser/gm-panel.ts';
 import type { GmActions } from '../debug/gm-actions.ts';
 import { readSafeArea } from './viewport.ts';
 import { ControlLayoutEditor } from './phaser/control-layout-editor.ts';
+import { KeyBindingEditor } from './phaser/key-binding-editor.ts';
 import { resolveControlLayout, type ControlId } from './control-layout.ts';
 import { controlViewport } from './phaser/control-layout-viewport.ts';
 import { UiSurface, uiImageFor, type ScrollArea } from './phaser/widgets.ts';
@@ -87,6 +88,7 @@ export class StoryUI {
   /** 登记快捷键那一屏单独一层：它盖在遮罩上，菜单本体整块藏起来。 */
   private shortcutScreen?:UiSurface;
   private controlEditor?:ControlLayoutEditor;
+  private keyBindingEditor?:KeyBindingEditor;
   /** 左上角圆形关闭钮单独一层：不随 960 内容区居中，靠安全区左上角摆放。 */
   private backTab?:UiSurface;
   private shortcutEdit?:{kind:ShortcutEntry['kind'];id:string;page:number};
@@ -151,7 +153,7 @@ export class StoryUI {
     this.shortcutScreen.enabled=()=>this.open&&!this.app.ui.suspended&&!this.busy&&!!this.shortcutEdit;
     this.backTab.enabled=()=>this.shortcutScreen!.enabled();
     this.hudButtons=new UiSurface(scene,960,640,50);this.backdrop=scene.add.rectangle(0,0,1,1,0x000000,.65).setOrigin(0).setDepth(99).setInteractive();
-    this.surface.enabled=()=>this.open&&!this.app.ui.suspended&&!this.busy&&!this.app.ui.controlLayoutEditing&&!this.shortcutEdit&&!this.operation&&!this.itemNotice&&!this.allocationExit&&!this.skillReset&&this.saveConfirm===undefined&&this.loadConfirm===undefined&&this.deleteConfirm===undefined&&this.renameRef===undefined&&!this.craftingPanel?.modalOpen&&!this.shopPanel?.modalOpen&&!this.partyPanel?.modalOpen;
+    this.surface.enabled=()=>this.open&&!this.app.ui.suspended&&!this.busy&&!this.app.ui.controlLayoutEditing&&!this.app.ui.keyBindingEditing&&!this.shortcutEdit&&!this.operation&&!this.itemNotice&&!this.allocationExit&&!this.skillReset&&this.saveConfirm===undefined&&this.loadConfirm===undefined&&this.deleteConfirm===undefined&&this.renameRef===undefined&&!this.craftingPanel?.modalOpen&&!this.shopPanel?.modalOpen&&!this.partyPanel?.modalOpen;
     this.body.enabled=()=>this.surface!.enabled();this.description.enabled=()=>this.body!.enabled();
     this.modal.enabled=()=>this.open&&!this.app.ui.suspended&&!this.busy&&(!!this.operation||!!this.itemNotice||!!this.allocationExit||this.skillReset||this.saveConfirm!==undefined||this.loadConfirm!==undefined||this.deleteConfirm!==undefined||!!this.craftingPanel?.modalOpen||!!this.shopPanel?.modalOpen||!!this.partyPanel?.modalOpen);
     this.hudButtons.enabled=()=>this.app.ui.mode==='game'&&this.app.ui.ready&&!this.app.ui.locked&&!this.app.ui.suspended;
@@ -161,7 +163,7 @@ export class StoryUI {
     this.unsubscribeFullscreen=onFullscreenChange(()=>{if(this.open&&this.page==='settings')this.render();});
     scene.input.on('pointermove',this.moveDrag,this);scene.input.on('pointerup',this.endDrag,this);scene.input.on('pointerupoutside',this.cancelDrag,this);
     scene.game.events.on(UI_EVENTS.minimapLayout,this.onMinimap,this);scene.game.events.on(UI_EVENTS.cancelInput,this.cancelDrag,this);
-    scene.events.once('shutdown',()=>{this.unsubscribe?.();this.unsubscribeFullscreen?.();this.discardAllocation();scene.scale.off('resize',this.resize,this);scene.game.events.off(UI_EVENTS.minimapLayout,this.onMinimap,this);scene.game.events.off(UI_EVENTS.cancelInput,this.cancelDrag,this);this.cancelOperation();this.prompt?.close();this.surface!.root.remove(this.body!.root);this.surface?.destroy();this.body?.destroy();this.modal?.destroy();this.hudButtons?.destroy();this.description?.destroy();this.shortcutScreen?.destroy();this.backTab?.destroy();this.backdrop?.destroy();this.controlEditor?.destroy();this.controlEditor=undefined;});
+    scene.events.once('shutdown',()=>{this.unsubscribe?.();this.unsubscribeFullscreen?.();this.discardAllocation();scene.scale.off('resize',this.resize,this);scene.game.events.off(UI_EVENTS.minimapLayout,this.onMinimap,this);scene.game.events.off(UI_EVENTS.cancelInput,this.cancelDrag,this);this.cancelOperation();this.prompt?.close();this.surface!.root.remove(this.body!.root);this.surface?.destroy();this.body?.destroy();this.modal?.destroy();this.hudButtons?.destroy();this.description?.destroy();this.shortcutScreen?.destroy();this.backTab?.destroy();this.backdrop?.destroy();this.controlEditor?.destroy();this.controlEditor=undefined;this.keyBindingEditor?.destroy();this.keyBindingEditor=undefined;});
     this.sync();
   }
   bind(session:Session,world:WorldIndex,content:StoryInterface):void{
@@ -184,14 +186,15 @@ export class StoryUI {
     this.hudButtons?.visible(active&&(!this.app.ui.locked||this.app.ui.controlLayoutEditing)&&!this.app.ui.suspended);
     if(active&&this.hudButtons&&this.hudButtons.root.length===0){const v=this.hudButtons;v.button('',0,0,56,56,()=>this.show('save'),{image:this.content!.assets.save}).setData('label','存档');v.button('',0,64,56,56,()=>this.show('bag'),{image:this.content!.assets.menu}).setData('label','菜单');}
     // 登记快捷键时菜单本体整块让位，只留背后的遮罩与这一屏自己，画面里那层游戏背景就露出来了。
-    const menu=this.open&&!this.app.ui.suspended&&!this.shortcutEdit&&!this.app.ui.controlLayoutEditing;
+    const menu=this.open&&!this.app.ui.suspended&&!this.shortcutEdit&&!this.app.ui.controlLayoutEditing&&!this.app.ui.keyBindingEditing;
     this.surface?.visible(menu);this.body?.visible(menu);this.description?.visible(menu);
     const modal=menu&&(!!this.operation||!!this.itemNotice||!!this.allocationExit||this.skillReset||this.saveConfirm!==undefined||this.loadConfirm!==undefined||this.deleteConfirm!==undefined||!!this.craftingPanel?.modalOpen||!!this.shopPanel?.modalOpen||!!this.partyPanel?.modalOpen);
     if(modal&&!this.modalActive)this.app.ui.resetInput();
     this.modalActive=modal;this.modal?.visible(modal);
     this.shortcutScreen?.visible(this.open&&!this.app.ui.suspended&&!!this.shortcutEdit);this.backTab?.visible(this.open&&!this.app.ui.suspended&&!!this.shortcutEdit);
     this.backdrop?.setVisible(this.open&&!this.app.ui.suspended);
-    this.controlEditor?.visible(this.open&&this.app.ui.controlLayoutEditing&&!this.app.ui.suspended);this.layout();
+    this.controlEditor?.visible(this.open&&this.app.ui.controlLayoutEditing&&!this.app.ui.suspended);
+    this.keyBindingEditor?.visible(this.open&&this.app.ui.keyBindingEditing&&!this.app.ui.suspended);this.layout();
   }
   show(page:Page):void{
     if(!this.session||!this.app.ui.ready||this.app.ui.mode!=='game'||this.app.ui.suspended||(!this.open&&this.app.ui.locked))return;
@@ -267,12 +270,22 @@ export class StoryUI {
   }
   close():void{
     if(this.open&&this.requestAllocationExit(()=>this.close()))return;
-    if(!this.open)return;this.controlEditor?.close();this.app.ui.setControlLayoutEditing(false);this.cancelOperation();this.applying=undefined;this.modalActive=false;this.shortcutEdit=undefined;this.shortcutScreen?.clear();this.backTab?.clear();this.shopPanel=undefined;this.bagPortrait?.visual.container.destroy();this.bagPortrait=undefined;this.craftingPanel=undefined;this.craftingActor=undefined;this.open=false;this.scrollNames.forEach((scroll,name)=>this.scrollOffsets.set(`${this.page}:${name}`,scroll.scrollTop));this.scrollNames.clear();this.body?.clear();this.description?.clear();if(this.surface&&this.body){this.surface.root.remove(this.body.root);this.surface.clear();this.surface.root.add(this.body.root);}this.keyboardFocus=undefined;this.surface?.visible(false);this.body?.visible(false);this.description?.visible(false);this.modal?.visible(false);this.shortcutScreen?.visible(false);this.backTab?.visible(false);this.backdrop?.setVisible(false);this.app.ui.resetInput();this.app.ui.lock(false,'story-menu');
+    if(!this.open)return;this.controlEditor?.close();this.app.ui.setControlLayoutEditing(false);
+    this.keyBindingEditor?.close();this.app.ui.setKeyBindingEditing(false);this.cancelOperation();this.applying=undefined;this.modalActive=false;this.shortcutEdit=undefined;this.shortcutScreen?.clear();this.backTab?.clear();this.shopPanel=undefined;this.bagPortrait?.visual.container.destroy();this.bagPortrait=undefined;this.craftingPanel=undefined;this.craftingActor=undefined;this.open=false;this.scrollNames.forEach((scroll,name)=>this.scrollOffsets.set(`${this.page}:${name}`,scroll.scrollTop));this.scrollNames.clear();this.body?.clear();this.description?.clear();if(this.surface&&this.body){this.surface.root.remove(this.body.root);this.surface.clear();this.surface.root.add(this.body.root);}this.keyboardFocus=undefined;this.surface?.visible(false);this.body?.visible(false);this.description?.visible(false);this.modal?.visible(false);this.shortcutScreen?.visible(false);this.backTab?.visible(false);this.backdrop?.setVisible(false);this.app.ui.resetInput();this.app.ui.lock(false,'story-menu');
   }
   private cancelOperation():void{this.cancelDrag();this.request.abort();this.request=new AbortController();this.busy=false;this.operation=undefined;this.itemNotice=undefined;this.skillReset=false;this.saveConfirm=undefined;this.loadConfirm=undefined;this.deleteConfirm=undefined;this.renameRef=undefined;this.prompt?.close();this.partyPanel?.close();this.craftingPanel?.close();this.modal?.clear();this.modal?.visible(false);}
   private key(event:KeyboardEvent):void{
     if(this.app.ui.suspended)return;
-    if(!this.open)return;
+    // 捕获按键时整块键盘归键位面板：Tab、Enter、空格不再操作菜单。
+    if(this.app.ui.keyBindingEditing){this.keyBindingEditor?.key(event);return;}
+    if(!this.open){
+      // 菜单键只在正式游戏里生效；`repeat` 按住不放也只开一次。
+      if(!event.repeat&&this.session&&this.app.ui.mode==='game'&&this.app.ui.ready&&!this.app.ui.locked
+        &&this.app.keyBindings.matches('menu',event)){
+        event.preventDefault();this.show('bag');
+      }
+      return;
+    }
     // 改名输入框开着时键盘归系统输入法：Enter/Escape 由输入框自己处理。
     if(this.renameRef!==undefined)return;
     if(this.app.ui.controlLayoutEditing){if(event.key==='Escape'){event.preventDefault();this.closeControlEditor();}else this.controlEditor?.key(event);return;}
@@ -299,7 +312,7 @@ export class StoryUI {
   private beginModal(width:number,height:number):void{this.modalBox={width,height};this.positionModal();}
   private positionModal():void{if(this.surface&&this.modal)centerModal(this.modal,this.surface,this.modalBox.width,this.modalBox.height);}
   private layout():void{
-    this.controlEditor?.layout();
+    this.controlEditor?.layout();this.keyBindingEditor?.layout();
     this.surface?.layout(12);this.positionModal();
     // 说明面板不在 surface 之下，位置与缩放按 surface 的世界变换同步，坐标系与内容块一致。
     if(this.surface&&this.description){const matrix=this.surface.root.getWorldTransformMatrix(),position=matrix.transformPoint(CONTENT_ORIGIN.x,CONTENT_ORIGIN.y);this.description.root.setPosition(position.x,position.y).setScale(matrix.scaleX,matrix.scaleY);}
@@ -465,6 +478,16 @@ export class StoryUI {
   private closeControlEditor():void {
     this.controlEditor?.close();this.page='settings';this.app.ui.setControlLayoutEditing(false);this.render();
   }
+  private openKeyBindingEditor():void {
+    if(!this.scene||!this.content||!this.open)return;
+    this.cancelDrag();
+    this.keyBindingEditor??=new KeyBindingEditor(this.scene,this.app.keyBindings,this.app.menuPanels.assets,()=>this.closeKeyBindingEditor());
+    this.keyBindingEditor.open();
+    this.app.ui.setKeyBindingEditing(true);this.render();
+  }
+  private closeKeyBindingEditor():void {
+    this.keyBindingEditor?.close();this.page='settings';this.app.ui.setKeyBindingEditing(false);this.render();
+  }
   /**
    * 设置页：声音、画面偏好与操作设置各占一行，行距 90。
    *
@@ -513,6 +536,10 @@ export class StoryUI {
       controlSettings.setMoveStyle(dpad?'stick':'dpad');
       this.render();
     },{parent:content}).setData('label','移动方式：' + (dpad?'十字按键':'虚拟摇杆'));
+    rowTop+=90;
+    // 键位与操作布局分开：两者都是本机偏好，不进存档。
+    v.text('键位设置',260,rowTop+15,0,25,undefined,content);
+    v.button('修改键位',485,rowTop,220,66,()=>this.openKeyBindingEditor(),{parent:content});
     rowTop+=90;
     v.button('操作设置',485,rowTop,220,66,()=>this.openControlEditor(),{parent:content});
     this.finishScroll('settings',scroll,rowTop+80);

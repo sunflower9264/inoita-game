@@ -18,6 +18,7 @@ import type { WardrobeCatalog } from '../domain/wardrobe.ts';
 import type { GameAudio } from './game-audio.ts';
 import type { ShopCatalog } from '../domain/shop.ts';
 import type { ControlLayoutPreferences } from '../ui/control-layout.ts';
+import type { KeyBindingPreferences } from './key-bindings.ts';
 import type { SaveWorldResult } from '../scenes/world-scene.ts';
 
 export interface StoryClassContext {
@@ -30,9 +31,10 @@ export interface StoryClassContext {
   syncLifecycle?: () => void;
 }
 
-type SceneUI = Pick<GameUI,'ready'|'locked'|'mode'|'loading'|'loaded'|'error'|'location'|'toast'|'showInstant'|'resetInput'|'setMode'|'showDefeat'|'closeDefeat'|'controlLayoutEditing'|'preloadPortraits'|'setWorldRebuildCover'>;
+type SceneUI = Pick<GameUI,'ready'|'locked'|'mode'|'loading'|'loaded'|'error'|'location'|'toast'|'showInstant'|'resetInput'|'setMode'|'showDefeat'|'closeDefeat'|'controlLayoutEditing'|'keyBindingEditing'|'preloadPortraits'|'setWorldRebuildCover'>;
 export interface StoryContext {
   readonly controlLayout:ControlLayoutPreferences;
+  readonly keyBindings:KeyBindingPreferences;
   gmNoclip?: boolean;
   gmSpeedMultiplier?: number;
   readonly checkpoint:import('../domain/session-checkpoint.ts').SessionCheckpoint<import('../scenes/world-scene.ts').StoryWorldViewSnapshot>;
@@ -79,6 +81,7 @@ export interface StoryUIContext {
   /** 商店装备表按需加载（生产内容包与 shops.json 分开）。 */
   readonly content: Pick<ContentLoader,'shopEquipment'>;
   readonly controlLayout:ControlLayoutPreferences;
+  readonly keyBindings:KeyBindingPreferences;
   captureControlPreview?:()=>readonly import('../ui/phaser/action-controls.ts').ShortcutSlot[];
   resumeSlot?:(slot:import('../domain/save-game.ts').SaveSlotRef,signal?:AbortSignal)=>Promise<void>;
   /** 改名输入：默认弹系统键盘输入框；测试注入一个直接返回名字的实现。 */
@@ -106,7 +109,7 @@ export interface StoryUIContext {
   readonly crafting?: CraftingCatalog;
   readonly characterStats: import('../domain/character-stats.ts').CharacterStatsCatalog;
   /** `portrait` 是界面场景按需取图的那个入口。 */
-  readonly ui: Pick<GameUI,'ready'|'locked'|'suspended'|'mode'|'lock'|'resetInput'|'toast'|'controlLayoutEditing'|'setControlLayoutEditing'|'portrait'>;
+  readonly ui: Pick<GameUI,'ready'|'locked'|'suspended'|'mode'|'lock'|'resetInput'|'toast'|'controlLayoutEditing'|'setControlLayoutEditing'|'keyBindingEditing'|'setKeyBindingEditing'|'portrait'>;
   returnToMenu?: () => void;
   /** GM（调试）动作层。**只在开关打开时存在**：关闭时没有它，系统页也就没有「调试」入口。 */
   readonly gm?: import('../debug/gm-actions.ts').GmActions;

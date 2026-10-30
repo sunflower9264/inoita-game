@@ -4,6 +4,8 @@ import { controlViewport } from './control-layout-viewport.ts';
 import type { ControlSkin } from '../../domain/control-skin.ts';
 import type { Hud } from '../../rendering/hud.ts';
 import { controlSettings, type MoveControlStyle } from '../../application/control-settings.ts';
+import { keyBindings as defaultKeyBindings, type KeyBindingPreferences } from '../../application/key-bindings.ts';
+import { MOVE_BINDING_ACTIONS, type KeyBindingAction } from '../../domain/key-bindings.ts';
 
 /** 原版摇杆尺寸参数 */
 const STICK_BASE_RADIUS = 105, STICK_KNOB_RADIUS = 35;
@@ -27,15 +29,9 @@ function dirToVector(dir: CardinalDir): { x: number; y: number } {
   }
 }
 
-function keyToCardinal(event: KeyboardEvent): CardinalDir | undefined {
-  switch (event.code || event.key) {
-    case 'ArrowUp': case 'KeyW': case 'w': case 'W': return 'up';
-    case 'ArrowDown': case 'KeyS': case 's': case 'S': return 'down';
-    case 'ArrowLeft': case 'KeyA': case 'a': case 'A': return 'left';
-    case 'ArrowRight': case 'KeyD': case 'd': case 'D': return 'right';
-    default: return undefined;
-  }
-}
+/** 移动动作与屏幕方向的对应；键位本身由玩家的绑定决定。 */
+const MOVE_ACTION_DIRECTIONS: readonly [KeyBindingAction, CardinalDir][] = MOVE_BINDING_ACTIONS.map(action =>
+  [action, action.slice(5) as CardinalDir] as const);
 
 /**
  * 屏幕左下角的移动控制器：
@@ -68,12 +64,16 @@ export class MoveStick {
   private readonly arrowLeft: Phaser.GameObjects.Image;
   private readonly arrowRight: Phaser.GameObjects.Image;
 
-  private readonly keyHistory: CardinalDir[] = [];
+  private readonly keyHistory: { dir: CardinalDir; code: string }[] = [];
+  private readonly bindings: KeyBindingPreferences;
+  private readonly unsubscribeBindings: () => void;
   /** 每个箭头上次用的贴图；同 key 只更新缩放，不重复 setTexture。 */
   private readonly arrowKeys = ['','','',''];
 
-  constructor(scene: Phaser.Scene, hud: Hud, skin: ControlSkin, preferences?: ControlLayoutPreferences) {
+  constructor(scene: Phaser.Scene, hud: Hud, skin: ControlSkin, preferences?: ControlLayoutPreferences,
+    bindings: KeyBindingPreferences = defaultKeyBindings) {
     scene = hud.scene; this.scene = scene; this.hud = hud; this.skin = skin; this.preferences = preferences;
+    this.bindings = bindings;
     this.container = hud.add(scene.make.container({ x: 0, y: 0 }, false));
 
     for (const file of [
@@ -122,6 +122,8 @@ export class MoveStick {
     this.unsubscribeSettings = controlSettings.subscribe(style => {
       this.applyStyle(style);
     });
+    // 改键后立刻生效：清掉按住中的方向，避免旧键的按下状态留在历史里。
+    this.unsubscribeBindings = bindings.subscribe(() => this.reset());
 
     scene.input.on(Phaser.Input.Events.POINTER_MOVE, this.onMove, this);
     scene.input.on(Phaser.Input.Events.POINTER_UP, this.onUp, this);
@@ -158,30 +160,39 @@ export class MoveStick {
   }
 
   private onKeyDown(event: KeyboardEvent): void {
-    if (!this.isVisible) return;
-    const tag = (globalThis.document?.activeElement as HTMLElement | null)?.tagName;
-    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-    const dir = keyToCardinal(event);
+    if (!this.isVisible || event.isComposing) return;
+    const element = globalThis.document?.activeElement as HTMLElement | null;
+    if (element && (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA'
+      || element.tagName === 'SELECT' || element.isContentEditable)) return;
+    const dir = this.directionFor(event);
     if (!dir) return;
-    const idx = this.keyHistory.indexOf(dir);
-    if (idx >= 0) this.keyHistory.splice(idx, 1);
-    this.keyHistory.push(dir);
+    event.preventDefault();
+    const code = event.code || event.key;
+    // 同一个物理键按住不放会重复触发 keydown；后按优先的规则只看第一次。
+    if (this.keyHistory.some(entry => entry.code === code)) return;
+    this.keyHistory.push({ dir, code });
     if (this.pointerId < 0) this.syncKeyAxis();
   }
 
+  private directionFor(event: KeyboardEvent): CardinalDir | undefined {
+    for (const [action, dir] of MOVE_ACTION_DIRECTIONS)
+      if (this.bindings.matches(action, event)) return dir;
+    return undefined;
+  }
+
   private onKeyUp(event: KeyboardEvent): void {
-    const dir = keyToCardinal(event);
-    if (!dir) return;
-    const idx = this.keyHistory.indexOf(dir);
-    if (idx >= 0) {
-      this.keyHistory.splice(idx, 1);
-      if (this.pointerId < 0) this.syncKeyAxis();
-    }
+    // 只按物理键码移除，不重新匹配修饰键：先松开 Shift 时方向也不会卡住。
+    const code = event.code || event.key;
+    const index = this.keyHistory.findIndex(entry => entry.code === code);
+    if (index < 0) return;
+    this.keyHistory.splice(index, 1);
+    if (this.pointerId < 0) this.syncKeyAxis();
   }
 
   private syncKeyAxis(): void {
-    if (this.keyHistory.length > 0 && this.isVisible) {
-      const vec = dirToVector(this.keyHistory.at(-1)!);
+    const last = this.keyHistory.at(-1);
+    if (last && this.isVisible) {
+      const vec = dirToVector(last.dir);
       this.axis.x = vec.x;
       this.axis.y = vec.y;
     } else {
@@ -273,6 +284,7 @@ export class MoveStick {
   destroy(): void {
     this.unsubscribePreferences();
     this.unsubscribeSettings();
+    this.unsubscribeBindings();
     this.scene.input.off(Phaser.Input.Events.POINTER_MOVE, this.onMove, this);
     this.scene.input.off(Phaser.Input.Events.POINTER_UP, this.onUp, this);
     this.scene.input.off(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.onUp, this);

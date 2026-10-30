@@ -34,6 +34,12 @@ export class GameUI {
     if(this.controlLayoutEditing===value)return;
     this.controlLayoutEditing=value;this.resetInput();this.updateControls();
   }
+  /** 键位设置面板打开时，世界侧移动、技能与攻击全部让位。 */
+  keyBindingEditing=false;
+  setKeyBindingEditing(value:boolean):void {
+    if(this.keyBindingEditing===value)return;
+    this.keyBindingEditing=value;this.resetInput();this.updateControls();
+  }
   readonly controls=new ControlState();
   get mode(){return this.controls.mode;} set mode(value:GameMode){this.controls.mode=value;}
   get failed(){return this.controls.failed;} set failed(value:boolean){this.controls.failed=value;}
@@ -81,7 +87,7 @@ export class GameUI {
   resetInput():void{this.pressed=undefined;this.view?.resetInput?.();this.onResetInput?.();}
   get canReturn():boolean{return this.mode!=='menu'&&!this.locked&&!this.suspended&&(this.ready||this.failed);}
   setMode(mode:GameMode):void{
-    this.controlLayoutEditing=false;
+    this.controlLayoutEditing=false;this.keyBindingEditing=false;
     this.closeDefeat();this.mode=mode;this.ready=false;this.failed=false;this.resetInput();
     this.closeDialogue();this.cancelQuestPopup?.();this.toastMessage='';this.instant.clear();this.loadingState=undefined;this.rebuildCover=false;this.updateControls();
   }

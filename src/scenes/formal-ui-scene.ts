@@ -51,13 +51,19 @@ export class FormalUiScene extends Phaser.Scene implements GameUiView {
     this.scale.on('resize',()=>{this.signature='';this.sync(this.app.ui);this.app.ui.reflowDialogue();});
     this.input.keyboard?.on('keydown',(event:KeyboardEvent)=>{
       if(this.app.ui.suspended||this.app.ui.worldRebuildCover)return;
+      // 键位捕获期间键盘归设置面板：Enter / 空格不能顺手触发菜单按钮。
+      if(this.app.ui.keyBindingEditing)return;
       if(this.app.ui.defeated&&event.key==='Escape'){event.preventDefault();this.app.ui.cancelDefeatConfirmation();return;}
       if(this.app.ui.quest){this.questPopup.key(event);return;}
       if(event.key==='Enter'||event.key===' '){if(this.app.ui.canSkip){event.preventDefault();this.app.ui.advance();return;}}
       this.surface.key(event);
     });
     this.input.on('pointerdown',(pointer:Phaser.Input.Pointer,objects:Phaser.GameObjects.GameObject[])=>{
-      if(!this.app.ui.defeated&&!this.app.ui.worldRebuildCover&&!objects.some(object=>object.getData('uiAction')))this.app.ui.pressDialogue(pointer.id);
+      if(this.app.ui.defeated||this.app.ui.worldRebuildCover)return;
+      // 点界面控件时把同一次点击拦在这里，世界场景不再收到；键位捕获中也不推进对白。
+      if(objects.some(object=>object.getData('uiAction'))){this.input.stopPropagation();return;}
+      if(this.app.ui.keyBindingEditing)return;
+      this.app.ui.pressDialogue(pointer.id);
     });
     this.input.on('pointerup',(pointer:Phaser.Input.Pointer)=>{
       if(!this.app.ui.defeated&&!this.app.ui.worldRebuildCover)this.app.ui.releaseDialogue(pointer.id);

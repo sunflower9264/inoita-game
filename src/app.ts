@@ -30,6 +30,7 @@ import type { GameMode } from './application/control-state.ts';
 import { ContentLoader } from './application/content-loader.ts';
 import type { AssetLease } from './application/assets.ts';
 import { ControlLayoutPreferences } from './ui/control-layout.ts';
+import { KeyBindingPreferences } from './application/key-bindings.ts';
 
 /**
  * 运行上下文：启动时先建界面，资源取回来之后再补上内容、状态和 Phaser 实例。
@@ -56,6 +57,8 @@ import { ControlLayoutPreferences } from './ui/control-layout.ts';
  */
 export class StoryApp {
   readonly controlLayout = new ControlLayoutPreferences();
+  /** 键位是本机设置，和布局一样不进存档。 */
+  readonly keyBindings = new KeyBindingPreferences();
   gmNoclip = false;
   gmSpeedMultiplier = 1;
   captureControlPreview?:()=>readonly import('./ui/phaser/action-controls.ts').ShortcutSlot[];

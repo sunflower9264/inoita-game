@@ -57,7 +57,8 @@ class MemberPanel {
     const level=layout.level;this.level=scene.add.text(level.x+level.width/2,level.y+level.height/2,'',{fontFamily:FONT,fontSize:14,color:'#ffffff',resolution:3}).setOrigin(.5);
     this.container.add(this.level);
     this.gauges=Object.fromEntries((['health','mana','experience'] as const).map(kind=>[kind,new Gauge(scene,this.container,skin,kind,layout.gauges[kind])])) as typeof this.gauges;
-    this.container.setInteractive(new Phaser.Geom.Rectangle(0,0,layout.width,layout.height),Phaser.Geom.Rectangle.Contains);
+    this.container.setInteractive(new Phaser.Geom.Rectangle(0,0,layout.width,layout.height),Phaser.Geom.Rectangle.Contains)
+      .setData('uiAction',true);
     this.container.on('pointerup',(_pointer:Phaser.Input.Pointer,_x:number,_y:number,event:Phaser.Types.Input.EventData)=>{
       event.stopPropagation();if(this.signature)this.onClick();
     });
@@ -165,7 +166,9 @@ export class StatusHud {
     const nameAnchor=targetNameAnchor(skin);this.name=text(nameAnchor.x,nameAnchor.y,18).setOrigin(.5,0);this.targetContainer.add(this.name);this.targetGauge=new Gauge(scene,this.targetContainer,skin,'target',skin.target.gauge);
     this.playerIcons=scene.add.container(0,0);this.playerContainer.add(this.playerIcons);
     // 点大面板找回当前操控角色；队友面板则切换操控者。
-    this.playerContainer.setInteractive(new Phaser.Geom.Rectangle(0,0,skin.player.width,skin.player.height),Phaser.Geom.Rectangle.Contains);
+    // 点面板只走面板自己的 pointerup；世界级左键看到 `uiAction` 就不再普攻。
+    this.playerContainer.setInteractive(new Phaser.Geom.Rectangle(0,0,skin.player.width,skin.player.height),Phaser.Geom.Rectangle.Contains)
+      .setData('uiAction',true);
     this.playerContainer.on('pointerup',(_pointer:Phaser.Input.Pointer,_x:number,_y:number,event:Phaser.Types.Input.EventData)=>{
       event.stopPropagation();if(this.visible&&this.player)onFocus?.();
     });

@@ -54,6 +54,7 @@ import { displaySettings } from '../application/display-settings.ts';
 import { FONT } from '../ui/text-style.ts';
 import type { Cooldown } from '../domain/combat.ts';
 import { MoveStick } from '../ui/phaser/move-stick.ts';
+import { KeyboardActions } from '../ui/phaser/keyboard-actions.ts';
 import type { PendingAsset } from '../rendering/scene-assets.ts';
 
 /** 进图参数：去哪张地图、落在哪里、朝哪边。 */
@@ -139,6 +140,7 @@ export class WorldScene extends Phaser.Scene {
   private overheadStatus?:OverheadStatus;
   private stick?: MoveStick;
   private controls?: ActionControls;
+  private keyboardActions?: KeyboardActions;
   private shortcutPageCache?:{configuration:SkillConfiguration;version:number;bagRevision:number;owner:string;classId:string;page:number;
     entries:(ShortcutEntry|null)[];levels:Record<string,number>;slotsSignature?:string};
   private nameBanner?: NameBanner;
@@ -216,6 +218,8 @@ export class WorldScene extends Phaser.Scene {
       this.mapLayers?.destroy(); this.mapLayers = undefined;
       this.stick?.destroy(); this.stick = undefined;
       this.controls?.destroy(); this.controls = undefined;
+      this.keyboardActions?.destroy(); this.keyboardActions = undefined;
+      this.input.off(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown, this);
       this.nameBanner?.destroy(); this.nameBanner = undefined;
       this.minimap?.destroy(); this.minimap = undefined;
       this.fpsReadout?.container.destroy(); this.fpsReadout = undefined;
@@ -227,6 +231,8 @@ export class WorldScene extends Phaser.Scene {
     this.layoutHud();
     this.scale.on('resize', this.resizeView, this);
     this.events.on(Phaser.Scenes.Events.POST_UPDATE, this.afterMovement, this);
+    // 世界级左键挂在场景输入上：点敌人、地面和界面控件的区别在这里统一判断。
+    this.input.on(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown, this);
     const wake = () => {
       this.app.ui.setMode('game');
       this.refreshState(); this.resizeView(); this.app.ui.loaded(); this.app.syncLifecycle?.();
@@ -389,14 +395,12 @@ export class WorldScene extends Phaser.Scene {
     this.stick = new MoveStick(this, this.hud!, this.app.controlSkin, this.app.controlLayout);
     this.controls = new ActionControls(this, this.hud!, {
       attack: () => this.attackKey(), skill: key => {if(this.canControl)this.combat?.attack(key);},
-      item: itemId => this.useShortcutItem(itemId), swap: () => {
-        if (!this.canControl) return;
-        const member=this.combat?.controlledMember??this.app.session.hero!;
-        const configuration=(this.combat?.controlledId??'player')==='player'?this.app.session.skills:(member as import('../domain/party.ts').CompanionMember).skills;
-        configuration.nextShortcutPage(member.classId);
-        this.refreshLoadout();
-      }
+      item: itemId => this.useShortcutItem(itemId), swap: () => this.cycleShortcutPage()
     }, this.app.controlSkin, this.app.controlLayout);
+    this.keyboardActions = new KeyboardActions(this, this.app.keyBindings, {
+      skill: slot => this.triggerShortcutSlot(slot),
+      cycle: () => this.cycleShortcutPage()
+    });
     this.refreshLoadout();
     this.nameBanner = new NameBanner(this, this.hud!, map.name);
     this.layoutHud();
@@ -886,6 +890,24 @@ export class WorldScene extends Phaser.Scene {
     this.refreshShortcutPage();
     this.controls?.setCooldowns(this.combat?.cooldowns??{});
   }
+
+  /** 数字键放当前轮组的快捷位；格子里是物品就用物品，是技能就放技能。 */
+  private triggerShortcutSlot(slot:number):void {
+    if(!this.canControl)return;
+    const {member,owner,configuration,page}=this.controlledContext();
+    const entry=this.shortcutBar(owner,member.classId,configuration).page(page)[slot-1];
+    if(!entry)return;
+    if(entry.kind==='item')this.useShortcutItem(entry.id);
+    else this.combat?.attack(entry.id);
+  }
+
+  /** 切组按钮与 Q 键共用同一条路径。 */
+  private cycleShortcutPage():void {
+    if(!this.canControl)return;
+    const {member,configuration}=this.controlledContext();
+    configuration.nextShortcutPage(member.classId);
+    this.refreshLoadout();
+  }
   /** 键位编辑读取实际操控者当前组六格，不另选角色或快捷页。 */
   getControlLayoutPreview():readonly ShortcutSlot[]{return this.controls?.snapshot()??[];}
   /** 点消耗品格：恢复药水走整队恢复，其它物品走普通的「使用」。 */
@@ -1027,6 +1049,17 @@ export class WorldScene extends Phaser.Scene {
     this.updateInteractionTarget();
     if (this.near && this.interact()) return;
     this.startBasicAttack();
+  }
+
+  /**
+   * 电脑鼠标左键：点界面控件不动手，点敌人直接普攻，其余地面点击沿用
+   * `attackKey`（身边有可交互对象就先交互）。触屏和手写笔仍走对象自己的事件。
+   */
+  private onPointerDown(pointer:Phaser.Input.Pointer,objects:Phaser.GameObjects.GameObject[]):void {
+    if(pointer.button!==0||pointer.wasTouch||this.stageOccluded||!this.canControl)return;
+    if(objects.some(object=>object.getData('uiAction')))return;
+    if(objects.some(object=>object.getData('enemy'))){this.startBasicAttack();return;}
+    this.attackKey();
   }
   /** 玩家发起一次普攻：记下连打，之后站定就自动接下一击（原版出手后站着会接下一下）。 */
   private startBasicAttack(): void {
@@ -1201,6 +1234,7 @@ export class WorldScene extends Phaser.Scene {
     // 剧情导演在接管期间即使锁的记账还没落地，玩家也不该拿到操作权：
     // 摇杆、技能键和移动都以导演的忙碌状态为准。
     return this.sys.isActive() && !this.loadingWorld && this.app.ui.ready && !this.app.ui.controlLayoutEditing
+      && !this.app.ui.keyBindingEditing
       && !this.app.locked && !this.app.suspended && !this.app.director?.busy;
   }
   get canCombatControl():boolean{return this.canControl&&!this.performing;}

@@ -2249,7 +2249,9 @@ captureStoryActors():SceneActorState[] {
   private makeSelectable(enemy:MapEnemy):void{
     if(enemy.summonedBy&&this.memberOf(enemy.summonedBy))return;
     const rect=enemyTapRect(enemy.definition.actor);
-    enemy.visual.container.setInteractive(new Phaser.Geom.Rectangle(rect.x,rect.y,rect.width,rect.height),Phaser.Geom.Rectangle.Contains);
+    // `enemy` 标记给世界级左键用：点到敌人时直接普攻，不会被旁边的交互物抢走。
+    enemy.visual.container.setInteractive(new Phaser.Geom.Rectangle(rect.x,rect.y,rect.width,rect.height),Phaser.Geom.Rectangle.Contains)
+      .setData('enemy',true);
     enemy.visual.container.on('pointerdown',()=>{if(this.scene.canCombatControl)this.selectEnemy(enemy.key);});
   }
   private visualOf(id:string):CharacterVisual|undefined{

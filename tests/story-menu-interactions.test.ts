@@ -22,6 +22,7 @@ import type { ShopCatalog, Storefront } from '../src/domain/shop.ts';
 import type { StoryClassCatalog } from '../src/domain/story-class.ts';
 import type { StoryInterface } from '../src/domain/story-interface.ts';
 import { ControlLayoutPreferences, CONTROL_IDS, resolveControlLayout, type ControlId } from '../src/ui/control-layout.ts';
+import { KeyBindingPreferences } from '../src/application/key-bindings.ts';
 import { controlViewport } from '../src/ui/phaser/control-layout-viewport.ts';
 import { GameUI } from '../src/ui/game-ui.ts';
 import type { ScrollArea, UiSurface } from '../src/ui/phaser/widgets.ts';
@@ -244,7 +245,7 @@ function fixture(classId = 'dark-knight') {
   const stored = new Map<string, string>();
   const saves = new SaveSlots<StoryWorldViewSnapshot>({ getItem: key => stored.get(key) ?? null,
     setItem: (key, value) => { stored.set(key, value); }, removeItem: key => { stored.delete(key); } });
-  const app: StoryUIContext = { content:{shopEquipment:async()=>({})}, controlLayout:new ControlLayoutPreferences(null), ui: controls, battleCatalog: battle, storyClasses: read<StoryClassCatalog>('story-classes'), menuPanels: panels,
+  const app: StoryUIContext = { content:{shopEquipment:async()=>({})}, controlLayout:new ControlLayoutPreferences(null), keyBindings:new KeyBindingPreferences(null), ui: controls, battleCatalog: battle, storyClasses: read<StoryClassCatalog>('story-classes'), menuPanels: panels,
     saves, captureSaveWorld: () => ({ ok: true, map: { id: campaign.start.map, name: '测试地图' },
       world: { location: { map: campaign.start.map, x: 16, y: 24, facing: 'south' as const }, generatedEntities: [],
         scene:{map:campaign.start.map,actors:[{id:'player',actor:campaign.start.actor,memberId:'player',x:16,y:24,facing:'south',visible:true}]} } }),
