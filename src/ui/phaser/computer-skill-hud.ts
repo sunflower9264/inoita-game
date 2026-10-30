@@ -2,14 +2,12 @@ import Phaser from 'phaser';
 import type { Hud } from '../../rendering/hud.ts';
 import type { ControlSkin } from '../../domain/control-skin.ts';
 import type { Cooldown } from '../../domain/combat.ts';
-import { SHORTCUT_PAGE_COUNT, SHORTCUT_SLOT_COUNT } from '../../domain/shortcut-bar.ts';
+import { SHORTCUT_SLOT_COUNT } from '../../domain/shortcut-bar.ts';
 import { controlViewport } from './control-layout-viewport.ts';
 import { uiImageFor } from './widgets.ts';
 import { FONT } from '../text-style.ts';
 import { cooldownFanState, cooldownSecondsLabel, drawCooldownFan, shortcutCooldown } from './cooldown-fan.ts';
 import type { ShortcutSlot } from './action-controls.ts';
-import { formatBinding } from '../../domain/key-bindings.ts';
-import type { KeyBindingPreferences } from '../../application/key-bindings.ts';
 
 const FRAME_SIZE = 80, ICON_SIZE = 64, GAP = 8;
 const ROW_WIDTH = SHORTCUT_SLOT_COUNT * FRAME_SIZE + (SHORTCUT_SLOT_COUNT - 1) * GAP;
@@ -25,7 +23,7 @@ interface Cell {
 }
 
 /**
- * 电脑模式专用的只读技能状态行：六个快捷位的图标、冷却和当前技能组。
+ * 电脑模式专用的只读技能状态行：只显示六个快捷位的图标和冷却。
  * 它不接收操作，只拦掉落在这一行上的鼠标点击，避免误触发地面普攻。
  */
 export class ComputerSkillHud {
@@ -33,28 +31,14 @@ export class ComputerSkillHud {
   private readonly hud: Hud;
   private readonly root: Phaser.GameObjects.Container;
   private readonly cells: Cell[] = [];
-  private readonly label: Phaser.GameObjects.Text;
-  private readonly hint: Phaser.GameObjects.Text;
-  private readonly bindings: KeyBindingPreferences;
-  private readonly unsubscribeBindings: () => void;
   private slots: readonly ShortcutSlot[] = [];
   private cooldowns: Readonly<Record<string, Cooldown>> = {};
   private pageSignature?: string;
   private cooldownSignature?: string;
 
-  constructor(_owner: Phaser.Scene, hud: Hud, skin: ControlSkin, bindings: KeyBindingPreferences) {
+  constructor(_owner: Phaser.Scene, hud: Hud, skin: ControlSkin) {
     this.hud = hud; this.scene = hud.scene;
-    this.bindings = bindings;
     this.root = hud.add(this.scene.add.container(0, 0));
-    this.label = this.scene.add.text(0, -78, '', {
-      fontFamily: FONT, fontSize: 20, color: '#e2cb9e', resolution: 3
-    }).setOrigin(.5);
-    this.hint = this.scene.add.text(0, 58, '', {
-      fontFamily: FONT, fontSize: 16, color: '#cfc3ae', resolution: 3
-    }).setOrigin(.5);
-    this.root.add([this.label, this.hint]);
-    this.syncHint();
-    this.unsubscribeBindings = bindings.subscribe(() => this.syncHint());
 
     for (let index = 0; index < SHORTCUT_SLOT_COUNT; index++) {
       const container = this.scene.add.container(-ROW_WIDTH / 2 + FRAME_SIZE / 2 + index * (FRAME_SIZE + GAP), 0);
@@ -82,14 +66,13 @@ export class ComputerSkillHud {
   }
 
   /** 世界场景每帧算好的当前一页；签名没变就不重建图标和数量。 */
-  setPage(slots: readonly ShortcutSlot[], page: number): void {
-    const signature = `${page}|${slots.map(slot => slot.entry
+  setPage(slots: readonly ShortcutSlot[]): void {
+    const signature = slots.map(slot => slot.entry
       ? `${slot.entry.kind}:${slot.entry.id}:${slot.icon ?? ''}:${slot.quantity}:${slot.enabled ? 1 : 0}:${slot.cooldown?.remainingMs ?? 0}/${slot.cooldown?.durationMs ?? 0}`
-      : '_').join('|')}`;
+      : '_').join('|');
     if (signature === this.pageSignature) return;
     this.pageSignature = signature;
     this.slots = slots;
-    this.label.setText(`技能组 ${page + 1}/${SHORTCUT_PAGE_COUNT}`);
     this.paint();
   }
 
@@ -116,16 +99,7 @@ export class ComputerSkillHud {
   }
 
   destroy(): void {
-    this.unsubscribeBindings();
     this.root.destroy(true);
-  }
-
-  /** 提示里的键名跟着键位设置走，改键后不会留下旧键名。 */
-  private syncHint(): void {
-    const cycle = formatBinding(this.bindings.get('wheel.next'));
-    const previous = formatBinding(this.bindings.get('party.previous'));
-    const next = formatBinding(this.bindings.get('party.next'));
-    this.hint.setText(`${cycle} 切换技能组 · ${previous}/${next} 切换人物`);
   }
 
   private paint(): void {

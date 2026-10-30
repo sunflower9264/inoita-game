@@ -410,7 +410,7 @@ export class WorldScene extends Phaser.Scene {
       previousMember: () => this.switchMember(-1),
       nextMember: () => this.switchMember(1)
     });
-    this.skillHud = new ComputerSkillHud(this, this.hud!, this.app.controlSkin, this.app.keyBindings);
+    this.skillHud = new ComputerSkillHud(this, this.hud!, this.app.controlSkin);
     // 操作方式切换后立刻按新 HUD 显隐，不等下一帧兜底。
     this.unsubscribeControlMode = controlSettings.subscribeMode(() => this.syncHud());
     this.refreshLoadout();
@@ -894,7 +894,7 @@ export class WorldScene extends Phaser.Scene {
     }
     const slots=cache.entries.map(entry=>this.shortcutSlot(entry,member.player.mana,cache.levels[entry?.id??'']??0));
     // 只读技能行自己按签名缓存；每帧喂一次，切组和切人后能立刻换页。
-    this.skillHud?.setPage(slots,page);
+    this.skillHud?.setPage(slots);
     const slotsSignature=slots.map(s=>s.entry?`${s.entry.kind}:${s.entry.id}:${s.quantity}:${s.enabled?1:0}:${s.cooldown?.remainingMs??0}/${s.cooldown?.durationMs??0}`:'_').join('|');
     if(cache.slotsSignature===slotsSignature)return;
     cache.slotsSignature=slotsSignature;
