@@ -62,15 +62,37 @@
 缺的只是表现：没有眩晕动作、没有头顶图标、没有面板提示。
 内容侧的 `attack-stun` 时长在 `public/content/battle.json` 的状态表里，约 1.86 秒。
 
-补充核查：原版也没有眩晕图标或动作。`buffs.json` 里 `attack-stun` 的 `icon_index` 是 `-1`，
+补充核查：原版没有眩晕图标或动作。`buffs.json` 里 `attack-stun` 的 `icon_index` 是 `-1`，
 状态位命中 `0x11d` 时原版只把角色切回待机。所以这不是复刻漏了素材，而是原版本身表现不清；
 按玩家反馈额外补一个提示。
 
-做法：新增 `src/rendering/stun-stars.ts`，眩晕期间在头顶显示三颗绕圈的小星星；
-`src/scenes/world-combat.ts` 每帧按 `conditions.hasState(id,'stun')` 同步显隐，状态结束即消失。
-玩家、队友和敌人都生效；纯表现，不参与战斗结算。
+不过「原版毫无表现」只说对了一半。原版 Buff 记录有三个画面字段：`+6` 是打中那一下的特效，
+`+8` 是状态期间反复播放的表现，`+10` 是状态栏图标。逐条解码：
 
-验证：`npm run typecheck` 通过；实际显示效果交给用户验收。
+- 玩家侧三条眩晕（`attack-stun` 57、`critical-hit-stun` 62、`blunt-hit-stun` 63）三项全是 `-1`，
+  确实一点表现都没有。
+- 怪物三条（`monster-landshake-stun` 70、`monster-strong-stun` 71、`monster-hammer-stun` 72）
+  的 `+6` 是 `138`，也就是 `flash-gold`：**命中瞬间有一次金色闪光**。卡娜的眩晕技能用的就是 71。
+- `monster-sleep` 76 的 `+6` 是 `464`（`monster-sleep-aura`，紫色光环）；
+  `monster-emergency-recovery` 78 是 `+6 = 464` 加 `+8 = 192`（`monster-poison-aura`）。
+
+我们这边把这类字段整批丢了：导出器只在技能 Buff 的白名单里读 `+6`/`+8`，怪物 Buff 70–83
+不在名单，于是 54 条眩晕/睡眠增益一条施加特效都没有。所以卡娜打晕玩家时，连原版那一下金光都没有。
+
+补回原版漏项：
+- 旧项目 `work/tools/game_content/battle_resolution.py` 把两个字段移出白名单，特效名改查合并表
+  `EFFECT_NAMES`（提交 `a0942be3`）。完整重导出仍被旧项目自己的「调试现场表已过期（maps）」挡住，
+  所以这次按同样的解码结果直接补进本仓库数据。
+- `public/content/battle.json`：6 类怪物增益共 60 个等级补上 `applicationEffect`，
+  `monster-emergency-recovery` 另补 `loopEffects`（`monster-poison-aura`，从第 10 帧接上）。
+- `tests/buff-visual-content.test.ts`：钉住这 6 类增益的命中特效、卡娜那条技能的 `flash-gold`、
+  以及「引用的特效必须都在素材表里」。
+
+持续期间的表现是另一层：`src/rendering/stun-stars.ts` 在眩晕时给头顶加三颗绕圈的小星星。
+这一层原版没有，属按玩家反馈加的增强。
+
+验证：`npm run typecheck` 通过；`npm test -- tests/buff-visual-content.test.ts` 4 项通过；
+`npm run validate:content` 通过（`{ maps: 416, assets: 12086 }`）。实际显示效果交给用户验收。
 
 ### 4. 沃尔达克头像错成主角
 
