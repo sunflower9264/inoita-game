@@ -73,15 +73,20 @@ import { wrapText } from '../text-layout.ts';
 export class UiSurface {
   readonly scene:Phaser.Scene; readonly width:number; readonly height:number; readonly depth:number;
   readonly root: Phaser.GameObjects.Container;
+  /** 静态层压在最底下：图框、底板这类不随状态变化的对象只画一次，动态内容盖在上面。 */
+  readonly staticRoot: Phaser.GameObjects.Container;
   readonly scrolls: ScrollArea[] = [];
   // 取消回调挂在按钮本身：虚拟滚动会反复销毁重建行，独立数组会留下已销毁按钮的闭包。
   private cancelInput=():void=>{this.buttons.forEach(button=>{if(button.active)button.getData('cancelPress')?.();});this.scrolls.forEach(scroll=>scroll.cancelGesture());};
   private buttons: Phaser.GameObjects.Container[] = [];
   private focusIndex = -1;
+  private staticKey?: string;
   enabled:()=>boolean=()=>true;
   constructor(scene: Phaser.Scene, width: number, height: number, depth = 100) {
     this.scene=scene;this.width=width;this.height=height;this.depth=depth;
-    this.root = scene.add.container(0, 0).setDepth(depth);scene.game.events.on(UI_EVENTS.cancelInput,this.cancelInput);scene.input.on('pointerupoutside',this.cancelInput);
+    this.root = scene.add.container(0, 0).setDepth(depth);
+    this.staticRoot = scene.add.container(0, 0);
+    scene.game.events.on(UI_EVENTS.cancelInput,this.cancelInput);scene.input.on('pointerupoutside',this.cancelInput);
   }
   layout(padding = 12): void {
     const bounds = this.scene.game.canvas.getBoundingClientRect(), safe = readSafeArea();
@@ -93,9 +98,21 @@ export class UiSurface {
     this.scrolls.forEach(scroll=>scroll.layout());
   }
   clear(): void {
-    this.scrolls.splice(0).forEach(scroll=>scroll.destroy()); this.buttons=[]; this.focusIndex=-1; this.root.removeAll(true);
+    this.scrolls.splice(0).forEach(scroll=>scroll.destroy()); this.buttons=[]; this.focusIndex=-1;
+    // 逐个移除，留下静态层；`removeAll(true)` 会连静态层一起销毁。
+    [...this.root.list].forEach(child=>{if(child!==this.staticRoot)child.destroy();});
   }
-  destroy(): void { this.scene.game.events.off(UI_EVENTS.cancelInput,this.cancelInput);this.scene.input.off('pointerupoutside',this.cancelInput);this.clear();this.root.destroy(); }
+  /** 换页或布局变化时清掉静态层；同页重画不要调用。 */
+  clearStatic(): void { this.staticKey=undefined; this.staticRoot.removeAll(true); }
+  /** 同一个 key 只画一次静态层；key 变化时整体换掉。 */
+  staticLayer(key:string,draw:()=>void):void {
+    if(this.staticKey===key)return;
+    this.clearStatic();
+    // 懒挂载：不用静态层的表面（HUD 按钮）不该多一个子对象，`root.length===0` 仍表示空界面。
+    if(this.staticRoot.parentContainer!==this.root)this.root.addAt(this.staticRoot,0);
+    this.staticKey=key; draw();
+  }
+  destroy(): void { this.scene.game.events.off(UI_EVENTS.cancelInput,this.cancelInput);this.scene.input.off('pointerupoutside',this.cancelInput);this.clearStatic();this.clear();this.staticRoot.destroy();this.root.destroy(); }
   visible(value: boolean): void { this.root.setVisible(value); this.scrolls.forEach(scroll=>scroll.layer.setVisible(value&&scroll.visible)); }
   image(file: string, x: number, y: number, width?: number, height?: number, parent=this.root): Phaser.GameObjects.Image {
     const ref=uiImageFor(this.scene,file);
@@ -205,13 +222,13 @@ export class UiSurface {
    * 原版图框：四边各 24 像素、四角 24×24。只画框，不画底色——底色各面板自己决定
    * （内容栏用 `frame` 的暖黑底，说明面板用原版 60% 黑底，见 `desc-panel-2026-10-12.md`）。
    */
-  border(assets:Record<string,string>,x:number,y:number,width:number,height:number):void {
+  border(assets:Record<string,string>,x:number,y:number,width:number,height:number,parent=this.root):void {
     if(!assets['corner-nw'])return;
-    this.image(assets['edge-horizontal'],x+24,y,width-48,24);
-    this.image(assets['edge-horizontal'],x+24,y+height-24,width-48,24).setFlipY(true);
-    this.image(assets['edge-vertical'],x,y+24,24,height-48);
-    this.image(assets['edge-vertical'],x+width-24,y+24,24,height-48).setFlipX(true);
-    for(const [part,dx,dy]of [['nw',0,0],['ne',width-24,0],['sw',0,height-24],['se',width-24,height-24]] as const)this.image(assets[`corner-${part}`],x+dx,y+dy,24,24);
+    this.image(assets['edge-horizontal'],x+24,y,width-48,24,parent);
+    this.image(assets['edge-horizontal'],x+24,y+height-24,width-48,24,parent).setFlipY(true);
+    this.image(assets['edge-vertical'],x,y+24,24,height-48,parent);
+    this.image(assets['edge-vertical'],x+width-24,y+24,24,height-48,parent).setFlipX(true);
+    for(const [part,dx,dy]of [['nw',0,0],['ne',width-24,0],['sw',0,height-24],['se',width-24,height-24]] as const)this.image(assets[`corner-${part}`],x+dx,y+dy,24,24,parent);
   }
   frame(assets:Record<string,string>,x:number,y:number,width:number,height:number):void {
     this.rect(x,y,width,height,0x15100b,.96);

@@ -186,28 +186,37 @@ export class ShopPanel {
     // 两栏都只有图框：`UIStore_Draw` 与 `UIStore_DrawInvenBackground` 都只调 `UI_DrawBorderRect`，
     // 面板里看到的是黑色 65% 遮罩下的世界画面（见 `work/findings/menu-backdrop-2026-10-11.md`），
     // 所以这里不能用带填充的 `frame()`——那会把两栏刷成一块不透明的深棕，与背包页也对不上。
-    v.border(this.frames,leftFrame.x,leftFrame.y,leftFrame.width,leftFrame.height);
-    v.border(this.frames,bagFrame.x,bagFrame.y,bagFrame.width,bagFrame.height);
-    v.image(catalog.assets['merchant-title'],title.x,title.y,title.width,title.height);
-    v.text(store.shop.name,layout.titleName.x,layout.titleName.y,230,26,AREA_COLOR).setOrigin(.5);
+    // 两栏图框、店名和货架空格子不随筛选/选中变化，放进静态层只画一次。
+    v.staticLayer(`shop:${store.shop.name}:${classified}`,()=>{
+      v.border(this.frames,leftFrame.x,leftFrame.y,leftFrame.width,leftFrame.height,v.staticRoot);
+      v.border(this.frames,bagFrame.x,bagFrame.y,bagFrame.width,bagFrame.height,v.staticRoot);
+      v.image(catalog.assets['merchant-title'],title.x,title.y,title.width,title.height,v.staticRoot);
+      v.text(store.shop.name,layout.titleName.x,layout.titleName.y,230,26,AREA_COLOR,v.staticRoot).setOrigin(.5);
+      if(classified){
+        const column=layout.categoryColumn;
+        v.image(catalog.assets['category-cap-top'],column.cap.x,column.cap.y,column.cap.width,column.cap.height,v.staticRoot);
+        v.image(catalog.assets['category-cap-bottom'],column.cap.x,column.cap.bottom,column.cap.width,column.cap.height,v.staticRoot);
+        v.image(catalog.assets['category-divider'],column.divider.x,column.divider.y,column.divider.width,column.divider.height,v.staticRoot);
+        v.textPlate(catalog.assets['text-plate-left'],catalog.assets['text-plate-right'],category.plate.x,category.plate.y,category.plate.width,v.staticRoot);
+      }
+      v.textPlate(catalog.assets['text-plate-left'],catalog.assets['text-plate-right'],layout.money.plate.x,layout.money.plate.y,layout.money.plate.width,v.staticRoot);
+      for(let index=0;index<SHELF_SLOTS;index++){
+        const x=shelf.x+index%4*slot.stride,y=shelf.y+Math.floor(index/4)*slot.stride;
+        v.image(catalog.assets.slot,x,y,slot.size,slot.size,v.staticRoot);
+      }
+    });
     if(classified){
-      // 分类列自己的修饰：上下两块端盖夹住一条竖条，把这一列圈成独立的格子。
-      const column=layout.categoryColumn;
-      v.image(catalog.assets['category-cap-top'],column.cap.x,column.cap.y,column.cap.width,column.cap.height);
-      v.image(catalog.assets['category-cap-bottom'],column.cap.x,column.cap.bottom,column.cap.width,column.cap.height);
-      v.image(catalog.assets['category-divider'],column.divider.x,column.divider.y,column.divider.width,column.divider.height);
+      // 分类列的滚动区与按钮随筛选重建；端盖和竖条已经在静态层。
       this.categoryScroll=v.scroll(category.scroll.x,category.scroll.y,category.scroll.width,category.scroll.height);
       store.shop.categories.forEach((name,index)=>v.button('',0,index*category.button.stride,category.button.width,category.button.height,
         ()=>{store.selectCategory(name);this.changed();},
         {image:catalog.assets[`${name}${store.category===name?'-selected':''}`],parent:this.categoryScroll!.content,guard:this.categoryScroll!.guard})
         .setData('label',catalog.categories[name].name));
       this.categoryScroll.setHeight(store.shop.categories.length*category.button.stride);this.categoryScroll.scrollTop=this.categoryOffset;
-      v.textPlate(catalog.assets['text-plate-left'],catalog.assets['text-plate-right'],category.plate.x,category.plate.y,category.plate.width);
       v.text(catalog.categories[store.category!].name,category.name.x,category.name.y,290,22,AREA_COLOR).setOrigin(.5);
     }
     for(let index=0;index<SHELF_SLOTS;index++){
       const x=shelf.x+index%4*slot.stride,y=shelf.y+Math.floor(index/4)*slot.stride,offer=store.offers[index];
-      v.image(catalog.assets.slot,x,y,slot.size,slot.size);
       if(!offer||offer.sold)continue;
       const item=session.bag.catalog.items[offer.instance.item];
       const button=v.button('',x,y,slot.size,slot.size,()=>this.select('buy',offer.id),{bare:true}).setData('label',`购买 ${item.name}`);
@@ -234,7 +243,6 @@ export class ShopPanel {
     this.bagScroll.setHeight(Math.ceil(slots/bag.columns)*bag.stride);this.bagScroll.scrollTop=this.bagOffset;
     const batchItems=this.batch?this.batchEntries():[],
       batchTotal=batchItems.reduce((sum,{entry,price})=>sum+price*entry.quantity,0);
-    v.textPlate(catalog.assets['text-plate-left'],catalog.assets['text-plate-right'],layout.money.plate.x,layout.money.plate.y,layout.money.plate.width);
     if(this.batch){
       // 批量模式把金额栏临时改成“本次出售合计”，避免和当前持有金币混在一起。
       const plate=layout.money.plate,label=this.batchError??`合计 ${moneyText(batchTotal)}`;

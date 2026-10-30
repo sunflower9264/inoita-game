@@ -398,13 +398,18 @@ export class StoryUI {
     if(!this.member()){this.discardAllocation();this.selectedMemberId='player';}const v=this.surface;
     this.body.root.setPosition(CONTENT_ORIGIN.x,CONTENT_ORIGIN.y);
     // 登记快捷键时菜单本体不画：只重画那一屏（它自己在 `sync` 里显示、菜单整块隐藏）。
-    if(this.app.ui.controlLayoutEditing){this.sync();return;}
-    if(this.shortcutEdit){this.renderShortcutScreen();this.renderBackButton();this.sync();return;}
-    if(this.page!=='shop'&&this.page!=='crafting'&&this.page!=='save'&&this.page!=='load')tabs.forEach(([page,label],index)=>{const button=v.button('',35+index*149,25,102,116,()=>this.show(page),{bare:true}).setData('label',label);v.image(this.content!.assets[`tab-${page}`],12,0,78,78,button);v.text(label,51,85,90,20,undefined,button).setOrigin(.5,0);button.setAlpha(this.page===page||(['settings','debug'] as Page[]).includes(this.page)&&page==='system'?1:.65);});
-    if(this.page==='crafting'&&this.craftingPanel){
-      v.text(this.world!.actors[this.craftingActor!].name,512,25,0,28).setOrigin(.5,0);
-    }
-    v.button('',947,24,51,51,()=>this.close(),{image:this.content!.assets.close,pressed:this.content!.assets['close-pressed']}).setData('label','关闭菜单');
+    if(this.app.ui.controlLayoutEditing){this.surface.clearStatic();this.body.clearStatic();this.sync();return;}
+    if(this.shortcutEdit){this.surface.clearStatic();this.body.clearStatic();this.renderShortcutScreen();this.renderBackButton();this.sync();return;}
+    // 静态图框只在背包/商店页保留；其它页先把上一页的静态层收掉，避免压在设置或任务列表下面。
+    if(this.page!=='bag'&&this.page!=='shop')this.body.clearStatic();
+    const chromeKey=`chrome:${this.page}${this.page==='crafting'?`:${this.craftingActor}`:''}`;
+    v.staticLayer(chromeKey,()=>{
+      if(this.page!=='shop'&&this.page!=='crafting'&&this.page!=='save'&&this.page!=='load')tabs.forEach(([page,label],index)=>{const button=v.button('',35+index*149,25,102,116,()=>this.show(page),{bare:true,parent:v.staticRoot}).setData('label',label);v.image(this.content!.assets[`tab-${page}`],12,0,78,78,button);v.text(label,51,85,90,20,undefined,button).setOrigin(.5,0);button.setAlpha(this.page===page||(['settings','debug'] as Page[]).includes(this.page)&&page==='system'?1:.65);});
+      if(this.page==='crafting'&&this.craftingPanel){
+        v.text(this.world!.actors[this.craftingActor!].name,512,25,0,28,undefined,v.staticRoot).setOrigin(.5,0);
+      }
+      v.button('',947,24,51,51,()=>this.close(),{image:this.content!.assets.close,pressed:this.content!.assets['close-pressed'],parent:v.staticRoot}).setData('label','关闭菜单');
+    });
     if(this.page==='bag')this.renderBag();if(this.page==='status')this.renderStatus();if(this.page==='skills')this.renderSkills();if(this.page==='party')this.renderParty();if(this.page==='quests')this.renderQuests();if(this.page==='shop')this.shopPanel?.render(this.body,this.modal!,this.placeModal,this.description!);
     if(this.page==='crafting'&&this.craftingPanel){this.craftingPanel.render(this.body,this.modal!,this.placeModal,(pointer,entry,scroll)=>this.startDrag(pointer,entry,scroll));this.drops=this.craftingPanel.drops;}
     if(this.page==='system'){
@@ -985,11 +990,15 @@ export class StoryUI {
     // 两栏背景照原版：`UIEquip_DrawEquipBackground @0x14a7cc` 给左栏画图框加四块黑色 60% 的区域
     // （`GRPX_FillRectAlpha(..., 0xff000000, 0x3c)`），中间 (129,110,157,157) 那块留空放人物预览；
     // 右栏只有图框——`UIEquip_DrawInvenBackground @0x14aed0` 不铺底，格子直接浮在背景上。
-    v.border(panels.assets,85,0,409,431);v.border(panels.assets,496,0,395,431);
-    for(const [x,y,width,height] of [[24,24,361,86],[24,110,105,157],[286,110,99,157],[24,267,361,140]])
-      v.rect(85+x,y,width,height,0x000000,.6);
-    // 黑底之后叠四块 41×41 的角色图角（组 15 索引 48／49／53／54），画在框外 2 像素处。
-    for(const [corner,x,y]of [['nw',83,-2],['ne',455,-2],['sw',83,392],['se',455,392]] as const)v.image(panels.assets[`character-${corner}`],x,y,41,41);
+    v.staticLayer('bag',()=>{
+      v.border(panels.assets,85,0,409,431,v.staticRoot);v.border(panels.assets,496,0,395,431,v.staticRoot);
+      for(const [x,y,width,height] of [[24,24,361,86],[24,110,105,157],[286,110,99,157],[24,267,361,140]])
+        v.rect(85+x,y,width,height,0x000000,.6,v.staticRoot);
+      // 黑底之后叠四块 41×41 的角色图角（组 15 索引 48／49／53／54），画在框外 2 像素处。
+      for(const [corner,x,y]of [['nw',83,-2],['ne',455,-2],['sw',83,392],['se',455,392]] as const)v.image(panels.assets[`character-${corner}`],x,y,41,41,v.staticRoot);
+      // 等级／职业行的底板同样是固定装饰，文字在下面单独画。
+      v.textPlate(panels.assets['text-plate-left'],panels.assets['text-plate-right'],131,368,323,v.staticRoot);
+    });
     this.drawPartyColumn(v);
     const showingResult=itemResultDetails(this.itemResult,bag.catalog,id=>id,id=>id).length>0,
       describing=!showingResult&&!!this.selectedItem&&!!bag.get(this.selectedItem);
@@ -1022,7 +1031,7 @@ export class StoryUI {
       for(const slot of panels.equipmentSlots){const entry=equipment[slot.id as EquipmentSlot],instance=entry?bag.get(entry):undefined,item=instance?bag.catalog.items[instance.item]:undefined,targetable=!!this.applying&&!!entry&&this.canApplyTarget(entry);const button=v.button('',85+slot.x,slot.y,74,74,()=>{if(this.applying&&entry&&this.canApplyTarget(entry)){this.applyItem(this.applying,entry);return;}if(!entry)return;this.selectItem(entry,'right');},{image:slotFrameImage(this.app,this.session!,instance)});v.image(item?.icon??slot.emptyIcon,item?5:13,item?5:13,item?64:48,item?64:48,button);if(targetable)v.image(panels.assets['inventory-selected'],0,0,74,74,button);button.setData('label',slot.name);this.drops.push({object:button,entry,slot:slot.id as EquipmentSlot});}
       // 等级／职业行：`UIEquip_DrawEquip` 在左框内 (46,368) 画 323 宽的文本底板，文字居中于它、
       // 颜色 #e2cb9e、纵向上沿在底板顶边下 7 像素（`GRPX_DrawStringWithFont(..., y+375, 居中)`）。
-      v.textPlate(panels.assets['text-plate-left'],panels.assets['text-plate-right'],131,368,323);
+      // 底板在静态层，这里只画会随成员变化的等级与职业文字。
       v.text(`Lv. ${member.level}　${this.app.storyClasses.classes.find(c=>c.id===member.classId)!.name}`,292,375,0,22,'#e2cb9e').setOrigin(.5,0);
     }
     if(showingResult){this.renderItemResult();}

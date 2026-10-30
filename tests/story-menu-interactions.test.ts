@@ -1553,11 +1553,13 @@ test('session notifications only repaint the menu page whose data changed', t =>
   // 背包页不显示生命值；战斗回血/掉血的会话通知不该把整页背包重建一遍。
   f.hero.setHealth(Math.max(1,f.hero.player.health-1));
   assert.equal(f.scene.button('关闭菜单'),close,'只改生命值时背包页保持原对象');
-  // 钱是背包页真正显示的数据；变化后必须真实重绘。
+  // 钱是背包页真正显示的数据；变化后必须真实重绘动态内容，但静态关闭按钮不重建。
+  const bagScroll=f.internals.body.scrolls[0];
   f.session.gainMoney(1);
   const rebuilt=f.scene.button('关闭菜单');
-  assert.notEqual(rebuilt,close,'钱变化后背包页重绘');
-  assert.equal(close.active,false,'旧对象已销毁');
+  assert.equal(rebuilt,close,'静态关闭按钮不重建');
+  assert.notEqual(f.internals.body.scrolls[0],bagScroll,'钱变化后背包动态内容重绘');
+  assert.equal(close.active,true,'静态对象仍在使用');
 
   // 系统页不消费会话数据，任何会话通知都不该重绘它。
   f.menu.show('system');
@@ -1565,9 +1567,26 @@ test('session notifications only repaint the menu page whose data changed', t =>
   f.session.gainMoney(1);
   assert.equal(f.scene.button('关闭菜单'),systemClose,'系统页不因会话通知重绘');
 
-  // 状态页显示生命值，变化时必须重绘。
+  // 状态页显示生命值，变化时必须重绘动态内容；静态关闭按钮保持同一个对象。
   f.menu.show('status');
   const statusClose=f.scene.button('关闭菜单');
+  const statusDynamic=f.internals.body.root.list.find(child=>child!==f.internals.body.staticRoot);
   f.hero.setHealth(Math.max(1,f.hero.player.health-1));
-  assert.notEqual(f.scene.button('关闭菜单'),statusClose,'状态页数值变化时重绘');
+  assert.equal(f.scene.button('关闭菜单'),statusClose,'静态关闭按钮不重建');
+  assert.notEqual(f.internals.body.root.list.find(child=>child!==f.internals.body.staticRoot),statusDynamic,'状态页数值变化时重绘动态内容');
+});
+
+test('bag chrome is reused across rerenders and replaced when the page changes', t => {
+  const f=fixture();t.after(f.cleanup);
+  f.menu.show('bag');
+  const chrome=f.internals.body.staticRoot,count=chrome.list.length,first=chrome.list[0];
+  assert(count>0,'背包页有静态图框');
+  f.session.gainMoney(1);
+  assert.equal(f.internals.body.staticRoot,chrome,'同页重画沿用静态容器');
+  assert.equal(chrome.list.length,count,'同页重画不重复添加图框');
+  assert.equal(chrome.list[0],first,'同页重画复用同一批静态对象');
+  f.menu.show('status');
+  assert.equal(chrome.list.length,0,'换页后旧静态层被清掉');
+  f.menu.show('bag');
+  assert(chrome.list.length>0,'回到背包页重新建静态图框');
 });
