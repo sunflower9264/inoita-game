@@ -169,8 +169,11 @@ test('buff icons straddle the panel bottom-left corner and blink only inside the
     assert.equal(second.y,first.y,'同一排，纵向不动');
   }
   assert.equal(buffIconPosition(icons,skin.player.height,3).x,-icons.size/2-3*icons.step);
-  for(const name of ['dark-strike','whist','aimed-shot'])assert.ok(icons.catalog[name],name);
+  for(const name of ['dark-strike','whist','aimed-shot','blood-revenge',
+    'bard-of-destruction','dark-sense','deep-breath','magic-insight','ordination-prayer',
+    'shield-of-trust','sniping','storm-of-frenzy-power'])assert.ok(icons.catalog[name],name);
   assert.ok(Object.values(icons.catalog).every(file=>file.startsWith('assets/ui/status/buff-')));
+  for(const [name,file] of Object.entries(icons.catalog))assert.ok(fs.existsSync(new URL(`../public/${file}`,import.meta.url)),name);
   assert.equal(buffIconBlinking(31,0),false);assert.equal(buffIconBlinking(30,0),false);
   assert.equal(buffIconBlinking(30,4),true);assert.equal(buffIconBlinking(30,8),false);
   assert.equal(buffIconBlinking(0,4),true);
