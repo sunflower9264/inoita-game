@@ -21,7 +21,7 @@
 | 5 | 兽人部落 NPC 缺少交互 | 已核查：与原版一致，不改 |
 | 6 | 交互时只有一句「一路小心。」 | 已修（无闲话内容不再弹窗，完成的任务不再保留交互） |
 | 10 | 交互范围过大 | 已修（普通目标贴身 1 格；商店隔柜台 4 格） |
-| 11 | 任务道具交付后不清除 | 已修（同类 17 条一起改） |
+| 11 | 任务道具交付后不清除 | 已修（删掉重复发放的源头） |
 | 12 | 打开背包掉帧、数量改动整页重画 | 数量变化已修；背包静态层待做 |
 | 13 | 背包格子按装备品质上色 | 已修（边框按品质换图） |
 | 14 | 融合器交互不对 | 已修（融合器接入配方列表） |
@@ -197,25 +197,43 @@ NPC 自己的描述还在，所以有闲话的角色照样能聊。
 
 现象：净化石任务交完了，背包里还留着一颗。
 
-核查：这颗石头本来就是发两次、扣一次。
+核查：这颗石头被发了两次，交付只扣一次。
 - 拾取原石的剧情命令发一颗：`event-66` 场景 4，`item-give purity-stone`。
 - 接下 quest-53「狼人的恢复」时又发一颗：这条任务的 `onAcceptItems`。
 - 交付时按数量只扣一颗：`handoverItems` 写的是 `"removal": "quantity"`。
 
-原版对照：原版任务表里这条是类型 2。接取时 `ApplyPrepare@0x1bfe04` 发放 PREPARE 物品，`@0x1bffe0` 对类型 2 再发放完成目标里的物品；交付时 `ApplyReward` 按 `remove_count_argument` 扣除，这条记录是 1。所以原版同样发两次、只扣一颗，也会剩一颗。证据见旧项目 `work/findings/45_quest_world.md` 与 `site/data/quest_chains.json` 的 53 号任务。
+原版对照：原版任务表里这条是类型 2。接取时 `ApplyPrepare@0x1bfe04` 发放 PREPARE 物品，
+`@0x1bffe0` 对类型 2 再把「完成目标」里的物品也发一遍；交付时 `ApplyReward` 按
+`remove_count_argument` 扣除，这条记录是 1。所以原版同样发两次、只扣一次，也会剩一颗。
+证据见旧项目 `work/findings/45_quest_world.md` 与 `site/data/quest_chains.json` 的 53 号任务。
 
-实测（`tests/story-chapters.test.ts` 主流程）：交货前背包 2 颗，交货后 1 颗。
+「多发一份」的两种来源（原版自己也带着）：
+- 同一件道具既在 PREPARE 表、又在 COMPLETE 表里，接取时发两份；
+- 剧情已经用 `item-give` 发过，接取时按完成目标再发一份。
 
-决定：剩下那颗丢不掉（`discardable: false`）、卖不掉（`sellable: false`），会永久占一格，所以按「交付扣光」处理。这是**有意偏离原版**的一处。
-
-同类：全库 151 条交付记录里，17 条任务同时「接取发放 + 交付扣除」。物品全是任务类、不可丢弃、只被本条任务引用。按数据推算，其中 14 条会剩（quest-250 精制的麦粉剩 2 颗），3 条（quest-79、quest-230、quest-233）本来就只发一颗、不剩。另有 9 条任务的接取发放是两条记录（PREPARE 与完成目标各一条），原版就是这样发两份。
+决定：从源头删掉重复的那一份，交付恢复原版的「按需要数量扣」。
+剩下那颗属性是 `discardable: false`、`sellable: false`，丢不掉也卖不掉，会永久占一格，
+所以这里**有意偏离原版**——原版会让它留在包里。
 
 已做（2026-10-30）：
-- `public/content/campaign.json`：这 17 条任务的 `handoverItems` 全部改成 `"removal": "all-matching"`，交付时扣光同类。发放逻辑没动，原版「接了任务先给一颗」的保险还在。
-- `tests/story-chapters.test.ts`：净化石交货前断言 2 颗、交货后 0 颗；矿山钥匙（quest-50）交付后从 1 颗改成 0 颗。
-- `public/content/debug/start.json`：内容变了，按 `npm run debug-start` 重新生成。
+- `public/content/campaign.json`：13 条任务删掉多余的接取发放。
+  5 条接取发放整条删除，道具由剧情发（quest-50 矿山钥匙、quest-53 净化石、quest-55 魔法石、
+  quest-223 猎手的遗物、quest-253 净化之泉水）；7 条是两条一模一样的接取记录，去掉一条
+  （quest-64、70、71、95、172、174、304）；quest-250 精制的麦粉两条接取记录都删，剧情已经发过。
+  17 条交付记录从上一版的 `"all-matching"` 改回 `"quantity"`，改成按需要数量扣。
+- 新增 `src/application/quest-item-grants.ts`：算「接取发放 + 剧情净发放」，净发放要减掉剧情收回去的数量
+  （递交演出常见先给一件再收回一件，例如 `event-218` 场景 8 的药方）。
+- `src/application/content-relations.ts`：内容校验里加一条，发放量超过交付需求就报错，
+  以后加任务不能再犯。
+- `tests/quest-item-grants.test.ts`：7 项，覆盖剧情已发、接取重复记录、净额抵扣、只够交付量等情况。
+- `tests/story-chapters.test.ts`、`tests/story-intake.test.ts`、`tests/quest-target-interaction.test.ts`：
+  净化石与矿山钥匙改成「交货前 1 颗」，接取不再补发。
 
-验证：`npm test -- tests/story-chapters.test.ts tests/quest-target-interaction.test.ts tests/story-intake.test.ts` 21 项全过；`npm run validate:content` 通过（`{ maps: 416, assets: 12080 }`）；`npm run debug-start:check` 通过。
+验证：`npm test -- tests/story-chapters.test.ts`（主流程 102 秒）通过；
+`tests/story-intake.test.ts`、`tests/quest-target-interaction.test.ts`、`tests/quest-item-grants.test.ts`
+共 32 项通过；`npm run validate:content` 通过（`{ maps: 416, assets: 12086 }`）；
+`npm run debug-start:check` 通过。`tests/session-quest-core.test.ts` 有 3 条既有失败（金额 ×10，与本次无关，
+在原始数据上同样失败）。
 
 ### 16. 圣女演出里三只重复的打铁 NPC
 
@@ -332,7 +350,7 @@ NPC 自己的描述还在，所以有闲话的角色照样能聊。
 - 17（2026-10-30）：提取脚本切图时作废旧图摆怪，重导出后院长与封印守护者各少一只。
   遭遇开在常驻怪身上时让常驻那只让位（修事件 72）；内容校验新增「同一格不许摆两只」。
   剧情主流程、遭遇相关用例与 `validate:content` 通过。
-- 11（2026-10-30）：17 条任务道具的交付改成扣光同类，背包不再留一颗。发放逻辑没动。
+- 11（2026-10-30）：删掉 13 条任务重复发放的任务道具，交付恢复按需要数量扣；内容校验新增「发放不得超过需求」。
   剧情主流程、任务交互与 `validate:content`、`debug-start:check` 通过。
 - 13（2026-10-30）：按品质预生成 6 张格子边框图，背包页与队伍页的装备格、背包物品格换边框，空格子与非装备不变。
   格子取色、说明标题取色现在共用同一套函数。图集测试、边框测试、菜单交互测试与 `validate:content` 通过。
