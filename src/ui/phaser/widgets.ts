@@ -131,11 +131,19 @@ export class UiSurface {
     const text=label?this.text(label,width/2,height/2,width-12,options.fontSize??Math.min(22,height*.42),GOLD,result):undefined;
     if(text)text.setOrigin(.5);
     const selected=common&&!!options.selected;
-    highlight?.setVisible(selected);result.setInteractive(new Phaser.Geom.Rectangle(0,0,width,height),(area:Phaser.Geom.Rectangle,px:number,py:number)=>this.enabled()&&this.root.visible&&Phaser.Geom.Rectangle.Contains(area,px,py)&&this.scrolls.filter(scroll=>scroll.content===parent).every(scroll=>scroll.contains(this.scene.input.activePointer)));
+    const hitTest=(area:Phaser.Geom.Rectangle,px:number,py:number)=>this.enabled()&&this.root.visible&&Phaser.Geom.Rectangle.Contains(area,px,py)&&this.scrolls.filter(scroll=>scroll.content===parent).every(scroll=>scroll.contains(this.scene.input.activePointer));
+    // 可用态要能在运行时改：`disabled` 只是初值，这里把切换动作连同命中闭包一起挂到 data 上，
+    // 调用方点加减时只改这一枚按钮，不必重画整个菜单。
+    const setEnabled=(enabled:boolean):void=>{
+      if(enabled){result.setInteractive(new Phaser.Geom.Rectangle(0,0,width,height),hitTest);result.setAlpha(1);}
+      else result.disableInteractive().setAlpha(.4);
+    };
+    highlight?.setVisible(selected);result.setInteractive(new Phaser.Geom.Rectangle(0,0,width,height),hitTest);
     result.setData('uiAction',true);
     result.setData('label',label).setData('action',action).setData('guard',options.guard)
-      .setData('face',face).setData('highlight',highlight).setData('labelText',text).setData('selected',selected);
-    if(options.disabled)result.disableInteractive().setAlpha(.4);
+      .setData('face',face).setData('highlight',highlight).setData('labelText',text).setData('selected',selected)
+      .setData('setEnabled',setEnabled);
+    if(options.disabled)setEnabled(false);
     let press:number|undefined;result.setData('cancelPress',()=>{press=undefined;highlight?.setVisible(selected);});
     result.on('pointerdown',(pointer:Phaser.Input.Pointer,_x:number,_y:number,_event:Phaser.Types.Input.EventData)=>{
       if(!this.enabled())return;press=pointer.id;highlight?.setVisible(true);
@@ -231,6 +239,7 @@ export function buttonParts(button:Phaser.GameObjects.Container):{
 } {
   return {face:button.getData('face'),highlight:button.getData('highlight'),text:button.getData('labelText')};
 }
+
 
 const scrollAreas = new WeakMap<Phaser.Scene, Set<ScrollArea>>();
 let scrollOrder = 0;

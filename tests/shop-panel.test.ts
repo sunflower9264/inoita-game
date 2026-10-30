@@ -10,6 +10,7 @@ import { parseShops } from '../src/application/content-validation.ts';
 import { BAG_DESCRIPTION_WIDTH, DESCRIPTION_PANEL } from '../src/ui/bag-layout.ts';
 import { descriptionPanel, POPUP_FRAME, shopLayout, tradeLayout, tradeMessageLayout } from '../src/ui/shop-layout.ts';
 import { INVENTORY_LABELS, INVENTORY_SIDE_FILTERS } from '../src/domain/inventory.ts';
+import { splitMoney } from '../src/ui/money-display.ts';
 import { ShopPanel } from '../src/ui/phaser/shop-panel.ts';
 import { centerModal } from '../src/ui/phaser/modal-placement.ts';
 
@@ -20,10 +21,15 @@ const item=(name:string)=>Object.values(items.items).find(value=>value.name===na
 
 class Node {
   height=24;label='';origin:{x:number;y:number}={x:0,y:0};children:Node[]=[];text='';color='';
+  data:Record<string,unknown>={};alpha=1;interactive=true;
   context={measureText:(text:string)=>({width:Array.from(text).length*12})};
   destroy(){}
   setOrigin(x:number,y?:number){this.origin={x,y:y??x};return this;}
-  setData(key:string,value:unknown){if(key==='label')this.label=String(value);return this;}
+  setData(key:string,value:unknown){this.data[key]=value;if(key==='label')this.label=String(value);return this;}
+  getData(key:string){return this.data[key];}
+  setAlpha(value:number){this.alpha=value;return this;}
+  setInteractive(){this.interactive=true;return this;}
+  disableInteractive(){this.interactive=false;return this;}
   setPosition(){return this;}setScale(){return this;}setColor(color:string){this.color=color;return this;}
   setFlipX(){return this;}setFlipY(){return this;}
   setFontSize(){return this;}setVisible(){return this;}setText(value:string){this.text=value;return this;}
@@ -48,7 +54,12 @@ class Surface {
   rect(x:number,y:number,width:number,height:number,color:number,alpha:number){this.calls.push({kind:'rect',x,y,width,height,color,alpha});return new Node();}
   textPlate(left:string,right:string,x:number,y:number,width:number){this.calls.push({kind:'textPlate',left,right,x,y,width});}
   button(label:string,x:number,y:number,width:number,height:number,action:()=>void,options:Record<string,unknown>){
-    const node=new Node();this.calls.push({kind:'button',label,x,y,width,height,action,options,node});return node;
+    const node=new Node();
+    // 真按钮把可用态开关挂在 data 的 `setEnabled` 上，商店的数量箭头靠它就地变灰/恢复。
+    const setEnabled=(enabled:boolean)=>{enabled?node.setInteractive():node.disableInteractive();node.setAlpha(enabled?1:.4);};
+    node.setData('setEnabled',setEnabled);
+    if(options?.disabled)setEnabled(false);
+    this.calls.push({kind:'button',label,x,y,width,height,action,options,node});return node;
   }
   scroll(x:number,y:number,width:number,height:number){
     this.calls.push({kind:'scroll',x,y,width,height});
@@ -71,7 +82,7 @@ class Surface {
   get buttons(){return this.calls.filter(call=>call.kind==='button'&&(call.label!==''||call.node?.label));}
 }
 
-const open=(id:string)=>{
+const open=(id:string,changed:()=>void=()=>{})=>{
   const session=new Session(campaign,undefined,undefined,items);
   const store=new Storefront(shops,items,stats,session,id,'shadow-camp',()=>0.1),surface=new Surface();
   // 商店面板拿到的图组资产清单；弹层的图框与背包那列按钮都从这里取图。
@@ -79,7 +90,7 @@ const open=(id:string)=>{
     'popup-edge-horizontal','popup-edge-vertical','page-button-frame','page-button-selected',
     'column-cap-top','column-cap-bottom','close','close-pressed']
     .map(key=>[key,`assets/ui/menus/${key}.png`]));
-  const panel=new ShopPanel(store,session,shops,frames,()=>{});
+  const panel=new ShopPanel(store,session,shops,frames,changed);
   const parent=new Surface();
   // 说明面板画在单独一层上：停在右栏时它压在背包格子上，画在内容块里会被格子的图层盖住。
   const description=new Surface();
@@ -448,4 +459,31 @@ test('non-stackable and unsellable items skip the quantity box',()=>{
   const notice=tradeMessageLayout(1,false),noticeTop=0;
   assert.deepEqual([boxButton(general.surface,'确定').x,boxButton(general.surface,'确定').y],[(450-125)/2,noticeTop+notice.button.y]);
   assert.equal(general.surface.buttons.filter(call=>call.label==='取消').length,0);
+});
+
+test('quantity arrows repaint only the box, never the whole menu',()=>{
+  let repaints=0;
+  const {surface,description,store,session,draw}=open('merchandise-dealer-b09d9585',()=>{repaints++;});
+  session.gainMoney(1_000_000);
+  press(surface,'购买 恢复药水（小）');draw();
+  (boxButton(description,'购买').action as ()=>void)();draw();
+  const arrow=(name:string)=>surface.calls.find(call=>call.kind==='button'&&String((call.options as Record<string,unknown>|undefined)?.image??'').includes(name))!;
+  const plus=arrow('count-right'),minus=arrow('count-left');
+  const count=()=>surface.calls.find(call=>call.kind==='text'&&call.x===233&&call.y===56)!.node as Node;
+  // 弹层里那行金额的三个数字：横坐标都在弹层画布上（<400），面板自己的金币在 562 之后。
+  const digits=()=>surface.calls.filter(call=>call.kind==='text'&&call.size===21&&call.color==='#ffffff'&&(call.x as number)<400)
+    .map(call=>(call.node as Node).text);
+  const offer=store.offers.find(value=>!value.sold&&session.bag.catalog.items[value.instance.item].name==='恢复药水（小）')!;
+  const price=store.buyPrice(offer.id);
+  assert.deepEqual([count().text,(minus.node as Node).interactive],['1',false],'数量 1 时减号是灰的');
+  const before=repaints;
+  (plus.action as ()=>void)();
+  assert.equal(repaints,before,'点加号不重画整个菜单');
+  assert.equal(count().text,'2','数量就地改成 2');
+  const doubled=splitMoney(price*2);
+  assert.deepEqual(digits(),[String(doubled.gold),String(doubled.silver),String(doubled.copper)],'金额跟着数量一起改');
+  assert.equal((minus.node as Node).interactive,true,'数量回到 2 时减号恢复可点');
+  (minus.action as ()=>void)();
+  assert.equal(repaints,before,'点减号同样不重画');
+  assert.deepEqual([count().text,(minus.node as Node).interactive],['1',false]);
 });

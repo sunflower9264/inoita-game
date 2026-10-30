@@ -15,6 +15,8 @@ import type { UiSurface, ScrollArea } from './widgets.ts';
 type Selection = {kind:'buy'|'sell'; id:string; step:'description'|'quantity'|'confirm'|'notice'; quantity:number; error?:string};
 
 const SHELF_SLOTS=16;
+/** 金额的三个单位，顺序与金币那一行的横坐标一致。 */
+const MONEY_UNITS=['gold','silver','copper'] as const;
 const AREA_COLOR='#e2cb9e';
 /** 批量出售的合计金额：只列非零单位，避免“0金0银5铜”这种长串。 */
 function moneyText(amount:number):string{
@@ -34,6 +36,13 @@ export class ShopPanel {
   private batchError?:string;
   private bagScroll?:ScrollArea;
   private categoryScroll?:ScrollArea;
+  /**
+   * 数量框里会变的三个东西：中间的数字、下面那行金额的每一位、左右两枚箭头。
+   * 加减只改它们三个，不触发整页重画——玩家明确要求过数量变化不能重刷界面。
+   */
+  private quantityCount?:Phaser.GameObjects.Text;
+  private quantityMoney?:Phaser.GameObjects.Text[];
+  private quantityButtons?:{minus:Phaser.GameObjects.Container;plus:Phaser.GameObjects.Container};
   private bagOffset=0;
   private categoryOffset=0;
   /** 背包栏那 6 个按钮的筛选：卖东西时看的是背包的哪一类。 */
@@ -152,13 +161,23 @@ export class ShopPanel {
       this.changed();
     }
   }
-  /** 原版先画币再画数字：单位间距 103，币 44×40，数字左对齐于币右侧 44、下移 6、白色。 */
-  private money(v:UiSurface,amount:number,x:number,y:number):void{
-    const {stride,coin,digit,color}=this.layout.money,value=splitMoney(amount);
-    (['gold','silver','copper'] as const).forEach((unit,index)=>{
+  /** 选中物品的单价：买入看货架标价，卖出看回收价。 */
+  private price(selection:Selection):number{
+    if(selection.kind==='buy')return this.store.buyPrice(selection.id);
+    const entry=this.session.bag.get(selection.id);
+    return entry?this.store.sellPrice(entry):0;
+  }
+  /**
+   * 原版先画币再画数字：单位间距 103，币 44×40，数字左对齐于币右侧 44、下移 6、白色。
+   * 返回三个数字对象，加减数量时只改它们的文字。
+   */
+  private money(v:UiSurface,amount:number,x:number,y:number):Phaser.GameObjects.Text[]{
+    const {stride,coin,digit,color}=this.layout.money,value=splitMoney(amount),digits:Phaser.GameObjects.Text[]=[];
+    MONEY_UNITS.forEach((unit,index)=>{
       v.image(this.catalog.assets[unit],x+index*stride,y,coin.width,coin.height);
-      v.text(String(value[unit]),x+index*stride+digit.x,y+digit.y,0,21,color);
+      digits.push(v.text(String(value[unit]),x+index*stride+digit.x,y+digit.y,0,21,color));
     });
+    return digits;
   }
   render(v:UiSurface,modal:UiSurface,placeModal?:PlaceModal,description?:UiSurface):void{
     this.placeModal=placeModal;
@@ -283,7 +302,7 @@ export class ShopPanel {
     const item=this.session.bag.catalog.items[entry.item],buying=selection.kind==='buy',verb=buying?'购买':'出售';
     v.visible(true);
     if(selection.step==='notice'){this.renderBox(v,['此物品无法出售'],()=>this.cancel(),{cancel:false});return;}
-    const price=buying?this.store.buyPrice(selection.id):this.store.sellPrice(entry),total=price*selection.quantity;
+    const total=this.price(selection)*selection.quantity;
     if(selection.step==='quantity'){this.renderQuantity(v,selection,total,item.icon);return;}
     const insufficient=buying&&this.session.money<total;
     this.renderBox(v,
@@ -307,15 +326,44 @@ export class ShopPanel {
     this.placeModal?.(box.width,box.height);
     drawPopupPanel(v,this.frames,box.width,box.height);
     v.image(icon,box.icon.x,box.icon.y,box.icon.size,box.icon.size);
-    v.button('',field.x,field.y,step.width,step.height,()=>{selection.quantity=Math.max(1,selection.quantity-1);this.changed();},
+    const minus=v.button('',field.x,field.y,step.width,step.height,()=>this.stepQuantity(-1),
       {image:this.catalog.assets['count-left'],pressed:this.catalog.assets['count-left-pressed'],disabled:selection.quantity<=1});
-    v.button('',field.x+step.right,field.y,step.width,step.height,()=>{selection.quantity=Math.min(maximum,selection.quantity+1);this.changed();},
+    const plus=v.button('',field.x+step.right,field.y,step.width,step.height,()=>this.stepQuantity(1),
       {image:this.catalog.assets['count-right'],pressed:this.catalog.assets['count-right-pressed'],disabled:selection.quantity>=maximum});
-    v.text(String(selection.quantity),box.count.x,box.count.y,0,30,box.count.color);
+    this.quantityCount=v.text(String(selection.quantity),box.count.x,box.count.y,0,30,box.count.color);
     v.textPlate(this.catalog.assets['text-plate-left'],this.catalog.assets['text-plate-right'],box.textPlate.x,box.textPlate.y,box.textPlate.width);
-    this.money(v,total,box.money.x,box.money.y);
+    this.quantityButtons={minus,plus};
+    this.quantityMoney=this.money(v,total,box.money.x,box.money.y);
+    // 重画时（比如买完之后会话又通知了一次）把箭头按当前数量重新摆好，不能沿用上一件的灰态。
+    this.syncQuantity();
     v.button('确定',button.left,button.y,button.width,button.height,()=>{selection.step='confirm';this.changed();});
     v.button('取消',button.right,button.y,button.width,button.height,()=>this.cancel());
+  }
+  /**
+   * 数量加减只改数量框里的数字、金额和两枚箭头的灰/亮，不通知菜单重画。
+   * 玩家明确要求过：数量变化不允许整页重画。
+   */
+  private stepQuantity(delta:number):void{
+    const selection=this.selection;
+    if(!selection)return;
+    const next=Math.min(this.maximum(selection.kind),Math.max(1,selection.quantity+delta));
+    if(next===selection.quantity)return;
+    selection.quantity=next;
+    this.syncQuantity();
+  }
+  /** 把当前数量刷到已经画好的数量框上；数量框还没画出来时什么都不做。 */
+  private syncQuantity():void{
+    const selection=this.selection,count=this.quantityCount,buttons=this.quantityButtons;
+    if(!selection||!count||!buttons)return;
+    const quantity=selection.quantity,maximum=this.maximum(selection.kind),value=splitMoney(this.price(selection)*quantity);
+    count.setText(String(quantity));
+    this.quantityMoney?.forEach((text,index)=>text.setText(String(value[MONEY_UNITS[index]])));
+    this.enableButton(buttons.minus,quantity>1);
+    this.enableButton(buttons.plus,quantity<maximum);
+  }
+  /** 按钮自己带着开关回调（见 widgets 的 `button`），这里只负责取出来按一下。 */
+  private enableButton(button:Phaser.GameObjects.Container,enabled:boolean):void{
+    (button.getData('setEnabled') as ((value:boolean)=>void)|undefined)?.(enabled);
   }
   /**
    * 确认框与原版一样只有文字、金额和按钮：框内铺黑底，金额带文本底板，
