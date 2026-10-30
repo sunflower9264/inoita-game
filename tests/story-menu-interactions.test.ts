@@ -23,6 +23,7 @@ import type { StoryClassCatalog } from '../src/domain/story-class.ts';
 import type { StoryInterface } from '../src/domain/story-interface.ts';
 import { ControlLayoutPreferences, CONTROL_IDS, resolveControlLayout, type ControlId } from '../src/ui/control-layout.ts';
 import { KeyBindingPreferences } from '../src/application/key-bindings.ts';
+import { controlSettings } from '../src/application/control-settings.ts';
 import { controlViewport } from '../src/ui/phaser/control-layout-viewport.ts';
 import { GameUI } from '../src/ui/game-ui.ts';
 import type { ScrollArea, UiSurface } from '../src/ui/phaser/widgets.ts';
@@ -956,7 +957,35 @@ test('control editor saves only on release, allows overlap, resets in place and 
   assert.deepEqual(f.app.controlLayout.snapshot(),{});assert(f.controls.controlLayoutEditing);
   const defaultLayout=resolveControlLayout(controlViewport(f.scene as unknown as Phaser.Scene));
   for(const id of CONTROL_IDS)assert.deepEqual([editingControl(f,id).x,editingControl(f,id).y],[defaultLayout[id].x,defaultLayout[id].y]);
-  assert(f.scene.key('Tab'));assert(f.scene.key('Enter'));assert.equal(f.controls.controlLayoutEditing,false);
+  // 工具栏现在还有三种操作方式按钮；从“恢复默认”继续往后 Tab 到关闭钮。
+  for(let index=0;index<4;index++)assert(f.scene.key('Tab'));
+  assert(f.scene.key('Enter'));assert.equal(f.controls.controlLayoutEditing,false);
+});
+
+test('control editor offers three operation modes and hides touch controls in computer mode',t=>{
+  const f=fixture();t.after(f.cleanup);t.after(()=>controlSettings.setMode('stick'));
+  openControls(f);
+  const touchObjects=()=>f.scene.nodes.filter(node=>node.shown&&node.getData('controlId')).length;
+  assert.equal(touchObjects(),CONTROL_IDS.length);
+  assert.equal(f.scene.buttons('操作方式：虚拟摇杆').length,1);
+  assert.equal(f.scene.buttons('操作方式：十字按键').length,1);
+  assert.equal(f.scene.buttons('操作方式：电脑模式').length,1);
+
+  f.scene.click(f.scene.button('操作方式：电脑模式'));
+  assert.equal(controlSettings.mode,'keyboard');
+  assert.equal(touchObjects(),0,'电脑模式没有可拖动的触屏控件');
+  assert.equal(f.scene.buttons('恢复默认').length,0,'电脑模式不显示恢复默认');
+  assert(f.scene.texts().includes('电脑模式使用键鼠操作'));
+  f.scene.click(f.scene.button('关闭操作设置'));
+  assert.equal(f.scene.buttons('修改键位').length,1,'电脑模式设置页显示键位设置入口');
+
+  openControls(f);
+  f.scene.click(f.scene.button('操作方式：虚拟摇杆'));
+  assert.equal(controlSettings.mode,'stick');
+  assert.equal(touchObjects(),CONTROL_IDS.length,'切回触屏恢复可拖控件');
+  assert.equal(f.scene.buttons('恢复默认').length,1);
+  f.scene.click(f.scene.button('关闭操作设置'));
+  assert.equal(f.scene.buttons('修改键位').length,0,'触屏模式隐藏键位设置入口');
 });
 
 test('control editor cancels unfinished drags on input cancellation, suspension, resize, leaving canvas and close',t=>{

@@ -10,6 +10,7 @@ export { SHORTCUT_OFFSETS, SWAP_OFFSET, PENDING_OFFSET } from '../control-layout
 import { ActionPressGate } from '../action-press-gate.ts';
 import { uiImageFor } from './widgets.ts';
 import { FONT } from '../text-style.ts';
+import { cooldownFanState, drawCooldownFan, shortcutCooldown } from './cooldown-fan.ts';
 
 interface ControlSize {width:number;height:number;hitRadius:number;iconSize:number}
 const ATTACK_SIZE:ControlSize = {width:159,height:160,hitRadius:79.5,iconSize:0};
@@ -86,35 +87,18 @@ export class ActionControls {
     control.icon=this.image(ref.key,size,size,ref.frame);control.container.addAt(control.icon,2);
   }
   /** 冷却扇形按进度重画；进度没变就跳过，所以每帧调用也不会白白重建绘制指令。 */
+  /** 冷却扇形按进度重画；进度没变就跳过，所以每帧调用也不会白白重建绘制指令。 */
   private paintFan(control:Control,value:Cooldown|undefined):void{
-    const active=!!value&&value.remainingMs>0;
-    const progress=active?Phaser.Math.Clamp(1-value!.remainingMs/value!.durationMs,0,1):0;
-    const state=active?`${progress}:${control.iconSize}`:'';
+    const state=cooldownFanState(value,control.iconSize/2);
     if(control.fanState===state)return;
-    control.fanState=state;control.mask.clear();
-    if(!active)return;
-    const radius=control.iconSize/2,start=-Math.PI/2+progress*Math.PI*2;
-    // 剩余时间画成深色扇形；容器本身不再整体压暗，否则扇形 alpha 会被再乘一次。
-    control.mask.fillStyle(0x000000,.55);
-    if(progress<=0)control.mask.fillCircle(0,0,radius);
-    else control.mask.slice(0,0,radius,start,Math.PI*1.5,false).fillPath();
-    // 亮色前沿和圆环让移动端小图标也能看清剩余比例。
-    if(progress>0&&progress<1){
-      control.mask.lineStyle(2,0xffe6a3,.9);control.mask.beginPath();
-      control.mask.moveTo(0,0);control.mask.lineTo(Math.cos(start)*radius,Math.sin(start)*radius);control.mask.strokePath();
-    }
-    control.mask.lineStyle(1,0xffe6a3,.45);control.mask.strokeCircle(0,0,radius-1);
-  }
-  private cooldownOf(slot:ShortcutSlot|undefined):Cooldown|undefined {
-    const entry=slot?.entry;if(!entry)return undefined;
-    return entry.kind==='skill'?this.cooldowns[entry.id]:slot!.cooldown;
+    control.fanState=state;drawCooldownFan(control.mask,control.iconSize/2,value);
   }
   /** 画当前这一组的六格：技能内图 75、物品内图 64，冷却扇形跟着各自的内图半径走。 */
   setShortcutPage(slots:readonly ShortcutSlot[]):void{
     this.page=slots.map(slot=>({...slot}));this.paint();
   }
   /** 当前操控角色的图标和冷却，编辑器只读复制值，不持有实战控件。 */
-  snapshot():readonly ShortcutSlot[]{return this.page.map(slot=>{const cooldown=this.cooldownOf(slot);return {...slot,entry:slot.entry?{...slot.entry}:null,cooldown:cooldown?{...cooldown}:undefined};});}
+  snapshot():readonly ShortcutSlot[]{return this.page.map(slot=>{const cooldown=shortcutCooldown(slot,this.cooldowns);return {...slot,entry:slot.entry?{...slot.entry}:null,cooldown:cooldown?{...cooldown}:undefined};});}
   setCooldowns(cooldowns:Readonly<Record<string,Cooldown>>):void{
     if(cooldowns===this.cooldowns)return;
     // 冷却读数没变就不重画；没有冷却的常态下每帧都省掉一次六格扫描。
@@ -134,7 +118,7 @@ export class ActionControls {
         control.quantityText.setText(quantity);
         control.quantityText.setScale(Math.min(1,30/Math.max(1,control.quantityText.width),30/Math.max(1,control.quantityText.height)));
       }
-      const cooldown=this.cooldownOf(slot);
+      const cooldown=shortcutCooldown(slot,this.cooldowns);
       this.paintFan(control,cooldown);
       // 未就绪的格子压暗图标并停掉点击：技能看起手条件，物品看数量与冷却。
       const usable=!!slot.entry&&(cooldown?.remainingMs??0)<=0&&(isItem?slot.quantity>0:slot.enabled);

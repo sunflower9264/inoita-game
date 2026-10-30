@@ -75,7 +75,7 @@ import type { ActorDefinition, Facing } from '../domain/content.ts';
 import type { BattleCharacter } from '../domain/character-stats.ts';
 import { equipmentPower } from '../domain/character-stats.ts';
 import { baseOffhandAttackChance,chooseDualWield,offhandPhysicalAttack } from '../domain/dual-wield.ts';
-import type { CompanionMember } from '../domain/party.ts';
+import { adjacentLivingMember, type CompanionMember } from '../domain/party.ts';
 import type { Point } from '../domain/navigation.ts';
 import type { AssetLease } from '../application/assets.ts';
 import type { StoryContext } from '../application/ports.ts';
@@ -2099,6 +2099,20 @@ captureStoryActors():SceneActorState[] {
     const previous=this.controlledVisual;
     if(!this.app.session.party?.switchControl(id))return false;
     this.movement.stop(previous);this.syncControlled();return true;
+  }
+
+  /**
+   * Q/E 切人：只在存活、已出战且有战斗控制器的成员之间循环。
+   * 目标不可用时静默返回 false；单人队伍、全灭或资源未加载完都不会有动作。
+   */
+  switchMember(direction: -1 | 1): boolean {
+    const party = this.app.session.party;
+    if (!party) return false;
+    const candidates = party.livingIds.filter(id => this.partyControllers.has(id));
+    if (candidates.length < 2) return false;
+    const target = adjacentLivingMember(candidates, this.controlledId, direction);
+    if (!target || target === this.controlledId) return false;
+    return this.switchControl(target);
   }
   focusTarget(key:string|undefined):void{if(key&&this.pendingDefeats.has(key))return;this.focusTargetId=key;for(const ally of this.allies)if(ally.id!==this.controlledId)ally.ai.cancel();if(this.controlledId!=='player')this.heroAi?.cancel();}
   focusSelected():void{if(this.targetId)this.focusTarget(this.targetId);else this.followControlled();}

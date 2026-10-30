@@ -22,9 +22,12 @@ const stored = (bindings: Record<string, string>): MemoryStorage => {
 };
 
 test('默认键位覆盖全部动作且互不重复', () => {
-  assert.equal(KEY_ACTIONS.length, 12);
+  assert.equal(KEY_ACTIONS.length, 14);
   assert.equal(new Set(KEY_ACTIONS.map(action => bindingKey(DEFAULT_KEY_BINDINGS[action]))).size, KEY_ACTIONS.length);
   for (const action of KEY_ACTIONS) assert.ok(DEFAULT_KEY_BINDINGS[action].code, `${action} 缺少默认键`);
+  assert.equal(bindingKey(DEFAULT_KEY_BINDINGS['wheel.next']), 'Space');
+  assert.equal(bindingKey(DEFAULT_KEY_BINDINGS['party.previous']), 'KeyQ');
+  assert.equal(bindingKey(DEFAULT_KEY_BINDINGS['party.next']), 'KeyE');
 });
 
 test('规范串可以存回，显示串用玩家看得懂的键名', () => {
@@ -69,6 +72,7 @@ test('冲突检测覆盖全部动作，同一动作重绑自身不算冲突', ()
   const preferences = new KeyBindingPreferences(null);
   assert.equal(preferences.set('move.down', binding('KeyW')), '已被「向上移动」占用');
   assert.equal(preferences.set('skill.6', binding('Digit1')), '已被「快捷位 1」占用');
+  assert.equal(preferences.set('party.next', binding('KeyQ')), '已被「上一个操作人物」占用');
   assert.equal(preferences.set('move.up', binding('KeyW')), undefined);
   assert.equal(preferences.set('move.up', binding('Escape')), 'Esc 用于关闭菜单和取消操作');
 });
@@ -113,6 +117,14 @@ test('写盘失败时内存绑定仍然生效', () => {
   const preferences = new KeyBindingPreferences(storage);
   assert.equal(preferences.set('menu', binding('KeyN')), undefined);
   assert.deepEqual(preferences.get('menu'), binding('KeyN'));
+});
+
+test('旧档里 Q 还是切组键时，读回后切组迁到空格、Q 归切人', () => {
+  const storage = stored({ 'wheel.next': 'KeyQ' });
+  const preferences = new KeyBindingPreferences(storage);
+  assert.equal(bindingKey(preferences.get('wheel.next')), 'Space');
+  assert.equal(bindingKey(preferences.get('party.previous')), 'KeyQ');
+  assert.equal(bindingKey(preferences.get('party.next')), 'KeyE');
 });
 
 test('W/S 互换能读回：先合并全部存储值再判重', () => {

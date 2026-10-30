@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {registerHooks} from 'node:module';
 import test from 'node:test';
 import type {ShortcutSlot} from '../src/ui/phaser/action-controls.ts';
+import {controlSettings} from '../src/application/control-settings.ts';
 
 const phaser=registerHooks({resolve(specifier,context,next){
   return specifier==='phaser'?{url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true}:next(specifier,context);
@@ -19,6 +20,7 @@ function fixture(){
     app:{locked:true,suspended:false,ui:{ready:true,controlLayoutEditing:true},session:{combatTick:0}},
     stick:{...visible('stick'),reset:()=>calls.push('stick-reset')},
     controls:{...visible('controls'),setAttack:()=>{},snapshot:()=>preview,resetInput:()=>calls.push('controls-reset')},
+    skillHud:visible('skillHud'),
     minimap:visible('minimap'),statusHud:{...visible('status'),update:()=>{},setTarget:()=>{}},overheadStatus:visible('overhead'),
     nameBanner:{sync:(value:boolean)=>{visibility.banner=value;}},
     refreshCombatTarget:()=>{},refreshShortcutPage:()=>{},
@@ -38,7 +40,7 @@ test('control layout editing keeps background HUD visible without enabling gamep
   scene.syncHud();
   assert.equal(scene.canControl,false);
   assert.equal(scene.canCombatControl,false);
-  assert.deepEqual(visibility,{stick:false,controls:false,minimap:true,status:true,overhead:true,banner:true});
+  assert.deepEqual(visibility,{stick:false,controls:false,skillHud:false,minimap:true,status:true,overhead:true,banner:true});
   state.app.locked=false;
   assert.equal(scene.canControl,false,'即使菜单锁正在切换，编辑状态也不开放游戏操作');
 });
@@ -82,6 +84,21 @@ test('story playback hides the movement stick even when the UI lock has not land
   scene.syncHud();
   assert.equal(scene.canControl,true);
   assert.equal(visibility.stick,true);
+});
+
+test('computer mode hides touch controls, keeps stick input, and shows the skill row',()=>{
+  const {scene,state,visibility}=fixture();
+  state.app.locked=false;state.app.ui.controlLayoutEditing=false;
+  controlSettings.setMode('keyboard');
+  scene.syncHud();
+  assert.equal(scene.canControl,true);
+  assert.equal(visibility.stick,true,'摇杆输入仍启用，外观由 MoveStick 自己按模式隐藏');
+  assert.equal(visibility.controls,false);
+  assert.equal(visibility.skillHud,true);
+  controlSettings.setMode('stick');
+  scene.syncHud();
+  assert.equal(visibility.controls,true);
+  assert.equal(visibility.skillHud,false);
 });
 
 test('a rebuilt HUD is hidden by the first sync even when nothing else changed',()=>{

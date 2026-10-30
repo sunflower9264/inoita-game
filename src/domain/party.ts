@@ -163,6 +163,17 @@ export class CompanionMember {
 
 }
 
+/**
+ * 在存活成员列表里找相邻的一个，越界回绕。
+ * 当前操控者已经不在列表里（刚阵亡的瞬间）时，正向取第一个、反向取最后一个。
+ */
+export function adjacentLivingMember(ids: readonly string[], current: string, direction: -1 | 1): string | undefined {
+  if (!ids.length) return undefined;
+  const index = ids.indexOf(current);
+  if (index < 0) return direction > 0 ? ids[0] : ids[ids.length - 1];
+  return ids[(index + direction + ids.length) % ids.length];
+}
+
 /** One hero, up to two deployed companions, and an owned reserve roster. */
 export class PartyRoster {
   readonly hero:BattleCharacter;

@@ -6,6 +6,7 @@
  */
 export const KEY_ACTIONS = [
   'move.up', 'move.down', 'move.left', 'move.right',
+  'party.previous', 'party.next',
   'skill.1', 'skill.2', 'skill.3', 'skill.4', 'skill.5', 'skill.6',
   'wheel.next', 'menu'
 ] as const;
@@ -24,19 +25,21 @@ export interface KeyBinding {
 
 const binding = (code: string): KeyBinding => ({ code, shift: false, ctrl: false, alt: false, meta: false });
 
-/** 默认键：WASD 移动、数字键 1–6 放快捷位、Q 切组、M 开菜单。 */
+/** 默认键：WASD 移动、Q/E 切人、数字键 1–6 放快捷位、空格切组、M 开菜单。 */
 export const DEFAULT_KEY_BINDINGS: Readonly<Record<KeyBindingAction, KeyBinding>> = {
   'move.up': binding('KeyW'),
   'move.down': binding('KeyS'),
   'move.left': binding('KeyA'),
   'move.right': binding('KeyD'),
+  'party.previous': binding('KeyQ'),
+  'party.next': binding('KeyE'),
   'skill.1': binding('Digit1'),
   'skill.2': binding('Digit2'),
   'skill.3': binding('Digit3'),
   'skill.4': binding('Digit4'),
   'skill.5': binding('Digit5'),
   'skill.6': binding('Digit6'),
-  'wheel.next': binding('KeyQ'),
+  'wheel.next': binding('Space'),
   menu: binding('KeyM')
 };
 
@@ -45,13 +48,15 @@ export const KEY_ACTION_LABELS: Readonly<Record<KeyBindingAction, string>> = {
   'move.down': '向下移动',
   'move.left': '向左移动',
   'move.right': '向右移动',
+  'party.previous': '上一个操作人物',
+  'party.next': '下一个操作人物',
   'skill.1': '快捷位 1',
   'skill.2': '快捷位 2',
   'skill.3': '快捷位 3',
   'skill.4': '快捷位 4',
   'skill.5': '快捷位 5',
   'skill.6': '快捷位 6',
-  'wheel.next': '切换技能轮组',
+  'wheel.next': '切换技能组',
   menu: '打开菜单'
 };
 

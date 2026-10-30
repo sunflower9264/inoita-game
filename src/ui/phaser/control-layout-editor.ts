@@ -4,9 +4,19 @@ import type { ControlSkin } from '../../domain/control-skin.ts';
 import { CONTROL_IDS, normalizeControlPosition, resolveControlLayout, type ControlId, type ControlPoint } from '../control-layout.ts';
 import type { ControlLayoutPreferences } from '../control-layout.ts';
 import type { ShortcutSlot } from './action-controls.ts';
-import { controlSettings } from '../../application/control-settings.ts';
+import { controlSettings, type ControlMode } from '../../application/control-settings.ts';
 import { controlViewport } from './control-layout-viewport.ts';
 import { UiSurface } from './widgets.ts';
+
+const MODE_ROW_Y = 88;
+const MODE_LABEL_WIDTH = 110;
+const MODE_BUTTON_WIDTH = 190;
+const MODE_BUTTON_HEIGHT = 52;
+const MODE_GAP = 12;
+const MODE_ROW_WIDTH = MODE_LABEL_WIDTH + 3 * MODE_BUTTON_WIDTH + 2 * MODE_GAP;
+const MODE_LABELS: readonly [ControlMode, string][] = [
+  ['stick', '虚拟摇杆'], ['dpad', '十字按键'], ['keyboard', '电脑模式']
+];
 
 /** 编辑的是独立预览；实际战斗控件继续由菜单锁暂停。 */
 export class ControlLayoutEditor {
@@ -14,12 +24,18 @@ export class ControlLayoutEditor {
   private readonly toolbar: UiSurface;
   private readonly controls = new Map<ControlId, Phaser.GameObjects.Container>();
   private readonly drags = new Map<ControlId, {pointer: Phaser.Input.Pointer; point?: ControlPoint}>();
+  private readonly modeRow: Phaser.GameObjects.Container;
+  private readonly modeButtons = new Map<ControlMode, Phaser.GameObjects.Container>();
+  private resetButton?: Phaser.GameObjects.Container;
+  private slots: readonly ShortcutSlot[] = [];
   private active = false;
   private viewportKey = '';
   private readonly unsubscribe: () => void;
+  private readonly unsubscribeMode: () => void;
   private readonly scene: Phaser.Scene;
   private readonly preferences: ControlLayoutPreferences;
   private readonly skin: ControlSkin;
+
   constructor(scene: Phaser.Scene, preferences: ControlLayoutPreferences,
     skin: ControlSkin, assets: Record<string,string>, close: () => void) {
     this.scene=scene;this.preferences=preferences;this.skin=skin;
@@ -27,15 +43,91 @@ export class ControlLayoutEditor {
     this.toolbar = new UiSurface(scene,960,640,390);
     this.toolbar.enabled = () => this.active && this.toolbar.root.visible;
     this.toolbar.button('',12,12,67,67,close,{image:assets.close,pressed:assets['close-pressed']}).setData('label','关闭操作设置');
-    this.toolbar.button('恢复默认',0,12,220,66,() => {this.cancel();this.preferences.reset();});
+    this.resetButton = this.toolbar.button('恢复默认',0,12,220,66,() => {this.cancel();this.preferences.reset();});
+
+    // 操作方式三选一：触屏两种样式加电脑键鼠模式。
+    this.modeRow = scene.add.container(0,MODE_ROW_Y);
+    this.toolbar.root.add(this.modeRow);
+    this.toolbar.text('操作方式',0,14,0,20,undefined,this.modeRow);
+    MODE_LABELS.forEach(([mode,label],index) => {
+      const button = this.toolbar.button(label,MODE_LABEL_WIDTH+index*(MODE_BUTTON_WIDTH+MODE_GAP),0,
+        MODE_BUTTON_WIDTH,MODE_BUTTON_HEIGHT,() => controlSettings.setMode(mode),
+        {parent:this.modeRow,selected:controlSettings.mode===mode,fontSize:20});
+      button.setData('label',`操作方式：${label}`);
+      this.modeButtons.set(mode,button);
+    });
+
     this.unsubscribe = preferences.subscribe(() => this.layout());
+    this.unsubscribeMode = controlSettings.subscribeMode(mode => this.modeChanged(mode));
     scene.game.events.on(UI_EVENTS.cancelInput,this.cancel,this);
     scene.input.on('pointerupoutside',this.cancel,this);
     scene.input.on('gameout',this.cancel,this);
     this.visible(false);
   }
+
   open(slots: readonly ShortcutSlot[]): void {
-    this.cancel();this.canvas.clear();this.controls.clear();this.active=true;
+    this.slots = slots; this.active = true;
+    this.syncModeButtons();
+    this.rebuild();
+    this.visible(true);this.layout();
+  }
+
+  layout(): void {
+    const viewport=controlViewport(this.scene),key=JSON.stringify(viewport);
+    if(key!==this.viewportKey) {this.viewportKey=key;this.cancelDrags();}
+    const positions=resolveControlLayout(viewport,this.preferences.snapshot());
+    for(const [id,object]of this.controls) {
+      if(this.drags.has(id))continue;
+      const point=positions[id];object.setPosition(point.x,point.y).setScale(point.scale);
+    }
+    const {insets,width}=viewport,scale=positions.attack.scale;
+    this.toolbar.root.setPosition(insets.left,insets.top).setScale(scale);
+    this.resetButton?.setPosition((width-insets.left-insets.right)/scale/2-110,12);
+    this.modeRow.setPosition((width-insets.left-insets.right)/scale/2-MODE_ROW_WIDTH/2,MODE_ROW_Y);
+  }
+
+  visible(value: boolean): void {
+    if(!value)this.cancel();
+    this.canvas.visible(value&&this.active);this.toolbar.visible(value&&this.active);
+  }
+
+  key(event: KeyboardEvent): void {this.toolbar.key(event);}
+
+  close(): void {this.active=false;this.visible(false);}
+
+  destroy(): void {
+    this.close();this.unsubscribe();this.unsubscribeMode();
+    this.scene.game.events.off(UI_EVENTS.cancelInput,this.cancel,this);
+    this.scene.input.off('pointerupoutside',this.cancel,this);this.scene.input.off('gameout',this.cancel,this);
+    this.canvas.destroy();this.toolbar.destroy();this.controls.clear();this.modeButtons.clear();
+  }
+
+  private syncModeButtons(): void {
+    const mode=controlSettings.mode;
+    for(const [value,button]of this.modeButtons) {
+      button.setData('selected',value===mode);
+      button.getData('highlight')?.setVisible(value===mode);
+    }
+  }
+
+  /** 模式变化：更新三选一高亮，重画预览区（触屏控件或电脑模式提示）。 */
+  private modeChanged(mode: ControlMode): void {
+    this.syncModeButtons();
+    this.resetButton?.setVisible(mode!=='keyboard');
+    if(this.active)this.rebuild();
+  }
+
+  private rebuild(): void {
+    this.cancelDrags();
+    this.canvas.clear();this.controls.clear();
+    const keyboard = controlSettings.mode==='keyboard';
+    this.resetButton?.setVisible(!keyboard);
+    if(keyboard) {
+      this.canvas.text('电脑模式使用键鼠操作',480,238,0,30).setOrigin(.5,0);
+      this.canvas.text('WASD 移动 · 鼠标左键攻击 · 空格切组 · Q/E 切人',480,300,0,22).setOrigin(.5,0);
+      this.canvas.text('键位可在 设置 → 键位设置 里修改',480,342,0,22).setOrigin(.5,0);
+      return;
+    }
     for (const id of CONTROL_IDS) {
       const object=this.scene.add.container(0,0).setData('uiAction',true).setData('controlId',id);
       this.canvas.root.add(object);this.controls.set(id,object);
@@ -58,7 +150,7 @@ export class ControlLayoutEditor {
       else if(id==='swap') {width=height=75;image(this.skin.swap,75);}
       else {
         image(this.skin['slot-shadow'],94);image(this.skin['slot-ring'],94);
-        const slot=slots[Number(id.slice(5))],isItem=slot?.entry?.kind==='item',size=isItem?64:75;
+        const slot=this.slots[Number(id.slice(5))],isItem=slot?.entry?.kind==='item',size=isItem?64:75;
         if(slot?.entry&&slot.icon)image(slot.icon,size);
         const cooldown=slot?.cooldown;
         if(cooldown&&cooldown.durationMs>0&&cooldown.remainingMs>0) {
@@ -93,25 +185,8 @@ export class ControlLayoutEditor {
         else this.layout();
       });
     }
-    this.visible(true);this.layout();
   }
-  layout(): void {
-    const viewport=controlViewport(this.scene),key=JSON.stringify(viewport);
-    if(key!==this.viewportKey) {this.viewportKey=key;this.cancelDrags();}
-    const positions=resolveControlLayout(viewport,this.preferences.snapshot());
-    for(const [id,object]of this.controls) {
-      if(this.drags.has(id))continue;
-      const point=positions[id];object.setPosition(point.x,point.y).setScale(point.scale);
-    }
-    const {insets,width}=viewport,scale=positions.attack.scale;
-    this.toolbar.root.setPosition(insets.left,insets.top).setScale(scale);
-    (this.toolbar.root.list[1] as Phaser.GameObjects.Container).setPosition((width-insets.left-insets.right)/scale/2-110,12);
-  }
-  visible(value: boolean): void {
-    if(!value)this.cancel();
-    this.canvas.visible(value&&this.active);this.toolbar.visible(value&&this.active);
-  }
-  key(event: KeyboardEvent): void {this.toolbar.key(event);}
+
   private cancelDrags(): void {
     for(const [id,drag] of this.drags) {
       // disableInteractive 清掉 Phaser 的对象拖动状态和指针拖动列表，再恢复原命中区。
@@ -121,11 +196,4 @@ export class ControlLayoutEditor {
     this.drags.clear();
   }
   private cancel(): void {this.cancelDrags();this.layout();}
-  close(): void {this.active=false;this.visible(false);}
-  destroy(): void {
-    this.close();this.unsubscribe();
-    this.scene.game.events.off(UI_EVENTS.cancelInput,this.cancel,this);
-    this.scene.input.off('pointerupoutside',this.cancel,this);this.scene.input.off('gameout',this.cancel,this);
-    this.canvas.destroy();this.toolbar.destroy();this.controls.clear();
-  }
 }

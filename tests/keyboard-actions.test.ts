@@ -34,7 +34,9 @@ function fixture() {
   const bindings = new KeyBindingPreferences(null);
   const actions = new KeyboardActions(scene as unknown as Phaser.Scene, bindings, {
     skill: slot => calls.push(`skill ${slot}`),
-    cycle: () => calls.push('cycle')
+    cycle: () => calls.push('cycle'),
+    previousMember: () => calls.push('previous'),
+    nextMember: () => calls.push('next')
   });
   return { bindings, calls, press: (event: FakeEvent) => handler?.(event as KeyboardEvent), destroy: () => actions.destroy(), live: () => handler !== undefined };
 }
@@ -46,12 +48,14 @@ test('数字键 1–6 触发对应快捷位', () => {
   f.destroy();
 });
 
-test('Q 切换技能轮组，无关按键不触发', () => {
+test('空格切换技能组，Q/E 切上一个/下一个，无关按键不触发', () => {
   const f = fixture();
+  f.press(key('Space', ' '));
   f.press(key('KeyQ'));
+  f.press(key('KeyE'));
   f.press(key('KeyM'));
   f.press(key('KeyZ'));
-  assert.deepEqual(f.calls, ['cycle']);
+  assert.deepEqual(f.calls, ['cycle', 'previous', 'next']);
   f.destroy();
 });
 
@@ -73,6 +77,15 @@ test('改绑后立即按新键生效', () => {
   f.press(key('Digit1'));
   f.press(key('KeyZ'));
   assert.deepEqual(f.calls, ['skill 1']);
+  f.destroy();
+});
+
+test('切人键可以改绑，旧键失效', () => {
+  const f = fixture();
+  assert.equal(f.bindings.set('party.next', { code: 'KeyR', shift: false, ctrl: false, alt: false, meta: false }), undefined);
+  f.press(key('KeyE'));
+  f.press(key('KeyR'));
+  assert.deepEqual(f.calls, ['next']);
   f.destroy();
 });
 

@@ -4,10 +4,13 @@ import type { KeyBindingPreferences } from '../../application/key-bindings.ts';
 import { KEY_ACTION_LABELS, bindingFromEvent, formatBinding, type KeyBindingAction } from '../../domain/key-bindings.ts';
 import { UiSurface } from './widgets.ts';
 
-/** 左列：移动、切组、菜单；右列：六个快捷位。两列各六行。 */
-const LEFT_ACTIONS: readonly KeyBindingAction[] = ['move.up', 'move.down', 'move.left', 'move.right', 'wheel.next', 'menu'];
+/** 左列：移动、切人、切组、菜单；右列：六个快捷位。 */
+const LEFT_ACTIONS: readonly KeyBindingAction[] = [
+  'move.up', 'move.down', 'move.left', 'move.right',
+  'party.previous', 'party.next', 'wheel.next', 'menu'
+];
 const RIGHT_ACTIONS: readonly KeyBindingAction[] = ['skill.1', 'skill.2', 'skill.3', 'skill.4', 'skill.5', 'skill.6'];
-const ROW_TOP = 150, ROW_HEIGHT = 56, BUTTON_WIDTH = 160, BUTTON_HEIGHT = 46;
+const ROW_TOP = 148, ROW_HEIGHT = 42, BUTTON_WIDTH = 160, BUTTON_HEIGHT = 36;
 
 /**
  * 设置里的键位编辑面板。点击某个动作后按下新键；冲突或保留键直接显示原因，
@@ -89,11 +92,11 @@ export class KeyBindingEditor {
     v.border(this.assets, 0, 0, 960, 640);
     v.text('键位设置', 480, 24, 0, 34).setOrigin(.5, 0);
     v.text('点击动作后按下新按键；鼠标左键攻击固定', 480, 76, 0, 20).setOrigin(.5, 0);
-    v.text('移动与轮组', 60, 120, 0, 24);
-    v.text('技能与快捷位', 500, 120, 0, 24);
+    v.text('移动与切换', 60, 116, 0, 24);
+    v.text('技能与快捷位', 500, 116, 0, 24);
     this.paintColumn(LEFT_ACTIONS, 60);
     this.paintColumn(RIGHT_ACTIONS, 500);
-    if (this.notice) v.text(this.notice, 480, 486, 880, 20, '#eb9587').setOrigin(.5, 0);
+    if (this.notice) v.text(this.notice, 480, 490, 880, 20, '#eb9587').setOrigin(.5, 0);
     v.button('恢复默认', 260, 528, 200, 52, () => {
       this.capture = undefined; this.preferences.reset(); this.notice = '已恢复默认键位'; this.render();
     });
@@ -108,9 +111,9 @@ export class KeyBindingEditor {
       const top = ROW_TOP + index * ROW_HEIGHT;
       const capturing = this.capture === action;
       const text = capturing ? '按下按键…' : formatBinding(this.preferences.get(action));
-      this.canvas.text(KEY_ACTION_LABELS[action], left, top + 12, 0, 22);
+      this.canvas.text(KEY_ACTION_LABELS[action], left, top + 8, 0, 20);
       this.canvas.button(text, left + 260, top, BUTTON_WIDTH, BUTTON_HEIGHT, () => this.beginCapture(action), {
-        fontSize: 20, selected: capturing
+        fontSize: 18, selected: capturing
       }).setData('label', `${KEY_ACTION_LABELS[action]}：${text}`);
     });
   }

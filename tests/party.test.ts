@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { BattleCharacter, type CharacterStatsCatalog } from '../src/domain/character-stats.ts';
-import { PartyRoster, type CompanionCatalog } from '../src/domain/party.ts';
+import { adjacentLivingMember, PartyRoster, type CompanionCatalog } from '../src/domain/party.ts';
 import type { CounterattackMode } from '../src/domain/party-ai.ts';
 import type { ItemCatalog } from '../src/domain/items.ts';
 import type { Campaign } from '../src/domain/campaign.ts';
@@ -222,4 +222,17 @@ test('an invalid random source leaves recruitment inventory and roster untouched
   const {party}=setup();party.bag.add('hero-emblem');const id=party.bag.entries.find(entry=>entry.item==='hero-emblem')!.id;
   assert.throws(()=>party.recruit(id,()=>1),/随机值/);
   assert.equal(party.bag.count('hero-emblem'),1);assert.equal(party.snapshot().members.length,0);
+});
+
+test('adjacentLivingMember cycles forward and backward, wraps, and tolerates a missing current',()=>{
+  const ids=['player','a','b'];
+  assert.equal(adjacentLivingMember(ids,'player',1),'a');
+  assert.equal(adjacentLivingMember(ids,'b',1),'player');
+  assert.equal(adjacentLivingMember(ids,'player',-1),'b');
+  assert.equal(adjacentLivingMember(ids,'a',-1),'player');
+  assert.equal(adjacentLivingMember(['player'],'player',1),'player');
+  assert.equal(adjacentLivingMember([],'player',1),undefined);
+  // 刚阵亡的操控者不在存活列表里：正向取第一个、反向取最后一个。
+  assert.equal(adjacentLivingMember(ids,'dead',1),'player');
+  assert.equal(adjacentLivingMember(ids,'dead',-1),'b');
 });

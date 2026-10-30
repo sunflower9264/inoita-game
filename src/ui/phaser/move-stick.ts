@@ -3,7 +3,7 @@ import { ControlLayoutPreferences, resolveControlLayout } from '../control-layou
 import { controlViewport } from './control-layout-viewport.ts';
 import type { ControlSkin } from '../../domain/control-skin.ts';
 import type { Hud } from '../../rendering/hud.ts';
-import { controlSettings, type MoveControlStyle } from '../../application/control-settings.ts';
+import { controlSettings, type ControlMode, type MoveControlStyle } from '../../application/control-settings.ts';
 import { keyBindings as defaultKeyBindings, type KeyBindingPreferences } from '../../application/key-bindings.ts';
 import { MOVE_BINDING_ACTIONS, type KeyBindingAction } from '../../domain/key-bindings.ts';
 
@@ -47,10 +47,12 @@ export class MoveStick {
   private readonly hitArea: Phaser.Geom.Circle;
   private center = { x: 0, y: 0 };
   private pointerId = -1;
-  private isVisible = true;
+  /** 是否允许接输入；与“外观是否显示”分开，电脑模式隐藏外观后键盘仍可用。 */
+  private inputEnabled = true;
+  private mode: ControlMode;
   private readonly preferences: ControlLayoutPreferences | undefined;
   private readonly unsubscribePreferences: () => void;
-  private readonly unsubscribeSettings: () => void;
+  private readonly unsubscribeMode: () => void;
   private layoutHeight: number | undefined;
 
   // 虚拟摇杆视图组件
@@ -74,6 +76,7 @@ export class MoveStick {
     bindings: KeyBindingPreferences = defaultKeyBindings) {
     scene = hud.scene; this.scene = scene; this.hud = hud; this.skin = skin; this.preferences = preferences;
     this.bindings = bindings;
+    this.mode = controlSettings.mode;
     this.container = hud.add(scene.make.container({ x: 0, y: 0 }, false));
 
     for (const file of [
@@ -108,19 +111,21 @@ export class MoveStick {
     this.container.setInteractive(this.hitArea, Phaser.Geom.Circle.Contains);
     this.container.on('pointerdown', (pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
       event.stopPropagation();
-      if (this.pointerId >= 0 && controlSettings.moveStyle === 'stick') return;
+      if (!this.inputEnabled || this.mode === 'keyboard') return;
+      if (this.pointerId >= 0 && this.mode === 'stick') return;
       this.pointerId = pointer.id;
       this.track(pointer);
     });
 
-    this.applyStyle(controlSettings.moveStyle);
+    this.applyTouchStyle(controlSettings.moveStyle);
+    this.refreshDisplay();
 
     this.unsubscribePreferences = preferences?.subscribe(() => {
       if (this.layoutHeight !== undefined) this.layout(this.layoutHeight);
     }) ?? (() => {});
 
-    this.unsubscribeSettings = controlSettings.subscribe(style => {
-      this.applyStyle(style);
+    this.unsubscribeMode = controlSettings.subscribeMode(mode => {
+      this.onModeChanged(mode);
     });
     // 改键后立刻生效：清掉按住中的方向，避免旧键的按下状态留在历史里。
     this.unsubscribeBindings = bindings.subscribe(() => this.reset());
@@ -133,7 +138,7 @@ export class MoveStick {
     scene.input.keyboard?.on('keyup', this.onKeyUp, this);
   }
 
-  private applyStyle(style: MoveControlStyle): void {
+  private applyTouchStyle(style: MoveControlStyle): void {
     this.reset();
     const isDpad = style === 'dpad';
     this.hitArea.setTo(0, 0, isDpad ? DPAD_BASE_RADIUS : STICK_BASE_RADIUS);
@@ -144,6 +149,22 @@ export class MoveStick {
     this.arrowDown.setVisible(isDpad);
     this.arrowLeft.setVisible(isDpad);
     this.arrowRight.setVisible(isDpad);
+  }
+
+  private get displayed(): boolean {
+    return this.inputEnabled && this.mode !== 'keyboard';
+  }
+
+  private refreshDisplay(): void {
+    this.hud.setVisible(this.container, this.displayed);
+  }
+
+  private onModeChanged(mode: ControlMode): void {
+    if (this.mode === mode) return;
+    this.mode = mode;
+    // applyTouchStyle 会 reset：切到电脑模式时清掉按住中的方向和触摸指针。
+    this.applyTouchStyle(controlSettings.moveStyle);
+    this.refreshDisplay();
   }
 
   private onMove(pointer: Phaser.Input.Pointer): void {
@@ -160,7 +181,7 @@ export class MoveStick {
   }
 
   private onKeyDown(event: KeyboardEvent): void {
-    if (!this.isVisible || event.isComposing) return;
+    if (!this.inputEnabled || event.isComposing) return;
     const element = globalThis.document?.activeElement as HTMLElement | null;
     if (element && (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA'
       || element.tagName === 'SELECT' || element.isContentEditable)) return;
@@ -191,7 +212,7 @@ export class MoveStick {
 
   private syncKeyAxis(): void {
     const last = this.keyHistory.at(-1);
-    if (last && this.isVisible) {
+    if (last && this.inputEnabled) {
       const vec = dirToVector(last.dir);
       this.axis.x = vec.x;
       this.axis.y = vec.y;
@@ -208,7 +229,7 @@ export class MoveStick {
     const dy = (pointer.y - this.center.y) / this.container.scaleY;
     const distance = Math.hypot(dx, dy);
 
-    if (controlSettings.moveStyle === 'dpad') {
+    if (this.mode === 'dpad') {
       if (distance < DPAD_DEAD_ZONE) {
         this.axis.x = 0;
         this.axis.y = 0;
@@ -274,16 +295,15 @@ export class MoveStick {
 
   /** 加载中、对话或面板锁住输入、流程挂起时收起摇杆；收起后 Phaser 也不再把它算作点击目标。 */
   setVisible(visible: boolean): void {
-    if (this.isVisible === visible) return;
-    this.isVisible = visible;
-    this.hud.setVisible(this.container, visible);
-    // 只在真正转为隐藏时回到中位；隐藏期间每帧 reset 会白重设 4 个箭头贴图。
+    if (this.inputEnabled === visible) return;
+    this.inputEnabled = visible;
     if (!visible) this.reset();
+    this.refreshDisplay();
   }
 
   destroy(): void {
     this.unsubscribePreferences();
-    this.unsubscribeSettings();
+    this.unsubscribeMode();
     this.unsubscribeBindings();
     this.scene.input.off(Phaser.Input.Events.POINTER_MOVE, this.onMove, this);
     this.scene.input.off(Phaser.Input.Events.POINTER_UP, this.onUp, this);

@@ -51,6 +51,8 @@ import type { SkillConfiguration } from '../domain/skill-configuration.ts';
 import { NameBanner } from '../rendering/name-banner.ts';
 import { StoryMinimap, type MinimapTask } from '../rendering/story-minimap.ts';
 import { displaySettings } from '../application/display-settings.ts';
+import { controlSettings } from '../application/control-settings.ts';
+import { ComputerSkillHud } from '../ui/phaser/computer-skill-hud.ts';
 import { FONT } from '../ui/text-style.ts';
 import type { Cooldown } from '../domain/combat.ts';
 import { MoveStick } from '../ui/phaser/move-stick.ts';
@@ -141,6 +143,9 @@ export class WorldScene extends Phaser.Scene {
   private stick?: MoveStick;
   private controls?: ActionControls;
   private keyboardActions?: KeyboardActions;
+  /** 电脑模式专用的只读技能状态行。 */
+  private skillHud?: ComputerSkillHud;
+  private unsubscribeControlMode?: () => void;
   private shortcutPageCache?:{configuration:SkillConfiguration;version:number;bagRevision:number;owner:string;classId:string;page:number;
     entries:(ShortcutEntry|null)[];levels:Record<string,number>;slotsSignature?:string};
   private nameBanner?: NameBanner;
@@ -219,6 +224,8 @@ export class WorldScene extends Phaser.Scene {
       this.stick?.destroy(); this.stick = undefined;
       this.controls?.destroy(); this.controls = undefined;
       this.keyboardActions?.destroy(); this.keyboardActions = undefined;
+      this.skillHud?.destroy(); this.skillHud = undefined;
+      this.unsubscribeControlMode?.(); this.unsubscribeControlMode = undefined;
       this.input.off(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown, this);
       this.nameBanner?.destroy(); this.nameBanner = undefined;
       this.minimap?.destroy(); this.minimap = undefined;
@@ -399,8 +406,13 @@ export class WorldScene extends Phaser.Scene {
     }, this.app.controlSkin, this.app.controlLayout);
     this.keyboardActions = new KeyboardActions(this, this.app.keyBindings, {
       skill: slot => this.triggerShortcutSlot(slot),
-      cycle: () => this.cycleShortcutPage()
+      cycle: () => this.cycleShortcutPage(),
+      previousMember: () => this.switchMember(-1),
+      nextMember: () => this.switchMember(1)
     });
+    this.skillHud = new ComputerSkillHud(this, this.hud!, this.app.controlSkin, this.app.keyBindings);
+    // 操作方式切换后立刻按新 HUD 显隐，不等下一帧兜底。
+    this.unsubscribeControlMode = controlSettings.subscribeMode(() => this.syncHud());
     this.refreshLoadout();
     this.nameBanner = new NameBanner(this, this.hud!, map.name);
     this.layoutHud();
@@ -881,6 +893,8 @@ export class WorldScene extends Phaser.Scene {
       this.shortcutPageCache=cache;
     }
     const slots=cache.entries.map(entry=>this.shortcutSlot(entry,member.player.mana,cache.levels[entry?.id??'']??0));
+    // 只读技能行自己按签名缓存；每帧喂一次，切组和切人后能立刻换页。
+    this.skillHud?.setPage(slots,page);
     const slotsSignature=slots.map(s=>s.entry?`${s.entry.kind}:${s.entry.id}:${s.quantity}:${s.enabled?1:0}:${s.cooldown?.remainingMs??0}/${s.cooldown?.durationMs??0}`:'_').join('|');
     if(cache.slotsSignature===slotsSignature)return;
     cache.slotsSignature=slotsSignature;
@@ -888,7 +902,8 @@ export class WorldScene extends Phaser.Scene {
   }
   private refreshLoadout(): void {
     this.refreshShortcutPage();
-    this.controls?.setCooldowns(this.combat?.cooldowns??{});
+    // 同时喂操作按钮和电脑模式技能行；切人后两边都不会漏掉当前操控者的冷却。
+    this.refreshSkillCooldowns(this.combat?.cooldowns??{});
   }
 
   /** 数字键放当前轮组的快捷位；格子里是物品就用物品，是技能就放技能。 */
@@ -907,6 +922,12 @@ export class WorldScene extends Phaser.Scene {
     const {member,configuration}=this.controlledContext();
     configuration.nextShortcutPage(member.classId);
     this.refreshLoadout();
+  }
+
+  /** Q/E 切上一个/下一个操作人物；具体目标由战斗层按存活和控制器筛选。 */
+  private switchMember(direction:-1|1):void {
+    if(!this.canControl)return;
+    this.combat?.switchMember(direction);
   }
   /** 键位编辑读取实际操控者当前组六格，不另选角色或快捷页。 */
   getControlLayoutPreview():readonly ShortcutSlot[]{return this.controls?.snapshot()??[];}
@@ -1004,6 +1025,7 @@ export class WorldScene extends Phaser.Scene {
     this.hud?.layout(this.scale.width, this.scale.height);
     this.stick?.layout(this.scale.height);
     this.controls?.layout(this.scale.width, this.scale.height);
+    this.skillHud?.layout(this.scale.width, this.scale.height);
     this.nameBanner?.layout();
     this.minimap?.layout();
     this.layoutFps();
@@ -1397,7 +1419,10 @@ export class WorldScene extends Phaser.Scene {
     this.combat?.reviveForDebug(id);
     return {ok:true};
   }
-  refreshSkillCooldowns(cooldowns:Readonly<Record<string,Cooldown>>):void{this.controls?.setCooldowns(cooldowns);}
+  refreshSkillCooldowns(cooldowns:Readonly<Record<string,Cooldown>>):void{
+    this.controls?.setCooldowns(cooldowns);
+    this.skillHud?.setCooldowns(cooldowns);
+  }
   private captureCheckpoint():void {
     // 调试现场不是玩家进度：不覆盖检查点，否则死亡/重开会把 GM 现场带回正常流程。
     if(this.app.session.debugFocusQuest)return;
@@ -1652,7 +1677,11 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
     const backgroundVisible=enabled||(this.sys.isActive()&&!this.loadingWorld&&this.app.ui.ready&&this.app.ui.controlLayoutEditing&&!this.app.suspended);
     // 可见性每帧都写：切图会重建摇杆、控件和小地图，新对象默认可见；
     // 如果把它塞进下面的状态摘要，摘要没变就会漏掉这次收起（开场独白时摇杆就是这么露出来的）。
-    this.stick?.setVisible(enabled); this.controls?.setVisible(enabled);
+    // 摇杆只由 enabled 控制输入，电脑模式的外观隐藏在 MoveStick 内部处理。
+    this.stick?.setVisible(enabled);
+    const keyboardMode = controlSettings.mode === 'keyboard';
+    this.controls?.setVisible(enabled && !keyboardMode);
+    this.skillHud?.setVisible(enabled && keyboardMode);
     this.minimap?.setVisible(backgroundVisible);
     this.statusHud?.setVisible(backgroundVisible);
     this.overheadStatus?.setVisible(backgroundVisible);

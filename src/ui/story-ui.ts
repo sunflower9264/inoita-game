@@ -528,18 +528,12 @@ export class StoryUI {
       v.button(label,485,rowTop,220,66,()=>{},{parent:content,disabled:true})
         .setData('label','全屏：'+label);
     }
-    rowTop+=90;
-    // 移动方式：虚拟摇杆 / 十字按键
-    v.text('移动方式',260,rowTop+15,0,25,undefined,content);
-    const dpad=controlSettings.moveStyle==='dpad';
-    v.button(dpad?'十字按键':'虚拟摇杆',485,rowTop,220,66,()=>{
-      controlSettings.setMoveStyle(dpad?'stick':'dpad');
-      this.render();
-    },{parent:content}).setData('label','移动方式：' + (dpad?'十字按键':'虚拟摇杆'));
-    rowTop+=90;
-    // 键位与操作布局分开：两者都是本机偏好，不进存档。
-    v.text('键位设置',260,rowTop+15,0,25,undefined,content);
-    v.button('修改键位',485,rowTop,220,66,()=>this.openKeyBindingEditor(),{parent:content});
+    // 操作方式统一在“操作设置”里改；键位映射只在电脑模式显示。
+    if(controlSettings.mode==='keyboard'){
+      rowTop+=90;
+      v.text('键位设置',260,rowTop+15,0,25,undefined,content);
+      v.button('修改键位',485,rowTop,220,66,()=>this.openKeyBindingEditor(),{parent:content});
+    }
     rowTop+=90;
     v.button('操作设置',485,rowTop,220,66,()=>this.openControlEditor(),{parent:content});
     this.finishScroll('settings',scroll,rowTop+80);

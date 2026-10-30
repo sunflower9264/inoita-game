@@ -1,9 +1,17 @@
 import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
 import test from 'node:test';
-import { controlSettings, type MoveControlStyle } from '../src/application/control-settings.ts';
+import {
+  ControlSettings, controlSettings, type ControlMode, type MoveControlStyle, type StorageLike
+} from '../src/application/control-settings.ts';
 import { KeyBindingPreferences } from '../src/application/key-bindings.ts';
 import type { KeyBinding } from '../src/domain/key-bindings.ts';
+
+class MemoryStorage implements StorageLike {
+  readonly values = new Map<string, string>();
+  getItem(key: string): string | null { return this.values.get(key) ?? null; }
+  setItem(key: string, value: string): void { this.values.set(key, value); }
+}
 
 const phaser = registerHooks({
   resolve(specifier, context, next) {
@@ -163,6 +171,40 @@ test('MoveStick switches between stick and dpad without calling removeInteractiv
   controlSettings.setMoveStyle('stick');
 });
 
+test('control mode persists, keeps the last touch style, and reads legacy storage', () => {
+  const storage = new MemoryStorage();
+  const settings = new ControlSettings(storage);
+  assert.equal(settings.mode, 'stick');
+  settings.setMode('keyboard');
+  assert.equal(settings.moveStyle, 'stick', '电脑模式保留最近一次触屏样式');
+  assert.equal(new ControlSettings(storage).mode, 'keyboard', '刷新后仍是电脑模式');
+
+  const legacy = new MemoryStorage();
+  legacy.setItem('inotia4.control.style.v1', JSON.stringify({ moveStyle: 'dpad' }));
+  const legacySettings = new ControlSettings(legacy);
+  assert.equal(legacySettings.mode, 'dpad');
+  assert.equal(legacySettings.moveStyle, 'dpad');
+
+  const kept = new MemoryStorage();
+  kept.setItem('inotia4.control.style.v1', JSON.stringify({ mode: 'keyboard', moveStyle: 'dpad' }));
+  const keptSettings = new ControlSettings(kept);
+  assert.equal(keptSettings.mode, 'keyboard');
+  assert.equal(keptSettings.moveStyle, 'dpad', '切回触屏时恢复十字键');
+});
+
+test('style subscription ignores keyboard mode, mode subscription sees every change', () => {
+  const settings = new ControlSettings(null);
+  const styles: MoveControlStyle[] = [];
+  const modes: ControlMode[] = [];
+  settings.subscribe(style => styles.push(style));
+  settings.subscribeMode(mode => modes.push(mode));
+  settings.setMode('dpad');
+  settings.setMode('keyboard');
+  settings.setMoveStyle('stick');
+  assert.deepEqual(styles, ['dpad', 'stick']);
+  assert.deepEqual(modes, ['dpad', 'keyboard', 'stick']);
+});
+
 test('MoveStick uses rebindable movement keys and clears by physical code', () => {
   controlSettings.setMoveStyle('stick');
   const keyboard = new Map<string, (event: KeyboardEvent) => void>();
@@ -198,7 +240,8 @@ test('MoveStick uses rebindable movement keys and clears by physical code', () =
       }
     }
   };
-  const hud = { scene, add: (c: unknown) => c, setVisible: () => {} };
+  const visible: boolean[] = [];
+  const hud = { scene, add: (c: unknown) => c, setVisible: (_c: unknown, value: boolean) => { visible.push(value); } };
   const skin = {
     'stick-base': 'base', button: 'btn',
     'arrow-up': 'up', 'arrow-up-glow': 'up-glow',
@@ -236,6 +279,15 @@ test('MoveStick uses rebindable movement keys and clears by physical code', () =
   // 先松开 Shift：keyup 只看物理键码，方向不会卡住。
   release('KeyW', { shiftKey: false });
   assert.deepEqual(stick.axis, { x: 0, y: 0 });
+
+  assert.equal(visible.at(-1), true, '触屏模式显示摇杆');
+  controlSettings.setMode('keyboard');
+  assert.equal(visible.at(-1), false, '电脑模式隐藏摇杆外观');
+  press('KeyW', { shiftKey: true });
+  assert.deepEqual(stick.axis, { x: 0, y: -1 }, '隐藏外观后键盘移动仍然有效');
+  release('KeyW', { shiftKey: true });
+  controlSettings.setMode('stick');
+  assert.equal(visible.at(-1), true, '切回触屏恢复显示');
 
   stick.destroy();
   controlSettings.setMoveStyle('stick');

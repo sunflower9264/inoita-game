@@ -1,5 +1,4 @@
 import { SCENE_KEYS } from '../application/scene-keys.ts';
-import { controlSettings } from '../application/control-settings.ts';
 import { displaySettings } from '../application/display-settings.ts';
 import { fullscreenActive, fullscreenStatus, onFullscreenChange, setFullscreen } from '../application/fullscreen.ts';
 import Phaser from 'phaser';
@@ -140,8 +139,6 @@ export class MenuScene extends Phaser.Scene {
         }else{
           rows.push({label:'全屏',value:fullscreen==='packaged'?'已全屏':'不支持',action:()=>{},disabled:true});
         }
-        const dpad=controlSettings.moveStyle==='dpad';
-        rows.push({label:'移动方式',value:dpad?'十字按键':'虚拟摇杆',action:()=>{controlSettings.setMoveStyle(dpad?'stick':'dpad');this.render();}});
         rows.forEach((row,index)=>{
           const top=20+index*100;
           view.text(row.label,38,top+12,0,34,undefined,content);
