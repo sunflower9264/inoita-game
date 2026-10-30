@@ -21,7 +21,7 @@
 | 5 | 兽人部落 NPC 缺少交互 | 已核查：与原版一致，不改 |
 | 6 | 交互时只有一句「一路小心。」 | 待定 |
 | 10 | 交互范围过大 | 待定 |
-| 11 | 任务道具交付后不清除 | 待定 |
+| 11 | 任务道具交付后不清除 | 已修（同类 17 条一起改） |
 | 12 | 打开背包掉帧、数量改动整页重画 | 数量变化已修；背包静态层待做 |
 | 13 | 背包格子按装备品质上色 | 已定方案，未实现 |
 | 14 | 融合器交互不对 | 待核查 |
@@ -136,15 +136,25 @@
 
 现象：净化石任务交完了，背包里还留着一颗。
 
-核查：这颗石头被发过两次。
-- 拾取原石的剧情命令发一次：`public/content/campaign.json:45329`-`45332`；
-- quest-53「狼人的恢复」接取时又发一次：`public/content/campaign.json:301882`-`301887`。
+核查：这颗石头本来就是发两次、扣一次。
+- 拾取原石的剧情命令发一颗：`event-66` 场景 4，`item-give purity-stone`。
+- 接下 quest-53「狼人的恢复」时又发一颗：这条任务的 `onAcceptItems`。
+- 交付时按数量只扣一颗：`handoverItems` 写的是 `"removal": "quantity"`。
 
-而交付时按数量扣，只扣一颗：`public/content/campaign.json:301893`-`301898`
-写的是 `"removal": "quantity"`。所以永远剩一颗。
+原版对照：原版任务表里这条是类型 2。接取时 `ApplyPrepare@0x1bfe04` 发放 PREPARE 物品，`@0x1bffe0` 对类型 2 再发放完成目标里的物品；交付时 `ApplyReward` 按 `remove_count_argument` 扣除，这条记录是 1。所以原版同样发两次、只扣一颗，也会剩一颗。证据见旧项目 `work/findings/45_quest_world.md` 与 `site/data/quest_chains.json` 的 53 号任务。
 
-候选修法（未批）：交付改成扣光同类（`"removal": "all-matching"`），或去掉重复发放的那一次。
-两种写法扣除逻辑都已经支持，见 `src/domain/quest-book.ts:357` 和 `:416`。
+实测（`tests/story-chapters.test.ts` 主流程）：交货前背包 2 颗，交货后 1 颗。
+
+决定：剩下那颗丢不掉（`discardable: false`）、卖不掉（`sellable: false`），会永久占一格，所以按「交付扣光」处理。这是**有意偏离原版**的一处。
+
+同类：全库 151 条交付记录里，17 条任务同时「接取发放 + 交付扣除」。物品全是任务类、不可丢弃、只被本条任务引用。按数据推算，其中 14 条会剩（quest-250 精制的麦粉剩 2 颗），3 条（quest-79、quest-230、quest-233）本来就只发一颗、不剩。另有 9 条任务的接取发放是两条记录（PREPARE 与完成目标各一条），原版就是这样发两份。
+
+已做（2026-10-30）：
+- `public/content/campaign.json`：这 17 条任务的 `handoverItems` 全部改成 `"removal": "all-matching"`，交付时扣光同类。发放逻辑没动，原版「接了任务先给一颗」的保险还在。
+- `tests/story-chapters.test.ts`：净化石交货前断言 2 颗、交货后 0 颗；矿山钥匙（quest-50）交付后从 1 颗改成 0 颗。
+- `public/content/debug/start.json`：内容变了，按 `npm run debug-start` 重新生成。
+
+验证：`npm test -- tests/story-chapters.test.ts tests/quest-target-interaction.test.ts tests/story-intake.test.ts` 21 项全过；`npm run validate:content` 通过（`{ maps: 416, assets: 12080 }`）；`npm run debug-start:check` 通过。
 
 ### 16. 圣女演出里三只重复的打铁 NPC
 
@@ -239,3 +249,5 @@
 - 17（2026-10-30）：提取脚本切图时作废旧图摆怪，重导出后院长与封印守护者各少一只。
   遭遇开在常驻怪身上时让常驻那只让位（修事件 72）；内容校验新增「同一格不许摆两只」。
   剧情主流程、遭遇相关用例与 `validate:content` 通过。
+- 11（2026-10-30）：17 条任务道具的交付改成扣光同类，背包不再留一颗。发放逻辑没动。
+  剧情主流程、任务交互与 `validate:content`、`debug-start:check` 通过。
