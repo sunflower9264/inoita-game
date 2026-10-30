@@ -31,6 +31,8 @@ interface SceneHooks {
   interact():void;
   attackKey():void;
   startBasicAttack():void;
+  switchControlled(id:string):boolean;
+  switchMember(direction:-1|1):void;
   autoAttack:BasicAttackRepeat;
 }
 
@@ -39,7 +41,8 @@ function sceneFixture(){
   const combat={targetId:'enemy' as string|undefined,attackState:'idle' as 'idle'|'approaching'|'attacking',
     castingSkill:false,
     attack:()=>calls.push('attack'),update(){},setPerformanceActive(){},playerCannotMove:()=>false,movementSpeedForPlayer:()=>4,
-    cancelAttack:()=>calls.push('cancelAttack'),clearTarget:()=>calls.push('clearTarget'),cancelAmbushOnDirection(){},controlledId:'player'};
+    cancelAttack:()=>calls.push('cancelAttack'),clearTarget:()=>calls.push('clearTarget'),cancelAmbushOnDirection(){},controlledId:'player',
+    switchControl:()=>true,switchMember:()=>true};
   const state={
     player:{},characters:[],performing:false,loadingWorld:false,destroyed:false,
     autoAttack:new BasicAttackRepeat(),
@@ -107,6 +110,17 @@ test('the scene ignores the stick while an active skill is being released',()=>{
   assert.ok(calls.includes('cancelAttack'),'技能结束后摇杆恢复取消普攻');
   assert.ok(calls.includes('clearTarget'));
   assert.ok(calls.includes('drive'));
+});
+
+test('switching the controlled member drops the repeat gate',()=>{
+  const {scene}=sceneFixture();
+  scene.startBasicAttack();
+  assert.equal(scene.autoAttack.active,true);
+  assert.equal(scene.switchControlled('ally'),true);
+  assert.equal(scene.autoAttack.active,false,'头像切人后不再自动接下一击');
+  scene.startBasicAttack();
+  scene.switchMember(1);
+  assert.equal(scene.autoAttack.active,false,'Q/E 切人同样停止连打');
 });
 
 test('interacting does not arm the repeat',()=>{

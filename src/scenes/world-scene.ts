@@ -392,7 +392,7 @@ export class WorldScene extends Phaser.Scene {
     globalThis.storyDiagnostics?.record('start-phase',{phase:'wardrobe-ready',map:map.id});
     this.projectedPlayerEquipment=JSON.stringify(this.app.session.bag.equipmentItems());
     this.statusHud=new StatusHud(this.hud!,this.app.statusHud,()=>this.combat?.controlledState??this.app.session.player,listener=>this.app.session.subscribe(listener),
-      ()=>this.app.session.party?.snapshot(),id=>{if(this.canControl)this.combat?.switchControl(id);},id=>{
+      ()=>this.app.session.party?.snapshot(),id=>{this.switchControlled(id);},id=>{
         if(id==='player')return this.app.statusHud.assets['player-portrait'];
         const member=this.app.session.party?.get(id);if(!member)return undefined;
         const actor=this.app.world.actors[member.definition.actor];
@@ -924,10 +924,17 @@ export class WorldScene extends Phaser.Scene {
     this.refreshLoadout();
   }
 
+  /** 头像点击与 Q/E 共用：真的换了人才释放连打，避免新角色自动替上一人出手。 */
+  private switchControlled(id:string):boolean {
+    if(!this.canControl)return false;
+    if(!this.combat?.switchControl(id))return false;
+    this.autoAttack.release();
+    return true;
+  }
   /** Q/E 切上一个/下一个操作人物；具体目标由战斗层按存活和控制器筛选。 */
   private switchMember(direction:-1|1):void {
     if(!this.canControl)return;
-    this.combat?.switchMember(direction);
+    if(this.combat?.switchMember(direction))this.autoAttack.release();
   }
   /** 键位编辑读取实际操控者当前组六格，不另选角色或快捷页。 */
   getControlLayoutPreview():readonly ShortcutSlot[]{return this.controls?.snapshot()??[];}

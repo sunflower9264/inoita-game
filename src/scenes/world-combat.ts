@@ -71,7 +71,7 @@ import { scaledBuffEffect, summonLifetimeFrames, summonOwnerStats, withLifetimeF
 import { faceTarget, resolveBasicAttack } from '../domain/basic-attack.ts';
 import { skillClipName, skillClips, skillPlaybackEvents, skillSoundNames } from '../domain/skill-action.ts';
 import { costumeRecipe, hasOffhandShield } from '../domain/wardrobe.ts';
-import type { ActorDefinition, Facing } from '../domain/content.ts';
+import type { ActorDefinition, ClipName, Facing } from '../domain/content.ts';
 import type { BattleCharacter } from '../domain/character-stats.ts';
 import { equipmentPower } from '../domain/character-stats.ts';
 import { baseOffhandAttackChance,chooseDualWield,offhandPhysicalAttack } from '../domain/dual-wield.ts';
@@ -861,9 +861,15 @@ captureStoryActors():SceneActorState[] {
     const visual=this.visualOf(action.caster.id)!;
     const name=action.skill?(action.skill.clips?.[action.facing]??skillClipName(action.skill.id,action.facing)):action.basicAttack?.clips[action.facing];
     const clip=name?visual.actor.clips[name as keyof typeof visual.actor.clips]:undefined;
-    const clear=presenter.play(action);
+    const clear=presenter.play(action),layers=visual.layers;
     const cancel=this.runtime.play(action,{sourceFrames:clip?.frames??1,frameDurationMs:action.basicAttack?.frameDurationMs??LOGIC_FRAME_MS},frame,complete);
-    return ()=>{cancel();clear();};
+    return ()=>{
+      cancel();clear();
+      // 取消或收尾时直接接回待机，不再依赖后续帧的 afterMovement；
+      // 动作已经被别的表现接手时让接手者继续画。
+      const idle=`idle-${action.facing}` as ClipName;
+      if(visual.container.active&&visual.layers===layers&&visual.actor.clips[idle])setCharacterClip(this.scene,visual,idle,true);
+    };
   }
   private presentActionFrame(presenter:CombatPresenter,...args:Parameters<CombatActionDispatcher['frame']>):void {
     (this.hitResolution??=new CombatHitResolution()).run(()=>this.dispatcherFor(presenter).frame(...args));
@@ -2088,20 +2094,25 @@ captureStoryActors():SceneActorState[] {
     setCharacterClip(this.scene,ally.visual,`idle-${ally.facing}`,true);
     this.followerCatchUps++;
   }
-  private syncControlled():void{
+  /**
+   * 绑定当前操控者。`cancelActions=false` 只交接触发、相机和 HUD，不碰任何人的动作；
+   * 玩家主动切人走这条，正在进行的普攻或技能由原角色自己收尾。
+   */
+  private syncControlled(cancelActions=true):void{
     const id=this.controlledId;
     this.feedback.cancelShake();
     this.combat=this.partyControllers.get(id);
     if(!this.combat&&id!=='player')return;
     this.syncedControlledId=id;
-    for(const ally of this.allies)ally.ai.cancel();this.heroAi?.cancel();
+    if(cancelActions){for(const ally of this.allies)ally.ai.cancel();this.heroAi?.cancel();}
     this.scene.syncControlledCharacter();
   }
   switchControl(id:string):boolean{
+    if(id===this.controlledId)return false;
     if(!this.partyControllers.has(id))return false;
     const previous=this.controlledVisual;
     if(!this.app.session.party?.switchControl(id))return false;
-    this.movement.stop(previous);this.syncControlled();return true;
+    this.movement.stop(previous);this.syncControlled(false);return true;
   }
 
   /**
@@ -2560,7 +2571,7 @@ captureStoryActors():SceneActorState[] {
     this.consumeRosterChanges(this.roster.refresh());
     if(this.scene.time.now>=this.nextPartySyncAt&&this.app.session.party?.activeIds.join('|')!==this.partySignature)
       void this.syncAllies().catch(error=>this.app.ui.toast((error as Error).message));
-    if(this.controlledId!==this.syncedControlledId&&this.partyControllers.has(this.controlledId))this.syncControlled();
+    if(this.controlledId!==this.syncedControlledId&&this.partyControllers.has(this.controlledId))this.syncControlled(false);
     const tickBefore=this.app.session.combatTick;
     this.app.session.advanceCombatFrames(delta,()=>{
       this.conditions.update(LOGIC_FRAME_MS,tick=>this.periodicTick(tick));

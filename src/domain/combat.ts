@@ -7,6 +7,7 @@ import { attackSplashTargets,selectAttackSplashCenter } from './attack-splash.ts
 import { needsTarget, settleSkillRepeat, skillPlaybackEvents, type SkillRepeatState } from './skill-action.ts';
 import { planCharge } from './target-charge.ts';
 import { planRearTeleport } from './rear-teleport.ts';
+import { basicSelectionFrames } from './combat-tempo.ts';
 import type { ChargePlan } from './target-charge.ts';
 import type { BattleStateKey } from './battle-semantics.ts';
 import { combatStateCapabilities } from './combat-state.ts';
@@ -158,10 +159,21 @@ export class CombatController {
   private cancelPlayback?: () => void;
   private generation = 0;
   private listeners = new Set<(state: CombatSnapshot) => void>();
+  /**
+   * 普攻节奏锁：到这个逻辑帧之前不再接受普攻。动作播放可以取消，节奏不能取消。
+   * 时钟由 `CombatRuntime` 注册角色时注入；没有时钟的纯单元测试不启用。
+   */
+  private basicReadyAt = 0;
+  private clock?: () => number;
 
   constructor(casterId: string, basic: ResolvedBasicAttack | null, port: CombatPort) {
     this.casterId = casterId; this.basic = basic; this.port = port;
   }
+  /** 运行时注册角色时注入逻辑帧时钟；之后普攻节奏锁才生效。 */
+  useClock(clock:()=>number):void {this.clock=clock;}
+  /** 动作推进时刷新预计结束帧；攻速变化后锁仍然覆盖这一轮完整周期。 */
+  setBasicReadyAt(frame:number):void {if(this.clock)this.basicReadyAt=frame;}
+  private basicLocked():boolean {return !!this.clock&&this.clock()<this.basicReadyAt;}
   setBasicAttack(basic:ResolvedBasicAttack):void {this.cancel();this.basic=basic;}
   snapshot(): CombatSnapshot {
     return { ...(this.selectedId?{targetId:this.selectedId}:{}), state: this.state, cooldowns: this.port.cooldowns.snapshot() };
@@ -177,6 +189,7 @@ export class CombatController {
   restoreState(snapshot:CombatSnapshot):void {
     this.cancel(true);
     this.selectedId=snapshot.targetId;
+    this.basicReadyAt=0;
     this.publish();
   }
   subscribe(listener: (state: CombatSnapshot) => void): () => void {
@@ -221,6 +234,8 @@ export class CombatController {
   }
   private requestAction(skill: ActionPlayback['skill'], targetId: string | undefined, turnToTarget: boolean, interruptBasic = false, triggered=false): 'started' | 'busy' | 'cooldown' | 'no-target' | 'no-mana' | 'unavailable' {
     if(this.port.isPaused?.())return 'busy';
+    // 主动技能可以中途接管，但普攻必须等上一轮节奏走完；取消动作不会提前放行。
+    if(!skill&&this.basicLocked())return 'busy';
     if(skill&&!triggered&&!this.canSelectSkill(skill))return 'unavailable';
     const replaceBasic = interruptBasic && !!this.active && !this.active.skill;
     if (this.state !== 'idle' && !replaceBasic) return 'busy';
@@ -417,6 +432,8 @@ export class CombatController {
       this.cancelPlayback?.(); this.cancelPlayback = undefined;
       this.state = 'idle'; this.active = undefined; this.port.stop(); this.publish();
     });
+    // 节奏锁从真正开始播放时计，经过接近阶段不算；取消这个动作也不会缩短它。
+    if(!skill&&selection&&this.clock)this.setBasicReadyAt(this.clock()+basicSelectionFrames(selection,action.getAttackSpeedRate?.()??1000));
     frame(0);
   }
   cancel(clearEffects = false, clearTarget = true): void {
@@ -425,7 +442,7 @@ export class CombatController {
     this.state = 'idle'; this.active = undefined; if(clearTarget)this.selectedId = undefined;
     this.port.stop(); if (clearEffects) this.port.clearEffects(); this.publish();
   }
-  reset():void {this.cancel(true);this.port.cooldowns.reset();this.publish();}
+  reset():void {this.cancel(true);this.basicReadyAt=0;this.port.cooldowns.reset();this.publish();}
 
   /** 清空技能冷却，当前动作和目标继续保持。 */
   resetSkillCooldowns():void {this.port.cooldowns.reset();this.publish();}

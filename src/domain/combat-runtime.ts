@@ -57,6 +57,7 @@ export class CombatRuntime {
 
   registerActor(id:string,controller:CombatController):void {
     const previous=this.controllers.get(id);if(previous&&previous!==controller){previous.cancel(true);this.cancel(id);}
+    controller.useClock(this.now);
     this.controllers.set(id,controller);
   }
   removeActor(id:string):void{this.controllers.get(id)?.cancel(true);this.cancel(id);this.controllers.delete(id);}
@@ -108,6 +109,8 @@ export class CombatRuntime {
         const duration=attack&&attack.timing!=='fixed-animation'&&!track.action.skill&&!track.action.basicAttackWait
           ?attackCycleFrames(attack.cycleFrames,track.action.getAttackSpeedRate?.()??1000,attack.strikeFrame)
           :track.frames-(track.action.skill?skillRepeatSkippedFrames(track.action.skill.action,track.action.skill.level??1,track.action.repeatState):0);
+        // 普攻的节奏锁跟着动作的当前预计结束帧走；取消动作后最后一次值保留。
+        if(!track.action.skill)this.controllers.get(track.ownerId)?.setBasicReadyAt(track.startedFrame+duration);
         if(next>=duration){this.actions.delete(track.id);track.complete();break;}
         track.frame=next;if(!track.action.basicAttackWait)track.frameWork(next);
         if(this.paused||this.closed)break;
