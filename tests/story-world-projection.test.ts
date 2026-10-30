@@ -15,7 +15,7 @@ function fixture(){
   const assetLoads:unknown[][]=[],coverCalls:boolean[]=[];
   const player={container:{active:true,x:10,y:20},entity:{id:'player'}};
   const positions:unknown[]=[],adopted:unknown[][]=[];let restarts=0,stops=0,regroups=0;
-  const state={map:{id:'home',name:'Home'},player,baseEntities:[],characters:[] as unknown[],entities:[],storyEntityAssets:[],projectedActorIds:new Set(),destroyed:false,
+  const state={map:{id:'home',name:'Home'},player,baseEntities:[],characters:[] as unknown[],entities:[],storyEntityAssets:[],projectedActorIds:new Set(),encounterResults:new Set<string>(),destroyed:false,
     app:{campaign:{placements:[]},session:{storyWorld:{get currentLocation(){return location;},projectEntities:()=>projected,actorAppearance:(actor:string)=>actor,entity:()=>undefined},visible:()=>true},world:{actors:{} as Record<string,unknown>},ui:{setWorldRebuildCover:(covered:boolean)=>{coverCalls.push(covered);}}},
     movement:{placeAll:(values:{position:{x:number;y:number}}[])=>{positions.push(values);for(const value of values){player.container.x=value.position.x;player.container.y=value.position.y;}}},
     combat:{regroupPartyAroundHero(){regroups++;},async projectStoryEnemies(){},async restoreState(){},adoptStoryPositions(actors:unknown[]){adopted.push(actors);}},
@@ -148,20 +148,29 @@ test('defeat checkpoint restores complete world state and closes its panel befor
   assert.deepEqual(calls,['input','cancel','session','world','close','retry']);
 });
 
-test('a failed lost-outcome preview still opens the defeat panel',async t=>{
-  t.mock.method(console,'error',()=>{});
-  const messages:string[]=[];let shown=0;
+test('restoring a save or checkpoint clears the scene outcome guard',async()=>{
+  const f=fixture();f.location({map:'home',x:10,y:20,facing:'south'});
+  f.state.encounterResults.add('enc-1');
+  await f.scene.restoreStoryWorld({location:{map:'home',x:10,y:20,facing:'south'},generatedEntities:[]},new AbortController().signal);
+  assert.equal(f.state.encounterResults.size,0,'回滚后同一场遭遇可以重新结算');
+});
+
+test('a party wipe opens the defeat panel without settling the waiting encounter as lost',async()=>{
+  const outcomes:string[]=[];
+  let shown=0;
+  const encounter={id:'enc-1',map:'home',status:'active' as const,spawns:[]};
   const state={map:{id:'home'},destroyed:false,encounterResults:new Set<string>(),
-    app:{session:{storyWorld:{encounter:()=>({map:'home'})},party:{livingIds:[]},bag:{entries:[]}},
+    app:{session:{storyWorld:{encounter:()=>encounter},party:{livingIds:[]},bag:{entries:[]}},
       director:{runtime:{snapshot:()=>({runs:[{status:'waiting',waiting:{outcomes:{lost:true},encounter:'enc-1'}}]})},
-        async encounterResult(){throw new Error('拾取者不能行动');}},
-      ui:{showDefeat(){shown++;},closeDefeat(){},toast(message:string){messages.push(message);}}}};
+        async encounterResult(_encounter:string,outcome:string){outcomes.push(outcome);return true;}},
+      ui:{showDefeat(){shown++;},closeDefeat(){},toast(){}}}};
   const scene=Object.setPrototypeOf(state,WorldScene.prototype) as unknown as InstanceType<typeof WorldScene>;
   scene.handleCombatDefeat();
   await new Promise(resolve=>setImmediate(resolve));
-  assert.equal(shown,1,'剧情准备失败也必须给玩家阵亡界面');
-  assert.deepEqual(messages,['拾取者不能行动']);
-  assert.equal(state.encounterResults.has('enc-1'),false,'失败后允许下一次阵亡重试结算');
+  assert.equal(shown,1,'全队阵亡要立刻给玩家阵亡界面');
+  assert.deepEqual(outcomes,[],'阵亡本身不结算剧情遭遇');
+  assert.equal(encounter.status,'active','复活或读档后这场遭遇仍可继续');
+  assert.equal(state.encounterResults.size,0,'阵亡不占用胜利结算的去重记录');
 });
 
 test('story settlement only regroups friendly units while the formal game world is active',()=>{

@@ -1517,6 +1517,8 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
     const state=snapshot as StoryWorldViewSnapshot;
     if(!state?.location?.map)throw new Error('正式剧情世界快照无效');
     signal.throwIfAborted();
+    // 回滚后这一场景观察到的胜负记录不再作数：同一场遭遇可能重新变成可打、可结算。
+    this.encounterResults.clear();
     if(this.map?.id===state.location.map&&!this.loadingWorld){
       this.baseEntities=structuredClone(state.generatedEntities);
       await this.projectStoryWorld(undefined,signal,state.location);
@@ -1634,23 +1636,13 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
     for(const event of this.app.campaign.events)if(event.source==='region')values[`region:${event.id}`]=!!player&&event.map===this.map?.id&&!!event.region&&overlapsFootRect(player.container,event.region);
     return values;
   }
+  /**
+   * 全队阵亡只暂停当前战斗，不结算剧情遭遇。
+   *
+   * 复活圣文会回到同一场战斗；返回检查点或读取存档会整份回滚。
+   * 两条路都不需要把遭遇判成 `lost`；真正打赢时再由 `completedStoryEncounters` 上报 `won`。
+   */
   handleCombatDefeat():void{
-    const waiting=this.app.director.runtime.snapshot().runs.find(run=>run.status==='waiting'&&run.waiting?.outcomes.lost&&
-      this.app.session.storyWorld.encounter(run.waiting.encounter)?.map===this.map?.id);
-    if(waiting?.waiting){
-      const encounter=waiting.waiting.encounter;
-      if(this.encounterResults.has(encounter))return;
-      this.encounterResults.add(encounter);
-      const after=()=>{if(!this.destroyed&&!(this.app.session.party?.livingIds.length??this.app.session.player?.health??0))this.showCombatDefeat();};
-      const failure=(error:unknown)=>{
-        console.error(error);
-        // 战败剧情没结算成功不能扣住阵亡界面：全灭时先把玩家送进可复活/读档的出口。
-        this.encounterResults.delete(encounter);
-        this.app.ui.toast(error instanceof Error?error.message:String(error));
-        after();
-      };
-      this.app.director.encounterResult(encounter,'lost',`result:${encounter}:lost`).then(after).catch(failure);return;
-    }
     this.showCombatDefeat();
   }
   private showCombatDefeat():void{

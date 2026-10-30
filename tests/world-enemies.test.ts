@@ -199,6 +199,23 @@ test('story encounter instances appear after a node commit, require every settle
   assert.equal(restored.refresh().added.some(enemy=>enemy.key===earl.id||enemy.key===guard.id),false);
 });
 
+test('loading a save taken during an active encounter restores its boss',()=>{
+  const session=new Session(campaign),map=content('maps/shadow-forest-west.json') as WorldMap;
+  const enemyId=(new WorldEnemyRoster(session,map,[],1)).spawns[0].enemyId;
+  const encounter={id:'boss-battle:run-1',map:map.id,status:'active' as const,spawns:[
+    {id:'boss',enemyId,x:128,y:128}
+  ]};
+  session.applyStoryCommands([{type:'encounter',encounter}]);
+  const state=session.captureState();
+
+  // 战败后读取这份存档，走的是新建会话再恢复；遭遇仍是 active，Boss 必须重新出现在名册里。
+  const loaded=new Session(campaign);loaded.restoreState(state);
+  const roster=new WorldEnemyRoster(loaded,map,[],1);
+  const key=encounterSpawnId(encounter.id,'boss');
+  assert.equal(loaded.storyWorld.encounter(encounter.id)?.status,'active');
+  assert.equal(roster.enemies.some(enemy=>enemy.key===key),true);
+});
+
 test('breakable spawns follow the native replacement branch and reroll after death',()=>{
   const map={id:'breakable-map',breakableSpawn:'jar' as const,enemySpawns:[
     {id:'slot',enemyId:'enemy-base',x:0,y:0,breakableEligible:true}
