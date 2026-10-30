@@ -91,7 +91,12 @@
 持续期间的表现是另一层：`src/rendering/stun-stars.ts` 在眩晕时给头顶加三颗绕圈的小星星。
 这一层原版没有，属按玩家反馈加的增强。
 
-验证：`npm run typecheck` 通过；`npm test -- tests/buff-visual-content.test.ts` 4 项通过；
+玩家侧也一并补了口子（有意偏离原版，按玩家要求）：原版 Buff 57/62/63 的 `+6` 全是 `-1`，
+现在 `critical-hit-stun`（暴击眩晕）和 `blunt-hit-stun`（钝器眩晕）也用怪物眩晕同款 `flash-gold`，
+值和时长没动（各 960 毫秒，即原版母帧龄 15）。这两条只有在学了佣兵团技能「弱点攻击」（30‰）
+和「钝器达人」（20‰）时才会触发。普通攻击眩晕 `attack-stun`（涂层、暗杀之剑那类）仍保持原版无特效。
+
+验证：`npm run typecheck` 通过；`npm test -- tests/buff-visual-content.test.ts` 5 项通过；
 `npm run validate:content` 通过（`{ maps: 416, assets: 12086 }`）。实际显示效果交给用户验收。
 
 ### 4. 沃尔达克头像错成主角
