@@ -8,6 +8,7 @@ import type { ItemCatalog } from '../src/domain/items.ts';
 import type { BattleCatalog } from '../src/domain/battle.ts';
 import { BattleCharacter, type CharacterStatsCatalog } from '../src/domain/character-stats.ts';
 import type { CompanionCatalog } from '../src/domain/party.ts';
+import { moneyGain } from '../src/domain/economy.ts';
 
 const read=<T>(file:string):T=>JSON.parse(readFileSync(new URL(`../public/content/${file}.json`,import.meta.url),'utf8')) as T;
 const items=read<ItemCatalog>('items'),battle=read<BattleCatalog>('battle'),stats=read<CharacterStatsCatalog>('character-stats'),companions=read<CompanionCatalog>('companions');
@@ -23,7 +24,7 @@ test('explicit re-admission starts a fresh settlement cycle while duplicate comp
     session.applyStoryCommands([{type:'quest',command:{type:'script-complete',quest:'again'}}]);
     session.applyStoryCommands([{type:'quest',command:{type:'script-complete',quest:'again'}}]);
   }
-  assert.equal(session.money,15);
+  assert.equal(session.money,moneyGain(15),'三轮各发 5 金币，按获取倍率放大');
   assert.deepEqual(session.captureState().receipts.map(r=>r.cycle),[0,1,2]);
   assert.equal(session.quests.get('again')!.completedCycles,3);
 });
@@ -197,8 +198,8 @@ test('Session delegates real multi-goal progress, handover and rewards to one co
   assert.equal(session.status('materials'),'ready');assert.deepEqual(session.quests.get('materials')!.goals,{meat:5,bone:5});
   const states:unknown[]=[];session.subscribe(value=>states.push({money:value.money,status:value.status('materials'),meat:value.itemCount('meat'),potion:value.itemCount('potion')}));
   assert.equal(session.complete('materials'),true);
-  assert.deepEqual(states,[{money:50,status:'completed',meat:0,potion:2}]);assert.equal(session.complete('materials'),false);
-  assert.deepEqual(session.rewardReceiptFor('materials'),{experience:0,money:50,items:[{item:'potion',quantity:2}]});
+  assert.deepEqual(states,[{money:moneyGain(50),status:'completed',meat:0,potion:2}]);assert.equal(session.complete('materials'),false);
+  assert.deepEqual(session.rewardReceiptFor('materials'),{experience:0,money:moneyGain(50),items:[{item:'potion',quantity:2}]});
 });
 
 test('node batches evaluate earlier flags and item grants before quest acceptance and settlement',()=>{
@@ -207,7 +208,7 @@ test('node batches evaluate earlier flags and item grants before quest acceptanc
   assert.equal(session.status('delivery'),'locked');let updates=0;session.subscribe(()=>updates++);
   session.applyStoryCommands([{type:'flag',flag:'permission'},{type:'item-give',item:'letter',quantity:1},
     {type:'quest',command:{type:'accept',quest:'delivery'}},{type:'quest',command:{type:'complete',quest:'delivery'}}]);
-  assert.equal(updates,1);assert.equal(session.status('delivery'),'completed');assert.equal(session.itemCount('letter'),0);assert.equal(session.money,4);
+  assert.equal(updates,1);assert.equal(session.status('delivery'),'completed');assert.equal(session.itemCount('letter'),0);assert.equal(session.money,moneyGain(4));
   assert.equal(session.flags.has('permission'),true);
 });
 
