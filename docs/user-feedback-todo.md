@@ -23,7 +23,7 @@
 | 10 | 交互范围过大 | 待定 |
 | 11 | 任务道具交付后不清除 | 已修（同类 17 条一起改） |
 | 12 | 打开背包掉帧、数量改动整页重画 | 数量变化已修；背包静态层待做 |
-| 13 | 背包格子按装备品质上色 | 已定方案，未实现 |
+| 13 | 背包格子按装备品质上色 | 已修（边框按品质换图） |
 | 14 | 融合器交互不对 | 待核查 |
 | 15 | 宝石、强化卷轴用起来麻烦 | 待定 |
 | 16 | 圣女演出里三只重复的打铁 NPC | 待修：素材挂错，涉及 29 个角色 |
@@ -103,15 +103,26 @@
 
 ### 13. 背包格子按装备品质上色
 
-现象：希望格子底色跟装备品质走。
+现象：希望格子边框跟装备品质走。
 
-核查：现在所有格子用的都是同一张 `inventory-slot` 底图
-（`src/ui/story-ui.ts:1011`、`1023`、`1026`），没有任何按品质上色的代码。
-品质色目前只出现在两处：拾取飘字和物品说明标题。颜色表在 `src/ui/item-name-color.ts`：
-稀有度 1 绿 `#4eff00`、2 蓝 `#00b4ff`、3 黄 `#ffe600`、4 紫 `#9c00ff`，
-混沌装备蓝、史诗混沌橙。
+核查：所有格子用的都是同一张 `inventory-slot` 底图，没有任何按品质换图的代码。品质色原本只出现在拾取飘字和物品说明标题，颜色表在 `src/ui/item-name-color.ts`：稀有度 1 绿 `#4eff00`、2 蓝 `#00b4ff`、3 黄 `#ffe600`、4 紫 `#9c00ff`，混沌装备蓝、史诗混沌橙。
 
-已定口径：**不加设置开关，默认就按品质上色。** 药水、材料这类没有品级的道具保持原样。
+口径：**不加设置开关，默认就按品质上色**；药水、材料这类没有品级的道具保持原样。
+
+做法：底图是一整张 74×74 的半透明 PNG（米色边框 + 灰色内底），直接叠色会把内底一起染色，所以改成按品质预生成 6 张只换边框的图。边框像素的判据是「红色通道比蓝色通道高 20 以上」，内底是中性灰不满足这个条件。
+
+已做（2026-10-30）：
+- `tools/build-slot-frames.ts`：读 `public/assets/ui/menus/inventory-slot.png`，只把边框像素换成品质色，保留原始明暗、抗锯齿与透明度，写出 6 张变体。底图重画后跑 `node tools/build-slot-frames.ts` 重新生成。
+- `public/assets/ui/menus/inventory-slot-{rarity-1,rarity-2,rarity-3,rarity-4,chaos,epic-chaos}.png`：新增 6 张图，`public/content/menu-panels.json` 登记对应键。
+- 跑 `npm run atlas:ui` 重新打包 UI 图集（`src/generated/ui-atlas.ts`、`public/assets/ui/menu-ui-0.*`）。
+- `src/ui/item-name-color.ts`：新增 `equipmentGrade`（品级取实例 → 模板默认 → 2）与 `equipmentColor`（品质色），以及 `equipmentSlotFrame`（装备返回边框图键，非装备返回空）。
+- `src/ui/slot-frame.ts`：格子底图的统一入口，查不到边框图就回退默认格子。
+- `src/ui/story-ui.ts`：背包页装备格与物品格按品质换边框；空格子保持默认图。
+- `src/ui/phaser/party-panel.ts`：队伍页装备格一起换。
+- `src/ui/item-detail-lines.ts`：说明标题改用同一套取色函数，避免两处口径分叉。
+- `tests/slot-frames.test.ts`：15 个品级、两档混沌、空格子、非装备各一条断言，并检查 6 张图都在配置里且文件存在。
+
+验证：`npm run typecheck` 通过；`npm test -- tests/slot-frames.test.ts tests/ui-atlas.test.ts`、`tests/item-description.test.ts tests/menu-panels.test.ts tests/bag-layout.test.ts`、`tests/story-menu-interactions.test.ts` 共 82 项全过；`npm run validate:content` 通过（`{ maps: 416, assets: 12086 }`）。界面效果由玩家验收。
 
 ## 三、内容与流程
 
@@ -251,3 +262,5 @@
   剧情主流程、遭遇相关用例与 `validate:content` 通过。
 - 11（2026-10-30）：17 条任务道具的交付改成扣光同类，背包不再留一颗。发放逻辑没动。
   剧情主流程、任务交互与 `validate:content`、`debug-start:check` 通过。
+- 13（2026-10-30）：按品质预生成 6 张格子边框图，背包页与队伍页的装备格、背包物品格换边框，空格子与非装备不变。
+  格子取色、说明标题取色现在共用同一套函数。图集测试、边框测试、菜单交互测试与 `validate:content` 通过。
