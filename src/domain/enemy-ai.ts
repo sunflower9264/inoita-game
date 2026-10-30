@@ -109,7 +109,11 @@ export class EnemyController {
         if(actor&&behavior.canMove&&behavior.moveSpeedPxPerSecond>0){
           if(this.navigate(actor,target.position,target,range))return true;
           this.pendingReturn=true;
-        }else port.stop();
+        }else{
+          // 不会移动的敌人（固定炮台类 Boss）原地不动，但目标要留着：走不过去不等于丢掉仇恨。
+          port.stop();
+          return true;
+        }
         return false;
       },
       canFinishApproach:targetId=>port.threat!.has(targetId)&&(port.canFinishApproach?.(targetId)??true),
@@ -219,7 +223,10 @@ export class EnemyController {
     if(!capabilities.canAct){this.disable();return;}
     if(this.port.threat){
       const action=this.combat.actionState();
-      if(action==='approaching'||action==='attacking'){this.state=action==='attacking'?'attacking':'chasing';return;}
+      if(action==='approaching'||action==='attacking'){
+        this.targetId=this.combat.selectedTargetId()??this.targetId;
+        this.state=action==='attacking'?'attacking':'chasing';return;
+      }
       if(previousAction==='approaching'){
         if(this.pendingReturn)this.returnHome();
         else{this.targetId=undefined;this.state='idle';}
@@ -329,8 +336,11 @@ export class EnemyController {
     this.path=[];this.destination=undefined;this.search=undefined;if(!this.mapWide)this.nextPathAt=0;
     const reachable=this.reachableNow(actor,target.position,target,range);
     this.path=[];this.destination=undefined;this.search=undefined;this.progressPosition=undefined;this.port.stop();
-    if(reachable){this.state='idle';this.combat?.setReactionTarget(target.id);}
-    else this.returnHome();
+    // 技能动作需要走到位才算数：够不着就作废并回家。
+    // 普通攻击够不着时仍留着目标（原地不动的 Boss 不该因为这一刻打不到就丢掉仇恨），
+    // 目标消失后再重新选；真的再也够不着，会由反应与仇恨衰减把它带走。
+    if(skill&&!reachable)this.returnHome();
+    else{this.state='idle';this.combat?.setReactionTarget(target.id);}
     return true;
   }
   private navigate(actor:Combatant,destination:Point,target:Combatant|undefined,range=0,follow=true):boolean{
@@ -347,11 +357,31 @@ export class EnemyController {
     if(this.search&&this.search.targetId!==target?.id)this.search=undefined;
     if(this.search)this.advanceSearch(actor);
     else if(this.clock>=this.nextPathAt&&(moved||blocked||stalled||!this.path.length))this.beginSearch(actor,destination,target,range,stalled);
-    // 跨帧搜索还没出结果时先朝目标直走，别让敌人站着等路径算完。
-    if(follow&&this.search&&!this.path.length){this.port.moveToward(destination);return true;}
+    // 搜索还没出结果、手上也没有旧路线时：直线走得通就先朝目标走，被墙挡住才原地等，
+    // 免得大块头 Boss 贴着墙磨、或者和迟到的路径打架。
+    if(follow&&this.search&&!this.path.length){
+      if(this.straightWalkable(actor.position,destination))this.port.moveToward(destination);
+      else this.port.stop();
+      return true;
+    }
     if(!follow)return this.path.length>0;
     if(this.nextWaypoint()){this.port.followPath(this.nextWaypoint);return true;}
     this.port.stop();return this.path.length>0;
+  }
+  /** 施法前的即时可达性：同步算完但带上限，不参与跨帧状态。 */
+  private reachableNow(actor:Combatant,destination:Point,target:Combatant,range:number):boolean{
+    const result=createPathSearch(actor.position,this.searchQuery(actor,destination,target,range)).step(HOLD_SEARCH_CAP);
+    return result.status==='found'&&result.path.length>0;
+  }
+  /** 脚底直线能否走过去：路径还没算完时用它判断能不能先朝目标迈一步。 */
+  private straightWalkable(from:Point,to:Point):boolean{
+    const length=Math.hypot(to.x-from.x,to.y-from.y);
+    const steps=Math.max(1,Math.ceil(length/PATH_GRID_SIZE));
+    for(let index=1;index<=steps;index++){
+      const ratio=index/steps;
+      if(!this.port.canStand({x:from.x+(to.x-from.x)*ratio,y:from.y+(to.y-from.y)*ratio}))return false;
+    }
+    return true;
   }
   private searchQuery(actor:Combatant,destination:Point,target:Combatant|undefined,range:number){
     const snapshot=this.port.navigationSnapshot?.();
@@ -373,14 +403,17 @@ export class EnemyController {
   }
   private advanceSearch(actor:Combatant):void{
     const search=this.search;if(!search)return;
-    const requested=SEARCH_SLICE;
+    // 手上没有旧路线时多给一次预算，让第一次搜索尽量在一帧内出结果，免得原地干等；
+    // 实际能拿多少仍由每帧共享预算封顶，不会让单个敌人独占。
+    const requested=this.path.length?SEARCH_SLICE:HOLD_SEARCH_CAP;
     const granted=this.port.pathBudget?.take(requested)??requested;
     if(granted<=0)return;
     const result=search.task.step(granted);
     if(result.status==='pending')return;
     this.search=undefined;
-    if(result.status==='unreachable'){this.path=[];this.nextPathAt=this.clock+FAILED_PATH_MS;return;}
-    // 搜索期间敌人可能已朝目标直走过一段；从离当前位置最近的点继续，别掉头走回起点。
+    // 追着活人却暂时走不过去（被墙挡住）时按重寻路间隔再试；没目标时用更长的退避，省得白算。
+    if(result.status==='unreachable'){this.path=[];this.nextPathAt=this.clock+(this.targetId?REPATH_INTERVAL_MS:FAILED_PATH_MS);return;}
+    // 从离当前位置最近的点接着走，别掉头走回起点。
     let start=0,nearest=Infinity;
     for(let index=0;index<result.path.length;index++){
       const point=result.path[index],distance=Math.hypot(point.x-actor.position.x,point.y-actor.position.y);
@@ -389,11 +422,6 @@ export class EnemyController {
     }
     this.path=result.path.slice(start);
     if(!search.target&&!search.range&&(this.path.length||search.isGoal(actor.position)))this.path.push({...search.destination});
-  }
-  /** 施法前的即时可达性：同步算完但带上限，不参与跨帧状态。 */
-  private reachableNow(actor:Combatant,destination:Point,target:Combatant,range:number):boolean{
-    const result=createPathSearch(actor.position,this.searchQuery(actor,destination,target,range)).step(HOLD_SEARCH_CAP);
-    return result.status==='found'&&result.path.length>0;
   }
   private readonly nextWaypoint=():Point|undefined=>{
     const actor=this.port.actor(this.id);if(!actor||this.disposed)return;
