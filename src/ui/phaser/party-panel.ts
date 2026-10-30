@@ -10,6 +10,7 @@ import { createCharacter } from '../../rendering/characters.ts';
 import type { PlaceModal } from './modal-placement.ts';
 import { drawRoundBand } from './round-band.ts';
 import { UiSurface, type ScrollArea } from './widgets.ts';
+import { slotFrameImage } from '../slot-frame.ts';
 
 type DetailTab = 'info'|'equipment'|'skills';
 type PartyModal = {kind:'dismiss';id:string;error?:string}|{kind:'skill';id:string;skill:string}|{kind:'group-skill';id:string;skill:CompanionGroupEffect};
@@ -150,8 +151,8 @@ export class PartyPanel {
       v.root.add(visual.container);visual.container.setScale(3);
     }else v.image(this.portrait(id),623,124,127,114);
     for(const slot of panels.equipmentSlots){
-      const entry=equipment[slot.id as EquipmentSlot],item=entry?bag.catalog.items[bag.get(entry)!.item]:undefined;
-      const button=v.button('',482+slot.x,slot.y,74,74,()=>this.inspect(id,'bag'),{image:panels.assets['inventory-slot']}).setData('label',`${slot.name}：${item?.name??'空'}`);
+      const entry=equipment[slot.id as EquipmentSlot],instance=entry?bag.get(entry):undefined,item=instance?bag.catalog.items[instance.item]:undefined;
+      const button=v.button('',482+slot.x,slot.y,74,74,()=>this.inspect(id,'bag'),{image:slotFrameImage(this.app,this.session,instance)}).setData('label',`${slot.name}：${item?.name??'空'}`);
       v.image(item?.icon??slot.emptyIcon,item?5:13,item?5:13,item?64:48,item?64:48,button);
     }
     v.button('更换装备',568,374,230,44,()=>this.inspect(id,'bag'));

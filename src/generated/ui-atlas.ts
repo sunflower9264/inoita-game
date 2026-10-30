@@ -7,7 +7,7 @@ export const UI_ATLAS_PAGES: readonly UiAtlasPage[] = [
     "data": "assets/ui/menu-ui-0.json",
     "frame": "assets/ui/shop/category-divider.png",
     "width": 2048,
-    "height": 1116
+    "height": 1127
   }
 ];
 export const UI_ATLAS_FRAMES: Readonly<Record<string, { key: string; frame: string; page: number }>> = {
@@ -314,6 +314,36 @@ export const UI_ATLAS_FRAMES: Readonly<Record<string, { key: string; frame: stri
   "assets/ui/menus/inventory-selected.png": {
     "key": "interface:assets/ui/menu-ui-0.png",
     "frame": "assets/ui/menus/inventory-selected.png",
+    "page": 0
+  },
+  "assets/ui/menus/inventory-slot-chaos.png": {
+    "key": "interface:assets/ui/menu-ui-0.png",
+    "frame": "assets/ui/menus/inventory-slot-chaos.png",
+    "page": 0
+  },
+  "assets/ui/menus/inventory-slot-epic-chaos.png": {
+    "key": "interface:assets/ui/menu-ui-0.png",
+    "frame": "assets/ui/menus/inventory-slot-epic-chaos.png",
+    "page": 0
+  },
+  "assets/ui/menus/inventory-slot-rarity-1.png": {
+    "key": "interface:assets/ui/menu-ui-0.png",
+    "frame": "assets/ui/menus/inventory-slot-rarity-1.png",
+    "page": 0
+  },
+  "assets/ui/menus/inventory-slot-rarity-2.png": {
+    "key": "interface:assets/ui/menu-ui-0.png",
+    "frame": "assets/ui/menus/inventory-slot-rarity-2.png",
+    "page": 0
+  },
+  "assets/ui/menus/inventory-slot-rarity-3.png": {
+    "key": "interface:assets/ui/menu-ui-0.png",
+    "frame": "assets/ui/menus/inventory-slot-rarity-3.png",
+    "page": 0
+  },
+  "assets/ui/menus/inventory-slot-rarity-4.png": {
+    "key": "interface:assets/ui/menu-ui-0.png",
+    "frame": "assets/ui/menus/inventory-slot-rarity-4.png",
     "page": 0
   },
   "assets/ui/menus/inventory-slot.png": {
@@ -1157,4 +1187,4 @@ export const UI_ATLAS_FRAMES: Readonly<Record<string, { key: string; frame: stri
     "page": 0
   }
 };
-export const UI_ATLAS_SOURCE_DIGEST = "949794409f2c208739cc58d902eecf909b34d2d3f3c170fe2156c55aa60d10db";
+export const UI_ATLAS_SOURCE_DIGEST = "b1d586fe67d9573bf06be279d1f874e92c103c74c52a79470b2f3fc877619384";

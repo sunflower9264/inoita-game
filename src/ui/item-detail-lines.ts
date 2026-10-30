@@ -3,7 +3,7 @@ import { equipmentPower, type CharacterStatsCatalog, type EquipmentNumbers, type
 import type { ItemDefinition, ItemInstance } from '../domain/items.ts';
 import type { ShopCatalog } from '../domain/shop.ts';
 import type { DescriptionTextPart } from '../domain/description-text.ts';
-import { itemNameColor } from './item-name-color.ts';
+import { equipmentColor, equipmentGrade } from './item-name-color.ts';
 
 export type ItemDescriptionRow = string | { parts: DescriptionTextPart[] };
 interface ItemDescriptionBody {
@@ -45,10 +45,10 @@ export function itemDescriptionBody(options: {
 }): ItemDescriptionBody {
   const {item, entry, numbers, catalog, grades, member, classNames, skill} = options;
   if (options.concealed) return {title:`${item.typeName}（未鉴定）`, color:'#808080', rows:[], sockets:0};
-  const equipment = item.equipment, grade = entry.numbers?.grade ?? numbers?.defaultGrade ?? 2;
+  const equipment = item.equipment, grade = equipmentGrade(entry.numbers, numbers);
   const prefix = equipment && grade !== 2 ? item.priceKind === 'weapon' ? grades[grade]?.name : grades[grade]?.armorName ?? grades[grade]?.name : '';
   const title = `${prefix ? prefix + ' ' : ''}${item.name}${equipment && entry.enhancement ? '+' + entry.enhancement : ''}`;
-  const color = equipment ? itemNameColor(grades[grade]?.rarity, entry.numbers?.chaos?.tier) : undefined;
+  const color = equipment ? equipmentColor(entry.numbers, numbers, grades) : undefined;
   const parts: DescriptionTextPart[] = [];
   let sockets = 0;
   if (equipment) {
