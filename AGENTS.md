@@ -98,7 +98,7 @@ public/                原样复制进构建产物的静态资源和内容
 tests/                 单元测试（*.test.ts）与独立构建验证
 tools/                 构建、校验、调试现场表生成、静态服务、APK 打包
 deploy/                nginx 站点等部署配置
-docs/                  架构、剧情创作、音频、部署、调试与诊断
+docs/                  架构、掉落、剧情创作、音频、部署、调试与诊断
 android/               Android WebView 壳（可选）
 .agents/skills/        Phaser 4 开发技能
 .claude/skills         指向 ../.agents/skills 的符号链接
