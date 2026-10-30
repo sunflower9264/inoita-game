@@ -57,6 +57,14 @@ test("Kanna's stun strike plays a gold flash on the target",()=>{
   for(const rank of buff.ranks!)assert.equal(rank.effect?.applicationEffect,'flash-gold');
 });
 
+test('player crit and blunt stuns flash like the monster ones',()=>{
+  // 原版这两条 Buff 的 +6 是 -1；玩家反馈要求统一眩晕提示后补成怪物眩晕同款金光。
+  for(const key of ['critical-hit-stun','blunt-hit-stun'] as const){
+    assert.equal(catalog.statusAttackBuffs?.[key]?.applicationEffect,'flash-gold',`${key} 缺少命中闪光`);
+    assert.equal(catalog.statusAttackBuffs?.[key]?.durationMs,960,`${key} 的时长应保持原版的 15 帧`);
+  }
+});
+
 test('every buff visual points at a packaged effect',()=>{
   for(const skill of skills)for(const unit of buffUnits(skill.action))for(const rank of unit.ranks??[]){
     const names=[...(rank.effect?.applicationEffect?[rank.effect.applicationEffect]:[]),
