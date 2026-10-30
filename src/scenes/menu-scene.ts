@@ -122,12 +122,15 @@ export class MenuScene extends Phaser.Scene {
         const panel={x:200,y:126,width:800,height:425};
         view.image(art('slot'),panel.x,panel.y,panel.width,panel.height);
         const list=view.scroll(panel.x+40,panel.y+64,panel.width-80,panel.height-128),content=list.content;
-        // 每一项只有文案、当前值和动作；开关后整页重画，滚动位置由 settingsScroll 接续。
-        const rows:{label:string;value:string;action:()=>void;disabled?:boolean}[]=[];
+        // 音频用滑动条实时改音量，其余项仍是开关；整页重画，滚动位置由 settingsScroll 接续。
+        let rowTop=20;
         for(const [channel,label]of ([['music','背景音乐'],['effects','音效']]as const)){
-          const enabled=this.app.audio?.settings[channel]??true;
-          rows.push({label,value:enabled?'开':'关',action:()=>{this.app.audio?.setEnabled(channel,!enabled);this.render();}});
+          view.text(label,38,rowTop+12,0,34,undefined,content);
+          view.slider(channel,270,rowTop+33,150,this.app.audio?.settings[channel]??1,
+            value=>this.app.audio?.setVolume(channel,value),content);
+          rowTop+=100;
         }
+        const rows:{label:string;value:string;action:()=>void;disabled?:boolean}[]=[];
         const decorations=displaySettings.criticalDecorations;
         rows.push({label:'暴击光效',value:decorations?'开':'关',
           action:()=>{displaySettings.setCriticalDecorations(!decorations);this.render();}});
@@ -140,12 +143,12 @@ export class MenuScene extends Phaser.Scene {
           rows.push({label:'全屏',value:fullscreen==='packaged'?'已全屏':'不支持',action:()=>{},disabled:true});
         }
         rows.forEach((row,index)=>{
-          const top=20+index*100;
+          const top=rowTop+index*100;
           view.text(row.label,38,top+12,0,34,undefined,content);
           button(row.value,270,top,190,67,row.action,row.value.length>2?30:34,content)
             .setData('label',`${row.label}：${row.value}`);
         });
-        list.setHeight(20+(rows.length-1)*100+67+20);
+        list.setHeight(20+(2+rows.length-1)*100+67+20);
         list.onScroll=()=>{this.settingsScroll=list.scrollTop;};
         list.scrollTop=this.settingsScroll;
       }

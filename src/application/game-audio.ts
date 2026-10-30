@@ -15,7 +15,8 @@ export interface AudioCatalog {
   unbound: string[];
 }
 
-interface AudioPreferences { music: boolean; effects: boolean }
+/** 两个通道各自保存 0–1 的音量；0 表示静音。 */
+interface AudioPreferences { music: number; effects: number }
 /** 保留上一首 BGM 的解码缓存：往回走一张图时不用重新解码（约 25 MB/首）。 */
 const MUSIC_CACHE_RETENTION = 1;
 export interface StoryAudioState { music: string | null; ambience: string | null }
@@ -25,11 +26,17 @@ const LEVEL_UP_EFFECT = 'Common_LevelUp';
 /** 预加载分批大小：批次越短，加载期间到达的冷音效排在队尾的时间越短。 */
 const PRELOAD_BATCH = 6;
 
+/** 兼容旧存档：布尔值 true/false 分别迁到满音量和静音。 */
+function volumeOf(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return Math.min(1, Math.max(0, value));
+  return value === false ? 0 : 1;
+}
+
 function preferences(): AudioPreferences {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}');
-    return { music: saved.music !== false, effects: saved.effects !== false };
-  } catch { return { music: true, effects: true }; }
+    return { music: volumeOf(saved.music), effects: volumeOf(saved.effects) };
+  } catch { return { music: 1, effects: 1 }; }
 }
 
 /** The audio scene owns loading; Phaser's SoundManager owns playback across scene changes. */
@@ -65,12 +72,24 @@ export class GameAudio {
     this.scene.load.maxParallelDownloads = 2;
   }
 
-  setEnabled(channel: keyof AudioPreferences, enabled: boolean): void {
-    if (this.settings[channel] === enabled) return;
-    this.settings[channel] = enabled;
+  /** 设置通道音量；0 等价于以前的“关闭”，会停掉对应循环并释放缓存。 */
+  setVolume(channel: keyof AudioPreferences, value: number): void {
+    const next = volumeOf(value);
+    const previous = this.settings[channel];
+    if (previous === next) return;
+    this.settings[channel] = next;
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(this.settings)); } catch { /* private browsing */ }
-    if (channel === 'music') this.applyLoop('music');
-    else this.applyLoop('ambience');
+    if (channel === 'music') {
+      if (previous <= 0 || next <= 0) this.applyLoop('music');
+      else this.setSoundVolume(this.music, 0.65 * next);
+    } else {
+      if (previous <= 0 || next <= 0) this.applyLoop('ambience');
+      else this.setSoundVolume(this.ambience, 0.45 * next);
+    }
+  }
+
+  private setSoundVolume(sound: Phaser.Sound.BaseSound | undefined, volume: number): void {
+    (sound as { setVolume?(value: number): unknown } | undefined)?.setVolume?.(volume);
   }
 
   enterMenu(): void {
@@ -117,10 +136,11 @@ export class GameAudio {
   }
 
   effect(name: string | null | undefined): void {
-    if (!name || !this.settings.effects || !this.catalog.effects[name]) return;
+    const volume = this.settings.effects;
+    if (!name || volume <= 0 || !this.catalog.effects[name]) return;
     const key = `se:${name}`;
     if (this.scene.cache.audio.exists(key)) {
-      if (!this.isSuspended()) this.scene.sound.play(key, { volume: 0.75 });
+      if (!this.isSuspended()) this.scene.sound.play(key, { volume: 0.75 * volume });
       return;
     }
     // 音效要等到加载完成才响；同一次加载期间重复触发只补播一次，免得到货瞬间叠放几遍。
@@ -129,8 +149,9 @@ export class GameAudio {
     const context = this.contextRevision;
     void this.load(key, this.catalog.effects[name]).then(loaded => {
       this.replayQueued.delete(key);
-      if (loaded && context === this.contextRevision && this.settings.effects && !this.isSuspended())
-        this.scene.sound.play(key, { volume: 0.75 });
+      const current = this.settings.effects;
+      if (loaded && context === this.contextRevision && current > 0 && !this.isSuspended())
+        this.scene.sound.play(key, { volume: 0.75 * current });
     });
   }
 
@@ -199,9 +220,9 @@ export class GameAudio {
     const previousKey = music ? this.playingMusicKey : this.playingAmbienceKey;
     const id = music ? this.musicId : this.ambienceId;
     const revision = music ? ++this.musicRevision : ++this.ambienceRevision;
-    const enabled = music ? this.settings.music : this.settings.effects;
+    const volume = music ? this.settings.music : this.settings.effects;
     const path = id && (music ? this.catalog.music[id] : this.catalog.effects[id]);
-    const key = enabled && id && path ? `${music ? 'bgm' : 'se'}:${id}` : undefined;
+    const key = volume > 0 && id && path ? `${music ? 'bgm' : 'se'}:${id}` : undefined;
     current?.stop(); current?.destroy();
     if (music) { this.music = undefined; this.playingMusicKey = undefined; }
     else { this.ambience = undefined; this.playingAmbienceKey = undefined; }
@@ -212,11 +233,11 @@ export class GameAudio {
       if (music) this.retainMusic(previousKey);
       else this.scene.cache.audio.remove(previousKey);
     }
-    if (!key || !path) { if (music && !enabled) this.releaseRetainedMusic(); return; }
+    if (!key || !path) { if (music && volume <= 0) this.releaseRetainedMusic(); return; }
     void this.load(key, path).then(loaded => {
-      if (!loaded || revision !== (music ? this.musicRevision : this.ambienceRevision) ||
-          !(music ? this.settings.music : this.settings.effects)) return;
-      const sound = this.scene.sound.add(key, { loop: true, volume: music ? 0.65 : 0.45 });
+      const current = music ? this.settings.music : this.settings.effects;
+      if (!loaded || revision !== (music ? this.musicRevision : this.ambienceRevision) || current <= 0) return;
+      const sound = this.scene.sound.add(key, { loop: true, volume: music ? 0.65 * current : 0.45 * current });
       if (music) { this.music = sound; this.playingMusicKey = key; this.dropRetainedMusic(key); }
       else { this.ambience = sound; this.playingAmbienceKey = key; }
       sound.play();

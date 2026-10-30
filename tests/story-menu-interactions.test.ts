@@ -460,7 +460,7 @@ test('system exposes load alongside save while settings keeps the working displa
   displaySettings.setCriticalDecorations(true);
   t.after(()=>displaySettings.setCriticalDecorations(true));
   const f=fixture();t.after(f.cleanup);
-  const audio={settings:{music:true,effects:true},setEnabled(channel:'music'|'effects',enabled:boolean){this.settings[channel]=enabled;}};
+  const audio={settings:{music:1,effects:1},setVolume(channel:'music'|'effects',value:number){this.settings[channel]=value;}};
   Object.defineProperty(f.app,'audio',{value:audio});
   f.menu.show('system');
   const actions=f.scene.nodes.filter(node=>node.shown&&node.getData('uiAction')&&node.getData('labelText'));
@@ -470,32 +470,35 @@ test('system exposes load alongside save while settings keeps the working displa
   assert.equal(f.scene.buttons('读取存档').length,0);assert.equal(f.scene.buttons('读档').length,0);
   assert(!f.scene.texts().some(text=>text.includes('语言')||text.includes('简体中文')));
   assert(f.scene.texts().includes('音乐'));assert(f.scene.texts().includes('音效'));
-  // 环境设置里音乐、音效、帧率显示、暴击光效四个开关的标签都是「开启／关闭」，按行位置各取一个；
-  // 每次点击都会重画整块面板，所以要重新查。
+  // 音乐、音效改成滑动条；帧率显示和暴击光效仍是开关。
+  const sliders=f.internals.body.sliders;
+  assert.deepEqual(sliders.map(slider=>slider.label),['music','effects']);
+  assert.equal(sliders[0]!.value,1);assert.equal(sliders[1]!.value,1);
   const toggle=(y:number)=>f.scene.buttons('开启').concat(f.scene.buttons('关闭')).find(node=>node.y===y)!;
-  const rows={music:80,effects:170,fps:260,critical:350} as const;
-  assert([rows.music,rows.effects,rows.fps,rows.critical].every(y=>toggle(y)),'音乐、音效、帧率显示与暴击光效各有一个开关');
+  const rows={fps:260,critical:350} as const;
+  assert(toggle(rows.fps));assert(toggle(rows.critical));
   // 设置项按 90 行距排，谁也盖不住谁；操作设置位于滚动内容末尾，不要求在首屏视口内。
   const control=f.scene.button('操作设置'),criticalToggle=toggle(rows.critical);
   assert(control.y>=criticalToggle.y+criticalToggle.input!.hitArea.height,'操作设置排在暴击光效下方');
   // 设置页在滚动区里，拖动过的抬手不能算点击。
-  f.scene.press(toggle(rows.effects));
+  f.scene.press(toggle(rows.critical));
   f.scene.input.activePointer.y-=40;
   f.scene.input.emit('pointermove',f.scene.input.activePointer);
-  f.scene.release(toggle(rows.effects));
-  assert.equal(audio.settings.effects,true,'拖动滚动区的抬手不切换音效开关');
-  f.scene.click(toggle(rows.music));
-  assert.equal(audio.settings.music,false);assert.equal(audio.settings.effects,true);
-  f.scene.click(toggle(rows.effects));
-  assert.equal(audio.settings.effects,false);
-  assert.deepEqual(f.scene.buttons('关闭').map(node=>node.y).sort((a,b)=>a-b),[rows.music,rows.effects],'两个音频开关都关上了');
-  assert.equal(toggle(rows.fps).getData('label'),'开启','帧率显示是画面偏好，不受音频开关影响');
-  assert.equal(toggle(rows.critical).getData('label'),'开启','暴击光效不受音频开关影响');
+  f.scene.release(toggle(rows.critical));
+  assert.equal(displaySettings.criticalDecorations,true,'拖动滚动区的抬手不切换暴击光效');
+  sliders[0]!.setValue(.4);
+  assert.equal(audio.settings.music,.4);assert(f.scene.texts().includes('40%'));
+  sliders[0]!.setValue(0);
+  assert.equal(audio.settings.music,0);assert(f.scene.texts().includes('关闭'),'最左边显示关闭');
+  sliders[1]!.setValue(.25);
+  assert.equal(audio.settings.effects,.25);
+  assert.equal(toggle(rows.fps).getData('label'),'开启','帧率显示是画面偏好，不受音量影响');
+  assert.equal(toggle(rows.critical).getData('label'),'开启','暴击光效不受音量影响');
   f.scene.click(toggle(rows.critical));
   assert.equal(displaySettings.criticalDecorations,false);
   assert.equal(toggle(rows.critical).getData('label'),'关闭');
   assert.equal(toggle(rows.fps).getData('label'),'开启','暴击光效与帧率显示互不影响');
-  assert.equal(audio.settings.music,false);assert.equal(audio.settings.effects,false);
+  assert.equal(audio.settings.music,0);assert.equal(audio.settings.effects,.25);
 });
 
 test('organise sits above and centered on the all-items category without overlapping its frame', t => {
@@ -511,7 +514,7 @@ test('organise sits above and centered on the all-items category without overlap
 
 test('custom menu buttons share native art and keep labels above their pressed layer', t => {
   const f=fixture();t.after(f.cleanup);
-  Object.defineProperty(f.app,'audio',{value:{settings:{music:true,effects:true},setEnabled(){}}});
+  Object.defineProperty(f.app,'audio',{value:{settings:{music:1,effects:1},setVolume(){}}});
   for(const page of ['system','settings','bag','status'] as const){
     f.menu.show(page);
     if(page==='status')f.scene.click(f.scene.button('查看属性加点'));

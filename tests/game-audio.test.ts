@@ -17,7 +17,7 @@ function harness(options: { suspended?: () => boolean } = {}) {
   const batches: number[] = [];
   /** 一次性音效的播放记录；循环音频走 sound.add()，不进这里。 */
   const played: string[] = [];
-  const sounds: { key: string; isPlaying: boolean; destroyed: boolean }[] = [];
+  const sounds: { key: string; isPlaying: boolean; destroyed: boolean; volume: number; setVolume(value: number): void }[] = [];
   let sinceStart = 0;
   const loader = Object.assign(new EventEmitter(), {
     audio(key: string) { requested.push(key); queued.push(key); sinceStart++; },
@@ -31,10 +31,11 @@ function harness(options: { suspended?: () => boolean } = {}) {
       add(key: string) {
         assert.ok(cache.has(key));
         const sound = {
-          key, isPlaying: false, destroyed: false,
+          key, isPlaying: false, destroyed: false, volume: 1,
           play() { this.isPlaying = true; },
           pause() { this.isPlaying = false; },
           stop() { this.isPlaying = false; },
+          setVolume(value: number) { this.volume = value; },
           destroy() { this.destroyed = true; },
         };
         sounds.push(sound);
@@ -200,7 +201,7 @@ test('换图或进入剧情后，此前的冷音效不再补播', async () => {
 test('加载完成时音效开关已关或已挂起，都不补播', async () => {
   const muted = harness();
   muted.audio.effect(effectName);
-  muted.audio.settings.effects = false;
+  muted.audio.setVolume('effects', 0);
   await muted.drain();
   assert.deepEqual(muted.played, []);
 
@@ -271,6 +272,24 @@ test('retains only one previous BGM and releases retained music when disabled', 
   for(const [mapId] of maps){f.audio.enterMap(mapId);await f.drain();}
   assert.ok(f.cachedKeys().has(`bgm:${maps[1][1].music}`),'上一首保留');
   assert.ok(!f.cachedKeys().has(`bgm:${maps[0][1].music}`),'更早的释放');
-  f.audio.setEnabled('music',false);
-  assert.ok(![...f.cachedKeys()].some(key=>key.startsWith('bgm:')),'关闭音乐后释放所有 BGM 缓存');
+  f.audio.setVolume('music',0);
+  assert.ok(![...f.cachedKeys()].some(key=>key.startsWith('bgm:')),'音乐音量为 0 后释放所有 BGM 缓存');
+});
+
+test('volume changes update the live loop without restarting it', async () => {
+  const f=harness();
+  f.audio.enterMenu();await f.drain();
+  const music=f.sounds.find(sound=>sound.key===`bgm:${catalog.menuMusic}`)!;
+  f.audio.setVolume('music',0.5);
+  assert.equal(music.volume,0.325);
+  assert.equal(f.sounds.length,1,'只改音量，不重建循环');
+  assert.ok(f.playing().includes(music.key));
+});
+
+test('zero effects volume suppresses sound effects', async () => {
+  const f=harness();
+  f.audio.setVolume('effects',0);
+  f.audio.effect(catalog.ui.questStart);
+  await f.drain();
+  assert.deepEqual(f.played,[]);
 });

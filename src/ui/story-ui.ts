@@ -501,8 +501,8 @@ export class StoryUI {
     if(audio)for(const [index,[channel,label]]of [['music','音乐'],['effects','音效']].entries()){
       const key=channel as 'music'|'effects',top=80+index*90;
       v.text(label,260,top+15,0,25,undefined,content);
-      const enabled=audio.settings[key];
-      v.button(enabled?'开启':'关闭',485,top,220,66,()=>{audio.setEnabled(key,!audio.settings[key]);this.render();},{parent:content});
+      // 最左边是静音；拖动时实时改音量，不重画整页，避免打断拖动。
+      v.slider(key,485,top+33,170,audio.settings[key],value=>audio.setVolume(key,value),content);
     }
     // 帧率显示和音量一样是画面/声音偏好，放在同一个面板里；默认开启。
     v.text('帧率显示',260,275,0,25,undefined,content);

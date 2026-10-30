@@ -30,7 +30,8 @@ function fakeView(width:number,height:number){
   return {
     width,height,
     root:{visible:true,bringToTop:()=>{},setPosition:function(){return this;},setScale:function(){return this;},getWorldTransformMatrix:()=>({scaleX:1,scaleY:1,transformPoint:(x:number,y:number)=>({x,y})})},
-    buttons:[] as Button[],texts:[] as string[],textNodes:[] as TextNode[],scrolls:[] as FakeScroll[],enabled:()=>true,focusIndex:-1,
+    buttons:[] as Button[],texts:[] as string[],textNodes:[] as TextNode[],scrolls:[] as FakeScroll[],
+    sliders:[] as {label:string;value:number;setValue:(value:number)=>void}[],enabled:()=>true,focusIndex:-1,
     scene:{game:{events:{emit:()=>{}}},scale:{width,height}},focus:()=>{},layout:()=>{},image:stub,
     text(value:string,x:number,y:number,_width:number,size:number){
       this.texts.push(value);
@@ -41,7 +42,11 @@ function fakeView(width:number,height:number){
         setInteractive:()=>label,on:(event:string,handler:()=>void)=>{node.handlers.set(event,handler);return label;}};
       return label;
     },rect:()=>{},
-    clear(){this.buttons=[];this.texts=[];this.scrolls=[];this.focusIndex=-1;},
+    clear(){this.buttons=[];this.texts=[];this.scrolls=[];this.sliders=[];this.focusIndex=-1;},
+    slider(label:string,_x:number,_y:number,_width:number,value:number,onChange:(value:number)=>void){
+      const slider={label,value,setValue:(next:number)=>{slider.value=next;onChange(next);}};
+      this.sliders.push(slider);return slider;
+    },
     button(label:string,x:number,y:number,width:number,height:number,action:()=>void,options:{disabled?:boolean}={}){
       const button=new Button(label,action,options.disabled);
       Object.assign(button,{x,y,width,height});this.buttons.push(button);return button;
@@ -164,12 +169,14 @@ test('title settings keeps every row inside a scrolling panel',()=>{
   assert(f.view.texts.includes('背景音乐'));assert(f.view.texts.includes('音效'));
   assert(!f.view.texts.some(text=>text.includes('语言')||text.includes('简体中文')));
   assert.deepEqual(f.view.buttons.map(button=>button.getData('label')),
-    ['返回主菜单','背景音乐：开','音效：开','暴击光效：开','全屏：不支持']);
+    ['返回主菜单','暴击光效：开','全屏：不支持']);
+  assert.deepEqual(f.view.sliders.map(slider=>slider.label),['music','effects']);
+  assert(f.view.sliders.every(slider=>slider.value===1),'音频默认满音量');
   // 选项挂在面板内侧的滚动区：边框不滚，行数再多也只滚动，不会画到边线上。
   const scroll=f.view.scrolls.at(-1);assert.ok(scroll);
   assert.deepEqual([scroll.x,scroll.y,scroll.width,scroll.height],[240,190,720,297]);
   const rows=f.view.buttons.filter(button=>String(button.getData('label')).includes('：'));
-  assert.equal(rows.length,4);
+  assert.equal(rows.length,2);
   assert(rows.every(row=>row.y>=0&&row.y+row.height<=scroll.extent),'每一行都在滚动内容的高度内');
   assert(scroll.extent>scroll.height,'四行排不进可视区时靠滚动查看');
 });
@@ -182,6 +189,19 @@ test('title settings toggles critical light effects',t=>{
   f.click('暴击光效：开');
   assert(f.view.buttons.some(button=>button.getData('label')==='暴击光效：关'));
   assert.equal(displaySettings.criticalDecorations,false);
+});
+
+test('title settings uses volume sliders and leftmost means silence',()=>{
+  const f=fixture();
+  const audio={settings:{music:1,effects:1},setVolume(channel:'music'|'effects',value:number){this.settings[channel]=value;}};
+  Object.defineProperty(f.app,'audio',{value:audio});
+  f.click('环境设置');
+  const music=f.view.sliders.find(slider=>slider.label==='music')!;
+  const effects=f.view.sliders.find(slider=>slider.label==='effects')!;
+  music.setValue(0);effects.setValue(.5);
+  assert.equal(audio.settings.music,0,'最左边是静音');
+  assert.equal(audio.settings.effects,.5);
+  assert.equal(music.value,0);
 });
 
 test('challenge mode is disabled and is excluded from native keyboard focus',()=>{

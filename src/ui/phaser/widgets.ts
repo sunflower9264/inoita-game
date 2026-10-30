@@ -1,4 +1,5 @@
 import { UI_EVENTS } from '../../application/ui-events.ts';
+import { VolumeSlider } from './volume-slider.ts';
 import Phaser from 'phaser';
 import { readSafeArea } from '../viewport.ts';
 import { loadSceneAssets, type PendingAsset } from '../../rendering/scene-assets.ts';
@@ -76,6 +77,8 @@ export class UiSurface {
   /** 静态层压在最底下：图框、底板这类不随状态变化的对象只画一次，动态内容盖在上面。 */
   readonly staticRoot: Phaser.GameObjects.Container;
   readonly scrolls: ScrollArea[] = [];
+  /** 音量条等需要自己处理拖动的控件；clear() 时一起解绑场景事件。 */
+  readonly sliders: VolumeSlider[] = [];
   // 取消回调挂在按钮本身：虚拟滚动会反复销毁重建行，独立数组会留下已销毁按钮的闭包。
   private cancelInput=():void=>{this.buttons.forEach(button=>{if(button.active)button.getData('cancelPress')?.();});this.scrolls.forEach(scroll=>scroll.cancelGesture());};
   private buttons: Phaser.GameObjects.Container[] = [];
@@ -98,6 +101,7 @@ export class UiSurface {
     this.scrolls.forEach(scroll=>scroll.layout());
   }
   clear(): void {
+    this.sliders.splice(0).forEach(slider=>slider.destroy());
     this.scrolls.splice(0).forEach(scroll=>scroll.destroy()); this.buttons=[]; this.focusIndex=-1;
     // 逐个移除，留下静态层；`removeAll(true)` 会连静态层一起销毁。
     [...this.root.list].forEach(child=>{if(child!==this.staticRoot)child.destroy();});
@@ -239,6 +243,11 @@ export class UiSurface {
    * `(-14,-14)`，与原版一样要露出滚动区之外，第一列／第一行才不会被裁成缺边的圆环。
    */
   scroll(x:number,y:number,width:number,height:number,bleed=0):ScrollArea {const scroll=new ScrollArea(this,x,y,width,height,bleed);this.scrolls.push(scroll);return scroll;}
+  /** 0–1 的音量滑动条；调用方自己决定标签和位置。 */
+  slider(label:string,x:number,y:number,width:number,value:number,onChange:(value:number)=>void,parent=this.root):VolumeSlider {
+    const slider=new VolumeSlider(this.scene,parent,label,x,y,width,value,onChange);
+    this.sliders.push(slider);return slider;
+  }
 }
 
 /**
