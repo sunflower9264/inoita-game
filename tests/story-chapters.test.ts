@@ -296,7 +296,7 @@ test('a new game follows the main story through the ending and all five memory l
     assert.equal(h.session.status('quest-128'), 'completed');
     assert.equal(h.session.status('quest-129'), 'active');
     await h.travel('noxious-sanctum-chapel-0f48cdaf'); await h.region('event-119');
-    await h.defeat('enemy-mutated-abbot-1'); await h.defeat('enemy-mutated-abbot-1');
+    await h.defeat('enemy-mutated-abbot-1');
     assert.equal(h.director.runtime.eventStatus('event-120'), 'completed');
     h.choices(['option-1']); await h.region('event-121');
     assert.equal(h.session.status('quest-129'), 'completed');

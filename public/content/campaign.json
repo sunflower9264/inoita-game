@@ -73403,12 +73403,6 @@
               "status": "prepared",
               "spawns": [
                 {
-                  "id": "enemy-0",
-                  "enemyId": "enemy-mutated-abbot-1",
-                  "x": 184,
-                  "y": 232
-                },
-                {
                   "id": "enemy-1",
                   "enemyId": "enemy-mutated-abbot-1",
                   "x": 152,
@@ -234885,28 +234879,10 @@
               "status": "prepared",
               "spawns": [
                 {
-                  "id": "enemy-0",
-                  "enemyId": "enemy-seal-protector-1",
-                  "x": 200,
-                  "y": 184
-                },
-                {
                   "id": "enemy-1",
                   "enemyId": "enemy-seal-protector-1",
                   "x": 232,
                   "y": 136
-                },
-                {
-                  "id": "enemy-2",
-                  "enemyId": "enemy-guardian-golem-3",
-                  "x": 152,
-                  "y": 184
-                },
-                {
-                  "id": "enemy-3",
-                  "enemyId": "enemy-guardian-golem-3",
-                  "x": 248,
-                  "y": 184
                 },
                 {
                   "id": "enemy-4",

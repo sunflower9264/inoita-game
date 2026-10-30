@@ -31,6 +31,6 @@ test('NPC 477 keeps the opening in the seal center and native event 401 warps to
     assert.equal(h.director.runtime.snapshot().runs.find(run=>run.eventId==='event-401')?.status,'waiting');
     const encounter=h.session.storyWorld.captureState().encounters.find(encounter=>encounter.id.endsWith(':event-401-battle'));
     assert.ok(encounter);
-    assert.equal(encounter.spawns.length,6);
+    assert.equal(encounter.spawns.length,3);
   }finally{h.director.dispose();}
 });
