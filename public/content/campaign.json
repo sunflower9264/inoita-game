@@ -301544,7 +301544,7 @@
         {
           "item": "west-mine-key",
           "quantity": 1,
-          "removal": "quantity"
+          "removal": "all-matching"
         }
       ],
       "rewards": {
@@ -301870,7 +301870,7 @@
         {
           "item": "purity-stone",
           "quantity": 1,
-          "removal": "quantity"
+          "removal": "all-matching"
         }
       ],
       "rewards": {
@@ -302004,7 +302004,7 @@
         {
           "item": "magic-rock",
           "quantity": 1,
-          "removal": "quantity"
+          "removal": "all-matching"
         }
       ],
       "rewards": {
@@ -302663,7 +302663,7 @@
         {
           "item": "rodger-s-ore-order-form",
           "quantity": 1,
-          "removal": "quantity"
+          "removal": "all-matching"
         }
       ],
       "rewards": {
@@ -303285,7 +303285,7 @@
         {
           "item": "ore-from-michikoff",
           "quantity": 1,
-          "removal": "quantity"
+          "removal": "all-matching"
         }
       ],
       "rewards": {
@@ -303390,7 +303390,7 @@
         {
           "item": "schreiber-s-necklace",
           "quantity": 1,
-          "removal": "quantity"
+          "removal": "all-matching"
         }
       ],
       "rewards": {
@@ -304234,7 +304234,7 @@
         {
           "item": "redhoods-boss-bandanna",
           "quantity": 1,
-          "removal": "quantity"
+          "removal": "all-matching"
         }
       ],
       "rewards": {
@@ -305804,7 +305804,7 @@
         {
           "item": "jose-s-farming-tools",
           "quantity": 1,
-          "removal": "quantity"
+          "removal": "all-matching"
         }
       ],
       "rewards": {
@@ -313954,7 +313954,7 @@
         {
           "item": "maria-s-letter",
           "quantity": 1,
-          "removal": "quantity"
+          "removal": "all-matching"
         }
       ],
       "rewards": {
@@ -314221,7 +314221,7 @@
         {
           "item": "daisy-bouquet",
           "quantity": 1,
-          "removal": "quantity"
+          "removal": "all-matching"
         }
       ],
       "rewards": {
@@ -317852,7 +317852,7 @@
         {
           "item": "prescription",
           "quantity": 1,
-          "removal": "quantity"
+          "removal": "all-matching"
         }
       ],
       "rewards": {
@@ -319043,7 +319043,7 @@
         {
           "item": "hunter-s-possessions",
           "quantity": 1,
-          "removal": "quantity"
+          "removal": "all-matching"
         }
       ],
       "rewards": {
@@ -319955,7 +319955,7 @@
         {
           "item": "list-of-supplies",
           "quantity": 1,
-          "removal": "quantity"
+          "removal": "all-matching"
         }
       ],
       "rewards": {
@@ -320261,7 +320261,7 @@
         {
           "item": "supplies-2",
           "quantity": 1,
-          "removal": "quantity"
+          "removal": "all-matching"
         }
       ],
       "rewards": {
@@ -322138,7 +322138,7 @@
         {
           "item": "refined-flour",
           "quantity": 1,
-          "removal": "quantity"
+          "removal": "all-matching"
         }
       ],
       "rewards": {
@@ -322354,7 +322354,7 @@
         {
           "item": "purified-waters",
           "quantity": 1,
-          "removal": "quantity"
+          "removal": "all-matching"
         }
       ],
       "rewards": {
@@ -327677,7 +327677,7 @@
         {
           "item": "drow-warrior-s-sword",
           "quantity": 1,
-          "removal": "quantity"
+          "removal": "all-matching"
         }
       ],
       "rewards": {
