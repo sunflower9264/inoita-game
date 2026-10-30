@@ -402,8 +402,7 @@ export class StoryUI {
     if(this.shortcutEdit){this.renderShortcutScreen();this.renderBackButton();this.sync();return;}
     if(this.page!=='shop'&&this.page!=='crafting'&&this.page!=='save'&&this.page!=='load')tabs.forEach(([page,label],index)=>{const button=v.button('',35+index*149,25,102,116,()=>this.show(page),{bare:true}).setData('label',label);v.image(this.content!.assets[`tab-${page}`],12,0,78,78,button);v.text(label,51,85,90,20,undefined,button).setOrigin(.5,0);button.setAlpha(this.page===page||(['settings','debug'] as Page[]).includes(this.page)&&page==='system'?1:.65);});
     if(this.page==='crafting'&&this.craftingPanel){
-      const panel=this.craftingPanel;v.text(this.world!.actors[this.craftingActor!].name,512,25,0,28).setOrigin(.5,0);
-      (['chaos','epic-chaos'] as const).forEach((tier,index)=>v.button(panel.crafting.catalog.operations[tier].name,320+index*200,82,184,54,()=>panel.choose(tier),{selected:panel.tier===tier}).setData('label',panel.crafting.catalog.operations[tier].name));
+      v.text(this.world!.actors[this.craftingActor!].name,512,25,0,28).setOrigin(.5,0);
     }
     v.button('',947,24,51,51,()=>this.close(),{image:this.content!.assets.close,pressed:this.content!.assets['close-pressed']}).setData('label','关闭菜单');
     if(this.page==='bag')this.renderBag();if(this.page==='status')this.renderStatus();if(this.page==='skills')this.renderSkills();if(this.page==='party')this.renderParty();if(this.page==='quests')this.renderQuests();if(this.page==='shop')this.shopPanel?.render(this.body,this.modal!,this.placeModal,this.description!);

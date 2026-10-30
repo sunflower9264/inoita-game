@@ -206,7 +206,7 @@ const itemCatalog=shape<ItemCatalog>({items:record(object({name:text,description
   use:optional(object({kind:oneOf(...ITEM_USES),recovery:optional(variant('mode',{amount:object({mode:oneOf('amount'),minHealth:count,maxHealth:count,restoresMana:boolean,cooldownMs:count}),rate:object({mode:oneOf('rate'),ratePercent:count,restoresMana:boolean,cooldownMs:count})})),regenerate:optional(object({durationMs:count,healthRecoveryPerPulse:count,manaRecoveryPerPulse:count})),rewards:optional(array(object({item:text,quantity:count}))),classId:optional(text),elite:optional(boolean),recipes:optional(strings),
     target:optional(oneOf('weapon','armor')),maxLevel:optional(integer),requiresEnhanced:optional(boolean)}))})),
   startingEquipment:record(record(text)),startingInventory:array(object({item:text,quantity:count})),startingShortcut:text,
-  dualWieldClasses:strings,merchantItems:strings,classSkills:record(strings),skillDescriptions:optional(record(object({name:text,className:text}))),recipes:record(object({name:text,result:text,materials:array(object({item:text,quantity:count}))}))});
+  dualWieldClasses:strings,merchantItems:strings,classSkills:record(strings),skillDescriptions:optional(record(object({name:text,className:text}))),recipes:record(object({name:text,result:text,materials:array(object({item:text,quantity:count})),cost:count,book:boolean}))});
 export function parseItemCatalog(value:unknown):ItemCatalog {
   itemCatalog(value,'items');const result=value as ItemCatalog;
   const classes=Object.keys(result.startingEquipment);
@@ -250,7 +250,10 @@ export function parseItemCatalog(value:unknown):ItemCatalog {
   requireValue(starterIds.has(result.startingShortcut)&&result.items[result.startingShortcut].shortcut,
     'items.startingShortcut','初始快捷物品必须在背包且可用');
   for(const id of classes)requireValue(result.classSkills[id]?.length,id,'缺少职业技能');
-  for(const recipe of Object.values(result.recipes))for(const item of [recipe.result,...recipe.materials.map(m=>m.item)])requireValue(result.items[item],'items.recipes','配方物品不存在');
+  for(const [id,recipe] of Object.entries(result.recipes)){
+    requireValue(recipe.cost>0,id,'配方费用必须大于零');
+    for(const item of [recipe.result,...recipe.materials.map(m=>m.item)])requireValue(result.items[item],'items.recipes','配方物品不存在');
+  }
   for(const id of result.dualWieldClasses)requireValue(classes.includes(id),id,'双持职业不存在');
   for(const id of result.merchantItems)requireValue(result.items[id],id,'商人物品不存在');
   return result;

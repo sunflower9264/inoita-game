@@ -361,6 +361,7 @@
     "craft-confirm": "是否以当前的配方来合成？",
     "craft-materials": "材料不足。\n无法进行合成。",
     "craft-target": "需要在背包中\n选择要进行合成的道具。",
-    "enchant-max": "强化已达到上限。"
+    "enchant-max": "强化已达到上限。",
+    "craft-recipe": "还没有学会这个配方。"
   }
 }

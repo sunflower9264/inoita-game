@@ -1,15 +1,16 @@
 import {rollChaos,type ChaosTier,type ChaosRule} from './chaos-equipment.ts';
-import type {ItemCatalog,ItemReward} from './items.ts';
+import type {ItemCatalog,ItemRecipe,ItemReward} from './items.ts';
 import type {Session} from './session.ts';
 
 interface CraftingOperation {name:string;costPerLevel:number;materials:ItemReward[];rule:ChaosRule}
 export interface CraftingCatalog {operations:Record<ChaosTier,CraftingOperation>}
-type CraftingNotice='craft-target'|'craft-incompatible'|'craft-epic'|'craft-needs-chaos'|'craft-max'|'craft-money'|'craft-materials';
+type CraftingNotice='craft-target'|'craft-incompatible'|'craft-epic'|'craft-needs-chaos'|'craft-max'|'craft-money'|'craft-materials'|'craft-recipe';
 export class CraftingError extends Error {
   readonly notice:CraftingNotice;
   constructor(notice:CraftingNotice){super('无法进行合成');this.notice=notice;}
 }
 export interface CraftingQuote {readonly tier:ChaosTier;readonly target:string;readonly revision:number;readonly cost:number}
+export interface RecipeQuote {readonly recipe:string;readonly revision:number;readonly cost:number}
 
 export function parseCrafting(value:unknown):CraftingCatalog {
   const fail=()=>{throw new Error('合成目录无效');};
@@ -37,6 +38,32 @@ export function validateCrafting(catalog:CraftingCatalog,items:ItemCatalog):void
 export class EquipmentCrafting {
   readonly session:Session;readonly catalog:CraftingCatalog;
   constructor(session:Session,catalog:CraftingCatalog){this.session=session;this.catalog=catalog;}
+  recipe(id:string):ItemRecipe|undefined { return this.session.bag.catalog.recipes[id]; }
+  /** 配方书配方只有学会后才进入列表；常备配方（药水、宝石）始终可用。 */
+  availableRecipes():{id:string;recipe:ItemRecipe}[] {
+    const learned=new Set(this.session.bag.learnedRecipes);
+    return Object.entries(this.session.bag.catalog.recipes)
+      .filter(([id,recipe])=>!recipe.book||learned.has(id))
+      .map(([id,recipe])=>({id,recipe}));
+  }
+  recipeQuote(id:string):RecipeQuote {
+    const bag=this.session.bag,recipe=bag.catalog.recipes[id];
+    if(!recipe||(recipe.book&&!bag.learnedRecipes.includes(id)))throw new CraftingError('craft-recipe');
+    if(recipe.materials.some(m=>bag.count(m.item)<m.quantity))throw new CraftingError('craft-materials');
+    if(this.session.money<recipe.cost)throw new CraftingError('craft-money');
+    return {recipe:id,revision:bag.revision,cost:recipe.cost};
+  }
+  recipeCommit(quote:RecipeQuote):void {
+    const bag=this.session.bag;
+    if(bag.revision!==quote.revision)throw new CraftingError('craft-target');
+    const current=this.recipeQuote(quote.recipe),recipe=bag.catalog.recipes[current.recipe];
+    if(bag.revision!==current.revision)throw new CraftingError('craft-target');
+    this.session.transaction(()=>{
+      for(const material of recipe.materials)bag.remove(material.item,material.quantity);
+      this.session.spendMoney(current.cost);
+      bag.add(recipe.result,1);
+    });
+  }
   targetProblem(tier:ChaosTier,target?:string):CraftingNotice|undefined {
     const bag=this.session.bag,entry=target?bag.get(target):undefined;
     if(!entry||!bag.entries.some(e=>e.id===target))return 'craft-target';

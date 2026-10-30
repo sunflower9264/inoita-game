@@ -78,6 +78,14 @@ export interface ItemDefinition extends StoryItem {
   };
   use?: ItemUse;
 }
+export interface ItemRecipe {
+  name: string;
+  result: string;
+  materials: ItemReward[];
+  cost: number;
+  /** 配方书配方只有学会后才出现在融合器列表里。 */
+  book: boolean;
+}
 export interface ItemCatalog {
   items: Record<string, ItemDefinition>;
   startingEquipment: Record<string, Partial<Record<EquipmentSlot, string>>>;
@@ -87,7 +95,7 @@ export interface ItemCatalog {
   merchantItems: string[];
   classSkills: Record<string,string[]>;
   skillDescriptions?: Record<string,{name:string;className:string}>;
-  recipes: Record<string,{name:string;result:string;materials:ItemReward[]}>;
+  recipes: Record<string,ItemRecipe>;
 }
 export interface ItemInstance {
   numbers?: ItemNumbers;
