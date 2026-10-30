@@ -25,7 +25,7 @@ import { WorldEnemyRoster } from '../domain/world-enemies.ts';
 import { WorldCombat, type WorldCombatState } from './world-combat.ts';
 import { QuestEnemyWatch } from '../domain/quest-enemies.ts';
 import { parseDrops, rollChestLoot, type DropCatalog, type DropReward } from '../domain/drops.ts';
-import { canReachChest, CHEST_OPEN_MS, facesTarget, nearInteractable, nearInteractive } from '../domain/chests.ts';
+import { BODY_ADJACENT_GAP, canReachChest, CHEST_OPEN_MS, facesTarget, nearInteractable, nearInteractive, SHOP_COUNTER_GAP } from '../domain/chests.ts';
 import { parseSprings, rollSpringEffect, type SpringCatalog } from '../domain/springs.ts';
 import { groundLootFor } from '../domain/ground-loot.ts';
 import { GroundLootView } from '../rendering/ground-loot.ts';
@@ -1674,10 +1674,12 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
       if (!character.container.visible) continue;
       if (this.chestOpened(character)) continue;
       if (character.entity.spring && this.map && this.app.session.springs.isEmpty(this.map.id, character.entity.id)) continue;
-      // 宝箱按原版「身边 24 px」选目标；矩形间隙档只给把玩家挡在 24 px 外的大体积机关兜底。
+      // 宝箱按原版「身边 24 px」选目标；机关按真实碰撞盒贴边兜底。商店能隔着柜台
+      // 说话，普通剧情/NPC 只放宽到贴身一格，避免隔两三格选中净化石这类目标。
+      const shop = !!this.app.shops.shops[character.entity.actor];
       if (!(character.actor.chest
         ? nearInteractable(controlled.container, character.container)
-        : nearInteractive(controlled.container, character.container, !!character.actor.collision))) continue;
+        : nearInteractive(controlled.container, character.container, character.actor.collision, !!character.entity.flip, shop ? SHOP_COUNTER_GAP : BODY_ADJACENT_GAP))) continue;
       const candidate = this.interactionCandidate(character);
       if (candidate === null) continue;
       const d = Math.abs(character.container.x - controlled.container.x) + Math.abs(character.container.y - controlled.container.y);
@@ -1766,7 +1768,7 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
       this.occupiedRegions,
       event => {
         const beside = this.characters.find(character => character.entity.actor === event.near && (!event.nearCharacterId || character.entity.characterId === event.nearCharacterId) && character.container.visible);
-        return beside && nearInteractive(pos, beside.container, !!beside.actor.collision) ? beside : null;
+        return beside && nearInteractive(pos, beside.container, beside.actor.collision, !!beside.entity.flip) ? beside : null;
       },
       event => !event.condition || this.app.session.evaluateCondition(event.condition));
     if (near) {

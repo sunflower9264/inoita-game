@@ -484,25 +484,25 @@ export function playthrough(saved?:SessionState){
     // 那会让后面的剧情状态提前（旧辅助器只对目标角色调一次导演）。
     const bound=campaign.events.filter(event=>event.source==='near'&&event.near===entity.actor).map(event=>event.id);
     if(rearm){
-      // 走开一步要让占用表真的释放：带碰撞的对象用的是矩形间距判定，触发范围比 32px 大，
+      // 走开一步要让占用表真的释放：带碰撞的对象按真实碰撞盒的贴边间隙判定，
       // 沿原方向退一步可能仍在范围内。沿原方向找一个确实在交互范围外的合法落脚点。
-      const blocking=!!world.actors[entity.actor].collision,location=session.storyWorld.currentLocation!;
+      const collision=world.actors[entity.actor].collision,location=session.storyWorld.currentLocation!;
       const shape=world.actors[campaign.start.actor],navigation=new NavigationWorld(maps.get(location.map)!);
       for(const other of entities())navigation.register({position:()=>other,shape:()=>world.actors[other.actor],enabled:()=>true});
       const dx=location.x-entity.x,dy=location.y-entity.y,length=Math.hypot(dx,dy)||1;
       let away:Point|undefined;
       for(const radius of [72,96,128,160]){
         const point=navigation.nearest(shape,{x:Math.round(entity.x+dx/length*radius),y:Math.round(entity.y+dy/length*radius)});
-        if(!nearInteractive(point,entity,blocking)){away=point;break;}
+        if(!nearInteractive(point,entity,collision,!!entity.flip)){away=point;break;}
       }
       assert.ok(away,`走开以重新触发 ${characterId} 时找不到范围外的落点`);
       session.movePlayer({...location,...away});
       afterMovement('near',bound);await idle();
     }
     // 近身事件由场景在走到位的那一帧上报，这里不再直接通知导演。
-    // 目标带碰撞体积时用原版的矩形间隙兜底（路障只能贴着边缘站，24 px 走不进去）。
-    const blocking=!!world.actors[entity.actor].collision;
-    await walk(point=>nearInteractive(point,entity,blocking),'角色 '+characterId,'near',bound,'all');
+    // 目标带碰撞体积时按真实碰撞盒的贴边间隙兜底（路障只能贴着边缘站，24 px 走不进去）。
+    const collision=world.actors[entity.actor].collision;
+    await walk(point=>nearInteractive(point,entity,collision,!!entity.flip),'角色 '+characterId,'near',bound,'all');
     await idle();
     return entity;
   };

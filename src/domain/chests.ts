@@ -1,4 +1,4 @@
-import type { EnemySpawn, EntityPlacement, Facing } from './content.ts';
+import type { CollisionBox, EnemySpawn, EntityPlacement, Facing } from './content.ts';
 import type { ChestOpenResult } from './drops.ts';
 
 export const CHEST_OPEN_MS = 600;
@@ -8,6 +8,10 @@ const FOOT_BOX_SIZE = 16;
 const RECT_DISTANCE_UNIT = 8;
 /** `GAMESTATE_PressKeyPlay` 要求 `CHAR_GetDistance` 不超过 6。 */
 const RECT_DISTANCE_LIMIT = 6;
+/** 玩家和实体边缘贴在一起时允许的最大间隙：1 个 8 px 单位（一格）。 */
+export const BODY_ADJACENT_GAP = 8;
+/** 商店可以隔着柜台说话：柜台深度再加一格，最多 4 个 8 px 单位。 */
+export const SHOP_COUNTER_GAP = 32;
 
 export interface ChestVisitsState { map?:string; visit:number; opened:string[]; consumed:string[]; enemies:EnemySpawn[] }
 
@@ -104,12 +108,38 @@ export function nearInteractable(from: {x:number;y:number}, target: {x:number;y:
 }
 
 /**
- * 身边的可交互对象。原版先按脚底曼哈顿 24 px 挑；目标自身带实体范围、把玩家挡在
- * 24 px 外时，再用按键链路的矩形间隙档（`CHAR_GetDistance ≤ 6` 个 8 px 单位）兜底。
- * 路障、栅栏这类机关体积大，玩家只能贴着占位边缘站，靠这一档才够得着交互。
+ * 目标碰撞盒（锚在脚底）与玩家 16×16 脚底框之间的两轴间隙之和，单位 px。
+ * `flip` 时按原版镜像横轴，盒子的左边界变成 `-x - width`。
  */
-export function nearInteractive(from: {x:number;y:number}, target: {x:number;y:number}, blocking: boolean): boolean {
-  return nearInteractable(from, target) || (blocking && canReachChest(from, target));
+export function bodyGap(
+  from: {x:number;y:number},
+  target: {x:number;y:number},
+  collision: CollisionBox,
+  flip = false
+): number {
+  const half = FOOT_BOX_SIZE / 2;
+  const left = target.x + (flip ? -collision.x - collision.width : collision.x);
+  const top = target.y + collision.y;
+  const gapX = Math.max(0, left - (from.x + half), from.x - half - (left + collision.width));
+  const gapY = Math.max(0, top - (from.y + half), from.y - half - (top + collision.height));
+  return gapX + gapY;
+}
+
+/**
+ * 身边的可交互对象。原版先按脚底曼哈顿 24 px 挑；目标自身带实体范围、把玩家挡在
+ * 24 px 外时，再按玩家脚底框与目标真实碰撞盒的间隙兜底。普通剧情和 NPC 只放宽到
+ * 贴身（1 格），商店可以隔着柜台（4 格）；大体积机关贴边站也能交互，但不会把
+ * 16×24 的交互对象放宽到两三格之外。
+ */
+export function nearInteractive(
+  from: {x:number;y:number},
+  target: {x:number;y:number},
+  collision?: CollisionBox,
+  flip = false,
+  bodyReach = BODY_ADJACENT_GAP
+): boolean {
+  return nearInteractable(from, target)
+    || (!!collision && bodyGap(from, target, collision, flip) <= bodyReach);
 }
 
 /**

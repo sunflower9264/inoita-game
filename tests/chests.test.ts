@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { ChestVisits, canReachChest, facesTarget, nearInteractable, nearInteractive, rollPlacement } from '../src/domain/chests.ts';
+import { ChestVisits, canReachChest, facesTarget, nearInteractable, nearInteractive, rollPlacement, SHOP_COUNTER_GAP } from '../src/domain/chests.ts';
 import { rollChestLoot, parseDrops, type DropCatalog } from '../src/domain/drops.ts';
 import { parseCharacterStats, parseMap } from '../src/application/content-validation.ts';
 import { Session, DEFAULT_ENEMY_RESPAWN_MS } from '../src/domain/session.ts';
@@ -186,10 +186,24 @@ test('chest interaction follows the native near-object, rect-distance and facing
   assert.equal(canReachChest({x:0,y:0},{x:65,y:0}),false);
   assert.equal(canReachChest({x:0,y:0},{x:48,y:32}),true);
   assert.equal(canReachChest({x:0,y:0},{x:48,y:33}),false);
-  // 自身带实体范围的机关：曼哈顿超过 24 px 时按矩形间隙兜底，否则玩家贴着占位边缘也交互不到。
-  assert.equal(nearInteractive({x:0,y:0},{x:32,y:0},true),true);
-  assert.equal(nearInteractive({x:0,y:0},{x:32,y:0},false),false);
-  assert.equal(nearInteractive({x:0,y:0},{x:65,y:0},true),false);
+  // 自身带实体范围的机关：按真实碰撞盒的贴边间隙兜底（普通目标 1 格，商店柜台 4 格）。
+  const body={x:-8,y:-8,width:16,height:16};
+  assert.equal(nearInteractive({x:0,y:0},{x:32,y:0},body),false,'16×16 目标在 2 格外不再选中');
+  assert.equal(nearInteractive({x:0,y:0},{x:32,y:0},body,false,SHOP_COUNTER_GAP),true,'商店上限 4 格');
+  assert.equal(nearInteractive({x:0,y:0},{x:65,y:0},body,false,SHOP_COUNTER_GAP),false);
+  // 48×32 的路障贴着右边站：锚点曼哈顿 32，盒子边缘间隙 0。
+  const barricade={x:-24,y:-16,width:48,height:32};
+  assert.equal(nearInteractive({x:0,y:0},{x:32,y:0},barricade),true);
+  // 32×64 的钢门：玩家被挡在锚点右侧 28 px，盒子边缘间隙 4。
+  const steelDoor={x:-16,y:-32,width:32,height:64};
+  assert.equal(nearInteractive({x:0,y:0},{x:28,y:0},steelDoor),true);
+  // 16×24 的净化石：玩家站在下方 1 格时贴边可交互，下方 2 格（间隙 16）不再选中。
+  const purityStone={x:-8,y:-16,width:16,height:24};
+  assert.equal(nearInteractive({x:0,y:0},{x:0,y:-16},purityStone),true);
+  assert.equal(nearInteractive({x:0,y:0},{x:0,y:-32},purityStone),false);
+  // 商店隔柜台：16×16 的商人在 48 px 外，间隙 32，用商店上限能选中；普通上限不行。
+  assert.equal(nearInteractive({x:0,y:0},{x:0,y:48},body,false,SHOP_COUNTER_GAP),true);
+  assert.equal(nearInteractive({x:0,y:0},{x:0,y:48},body),false);
   // 朝向：目标落在哪一轴就得朝哪一边（GAMESTATE_PressKeyPlay 0x12f6f8）。
   assert.equal(facesTarget({x:0,y:0},'east',{x:20,y:4}),true);
   assert.equal(facesTarget({x:0,y:0},'north',{x:20,y:4}),false);
