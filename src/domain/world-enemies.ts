@@ -100,12 +100,18 @@ export class WorldEnemyRoster extends EnemyRoster {
     const extras=this.questSpawnIds.size
       ? this.rawMapSpawns.filter(spawn=>this.questSpawnIds.has(spawn.enemyId)&&!this.mapSpawnIds.has(spawn.id))
       : [];
-    const value=[...this.bandSpawns.filter(spawn=>this.session.storyWorld.enemyAvailable(this.mapId,spawn.enemyId))
+    // 遭遇点落在常驻怪身上时，常驻那只让位：原版是让地图上现有的怪直接仇恨玩家，
+    // 不是在同一格再生成一只。同格同敌人的两份摆位只保留遭遇那一份。
+    const encounters=this.session.storyWorld.activeEncounters.filter(encounter=>encounter.map===this.mapId);
+    const claimed=new Set(encounters.flatMap(encounter=>encounter.spawns.map(spawn=>
+      occupiedKey(spawn.enemyId,spawn.x,spawn.y))));
+    const resident=[...this.bandSpawns.filter(spawn=>this.session.storyWorld.enemyAvailable(this.mapId,spawn.enemyId))
       .map(spawn=>this.breakableSpawnFor(spawn)),
       ...extras.filter(spawn=>this.session.storyWorld.enemyAvailable(this.mapId,spawn.enemyId))
         .map(spawn=>this.breakableSpawnFor(spawn)),
-      ...this.session.storyWorld.enemySpawns(this.mapId),...this.session.chests.spawns,...this.session.storyWorld.activeEncounters
-      .filter(encounter=>encounter.map===this.mapId).flatMap(encounter=>encounter.spawns.map(spawn=>({
+      ...this.session.storyWorld.enemySpawns(this.mapId),...this.session.chests.spawns];
+    const value=[...resident.filter(spawn=>!claimed.has(occupiedKey(spawn.enemyId,spawn.x,spawn.y))),
+      ...encounters.flatMap(encounter=>encounter.spawns.map(spawn=>({
         ...spawn,id:encounterSpawnId(encounter.id,spawn.id),respawn:false as const
       })))];
     // 第一次生成可破坏物替换时版本会变，缓存键按生成后的版本记录，下一次可以直接命中。
@@ -267,6 +273,9 @@ capturePreparedState():{roster:ReturnType<EnemyRoster['captureState']>;breakable
 
 /** Each encounter occurrence owns separate combat resources, even on the same map. */
 export function encounterSpawnId(encounter:string,spawn:string):string{return `${encounter}:${spawn}`;}
+
+/** 同一格同一敌人的判定键：用来让遭遇点和地图常驻怪不各生成一只。 */
+function occupiedKey(enemyId:string,x:number,y:number):string{return `${enemyId}|${x}|${y}`;}
 
 /** 剧情移除以当前实例为准；它不产生玩家击杀、奖励或掉落。 */
 export function applyStoryEnemyRemovals(session:Session,map:string,enemies:readonly Pick<PlacedEnemy,'key'|'enemyId'>[],remove:(key:string)=>void):void {

@@ -77,9 +77,20 @@ test('a real map roster filters cleared generation points and keeps explicit enc
   assert.ok(spawn);
   const session=new Session(campaign);
   session.storyWorld.apply({kind:'enemy-availability',map:map.id,enemyId:spawn.enemyId,available:false});
-  session.storyWorld.apply({kind:'encounter',encounter:{id:'movie',map:map.id,status:'active',spawns:[{id:'wolf',enemyId:spawn.enemyId,x:spawn.x,y:spawn.y}]}});
+  session.storyWorld.apply({kind:'encounter',encounter:{id:'movie',map:map.id,status:'active',spawns:[{id:'wolf',enemyId:spawn.enemyId,x:spawn.x+32,y:spawn.y}]}});
   const roster=new WorldEnemyRoster(session,{...map,enemySpawns:[spawn]},[],1);
   assert.deepEqual(roster.spawns.map(spawn=>spawn.id),[encounterSpawnId('movie','wolf')]);
   session.storyWorld.apply({kind:'enemy-availability',map:map.id,enemyId:spawn.enemyId,available:true});
   assert.ok(roster.spawns.some(candidate=>candidate.id===spawn.id));
+});
+
+test('an encounter that starts on a resident spawn leaves only one enemy there', () => {
+  const map=read('maps/shadow-forest-west') as WorldMap, spawn=map.enemySpawns![0];
+  assert.ok(spawn);
+  const session=new Session(campaign);
+  const roster=new WorldEnemyRoster(session,{...map,enemySpawns:[spawn]},[],1);
+  assert.deepEqual(roster.spawns.map(candidate=>candidate.id),[spawn.id]);
+  session.storyWorld.apply({kind:'encounter',encounter:{id:'event-72',map:map.id,status:'active',
+    spawns:[{id:'guard',enemyId:spawn.enemyId,x:spawn.x,y:spawn.y}]}});
+  assert.deepEqual(roster.spawns.map(candidate=>candidate.id),[encounterSpawnId('event-72','guard')]);
 });
