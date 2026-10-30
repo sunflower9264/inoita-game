@@ -467,7 +467,7 @@ export class Bag {
         break;
       }
       case 'socket': {const entry=this.instances.get(target!)!;entry.gems.push(source.item);result.message=`${this.catalog.items[entry.item].name}已镶嵌${definition.name}`;break;}
-      case 'purify': {delete this.instances.get(target!)!.numbers!.chaos;result.message='';break;}
+      case 'purify': {const entry=this.instances.get(target!)!;delete entry.numbers!.chaos;result.message=`${this.catalog.items[entry.item].name}的混沌属性已净化`;break;}
       case 'pack': result.rewards=use.rewards!.map(reward=>({...reward}));break;
       case 'box': case 'unseal': {
         result.rewards=[{...pick(use.rewards!)}];

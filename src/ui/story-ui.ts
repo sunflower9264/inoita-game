@@ -256,7 +256,7 @@ export class StoryUI {
     if(!this.session?.bag.get(entry))return;
     // `selectItem` 对同一条是「再点一次就收起」，调试条连点两下会把面板关掉，所以先清空再选。
     this.selectedItem=undefined;this.applying=undefined;
-    this.show('bag');this.selectItem(entry,side,true);
+    this.show('bag');this.selectItem(entry,side);
   }
   /** 调试入口：直接打开某件物品的使用弹层。`kind='discard'` 打开丢弃框。 */
   debugUse(entry:string,kind:'use'|'discard'='use'):void{
@@ -1108,17 +1108,20 @@ export class StoryUI {
     if(this.filter===INVENTORY_SIDE_FILTERS.at(-1))v.image(panels.assets['column-cap-bottom'],side.x-19,side.y+side.offsets.at(-1)!+38,21,34);
   }
   /** 说明面板停在点选来源的对面栏：物品在左栏、身上装备在右栏，见 bag-layout 的说明。 */
-  private selectItem(id:string,side:'left'|'right',detailOnly=false):void{
+  private selectItem(id:string,side:'left'|'right'):void{
     this.itemResult=undefined;
     if(this.applying===id){this.applying=undefined;this.notice='';this.selectedItem=undefined;this.render();return;}
     if(this.applying){this.applying=undefined;this.notice='';}
-    const bag=this.session!.bag,entry=bag.get(id),use=entry?bag.catalog.items[entry.item].use:undefined;
-    if(!detailOnly&&use&&NON_MENU_USE_KINDS.has(use.kind)&&this.hasApplyTarget(id)){
-      this.applying=id;this.selectedItem=undefined;this.notice='点选要使用的装备';this.scrollOffsets.delete('bag:item');this.render();return;
-    }
     this.descSide=side;this.selectedItem=this.selectedItem===id?undefined:id;this.scrollOffsets.delete('bag:item');this.render();
   }
-  /** 宝石、强化卷轴这类必须先选装备的道具：点一下进入选目标状态，再点装备格使用。 */
+  /** 宝石、强化卷轴这类必须先选装备的道具：由说明里的按钮进入选目标状态，再点装备格使用。 */
+  private beginApply(id:string):void{
+    if(!this.hasApplyTarget(id)){this.app.ui.showInstant('没有可以使用的装备。');return;}
+    // 上一次拖放留下的抬手抑制不能吃掉这次点选目标。
+    this.suppressClick=false;
+    this.applying=id;this.selectedItem=undefined;this.itemResult=undefined;this.notice='点选要使用的装备';
+    this.scrollOffsets.delete('bag:item');this.render();
+  }
   private hasApplyTarget(id:string):boolean{
     const bag=this.session!.bag;
     if(Object.values(bag.equipmentFor(this.selectedMemberId)).some(target=>!!target&&target!==id&&bag.canApply(id,target)&&!bag.applicationProblem(id,target)))return true;
@@ -1204,6 +1207,7 @@ export class StoryUI {
       }
     }
     if(item.use&&!NON_MENU_USE_KINDS.has(item.use.kind)&&!worn)actions.push({label:USE_LABELS[item.use.kind],image:assets['item-use'],run:()=>this.beginOperation(entry.id),disabled:!!this.itemUseProblem(entry)});
+    if(item.use&&NON_MENU_USE_KINDS.has(item.use.kind)&&!worn)actions.push({label:USE_LABELS[item.use.kind],image:assets['item-use'],run:()=>this.beginApply(entry.id)});
     // 快捷键：与技能页同一套文案与同一屏。已配到任一组的这枚按钮改成「取消快捷键」，点了直接清掉
     // （原版 `UIEquip_ButtonRemoveShortCutExe 0x14c514` → `PLAYER_RemoveShortcutAll(char, 2, 物品编号)`）。
     if(item.shortcut&&!worn){
@@ -1236,12 +1240,13 @@ export class StoryUI {
     try {
       const result=this.session!.bag.use(source,target);
       this.app.audio?.ui('enchant');
-      if(result.notice){this.itemNotice=this.app.menuPanels.itemMessages[result.notice];}
+      const message=result.notice?this.app.menuPanels.itemMessages[result.notice]:result.message;
+      if(message)this.app.ui.showInstant(message);
     } catch(error) {
-      if(error instanceof ItemApplicationError){this.itemNotice=this.app.menuPanels.itemMessages[error.notice];}
+      if(error instanceof ItemApplicationError)this.app.ui.showInstant(this.app.menuPanels.itemMessages[error.notice]);
       else throw error;
     } finally {this.busy=false;}
-    this.render();
+    this.notice='';this.render();
   }
   private renderOperation():void{
     // 弹层画布的锚点由这里的框尺寸决定，不再写死；框从左上角开始画。
@@ -1348,7 +1353,6 @@ export class StoryUI {
     const bag=this.session!.bag,entry=bag.get(drag.entry);if(!entry)return;
     const item=bag.catalog.items[entry.item];
     if(target.craft&&this.craftingPanel)this.craftingPanel.select(drag.entry);
-    else if(this.page==='bag'&&target.entry&&bag.canApply(drag.entry,target.entry))this.applyItem(drag.entry,target.entry);
     else if(target.view!==undefined&&target.cell!==undefined)this.dropOnCell(drag.entry,target.view,target.cell);
     else if(item.equipment&&target.slot){
       // 不能穿的拖放直接作废：职业、锁定、等级与副手规则共用同一份判定，不再弹通用错误文案。
