@@ -16,10 +16,22 @@ type Selection = {kind:'buy'|'sell'; id:string; step:'description'|'quantity'|'c
 
 const SHELF_SLOTS=16;
 const AREA_COLOR='#e2cb9e';
+/** 批量出售的合计金额：只列非零单位，避免“0金0银5铜”这种长串。 */
+function moneyText(amount:number):string{
+  const {gold,silver,copper}=splitMoney(amount),parts:string[]=[];
+  if(gold)parts.push(`${gold}金`);
+  if(silver)parts.push(`${silver}银`);
+  if(copper||!parts.length)parts.push(`${copper}铜`);
+  return parts.join('');
+}
 
 /** The merchant and the player's bag remain visible throughout a trade. */
 export class ShopPanel {
   private selection?:Selection;
+  /** 批量出售模式：点背包格改为勾选，不弹说明面板。 */
+  private batch=false;
+  private readonly batchSelection=new Set<string>();
+  private batchError?:string;
   private bagScroll?:ScrollArea;
   private categoryScroll?:ScrollArea;
   private bagOffset=0;
@@ -47,10 +59,14 @@ export class ShopPanel {
    * 所以停在说明步时不算"弹层打开"，主画布照常收输入。
    */
   get modalOpen():boolean{return !!this.selection&&this.selection.step!=='description';}
-  /** 有选中就存在，不管停在哪一步；关闭键据此逐级退回。 */
-  get active():boolean{return !!this.selection;}
+  /** 有选中就存在，不管停在哪一步；批量模式同样算“在商店里”，关闭键据此逐级退回。 */
+  get active():boolean{return !!this.selection||this.batch;}
   captureScroll():void{this.bagOffset=this.bagScroll?.scrollTop??this.bagOffset;this.categoryOffset=this.categoryScroll?.scrollTop??this.categoryOffset;}
-  cancel():void{this.selection=undefined;this.changed();}
+  cancel():void{
+    this.selection=undefined;
+    this.batch=false;this.batchSelection.clear();this.batchError=undefined;
+    this.changed();
+  }
   /**
    * 面板调试入口：直接摆到某个交易步骤，跳过「点货架格买、点背包格卖」的点击链路。
    * 只给 `?ui-debug` 的调试场景用。可用堆叠商品的 `quantity` 步骤会自动挑一件能买多件的商品；
@@ -101,6 +117,41 @@ export class ShopPanel {
     const item=offer&&this.session.bag.catalog.items[offer.instance.item];
     return offer&&item&&!offer.limited&&item.stackable?99:1;
   }
+  private toggleBatch():void{
+    this.batch=!this.batch;
+    this.selection=undefined;this.batchSelection.clear();this.batchError=undefined;
+    this.changed();
+  }
+  private toggleBatchEntry(id:string):void{
+    if(this.batchSelection.has(id))this.batchSelection.delete(id);else this.batchSelection.add(id);
+    this.batchError=undefined;
+    this.changed();
+  }
+  /** 背包可能在批量模式开着时变化，顺手丢掉已经不存在或卖不掉的勾选。 */
+  private batchEntries():{entry:ItemInstance;price:number}[]{
+    const result:{entry:ItemInstance;price:number}[]=[];
+    for(const id of [...this.batchSelection]){
+      const entry=this.session.bag.get(id),price=entry?this.store.sellPrice(entry):0;
+      if(!entry||price<=0){this.batchSelection.delete(id);continue;}
+      result.push({entry,price});
+    }
+    return result;
+  }
+  /** 一次结算：金额先算完再整批扣物品；成功后由金币通知重画，失败保留勾选并显示原因。 */
+  private sellBatch():void{
+    const entries=this.batchEntries();
+    if(!entries.length)return;
+    const selected=[...this.batchSelection];
+    this.batchSelection.clear();
+    try{
+      this.store.sellMany(entries.map(({entry})=>({id:entry.id,quantity:entry.quantity})));
+      this.batchError=undefined;
+    }catch(error){
+      for(const id of selected)this.batchSelection.add(id);
+      this.batchError=(error as Error).message;
+      this.changed();
+    }
+  }
   /** 原版先画币再画数字：单位间距 103，币 44×40，数字左对齐于币右侧 44、下移 6、白色。 */
   private money(v:UiSurface,amount:number,x:number,y:number):void{
     const {stride,coin,digit,color}=this.layout.money,value=splitMoney(amount);
@@ -145,22 +196,31 @@ export class ShopPanel {
       if(this.selection?.id===offer.id)v.image(catalog.assets.selection,slot.selection.x,slot.selection.y,slot.selection.size,slot.selection.size,button);
     }
     this.bagScroll=v.scroll(bag.x,bag.y,bag.width,bag.height);
-    const entries=session.bag.entries.filter(entry=>matchesFilter(session.bag.catalog.items[entry.item],this.filter)),
+    const entries=session.bag.entries.filter(entry=>matchesFilter(session.bag.catalog.items[entry.item],this.filter)
+        &&(!this.batch||this.store.sellPrice(entry)>0)),
       slots=Math.max(SHELF_SLOTS,Math.ceil(entries.length/bag.columns)*bag.columns);
     for(let index=0;index<slots;index++){
       const x=index%bag.columns*bag.stride,y=Math.floor(index/bag.columns)*bag.stride,entry=entries[index];
       v.image(catalog.assets.slot,x,y,slot.size,slot.size,this.bagScroll.content);
       if(!entry)continue;
       const item=session.bag.catalog.items[entry.item];
-      const button=v.button('',x,y,slot.size,slot.size,()=>this.select('sell',entry.id),{bare:true,parent:this.bagScroll.content,guard:this.bagScroll.guard}).setData('label',`出售 ${item.name}`);
+      const button=v.button('',x,y,slot.size,slot.size,
+        ()=>this.batch?this.toggleBatchEntry(entry.id):this.select('sell',entry.id),
+        {bare:true,parent:this.bagScroll.content,guard:this.bagScroll.guard}).setData('label',`${this.batch?'选择':'出售'} ${item.name}`);
       v.image(item.icon,slot.icon.x,slot.icon.y,slot.icon.size,slot.icon.size,button);
       // 角标挂在格子容器上，坐标相对格子左上角。
       if(entry.quantity>1)v.text(String(entry.quantity),layout.badge.x,layout.badge.y,0,20,layout.badge.color,button).setOrigin(1,0);
-      if(this.selection?.id===entry.id)v.image(catalog.assets.selection,slot.selection.x,slot.selection.y,slot.selection.size,slot.selection.size,button);
+      if(this.selection?.id===entry.id||this.batchSelection.has(entry.id))v.image(catalog.assets.selection,slot.selection.x,slot.selection.y,slot.selection.size,slot.selection.size,button);
     }
     this.bagScroll.setHeight(Math.ceil(slots/bag.columns)*bag.stride);this.bagScroll.scrollTop=this.bagOffset;
+    const batchItems=this.batch?this.batchEntries():[],
+      batchTotal=batchItems.reduce((sum,{entry,price})=>sum+price*entry.quantity,0);
     v.textPlate(catalog.assets['text-plate-left'],catalog.assets['text-plate-right'],layout.money.plate.x,layout.money.plate.y,layout.money.plate.width);
-    this.money(v,session.money,layout.money.x,layout.money.y);
+    if(this.batch){
+      // 批量模式把金额栏临时改成“本次出售合计”，避免和当前持有金币混在一起。
+      const plate=layout.money.plate,label=this.batchError??`合计 ${moneyText(batchTotal)}`;
+      v.text(label,plate.x+plate.width/2,plate.y+2,plate.width,20,this.batchError?'#e9a08a':layout.money.color).setOrigin(.5,0);
+    }else this.money(v,session.money,layout.money.x,layout.money.y);
     // 背包栏右侧那 6 个按钮与背包页是同一列、同一套画法：常态外框是图组 15 索引 20，
     // 选中的那一个在按钮矩形 −(5,12) 上再叠索引 19。原版 `UIStore_DrawInvenBagGroup`
     // 用它们切换背包分类，所以卖东西时看到的就是筛出来的那一类。
@@ -169,7 +229,8 @@ export class ShopPanel {
     const side=layout.sideButtons;
     INVENTORY_SIDE_FILTERS.forEach((filter,index)=>{
         const button=v.button('',side.x,side.y+side.offsets[index],side.width,side.height,
-          ()=>{this.filter=filter;this.bagOffset=0;if(this.bagScroll)this.bagScroll.scrollTop=0;this.changed();},{bare:true});
+          ()=>{this.filter=filter;this.bagOffset=0;if(this.bagScroll)this.bagScroll.scrollTop=0;
+            this.batchSelection.clear();this.batchError=undefined;this.changed();},{bare:true});
         v.image(this.frames['page-button-frame'],-5,-12,undefined,undefined,button);
         if(this.filter===filter)v.image(this.frames['page-button-selected'],-5,-12,undefined,undefined,button);
         v.text(INVENTORY_LABELS[filter],side.width/2,side.height/2,side.width-6,SIDE_FILTER_TEXT_SIZE,undefined,button).setOrigin(.5);
@@ -177,6 +238,15 @@ export class ShopPanel {
     });
     if(this.filter===INVENTORY_SIDE_FILTERS[0])v.image(this.frames['column-cap-top'],side.x-19,side.y-12,21,34);
     if(this.filter===INVENTORY_SIDE_FILTERS.at(-1))v.image(this.frames['column-cap-bottom'],side.x-19,side.y+side.offsets.at(-1)!+38,21,34);
+    // 批量出售的入口与动作放在背包框上方那一条空带里（和标题框同一高度），不占格子。
+    // 说明面板打开时先收起，避免和“出售”那一步抢同一块区域。
+    if(!this.selection){
+      const batchBar=this.layout.bagFrame;
+      v.button(this.batch?'退出批量':'批量出售',batchBar.x,batchBar.y-33,118,28,()=>this.toggleBatch(),
+        {fontSize:14,selected:this.batch}).setData('label',this.batch?'退出批量':'批量出售');
+      if(this.batch)v.button(`出售选中（${batchItems.length}）`,batchBar.x+126,batchBar.y-33,batchBar.width-126,28,
+        ()=>this.sellBatch(),{fontSize:14,disabled:!batchItems.length}).setData('label','出售选中');
+    }
     if(this.selection)this.selection.step==='description'?this.renderDescription(description??v,this.selection):this.renderModal(modal);
   }
   /**

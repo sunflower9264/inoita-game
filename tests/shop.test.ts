@@ -43,6 +43,25 @@ test('ordinary merchant validates quantities and publishes one complete transact
   assert.throws(()=>store.sell(entry.id,99),/数量无效/);assert.equal(s.money,29);
  });
 
+test('bulk sale validates the whole batch before mutating and settles with one notification',()=>{
+  const s=session(),store=open(s),id=offer(store,'healing-potion-s').id;
+  s.gainMoney(100);store.buy(id,2);
+  const potion=s.bag.entries.find(value=>value.item==='healing-potion-s')!;
+  s.bag.add('resurrection-prayer');
+  const quest=s.bag.entries.find(value=>value.item==='resurrection-prayer')!;
+  const money=s.money,count=s.bag.count('healing-potion-s');
+  // 批里只要有一件卖不掉，整批都不落地。
+  assert.throws(()=>store.sellMany([{id:potion.id,quantity:1},{id:quest.id,quantity:1}]),/无法出售/);
+  assert.equal(s.money,money);assert.equal(s.bag.count('healing-potion-s'),count);
+  assert.throws(()=>store.sellMany([]),/请选择/);
+  assert.throws(()=>store.sellMany([{id:potion.id,quantity:1},{id:potion.id,quantity:1}]),/数量无效/);
+  const price=store.sellPrice(potion),snapshots:number[]=[];
+  s.subscribe(()=>snapshots.push(s.money));
+  assert.equal(store.sellMany([{id:potion.id,quantity:1}]),price);
+  assert.deepEqual(snapshots,[money+price],'整批只通知一次');
+  assert.equal(s.bag.count('healing-potion-s'),count-1);assert.equal(s.money,money+price);
+});
+
 test('native weapon and armor categories are exact, independent of equipment slots',()=>{
   const s=session(),weapons=open(s,weapon),armors=open(s,armor);
   assert.equal(weapons.shop.categories.length,9);assert.equal(armors.shop.categories.length,9);

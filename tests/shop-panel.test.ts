@@ -349,6 +349,23 @@ test('picking an item first opens the description panel on the opposite column',
   assert.equal(description.texts(item('复活圣文').description).length,0);
 });
 
+test('batch sale hides unsellable items, toggles picks and sells the whole stack at once',()=>{
+  const {surface,session,store,draw}=open('merchandise-dealer-b09d9585');
+  session.bag.add('resurrection-prayer');draw();
+  press(surface,'批量出售');draw();
+  assert.ok(surface.buttons.some(call=>String(call.node?.label)==='退出批量'),'开启后按钮变成退出批量');
+  assert.ok(!surface.buttons.some(call=>String(call.node?.label)==='选择 复活圣文'),'批量模式隐藏不可出售物品');
+  const entry=session.bag.entries.find(value=>value.item==='healing-potion-s')!;
+  const before=session.money,price=store.sellPrice(entry)*entry.quantity;
+  press(surface,'选择 恢复药水（小）');draw();
+  const action=surface.buttons.find(call=>String(call.node?.label)==='出售选中')!;
+  assert.equal((action.options as {disabled?:boolean}).disabled,false);
+  assert.ok(surface.calls.some(call=>call.kind==='text'&&String(call.value).startsWith('合计 ')),'金额栏改显示本次合计');
+  (action.action as ()=>void)();draw();
+  assert.equal(session.money,before+price);assert.equal(session.bag.count('healing-potion-s'),0,'整组一次卖完');
+  assert.ok(surface.buttons.some(call=>String(call.node?.label)==='出售选中'),'卖完仍留在批量模式');
+});
+
 test('trade follows the native steps: description, quantity box, then confirmation',()=>{
   const {surface,description,session,draw}=open('merchandise-dealer-b09d9585');
   // 给够金币，确认框里就只有问题行，不再多一行「金币不足」。

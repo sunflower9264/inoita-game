@@ -225,4 +225,24 @@ export class Storefront {
     this.session.gainMoney(total);
     return total;
   }
+  /** 批量出售：先整批校验，再一次性扣物品、只通知一次；任意一件无效则整批不落地。 */
+  sellMany(entries: readonly { id: string; quantity: number }[]): number {
+    if (!entries.length) throw new Error('请选择要出售的物品');
+    const ids = new Set<string>();
+    let total = 0;
+    for (const { id, quantity } of entries) {
+      if (ids.has(id)) throw new Error('出售数量无效');
+      ids.add(id);
+      const entry = this.session.bag.get(id);
+      if (!entry || !this.session.bag.entries.some(item => item.id === id)) throw new Error('请先卸下装备，或重新选择物品');
+      if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > entry.quantity) throw new Error('出售数量无效');
+      const price = this.sellPrice(entry) * quantity;
+      if (!Number.isSafeInteger(price) || price < 1) throw new Error('此物品无法出售');
+      total += price;
+      if (!Number.isSafeInteger(total) || this.session.money + total > Number.MAX_SAFE_INTEGER) throw new Error('此物品无法出售');
+    }
+    for (const { id, quantity } of entries) this.session.bag.take(id, quantity, false);
+    this.session.gainMoney(total);
+    return total;
+  }
 }
