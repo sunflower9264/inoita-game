@@ -15,6 +15,7 @@ import {MAX_SKILL_TARGETS,type SkillUnitOutcome} from '../domain/skill-unit-sequ
 import {CombatThreatSystem,type CombatThreatActor,type CombatThreatRole} from '../domain/combat-threat-system.ts';
 import {equipmentThreatReduction} from '../domain/equipment-threat.ts';
 import {BuffLoopRenderer} from '../rendering/buff-loop-renderer.ts';
+import {StunStars} from '../rendering/stun-stars.ts';
 import { CombatFeedback } from '../rendering/combat-feedback.ts';
 import { feedbackPlan, selectFeedbackAssets, type HitEffectStyle } from '../domain/combat-feedback.ts';
 import {recoverManaPickup,rollManaGem} from '../domain/mana-gems.ts';
@@ -180,6 +181,7 @@ export class WorldCombat {
   private syncedControlledId='player';
   private focusTargetId?:string;
   private readonly statusColors=new StatusColorRenderer();
+  private readonly stunStars=new Map<string,{visual:CharacterVisual;stars:StunStars}>();
   private readonly summonGroups=new Map<string,Set<string>>();
   private summonAwareness?:SummonCombatAwareness;
   private get awareness():SummonCombatAwareness {
@@ -2527,6 +2529,7 @@ captureStoryActors():SceneActorState[] {
     this.statusColors.paint(this.player,this.conditions.appearanceColors('player'),colorFrame);
     for(const ally of this.allies)this.statusColors.paint(ally.visual,this.conditions.appearanceColors(ally.id),colorFrame);
     for(const enemy of this.arena)if(!this.pendingDefeats.has(enemy.key))this.statusColors.paint(enemy.visual,this.conditions.appearanceColors(enemy.key),colorFrame);
+    this.syncStunStars(enabled&&!this.performanceHidden&&!this.defeated);
     this.setPaused(!enabled||this.defeated);
     if(!enabled||this.defeated){
       this.syncBuffLoops();
@@ -2566,6 +2569,31 @@ captureStoryActors():SceneActorState[] {
     if(tickBefore!==this.app.session.combatTick)this.scene.refreshSkillCooldowns(this.cooldowns);
     this.syncBuffLoops();
   }
+  /** 眩晕是规则状态，原版没有动作或图标；这里补一个只读状态、不参与结算的头顶提示。 */
+  private syncStunStars(visible:boolean):void{
+    const combatants:[string,CharacterVisual][]=[['player',this.player]];
+    for(const ally of this.allies)combatants.push([ally.id,ally.visual]);
+    for(const enemy of this.arena)combatants.push([enemy.key,enemy.visual]);
+    const seen=new Set<string>();
+    for(const [id,visual] of combatants){
+      seen.add(id);
+      let entry=this.stunStars.get(id);
+      if(!this.conditions.hasState(id,'stun')||!visual.container.active){
+        if(entry){entry.stars.destroy();this.stunStars.delete(id);}
+        continue;
+      }
+      if(entry?.visual!==visual){
+        entry?.stars.destroy();
+        entry={visual,stars:new StunStars(this.scene,visual)};
+        this.stunStars.set(id,entry);
+      }
+      entry.stars.setVisible(visible);
+    }
+    for(const [id,entry] of this.stunStars){
+      if(seen.has(id))continue;
+      entry.stars.destroy();this.stunStars.delete(id);
+    }
+  }
   private readVisiblePartyResources():void {
     if(this.closed||this.performanceHidden)return;
     for(const id of this.activeParty.slice(0,ACTIVE_PARTY_SLOT_COUNT)){
@@ -2602,6 +2630,8 @@ captureStoryActors():SceneActorState[] {
     this.pendingDefeats.flush();this.outcomes.destroy();this.feedback.destroy();
     this.hero.clearCombatResourceLimits();for(const ally of this.allies)ally.member.clearCombatResourceLimits();
     this.heroAi?.dispose();this.heroAi=undefined;
+    for(const entry of this.stunStars.values())entry.stars.destroy();
+    this.stunStars.clear();
     for(const ally of [...this.allies]){ally.ai.dispose();ally.overhead.destroy();this.movement.remove(ally.visual);ally.visual.container.destroy();ally.assets?.release();}
     this.allies=[];this.partyControllers.clear();this.partySkills.clear();this.combat=undefined;
     this.presenter?.clear();this.presenter=undefined;
