@@ -159,11 +159,11 @@ test('a new game follows the main story through the ending and all five memory l
     assert.equal(h.session.status('quest-47'), 'ready');
     await h.travel('dwarf-village-mayor-s-house-7d3aec06'); await h.talk('npc-200');
     assert.equal(h.session.status('quest-48'), 'ready');
-    assert.ok(h.session.itemCount('west-mine-key') > 0, '矿山钥匙随原版接取与事件物品命令进入背包');
+    assert.equal(h.session.itemCount('west-mine-key'), 1, '矿山钥匙只由事件命令发一次，接取不再重复发');
     // 矿山西区的门就是 quest-50 的交付对象：不交付，路障一直挡着东区通往西区的唯一通道。
     await h.travel('mine-undergrounds-b1-2a701c06'); await h.talk('npc-341');
     assert.equal(h.session.status('quest-50'), 'completed');
-    assert.equal(h.session.itemCount('west-mine-key'), 0, '交付扣光钥匙，背包不留任务道具');
+    assert.equal(h.session.itemCount('west-mine-key'), 0, '交付扣掉需要的那一颗，钥匙不再剩下');
     await h.travel('mines-west-section-b1-92dc85b5'); await h.talk('npc-204');
     assert.equal(h.session.status('quest-49'), 'active');
     await h.travel('mines-west-section2-b1-83d7f81e');
@@ -188,10 +188,10 @@ test('a new game follows the main story through the ending and all five memory l
     for (let count = 0; count < 5; count++) await h.defeat('enemy-purity-stone-protector-1');
     assert.equal(h.session.status('quest-52'), 'completed');
     assert.equal(h.session.status('quest-53'), 'ready');
-    assert.equal(h.session.itemCount('purity-stone'), 2, '拾取巨石发一颗、接任务再发一颗');
+    assert.equal(h.session.itemCount('purity-stone'), 1, '净化石只由拾取剧情发一次，接任务不再重复发');
     await h.travel('werewolf-lair-43f5b4c5'); await h.talk('npc-197');
     assert.equal(h.session.status('quest-53'), 'completed');
-    assert.equal(h.session.itemCount('purity-stone'), 0, '交付扣光，背包不留净化石');
+    assert.equal(h.session.itemCount('purity-stone'), 0, '交付扣掉需要的那一颗，背包不留净化石');
     assert.equal(h.session.status('quest-54'), 'ready');
     await h.travel('dwarf-village-mayor-s-house-7d3aec06'); await h.talk('npc-200');
     assert.equal(h.session.status('quest-54'), 'completed');

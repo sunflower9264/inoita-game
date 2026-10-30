@@ -7,6 +7,7 @@ import type { StoryPlace, StorySpot } from '../domain/story-graph.ts';
 import type { WardrobeCatalog } from '../domain/wardrobe.ts';
 import type { StoryEncounter } from '../domain/story-world.ts';
 import type { AudioCatalog } from './game-audio.ts';
+import { questItemOverflows } from './quest-item-grants.ts';
 import { validateStoryPerformance } from './story-performance-validation.ts';
 import { validateStoryReferences } from './story-reference-validation.ts';
 
@@ -187,6 +188,10 @@ export function validateContentRelations(input: ContentRelations): void {
       if (node.exit.type === 'waitEncounter') checkEncounter(`${name}/${node.id}`, node.exit.encounter);
       for (const command of node.commands) if (command.type === 'encounter') checkEncounter(`${name}/${node.id}`, command.encounter);
     }
+
+  // 任务道具发放超过交付需求，交完就会剩一件占着背包：任务类道具既不能丢也不能卖。
+  for (const overflow of questItemOverflows(campaign))
+    ensure(false, `任务 ${overflow.quest} 的 ${overflow.item} 发了 ${overflow.granted} 件，交付只需要 ${overflow.required} 件`);
 
   validateStoryPerformance(world, campaign, maps, audio);
   validateStoryReferences(campaign, world, battle, maps, items);

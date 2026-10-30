@@ -301529,12 +301529,6 @@
           "label": "矿山西区的钥匙"
         }
       ],
-      "onAcceptItems": [
-        {
-          "item": "west-mine-key",
-          "quantity": 1
-        }
-      ],
       "itemCompletion": "equipped-item-shortcut",
       "availableWhen": {
         "type": "all",
@@ -301544,7 +301538,7 @@
         {
           "item": "west-mine-key",
           "quantity": 1,
-          "removal": "all-matching"
+          "removal": "quantity"
         }
       ],
       "rewards": {
@@ -301855,12 +301849,6 @@
           "label": "净化石"
         }
       ],
-      "onAcceptItems": [
-        {
-          "item": "purity-stone",
-          "quantity": 1
-        }
-      ],
       "itemCompletion": "equipped-item-shortcut",
       "availableWhen": {
         "type": "all",
@@ -301870,7 +301858,7 @@
         {
           "item": "purity-stone",
           "quantity": 1,
-          "removal": "all-matching"
+          "removal": "quantity"
         }
       ],
       "rewards": {
@@ -301989,12 +301977,6 @@
           "label": "魔法石"
         }
       ],
-      "onAcceptItems": [
-        {
-          "item": "magic-rock",
-          "quantity": 1
-        }
-      ],
       "itemCompletion": "equipped-item-shortcut",
       "availableWhen": {
         "type": "all",
@@ -302004,7 +301986,7 @@
         {
           "item": "magic-rock",
           "quantity": 1,
-          "removal": "all-matching"
+          "removal": "quantity"
         }
       ],
       "rewards": {
@@ -302642,10 +302624,6 @@
         {
           "item": "rodger-s-ore-order-form",
           "quantity": 1
-        },
-        {
-          "item": "rodger-s-ore-order-form",
-          "quantity": 1
         }
       ],
       "itemCompletion": "equipped-item-shortcut",
@@ -302663,7 +302641,7 @@
         {
           "item": "rodger-s-ore-order-form",
           "quantity": 1,
-          "removal": "all-matching"
+          "removal": "quantity"
         }
       ],
       "rewards": {
@@ -303264,10 +303242,6 @@
         {
           "item": "ore-from-michikoff",
           "quantity": 1
-        },
-        {
-          "item": "ore-from-michikoff",
-          "quantity": 1
         }
       ],
       "itemCompletion": "equipped-item-shortcut",
@@ -303285,7 +303259,7 @@
         {
           "item": "ore-from-michikoff",
           "quantity": 1,
-          "removal": "all-matching"
+          "removal": "quantity"
         }
       ],
       "rewards": {
@@ -303369,10 +303343,6 @@
         {
           "item": "schreiber-s-necklace",
           "quantity": 1
-        },
-        {
-          "item": "schreiber-s-necklace",
-          "quantity": 1
         }
       ],
       "itemCompletion": "equipped-item-shortcut",
@@ -303390,7 +303360,7 @@
         {
           "item": "schreiber-s-necklace",
           "quantity": 1,
-          "removal": "all-matching"
+          "removal": "quantity"
         }
       ],
       "rewards": {
@@ -304234,7 +304204,7 @@
         {
           "item": "redhoods-boss-bandanna",
           "quantity": 1,
-          "removal": "all-matching"
+          "removal": "quantity"
         }
       ],
       "rewards": {
@@ -305783,10 +305753,6 @@
         {
           "item": "jose-s-farming-tools",
           "quantity": 1
-        },
-        {
-          "item": "jose-s-farming-tools",
-          "quantity": 1
         }
       ],
       "itemCompletion": "equipped-item-shortcut",
@@ -305804,7 +305770,7 @@
         {
           "item": "jose-s-farming-tools",
           "quantity": 1,
-          "removal": "all-matching"
+          "removal": "quantity"
         }
       ],
       "rewards": {
@@ -313933,10 +313899,6 @@
         {
           "item": "maria-s-letter",
           "quantity": 1
-        },
-        {
-          "item": "maria-s-letter",
-          "quantity": 1
         }
       ],
       "itemCompletion": "equipped-item-shortcut",
@@ -313954,7 +313916,7 @@
         {
           "item": "maria-s-letter",
           "quantity": 1,
-          "removal": "all-matching"
+          "removal": "quantity"
         }
       ],
       "rewards": {
@@ -314200,10 +314162,6 @@
         {
           "item": "daisy-bouquet",
           "quantity": 1
-        },
-        {
-          "item": "daisy-bouquet",
-          "quantity": 1
         }
       ],
       "itemCompletion": "equipped-item-shortcut",
@@ -314221,7 +314179,7 @@
         {
           "item": "daisy-bouquet",
           "quantity": 1,
-          "removal": "all-matching"
+          "removal": "quantity"
         }
       ],
       "rewards": {
@@ -317852,7 +317810,7 @@
         {
           "item": "prescription",
           "quantity": 1,
-          "removal": "all-matching"
+          "removal": "quantity"
         }
       ],
       "rewards": {
@@ -319017,12 +318975,6 @@
           "label": "猎手的遗物"
         }
       ],
-      "onAcceptItems": [
-        {
-          "item": "hunter-s-possessions",
-          "quantity": 1
-        }
-      ],
       "itemCompletion": "equipped-item-shortcut",
       "availableWhen": {
         "type": "all",
@@ -319043,7 +318995,7 @@
         {
           "item": "hunter-s-possessions",
           "quantity": 1,
-          "removal": "all-matching"
+          "removal": "quantity"
         }
       ],
       "rewards": {
@@ -319955,7 +319907,7 @@
         {
           "item": "list-of-supplies",
           "quantity": 1,
-          "removal": "all-matching"
+          "removal": "quantity"
         }
       ],
       "rewards": {
@@ -320261,7 +320213,7 @@
         {
           "item": "supplies-2",
           "quantity": 1,
-          "removal": "all-matching"
+          "removal": "quantity"
         }
       ],
       "rewards": {
@@ -322113,16 +322065,6 @@
           "label": "精制的麦粉"
         }
       ],
-      "onAcceptItems": [
-        {
-          "item": "refined-flour",
-          "quantity": 1
-        },
-        {
-          "item": "refined-flour",
-          "quantity": 1
-        }
-      ],
       "itemCompletion": "equipped-item-shortcut",
       "availableWhen": {
         "type": "all",
@@ -322138,7 +322080,7 @@
         {
           "item": "refined-flour",
           "quantity": 1,
-          "removal": "all-matching"
+          "removal": "quantity"
         }
       ],
       "rewards": {
@@ -322339,12 +322281,6 @@
           "label": "净化之泉水"
         }
       ],
-      "onAcceptItems": [
-        {
-          "item": "purified-waters",
-          "quantity": 1
-        }
-      ],
       "itemCompletion": "equipped-item-shortcut",
       "availableWhen": {
         "type": "all",
@@ -322354,7 +322290,7 @@
         {
           "item": "purified-waters",
           "quantity": 1,
-          "removal": "all-matching"
+          "removal": "quantity"
         }
       ],
       "rewards": {
@@ -327656,10 +327592,6 @@
         {
           "item": "drow-warrior-s-sword",
           "quantity": 1
-        },
-        {
-          "item": "drow-warrior-s-sword",
-          "quantity": 1
         }
       ],
       "itemCompletion": "equipped-item-shortcut",
@@ -327677,7 +327609,7 @@
         {
           "item": "drow-warrior-s-sword",
           "quantity": 1,
-          "removal": "all-matching"
+          "removal": "quantity"
         }
       ],
       "rewards": {

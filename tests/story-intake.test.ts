@@ -98,11 +98,14 @@ test('published quest 29 requires both materials and consumes both on settlement
   assert.equal(session.status(quest.id), 'completed');
 });
 
-test('published delivery quest 50 grants its key on acceptance and removes it on settlement', ()=>{
+test('published delivery quest 50 takes its key from the story event and removes it on settlement', ()=>{
   const session = new Session(campaign), quest = campaign.quests.find(quest=>quest.id==='quest-50')!;
   assert.equal(session.itemCount('west-mine-key'), 0);
   assert.ok(session.accept(quest.id));
-  assert.equal(session.itemCount('west-mine-key'), 1);
+  // 钥匙由接取 #50 的那段剧情用事件命令发放，接取本身不再补发第二把。
+  assert.equal(session.itemCount('west-mine-key'), 0);
+  session.bag.add('west-mine-key', 1);
+  session.applyStoryCommands([{type:'quest',command:{type:'refresh'}}]);
   assert.equal(session.status(quest.id), 'ready');
   session.complete(quest.id);
   assert.equal(session.itemCount('west-mine-key'), 0);
