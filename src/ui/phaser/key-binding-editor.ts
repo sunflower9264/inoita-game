@@ -85,7 +85,8 @@ export class KeyBindingEditor {
   private render(): void {
     const v = this.canvas;
     v.clear();
-    v.frame(this.assets, 0, 0, 960, 640);
+    // 只画外框，不填深色底板：键位页和“操作设置”一样透出后面的游戏画面。
+    v.border(this.assets, 0, 0, 960, 640);
     v.text('键位设置', 480, 24, 0, 34).setOrigin(.5, 0);
     v.text('点击动作后按下新按键；鼠标左键攻击固定', 480, 76, 0, 20).setOrigin(.5, 0);
     v.text('移动与轮组', 60, 120, 0, 24);
