@@ -341,7 +341,7 @@ export class Session {
     this.frenzyAnimations.restoreState(restored.frenzyAnimations??[]);
     this.resourceRecovery.restoreState({...restored.resourceRecovery,elapsedMs:clock.frame*LOGIC_FRAME_MS});groundLootFor(this).restoreState(restored.groundLoot);
     this.questItemGenerators.restoreState(restored.questItemGeneration,groundLootFor(this));
-    this.lootPity.restoreState(restored.lootPity??{version:1,members:[],chests:[],bossDefeats:[]});
+    this.lootPity.restoreState(restored.lootPity??{version:2,members:[],chests:[],bossDefeats:[]});
     this.partyItemChance=restored.partyItemChance??0;
   }
   /**

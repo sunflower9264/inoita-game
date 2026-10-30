@@ -201,7 +201,7 @@ test('a controlled companion supplies position and facing while treasure drops s
   f.state.dropCatalog=rules;
   f.combat.controlledVisual={container:new Display(entity.x+24,entity.y)};f.combat.facing='west';
   f.scene.attackKey();assert(f.opened());
-  assert.deepEqual(f.loot().map(drop=>drop.reward),[{kind:'money',amount:3}]);
+  assert.deepEqual(f.loot().map(drop=>drop.reward),[{kind:'money',amount:30}]);
 
   const distant=fixture(map,entity);distant.state.player.container=new Display(entity.x-24,entity.y);
   distant.combat.controlledVisual={container:new Display(entity.x+100,entity.y)};

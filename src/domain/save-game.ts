@@ -6,9 +6,9 @@ export const MANUAL_SAVE_SLOT_COUNT = 10;
  * 存档格式版本。记录结构或校验口径变了就加一，并在 `application/saved-game.ts`
  * 的升级链里补上从上一版读回的迁移；比 `LEGACY_SAVE_FORMATS` 更旧的档才按空槽处理。
  */
-export const SAVE_FORMAT = 37;
+export const SAVE_FORMAT = 38;
 /** 仍然能读回并升级到当前格式的旧版本；新增升级步骤时同步加入这里。 */
-export const LEGACY_SAVE_FORMATS: readonly number[] = [36, 35, 34, 33];
+export const LEGACY_SAVE_FORMATS: readonly number[] = [37, 36, 35, 34, 33];
 export function isReadableSaveFormat(format: unknown): format is number {
   return typeof format === 'number' && (format === SAVE_FORMAT || LEGACY_SAVE_FORMATS.includes(format));
 }

@@ -71,6 +71,33 @@ const SAVE_UPGRADES:Record<number,SaveUpgrade>={
   36:game=>{
     game.format=37;
   },
+  /**
+   * 37 → 38：掉落保底从两本账扩成三本。旧 rarePlusMisses 迁到 uniqueMisses，
+   * 紫装从 0 开始；宝箱不记黄/紫保底。已经是新结构的档保持原值，保证幂等。
+   */
+  37:game=>{
+    interface LegacyCounters { equipmentMisses?:unknown; rarePlusMisses?:unknown; uniqueMisses?:unknown; epicMisses?:unknown }
+    interface LegacyPity { version:number; members:[string,LegacyCounters][]; chests:[string,LegacyCounters][]; bossDefeats:string[] }
+    const pity=game.session.lootPity as unknown as LegacyPity|undefined;
+    if(!pity)game.session.lootPity={version:2,members:[],chests:[],bossDefeats:[]};
+    else if(pity.version!==2){
+      const convert=(counters:{equipmentMisses?:unknown;rarePlusMisses?:unknown;uniqueMisses?:unknown;epicMisses?:unknown}) => ({
+        equipmentMisses:Number.isSafeInteger(counters.equipmentMisses)?counters.equipmentMisses as number:0,
+        uniqueMisses:Number.isSafeInteger(counters.uniqueMisses)?counters.uniqueMisses as number:
+          (Number.isSafeInteger(counters.rarePlusMisses)?counters.rarePlusMisses as number:0),
+        epicMisses:Number.isSafeInteger(counters.epicMisses)?counters.epicMisses as number:0
+      });
+      pity.version=2;
+      pity.members=pity.members.map(([id,counters])=>[id,convert(counters)]);
+      // 宝箱只维护装备计数，旧 rarePlusMisses 从未参与宝箱逻辑，迁移时直接归零。
+      pity.chests=pity.chests.map(([id,counters])=>[id,{
+        equipmentMisses:Number.isSafeInteger(counters.equipmentMisses)?counters.equipmentMisses as number:0,
+        uniqueMisses:0,
+        epicMisses:0
+      }]);
+    }
+    game.format=38;
+  },
 };
 function upgradeSavedGame(game:SaveGame<StoryWorldViewSnapshot>):SaveGame<StoryWorldViewSnapshot>{
   if(game.format===SAVE_FORMAT)return game;

@@ -12,7 +12,8 @@ const drops = read<Record<string, unknown>>('drops');
 const enemyIds = battle.enemies.map(enemy => enemy.id);
 const pity: PityConfig = {
   equipment: { stepPermille: 60, capPermille: 900 },
-  rare: { stepPermille: 40, capPermille: 600 },
+  unique: { stepPermille: 100, capPermille: 900, guaranteeAfter: 10 },
+  epic: { stepPermille: 10, capPermille: 600, guaranteeAfter: 40 },
   levelWindow: 10,
   bossGuarantee: { equipment: true, minRarity: 2 }
 };
@@ -42,6 +43,18 @@ test('parseDrops rejects malformed pity configuration', () => {
   const invalidWindow = structuredClone(drops) as { pity: PityConfig };
   invalidWindow.pity.levelWindow = -1;
   assert.throws(() => parseDrops(invalidWindow, items, enemyIds), /保底配置无效/);
+
+  const invalidGuarantee = structuredClone(drops) as { pity: PityConfig };
+  invalidGuarantee.pity.unique.guaranteeAfter = 0;
+  assert.throws(() => parseDrops(invalidGuarantee, items, enemyIds), /保底配置无效/);
+
+  const invalidEpic = structuredClone(drops) as { epicDrops: { minLevel: number; enemyChance: number; chestChance: number } };
+  invalidEpic.epicDrops.enemyChance = 20000;
+  assert.throws(() => parseDrops(invalidEpic, items, enemyIds), /紫装掉落配置无效/);
+
+  const duplicateEpic = structuredClone(drops) as { equipment: { epic: { item: string; dropLevel: number }[] } };
+  duplicateEpic.equipment.epic.push({ ...duplicateEpic.equipment.epic[0]! });
+  assert.throws(() => parseDrops(duplicateEpic, items, enemyIds), /紫装掉落配置无效/);
 });
 
 test('the shipped pity configuration parses', () => {

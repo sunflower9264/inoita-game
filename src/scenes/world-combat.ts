@@ -89,7 +89,7 @@ import { isBodyWalking } from '../rendering/arcade-movement.ts';
 import { effectAssets } from '../rendering/effects.ts';
 import { loadSceneAssets, retainLoadedSceneAssets } from '../rendering/scene-assets.ts';
 import { WorldEnemyRoster } from '../domain/world-enemies.ts';
-import { breakableKindOf, firstBossGuarantee, rollBreakableLoot, rollEnemyLoot, rollQuestDrops, type DropCatalog } from '../domain/drops.ts';
+import { breakableKindOf, firstBossGuarantee, rollBreakableLoot, rollEnemyLoot, rollQuestDrops, specialDropEligibility, type DropCatalog } from '../domain/drops.ts';
 import { PendingEnemyDefeats } from '../domain/combat-outcomes.ts';
 import { CombatHitResolution } from '../domain/combat-hit-resolution.ts';
 import {moltenReflectionDamage,rollMoltenSplash,moltenSplashTargets} from '../domain/molten-armor.ts';
@@ -1135,7 +1135,7 @@ captureStoryActors():SceneActorState[] {
               // 任务掉落在同块之外，仍按原版 CHARSYSTEM_Die 的闸门后顺序执行。
                 const chapterLevel=(this.scene.map?.lootLevel??0)>0?this.scene.map!.lootLevel!:(rule.level??level);
                 const pity=this.drops.pity;
-                const pityConfig=pity?{equipment:pity.equipment,rare:pity.rare,levelWindow:pity.levelWindow}:undefined;
+                const pityConfig=pity?{equipment:pity.equipment,unique:pity.unique,epic:pity.epic,levelWindow:pity.levelWindow}:undefined;
                 const boss=rule.threat==='boss';
                 const firstBoss=boss?session.lootPity.takeBossFirstDefeat(enemyId):false;
                 const owners=session.party?.livingIds??['player'];
@@ -1143,16 +1143,19 @@ captureStoryActors():SceneActorState[] {
                 owners.forEach((ownerId,index)=>{
                   const member=ownerId==='player'?hero:session.party?.get(ownerId);
                   const memberLevel=member?.level??level;
-                  const withinWindow=!pity||(rule.level??level)>=memberLevel-pity.levelWindow;
+                  const eligibility=specialDropEligibility(this.drops,memberLevel,rule.level??level,chapterLevel);
                   const guarantee=firstBossGuarantee(pity,firstBoss);
                   const equipmentBonus=guarantee.equipmentBonus||(pityConfig?session.lootPity.equipmentBonus(ownerId,pityConfig):0);
-                  const uniqueBonus=pityConfig?session.lootPity.rareBonus(ownerId,pityConfig):0;
+                  const uniqueBonus=eligibility.unique&&pityConfig?session.lootPity.uniqueBonus(ownerId,pityConfig):0;
+                  const epicBonus=eligibility.epic&&pityConfig?session.lootPity.epicBonus(ownerId,pityConfig):0;
+                  const uniqueGuarantee=eligibility.unique&&pityConfig?session.lootPity.uniqueGuaranteed(ownerId,pityConfig):false;
+                  const epicGuarantee=eligibility.epic&&pityConfig?session.lootPity.epicGuaranteed(ownerId,pityConfig):false;
                   const minRarity=guarantee.minRarity;
                   const rolled=rollEnemyLoot(this.drops,this.app.characterStats,enemyId,memberLevel,chapterLevel,Math.random,
-                    session.party?.groupModifiers(),{equipmentBonus,uniqueBonus,minRarity,itemChance:session.partyItemChance});
+                    session.party?.groupModifiers(),{equipmentBonus,uniqueBonus,uniqueGuarantee,epicBonus,epicGuarantee,minRarity,itemChance:session.partyItemChance});
                   const equipment=rolled.rewards.filter(reward=>reward.kind==='item'&&!!reward.roll);
                   const bestRarity=equipment.reduce((best,reward)=>Math.max(best,reward.kind==='item'&&reward.roll?reward.roll.rarity:0),0);
-                  session.lootPity.recordEnemy(ownerId,{equipment:equipment.length>0,bestRarity},withinWindow);
+                  session.lootPity.recordEnemy(ownerId,{equipment:equipment.length>0,bestRarity},eligibility);
                   const offset=offsets[index%offsets.length]!;
                   this.scene.spawnLootOnMap(map,x+offset,y,rolled.rewards,render&&!this.closed);
                 });

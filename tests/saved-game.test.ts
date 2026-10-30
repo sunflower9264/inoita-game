@@ -146,3 +146,24 @@ test('invalid class, map, position and actors are rejected without changing the 
     assert.throws(()=>prepareSavedGame(saved,content));assert.deepEqual(saved,before);
   }
 });
+
+test('format 37 pity counters migrate to unique and epic counters',()=>{
+  const saved=record();saved.format=37;
+  const pity=saved.session.lootPity as unknown as {
+    version:number;
+    members:[string,{equipmentMisses:number;rarePlusMisses:number}][];
+    chests:[string,{equipmentMisses:number;rarePlusMisses:number}][];
+    bossDefeats:string[];
+  };
+  pity.version=1;
+  pity.members=[['player',{equipmentMisses:3,rarePlusMisses:7}]];
+  pity.chests=[['ordinary',{equipmentMisses:2,rarePlusMisses:5}]];
+  pity.bossDefeats=['enemy-boss'];
+  const before=structuredClone(saved),candidate=prepareSavedGame(saved,content);
+  const state=candidate.session.lootPity.captureState();
+  assert.equal(state.version,2);
+  assert.deepEqual(state.members.find(([id])=>id==='player')?.[1],{equipmentMisses:3,uniqueMisses:7,epicMisses:0});
+  assert.deepEqual(state.chests.find(([id])=>id==='ordinary')?.[1],{equipmentMisses:2,uniqueMisses:0,epicMisses:0});
+  assert.deepEqual(state.bossDefeats,['enemy-boss']);
+  assert.deepEqual(saved,before,'升级不改写槽里的原件');
+});

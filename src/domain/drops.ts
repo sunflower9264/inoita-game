@@ -3,6 +3,7 @@ import type { ChestKind } from './content.ts';
 import type { CharacterStatsCatalog, EquipmentGradeSeed } from './character-stats.ts';
 import { rollGrade, staticGrade, type GradeProfile } from './equipment-grade.ts';
 import { moneyGain } from './economy.ts';
+import type { LootPityConfig } from './loot-pity.ts';
 
 type DropCategory = 'consumable' | 'upgrade' | 'crafting' | 'misc';
 type DropChance = 'money' | 'equipment' | DropCategory | 'unique' | 'fixed';
@@ -41,11 +42,14 @@ export interface ChapterBand {
   luck:number;
   profiles:Record<'normal'|'elite'|'boss',string>;
 }
-export interface PityConfig {
-  equipment:{stepPermille:number;capPermille:number};
-  rare:{stepPermille:number;capPermille:number};
-  levelWindow:number;
+export interface PityConfig extends LootPityConfig {
   bossGuarantee:{equipment:boolean;minRarity:number};
+}
+/** 独立紫装判定：没有这个配置时紫装随机路径完全关闭。 */
+export interface EpicDropsConfig {
+  minLevel:number;
+  enemyChance:number;
+  chestChance:number;
 }
 export interface QuestItemDropRule { item:string; threshold:number }
 export interface QuestDropRequirement { item:string; quantity:number; owned:number }
@@ -60,6 +64,7 @@ export interface DropCatalog {
   rarityProfiles?:Record<string,number[]>;
   chapterBands?:ChapterBand[];
   pity?:PityConfig;
+  epicDrops?:EpicDropsConfig;
 }
 interface ChestDropRule extends Omit<EnemyDropRule,'level'|'threat'|'noNormalDrops'> {
   uniqueChance: {numerator:number;levelOffset:number};
@@ -93,6 +98,16 @@ export function parseDrops(value:unknown,items:ItemCatalog,enemyIds:readonly str
       (kind!=='special'&&items.items[choice.item].category!=='equipment')||
       !Number.isSafeInteger(choice.dropLevel)||choice.dropLevel<1))
       throw new Error(`装备掉落池无效：${kind}`);
+  }
+  if(catalog.epicDrops){
+    const epic=catalog.epicDrops;
+    if(!Number.isSafeInteger(epic.minLevel)||epic.minLevel<1||epic.minLevel>255||
+      !Number.isSafeInteger(epic.enemyChance)||epic.enemyChance<0||epic.enemyChance>10000||
+      !Number.isSafeInteger(epic.chestChance)||epic.chestChance<0||epic.chestChance>10000||
+      !Array.isArray(catalog.equipment.epic)||!catalog.equipment.epic.length||
+      new Set(catalog.equipment.epic.map(choice=>choice.item)).size!==catalog.equipment.epic.length||
+      catalog.equipment.epic.some(choice=>choice.dropLevel<epic.minLevel))
+      throw new Error('紫装掉落配置无效');
   }
   for(const enemyId of enemyIds.filter(id=>!['enemy-bush-1','enemy-jar-1','enemy-box-1'].includes(id))) {
     const rule=catalog.enemies[enemyId];
@@ -132,11 +147,14 @@ export function parseDrops(value:unknown,items:ItemCatalog,enemyIds:readonly str
   }
   if(catalog.version===3){
     if(!catalog.rarityProfiles||!catalog.chapterBands?.length||!catalog.pity)throw new Error('掉落目录缺少 v3 配置');
-    const rate=(pair:{stepPermille:number;capPermille:number})=>Number.isSafeInteger(pair.stepPermille)
+    const rate=(pair?:{stepPermille:number;capPermille:number})=>!!pair&&Number.isSafeInteger(pair.stepPermille)
       &&pair.stepPermille>=0&&pair.stepPermille<=10000&&Number.isSafeInteger(pair.capPermille)
       &&pair.capPermille>=0&&pair.capPermille<=10000&&pair.stepPermille<=pair.capPermille;
     const pity=catalog.pity;
-    if(!rate(pity.equipment)||!rate(pity.rare)||!Number.isSafeInteger(pity.levelWindow)||pity.levelWindow<0||
+    const guarantee=(pair?:{guaranteeAfter?:unknown})=>!!pair&&Number.isSafeInteger(pair.guaranteeAfter)&&(pair.guaranteeAfter as number)>=1;
+    if(!rate(pity.equipment)||!rate(pity.unique)||!rate(pity.epic)||
+      !guarantee(pity.unique)||!guarantee(pity.epic)||
+      !Number.isSafeInteger(pity.levelWindow)||pity.levelWindow<0||
       typeof pity.bossGuarantee?.equipment!=='boolean'||!Number.isSafeInteger(pity.bossGuarantee.minRarity)||
       pity.bossGuarantee.minRarity<0||pity.bossGuarantee.minRarity>4)throw new Error('保底配置无效');
     for(const [name,weights] of Object.entries(catalog.rarityProfiles))
@@ -208,10 +226,39 @@ function pickEquipment(catalog:DropCatalog,level:number,random:()=>number,maxIte
   return options[draw(random,options.length)]?.item;
 }
 
-function pickUnique(catalog:DropCatalog,level:number,random:()=>number,maxItemLevel?:number):string|undefined {
-  const options=catalog.equipment.unique.filter(choice=>choice.dropLevel<=Math.min(level,maxItemLevel??level));
+function pickFromPool(pool:readonly {item:string;dropLevel:number}[],cap:number,random:()=>number):string|undefined {
+  const options=pool.filter(choice=>choice.dropLevel<=cap);
   if(!options.length)return;
   return options[draw(random,options.length)]?.item;
+}
+
+function pickUnique(catalog:DropCatalog,cap:number,random:()=>number):string|undefined {
+  return pickFromPool(catalog.equipment.unique,cap,random);
+}
+
+function pickEpic(catalog:DropCatalog,cap:number,random:()=>number):string|undefined {
+  return pickFromPool(catalog.equipment.epic,cap,random);
+}
+
+function itemLevelCap(level:number,playerLevel:number,maxItemLevel?:number):number {
+  return Math.max(1,Math.min(level,playerLevel,maxItemLevel??level));
+}
+
+export interface SpecialDropEligibility { cap:number; withinWindow:boolean; unique:boolean; epic:boolean }
+
+/**
+ * 黄装/紫装的等级与保底资格。cap 是物品等级上限：人物、内容、章节上限三者取小。
+ * 池内没有候选时对应资格为 false，调用方不判定、不累计、不触发硬保底。
+ */
+export function specialDropEligibility(catalog:DropCatalog,playerLevel:number,contentLevel:number,chapterLevel:number):SpecialDropEligibility {
+  const band=chapterBand(catalog,chapterLevel);
+  const cap=itemLevelCap(contentLevel,playerLevel,band?.maxItemLevel);
+  const withinWindow=!catalog.pity||contentLevel>=playerLevel-catalog.pity.levelWindow;
+  const unique=withinWindow&&catalog.equipment.unique.some(choice=>choice.dropLevel<=cap);
+  const epicDrops=catalog.epicDrops;
+  const epic=!!epicDrops&&withinWindow&&playerLevel>=epicDrops.minLevel&&cap>=epicDrops.minLevel&&
+    Array.isArray(catalog.equipment.epic)&&catalog.equipment.epic.some(choice=>choice.dropLevel<=cap);
+  return {cap,withinWindow,unique,epic};
 }
 
 /** One call per defeated map enemy. A returned item can be empty after a successful pool roll. */
@@ -269,6 +316,15 @@ interface LootContext {
   maxItemLevel?: number;
   equipmentBonus?: number;
   uniqueBonus?: number;
+  /** 下一次黄装槽是否必中。 */
+  uniqueGuarantee?: boolean;
+  /** v3 敌人：每个击杀只判定一次黄装槽。 */
+  uniqueOncePerKill?: boolean;
+  /** v3 黄装的物品等级上限；不传时沿用旧的 min(level,maxItemLevel)。 */
+  uniqueCap?: number;
+  /** 独立紫装判定；没有该字段时紫装路径关闭。 */
+  epic?: { chance:number; bonus?:number; guaranteed?:boolean };
+  epicCap?: number;
   /** 队伍物品掉率乘数（千分比），只放大槽位命中率。 */
   itemChance?: number;
 }
@@ -291,21 +347,35 @@ function rollDropRule(catalog:DropCatalog,rule:EnemyDropRule,playerLevel:number,
     result.rewards.push({kind:'item',item,quantity:1,...(roll?{roll}:{})});
   };
   const level=rule.level,pool=catalog.pools[rule.pool];
+  const epicCap=loot?.epicCap??itemLevelCap(level,playerLevel,loot?.maxItemLevel);
+  const uniqueCap=loot?.uniqueCap??Math.min(level,loot?.maxItemLevel??level);
+  const uniqueOnce=loot?.uniqueOncePerKill??false;
   for(let repeat=0;repeat<rule.rolls;repeat++)for(const kind of chanceKinds){
     // 宝箱怪位于材料槽之后、稀有装备槽之前，保留原表随机抽取次序。
     if(kind==='unique'&&spawn&&success(spawn.chance,level,playerLevel,random))result.enemies.push(spawn.enemyId);
+    // v3 敌人：黄装槽每个击杀只判定第一轮，避免三连怪重复吃黄装概率。
+    if(kind==='unique'&&uniqueOnce&&repeat>0)continue;
     const baseBonus=kind==='equipment'?modifiers['equipment-drop']:kind==='upgrade'?modifiers['scroll-drop']:kind==='crafting'?modifiers['material-drop']:0;
-    const bonus=(baseBonus??0)+(kind==='equipment'?loot?.equipmentBonus??0:kind==='unique'?loot?.uniqueBonus??0:0);
+    const uniqueExtra=kind==='unique'
+      ?(uniqueOnce?(repeat===0?(loot?.uniqueBonus??0)+(loot?.uniqueGuarantee?10000:0):0):(loot?.uniqueBonus??0))
+      :0;
+    const bonus=(baseBonus??0)+(kind==='equipment'?loot?.equipmentBonus??0:kind==='unique'?uniqueExtra:0);
     if(!success(rule.chances[kind],level,playerLevel,random,bonus??0,loot?.itemChance??0))continue;
     if(kind==='money'){
       const percent=50+draw(random,51);
       result.rewards.push({kind:'money',amount:moneyGain(Math.max(1,3+Math.floor(4*level*percent/500)))});
     }else if(kind==='equipment')add(pickEquipment(catalog,level,random,loot?.maxItemLevel),true,false);
-    else if(kind==='unique')add(pickUnique(catalog,level,random,loot?.maxItemLevel),false,true);
+    else if(kind==='unique')add(pickUnique(catalog,uniqueCap,random),false,true);
     else if(kind==='fixed'){
       const roll=draw(random,1000);let sum=0;
       for(const choice of rule.fixed){sum+=choice.weight;if(roll<sum){add(choice.item,false,true);break;}}
     }else add(pickPool(pool[kind]??[],level,random));
+  }
+  // 独立紫装判定：每个击杀/每次开箱最多一次，放在普通 8 槽循环之后。
+  if(loot?.epic&&!result.rewards.some(reward=>reward.kind==='item'&&reward.roll?.rarity===4)){
+    const epic=loot.epic;
+    if(epic.guaranteed||success(epic.chance,level,playerLevel,random,epic.bonus??0,loot.itemChance??0))
+      add(pickEpic(catalog,epicCap,random),false,true);
   }
   return result;
 }
@@ -325,8 +395,14 @@ function profileFor(catalog:DropCatalog,band:ChapterBand|undefined,threat:'norma
 export interface EnemyLootOptions {
   /** 温和保底：装备槽的绝对加值（万分比）。 */
   equipmentBonus?: number;
-  /** 温和保底：稀有+槽（unique）的绝对加值。 */
+  /** 温和保底：黄装槽的绝对加值。 */
   uniqueBonus?: number;
+  /** 下一次合格击杀的黄装槽必中。 */
+  uniqueGuarantee?: boolean;
+  /** 温和保底：紫装判定的绝对加值。 */
+  epicBonus?: number;
+  /** 下一次合格击杀的紫装判定必中。 */
+  epicGuarantee?: boolean;
   /** Boss 首杀/宝箱品质下限。 */
   minRarity?: number;
   /** 队伍物品掉率乘数（千分比），0 表示与基础掉率一致。 */
@@ -335,9 +411,18 @@ export interface EnemyLootOptions {
 export function rollEnemyLoot(catalog:DropCatalog,stats:CharacterStatsCatalog,enemyId:string,playerLevel:number,chapterLevel:number,random:()=>number=Math.random,modifiers:DropModifiers={},options:EnemyLootOptions={}):ChestOpenResult {
   const rule=catalog.enemies[enemyId];if(!rule||rule.noNormalDrops)return {rewards:[],enemies:[]};
   const band=chapterBand(catalog,chapterLevel);
+  const eligibility=specialDropEligibility(catalog,playerLevel,rule.level,chapterLevel);
+  const epic=eligibility.epic&&catalog.epicDrops
+    ?{chance:catalog.epicDrops.enemyChance,bonus:options.epicBonus,guaranteed:options.epicGuarantee}
+    :undefined;
   return rollDropRule(catalog,rule,playerLevel,random,undefined,modifiers,
     {stats,profile:profileFor(catalog,band,rule.threat??'normal',options.minRarity),maxItemLevel:band?.maxItemLevel,
-      equipmentBonus:options.equipmentBonus,uniqueBonus:options.uniqueBonus,itemChance:options.itemChance});
+      equipmentBonus:options.equipmentBonus,
+      uniqueBonus:eligibility.unique?options.uniqueBonus:undefined,
+      uniqueGuarantee:eligibility.unique&&options.uniqueGuarantee,
+      uniqueOncePerKill:!!catalog.pity?.unique,
+      uniqueCap:catalog.pity?.unique?eligibility.cap:undefined,
+      epic,epicCap:eligibility.cap,itemChance:options.itemChance});
 }
 
 /** 宝箱掉落：有效等级由地图导出时补齐，品质下限只影响装备槽成功后的品级。 */
@@ -345,8 +430,12 @@ export function rollChestLoot(catalog:DropCatalog,stats:CharacterStatsCatalog,ki
   if(!Number.isSafeInteger(level)||level<1||level>255)throw new Error('宝箱掉落等级无效');
   const rule=catalog.chests[kind];if(!rule)throw new Error(`宝箱掉落规则缺失：${kind}`);
   const band=chapterBand(catalog,level);
+  const scaledPlayer=containerScaleLevel(level,playerLevel);
+  const eligibility=specialDropEligibility(catalog,scaledPlayer,level,level);
   return rollDropRule(catalog,{...rule,level,chances:{...rule.chances,
-    unique:Math.floor(rule.uniqueChance.numerator/(level+rule.uniqueChance.levelOffset))}},containerScaleLevel(level,playerLevel),random,rule.spawn,modifiers,
+    unique:Math.floor(rule.uniqueChance.numerator/(level+rule.uniqueChance.levelOffset))}},scaledPlayer,random,rule.spawn,modifiers,
     {stats,profile:profileFor(catalog,band,'normal',rule.minRarity,rule.rarityProfile),maxItemLevel:band?.maxItemLevel,
-      equipmentBonus:options.equipmentBonus});
+      equipmentBonus:options.equipmentBonus,
+      epic:eligibility.epic&&catalog.epicDrops?{chance:catalog.epicDrops.chestChance}:undefined,
+      epicCap:eligibility.cap});
 }

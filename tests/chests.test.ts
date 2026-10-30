@@ -80,6 +80,7 @@ test('chest rare chance uses map level, caps hero level at the chest level, and 
   const rule=data.chests.ordinary;
   for(const slot of Object.keys(rule.chances) as (keyof typeof rule.chances)[])rule.chances[slot]=0;
   delete rule.spawn;
+  delete data.epicDrops; // 这个用例只测 unique 槽；紫装另有用例。
   data.equipment.unique=[{item:'test-rare',dropLevel:1}];
   // floor(2000/(100+100))=10; at equal levels random integer 9 passes and 10 fails.
   assert.equal(rollChestLoot(data,stats,'ordinary',100,100,()=>8/9999).rewards.length,1);
