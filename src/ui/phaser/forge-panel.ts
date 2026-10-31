@@ -78,9 +78,9 @@ export class ForgePanel {
   private renderSummary(v:UiSurface,target:ItemInstance,item:ItemDefinition):void {
     const numbers=this.stats.equipment[target.item];
     v.image(item.icon,30,52,56,56);
-    v.text(`${item.name}${target.enhancement?` +${target.enhancement}`:''}`,94,54,350,22,'#e2cb9e');
-    let y=88;
-    const line=(text:string)=>{v.text(text,30,y,420,18,'#c8b78f');y+=20;};
+    v.text(`${item.name}${target.enhancement?` +${target.enhancement}`:''}`,94,80,350,22,'#e2cb9e').setOrigin(0,.5);
+    let y=96;
+    const line=(text:string)=>{v.text(text,94,y,350,18,'#c8b78f');y+=20;};
     line(`等级 ${equipmentLevel(item,target)}`);
     line(`强化耐久度 ${target.numbers?.enhancementUses??0}`);
     line(`宝石孔 ${target.gems.length}/${target.numbers?.sockets??item.equipment!.socketCapacity}`);
@@ -163,7 +163,7 @@ export class ForgePanel {
     const modifiers=target.numbers?.gemModifiers;
     const valid=!!target.numbers&&!!modifiers&&modifiers.length===target.gems.length;
     for(let index=0;index<sockets;index++){
-      const x=30+index*60,y=200,filled=index<target.gems.length;
+      const x=30+index*60,y=204,filled=index<target.gems.length;
       const button=v.button('',x,y,54,54,()=>{if(!filled)return;this.socketIndex=index;this.replaceIndex=undefined;this.selectedItem=undefined;this.changed();},
         {image:this.panels.assets['inventory-slot'],disabled:!filled}).setData('label',`孔位${index+1}`);
       if(filled){const gemItem=this.bag.catalog.items[target.gems[index]!];if(gemItem)v.image(gemItem.icon,5,5,44,44,button);}
