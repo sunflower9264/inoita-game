@@ -1359,14 +1359,19 @@ export class WorldScene extends Phaser.Scene {
       :reward),{nowMs:this.app.session.nowMs});
     if(render&&!this.destroyed&&this.map?.id===map)this.groundLootView?.sync(store.forMap(map));
   }
-  /** 掉落物只落在能走过去的位置：怪物死亡点或剧情奖励坐标嵌墙、出界时就近挪到可站格。 */
+  /** 掉落物只落在能走过去、且不压住地图进出口的位置。 */
   private lootLanding(map:string,x:number,y:number):{x:number;y:number} {
     const navigation=this.movement?.navigation;
     if(!navigation||this.map?.id!==map)return {x,y};
-    const point={x,y};
-    if(navigation.terrainFree(point))return point;
-    // 掉落物不是角色：按 8×8 的贴图盒找最近可站格，不受受控角色体型限制。
-    return navigation.nearest({collision:{x:-4,y:-4,width:8,height:8}},point);
+    const point={x,y},exits=this.map.exits;
+    // 掉落物不是角色：按 8×8 的贴图盒判断，别让装备图标盖在门洞上。
+    const clear=(candidate:{x:number;y:number})=>!exits.some(exit=>
+      candidate.x+4>exit.x&&candidate.x-4<exit.x+exit.width
+      &&candidate.y+4>exit.y&&candidate.y-4<exit.y+exit.height);
+    if(navigation.terrainFree(point)&&clear(point))return point;
+    const shape={collision:{x:-4,y:-4,width:8,height:8}};
+    try{return navigation.nearest(shape,point,undefined,[],clear);}
+    catch{return navigation.nearest(shape,point);}
   }
   /** 一份地面奖励入账；无法结算的（例如没有战斗资源接收魔法宝石）返回 false 让掉落留在地上。 */
   private receiveGroundReward(reward:DropReward):boolean {

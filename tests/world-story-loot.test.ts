@@ -55,6 +55,23 @@ function fixture(){
   return {session,store,mapId,scene,mana:()=>mana,synced:()=>synced,messages:()=>messages};
 }
 
+test('loot landing stays off map exits',()=>{
+  const exits=[{x:32,y:32,width:64,height:64}];
+  const navigation={
+    terrainFree:()=>true,
+    nearest:(_shape:unknown,_point:{x:number;y:number},_ignore:unknown,_placements:unknown,
+      extra?: (point:{x:number;y:number})=>boolean)=>{
+      return [{x:40,y:40},{x:100,y:100}].find(point=>!extra||extra(point))!;
+    },
+  };
+  const host={map:{id:'exit-map',exits},movement:{navigation}};
+  const landing=(Reflect.get(WorldScene.prototype,'lootLanding') as
+    (map:string,x:number,y:number)=>{x:number;y:number}).call(host,'exit-map',40,40);
+  assert.deepEqual(landing,{x:100,y:100},'落点压住出口时换到最近的非出口可站点');
+  assert.deepEqual((Reflect.get(WorldScene.prototype,'lootLanding') as
+    (map:string,x:number,y:number)=>{x:number;y:number}).call(host,'exit-map',200,200),{x:200,y:200});
+});
+
 test('story normalization collects the current map before the performance takes control',async()=>{
   const run=fixture(),beforeItems=run.session.itemCount('healing-potion-s');
   await run.scene.normalizeForStory(new AbortController().signal);
