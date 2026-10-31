@@ -42,6 +42,7 @@ const files = {
   scripts: path.join(WORK, 'story-scripts-draft.json'),
   sourceMap: path.join(WORK, 'source-map.json'),
   evidence: path.join(WORK, 'story-debug-evidence.json'),
+  order: path.join(WORK, 'story-debug-order.json'),
 };
 const raw = Object.fromEntries(Object.entries(files).map(([name, file]) => [name, read(file)]));
 const campaign = parseCampaign(raw.campaign);
@@ -71,6 +72,14 @@ const builder = await DebugTaskBuilder.create({
 
 const only = option('--quest');
 const {tasks, gaps} = await builder.buildAll(only ? [only] : undefined);
+const orderRows: string[] = raw.order.quests;
+if (new Set(orderRows).size !== orderRows.length) throw new Error('调试任务顺序表有重复任务');
+/** 调试目录按顺序表的剧情顺序显示；表里没有的新任务排在末尾并提示补表。 */
+const order = new Map(orderRows.map((quest, index) => [quest, index]));
+const unordered = tasks.filter(task => !order.has(task.quest)).map(task => task.quest);
+if (unordered.length) console.error(`调试任务顺序表缺少：${unordered.join(', ')}；这些任务会排在末尾`);
+tasks.sort((left, right) =>
+  (order.get(left.quest) ?? Number.MAX_SAFE_INTEGER) - (order.get(right.quest) ?? Number.MAX_SAFE_INTEGER));
 if (contentFingerprint() !== contentBefore) {
   console.error('生成期间 public/content 发生变化，请重新运行 npm run debug-start');
   process.exit(3);
@@ -85,6 +94,7 @@ const sources = {
   scripts: digest(raw.scripts),
   sourceMap: digest(raw.sourceMap),
   evidence: digest(raw.evidence),
+  order: digest(raw.order),
 };
 const generatedAt = new Date(Math.max(...Object.values(files).map(file => fs.statSync(file).mtimeMs),
   ...mapFiles.map(file => fs.statSync(file).mtimeMs))).toISOString();

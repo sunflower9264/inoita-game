@@ -498,7 +498,7 @@ export class GmPanel {
     if(!this.storyCatalog){
       const side=new Set(this.campaign.questGroups.filter(group=>group.kind==='side').flatMap(group=>group.questIds));
       const quests=new Map(this.campaign.quests.map(quest=>[quest.id,quest]));
-      const order=new Map(this.campaign.quests.map((quest,index)=>[quest.id,index]));
+      // 目录顺序由现场表生成器按剧情依赖排好；这里保持目录顺序，不按任务定义顺序重排。
       this.storyCatalog=(this.campaign.debugStory?.tasks??[]).flatMap((task):StoryTaskRow[]=>{
         const quest=quests.get(task.quest);
         if(!quest)return [];
@@ -508,7 +508,7 @@ export class GmPanel {
           title:readableStoryText(group&&group!==quest.title?`${group} · ${quest.title}`:quest.title),
           category:quest.hidden?'hidden':side.has(quest.id)?'side':'main',
         }];
-      }).sort((a,b)=>(order.get(a.quest.id)??Number.MAX_SAFE_INTEGER)-(order.get(b.quest.id)??Number.MAX_SAFE_INTEGER));
+      });
     }
     return this.storyCatalog.filter(row=>row.category===this.filter);
   }
