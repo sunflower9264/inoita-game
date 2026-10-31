@@ -29,10 +29,10 @@ import { inventoryView,INVENTORY_LABELS,INVENTORY_SIDE_FILTERS,type InventoryVie
 import { EQUIPMENT_SLOTS,SKILL_POINT_ITEM,USE_LABELS,unimplementedItemUse,type EquipmentSlot,type ItemInstance,type ItemResult } from '../domain/items.ts';
 import { GmPanel } from './phaser/gm-panel.ts';
 import type { GmActions } from '../debug/gm-actions.ts';
-import { readSafeArea } from './viewport.ts';
+import { readSafeArea, uiUnitScale } from './viewport.ts';
 import { ControlLayoutEditor } from './phaser/control-layout-editor.ts';
 import { KeyBindingEditor } from './phaser/key-binding-editor.ts';
-import { resolveControlLayout, type ControlId } from './control-layout.ts';
+import { HUD_SIDE_BUTTON_SIZE, resolveControlLayout, type ControlId } from './control-layout.ts';
 import { controlViewport } from './phaser/control-layout-viewport.ts';
 import { UiSurface, uiImageFor, type ScrollArea } from './phaser/widgets.ts';
 import { drawDescriptionClose, drawDescriptionPanel, drawDescriptionRows, drawDescriptionSeparator, drawDescriptionTitle } from './phaser/description-panel.ts';
@@ -187,7 +187,7 @@ export class StoryUI {
     if(!active&&this.open&&!(this.busy&&this.app.ui.mode==='game'&&this.session)){this.discardAllocation();this.close();}
     if(this.app.ui.mode!=='game')this.hudButtons?.clear();
     this.hudButtons?.visible(active&&(!this.app.ui.locked||this.app.ui.controlLayoutEditing)&&!this.app.ui.suspended);
-    if(active&&this.hudButtons&&this.hudButtons.root.length===0){const v=this.hudButtons;v.button('',0,0,56,56,()=>this.show('save'),{image:this.content!.assets.save}).setData('label','存档');v.button('',0,64,56,56,()=>this.show('bag'),{image:this.content!.assets.menu}).setData('label','菜单');}
+    if(active&&this.hudButtons&&this.hudButtons.root.length===0){const v=this.hudButtons;v.button('',0,0,HUD_SIDE_BUTTON_SIZE,HUD_SIDE_BUTTON_SIZE,()=>this.show('save'),{image:this.content!.assets.save}).setData('label','存档');v.button('',0,HUD_SIDE_BUTTON_SIZE+8,HUD_SIDE_BUTTON_SIZE,HUD_SIDE_BUTTON_SIZE,()=>this.show('bag'),{image:this.content!.assets.menu}).setData('label','菜单');}
     // 登记快捷键时菜单本体整块让位，只留背后的遮罩与这一屏自己，画面里那层游戏背景就露出来了。
     const menu=this.open&&!this.app.ui.suspended&&!this.shortcutEdit&&!this.app.ui.controlLayoutEditing&&!this.app.ui.keyBindingEditing;
     this.surface?.visible(menu);this.body?.visible(menu);this.description?.visible(menu&&!this.forge);
@@ -325,7 +325,7 @@ export class StoryUI {
       const {scale}=controlPlacement(this.scene,this.scene.scale.width,this.scene.scale.height),bounds=this.scene.game.canvas.getBoundingClientRect(),safe=readSafeArea(),unit=this.scene.scale.width/Math.max(1,bounds.width);
       this.shortcutScreen.root.setPosition(0,0).setScale(scale);this.backTab.root.setPosition(safe.left*unit,safe.top*unit).setScale(scale);
     }
-    this.body?.scrolls.forEach(scroll=>scroll.layout());this.description?.scrolls.forEach(scroll=>scroll.layout());this.modal?.scrolls.forEach(scroll=>scroll.layout());if(this.hudButtons&&this.scene){const bounds=this.scene.game.canvas.getBoundingClientRect(),safe=readSafeArea(),unit=this.scene.scale.width/Math.max(1,bounds.width),scale=Math.min(this.scene.scale.width/800,this.scene.scale.height/480);this.hudButtons.root.setScale(scale).setPosition((safe.left+12)*unit,(safe.top+12)*unit);this.hudButtons.root.list.forEach((button,index)=>(button as Phaser.GameObjects.Container).setPosition(0,this.minimapHeight+12+index*64));}
+    this.body?.scrolls.forEach(scroll=>scroll.layout());this.description?.scrolls.forEach(scroll=>scroll.layout());this.modal?.scrolls.forEach(scroll=>scroll.layout());if(this.hudButtons&&this.scene){const bounds=this.scene.game.canvas.getBoundingClientRect(),safe=readSafeArea(),unit=this.scene.scale.width/Math.max(1,bounds.width),scale=uiUnitScale(this.scene.scale.width,this.scene.scale.height);this.hudButtons.root.setScale(scale).setPosition((safe.left+12)*unit,(safe.top+12)*unit);this.hudButtons.root.list.forEach((button,index)=>(button as Phaser.GameObjects.Container).setPosition(0,this.minimapHeight+12+index*(HUD_SIDE_BUTTON_SIZE+8)));}
     this.backdrop?.setSize(this.scene!.scale.width,this.scene!.scale.height);
   }
   private member(){return this.selectedMemberId==='player'?this.session!.hero:this.session!.party?.get(this.selectedMemberId);}

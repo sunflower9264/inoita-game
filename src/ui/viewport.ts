@@ -14,6 +14,11 @@ export const GAME_HEIGHT = 640;
 export const UI_UNIT_WIDTH = 800;
 export const UI_UNIT_HEIGHT = 480;
 
+/** 界面单位到画布像素的倍率：侧边 HUD 按钮与电脑模式技能行等固定尺寸控件共用。 */
+export function uiUnitScale(width: number, height: number): number {
+  return Math.min(width / UI_UNIT_WIDTH, height / UI_UNIT_HEIGHT);
+}
+
 let safeAreaRevision = 0;
 let safeAreaCache: { revision: number; value: { left: number; right: number; top: number; bottom: number } } | undefined;
 

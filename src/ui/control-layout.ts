@@ -12,6 +12,8 @@ export const SHORTCUT_OFFSETS = [
   {x:-342,y:33},{x:-242,y:33},{x:-142,y:33},
   {x:-129,y:-57},{x:-61,y:-120},{x:33,y:-123}
 ] as const;
+/** 左侧存档／菜单按钮的基准边长（界面单位）；电脑模式技能行的一格按它换算。 */
+export const HUD_SIDE_BUTTON_SIZE = 56;
 export const SWAP_OFFSET = {x:42,y:-210} as const;
 /** 登记页的待登记对象相对默认普攻中心的位置。 */
 export const PENDING_OFFSET = {x:-382,y:-183} as const;

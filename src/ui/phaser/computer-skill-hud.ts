@@ -4,6 +4,8 @@ import type { ControlSkin } from '../../domain/control-skin.ts';
 import type { Cooldown } from '../../domain/combat.ts';
 import { SHORTCUT_SLOT_COUNT } from '../../domain/shortcut-bar.ts';
 import { controlViewport } from './control-layout-viewport.ts';
+import { HUD_SIDE_BUTTON_SIZE } from '../control-layout.ts';
+import { uiUnitScale } from '../viewport.ts';
 import { uiImageFor } from './widgets.ts';
 import { FONT } from '../text-style.ts';
 import { cooldownFanState, cooldownSecondsLabel, drawCooldownFan, shortcutCooldown } from './cooldown-fan.ts';
@@ -88,8 +90,10 @@ export class ComputerSkillHud {
   layout(width: number, height: number): void {
     const viewport = controlViewport(this.scene, width, height);
     const safeWidth = Math.max(1, width - viewport.insets.left - viewport.insets.right);
-    // 最多占安全区七成宽，窄屏时给左右状态面板留出位置。
-    const scale = Math.max(.5, Math.min(1, safeWidth * .7 / (ROW_WIDTH + 24)));
+    // 一格和侧边存档／菜单按钮同尺寸：按 56 个界面单位换算；最多占安全区七成宽，窄屏时给左右状态面板留出位置。
+    const desired = uiUnitScale(width, height) * HUD_SIDE_BUTTON_SIZE / FRAME_SIZE;
+    const fit = safeWidth * .7 / (ROW_WIDTH + 24);
+    const scale = Math.max(.5, Math.min(desired, fit));
     this.root.setScale(scale)
       .setPosition(viewport.insets.left + safeWidth / 2, height - viewport.insets.bottom - 94 * scale);
   }
