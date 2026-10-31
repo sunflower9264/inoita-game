@@ -79,7 +79,7 @@ export class CraftingPanel {
   render(v:UiSurface,modal:UiSurface,placeModal:(width:number,height:number)=>void,startDrag:(pointer:Phaser.Input.Pointer,entry:string,scroll:ScrollArea)=>void):void {
     const assets=this.panels.assets;
     this.drops=[];
-    v.border(assets,10,0,462,431);v.border(assets,484,0,395,431);
+    v.border(assets,10,0,462,431);v.border(assets,496,0,395,431);
     this.renderModeStrip(v);
     if(this.mode==='recipes')this.renderRecipes(v);
     else if(this.mode==='socket')this.renderSocket(v);
@@ -93,7 +93,7 @@ export class CraftingPanel {
   private renderModeStrip(v:UiSurface):void {
     // 模式切换放在左侧框上方，不再占用框内第一行；按钮同步放大，手机上也更好点。
     const tab=(label:string,data:string,x:number,width:number,selected:boolean,mode:'recipes'|ChaosTier|'socket')=>
-      v.button(label,x,-38,width,34,()=>this.chooseMode(mode),{selected,fontSize:18}).setData('label',data);
+      v.button(label,x,-46,width,42,()=>this.chooseMode(mode),{selected,fontSize:18}).setData('label',data);
     tab('配方','切换融合模式',8,104,this.mode==='recipes','recipes');
     tab('混沌','混沌合成',116,104,this.mode==='chaos'&&this.tier==='chaos','chaos');
     tab('深渊混沌','深渊混沌合成',224,132,this.mode==='chaos'&&this.tier==='epic-chaos','epic-chaos');
@@ -107,7 +107,7 @@ export class CraftingPanel {
         v.text('还没有学会任何装备配方。\n使用合成套装或在任务中获得配方。',241,58,380,20,'#e2cb9e').setOrigin(.5,0);
         return;
       }
-      const scroll=v.scroll(30,10,400,363);this.recipeScroll=scroll;
+      const scroll=v.scroll(34,26,412,347);this.recipeScroll=scroll;
       for(const [index,entry] of recipes.entries()){
         const y=index*44,definition=bag.catalog.items[entry.recipe.result];
         const button=v.button('',0,y,390,40,()=>this.selectRecipe(entry.id),{bare:true,parent:scroll.content,guard:scroll.guard}).setData('label',entry.recipe.name);
@@ -118,70 +118,70 @@ export class CraftingPanel {
       scroll.setHeight(recipes.length*44);scroll.scrollTop=this.recipeOffset;scroll.onScroll=()=>{this.recipeOffset=scroll.scrollTop;};
       return;
     }
-    v.button('返回',14,8,110,34,()=>this.backToRecipes(),{fontSize:18}).setData('label','返回配方');
-    v.text(recipe.name,136,10,326,24,'#e2cb9e').setOrigin(0,0);
+    v.button('返回',34,26,94,34,()=>this.backToRecipes(),{fontSize:18}).setData('label','返回配方');
+    v.text(recipe.name,136,28,312,24,'#e2cb9e').setOrigin(0,0);
     const result=bag.catalog.items[recipe.result];
-    const slot=v.button('',204,44,74,74,()=>{}, {image:assets['inventory-slot']}).setData('label',result.name);
+    const slot=v.button('',204,58,74,74,()=>{}, {image:assets['inventory-slot']}).setData('label',result.name);
     v.image(result.icon,5,5,64,64,slot);
-    v.text(result.name,241,128,410,22,'#e2cb9e').setOrigin(.5,0);
+    v.text(result.name,241,142,410,22,'#e2cb9e').setOrigin(.5,0);
     for(const [index,material] of recipe.materials.entries()){
       const x=49+index*104,available=bag.count(material.item),definition=bag.catalog.items[material.item];
-      v.image(assets['inventory-slot'],x,167,74,74);v.image(definition.icon,x+5,172,64,64);
-      v.text(`${available}/${material.quantity}`,x+37,250,0,22,available<material.quantity?'#ff0000':'#e2cb9e').setOrigin(.5,0);
-      v.text(definition.name,x+37,272,96,13,'#c8b78f').setOrigin(.5,0);
+      v.image(assets['inventory-slot'],x,181,74,74);v.image(definition.icon,x+5,186,64,64);
+      v.text(`${available}/${material.quantity}`,x+37,264,0,22,available<material.quantity?'#ff0000':'#e2cb9e').setOrigin(.5,0);
+      v.text(definition.name,x+37,286,96,13,'#c8b78f').setOrigin(.5,0);
     }
-    v.text(`合成费 ${moneyText(recipe.cost)}`,241,296,300,18,'#ffffff').setOrigin(.5,0);
-    v.button('',139,322,205,62,()=>this.beginRecipe(),{image:assets['craft-button'],pressed:assets['craft-button-pressed'],native:true,pressedAdd:true}).setData('label','组合');
+    v.text(`合成费 ${moneyText(recipe.cost)}`,241,310,300,18,'#ffffff').setOrigin(.5,0);
+    v.button('组合',139,336,205,62,()=>this.beginRecipe()).setData('label','组合');
   }
   private renderChaos(v:UiSurface):void {
     const {session,catalog}=this.crafting,bag=session.bag,assets=this.panels.assets,op=catalog.operations[this.tier];
     if(this.target&&!bag.entries.some(entry=>entry.id===this.target))this.target=undefined;
     const target=this.target?bag.get(this.target):undefined,item=target?bag.catalog.items[target.item]:undefined;
-    const slot=v.button('',204,10,74,74,()=>{this.target=undefined;this.changed();},{image:assets['inventory-slot']}).setData('label','合成装备');
+    const slot=v.button('',204,26,74,74,()=>{this.target=undefined;this.changed();},{image:assets['inventory-slot']}).setData('label','合成装备');
     if(item)v.image(item.icon,5,5,64,64,slot);
     this.drops.push({object:slot,craft:true});
     if(item&&target){
       const numbers=session.hero?.catalog.equipment[target.item],body=session.hero?itemDescriptionBody({item,entry:target,numbers,catalog:session.hero.catalog,grades:this.grades,gemNames:target.gems.map(id=>bag.catalog.items[id]?.name)}):undefined;
-      v.text(body?.title??item.name,241,95,410,22,body?.color??'#e2cb9e').setOrigin(.5,0);
-      if(numbers){const power=equipmentPower(numbers,target);v.text(`等级 ${equipmentLevel(item,target)}　${item.priceKind==='weapon'?`物理攻击 ${power.attack}　魔法攻击 ${power.magicAttack}`:`防御力 ${power.defense}`}`,241,124,410,18,'#e2cb9e').setOrigin(.5,0);}
+      v.text(body?.title??item.name,241,111,410,22,body?.color??'#e2cb9e').setOrigin(.5,0);
+      if(numbers){const power=equipmentPower(numbers,target);v.text(`等级 ${equipmentLevel(item,target)}　${item.priceKind==='weapon'?`物理攻击 ${power.attack}　魔法攻击 ${power.magicAttack}`:`防御力 ${power.defense}`}`,241,140,410,18,'#e2cb9e').setOrigin(.5,0);}
     }
     for(const [index,material] of op.materials.entries()){
       const x=49+index*104,available=bag.count(material.item),definition=bag.catalog.items[material.item];
-      v.image(assets['inventory-slot'],x,149,74,74);v.image(definition.icon,x+5,154,64,64);
-      v.text(`${available}/${material.quantity}`,x+37,232,0,22,available<material.quantity?'#ff0000':'#e2cb9e').setOrigin(.5,0);
+      v.image(assets['inventory-slot'],x,165,74,74);v.image(definition.icon,x+5,170,64,64);
+      v.text(`${available}/${material.quantity}`,x+37,248,0,22,available<material.quantity?'#ff0000':'#e2cb9e').setOrigin(.5,0);
     }
     const coins=splitMoney(item?item.level*op.costPerLevel:0);
     for(const [index,unit] of (['gold','silver','copper'] as const).entries()){
-      const x=82+index*103;v.image(assets[`craft-money-${unit}`],x,268,44,40);
-      v.text(String(coins[unit]),x+44,274,0,20,'#ffffff');
+      const x=82+index*103;v.image(assets[`craft-money-${unit}`],x,284,44,40);
+      v.text(String(coins[unit]),x+44,290,0,20,'#ffffff');
     }
-    v.button('',139,322,205,62,()=>this.begin(),{image:assets['craft-button'],pressed:assets['craft-button-pressed'],native:true,pressedAdd:true}).setData('label','组合');
+    v.button('组合',139,338,205,62,()=>this.begin()).setData('label','组合');
   }
 
   private renderSocket(v:UiSurface):void {
     const {session,catalog}=this.crafting,bag=session.bag,assets=this.panels.assets,op=catalog.operations.socket;
     if(this.target&&!bag.entries.some(entry=>entry.id===this.target))this.target=undefined;
     const target=this.target?bag.get(this.target):undefined,item=target?bag.catalog.items[target.item]:undefined;
-    const slot=v.button('',204,10,74,74,()=>{this.target=undefined;this.changed();},{image:assets['inventory-slot']}).setData('label','合成装备');
+    const slot=v.button('',204,26,74,74,()=>{this.target=undefined;this.changed();},{image:assets['inventory-slot']}).setData('label','合成装备');
     if(item)v.image(item.icon,5,5,64,64,slot);
     this.drops.push({object:slot,craft:true});
     if(item&&target){
-      v.text(item.name,241,95,410,22,'#e2cb9e').setOrigin(.5,0);
-      v.text(`等级 ${equipmentLevel(item,target)}　宝石孔 ${target.numbers?.sockets??0}`,241,124,410,18,'#e2cb9e').setOrigin(.5,0);
+      v.text(item.name,241,111,410,22,'#e2cb9e').setOrigin(.5,0);
+      v.text(`等级 ${equipmentLevel(item,target)}　宝石孔 ${target.numbers?.sockets??0}`,241,140,410,18,'#e2cb9e').setOrigin(.5,0);
       const range=this.crafting.socketRange(target.id);
-      if(range)v.text(range.min===range.max?`可生成 ${range.max} 个宝石孔`:`可生成 ${range.min}~${range.max} 个宝石孔`,241,146,410,16,'#c8b78f').setOrigin(.5,0);
+      if(range)v.text(range.min===range.max?`可生成 ${range.max} 个宝石孔`:`可生成 ${range.min}~${range.max} 个宝石孔`,241,162,410,16,'#c8b78f').setOrigin(.5,0);
     }
     for(const [index,material] of op.materials.entries()){
       const x=152+index*104,available=bag.count(material.item),definition=bag.catalog.items[material.item];
-      v.image(assets['inventory-slot'],x,168,74,74);v.image(definition.icon,x+5,173,64,64);
-      v.text(`${available}/${material.quantity}`,x+37,246,0,22,available<material.quantity?'#ff0000':'#e2cb9e').setOrigin(.5,0);
+      v.image(assets['inventory-slot'],x,184,74,74);v.image(definition.icon,x+5,189,64,64);
+      v.text(`${available}/${material.quantity}`,x+37,262,0,22,available<material.quantity?'#ff0000':'#e2cb9e').setOrigin(.5,0);
     }
     const coins=splitMoney(op.cost);
     for(const [index,unit] of (['gold','silver','copper'] as const).entries()){
-      const x=82+index*103;v.image(assets[`craft-money-${unit}`],x,274,44,40);
-      v.text(String(coins[unit]),x+44,280,0,20,'#ffffff');
+      const x=82+index*103;v.image(assets[`craft-money-${unit}`],x,290,44,40);
+      v.text(String(coins[unit]),x+44,296,0,20,'#ffffff');
     }
-    v.button('',139,322,205,62,()=>this.begin(),{image:assets['craft-button'],pressed:assets['craft-button-pressed'],native:true,pressedAdd:true}).setData('label','组合');
+    v.button('组合',139,338,205,62,()=>this.begin()).setData('label','组合');
   }
   private renderBag(v:UiSurface,startDrag:(pointer:Phaser.Input.Pointer,entry:string,scroll:ScrollArea)=>void):void {
     const {session}=this.crafting,bag=session.bag,assets=this.panels.assets;

@@ -116,17 +116,16 @@ export class PartyPanel {
       else this.renderSkills(v,id);
       if(id!=='player'&&(member as CompanionMember).source==='mercenary'){
         const deployed=snapshot.active.includes(id);
-        this.menuButton(v,deployed?'party-reserve':'party-join',deployed?'移出队伍':'加入队伍',70,
+        this.menuButton(v,deployed?'移出队伍':'加入队伍',70,
           ()=>this.run(()=>deployed?party.reserve(id):party.deployFirstAvailable(id)),deployed?member.player.health<=0:snapshot.active.length>=3||member.player.health<=0);
-        this.menuButton(v,'party-dismiss','放逐',272,()=>{this.modal={kind:'dismiss',id};this.changed();},deployed);
+        this.menuButton(v,'放逐',272,()=>{this.modal={kind:'dismiss',id};this.changed();},deployed);
       }
     }
     if(this.error)v.text(this.error,70,434,808,18,'#e6a191');
     if(this.modal)this.renderModal(modal);
   }
-  private menuButton(v:UiSurface,image:string,label:string,x:number,action:()=>void,disabled:boolean):void{
-    const button=v.button('',x,374,197,52,action,{bare:true,disabled}).setData('label',label);
-    button.addAt(v.image(this.app.menuPanels.assets[image],-14,-13,225,78,button),0);
+  private menuButton(v:UiSurface,label:string,x:number,action:()=>void,disabled:boolean):void{
+    v.button(label,x,374,197,52,action,{disabled}).setData('label',label);
   }
   private renderInfo(v:UiSurface,id:string):void{
     const member=this.member(id)!,character=this.app.storyClasses.classes.find(c=>c.id===member.classId)!,panels=this.app.menuPanels;

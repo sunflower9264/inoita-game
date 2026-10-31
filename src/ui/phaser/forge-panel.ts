@@ -48,7 +48,7 @@ export class ForgePanel {
   cancelConfirmation():void {this.confirmation=undefined;this.changed();}
   render(v:UiSurface,modal:UiSurface,placeModal:(width:number,height:number)=>void):void {
     const assets=this.panels.assets;
-    v.border(assets,10,0,462,431);v.border(assets,484,0,395,431);
+    v.border(assets,10,0,462,431);v.border(assets,496,0,395,431);
     this.scroll=undefined;this.leftScroll=undefined;
     // 左框内容可能随强化概率、宝石孔和属性条数变长，统一放进可滚动区。
     const left=v.scroll(0,0,458,431);this.leftScroll=left;
