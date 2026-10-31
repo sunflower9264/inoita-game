@@ -61,6 +61,7 @@ test('a defeated breakable rolls once, skips experience and pity, and keeps ques
   const loot: { rewards: readonly unknown[]; rendered: boolean }[] = [];
   const session = {
     party: { livingIds: ['player'], groupModifiers: () => ({}), addExperience: (value: number) => { experience += value; } },
+    isOneHitKill: () => false,
     chests,
     questDropRequirements: () => [],
     enemyDefeated: (spawn: unknown) => { defeated.push(spawn); },
