@@ -196,6 +196,7 @@ test('rollback restores physical prop positions and drained appearance while ret
   Object.assign(spring.container,{setAlpha(this:typeof spring.container,value:number){this.alpha=value;return this;},setVisible(this:typeof spring.container,value:boolean){this.visible=value;return this;}});
   let restoredCombat=false;
   const host=Object.assign(Object.create(WorldScene.prototype),{map:{id:'camp'},player,characters:[spring],loadingWorld:false,
+    encounterResults:new Set<string>(),
     movement:{refreshShape(){},placeAll:(placements:{visual:typeof spring;position:{x:number;y:number}}[])=>{
       for(const placement of placements)Object.assign(placement.visual.physics,placement.position);
     }},combat:{async restoreState(){restoredCombat=true;}},app:{},
