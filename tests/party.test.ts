@@ -136,6 +136,18 @@ test('a companion panel is reused until the bag revision or level changes',()=>{
   party.bag.add('healing-potion-s');
   assert.notEqual(member.panel,first,'背包变化后重新计算');
 });
+
+test('companion previewGemChange recalculates the equipped panel without mutating the bag',()=>{
+  const {hero,party}=setup(),member=recruit(party);
+  const weaponId=hero.bag.equipmentFor(member.id)['main-hand']!;
+  assert.ok(weaponId,'伙伴有初始武器');
+  const before=member.panel,revision=party.bag.revision;
+  const preview=member.previewGemChange(weaponId,[{stat:'strength',value:10}]);
+  assert.ok(preview);
+  assert.equal(preview!.attributes.strength,before.attributes.strength+10);
+  assert.equal(party.bag.revision,revision,'预览不写背包');
+  assert.deepEqual(member.panel,before,'预览不改变当前面板');
+});
 test('all eighteen roster slots open and capacity failures preserve the emblem',()=>{
   const {party}=setup();const members=Array.from({length:18},()=>recruit(party));
   assert.deepEqual(party.snapshot().rosterSlots,members.map(member=>member.id));
