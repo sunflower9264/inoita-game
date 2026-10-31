@@ -1503,7 +1503,7 @@ captureStoryScene():SceneSnapshot {
     const actors:SceneActorState[]=[this.player,...this.characters.filter(character=>character!==this.player)].map(character=>{
       const player=character===this.player;
       const visible=session.storyWorld.actorVisible(this.map!.id,character.entity.actor,character.entity.characterId)
-        &&session.visible(character.entity)&&!this.chestOpened(character);
+        &&session.visible(character.entity)&&!this.chestOpened(character)&&!this.legendarySwordConsumed(character);
       const facing=player?this.facing:character.facing??undefined;
       const animation=characterAnimationState(character);
       return {id:player?'player':`entity:${character.entity.id}`,actor:character.entity.actor,

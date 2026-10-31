@@ -89,6 +89,21 @@ test('live capture includes the physical scene with equipped party, props, enemy
   assert.deepEqual(JSON.parse(JSON.stringify(snapshot)).actors.length,snapshot.actors.length);
 });
 
+test('a pulled legendary sword is hidden from the live story scene snapshot',()=>{
+  const player=visual('player',appearance('hero'),12,18);
+  const sword=visual('sword-1',{...appearance('legendary-sword'),service:'legendary-sword' as const},30,40);
+  const movement={position:(value:{physics:{x:number;y:number}})=>({...value.physics})};
+  const host=Object.assign(Object.create(WorldScene.prototype),{map:{id:'camp'},player,movement,
+    characters:[sword],baseEntities:[],chestOpened:()=>false,
+    app:{session:{storyWorld:{actorVisible:()=>true},visible:()=>true,
+      legendaryWeapons:{isPulled:(mapId:string,entityId:string)=>mapId==='camp'&&entityId==='sword-1'}}}});
+  const snapshot:SceneSnapshot=host.captureStoryScene();
+  const captured=snapshot.actors.find(actor=>actor.id==='entity:sword-1');
+  assert.ok(captured,'古剑仍在快照里，只是不可见');
+  assert.equal(captured.visible,false,'已拔出的古剑不再出现在剧情舞台');
+  validateSceneSnapshot(snapshot);
+});
+
 test('scene snapshot rejects ambiguous identities and invalid reconstruction data',()=>{
   const valid:SceneSnapshot={map:'camp',actors:[{id:'player',actor:'hero',x:1,y:2,facing:'south',visible:true,appearance:appearance('hero')}]};
   validateSceneSnapshot(valid);
