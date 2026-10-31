@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { parseBattle, parseCampaign, parseMenuPanels, validateMenuClasses } from '../src/application/content-validation.ts';
-import { CHARACTER_ASSETS, SKILL_ASSETS, SKILL_AI_ASSETS } from '../src/domain/menu-panels.ts';
+import { CHARACTER_ASSETS, SKILL_ASSETS, SKILL_AI_ASSETS, memberArt } from '../src/domain/menu-panels.ts';
 import { Session } from '../src/domain/session.ts';
 
 const read=(file:string)=>JSON.parse(fs.readFileSync(new URL(`../public/content/${file}.json`,import.meta.url),'utf8'));
@@ -68,6 +68,15 @@ test('AI settings and settings tabs require native level art, locked slot and th
   assert.throws(()=>parseMenuPanels(reset),/自动反击标题、初始技能点与初始化按钮文案/);
   const absent=structuredClone(panels);delete (absent.skillPanel as {labels?:unknown}).labels;
   assert.throws(()=>parseMenuPanels(absent),/skillPanel/);
+});
+
+test('story members without dedicated portraits fall back to their class art, not the hero portrait',()=>{
+  const classArt=panels.assets['party-class-warrior']!;
+  assert.deepEqual(memberArt(panels,{portrait:null},'warrior','story'),{image:classArt,partyIcon:classArt});
+  assert.deepEqual(memberArt(panels,{portrait:'missing'},'warrior','story'),{image:classArt,partyIcon:classArt});
+  assert.deepEqual(memberArt(panels,{portrait:'kiyan'},'warrior','story'),panels.character.portraits.kiyan);
+  // 佣兵即使角色定义带立绘，也只用职业默认图。
+  assert.deepEqual(memberArt(panels,{portrait:'kiyan'},'warrior','mercenary'),{image:classArt,partyIcon:classArt});
 });
 
 test('character page requires status portraits, complete native skin and eleven distinct combat labels',()=>{

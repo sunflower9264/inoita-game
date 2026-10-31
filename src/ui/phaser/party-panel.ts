@@ -3,6 +3,7 @@ import type { StoryUIContext } from '../../application/ports.ts';
 import type { Session } from '../../domain/session.ts';
 import type { WorldIndex } from '../../domain/content.ts';
 import type { CompanionMember, CompanionGroupEffect } from '../../domain/party.ts';
+import { memberArt } from '../../domain/menu-panels.ts';
 import type { EquipmentSlot } from '../../domain/items.ts';
 import { PRIMARY_STATS } from '../../domain/character-stats.ts';
 import { skillDetailEntries } from '../../domain/skill-display.ts';
@@ -57,9 +58,9 @@ export class PartyPanel {
   private name(id:string):string{return id==='player'?this.world.actors[this.session.campaign.start.actor].name:this.session.party!.get(id)!.definition.name;}
   private portrait(id:string):string{
     const member=this.member(id)!;
-    if(id!=='player'&&(member as CompanionMember).source==='mercenary')return this.app.menuPanels.assets[`party-class-${member.classId}`];
+    const source=id==='player'?undefined:(member as CompanionMember).source;
     const actor=this.world.actors[id==='player'?this.session.campaign.start.actor:(member as CompanionMember).definition.actor];
-    return this.app.menuPanels.character.portraits[actor?.portrait??'kiyan']?.partyIcon??this.app.menuPanels.assets[`party-class-${member.classId}`];
+    return memberArt(this.app.menuPanels,actor,member.classId,source).partyIcon;
   }
   private run(action:()=>void):void{
     this.error='';let failed=true;

@@ -16,6 +16,7 @@ import type { ClipName, EntityPlacement, ExitFacing, Facing, MapExit, WorldMap }
 import type { AssetLease } from '../application/assets.ts';
 import { Wardrobe } from '../rendering/wardrobe.ts';
 import { costumeRecipe } from '../domain/wardrobe.ts';
+import { memberArt } from '../domain/menu-panels.ts';
 import type { EquipmentSlot } from '../domain/items.ts';
 import type { ActorDefinition } from '../domain/content.ts';
 import type { StoryStageSnapshot } from '../domain/story-performance.ts';
@@ -398,8 +399,7 @@ export class WorldScene extends Phaser.Scene {
         if(id==='player')return this.app.statusHud.assets['player-portrait'];
         const member=this.app.session.party?.get(id);if(!member)return undefined;
         const actor=this.app.world.actors[member.definition.actor];
-        return member.source==='story'&&actor.portrait?this.app.menuPanels.character.portraits[actor.portrait]?.partyIcon:
-          this.app.menuPanels.assets[`party-class-${member.classId}`];
+        return memberArt(this.app.menuPanels,actor,member.classId,member.source).partyIcon;
       },()=>{if(this.canControl)this.combat?.focusSelected();},id=>this.combat?.activeConditions(id)??[],()=>this.app.session.player);
     this.stick = new MoveStick(this, this.hud!, this.app.controlSkin, this.app.controlLayout);
     this.controls = new ActionControls(this, this.hud!, {

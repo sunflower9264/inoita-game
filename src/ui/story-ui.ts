@@ -12,6 +12,7 @@ import { SLOT_ICON_SIZE, ITEM_ICON_SIZE, PENDING_OFFSET, controlPlacement } from
 import { AttributeAllocation } from '../domain/attribute-allocation.ts';
 import { effectiveCharacterPanel, PRIMARY_STATS, type Modifier, type PrimaryStat } from '../domain/character-stats.ts';
 import { memberCombatModifiers } from '../domain/party-combat.ts';
+import { memberArt as memberArtwork } from '../domain/menu-panels.ts';
 import { characterCombatValues } from './character-values.ts';
 import type { StoryUIContext } from '../application/ports.ts';
 import type { Session } from '../domain/session.ts';
@@ -353,18 +354,15 @@ export class StoryUI {
   /** 某位成员在队员栏里的头像；佣兵用职业图，主角与剧情同伴用人物状态立绘的小图。 */
   private memberPartyIcon(id:string):string{
     const member=id==='player'?this.session!.hero:this.session!.party?.get(id);
-    if(id!=='player'&&(member as CompanionMember|undefined)?.source==='mercenary')return this.classArt(member!.classId).partyIcon;
+    const source=id==='player'?undefined:(member as CompanionMember|undefined)?.source;
     const actor=this.world!.actors[id==='player'?this.session!.campaign.start.actor:(member as CompanionMember).definition.actor];
-    return this.portraitArt(actor)?.partyIcon??this.classArt(member!.classId).partyIcon;
+    return memberArtwork(this.app.menuPanels,actor,member!.classId,source).partyIcon;
   }
   private memberArt(){
     const member=this.member()!;
-    if(this.selectedMemberId!=='player'&&(member as CompanionMember).source==='mercenary')return this.classArt(member.classId);
-    return this.portraitArt(this.actor())??this.classArt(member.classId);
+    const source=this.selectedMemberId==='player'?undefined:(member as CompanionMember).source;
+    return memberArtwork(this.app.menuPanels,this.actor(),member.classId,source);
   }
-  /** 角色没有专用立绘时按职业取图，和原版队员栏 `PORTRAITCLASSBASE` 的兜底一致。 */
-  private classArt(classId:string){const image=this.app.menuPanels.assets[`party-class-${classId}`];return {image,partyIcon:image};}
-  private portraitArt(actor:{portrait?:string|null}){const key=actor.portrait;return key?this.app.menuPanels.character.portraits[key]:undefined;}
   private configuration(){return this.selectedMemberId==='player'?this.session!.skills:(this.member() as CompanionMember).skills;}
   private scroll(name:string,x:number,y:number,w:number,h:number,surface=this.body!,bleed=0):ScrollArea{const scroll=surface.scroll(x,y,w,h,bleed);this.scrollNames.set(name,scroll);return scroll;}
   private finishScroll(name:string,scroll:ScrollArea,height:number):void{scroll.setHeight(height);scroll.scrollTop=this.scrollOffsets.get(`${this.page}:${name}`)??0;}

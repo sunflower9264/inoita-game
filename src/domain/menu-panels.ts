@@ -35,6 +35,25 @@ export const PARTY_ASSETS = ['party-slot', 'party-empty', 'party-frame', 'party-
   'party-tab-info', 'party-tab-equipment', 'party-tab-skills', 'party-skill-unavailable',
   ...['dark-knight','assassin','warlock','priest','ranger','warrior'].map(id=>`party-class-${id}`)];
 
+export interface MemberArt { image: string; partyIcon: string }
+
+/**
+ * 队员在菜单里的形象。佣兵只显示职业默认图；主角和剧情同伴优先用专属立绘，
+ * 角色没有专属立绘时同样回到职业默认图，和原版队员栏 `PORTRAITCLASSBASE` 的兜底一致。
+ */
+export function memberArt(
+  panels: MenuPanels,
+  actor: { portrait?: string | null } | undefined,
+  classId: string,
+  source?: 'mercenary' | 'story',
+): MemberArt {
+  const classImage = panels.assets[`party-class-${classId}`];
+  const portrait = source === 'mercenary' || !actor?.portrait
+    ? undefined
+    : panels.character.portraits[actor.portrait];
+  return portrait ?? { image: classImage, partyIcon: classImage };
+}
+
 export const CHARACTER_ASSETS = [
   'character-nw', 'character-ne', 'character-sw', 'character-se', 'character-gauge',
   'character-adjust', 'character-step', 'character-step-pressed', 'character-party-frame',
