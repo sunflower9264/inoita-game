@@ -261,10 +261,10 @@ export class ShopPanel {
     // 说明面板打开时先收起，避免和“出售”那一步抢同一块区域。
     if(!this.selection){
       const batchBar=this.layout.bagFrame;
-      v.button(this.batch?'退出批量':'批量出售',batchBar.x,batchBar.y-33,118,28,()=>this.toggleBatch(),
-        {fontSize:14,selected:this.batch}).setData('label',this.batch?'退出批量':'批量出售');
-      if(this.batch)v.button(`出售选中（${batchItems.length}）`,batchBar.x+126,batchBar.y-33,batchBar.width-126,28,
-        ()=>this.sellBatch(),{fontSize:14,disabled:!batchItems.length}).setData('label','出售选中');
+      v.button(this.batch?'退出批量':'批量出售',batchBar.x,batchBar.y-33,150,32,()=>this.toggleBatch(),
+        {fontSize:16,selected:this.batch}).setData('label',this.batch?'退出批量':'批量出售');
+      if(this.batch)v.button(`出售选中（${batchItems.length}）`,batchBar.x+158,batchBar.y-33,batchBar.width-158,32,
+        ()=>this.sellBatch(),{fontSize:16,disabled:!batchItems.length}).setData('label','出售选中');
     }
     if(this.selection)this.selection.step==='description'?this.renderDescription(description??v,this.selection):this.renderModal(modal);
   }
