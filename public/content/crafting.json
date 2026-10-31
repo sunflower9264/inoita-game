@@ -67,6 +67,33 @@
         "levelDiceDivisor": 30,
         "levelClampDivisor": 5
       }
+    },
+    "socket": {
+      "name": "宝石孔生成",
+      "materials": [
+        {
+          "item": "sharp-claw",
+          "quantity": 8
+        },
+        {
+          "item": "novice-jewel",
+          "quantity": 1
+        }
+      ],
+      "cost": 1,
+      "socketWeights": [
+        35,
+        30,
+        20,
+        15
+      ],
+      "socketLimits": [
+        4,
+        3,
+        2,
+        1,
+        1
+      ]
     }
   }
 }

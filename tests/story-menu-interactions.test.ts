@@ -1421,6 +1421,31 @@ test('fusion menu selects or drags equipment, confirms once and blocks underlyin
   f.menu.close();assert.equal(f.controls.locked,false);
 });
 
+test('fusion socket creation only accepts hole-less equipment and creates the rolled sockets', t => {
+  const f=fixture();t.after(f.cleanup);const bag=f.session.bag;
+  const target=bag.equipment['main-hand']!;bag.unequip('main-hand');
+  const state=bag.captureState(),entry=state.instances.find(value=>value.id===target)!;
+  entry.numbers!.sockets=0;entry.numbers!.grade=0;bag.restoreState(state);
+  f.session.gainMoney(100000);
+  const claws=bag.count('sharp-claw'),jewels=bag.count('novice-jewel');
+  f.add('sharp-claw',8);f.add('novice-jewel',1);
+  const machine=Object.keys(world.actors).find(id=>world.actors[id].service==='fusion-machine')!;
+  f.menu.openCrafting(machine);
+  f.scene.click(f.scene.button('宝石孔生成'));
+  const name=items.items[bag.get(target)!.item].name;
+  f.scene.click(f.scene.button(name));
+  const originalRandom=Math.random;Math.random=()=>0;t.after(()=>{Math.random=originalRandom;});
+  const money=f.session.money;
+  f.scene.click(f.scene.button('组合'));
+  f.scene.click(f.scene.button('是'));
+  assert.equal(bag.get(target)!.numbers!.sockets,1);
+  assert.equal(f.session.money,money-1);
+  assert.equal(bag.count('sharp-claw'),claws);
+  assert.equal(bag.count('novice-jewel'),jewels);
+  f.scene.click(f.scene.button(name));
+  assert(f.scene.texts().some(text=>text.replace(/\n/g,'')==='不含宝石孔的道具才可以进行合成。'));
+});
+
 test('save page writes the loaded world into the chosen slot and asks before overwriting it', t => {
   const f=fixture();t.after(f.cleanup);
   f.session.gainMoney(77);f.session.accept('grafton-mission');

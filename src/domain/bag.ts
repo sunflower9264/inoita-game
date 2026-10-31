@@ -438,6 +438,15 @@ export class Bag {
     if(!['chaos','epic-chaos'].includes(chaos.tier)||!Number.isInteger(chaos.valuePercent)||chaos.valuePercent<0||chaos.valuePercent>CHAOS_VALUE_PERCENT_MAX||!Number.isInteger(chaos.levelOffset)||Math.abs(chaos.levelOffset)>CHAOS_LEVEL_OFFSET_LIMIT)throw new Error('混沌数值无效');
     entry.numbers.chaos={...chaos};this.notify();
   }
+
+  /** 宝石孔生成：只给 0 孔装备写入孔位上限；强化、词条和已镶宝石不动。 */
+  applySockets(id:string,sockets:number,expectedRevision:number):void {
+    const entry=this.instances.get(id),item=entry?this.catalog.items[entry.item]:undefined;
+    if(this.revision!==expectedRevision||!entry?.numbers||this.cellOf(id)<0||!item?.equipment)throw new Error('合成装备已变化');
+    if(!Number.isSafeInteger(sockets)||sockets<1||sockets>4)throw new Error('宝石孔数量无效');
+    if(entry.numbers.sockets>0)throw new Error('装备已有宝石孔');
+    entry.numbers.sockets=sockets;this.notify();
+  }
   use(id: string, target?: string, skill?: string, random: () => number = Math.random): ItemResult {
     const source=this.instances.get(id);
     if(!source||this.cellOf(id)<0)throw new Error('物品已不在背包中');
