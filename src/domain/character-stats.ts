@@ -5,6 +5,7 @@ import { Bag, type BagRules } from './bag.ts';
 import type { ItemCatalog, ItemInstance } from './items.ts';
 import { calculateEffectiveDefense,calculateMagicResistance } from './physical-hit.ts';
 import { applyAttributeModifiers, type AttributeModifier } from './combat-operation.ts';
+import { chaosThreshold, doubleThreshold, enhancementOdds, ENHANCEMENT_ROLL_MAX } from './enhancement.ts';
 
 export const PRIMARY_STATS = ['strength','dexterity','vitality','intelligence','mentality'] as const;
 /** 装备没有写默认品级时使用的档位。 */
@@ -102,13 +103,7 @@ const EVASION_LEVEL_FACTOR=5000,EVASION_CONSTANT=1000000,EVASION_LEVEL_DIVISOR=5
  * 强化与镶嵌的原版常量。依据 `work/findings/enchant-2026-10-12.md:52-55` 与
  * `work/findings/character-stats-2026-10-09.md:67`。
  */
-/** 判定区间上界：原版取 `MATH_GetRandom(1, 998)`，小于阈值即成功。 */
-const ENHANCEMENT_ROLL_MAX=998;
 const MAX_ENHANCEMENT_LEVEL=30;
-/** 混沌卷轴第一次判定阈值 `T1 = 50000 / (10 + 等级²)`，失败降一级。 */
-const CHAOS_CHANCE_NUMERATOR=50000,CHAOS_CHANCE_BASE=10;
-/** 第二次判定阈值 `T2 = 1500 / (L + 6)`，L 已加一；通过再升一级。 */
-const SECOND_CHANCE_NUMERATOR=1500,SECOND_CHANCE_OFFSET=5;
 /** 开槽先过 80% 判断，再按权重依次累加决定孔数。 */
 const SOCKET_CHANCE_PERCENT=80,SOCKET_WEIGHTS=[35,30,20,15];
 
@@ -247,13 +242,19 @@ export class BattleCharacter {
       enchant:(source,target,random)=>{
         const name=items.items[target.item].name,level=target.enhancement;
         // 混沌卷轴先判定成败，失败降一级且不再往下走（原版 0x1a7214–0x1a730c；阈值公式见 enchant-2026-10-12.md:52）。
-        if(items.items[source.item].use?.requiresEnhanced&&!enhancementSucceeds(random,CHAOS_CHANCE_NUMERATOR/(CHAOS_CHANCE_BASE+level*level)))
+        if(items.items[source.item].use?.requiresEnhanced&&!enhancementSucceeds(random,chaosThreshold(level)))
           return {level:Math.max(0,level-1),message:`${name} 强化失败，降为 +${Math.max(0,level-1)}`};
         // 第二次判定对所有卷轴生效，通过再升一级（总 +2）；特级卷轴的阈值加 300。
         const raised=level+1,rule=catalog.enchantments[source.item]?.[items.items[target.item].kind];
-        return enhancementSucceeds(random,SECOND_CHANCE_NUMERATOR/(raised+SECOND_CHANCE_OFFSET)+(rule?.bonusChance??0))
+        return enhancementSucceeds(random,doubleThreshold(raised,rule?.bonusChance??0))
           ?{level:raised+1,message:`${name} 强化大成功 +${raised+1}`,notice:'enchant-double' as const}
           :{level:raised,message:`${name} 强化 +${raised}`};
+      },
+      odds:(source,target)=>{
+        const use=items.items[source.item].use;
+        if(use?.kind!=='enchant')return undefined;
+        const rule=catalog.enchantments[source.item]?.[items.items[target.item].kind];
+        return enhancementOdds(target.enhancement,!!use.requiresEnhanced,rule?.bonusChance??0);
       },
       applyUse:(source,target,skill)=>{
         const use=items.items[source.item].use!;

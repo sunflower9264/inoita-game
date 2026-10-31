@@ -3,6 +3,7 @@ import { ItemApplicationError, ITEM_NOTICE_TEXT, type ItemNotice } from './item-
 import { SHORTCUT_ENTRY_COUNT, dedupeSkillShortcuts, type ShortcutRow } from './shortcut-bar.ts';
 import { INVENTORY_POUCHES, organizedInventory, pouchFor, type InventoryPouch, type InventoryView } from './inventory.ts';
 import type { StoryItem } from './story-interface.ts';
+import type { EnhancementOdds } from './enhancement.ts';
 import { EQUIPMENT_SLOTS, USE_LABELS, USE_HANDLING, USE_INTERFACE_ONLY, USE_NOT_IMPLEMENTED, unimplementedItemUse, type Equipment, type EquipmentSlot, type ItemCatalog, type ItemInstance, type ItemResult } from './items.ts';
 
 const emptyCatalog: ItemCatalog = { items: {}, startingEquipment: {}, startingInventory: [], startingShortcut: '', dualWieldClasses: [], merchantItems: [], classSkills: {}, recipes: {} };
@@ -20,6 +21,8 @@ export interface BagRules {
    * 缺省时按「必定 +1」处理，方便不需要概率的场景。
    */
   enchant?:(source:ItemInstance,target:ItemInstance,random:()=>number)=>{level:number;message:string;notice?:ItemNotice};
+  /** 强化概率；只给界面展示，不参与结算。缺省时不展示概率。 */
+  odds?:(source:ItemInstance,target:ItemInstance)=>EnhancementOdds|undefined;
 }
 
 export interface BagState {
@@ -416,6 +419,12 @@ export class Bag {
       if(target.gems.length>=(target.numbers?.sockets??definition.equipment!.socketCapacity))return 'socket-full';
     }
     return this.rules?.targetProblem(source,target);
+  }
+  /** 界面用：只有当前确实能应用时才返回概率，避免给灰掉的行展示误导数字。 */
+  applicationOdds(sourceId:string,targetId:string):EnhancementOdds|undefined {
+    const source=this.instances.get(sourceId),target=this.instances.get(targetId);
+    if(!source||!target||!this.canApply(sourceId,targetId)||this.applicationProblem(sourceId,targetId))return undefined;
+    return this.rules?.odds?.(source,target);
   }
   targetProblem(sourceId:string,targetId:string):string|undefined {
     if(!this.canApply(sourceId,targetId))return '请选择可应用的装备';
