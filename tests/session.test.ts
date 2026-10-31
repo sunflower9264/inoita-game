@@ -45,8 +45,8 @@ test('an arrival next to an exit does not re-trigger before the player walks cle
  // 落点离出口只有 8 像素：向东一步就压住出口，也不能立刻回上一张图。
  const gate=new ExitTrigger(exits,{x:24,y:40});
  assert.equal(gate.update({x:25,y:40},true),null,'贴门落点先锁住');
- assert.equal(gate.update({x:40,y:40},true),null,'没离开 24 像素前仍然锁住');
- // 走出缓冲区后重新武装；此时主动走回来才允许离开。
+ assert.equal(gate.update({x:40,y:40},true),null,'没走满 80 像素前仍然锁住');
+ // 还没走满 80 像素，继续走；累计满 80 后主动走回来才允许离开。
  assert.equal(gate.update({x:0,y:40},true),null);
  assert.equal(gate.update({x:40,y:40},true),exits[0]);
  // 触发后整簇门洞重新上锁，原地再调用不会重复触发。
@@ -67,21 +67,23 @@ test('a spawn inside an exit requires walking clear of that doorway first',()=>{
  assert.equal(gate.update({x:40,y:40},true),exit);
 });
 test('an exit only fires after the player has walked the rearm distance',()=>{
- const exit={x:0,y:0,width:64,height:64,destination:'next'},gate=new ExitTrigger([exit],{x:32,y:32});
- assert.equal(gate.update({x:55,y:32},true),null,'累计 23px，还差 1px');
- assert.equal(gate.update({x:56,y:32},true),exit,'累计满 24px 后脚底压住出口就触发');
+ const exit={x:0,y:0,width:200,height:200,destination:'next'},gate=new ExitTrigger([exit],{x:50,y:50});
+ assert.equal(gate.update({x:129,y:50},true),null,'累计 79px，还差 1px');
+ assert.equal(gate.update({x:130,y:50},true),exit,'累计满 80px 后脚底压住出口就触发');
 });
-test('the goblin lair doorway opens after 24px of movement',()=>{
+test('the goblin lair doorway opens after 80px of movement',()=>{
  const north={x:64,y:0,width:64,height:16,destination:'goblin-prison-2-27ab25e1'};
  const gate=new ExitTrigger([north],{x:88,y:24});
- assert.equal(gate.update({x:88,y:4},true),null,'只向上走 20px，还没满 24px');
- assert.equal(gate.update({x:88,y:8},true),north,'退 4px 补满 24px，脚底已在出口格里');
+ assert.equal(gate.update({x:88,y:104},true),null,'走了 80px，但还不在出口格里');
+ assert.equal(gate.update({x:88,y:8},true),north,'回到出口格里才触发');
 });
 test('the foot can reach a blocked edge exit from its walkable approach',()=>{
  const map={name:'fixture',tileSize:16,columns:4,rows:3,blocked:Array.from({length:12},(_,i)=>i%4===3)};
  const exit={x:48,y:16,width:16,height:16},gate=new ExitTrigger([exit],{x:0,y:24});
  const p=new NavigationWorld(map).constrainTerrain({x:24,y:24},30,0);
  assert.ok(p.x<48&&canStandOnTerrain(map,p.x,p.y));
+ // 先走满 80px 缓冲区；这一段只验证距离，不验证地形。
+ assert.equal(gate.update({x:0,y:104},true),null);
  assert.equal(gate.update(p,true),exit);
 });
 test('dialogue work serializes and always releases the input lock',async()=>{

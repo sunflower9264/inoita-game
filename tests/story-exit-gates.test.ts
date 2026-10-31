@@ -14,7 +14,7 @@ const swamp=JSON.parse(fs.readFileSync(
 
 test('a locked story exit remains armed and triggers once after its condition becomes true',()=>{
   const exit={id:'gate',x:64,y:16,width:32,height:32},trigger=new ExitTrigger([exit],{x:8,y:32});
-  const inside={x:80,y:32};let unlocked=false;
+  const inside={x:88,y:32};let unlocked=false;
   assert.equal(trigger.update(inside,true,()=>unlocked),null);
   assert.equal(trigger.update(inside,true,()=>unlocked),null);
   unlocked=true;assert.equal(trigger.update(inside,true,()=>unlocked),exit);
@@ -26,7 +26,7 @@ test('a locked story exit remains armed and triggers once after its condition be
 test('a locked exit cannot shadow an overlapping available exit',()=>{
   const closed={id:'closed',x:64,y:16,width:32,height:32},open={...closed,id:'open'};
   const trigger=new ExitTrigger([closed,open],{x:8,y:32});
-  assert.equal(trigger.update({x:80,y:32},true,exit=>exit.id==='open'),open);
+  assert.equal(trigger.update({x:88,y:32},true,exit=>exit.id==='open'),open);
 });
 
 test('a region event sharing the doorway cell is reached before the exit teleports the player',()=>{
@@ -63,8 +63,8 @@ test('the steel orc village entrance reaches its cutscene area before the return
   const step={x:arrival.spawn.x,y:arrival.spawn.y-1};
   assert.equal(overlapsFootRect(step,event.region),true);
   assert.equal(gate.update(step,true),null);
-  // 走出 24 像素缓冲区后出口才重新武装；走回来才允许离开。
-  const clear={x:arrival.spawn.x,y:arrival.spawn.y-32};
+  // 走出 80 像素缓冲区后出口才重新武装；走回来才允许离开。
+  const clear={x:arrival.spawn.x,y:arrival.spawn.y-96};
   assert.equal(overlapsFootRect(clear,event.region),false);
   assert.equal(gate.update(clear,true),null);
   assert.equal(gate.update(arrival.spawn,true),back);

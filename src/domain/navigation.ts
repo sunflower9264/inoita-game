@@ -62,7 +62,7 @@ export function overlapsFootRect(point: Point, rectangle: GameRectangle): boolea
  * 落点常常贴着回程出口，走一步就会弹回上一张图；改成累计实际走过的距离后，
  * 在走满之前任何出口都不触发，走满之后才按脚底接触判定。
  */
-export const EXIT_REARM_DISTANCE = 24;
+export const EXIT_REARM_DISTANCE = 80;
 
 export class ExitTrigger<T extends GameRectangle = GameRectangle> {
   private readonly exits: T[];
