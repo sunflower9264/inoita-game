@@ -32,7 +32,7 @@ import { enemyAwarenessRangeUnits } from '../domain/enemy-engagement.ts';
 import { FriendlySummonController } from '../domain/friendly-summon-ai.ts';
 import { SummonCombatAwareness } from '../domain/summon-tactics.ts';
 import { canTraverse } from '../domain/pathfinding.ts';
-import { choosePartyLanding, partyBodyOverlaps } from '../domain/party-placement.ts';
+import { choosePartyLanding, partyBodyOverlaps, partyFormationOffset } from '../domain/party-placement.ts';
 import type { NavigationActor, NavigationShape } from '../domain/navigation-world.ts';
 import { overlapsFootRect } from '../domain/navigation.ts';
 import { PartyController, type PartyPort } from '../domain/party-ai.ts';
@@ -1949,7 +1949,7 @@ captureStoryActors():SceneActorState[] {
       healScore:key=>this.healScoreFor(key),
       healCandidates:()=>this.healCandidates(),
       facing,
-      leader:()=>this.combatant(this.controlledId),focusTarget:()=>this.focusTargetId,
+      leader:()=>this.combatant(this.controlledId),followGoal:()=>this.partyFollowGoal(id),focusTarget:()=>this.focusTargetId,
       partyTarget:()=>this.currentTargetOf(this.controlledId),
       // 玩家指派了目标，或队伍最近与敌人真实交战过，都算整个队伍已进入战斗。
       inCombat:()=>!!this.focusTargetId||this.awareness.inCombat((this.app.session.combatTick??0)*LOGIC_FRAME_MS),
@@ -2059,13 +2059,41 @@ captureStoryActors():SceneActorState[] {
     }
     this.syncControlled();
   }
-  /** 以主角脚点为锚点给队员选整盒合法落点；与当前操控者是谁无关。 */
-  private partyLanding(shape:NavigationShape,ignore?:NavigationActor):Point|undefined {
-    if(!this.movement)return undefined;
-    const hero=this.movement.position(this.player);
-    const avoid=[hero,...this.allies.filter(ally=>this.movement!.actor(ally.visual)!==ignore)
+  /** 以队长脚点为锚，再按上阵槽位和朝向偏出该队员自己的队形位置。 */
+  private partyLanding(shape:NavigationShape,ignore?:NavigationActor,id?:string,
+    leader:CharacterVisual|undefined=this.scene.player):Point|undefined {
+    if(!this.movement||!leader)return undefined;
+    const anchor=this.movement.position(leader);
+    const slot=id?this.app.session.party?.slotOf(id):undefined;
+    const facing=leader===this.scene.player?this.scene.facing
+      :(combatActor(this.allies,this.controlledId,actor=>actor.id)?.facing??'south');
+    const offset=slot===undefined?undefined:partyFormationOffset(facing,slot);
+    const origin=offset?{x:anchor.x+offset.x,y:anchor.y+offset.y}:anchor;
+    const avoid=[anchor,...this.allies.filter(ally=>this.movement!.actor(ally.visual)!==ignore)
       .map(ally=>this.movement!.position(ally.visual))];
-    return choosePartyLanding(this.movement.navigation,shape,hero,ignore,avoid);
+    return choosePartyLanding(this.movement.navigation,shape,origin,ignore,avoid);
+  }
+  /** 跟随 AI 的目标点：队长背后、按朝向左右分开的槽位；不可站时就近避让队友。 */
+  private partyFollowGoal(id:string):Point|undefined {
+    if(!this.movement)return undefined;
+    const slot=this.app.session.party?.slotOf(id);
+    if(slot===undefined)return undefined;
+    const leader=this.controlledVisual;
+    if(!leader)return undefined;
+    const anchor=this.movement.position(leader);
+    const facing=this.controlledId==='player'?this.scene.facing
+      :(combatActor(this.allies,this.controlledId,actor=>actor.id)?.facing??'south');
+    const offset=partyFormationOffset(facing,slot);
+    const preferred={x:anchor.x+offset.x,y:anchor.y+offset.y};
+    const visual=this.visualOf(id);
+    if(!visual)return preferred;
+    const actor=this.movement.actor(visual),shape=actor.shape();
+    const avoid=[anchor,...this.allies.filter(other=>other.id!==id).map(other=>this.movement!.position(other.visual))];
+    // 槽位点通常就在空地上：先做轻量检查，避免每个逻辑帧都跑一次落点扫描。
+    const occupied=avoid.some(other=>partyBodyOverlaps(preferred,other,shape));
+    if(!occupied&&this.movement.navigation.terrainFree(preferred)
+      &&this.movement.navigation.canPlaceBody(shape,preferred,actor))return preferred;
+    return choosePartyLanding(this.movement.navigation,shape,preferred,actor,avoid)??preferred;
   }
   /**
    * 剧情把主角送到新位置后，把其余上阵队员收拢到主角身边。
@@ -2073,15 +2101,13 @@ captureStoryActors():SceneActorState[] {
    */
   regroupPartyAroundHero():void {
     if(this.closed||!this.movement||!this.scene.player)return;
-    const heroPosition=this.movement.position(this.player);
     for(const id of this.activeParty){
       if(id==='player')continue;
       const ally=combatActor(this.allies,id,actor=>actor.id);
       if(!ally||!ally.member.player.health||this.fallen.has(id)||!ally.visual.container.active)continue;
       ally.ai.cancel();
       const actor=this.movement.actor(ally.visual);
-      const avoid=[heroPosition,...this.allies.filter(other=>other.id!==id).map(other=>this.movement!.position(other.visual))];
-      const landing=choosePartyLanding(this.movement.navigation,actor.shape(),heroPosition,actor,avoid);
+      const landing=this.partyLanding(actor.shape(),actor,id);
       if(!landing)continue;
       this.movement.place(ally.visual,landing);
       setCharacterClip(this.scene,ally.visual,`idle-${ally.facing}`,true);
@@ -2116,7 +2142,7 @@ captureStoryActors():SceneActorState[] {
       if(!ally||!ally.member.player.health||this.fallen.has(id)||!ally.visual.container.active)continue;
       const actor=this.movement.actor(ally.visual);
       if(ally.ai.actionState()!=='idle'||ally.ai.selectedTargetId()||!this.shouldSettleFriendly(ally.visual,actor,id))continue;
-      const landing=this.partyLanding(actor.shape(),actor);
+      const landing=this.partyLanding(actor.shape(),actor,id);
       if(!landing)continue;
       ally.ai.cancel();this.movement.place(ally.visual,landing);
       setCharacterClip(this.scene,ally.visual,`idle-${ally.facing}`,true);
@@ -2145,9 +2171,7 @@ captureStoryActors():SceneActorState[] {
     const leader=this.controlledVisual;
     if(!leader)return;
     const actor=this.movement.actor(ally.visual);
-    const leaderPosition=this.movement.position(leader);
-    const avoid=[leaderPosition,...this.allies.filter(other=>other.id!==id).map(other=>this.movement!.position(other.visual))];
-    const landing=choosePartyLanding(this.movement.navigation,actor.shape(),leaderPosition,actor,avoid);
+    const landing=this.partyLanding(actor.shape(),actor,id,leader);
     if(!landing)return;
     ally.ai.cancel();
     this.movement.place(ally.visual,landing);

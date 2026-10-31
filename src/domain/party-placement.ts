@@ -1,5 +1,22 @@
+import type { Facing } from './content.ts';
 import type { Point } from './navigation.ts';
 import type { NavigationActor, NavigationShape, NavigationWorld } from './navigation-world.ts';
+
+const FORMATION_FORWARD: Record<Facing, Point> = {
+  north: { x: 0, y: -1 }, south: { x: 0, y: 1 }, east: { x: 1, y: 0 }, west: { x: -1, y: 0 },
+};
+
+/**
+ * 跟随队形槽位：站在队长背后 20px，再按上阵槽位向左或向右偏 16px。
+ * 槽位 0 在队长左手边，槽位 1 在右手边；朝向变化时整组队形一起转。
+ */
+export function partyFormationOffset(facing: Facing, slot: 0 | 1): Point {
+  const forward = FORMATION_FORWARD[facing];
+  const left = { x: forward.y, y: -forward.x };
+  const back = { x: -forward.x, y: -forward.y };
+  const side = (slot === 0 ? -1 : 1) * 16;
+  return { x: back.x * 20 + left.x * side, y: back.y * 20 + left.y * side };
+}
 
 /** 两个队伍单位按同一碰撞盒落位时是否重叠；边贴边不算重叠。 */
 export function partyBodyOverlaps(point: Point, other: Point, shape: NavigationShape): boolean {

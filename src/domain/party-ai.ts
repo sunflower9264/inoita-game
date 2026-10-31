@@ -9,6 +9,8 @@ import type { GameRectangle, Point } from './navigation.ts';
 export type PartySkillKind = 'chance' | 'combat-chance' | 'heal' | 'ally-combat' | 'emergency-heal';
 export interface PartyPort extends CombatPort {
   leader(): Combatant | undefined;
+  /** 跟随队长时要走到的队形槽位；缺省时退回队长身边任意点。 */
+  followGoal?(): Point | undefined;
   focusTarget(): string | undefined;
   /** 主操作角色当前的战斗目标；队伍联动时让佣兵攻击同一个敌人。 */
   partyTarget?(): string | undefined;
@@ -229,10 +231,15 @@ export class PartyController {
     }
     this.chaseProgress=undefined;
     const leader=this.port.leader();
-    if(!leader||leader.id===actor.id||attackDistance(actor.position,actor.bounds,leader.position,leader.bounds)<PARTY_FOLLOW_DISTANCE_UNITS){
+    const goal=this.port.followGoal?.();
+    // 有队形槽位时按「离自己的槽位点多远」判断到没到，而不是离队长多远；
+    // 否则槽位点在队长的跟随半径内，佣兵会在到达槽位前就停下。
+    if(!leader||leader.id===actor.id||(goal
+      ?targetDistance(actor.position,goal)<=8
+      :attackDistance(actor.position,actor.bounds,leader.position,leader.bounds)<PARTY_FOLLOW_DISTANCE_UNITS)){
       this.path=[];this.port.stop();this.followProgress=undefined;this.followProgressAt=0;return;
     }
-    this.follow(actor,leader,PARTY_FOLLOW_DISTANCE_UNITS-1,true);
+    this.follow(actor,leader,PARTY_FOLLOW_DISTANCE_UNITS-1,true,goal);
   }
   /** 按优先级取第一个仍可攻击的敌对目标；共享目标只在队伍已战斗时参与。 */
   private hostileTarget(actor:Combatant,ids:readonly (string|undefined)[]):Combatant|undefined {
@@ -272,7 +279,7 @@ export class PartyController {
     this.chaseRecoveryUntil=this.clock+PARTY_CHASE_RECOVERY_MS;
     return true;
   }
-  private follow(actor:Combatant,leader:Combatant,range:number,regroup=false):void {
+  private follow(actor:Combatant,leader:Combatant,range:number,regroup=false,goal?:Point):void {
     const capabilities=combatStateCapabilities(actor.states??[]);
     if(!capabilities.canMove||(actor.team!==leader.team&&!capabilities.canAutoApproach)){
       this.port.stop();this.followProgress=undefined;this.followProgressAt=0;return;
@@ -293,13 +300,14 @@ export class PartyController {
     } else {this.followProgress=undefined;this.followProgressAt=0;}
     // 搜索跨帧推进：寻路一次算不完时保留现场、下一帧接着算。以前每次重开搜索，
     // 超过单帧预算的长路（远距离或要绕墙）永远算不出来，佣兵就停在原地不跟随。
+    const followTarget=goal??leader.position;
     if(this.search)this.advanceSearch(actor);
     else if(this.clock>=this.nextPathAt&&(!this.destination
-      ||targetDistance(this.destination,leader.position)>=PARTY_REPATH_DISTANCE_PX
+      ||targetDistance(this.destination,followTarget)>=PARTY_REPATH_DISTANCE_PX
       ||!this.path.length||!this.nextWaypoint())){
       // 先领预算再建查询：没有预算的帧连地图边界都不该读。
       const granted=this.port.pathBudget?.take(PARTY_SEARCH_CAP)??PARTY_SEARCH_CAP;
-      if(granted>0)this.beginSearch(actor,leader,range,granted);
+      if(granted>0)this.beginSearch(actor,leader,range,granted,goal);
       else this.nextPathAt=this.clock+LOGIC_FRAME_MS;
     }
     if(this.nextWaypoint())this.port.followPath(this.nextWaypoint);else this.port.stop();
@@ -324,13 +332,17 @@ export class PartyController {
     this.port.stop();this.port.regroup?.();
     return true;
   }
-  private beginSearch(actor:Combatant,leader:Combatant,range:number,granted:number):void {
-    this.nextPathAt=this.clock+PARTY_REPATH_INTERVAL_MS;this.destination={...leader.position};
+  private beginSearch(actor:Combatant,leader:Combatant,range:number,granted:number,goal?:Point):void {
+    const target=goal??leader.position;
+    this.nextPathAt=this.clock+PARTY_REPATH_INTERVAL_MS;this.destination={...target};
     const canStand=(point:Point)=>this.port.canStand(point);
     const radius=Math.hypot(actor.bounds.width+leader.bounds.width,actor.bounds.height+leader.bounds.height)+range*8;
     this.search=createPathSearch(actor.position,{bounds:this.port.navigationBounds(),canStand,
-      isGoal:point=>canStand(point)&&attackDistance(point,actor.bounds,leader.position,leader.bounds)<=range,
-      heuristic:point=>Math.max(0,Math.hypot(point.x-leader.position.x,point.y-leader.position.y)-radius)});
+      // 有槽位时走到槽位点附近；追击敌人仍用原来的「进入攻击距离」目标。
+      isGoal:point=>canStand(point)&&(goal
+        ?targetDistance(point,goal)<=4
+        :attackDistance(point,actor.bounds,leader.position,leader.bounds)<=range),
+      heuristic:point=>Math.max(0,Math.hypot(point.x-target.x,point.y-target.y)-radius)});
     this.stepSearch(actor,granted);
   }
   private advanceSearch(actor:Combatant):void {

@@ -210,6 +210,11 @@ export class PartyRoster {
   }
   get controlledId():string{return this.selected;}
   get activeIds():string[]{return ['player',...this.slots.filter((id):id is string=>!!id)];}
+  /** 上阵空间槽位：0 左、1 右；名册与候补返回 undefined。 */
+  slotOf(id:string):0|1|undefined {
+    const index=this.slots.indexOf(id);
+    return index===0?0:index===1?1:undefined;
+  }
   get livingIds():string[]{return this.activeIds.filter(id=>this.alive(id));}
   get activeSize():number{return this.activeIds.length;}
   get(id:string):CompanionMember|undefined{return this.owned.get(id);}

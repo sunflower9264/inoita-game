@@ -5,7 +5,7 @@ import {readFileSync} from 'node:fs';
 import {COUNTERATTACK_MODES,counterattackReady,DELAYED_COUNTERATTACK_HITS,PartyController,partySkillThreshold,
   type CounterattackMode,type PartyPort,type PartySkillKind} from '../src/domain/party-ai.ts';
 import {CombatController,type ActionPlayback,type Combatant} from '../src/domain/combat.ts';
-import {attackDistance,resolveBasicAttack} from '../src/domain/basic-attack.ts';
+import {attackDistance,resolveBasicAttack,targetDistance} from '../src/domain/basic-attack.ts';
 import type {BattleCatalog,EnemyPlayableSkill} from '../src/domain/battle.ts';
 import type {Point} from '../src/domain/navigation.ts';
 const catalog=JSON.parse(readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')) as BattleCatalog;
@@ -69,6 +69,16 @@ test('followers navigate to the leader and stop within four native units without
   run.leader.position={x:32,y:72};run.advance();assert.ok(run.waypoint());
   run.ai.cancel();assert.equal(run.waypoint(),undefined);run.ai.dispose();run.advance(10);assert.equal(run.plays.length,0);
 });
+test('followers walk to their own formation slot instead of the leader position',()=>{
+  const run=setup(),goal={x:128,y:48};
+  run.port.followGoal=()=>goal;
+  run.ai.update(60);run.ai.update(60);
+  assert.deepEqual(run.ai.captureState().destination,goal);
+  run.advance(60);
+  assert.ok(targetDistance(run.member.position,goal)<=8);
+  assert.equal(run.waypoint(),undefined);
+});
+
 test('once the party is fighting, followers engage an enemy through the default attack',()=>{
   const run=setup();run.fighting();run.ai.update(60);
   assert.equal(run.plays.at(-1)?.target?.id,'enemy','默认普攻由 CombatController 自动索敌');

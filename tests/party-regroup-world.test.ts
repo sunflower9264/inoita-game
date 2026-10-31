@@ -51,6 +51,7 @@ function fixture(options:{sealed?:boolean;wall?:boolean}={}){
     stop:()=>{},
   };
   const party={activeIds:['player','companion','second'],controlledId:'companion',
+    slotOf:(id:string)=>id==='companion'?0:id==='second'?1:undefined,
     switchControl:()=>{switches+=1;return true;}};
   function ally(id:string,point:Point):TestAlly{
     const visual=addVisual(id,point);
@@ -185,6 +186,21 @@ test('the party landing anchor is the hero, not the controlled mercenary',()=>{
   assert.ok(landing);
   assert.ok(Math.hypot(landing.x-512,landing.y-512)<=48,'落点由主角位置决定');
   assert.ok(Math.hypot(landing.x-64,landing.y-64)>100,'不是围着被操控的佣兵');
+});
+
+test('follow goals use opposite formation slots and rotate with the leader',()=>{
+  const f=fixture();f.party.controlledId='player';
+  const goal=(id:string)=>Reflect.get(WorldCombat.prototype,'partyFollowGoal').call(f.combat,id) as Point|undefined;
+  const first=goal('companion'),second=goal('second');
+  assert.ok(first&&second);
+  assert.notDeepEqual(first,second);
+  const hero=f.positions.get(f.hero)!;
+  assert.ok(first.x<hero.x&&second.x>hero.x,'面朝南时两名佣兵分在左右');
+  (f.combat as unknown as {scene:{facing:string}}).scene.facing='east';
+  const eastFirst=goal('companion'),eastSecond=goal('second');
+  assert.ok(eastFirst&&eastSecond);
+  assert.ok(eastFirst.x<hero.x&&eastSecond.x<hero.x,'面朝东时两名佣兵都在队长背后');
+  assert.notEqual(eastFirst.y,eastSecond.y,'左右槽位在垂直方向分开');
 });
 
 test('story settlement separates allies that already overlap the hero or each other',()=>{
