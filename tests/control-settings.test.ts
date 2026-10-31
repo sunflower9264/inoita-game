@@ -58,7 +58,12 @@ test('controlSettings defaults to stick and notifies subscribers on change', () 
   assert.equal(controlSettings.moveStyle, 'stick');
 });
 
-test('MoveStick switches between stick and dpad without calling removeInteractive and tracks 4-way movement accurately', () => {
+test('MoveStick switches between stick and dpad without calling removeInteractive and tracks 4-way movement accurately', (t) => {
+  const globals = globalThis as { document?: unknown; getComputedStyle?: unknown };
+  const originalDocument = globals.document, originalGetComputedStyle = globals.getComputedStyle;
+  globals.document = { getElementById: () => ({}) };
+  globals.getComputedStyle = () => ({ paddingLeft: '0px', paddingRight: '0px', paddingTop: '0px', paddingBottom: '0px' });
+  t.after(() => { globals.document = originalDocument; globals.getComputedStyle = originalGetComputedStyle; });
   controlSettings.setMoveStyle('stick');
 
   let pointerDownHandler: ((pointer: { id: number; x: number; y: number }, x: number, y: number, event: { stopPropagation(): void }) => void) | undefined;
@@ -139,13 +144,16 @@ test('MoveStick switches between stick and dpad without calling removeInteractiv
   };
 
   const stick = new MoveStick(scene as never, hud as never, skin as never);
-  const cx = 0;
-  const cy = 0;
 
-  // Switch to dpad in settings
+  // 先按摇杆布局，再切到 D-pad：切换样式要立即按更大的圆盘重算位置。
+  stick.layout(720);
+  const stickX = container.x;
   controlSettings.setMoveStyle('dpad');
   assert.equal(removeInteractiveCalled, false, 'Must NEVER call removeInteractive on style switch');
   assert.equal(container.hitArea?.radius, 137);
+  assert.notEqual(container.x, stickX, 'Switching to D-pad should relayout immediately');
+  const cx = container.x;
+  const cy = container.y;
 
   // Touch UP on D-pad
   pointerDownHandler!({ id: 1, x: cx, y: cy - 70 }, 0, 0, { stopPropagation() {} });

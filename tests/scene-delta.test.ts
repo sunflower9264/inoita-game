@@ -42,6 +42,14 @@ test('scene deltas report a party actor rebound to another world entity',()=>{
   ]);
 });
 
+test('scene deltas report characterId and authority changes for party actors',()=>{
+  for(const patch of [{characterId:'other'},{authority:'npc' as const}]){
+    const before=snapshot([actor('ally',{memberId:'ally',characterId:'original',authority:'story'})]);
+    const after=snapshot([actor('ally',{memberId:'ally',characterId:'original',authority:'story',...patch})]);
+    assert.deepEqual(diffSceneActors(before,after).changes.map(change=>change.kind),['update']);
+  }
+});
+
 test('scene deltas reject duplicate source instances before they reach commit',()=>{
   assert.throws(()=>diffSceneActors(snapshot([],),snapshot([
     actor('one',{worldEntityId:'gate'}),
