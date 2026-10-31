@@ -57,7 +57,7 @@ export class RecoveryItems {
     const usable=kind==='recover-health'&&use?.recovery||kind==='regenerate'&&use?.regenerate;
     if(!entry||!bag.entries.some(item=>item.id===entryId)||!usable||!user||user.player.health<=0)
       return {used:false,reason:'unavailable'};
-    if(modifiers.sleeping||modifiers.potionSickness)return {used:false,reason:'blocked'};
+    if(modifiers.sleeping)return {used:false,reason:'blocked'};
     // 持续回复与一次性回复各有各的门槛：它没有共用冷却，靠自身时限与物品消耗约束。
     if(kind==='regenerate'){
       const regeneration=use!.regenerate!;
@@ -66,6 +66,8 @@ export class RecoveryItems {
       bag.take(entryId,1);
       return {used:true,amount:0,healed:[],effects:members.filter(member=>member.player.health>0).map(member=>member.id)};
     }
+    // 药水病只影响一次性恢复，再生药水已经在上面返回。
+    if(modifiers.potionSickness)return {used:false,reason:'blocked'};
     if(this.tick<=this.nextTick)return {used:false,reason:'cooldown'};
     const recovery=use!.recovery!;
     // amount：在区间内随机**一次**，全队同一数值。rate：各按自己的上限算，所以逐人计算。

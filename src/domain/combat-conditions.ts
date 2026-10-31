@@ -311,6 +311,10 @@ export class CombatConditions {
   /** MP 扣除门：GM 调试无敌期间技能费用与吸蓝都不扣 MP。 */
   losesMana(actorId:string):boolean{return !this.isInvincible(actorId);}
   canAutoApproach(actorId:string):boolean{return this.capabilities(actorId).canAutoApproach;}
+  /** 药水病禁药：只挡一次性恢复物品，再生药水不受影响。 */
+  canUseRecoveryItems(actorId:string):boolean{return this.capabilities(actorId).canUseRecoveryItems;}
+  /** 药水病禁技能：原版只拦快捷栏输入，AI 直接起手不经过这里。 */
+  canUseSkillShortcuts(actorId:string):boolean{return this.capabilities(actorId).canUseSkillShortcuts;}
   /** 睡眠和眩晕都阻止主动动作。 */
   cannotAct(actorId:string):boolean{return !this.canAct(actorId);}
   snapshot(actorId:string):readonly ActiveCondition[] {

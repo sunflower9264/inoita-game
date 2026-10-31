@@ -177,7 +177,10 @@
       "summon-bard": "assets/ui/status/buff-summon-bard.png",
       "survival-instinct": "assets/ui/status/buff-survival-instinct.png",
       "weapon-hitback": "assets/ui/status/buff-weapon-hitback.png",
-      "whist": "assets/ui/status/buff-whist.png"
+      "whist": "assets/ui/status/buff-whist.png",
+      "spring-potion-sickness": "assets/ui/status/buff-spring-potion-sickness.png",
+      "spring-potion-weakened": "assets/ui/status/buff-spring-potion-weakened.png",
+      "spring-skill-seal": "assets/ui/status/buff-spring-skill-seal.png"
     }
   },
   "target": {

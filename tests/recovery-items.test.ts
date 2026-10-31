@@ -69,6 +69,18 @@ test('shared cooldown survives switching potion and user, with strict native fra
   recovery.advance(1);
   assert.ok(recovery.use(bag,entry(1),party,'ally').used);
 });
+test('potion sickness blocks one-shot potions but never the regeneration group',()=>{
+  const regeneration=Object.entries(catalog.items).find(([,item])=>item.use?.kind==='regenerate')!;
+  const {bag,recovery}=setup();
+  bag.add(regeneration[0]);
+  const entry=bag.entries.find(item=>item.item===regeneration[0])!.id;
+  const result=recovery.use(bag,entry,[member('player',1)],'player',{potionSickness:true});
+  assert.ok(result.used);
+  const {bag:once,recovery:onceRecovery,entry:oneShot}=setup();
+  assert.deepEqual(onceRecovery.use(once,oneShot(),[member('player',1)],'player',{potionSickness:true}),
+    {used:false,reason:'blocked'});
+});
+
 test('native weakening happens before ten-percent bonus and reduced cooldown retains mask denominator',()=>{
   const {bag,recovery,entry}=setup(),party=[member('player',1)];
   const result=recovery.use(bag,entry(),party,'player',{weakened:true,recoveryBonus:true,cooldownReductionMs:2700},()=>0);

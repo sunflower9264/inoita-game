@@ -42,19 +42,25 @@ test('spring buff effects resolve to declared battle buffs',()=>{
   const battle=JSON.parse(fs.readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8'));
   const buffs=springs.effects.filter(effect=>effect.kind==='buff');
   assert.equal(buffs.length,11);
-  // 十一条里有七条走属性类，key 必须在战斗目录里有定义。
-  const implemented=buffs.filter(effect=>effect.buff);
-  assert.equal(implemented.length,7);
-  for(const effect of implemented){
-    assert.ok(BATTLE_BUFF_KEYS.includes(effect.buff!),`${effect.buff} 未在 BATTLE_BUFF_KEYS 里声明`);
-    assert.ok(battle.statusAttackBuffs[effect.buff!],`${effect.buff} 在 battle.json 里缺少定义`);
+  // 七条属性类加四条状态类，每条都要在战斗目录里有定义。
+  for(const effect of buffs){
+    assert.ok(effect.buff,`${effect.spring} 缺少状态键`);
+    assert.ok(BATTLE_BUFF_KEYS.includes(effect.buff),`${effect.buff} 未在 BATTLE_BUFF_KEYS 里声明`);
+    assert.ok(battle.statusAttackBuffs[effect.buff],`${effect.buff} 在 battle.json 里缺少定义`);
   }
   const powerUp=battle.statusAttackBuffs['spring-frenzy'];
   assert.deepEqual(powerUp.modifiers.map((row:{attribute:string})=>row.attribute),
     ['physicalAttack','magicAttack','criticalRate','moveSpeed','defense'],'疯癫要同时抬攻击与压防御');
-  // 另外四条是原版机制未确证的状态类（无法用药水／药效削弱／无法用技能），只留原版行号。
-  const pending=buffs.filter(effect=>!effect.buff);
-  assert.deepEqual([...new Set(pending.map(effect=>effect.buffRow))].sort(),[51,54,56]);
+  // 四条泉水效果映射到三个药水病状态；两条“无法使用药水”共用同一个键。
+  const springStates=buffs.map(effect=>effect.buff!).filter(key=>key.startsWith('spring-potion')||key==='spring-skill-seal');
+  assert.deepEqual(springStates.sort(),['spring-potion-sickness','spring-potion-sickness',
+    'spring-potion-weakened','spring-skill-seal']);
+  for(const key of ['spring-potion-sickness','spring-potion-weakened','spring-skill-seal']){
+    const effect=battle.statusAttackBuffs[key];
+    assert.equal(effect.durationMs,18060);
+    assert.equal(effect.simulationFrames.lastActiveFrame,300);
+    assert.equal(effect.stateDurationProfiles[effect.states[0]].normal.lastActiveFrame,450);
+  }
 });
 
 test('spring parser rejects broken catalogs',()=>{

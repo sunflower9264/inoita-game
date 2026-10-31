@@ -3,7 +3,7 @@
  * 效果表随机给奖励。规则来自 `CHAR_MakeSpring`（0x18c648）与 `CHAR_DrinkSpring`（0x18c6b4），
  * 内容由 `work/tools/game_content/springs.py` 从 `DROPEVTBASE`（game.dat 表 79）导出。
  */
-import type { BattleBuffKey } from './battle-semantics.ts';
+import { BATTLE_BUFF_KEYS, type BattleBuffKey } from './battle-semantics.ts';
 
 type SpringKind = 'heal' | 'heal-mana' | 'buff' | 'spawn' | 'skill-point';
 
@@ -20,8 +20,6 @@ interface SpringEffect {
   percent?: number;
   /** `buff` 要施加的状态，取自 `BATTLE_BUFF_KEYS`。 */
   buff?: BattleBuffKey;
-  /** `buff` 里那些原版机制未确证的状态（无法用药水一类）只留行号，不产生效果。 */
-  buffRow?: number;
   /** `spawn` 要出现的敌人。 */
   enemy?: string;
   /** `skill-point` 加多少点。 */
@@ -46,6 +44,8 @@ export function parseSprings(value: unknown): SpringCatalog {
   for (const effect of catalog.effects) {
     if (!catalog.springs.some(spring => spring.id === effect.spring)) throw new Error(`泉水效果挂到了不存在的档位：${effect.spring}`);
     if (!(effect.weight > 0) || !effect.text) throw new Error(`泉水效果不完整：${effect.spring}`);
+    if (effect.kind === 'buff' && (!effect.buff || !BATTLE_BUFF_KEYS.includes(effect.buff)))
+      throw new Error(`泉水效果缺少有效状态：${effect.spring}`);
   }
   return catalog;
 }

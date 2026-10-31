@@ -258,7 +258,12 @@ export class WorldCombat {
   readonly useRecoveryItem=(entry:string,userId=this.controlledId):RecoveryResult=>{
     if(this.closed||this.defeated||this.app.suspended||!this.player?.container.active)return {used:false,reason:'unavailable'};
     const members=this.activeParty.map(id=>{const member=this.memberOf(id)!;return {id,player:member.player,setHealth:(value:number)=>member.setHealth(value),setMana:(value:number)=>member.setMana(value)};});
-    const result=this.app.session.recovery.use(this.hero.bag,entry,members,userId,{sleeping:this.conditions.hasState(userId,'sleep'),recoveryBonus:!!this.app.session.party?.groupModifiers()['potion-recovery'],cooldownReductionMs:this.app.session.party?.groupModifiers()['potion-cooldown-ms']});
+    const result=this.app.session.recovery.use(this.hero.bag,entry,members,userId,{
+      sleeping:this.conditions.hasState(userId,'sleep'),
+      potionSickness:!this.conditions.canUseRecoveryItems(userId),
+      weakened:this.conditions.hasState(userId,'potion-recovery-halved'),
+      recoveryBonus:!!this.app.session.party?.groupModifiers()['potion-recovery'],
+      cooldownReductionMs:this.app.session.party?.groupModifiers()['potion-cooldown-ms']});
     if(result.used){
       this.outcomes.setPaused(this.app.locked);
       for(const id of result.effects){const visual=this.visualOf(id);if(visual)this.outcomes.recover(visual);}
@@ -1892,7 +1897,8 @@ captureStoryActors():SceneActorState[] {
   /** 快捷栏状态：起手资格对玩家入口与实际起手是同一判定，原版把失败结果显示成不可用。 */
   skillSlotAvailable(skillId:string):boolean {
     const skill=skillForMember(this.app.battleCatalog,this.controlledId,skillId);
-    return !!skill?.action&&this.canSelectSkill(this.controlledId,{id:skillId,action:skill.action});
+    return !!skill?.action&&this.conditions.canUseSkillShortcuts(this.controlledId)
+      &&this.canSelectSkill(this.controlledId,{id:skillId,action:skill.action});
   }
   private canSelectSkill(id:string,skill:NonNullable<ActionPlayback['skill']>):boolean {
     const gate=skillForMember(this.app.battleCatalog,id,skill.id)?.action?.minHealthRatePerThousand??skill.action.minHealthRatePerThousand;
@@ -2362,6 +2368,8 @@ captureStoryActors():SceneActorState[] {
     if(!this.scene.canCombatControl||this.closed||this.defeated)return;
     // 主动技能动作期间不接受第二个技能；普攻输入仍由控制器按原规则处理。
     if(key&&this.castingSkill)return;
+    // 药水病状态 17 只封快捷栏技能，普攻和 AI 直接起手不受影响。
+    if(key&&!this.conditions.canUseSkillShortcuts(this.controlledId))return;
     if(this.conditions.cannotAct(this.controlledId))return;
     const skill=key?skillForMember(this.app.battleCatalog,this.controlledId,key):undefined;
     if(key&&!skill?.action)return;
