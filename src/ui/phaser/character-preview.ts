@@ -19,11 +19,17 @@ export class CharacterPreview {
       this.destroy();
       this.current = { actor, images: this.draw(actor, rect) };
     }
-    for (const image of this.current.images) surface.root.add(image);
+    for (const image of this.current.images) {
+      image.setVisible(true);
+      surface.root.add(image);
+    }
   }
-  /** 从当前页面摘下但保留缓存，下一次 show 直接复用。 */
+  /** 从当前页面摘下并隐藏：Phaser 4 会把移出容器的对象放回场景显示列表。 */
   detach(): void {
-    for (const image of this.current?.images ?? []) image.parentContainer?.remove(image);
+    for (const image of this.current?.images ?? []) {
+      image.parentContainer?.remove(image);
+      image.setVisible(false);
+    }
   }
   destroy(): void {
     for (const image of this.current?.images ?? []) image.destroy();
