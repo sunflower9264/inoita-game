@@ -154,6 +154,23 @@ test('a companion not named by this stage stays in the world even if it joined t
   assert.equal(hidden.stageHidden,true);
 });
 
+test('stage-hidden allies are not restored when the player is shown again',()=>{
+  const mercenary=actor('member:ally',{actor:'ally',memberId:'ally',followsPlayer:true,visible:true});
+  const castCompanion=actor('member:story-friend',{actor:'story-friend',memberId:'story-friend',followsPlayer:true,visible:true});
+  let snapshot=resolveStoryScene({...stage([
+    member('story-friend',{actor:'story-friend',memberId:'story-friend',x:30,y:20,visible:true})
+  ]),playerVisible:false},source([mercenary,castCompanion]));
+  hideUnboundStageActors(snapshot);
+  const hidden=()=>snapshot.scene.actors.find(candidate=>candidate.id==='member:ally')!;
+  assert.equal(hidden().visible,false);
+  assert.equal(hidden().followVisibility,undefined,'隐藏时清掉跟随暂存，防止之后被恢复');
+  assert.equal(boundSceneActor(snapshot,'story-friend')!.visible,true);
+  snapshot=applyStorySceneAction(snapshot,{type:'show',target:'player'});
+  assert.equal(hidden().visible,false,'本幕没点名的佣兵不能因主角显示而回到舞台');
+  assert.equal(hidden().stageHidden,true);
+  assert.equal(boundSceneActor(snapshot,'story-friend')!.visible,true);
+});
+
 test('appearance instance IDs survive action replay and keep distinct created identities',()=>{
   let snapshot=resolveStoryScene(stage([member('goblin',{actor:'goblin',characterId:'goblin-character'})]),source());
   const first:PerformanceAction={type:'appear',target:'goblin',mode:'create',worldEntityId:'spawn-one',x:30,y:40,facing:'east'};

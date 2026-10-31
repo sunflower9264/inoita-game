@@ -56,7 +56,11 @@ export function hideUnboundStageActors(snapshot: StoryStageSnapshot): StoryStage
     const combatant = !!(actor.enemyKey || actor.enemyId);
     if (!actor.summonedBy && !partyMember && !combatant) continue;
     actor.stageHidden = !!actor.summonedBy || !bound.has(actor.id);
-    if (actor.stageHidden) actor.visible = false;
+    if (actor.stageHidden) {
+      actor.visible = false;
+      // 本幕隐藏是否决位：清掉跟随主角时暂存的可见性，避免后续 show player 把它放回来。
+      delete actor.followVisibility;
+    }
   }
   return snapshot;
 }
@@ -85,7 +89,8 @@ function actorFrom(member: StoryCastMember, id: string): SceneActorState {
  */
 function syncPartyFollowers(snapshot: StoryStageSnapshot, player: SceneActorState): void {
   for (const actor of snapshot.scene.actors) {
-    if (!actor.followsPlayer || actor.removed) continue;
+    // 舞台已经判定本幕不出现的演员，不能被「主角重新出现」的跟随规则放回来。
+    if (!actor.followsPlayer || actor.removed || actor.stageHidden) continue;
     if (player.visible) {
       if (actor.followVisibility === undefined) continue;
       actor.visible = actor.followVisibility;
