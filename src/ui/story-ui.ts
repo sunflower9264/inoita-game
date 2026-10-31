@@ -36,7 +36,6 @@ import { resolveControlLayout, type ControlId } from './control-layout.ts';
 import { controlViewport } from './phaser/control-layout-viewport.ts';
 import { UiSurface, uiImageFor, type ScrollArea } from './phaser/widgets.ts';
 import { drawDescriptionClose, drawDescriptionPanel, drawDescriptionRows, drawDescriptionSeparator, drawDescriptionTitle } from './phaser/description-panel.ts';
-import { ItemApplicationError } from '../domain/item-application.ts';
 import { drawNativeMessage } from './phaser/native-message.ts';
 import { AUTO_SAVE_SLOT, MANUAL_SAVE_SLOT_COUNT, captureSaveGame, saveSlotLabel, saveSummary, sessionClassId, type SaveGame, type SaveSlotRef } from '../domain/save-game.ts';
 import { SAVE_BOARD, SAVE_BOARD_LAYOUT, drawSaveBoardRow, newestFirstSlots, saveBoardOrigin, saveRowTitle, type SaveBoardRow } from './phaser/save-board.ts';
@@ -101,7 +100,7 @@ export class StoryUI {
   get menuOpen():boolean{return this.open;}
   private page:Page='bag';private open=false;private selectedMemberId='player';private questPanel?:QuestPanel;
   private itemResult?:ItemResult;
-  private filter:InventoryView='all';private applying?:string;private selectedItem?:string;private descSide:'left'|'right'='left';private operation?:Operation;private itemNotice?:string;private busy=false;private request=new AbortController();
+  private filter:InventoryView='all';private selectedItem?:string;private descSide:'left'|'right'='left';private operation?:Operation;private itemNotice?:string;private busy=false;private request=new AbortController();
   /** 上次整页重绘时当前页依赖的数据签名；会话通知用它判断要不要重绘。 */
   private sessionSignature='';
   /** 当前弹层的框尺寸，由打开它的对话框声明；初值只是没有对话框时的兜底。 */
@@ -204,7 +203,7 @@ export class StoryUI {
     if(this.page!==page&&this.requestAllocationExit(()=>this.show(page)))return;
     if(page==='quests'&&(!this.open||this.page!==page))this.questPanel?.reset();
     if(!this.open){this.open=true;this.app.ui.lock(true,'story-menu');}
-    if(this.page!==page){this.itemResult=undefined;this.applying=undefined;this.cancelOperation();this.adjusting=false;this.notice='';}
+    if(this.page!==page){this.itemResult=undefined;this.cancelOperation();this.adjusting=false;this.notice='';}
     // render() 末尾已经 sync 过；这里再调一次会把整层再排版一遍。
     this.page=page;this.render();
   }
@@ -256,7 +255,7 @@ export class StoryUI {
   debugDescribe(entry:string,side:'left'|'right'='left'):void{
     if(!this.session?.bag.get(entry))return;
     // `selectItem` 对同一条是「再点一次就收起」，调试条连点两下会把面板关掉，所以先清空再选。
-    this.selectedItem=undefined;this.applying=undefined;this.forge=undefined;
+    this.selectedItem=undefined;this.forge=undefined;
     this.show('bag');this.selectItem(entry,side);
   }
   /** 调试入口：直接打开某件物品的使用弹层。`kind='discard'` 打开丢弃框。 */
@@ -274,7 +273,7 @@ export class StoryUI {
   close():void{
     if(this.open&&this.requestAllocationExit(()=>this.close()))return;
     if(!this.open)return;this.controlEditor?.close();this.app.ui.setControlLayoutEditing(false);
-    this.keyBindingEditor?.close();this.app.ui.setKeyBindingEditing(false);this.cancelOperation();this.applying=undefined;this.modalActive=false;this.shortcutEdit=undefined;this.shortcutScreen?.clear();this.backTab?.clear();this.shopPanel=undefined;this.bagPortrait?.visual.container.destroy();this.bagPortrait=undefined;this.craftingPanel=undefined;this.craftingActor=undefined;this.forge=undefined;this.open=false;this.scrollNames.forEach((scroll,name)=>this.scrollOffsets.set(`${this.page}:${name}`,scroll.scrollTop));this.scrollNames.clear();this.body?.clear();this.description?.clear();if(this.surface&&this.body){this.surface.root.remove(this.body.root);this.surface.clear();this.surface.root.add(this.body.root);}this.keyboardFocus=undefined;this.surface?.visible(false);this.body?.visible(false);this.description?.visible(false);this.modal?.visible(false);this.shortcutScreen?.visible(false);this.backTab?.visible(false);this.backdrop?.setVisible(false);this.app.ui.resetInput();this.app.ui.lock(false,'story-menu');
+    this.keyBindingEditor?.close();this.app.ui.setKeyBindingEditing(false);this.cancelOperation();this.modalActive=false;this.shortcutEdit=undefined;this.shortcutScreen?.clear();this.backTab?.clear();this.shopPanel=undefined;this.bagPortrait?.visual.container.destroy();this.bagPortrait=undefined;this.craftingPanel=undefined;this.craftingActor=undefined;this.forge=undefined;this.open=false;this.scrollNames.forEach((scroll,name)=>this.scrollOffsets.set(`${this.page}:${name}`,scroll.scrollTop));this.scrollNames.clear();this.body?.clear();this.description?.clear();if(this.surface&&this.body){this.surface.root.remove(this.body.root);this.surface.clear();this.surface.root.add(this.body.root);}this.keyboardFocus=undefined;this.surface?.visible(false);this.body?.visible(false);this.description?.visible(false);this.modal?.visible(false);this.shortcutScreen?.visible(false);this.backTab?.visible(false);this.backdrop?.setVisible(false);this.app.ui.resetInput();this.app.ui.lock(false,'story-menu');
   }
   private cancelOperation():void{this.cancelDrag();this.request.abort();this.request=new AbortController();this.busy=false;this.operation=undefined;this.itemNotice=undefined;this.skillReset=false;this.saveConfirm=undefined;this.loadConfirm=undefined;this.deleteConfirm=undefined;this.renameRef=undefined;this.prompt?.close();this.partyPanel?.close();this.craftingPanel?.close();this.forge=undefined;this.modal?.clear();this.modal?.visible(false);}
   private key(event:KeyboardEvent):void{
@@ -297,7 +296,7 @@ export class StoryUI {
     if(event.key==='Escape'&&this.loadConfirm!==undefined){event.preventDefault();this.loadConfirm=undefined;this.render();return;}
     if(event.key==='Escape'&&this.saveConfirm!==undefined){event.preventDefault();this.saveConfirm=undefined;this.render();return;}
     if(event.key==='Escape'&&this.allocationExit){event.preventDefault();this.finishAllocation(false);return;}
-    if(event.key==='Escape'){event.preventDefault();if(this.busy){this.close();return;}if(this.shortcutEdit){this.closeShortcutScreen();return;}if(this.skillReset){this.skillReset=false;this.render();}else if(this.forge?.confirming){this.forge.cancelConfirmation();}else if(this.forge){this.closeForge();}else if(this.applying){this.applying=undefined;this.notice='';this.render();}else if(this.craftingPanel?.modalOpen){this.craftingPanel.cancel();}else if(this.shopPanel?.active){this.shopPanel.cancel();}else if(this.partyPanel?.modalOpen){this.partyPanel.cancel();}else if(this.operation){this.operation=undefined;this.render();}else if(this.page==='bag'&&this.selectedItem){this.selectedItem=undefined;this.render();}else this.close();return;}
+    if(event.key==='Escape'){event.preventDefault();if(this.busy){this.close();return;}if(this.shortcutEdit){this.closeShortcutScreen();return;}if(this.skillReset){this.skillReset=false;this.render();}else if(this.forge?.confirming){this.forge.cancelConfirmation();}else if(this.forge){this.closeForge();}else if(this.craftingPanel?.modalOpen){this.craftingPanel.cancel();}else if(this.shopPanel?.active){this.shopPanel.cancel();}else if(this.partyPanel?.modalOpen){this.partyPanel.cancel();}else if(this.operation){this.operation=undefined;this.render();}else if(this.page==='bag'&&this.selectedItem){this.selectedItem=undefined;this.render();}else this.close();return;}
     const surfaces=this.operation||this.itemNotice||this.allocationExit||this.skillReset||this.saveConfirm!==undefined||this.loadConfirm!==undefined||this.deleteConfirm!==undefined||this.craftingPanel?.modalOpen||this.shopPanel?.modalOpen||this.partyPanel?.modalOpen||this.forge
       ?[this.modal!]:this.shortcutEdit?[this.shortcutScreen!,this.backTab!]:[this.surface!,this.body!,this.description!];
     const buttons=surfaces.flatMap(surface=>surface.focusables());
@@ -1061,7 +1060,7 @@ export class StoryUI {
         v.root.add(this.bagPortrait!.visual.container);
       }
       else v.image(this.selectedMemberId==='player'?panels.classes[member.classId].preview:art.partyIcon,214,110,157,157);
-      for(const slot of panels.equipmentSlots){const entry=equipment[slot.id as EquipmentSlot],instance=entry?bag.get(entry):undefined,item=instance?bag.catalog.items[instance.item]:undefined,targetable=!!this.applying&&!!entry&&this.canApplyTarget(entry);const button=v.button('',85+slot.x,slot.y,74,74,()=>{if(this.applying&&entry&&this.canApplyTarget(entry)){this.applyItem(this.applying,entry);return;}if(!entry)return;this.selectItem(entry,'right');},{image:slotFrameImage(this.app,this.session!,instance)});v.image(item?.icon??slot.emptyIcon,item?5:13,item?5:13,item?64:48,item?64:48,button);if(targetable)v.image(panels.assets['inventory-selected'],0,0,74,74,button);button.setData('label',slot.name);this.drops.push({object:button,entry,slot:slot.id as EquipmentSlot});}
+      for(const slot of panels.equipmentSlots){const entry=equipment[slot.id as EquipmentSlot],instance=entry?bag.get(entry):undefined,item=instance?bag.catalog.items[instance.item]:undefined;const button=v.button('',85+slot.x,slot.y,74,74,()=>{if(!entry)return;this.selectItem(entry,'right');},{image:slotFrameImage(this.app,this.session!,instance)});v.image(item?.icon??slot.emptyIcon,item?5:13,item?5:13,item?64:48,item?64:48,button);button.setData('label',slot.name);this.drops.push({object:button,entry,slot:slot.id as EquipmentSlot});}
       // 等级／职业行：`UIEquip_DrawEquip` 在左框内 (46,368) 画 323 宽的文本底板，文字居中于它、
       // 颜色 #e2cb9e、纵向上沿在底板顶边下 7 像素（`GRPX_DrawStringWithFont(..., y+375, 居中)`）。
       // 底板在静态层，这里只画会随成员变化的等级与职业文字。
@@ -1076,9 +1075,9 @@ export class StoryUI {
         this.drops.push({object:v.image(panels.assets['inventory-slot'],x,y,layout.slot.size,layout.slot.size,grid.content),view:slot.view,cell:slot.cell});
         continue;
       }const entry=slot.entry,item=bag.catalog.items[entry.item];
-      const targetable=!!this.applying&&this.canApplyTarget(entry.id),button=v.button('',x,y,layout.slot.size,layout.slot.size,()=>{if(this.suppressClick)return;if(this.applying&&this.canApplyTarget(entry.id)){this.applyItem(this.applying,entry.id);return;}this.selectItem(entry.id,'left');},{image:slotFrameImage(this.app,this.session!,entry),parent:grid.content,guard:grid.guard}).setData('label',item.name);v.image(item.icon,layout.slot.icon.x,layout.slot.icon.y,layout.slot.icon.size,layout.slot.icon.size,button);if(targetable||entry.id===this.selectedItem)v.image(panels.assets['inventory-selected'],layout.slot.selection.x,layout.slot.selection.y,layout.slot.selection.size,layout.slot.selection.size,button);this.drops.push({object:button,entry:entry.id,view:slot.view,cell:slot.cell});
+      const button=v.button('',x,y,layout.slot.size,layout.slot.size,()=>{if(this.suppressClick)return;this.selectItem(entry.id,'left');},{image:slotFrameImage(this.app,this.session!,entry),parent:grid.content,guard:grid.guard}).setData('label',item.name);v.image(item.icon,layout.slot.icon.x,layout.slot.icon.y,layout.slot.icon.size,layout.slot.icon.size,button);if(entry.id===this.selectedItem)v.image(panels.assets['inventory-selected'],layout.slot.selection.x,layout.slot.selection.y,layout.slot.selection.size,layout.slot.selection.size,button);this.drops.push({object:button,entry:entry.id,view:slot.view,cell:slot.cell});
       if(item.stackable)v.text(String(entry.quantity),layout.badge.x,layout.badge.y,0,20,layout.badge.color,button).setOrigin(1,0);if(entry.enhancement)v.text(`+${entry.enhancement}`,2,2,0,17,undefined,button);if(entry.gems.length)v.text('◆'.repeat(entry.gems.length),2,52,0,16,undefined,button);
-      if(!panelCoversBag&&!this.applying)button.on('pointerdown',(pointer:Phaser.Input.Pointer)=>this.startDrag(pointer,entry.id,grid));
+      if(!panelCoversBag)button.on('pointerdown',(pointer:Phaser.Input.Pointer)=>this.startDrag(pointer,entry.id,grid));
     }
     this.finishScroll('inventory',grid,Math.ceil(slotCount/cells.columns)*cells.stride);
     // 原版金额先画币再画数字：金 530 / 银 633 / 铜 736，数字在币右侧 44、下移 6、白色。
@@ -1112,27 +1111,7 @@ export class StoryUI {
   /** 说明面板停在点选来源的对面栏：物品在左栏、身上装备在右栏，见 bag-layout 的说明。 */
   private selectItem(id:string,side:'left'|'right'):void{
     this.itemResult=undefined;
-    if(this.applying===id){this.applying=undefined;this.notice='';this.selectedItem=undefined;this.render();return;}
-    if(this.applying){this.applying=undefined;this.notice='';}
     this.descSide=side;this.selectedItem=this.selectedItem===id?undefined:id;this.scrollOffsets.delete('bag:item');this.render();
-  }
-  /** 宝石、强化卷轴这类必须先选装备的道具：由说明里的按钮进入选目标状态，再点装备格使用。 */
-  private beginApply(id:string):void{
-    if(!this.hasApplyTarget(id)){this.app.ui.showInstant('没有可以使用的装备。');return;}
-    // 上一次拖放留下的抬手抑制不能吃掉这次点选目标。
-    this.suppressClick=false;
-    this.applying=id;this.selectedItem=undefined;this.itemResult=undefined;this.notice='点选要使用的装备';
-    this.scrollOffsets.delete('bag:item');this.render();
-  }
-  private hasApplyTarget(id:string):boolean{
-    const bag=this.session!.bag;
-    if(Object.values(bag.equipmentFor(this.selectedMemberId)).some(target=>!!target&&target!==id&&bag.canApply(id,target)&&!bag.applicationProblem(id,target)))return true;
-    return bag.entries.some(target=>target.id!==id&&bag.canApply(id,target.id)&&!bag.applicationProblem(id,target.id));
-  }
-  private canApplyTarget(target:string):boolean{
-    if(!this.applying)return false;
-    const bag=this.session!.bag;
-    return bag.canApply(this.applying,target)&&!bag.applicationProblem(this.applying,target);
   }
   private renderItemDetail(id:string):void{
     const v=this.description!,bag=this.session!.bag,entry=bag.get(id)!,item=bag.catalog.items[entry.item],worn=EQUIPMENT_SLOTS.find(slot=>bag.equipmentFor(this.selectedMemberId)[slot]===id);
@@ -1219,7 +1198,6 @@ export class StoryUI {
     const forgeLabel=this.forgeLabel(entry);
     if(forgeLabel)actions.push({label:forgeLabel,image:'',text:true,fontSize:forgeLabel.length>2?16:undefined,run:()=>this.openForge(entry.id)});
     if(item.use&&!NON_MENU_USE_KINDS.has(item.use.kind)&&!worn)actions.push({label:USE_LABELS[item.use.kind],image:assets['item-use'],run:()=>this.beginOperation(entry.id),disabled:!!this.itemUseProblem(entry)});
-    if(item.use&&NON_MENU_USE_KINDS.has(item.use.kind)&&!worn)actions.push({label:USE_LABELS[item.use.kind],image:assets['item-use'],run:()=>this.beginApply(entry.id)});
     // 快捷键：与技能页同一套文案与同一屏。已配到任一组的这枚按钮改成「取消快捷键」，点了直接清掉
     // （原版 `UIEquip_ButtonRemoveShortCutExe 0x14c514` → `PLAYER_RemoveShortcutAll(char, 2, 物品编号)`）。
     if(item.shortcut&&!worn){
@@ -1245,7 +1223,7 @@ export class StoryUI {
   private openForge(targetId:string):void {
     const bag=this.session?.bag,target=bag?.get(targetId),equipment=target&&bag?bag.catalog.items[target.item].equipment:undefined;
     if(!bag||!target||!equipment||this.busy)return;
-    this.cancelDrag();this.operation=undefined;this.itemNotice=undefined;this.applying=undefined;this.notice='';
+    this.cancelDrag();this.operation=undefined;this.itemNotice=undefined;this.notice='';
     this.selectedItem=targetId;
     const sockets=target.numbers?.sockets??equipment.socketCapacity;
     const tab:ForgeTab=equipment.enchantable?'enchant':sockets>0?'socket':target.numbers?.chaos?'purify':'enchant';
@@ -1270,21 +1248,6 @@ export class StoryUI {
     if(kind==='use'&&(use?.kind==='recover-health'||use?.kind==='regenerate')){this.app.useRecoveryItem?.(entry,this.selectedMemberId);this.render();return;}
     if(kind==='use'&&use&&NON_MENU_USE_KINDS.has(use.kind))return;
     this.operation={entry,kind,quantity:1};this.scrollOffsets.delete('bag:operation');this.render();
-  }
-  private applyItem(source:string,target:string):void {
-    if(this.busy)return;
-    this.applying=undefined;this.cancelDrag();
-    this.busy=true;
-    try {
-      const result=this.session!.bag.use(source,target);
-      this.app.audio?.ui('enchant');
-      const message=result.notice?this.app.menuPanels.itemMessages[result.notice]:result.message;
-      if(message)this.app.ui.showInstant(message);
-    } catch(error) {
-      if(error instanceof ItemApplicationError)this.app.ui.showInstant(this.app.menuPanels.itemMessages[error.notice]);
-      else throw error;
-    } finally {this.busy=false;}
-    this.notice='';this.render();
   }
   private renderOperation():void{
     // 弹层画布的锚点由这里的框尺寸决定，不再写死；框从左上角开始画。
@@ -1411,7 +1374,7 @@ export class StoryUI {
   private cancelDrag():void{this.drag?.timer.remove();this.drag?.ghost?.destroy();this.drag=undefined;}
   private selectMember(id:string,page:Page):void{
     if(this.requestAllocationExit(()=>this.selectMember(id,page)))return;
-    this.cancelOperation();this.applying=undefined;this.selectedMemberId=id;this.selectedItem=undefined;this.skill=undefined;this.skillSection='directory';this.show(page);
+    this.cancelOperation();this.selectedMemberId=id;this.selectedItem=undefined;this.skill=undefined;this.skillSection='directory';this.show(page);
     const signal=this.request.signal;
     void this.app.preparePartyMember?.(id,signal).then(()=>{if(!signal.aborted&&this.selectedMemberId===id)this.render();})
       .catch(error=>{if(!signal.aborted){this.notice=(error as Error).message;this.render();}});

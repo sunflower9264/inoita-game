@@ -227,7 +227,6 @@ campaign.debugStory = read<Campaign['debugStory']>('debug/start');
 const panels = read<MenuPanels>('menu-panels'), content = read<StoryInterface>('story-interface');
 interface MenuInternals {
   selectedMemberId: string;
-  applying?: string;
   forge?: ForgePanel;
   operation?: { entry: string; kind: 'use' | 'discard'; quantity: number };
   keyboardFocus?: Display;
@@ -598,46 +597,25 @@ test('companion bag rejects hero-only items at the button, direct entry and conf
   }
 });
 
-test('socket gems start from the detail button and report through the instant message', t => {
+test('processing items no longer expose a use button on their own description', t => {
   const f=fixture();t.after(f.cleanup);
-  const gem=f.add('novice-jewel'),dagger=f.add('basic-dagger');
-  f.session.bag.equip(dagger.id,'main-hand','player',f.hero.classId,f.hero.level);
-  f.menu.show('bag');
-  f.scene.click(f.scene.button('低级宝石'));
-  assert.equal(f.internals.applying,undefined,'点道具先看说明，不直接进入选装备');
-  f.scene.click(f.scene.button('镶嵌'));
-  assert.equal(f.internals.applying,gem.id);
-  f.scene.click(f.scene.button('主手'));
-  assert.equal(f.session.bag.count('novice-jewel'),0);
-  assert.equal(f.session.bag.get(dagger.id)!.gems.length,1);
-  assert.equal(f.internals.applying,undefined);
-  assert.equal(f.controls.instant.text,`${items.items[dagger.item].name}已镶嵌${items.items[gem.item].name}`);
-  assert.equal(f.internals.modal.root.visible,false,'结果走即时消息，不打开深色弹窗');
+  const gem=f.add('novice-jewel'),scroll=f.add('novice-weapon-scroll');
+  f.menu.debugDescribe(gem.id);
+  assert.equal(f.scene.buttons('使用').length,0,'宝石说明没有使用按钮');
+  assert.equal(f.scene.buttons('镶嵌').length,0,'宝石不再从道具侧镶嵌');
+  f.menu.debugDescribe(scroll.id);
+  assert.equal(f.scene.buttons('使用').length,0,'卷轴说明没有使用按钮');
+  assert.equal(f.scene.buttons('强化').length,0,'卷轴不再从道具侧强化');
 });
 
-test('apply items explain when the selected member has no equipment they can take', t => {
+test('equipment without enhancement, sockets or chaos has no forge button', t => {
   const f=fixture();t.after(f.cleanup);
-  const member=f.recruit(),gem=f.add('novice-jewel');
-  f.session.bag.removeOwner(member.id,false);
-  f.select(member.id);f.menu.debugDescribe(gem.id);
-  f.scene.click(f.scene.button('镶嵌'));
-  assert.equal(f.internals.applying,undefined,'没有目标时不进入选装备');
-  assert.equal(f.controls.instant.text,'没有可以使用的装备。');
-  assert.equal(f.session.bag.count('novice-jewel'),1,'提示不消耗道具');
-});
-
-test('purify jewels remove chaos through the detail button and report the result', t => {
-  const f=fixture();t.after(f.cleanup);
-  const weapon=f.add('basic-dagger'),jewel=f.add('jewel-of-catharsis');
-  f.session.bag.applyChaos(weapon.id,{tier:'chaos',valuePercent:10,levelOffset:0},f.session.bag.revision);
-  f.session.bag.equip(weapon.id,'main-hand','player',f.hero.classId,f.hero.level);
-  f.menu.show('bag');
-  f.scene.click(f.scene.button(items.items[jewel.item].name));
-  f.scene.click(f.scene.button('净化'));
-  f.scene.click(f.scene.button('主手'));
-  assert.equal(f.session.bag.get(weapon.id)!.numbers!.chaos,undefined);
-  assert.equal(f.controls.instant.text,`${items.items[weapon.item].name}的混沌属性已净化`);
-  assert.equal(f.session.bag.count('jewel-of-catharsis'),0);
+  const equipmentId=Object.keys(items.items).find(id=>{const equipment=items.items[id].equipment;return !!equipment&&!equipment.enchantable&&!equipment.locked;})!;
+  const entry=f.add(equipmentId);
+  const state=f.hero.bag.captureState(),target=state.instances.find(value=>value.id===entry.id)!;
+  target.numbers!.sockets=0;f.hero.bag.restoreState(state);
+  f.menu.debugDescribe(entry.id);
+  for(const label of ['强化','镶嵌','净化','强化/镶嵌'])assert.equal(f.scene.buttons(label).length,0,label);
 });
 
 test('forge opens from the worn equipment and enhances continuously', t => {
@@ -1313,12 +1291,12 @@ test('bag grid drags swap special items and organise from a category updates eve
   f.scene.click(f.scene.button('整理'));assert.equal(updates,1,'重复整理无更新');
 });
 
-test('processing items use the detail button instead of drag-and-drop', t => {
+test('processing items use the equipment forge instead of drag-and-drop', t => {
   const f=fixture();t.after(f.cleanup);
   const source=f.add('novice-weapon-scroll',3),weapon=f.hero.bag.get(f.hero.bag.equipment['main-hand']!)!;
   f.hero.bag.unequip('main-hand');
-  const state=f.hero.bag.captureState();
-  state.instances.find(entry=>entry.id===weapon.id)!.numbers!.enhancementUses=3;f.hero.bag.restoreState(state);
+  const state=f.hero.bag.captureState(),target=state.instances.find(entry=>entry.id===weapon.id)!;
+  target.numbers!.enhancementUses=3;target.numbers!.sockets=3;f.hero.bag.restoreState(state);
   f.menu.show('bag');
   const from=f.hero.bag.allCells.findIndex(entry=>entry?.id===source.id),to=f.hero.bag.allCells.findIndex(entry=>entry?.id===weapon.id);
   assert.equal(f.scene.buttons('强化').length,0,'说明面板打开前没有强化按钮');
@@ -1329,16 +1307,16 @@ test('processing items use the detail button instead of drag-and-drop', t => {
   assert.equal(f.hero.bag.get(weapon.id)!.enhancement,0);
   assert.equal(f.hero.bag.allCells[to]!.id,source.id,'拖放仍然交换格位');
   assert.equal(f.hero.bag.allCells[from]!.id,weapon.id);
-  f.menu.debugDescribe(source.id);
-  assert.equal(f.scene.buttons('强化').length,1,'加工卷轴从说明按钮进入选装备');
-  f.scene.click(f.scene.button('强化'));
-  assert.equal(f.internals.applying,source.id);
+  f.menu.debugDescribe(weapon.id);
+  assert.equal(f.scene.buttons('强化/镶嵌').length,1,'装备说明进入强化台');
+  f.scene.click(f.scene.button('强化/镶嵌'));
+  assert.ok(f.internals.forge);
   const originalRandom=Math.random;Math.random=()=>0;t.after(()=>{Math.random=originalRandom;});
-  f.scene.click(f.scene.button(items.items[weapon.item].name));
+  f.scene.click(f.scene.button('卷轴:低级武器强化卷轴'));
   assert.equal(f.hero.bag.count(source.item),2);
   assert.equal(f.hero.bag.get(weapon.id)!.enhancement,2);
-  assert.equal(f.controls.instant.text,'强化+2成功！');
-  assert.equal(f.internals.modal.root.visible,false,'结果走即时消息，不打开深色弹窗');
+  assert.ok(f.scene.texts().some(text=>text.includes('强化大成功 +2')));
+  assert.equal(f.controls.instant.text,'','结果留在 forge，不走即时消息');
 });
 
 test('fusion menu selects or drags equipment, confirms once and blocks underlying input', t => {
