@@ -389,7 +389,7 @@ test('a hand-written start table is applied verbatim and the opening play runs t
   director.script = async (name, node) => { played.push({ script: String(name), busy: director.busy }); await play(name, node); };
   const persistence: string[] = [];
   const gm = createGmActions({ session, campaign: debugCampaign, director, status: () => ({}),
-    persistence: { suspend: () => persistence.push('suspend'), resume: () => persistence.push('resume') },
+    persistence: { suspend: () => persistence.push('suspend'), resume: () => persistence.push('resume'), resumeAfterRollback: () => persistence.push('resume-after-rollback') },
     report: async () => true });
 
   const result = await gm.jumpStory({ quest: DEBUG_START_QUEST });
@@ -425,7 +425,7 @@ test('a debug task only opens the scene until its own quest truly completes, the
   const director = new StoryDirector(debugCampaign, session, ui, () => {}, presentation);
   const gm = createGmActions({
     session, campaign: debugCampaign, director, status: () => ({}),
-    persistence: { suspend: () => order.push('suspend'), resume: () => order.push('resume') },
+    persistence: { suspend: () => order.push('suspend'), resume: () => order.push('resume'), resumeAfterRollback: () => order.push('resume-after-rollback') },
     debugWorld: {
       capture: () => { order.push('capture-world'); return { origin: true }; },
       restore: async () => { order.push('restore-world'); return { ok: true }; },
@@ -466,7 +466,7 @@ test('manual end restores the origin even when the debug task never completes', 
   const director = new StoryDirector(debugCampaign, session, ui, () => {}, presentation);
   const gm = createGmActions({
     session, campaign: debugCampaign, director, status: () => ({}),
-    persistence: { suspend: () => {}, resume: () => {} },
+    persistence: { suspend: () => {}, resume: () => {}, resumeAfterRollback: () => {} },
     debugWorld: { capture: () => ({ origin: true }), restore: async () => { worldRestores++; return { ok: true }; } },
     report: async () => true,
   });
@@ -490,7 +490,7 @@ test('a failed opening performance restores the origin instead of leaving a paus
   director.script = async () => { throw new Error('测试开幕失败'); };
   const gm = createGmActions({
     session, campaign: debugCampaign, director, status: () => ({}),
-    persistence: { suspend: () => events.push('suspend'), resume: () => events.push('resume') },
+    persistence: { suspend: () => events.push('suspend'), resume: () => events.push('resume'), resumeAfterRollback: () => events.push('resume-after-rollback') },
     debugWorld: { capture: () => ({ origin: true }), restore: async () => { worldRestores++; return { ok: true }; } },
     report: async () => true,
   });
@@ -513,7 +513,7 @@ test('a failed restore keeps the debug session and leaves auto saving paused', a
   const director = new StoryDirector(debugCampaign, session, ui, () => {}, presentation);
   const gm = createGmActions({
     session, campaign: debugCampaign, director, status: () => ({}),
-    persistence: { suspend: () => {}, resume: () => { resumes++; } },
+    persistence: { suspend: () => {}, resume: () => { resumes++; }, resumeAfterRollback: () => { resumes++; } },
     debugWorld: { capture: () => ({ origin: true }), restore: async () => ({ ok: false, reason: '测试恢复失败' }) },
     report: async () => true,
   });
@@ -536,7 +536,7 @@ test('a jump that cannot reach the debug scene restores the session and resumes 
   const director = new StoryDirector(debugCampaign, session, ui, () => {}, presentation);
   const gm = createGmActions({ session, campaign: debugCampaign, director, status: () => ({}),
     travel: async () => ({ ok: false, reason: '测试切图失败' }),
-    persistence: { suspend: () => persistence.push('suspend'), resume: () => persistence.push('resume') },
+    persistence: { suspend: () => persistence.push('suspend'), resume: () => persistence.push('resume'), resumeAfterRollback: () => persistence.push('resume-after-rollback') },
     report: async () => true });
   const result = await gm.jumpStory({ quest: DEBUG_START_QUEST });
   assert.equal(result.ok, false);
@@ -547,6 +547,33 @@ test('a jump that cannot reach the debug scene restores the session and resumes 
   director.dispose();
 });
 
+
+test('returning to a checkpoint while debugging ends the run without replaying the pre-debug scene', async () => {
+  const debugCampaign = startTableCampaign();
+  const session = newStorySession(debugCampaign,
+    (world.actors as never as Record<string, never>)[debugCampaign.start.actor]!, classes.classes[0]!, items, stats, battle, companions);
+  session.bag.add(DEBUG_START_ITEM, 3);
+  const checkpoint = session.captureState();
+  const persistence: string[] = [];
+  let worldRestores = 0;
+  const director = new StoryDirector(debugCampaign, session, ui, () => {}, presentation);
+  const gm = createGmActions({
+    session, campaign: debugCampaign, director, status: () => ({}),
+    persistence: { suspend: () => persistence.push('suspend'), resume: () => persistence.push('resume'), resumeAfterRollback: () => persistence.push('resume-after-rollback') },
+    debugWorld: { capture: () => ({ origin: true }), restore: async () => { worldRestores++; return { ok: true }; } },
+    report: async () => true,
+  });
+  assert.equal((await gm.jumpStory({ quest: DEBUG_START_QUEST })).ok, true);
+  assert.equal(gm.storyDebug().focus, DEBUG_START_QUEST);
+
+  // 死亡回检查点：检查点来自进入调试之前，整份换回后调试焦点消失。
+  session.restoreState(checkpoint);
+  assert.deepEqual(persistence, ['suspend', 'resume-after-rollback'], '外部回滚只交还自动存档');
+  assert.equal(worldRestores, 0, '回滚接管后不能再回放进入调试前的世界');
+  assert.deepEqual(gm.storyDebug(), { focus: undefined, autoSavePaused: false });
+  assert.equal((await gm.jumpStory({ quest: DEBUG_START_QUEST })).ok, true, '收尾后可以重新进入调试');
+  director.dispose();
+});
 
 test('completeCurrentQuest, setNoclip, and setDoubleSpeed operate correctly through GM', () => {
   const { session, gm, director } = harness(undefined, undefined);

@@ -98,12 +98,16 @@ export interface GmActionLogEntry {
 }
 
 /**
- * 存档侧的调试开关。`gm-actions` 不认识 AutoSaver 或场景，只调用装配方给的两个动作：
- * 进入调试现场时暂停写入，结束调试时恢复并把当前现场重新记成检查点、请求一次正常存档。
+ * 存档侧的调试开关。`gm-actions` 不认识 AutoSaver 或场景，只调用装配方给的动作：
+ * 进入调试现场时暂停写入；正常结束调试时恢复并把当前现场重新记成检查点、请求一次正常存档；
+ * 调试现场被回滚流程接管时只恢复写入——当前画面不是调试结果，不能记成检查点。
  */
 export interface GmPersistencePort {
   suspend(): void;
+  /** 正常结束调试：恢复自动存档，并把当前现场记成检查点、请求一次存档。 */
   resume(): void;
+  /** 回滚流程接管调试现场：只恢复自动存档，不写检查点。 */
+  resumeAfterRollback(): void;
 }
 
 export interface GmPorts {
@@ -299,9 +303,23 @@ export function createGmActions(ports: GmPorts): GmActions {
     });
   };
 
+  /** 调试现场被外部整份回滚（例如死亡后返回检查点）时收尾：不再回放进入前状态，只交还自动存档。 */
+  const abandonDebugRun = (run: DebugRun): void => {
+    if (debugRun !== run) return;
+    run.unsubscribe?.(); run.unsubscribe = undefined;
+    if (run.timer) { clearTimeout(run.timer); run.timer = undefined; }
+    debugRun = undefined;
+    try { ports.persistence?.resumeAfterRollback(); }
+    catch (error) { record('abandonDebugRun', [], { ok: false, reason: error instanceof Error ? error.message : String(error) }); }
+  };
+
   const watchDebugRun = (run: DebugRun): void => {
     run.unsubscribe = session.subscribe(() => {
-      if (debugRun !== run || run.finishing || !debugTaskCompleted(run)) return;
+      if (debugRun !== run || run.finishing) return;
+      // 外部回滚会把会话连同调试焦点整份换回进入调试前的状态，现场已经不在了。
+      // 不跟着收尾的话，新调试会被 debugRun 挡住，面板却因焦点为空没有「结束本次调试」。
+      if (session.debugFocusQuest !== run.quest) { abandonDebugRun(run); return; }
+      if (!debugTaskCompleted(run)) return;
       run.pending = true;
       if (run.started) scheduleDebugFinish(run);
     });

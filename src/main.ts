@@ -475,6 +475,8 @@ function installSession(session: Session): void {
         worldScene()?.checkpointStoryWorld();
         autoSaver?.request('quest');
       },
+      // 回滚流程（死亡回检查点）接管调试现场：此刻画面还停在调试现场，只能恢复写入，不能记检查点。
+      resumeAfterRollback: () => autoSaver?.resume(),
     },
     debugWorld: {
       capture: () => {
