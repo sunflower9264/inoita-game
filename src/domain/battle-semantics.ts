@@ -5,7 +5,8 @@ export const BATTLE_STAT_KEYS = [
   'magicDamageRate','conditionalMagicDamageRate','magicResistance','evasionBonus',
   'evasionBase','hitBonus','hitBase','defense','defenseRate','weaponBlock',
   'shieldBlock','attackSpeedRate','fireSplashChance','windStrikeChance','frostStrikeChance',
-  'divineStrikeChance','darknessStrikeChance','poisonStrikeChance','maxHealth',
+  'divineStrikeChance','darknessStrikeChance','poisonStrikeChance',
+  'pendulumStunChance','frostRetaliationChance','healingEnergyChance','zealotRate','instantRecoveryPerThousand','maxHealth',
   'maxMana','skillDamageBonus','healingPowerRate','assassinSwordHitAdjustment',
   'stealthAttackEnabled','stealthDamageRate',
   'summonDurationBonus','moveSpeed','rearPenetrationRate','bestNormalDamage','lifeFeastRate','attackRangeBonusUnits',
@@ -19,7 +20,8 @@ export const BATTLE_STAT_KEYS = [
 ] as const;
 export type BattleStatKey = typeof BATTLE_STAT_KEYS[number];
 
-export const BATTLE_STATE_KEYS = ['sleep','stun','immobilized','stealthed','ambush','damage-immune','taunted'] as const;
+export const BATTLE_STATE_KEYS = ['sleep','stun','immobilized','stealthed','ambush','damage-immune','taunted',
+  'potion-sickness','potion-recovery-halved','shortcut-sealed'] as const;
 export type BattleStateKey = typeof BATTLE_STATE_KEYS[number];
 
 export const BATTLE_BUFF_KEYS = [
@@ -38,8 +40,9 @@ export const BATTLE_BUFF_KEYS = [
   'monster-companion-blessing','monster-blazing-armor','freeze-extreme',
   'fire-offering','critical-hit-stun','blunt-hit-stun',
   'shield-of-rage','shield-of-trust','blood-revenge','bard-of-destruction','deep-breath','ordination-prayer','magic-insight','disturbanceThreshold','flares-of-pain','wrath-of-darkness','mana-recovery','dark-sense','revenge-incarnate',
-  // 恢复泉水给的五个属性 buff。同表的三条状态 buff（无法用药水／药效削弱／无法用技能）
-  // 原版机制未确证，没有收进来，见 work/findings/chest-spawn-and-springs-2026-10-12.md。
+  // 恢复泉水给的五个属性 buff，以及三条状态 buff：无法用药水、药效削弱、快捷栏封印。
+  // 状态来源与消费者见 work/findings/257_equipment_attributes_78_82_and_potion_states_2026-10-31.md。
   'story-trap','spring-mana-recovery','spring-health-recovery','spring-mana-cost','spring-power-up','spring-frenzy',
+  'spring-potion-sickness','spring-potion-weakened','spring-skill-seal',
 ] as const;
 export type BattleBuffKey = typeof BATTLE_BUFF_KEYS[number];
