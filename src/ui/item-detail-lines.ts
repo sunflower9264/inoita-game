@@ -4,6 +4,12 @@ import type { ItemDefinition, ItemInstance } from '../domain/items.ts';
 import type { ShopCatalog } from '../domain/shop.ts';
 import type { DescriptionTextPart } from '../domain/description-text.ts';
 import { equipmentColor, equipmentGrade } from './item-name-color.ts';
+import { TEXT_COLORS } from './text-style.ts';
+
+/** 物品说明按词条来源取色，保留原版 UIDesc_AddOption 的配色。 */
+const GEM_MODIFIER_COLOR = '#bf0000';
+const EQUIPMENT_MODIFIER_COLOR = '#7878ff';
+const DESCRIPTION_COLOR = '#00b4ff';
 
 export type ItemDescriptionRow = { parts: DescriptionTextPart[] };
 interface ItemDescriptionBody {
@@ -25,26 +31,26 @@ function equipmentAttributeLines(catalog: CharacterStatsCatalog, entry: ItemInst
     }
   };
   if (standaloneGem) {
-    add(entry.numbers?.modifiers ?? [], '#bf0000');
+    add(entry.numbers?.modifiers ?? [], GEM_MODIFIER_COLOR);
     return result;
   }
-  add(entry.numbers?.modifiers ?? [], '#7878ff');
+  add(entry.numbers?.modifiers ?? [], EQUIPMENT_MODIFIER_COLOR);
   const gems = entry.numbers?.gemModifiers ?? [];
   if ((entry.gems?.length ?? 0) !== gems.length) {
     if (result.length) result.push({text:'\n'});
-    result.push({text:'宝石数据不完整', color:'#ff6b6b'});
+    result.push({text:'宝石数据不完整', color:TEXT_COLORS.danger});
     return result;
   }
   if (!gems.length) return result;
   if (result.length) result.push({text:'\n'});
-  result.push({text:'镶嵌效果', color:'#ffffff'});
+  result.push({text:'镶嵌效果', color:TEXT_COLORS.white});
   gems.forEach((modifier, index) => {
     const descriptor = catalog.modifiers[modifier.stat];
     const value = descriptor.percent ? `${(modifier.value / 10).toFixed(1)}%` : String(modifier.value);
     const signed = modifier.value > 0 ? `+${value}` : value;
     const name = gemNames?.[index];
     result.push({text:'\n'});
-    result.push({text:`${name ? `${name}：` : ''}${descriptor.label} ${signed}`, color:'#bf0000'});
+    result.push({text:`${name ? `${name}：` : ''}${descriptor.label} ${signed}`, color:GEM_MODIFIER_COLOR});
   });
   return result;
 }
@@ -65,15 +71,15 @@ export function itemDescriptionBody(options: {
   concealed?: boolean;
 }): ItemDescriptionBody {
   const {item, entry, numbers, catalog, grades, member, classNames, gemNames, skill} = options;
-  if (options.concealed) return {title:`${item.typeName}（未鉴定）`, color:'#808080', rows:[]};
+  if (options.concealed) return {title:`${item.typeName}（未鉴定）`, color:TEXT_COLORS.muted, rows:[]};
   const equipment = item.equipment, grade = equipmentGrade(entry.numbers, numbers);
   const prefix = equipment && grade !== 2 ? item.priceKind === 'weapon' ? grades[grade]?.name : grades[grade]?.armorName ?? grades[grade]?.name : '';
   const title = `${prefix ? prefix + ' ' : ''}${item.name}${equipment && entry.enhancement ? '+' + entry.enhancement : ''}`;
   const color = equipment ? equipmentColor(entry.numbers, numbers, grades) : undefined;
   const parts: DescriptionTextPart[] = [];
   if (equipment) {
-    parts.push({text:item.typeName, color:member && !equipment.classes.includes(member.classId) ? '#ff0000' : '#ffffff'},
-      {text:'\n等级 '}, {text:String(equipmentLevel(item,entry)), color:member && member.level < equipmentLevel(item,entry) ? '#ff0000' : '#ffffff'});
+    parts.push({text:item.typeName, color:member && !equipment.classes.includes(member.classId) ? TEXT_COLORS.requirementUnmet : TEXT_COLORS.white},
+      {text:'\n等级 '}, {text:String(equipmentLevel(item,entry)), color:member && member.level < equipmentLevel(item,entry) ? TEXT_COLORS.requirementUnmet : TEXT_COLORS.white});
     if (classNames) {
       const all = Object.keys(classNames);
       const universal = all.length > 0 && equipment.classes.length === all.length
@@ -105,7 +111,7 @@ export function itemDescriptionBody(options: {
     if (parts.length) parts.push({text:'\n'});
     parts.push({text:`${skill.name}(${skill.className})`});
   }
-  const description = item.descriptionParts ?? (item.description ? [{text:item.description, color:'#00b4ff'}] : []);
+  const description = item.descriptionParts ?? (item.description ? [{text:item.description, color:DESCRIPTION_COLOR}] : []);
   if (description.length) {
     if (parts.length) parts.push({text:'\n\n'});
     parts.push(...description);

@@ -27,7 +27,7 @@ export function drawDescriptionPanel(v: UiSurface, assets: Record<string, string
  * 占宽 `面板宽−82`（余下的右边留给关闭按钮），字号与商店页分类名同号。
  * 它不属于正文滚动区，所以画在面板上而不是滚动内容里——名字紧贴面板顶，正文从 +60 才开始。
  */
-export function drawDescriptionTitle(v: UiSurface, name: string, x: number, y: number, width: number, color = DESCRIPTION_TEXT): void {
+export function drawDescriptionTitle(v: UiSurface, name: string, x: number, y: number, width: number, color: string = DESCRIPTION_TEXT): void {
   const title = DESCRIPTION_PANEL.title;
   v.text(name, x + title.x, y + title.y, Math.max(0, width - title.right), title.size, color);
 }

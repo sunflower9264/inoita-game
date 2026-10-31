@@ -1,23 +1,33 @@
 import type { ChaosTier } from '../domain/chaos-equipment.ts';
 import type { EquipmentNumbers, ItemNumbers } from '../domain/character-stats.ts';
-/** 原版像素颜色按低字节 R、G、B 存储；稀有度 0 使用控件基础色。 */
-const RARITY_COLORS = ['#4eff00', '#00b4ff', '#ffe600', '#9c00ff'];
+interface QualityStyle {
+  /** 品级 1–4；混沌档位没有品级。 */
+  rarity?: number;
+  /** 混沌档位；普通品质没有。 */
+  chaosTier?: ChaosTier;
+  color: string;
+  frame: string;
+}
+
+/**
+ * 品级与混沌档位共用一张取色表：每项同时给出说明文字颜色和格子边框图。
+ * 原版像素颜色按低字节 R、G、B 存储；稀有度 0 使用控件基础色。
+ * 边框图键见 `public/content/menu-panels.json` 的 assets。
+ */
+const QUALITY_STYLES: readonly QualityStyle[] = [
+  { rarity: 1, color: '#4eff00', frame: 'inventory-slot-rarity-1' },
+  { rarity: 2, color: '#00b4ff', frame: 'inventory-slot-rarity-2' },
+  { rarity: 3, color: '#ffe600', frame: 'inventory-slot-rarity-3' },
+  { rarity: 4, color: '#9c00ff', frame: 'inventory-slot-rarity-4' },
+  { chaosTier: 'chaos', color: '#0000ff', frame: 'inventory-slot-chaos' },
+  { chaosTier: 'epic-chaos', color: '#ff6c00', frame: 'inventory-slot-epic-chaos' }
+];
 /** 实例没掷品级时，原版按品级 2（蓝色）取色。 */
 const DEFAULT_GRADE = 2;
-/** 品质色对应的格子边框图，键见 `public/content/menu-panels.json` 的 assets。 */
-const SLOT_FRAMES: Record<string, string> = {
-  '#4eff00': 'inventory-slot-rarity-1',
-  '#00b4ff': 'inventory-slot-rarity-2',
-  '#ffe600': 'inventory-slot-rarity-3',
-  '#9c00ff': 'inventory-slot-rarity-4',
-  '#0000ff': 'inventory-slot-chaos',
-  '#ff6c00': 'inventory-slot-epic-chaos'
-};
 
 export function itemNameColor(rarity: number | undefined, chaosTier?: ChaosTier): string | undefined {
-  if (chaosTier === 'chaos') return '#0000ff';
-  if (chaosTier === 'epic-chaos') return '#ff6c00';
-  return rarity === undefined ? undefined : RARITY_COLORS[rarity - 1];
+  if (chaosTier) return QUALITY_STYLES.find(style => style.chaosTier === chaosTier)?.color;
+  return rarity === undefined ? undefined : QUALITY_STYLES.find(style => style.rarity === rarity)?.color;
 }
 
 /** 装备品级：实例掷出的优先，其次模板默认品级，最后是原版默认的 2。 */
@@ -36,5 +46,5 @@ export function equipmentSlotFrame(item: { equipment?: unknown } | undefined, nu
   definition: EquipmentNumbers | undefined, grades: readonly { rarity: number }[] | undefined): string | undefined {
   if (!item?.equipment) return undefined;
   const color = equipmentColor(numbers, definition, grades);
-  return color === undefined ? undefined : SLOT_FRAMES[color];
+  return color === undefined ? undefined : QUALITY_STYLES.find(style => style.color === color)?.frame;
 }

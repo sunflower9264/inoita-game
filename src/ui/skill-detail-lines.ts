@@ -3,6 +3,7 @@ import type { DescriptionTextPart } from '../domain/description-text.ts';
 import type { StorySkillProgression } from '../domain/story-skills.ts';
 import type { SkillDefinition } from '../domain/battle.ts';
 import { skillDetailEntries, type SkillDetailEntry } from '../domain/skill-display.ts';
+import { TEXT_COLORS } from './text-style.ts';
 
 type SkillKind = SkillDefinition['kind'];
 type RankLike = Pick<SkillRank, 'manaCost' | 'details' | 'displayValues'>;
@@ -29,10 +30,10 @@ export function skillLearningParts(name: string, level: number,
   requirements: ReturnType<StorySkillProgression['learningRequirements']> | undefined,
   companionLearningLevel?: number): DescriptionTextPart[] {
   const parts:DescriptionTextPart[]=[{text:`${name} (LV ${level+1})\n`}];
-  if(companionLearningLevel!==undefined)parts.push({text:`学习级别： LV ${companionLearningLevel}`,color:'#ff0000'});
+  if(companionLearningLevel!==undefined)parts.push({text:`学习级别： LV ${companionLearningLevel}`,color:TEXT_COLORS.requirementUnmet});
   else if(requirements)parts.push(
-    {text:`条件：投入${requirements.requiredInvested}技能点\n`,color:requirements.conditionMet?'#ffffff':'#ff0000'},
-    {text:`需要技能点数： ${requirements.cost}`,color:requirements.pointsAvailable?'#ffffff':'#ff0000'});
+    {text:`条件：投入${requirements.requiredInvested}技能点\n`,color:requirements.conditionMet?TEXT_COLORS.white:TEXT_COLORS.requirementUnmet},
+    {text:`需要技能点数： ${requirements.cost}`,color:requirements.pointsAvailable?TEXT_COLORS.white:TEXT_COLORS.requirementUnmet});
   return parts;
 }
 

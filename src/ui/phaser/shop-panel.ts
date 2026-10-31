@@ -6,6 +6,7 @@ import { itemDescriptionBody } from '../item-detail-lines.ts';
 import { INVENTORY_LABELS, INVENTORY_SIDE_FILTERS, matchesFilter, type InventoryFilter } from '../../domain/inventory.ts';
 
 import { shopLayout, tradeLayout, tradeMessageLayout, type ShopLayout } from '../shop-layout.ts';
+import { TEXT_COLORS } from '../text-style.ts';
 import { BAG_DESCRIPTION_WIDTH, descriptionPanel, SIDE_FILTER_TEXT_SIZE } from '../bag-layout.ts';
 import type { PlaceModal } from './modal-placement.ts';
 import { drawDescriptionClose, drawDescriptionPanel, drawDescriptionRows, drawDescriptionTitle } from './description-panel.ts';
@@ -17,7 +18,7 @@ type Selection = {kind:'buy'|'sell'; id:string; step:'description'|'quantity'|'c
 const SHELF_SLOTS=16;
 /** 金额的三个单位，顺序与金币那一行的横坐标一致。 */
 const MONEY_UNITS=['gold','silver','copper'] as const;
-const AREA_COLOR='#e2cb9e';
+const AREA_COLOR=TEXT_COLORS.primary;
 
 /** The merchant and the player's bag remain visible throughout a trade. */
 export class ShopPanel {

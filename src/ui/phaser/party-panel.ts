@@ -12,6 +12,7 @@ import type { PlaceModal } from './modal-placement.ts';
 import { drawRoundBand } from './round-band.ts';
 import { UiSurface, type ScrollArea } from './widgets.ts';
 import { slotFrameImage } from '../slot-frame.ts';
+import { TEXT_COLORS } from '../text-style.ts';
 
 type DetailTab = 'info'|'equipment'|'skills';
 type PartyModal = {kind:'dismiss';id:string;error?:string}|{kind:'skill';id:string;skill:string}|{kind:'group-skill';id:string;skill:CompanionGroupEffect};
@@ -94,7 +95,7 @@ export class PartyPanel {
       const button=v.button('',x,y,127,114,()=>{if(id)this.select(id);},{bare:true}).setData('label',id?this.name(id):`空佣兵槽 ${this.page*9+index+1}`);
       v.image(assets['party-slot'],0,0,127,114,button);
       const portrait=v.image(id?this.portrait(id):assets['party-empty'],0,0,127,114,button);
-      if(id&&this.member(id)!.player.health<=0){portrait.setAlpha(.45);v.text('阵亡',63,88,0,18,'#e6a191',button).setOrigin(.5,0);}
+      if(id&&this.member(id)!.player.health<=0){portrait.setAlpha(.45);v.text('阵亡',63,88,0,18,TEXT_COLORS.dangerSoft,button).setOrigin(.5,0);}
       v.image(assets['party-frame'],-7,-7,141,128,button);
       if(id===this.selected)v.image(assets['party-selected'],-7,-7,141,128,button);
       if(id&&snapshot.active.includes(id))v.image(assets['party-deployed'],68,54,78,64,button);
@@ -121,7 +122,7 @@ export class PartyPanel {
         this.menuButton(v,'放逐',272,()=>{this.modal={kind:'dismiss',id};this.changed();},deployed);
       }
     }
-    if(this.error)v.text(this.error,70,434,808,18,'#e6a191');
+    if(this.error)v.text(this.error,70,434,808,18,TEXT_COLORS.dangerSoft);
     if(this.modal)this.renderModal(modal);
   }
   private menuButton(v:UiSurface,label:string,x:number,action:()=>void,disabled:boolean):void{
@@ -134,7 +135,7 @@ export class PartyPanel {
     v.text(this.name(id),686,78,350,25).setOrigin(.5,0);
     character.attributes.forEach((attribute,index)=>{
       const x=536+index%2*162,y=147+Math.floor(index/2)*28;
-      v.text(attribute.name,x,y,0,18);v.text(String(member.panel.attributes[PRIMARY_STATS[index]]),x+138,y,0,18,'#ffffff').setOrigin(1,0);
+      v.text(attribute.name,x,y,0,18);v.text(String(member.panel.attributes[PRIMARY_STATS[index]]),x+138,y,0,18,TEXT_COLORS.white).setOrigin(1,0);
     });
     (['health','mana','experience'] as const).forEach((kind,index)=>{
       const resources=member.player,value=resources[kind],max=kind==='health'?resources.maxHealth:kind==='mana'?resources.maxMana:resources.nextLevelExperience;
@@ -198,7 +199,7 @@ export class PartyPanel {
       v.image(this.portrait(modal.id),38,66,127,114);
       v.text(`确定放逐 ${this.name(modal.id)}？`,196,70,470,25);
       v.text('放逐后，该佣兵和其穿戴的装备将一起离开。',196,132,465,23);
-      if(modal.error)v.text(modal.error,35,279,648,22,'#e6a191');
+      if(modal.error)v.text(modal.error,35,279,648,22,TEXT_COLORS.dangerSoft);
       v.button('取消',270,350,170,48,()=>this.cancel());
       v.button('确定',480,350,190,48,()=>{
         this.modal=undefined;

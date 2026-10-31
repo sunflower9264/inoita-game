@@ -53,6 +53,7 @@ import { bagLayout, BAG_DESCRIPTION_WIDTH, DESCRIPTION_PANEL, descriptionPanel, 
 import { skillDescriptionParts, skillLearningParts, skillNextLevelPreview } from './skill-detail-lines.ts';
 import { drawDescriptionText } from './phaser/description-text.ts';
 import { tradeLayout } from './shop-layout.ts';
+import { TEXT_COLORS } from './text-style.ts';
 import { splitMoney } from '../domain/money.ts';
 import { CharacterPreview } from './phaser/character-preview.ts';
 
@@ -62,7 +63,7 @@ const tabs:[Page,string][]=[['status','人物'],['bag','背包'],['skills','技�
 const CONTROL_MODE_LABELS:Record<ControlMode,string>={stick:'虚拟摇杆',dpad:'十字按键',keyboard:'电脑模式'};
 /** 原版按档位索引取 [9,8,7] 三张按钮图，0/1/2 依次对应。 */
 /** 原版菜单里正文与数值的米色：进绘制前调 `GRPX_SetFontColorFromRGB(0xe2,0xcb,0x9e)`。 */
-const AREA_TEXT='#e2cb9e';
+const AREA_TEXT=TEXT_COLORS.primary;
 const SKILL_LEVEL_ASSETS=['skill-level-none','skill-level-normal','skill-level-high'];
 /** 自动反击三档的原版名称，用作焦点与读屏标签。 */
 const COUNTERATTACK_LABELS=['未启用','延迟','启用'];
@@ -920,7 +921,7 @@ export class StoryUI {
       y+=drawDescriptionText(v,skillLearningParts(skill.name,level,progression?.learningRequirements(skill.id),
         companion?skill.ranks[level].requiredCharacterLevel:undefined),0,y,353,22,detail.content)+12;
       for(const row of skillNextLevelPreview(skill.ranks,level,skill.kind,maximum,skill.display)){
-        const center=353/2,labelColor=row.kind==='mana'?'#0f7cf9':'#ffffff',valueColor=row.kind==='mana'?'#0f7cf9':'#ff0000';
+        const center=353/2,labelColor=row.kind==='mana'?'#0f7cf9':TEXT_COLORS.white,valueColor=row.kind==='mana'?'#0f7cf9':'#ff0000';
         v.text(row.label,center,y,0,19,labelColor,detail.content).setOrigin(.5,0);
         const valuesY=y+26;
         v.text(row.from,center-12,valuesY,0,19,valueColor,detail.content).setOrigin(1,0);
@@ -1011,7 +1012,7 @@ export class StoryUI {
     if(!edit||!screen||!scene)return;
     screen.clear();const v=screen,{scale,anchor}=controlPlacement(scene,scene.scale.width,scene.scale.height),slots=this.shortcutBar().page(edit.page),positions=resolveControlLayout(controlViewport(scene),this.app.controlLayout.snapshot());
     // 顶部提示：原版 `GRPX_DrawStringWithFont(TEXTDATABASE[146], 屏宽/2, 110)`，白字居中。
-    v.text(SHORTCUT_PROMPT,scene.scale.width/scale/2,110,0,26,'#ffffff').setOrigin(.5,0);
+    v.text(SHORTCUT_PROMPT,scene.scale.width/scale/2,110,0,26,TEXT_COLORS.white).setOrigin(.5,0);
     // 六个圆槽：输入矩形 80×80，阴影与外圈是游戏 HUD 那两张 94×94（中心对齐），按下态叠加混合。
     for(let slot=0;slot<SHORTCUT_SLOT_COUNT;slot++){const point=positions[`slot-${slot}` as ControlId];
       const hit=v.button('',point.x/scale-40,point.y/scale-40,80,80,()=>this.assignShortcut(slot),
@@ -1083,7 +1084,7 @@ export class StoryUI {
       // 等级／职业行：`UIEquip_DrawEquip` 在左框内 (46,368) 画 323 宽的文本底板，文字居中于它、
       // 颜色 #e2cb9e、纵向上沿在底板顶边下 7 像素（`GRPX_DrawStringWithFont(..., y+375, 居中)`）。
       // 底板在静态层，这里只画会随成员变化的等级与职业文字。
-      v.text(`Lv. ${member.level}　${this.app.storyClasses.classes.find(c=>c.id===member.classId)!.name}`,292,375,0,22,'#e2cb9e').setOrigin(.5,0);
+      v.text(`Lv. ${member.level}　${this.app.storyClasses.classes.find(c=>c.id===member.classId)!.name}`,292,375,0,22,TEXT_COLORS.primary).setOrigin(.5,0);
     }
     if(showingResult){this.renderItemResult();}
     else if(describing)this.renderItemDetail(this.selectedItem!);

@@ -3,6 +3,7 @@ import type { MenuPanels } from '../../domain/menu-panels.ts';
 import { questJournal, questJournalText } from '../../domain/quest-journal.ts';
 import type { Session } from '../../domain/session.ts';
 import { drawQuestText, measureQuestText } from './quest-text.ts';
+import { TEXT_COLORS } from '../text-style.ts';
 import { type ScrollArea, UiSurface } from './widgets.ts';
 
 /** 任务组列表与同组进展；只负责阅读，不改变会话中的任务状态。 */
@@ -70,7 +71,7 @@ export class QuestPanel {
         parent: list.content, guard: list.guard,
       }).setData('label', group.definition.title);
       if (main) view.image(assets['quest-main'], 5, 5, 63, 45, row);
-      view.text(group.definition.title, main ? 70 : 10, 13, group.ready ? (main ? 381 : 441) : (main ? 434 : 494), 24, '#e2cb9e', row);
+      view.text(group.definition.title, main ? 70 : 10, 13, group.ready ? (main ? 381 : 441) : (main ? 434 : 494), 24, TEXT_COLORS.primary, row);
       if (group.ready) view.image(assets['quest-ready'], 459, 4, 54, 47, row);
     });
     list.setHeight(Math.max(0, groups.length * 64 - 8));

@@ -25,9 +25,10 @@
  */
 import type { EquipmentSlot } from '../domain/items.ts';
 import { MONEY, SIDE_BUTTON_OFFSETS, SLOT, SLOT_STRIDE } from './item-layout.ts';
+import { TEXT_COLORS } from './text-style.ts';
 
 /** 说明面板里正文与标题的颜色：原版说明面板的文字是白色。 */
-export const DESCRIPTION_TEXT = '#ffffff';
+export const DESCRIPTION_TEXT = TEXT_COLORS.white;
 
 interface BagRect { x:number; y:number; width:number; height:number }
 
@@ -146,6 +147,6 @@ export function bagLayout():BagLayout {
     money:{ x:bagFrame.x+MONEY.offset.x, y:bagFrame.y+MONEY.offset.y,
       plate:{ x:bagFrame.x+MONEY.plateOffset.x, y:bagFrame.y+MONEY.plateOffset.y, width:MONEY.plateOffset.width, height:34 },
       stride:MONEY.stride, coin:MONEY.coin, digit:MONEY.digit, color:MONEY.color },
-    badge:{ x:67, y:47, color:'#ffffff' },
+    badge:{ x:67, y:47, color:TEXT_COLORS.white },
   };
 }

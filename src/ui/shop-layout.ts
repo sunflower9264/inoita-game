@@ -1,5 +1,6 @@
 /** 说明面板与背包共用同一套矩形，只在 bag-layout 里维护一份。 */
 import { MONEY, SIDE_BUTTON_OFFSETS, SLOT, SLOT_STRIDE } from './item-layout.ts';
+import { TEXT_COLORS } from './text-style.ts';
 
 /**
  * 商店面板的参考像素布局，原点取左右两栏外框的左上角。
@@ -79,7 +80,7 @@ export const tradeLayout = {
     field:{x:95,y:50,width:260,height:58},
     step:{width:51,height:58,right:209},
     icon:{x:150,y:47,size:64},
-    count:{x:233,y:56,color:'#e2cb9e'},
+    count:{x:233,y:56,color:TEXT_COLORS.primary},
     textPlate:{x:63,y:168,width:QUANTITY_PLATE_WIDTH},
     money:{x:63,y:165},
     button:{width:125,height:55,y:275,left:45,right:280}},
@@ -154,7 +155,7 @@ export function shopLayout(classified:boolean):ShopLayout {
     },
     bag:{x:bagFrame.x+34, y:bagFrame.y+27, width:323, height:323, stride:SLOT_STRIDE, columns:4},
     slot:{...SLOT, stride:SLOT_STRIDE},
-    badge:{x:67, y:47, color:'#ffffff'},
+    badge:{x:67, y:47, color:TEXT_COLORS.white},
     money:{
       x:bagFrame.x+MONEY.offset.x, y:bagFrame.y+MONEY.offset.y,
       plate:{x:bagFrame.x+MONEY.plateOffset.x, y:bagFrame.y+MONEY.plateOffset.y, width:MONEY.plateOffset.width, height:34},
