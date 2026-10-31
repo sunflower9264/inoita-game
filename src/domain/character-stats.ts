@@ -2,7 +2,7 @@ import { equipmentLevel, type EquipmentChaos } from './chaos-equipment.ts';
 import type { ItemNotice } from './item-application.ts';
 import { boundedHealth } from './status-hud.ts';
 import { Bag, type BagRules } from './bag.ts';
-import type { ItemCatalog, ItemInstance } from './items.ts';
+import type { Equipment, EquipmentSlot, ItemCatalog, ItemInstance } from './items.ts';
 import { calculateEffectiveDefense,calculateMagicResistance } from './physical-hit.ts';
 import { applyAttributeModifiers, type AttributeModifier } from './combat-operation.ts';
 import { chaosThreshold, doubleThreshold, enhancementOdds, ENHANCEMENT_ROLL_MAX } from './enhancement.ts';
@@ -203,6 +203,26 @@ export function calculateCharacter(catalog:CharacterStatsCatalog, items:ItemCata
     offhandShield:equipped['off-hand']!==undefined&&items.items[equipped['off-hand']!.item]?.kind==='shield'};
 }
 
+/**
+ * 只读预览：把目标装备的宝石词条换成 `gemModifiers` 后重算面板。
+ * 目标已穿戴时替换原槽位；目标在背包里且给了空槽时按「装备后」放进该槽。
+ */
+export function previewGemPanel(options:{
+  catalog:CharacterStatsCatalog;items:ItemCatalog;classId:string;level:number;
+  allocated:PrimaryAttributes;equipped:Equipment;bag:Bag;
+  targetId:string;gemModifiers:Modifier[];emptySlot?:EquipmentSlot;
+}):CharacterPanel|undefined {
+  const slot=Object.entries(options.equipped).find(([,id])=>id===options.targetId)?.[0] as EquipmentSlot|undefined;
+  if(!slot&&!options.emptySlot)return undefined;
+  const target=options.bag.get(options.targetId);
+  if(!target?.numbers)return undefined;
+  const clone=structuredClone(target);clone.numbers!.gemModifiers=options.gemModifiers.map(modifier=>({...modifier}));
+  const equipped:Partial<Record<EquipmentSlot,ItemInstance>>={};
+  for(const [key,id]of Object.entries(options.equipped))if(id)equipped[key as EquipmentSlot]=options.bag.get(id);
+  equipped[slot??options.emptySlot!]=clone;
+  return calculateCharacter(options.catalog,options.items,options.classId,options.level,options.allocated,equipped);
+}
+
 /** 主角的等级、已分配属性与物品实例，共同属于当前游戏会话。 */
 export interface BattleCharacterState {
   level:number;
@@ -263,7 +283,11 @@ export class BattleCharacter {
           target.numbers.enhancementRule??=rule;
           if(!use.requiresEnhanced){target.numbers.enhancementScroll??=source.item;target.numbers.enhancementUses--;}
         }
-        if(use.kind==='socket'&&target?.numbers)target.numbers.gemModifiers.push(...source.numbers!.modifiers.map(m=>({...m})));
+        if(use.kind==='socket'){
+          if(!target?.numbers||!target.numbers.gemModifiers||target.numbers.gemModifiers.length!==target.gems.length
+            ||!source.numbers?.modifiers?.length)throw new Error('宝石数据不完整，无法镶嵌');
+          target.numbers.gemModifiers.push(...source.numbers.modifiers.map(m=>({...m})));
+        }
         return this.skillUseHandler?.(source.item,skill);
       }
     };
@@ -299,6 +323,14 @@ export class BattleCharacter {
       Object.fromEntries(Object.entries(this.bag.equipment).map(([slot,id])=>[slot,this.bag.get(id!)])));
     this.panelCache={bagRevision:this.bag.revision,level:this.currentLevel,panelRevision:this.panelRevision,panel};
     return panel;
+  }
+  /** 预览把目标的宝石词条换成 `gemModifiers` 后的面板；目标未穿戴且没有空槽时返回 undefined。 */
+  previewGemChange(targetId:string,gemModifiers:Modifier[]):CharacterPanel|undefined {
+    const equipped=this.bag.equipment,worn=Object.values(equipped).includes(targetId);
+    const emptySlot=worn?undefined:this.bag.emptyEquipSlot(targetId,'player',this.classId,this.level);
+    if(!worn&&!emptySlot)return undefined;
+    return previewGemPanel({catalog:this.catalog,items:this.bag.catalog,classId:this.classId,level:this.level,
+      allocated:this.allocated,equipped,bag:this.bag,targetId,gemModifiers,emptySlot});
   }
   get player(){const p=this.panel,limits=this.combatResourceLimits??p;return {level:this.level,health:this.health,maxHealth:limits.maxHealth,mana:this.mana,maxMana:limits.maxMana,experience:this.experience,nextLevelExperience:this.catalog.experience[this.level-1]??0};}
   subscribe(listener:()=>void):()=>void {this.listeners.add(listener);return ()=>{this.listeners.delete(listener);};}

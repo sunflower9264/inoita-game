@@ -495,6 +495,67 @@ export class Bag {
     if(result.recipe)this.recipeBook.add(result.recipe);
     this.lastResult=result;this.notify();return result;
   }
+  /**
+   * 把一件装备上的一颗宝石放回背包。
+   *
+   * 每颗宝石生成时恰好一条词条，`numbers.gemModifiers[i]` 与 `gems[i]` 一一对应；
+   * 旧档/损坏档长度不一致时拒绝，避免把错位的数据继续写下去。
+   */
+  unsocket(targetId:string,index:number):{gemId:string;name:string} {
+    const target=this.instances.get(targetId),item=target?this.catalog.items[target.item]:undefined;
+    if(!target||!item?.equipment)throw new Error('装备已不存在');
+    if(item.equipment.locked)throw new Error('这件装备已锁定，不能取出宝石');
+    if(!Number.isInteger(index)||index<0||index>=target.gems.length)throw new Error('宝石孔位无效');
+    const modifiers=target.numbers?.gemModifiers;
+    if(!target.numbers||!modifiers||modifiers.length!==target.gems.length)throw new Error('宝石数据不完整，无法取出');
+    const gemItem=target.gems[index]!,modifier=modifiers[index];
+    if(!this.catalog.items[gemItem]||!modifier)throw new Error('宝石数据不完整，无法取出');
+    const restored=this.create(gemItem),oldGems=[...target.gems],oldModifiers=modifiers.map(value=>({...value}));
+    try {
+      if(!restored.numbers)restored.numbers={modifiers:[],gemModifiers:[],magicPercent:0,sockets:0,enhancementUses:0};
+      restored.numbers.modifiers=[{...modifier}];
+      target.gems.splice(index,1);modifiers.splice(index,1);this.put(restored.id);
+    } catch(error) {
+      target.gems.splice(0,target.gems.length,...oldGems);
+      modifiers.splice(0,modifiers.length,...oldModifiers);
+      this.rollbackRestored(restored.id);
+      throw error;
+    }
+    this.notify();
+    return {gemId:restored.id,name:this.catalog.items[gemItem].name};
+  }
+  /** 用背包里的一颗宝石替换已镶孔；旧宝石按原词条回到背包。 */
+  swapGem(targetId:string,index:number,sourceId:string):{removedId:string;name:string} {
+    const target=this.instances.get(targetId),targetItem=target?this.catalog.items[target.item]:undefined;
+    const source=this.instances.get(sourceId),sourceItem=source?this.catalog.items[source.item]:undefined;
+    if(!target||!targetItem?.equipment)throw new Error('装备已不存在');
+    if(targetItem.equipment.locked)throw new Error('这件装备已锁定，不能替换宝石');
+    if(!source||this.cellOf(sourceId)<0||sourceItem?.use?.kind!=='socket')throw new Error('请选择背包中的宝石');
+    if(sourceId===targetId)throw new Error('不能把装备当作宝石');
+    if(!Number.isInteger(index)||index<0||index>=target.gems.length)throw new Error('宝石孔位无效');
+    const modifiers=target.numbers?.gemModifiers;
+    if(!target.numbers||!modifiers||modifiers.length!==target.gems.length)throw new Error('宝石数据不完整，无法替换');
+    const sourceModifiers=source.numbers?.modifiers;
+    if(!sourceModifiers||sourceModifiers.length!==1)throw new Error('宝石数据不完整，无法替换');
+    const oldGem=target.gems[index]!,oldModifier=modifiers[index];
+    if(!this.catalog.items[oldGem]||!oldModifier)throw new Error('宝石数据不完整，无法替换');
+    const restored=this.create(oldGem),oldGems=[...target.gems],oldModifiers=modifiers.map(value=>({...value}));
+    try {
+      if(!restored.numbers)restored.numbers={modifiers:[],gemModifiers:[],magicPercent:0,sockets:0,enhancementUses:0};
+      restored.numbers.modifiers=[{...oldModifier}];
+      this.put(restored.id);
+      target.gems[index]=source.item;modifiers[index]={...sourceModifiers[0]!};
+      this.consume(sourceId);
+    } catch(error) {
+      target.gems.splice(0,target.gems.length,...oldGems);
+      modifiers.splice(0,modifiers.length,...oldModifiers);
+      this.rollbackRestored(restored.id);
+      throw error;
+    }
+    this.notify();
+    return {removedId:restored.id,name:this.catalog.items[oldGem].name};
+  }
+  private rollbackRestored(id:string):void {this.clearCells(id);this.instances.delete(id);}
   discard(id: string, quantity: number): void {
     const entry=this.instances.get(id);
     if(!entry||this.cellOf(id)<0||!this.catalog.items[entry.item].discardable)throw new Error('此物品不能丢弃');

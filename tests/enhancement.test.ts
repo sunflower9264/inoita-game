@@ -4,11 +4,13 @@ import fs from 'node:fs';
 import { BattleCharacter } from '../src/domain/character-stats.ts';
 import { enhancementChance, enhancementOdds } from '../src/domain/enhancement.ts';
 import { parseCharacterStats, parseItemCatalog } from '../src/application/content-validation.ts';
+import type { ItemInstance } from '../src/domain/items.ts';
 
 const read=(name:string)=>JSON.parse(fs.readFileSync(new URL(`../public/content/${name}.json`,import.meta.url),'utf8'));
 const catalog=parseCharacterStats(read('character-stats')),items=parseItemCatalog(read('items'));
 const create=()=>new BattleCharacter('dark-knight',catalog,items);
 const close=(actual:number,expected:number)=>assert.ok(Math.abs(actual-expected)<1e-12,`${actual} != ${expected}`);
+const setState=(hero:BattleCharacter,id:string,change:(entry:ItemInstance)=>void)=>{const state=hero.bag.captureState();change(state.instances.find(entry=>entry.id===id)!);hero.bag.restoreState(state);};
 
 test('enhancementChance clamps the native 1..998 roll',()=>{
   assert.equal(enhancementChance(-10),0);
@@ -70,4 +72,81 @@ test('bag.use outcomes agree with enhancementOdds',()=>{
   at(0,2);
   bag.use(normal.id,weapon.id,undefined,()=>0);
   assert.equal(bag.get(weapon.id)!.enhancement,2);
+});
+
+test('unsocket returns the gem with its stored modifier',()=>{
+  const hero=create(),bag=hero.bag;bag.add('novice-jewel');bag.add('standard-jewel');
+  const weapon=bag.get(bag.equipment['main-hand']!)!;
+  setState(hero,weapon.id,entry=>{entry.numbers!.sockets=3;});
+  const gems=bag.entries.filter(entry=>items.items[entry.item].use?.kind==='socket');
+  bag.use(gems[0]!.id,weapon.id);bag.use(gems[1]!.id,weapon.id);
+  const before=bag.get(weapon.id)!;
+  assert.equal(before.gems.length,2);
+  const removedModifier=before.numbers!.gemModifiers[0]!,removedItem=before.gems[0]!,revision=bag.revision;
+  const result=bag.unsocket(weapon.id,0);
+  const after=bag.get(weapon.id)!;
+  assert.equal(after.gems.length,1);
+  assert.deepEqual(after.numbers!.gemModifiers,[before.numbers!.gemModifiers[1]]);
+  const restored=bag.get(result.gemId)!;
+  assert.equal(restored.item,removedItem);
+  assert.deepEqual(restored.numbers!.modifiers,[removedModifier]);
+  assert.equal(bag.entries.filter(entry=>entry.id===result.gemId).length,1);
+  assert.ok(bag.revision>revision);
+});
+
+test('swapGem puts the old gem back with its modifier',()=>{
+  const hero=create(),bag=hero.bag;bag.add('novice-jewel');bag.add('standard-jewel');
+  const weapon=bag.get(bag.equipment['main-hand']!)!;
+  setState(hero,weapon.id,entry=>{entry.numbers!.sockets=3;});
+  const first=bag.entries.find(entry=>entry.item==='novice-jewel')!;
+  bag.use(first.id,weapon.id);
+  const old=bag.get(weapon.id)!;const oldItem=old.gems[0]!,oldModifier=old.numbers!.gemModifiers[0]!;
+  const source=bag.entries.find(entry=>entry.item==='standard-jewel')!;
+  const sourceModifier=source.numbers!.modifiers[0]!;
+  const result=bag.swapGem(weapon.id,0,source.id);
+  const after=bag.get(weapon.id)!;
+  assert.equal(after.gems[0],source.item);
+  assert.deepEqual(after.numbers!.gemModifiers[0],sourceModifier);
+  assert.equal(bag.get(source.id),undefined);
+  const restored=bag.get(result.removedId)!;
+  assert.equal(restored.item,oldItem);
+  assert.deepEqual(restored.numbers!.modifiers,[oldModifier]);
+});
+
+test('socket guards reject corrupt or locked equipment without changing state',()=>{
+  const hero=create(),bag=hero.bag;bag.add('novice-jewel');
+  const weapon=bag.get(bag.equipment['main-hand']!)!;
+  setState(hero,weapon.id,entry=>{entry.numbers!.sockets=3;});
+  const gem=bag.entries.find(entry=>entry.item==='novice-jewel')!;
+  bag.use(gem.id,weapon.id);
+  setState(hero,weapon.id,entry=>{entry.numbers!.gemModifiers=[];});
+  const before=structuredClone(bag.get(weapon.id));
+  assert.throws(()=>bag.unsocket(weapon.id,0),/数据不完整/);
+  assert.deepEqual(bag.get(weapon.id),before);
+  bag.add('standard-jewel');
+  const source=bag.entries.find(entry=>entry.item==='standard-jewel')!;
+  assert.throws(()=>bag.swapGem(weapon.id,0,source.id),/数据不完整/);
+  assert.deepEqual(bag.get(weapon.id),before);
+  assert.ok(bag.get(source.id));
+  const lockedId=Object.keys(items.items).find(id=>items.items[id].equipment?.locked&&catalog.equipment[id])!;bag.add(lockedId);
+  const locked=bag.entries.find(entry=>entry.item===lockedId)!;
+  setState(hero,locked.id,entry=>{entry.numbers!.sockets=1;entry.numbers!.gemModifiers=[{...gem.numbers!.modifiers[0]!}];entry.gems=[gem.item];});
+  assert.throws(()=>bag.unsocket(locked.id,0),/锁定/);
+  assert.throws(()=>bag.swapGem(locked.id,0,source.id),/锁定/);
+  assert.ok(bag.get(source.id));
+});
+
+test('previewGemChange only computes for worn or empty-slot equipment',()=>{
+  const hero=create(),bag=hero.bag,weapon=bag.get(bag.equipment['main-hand']!)!;
+  const before=hero.panel;
+  const preview=hero.previewGemChange(weapon.id,[{stat:'strength',value:10}]);
+  assert.ok(preview);
+  assert.equal(preview!.attributes.strength,before.attributes.strength+10);
+  const spareId=Object.keys(items.items).find(id=>{const equipment=items.items[id].equipment;return equipment?.slot==='ring'&&equipment.classes.includes('dark-knight')&&!equipment.locked&&catalog.equipment[id];})!;bag.add(spareId);
+  const spare=bag.entries.find(entry=>entry.item===spareId)!;
+  const equipped=hero.previewGemChange(spare.id,[{stat:'strength',value:10}]);
+  assert.ok(equipped,'背包装备放进空槽时给出装备后面板');
+  const foreignId=Object.keys(items.items).find(id=>{const equipment=items.items[id].equipment;return equipment&&!equipment.classes.includes('dark-knight')&&!equipment.locked&&catalog.equipment[id];})!;bag.add(foreignId);
+  const foreign=bag.entries.find(entry=>entry.item===foreignId)!;
+  assert.equal(hero.previewGemChange(foreign.id,[{stat:'strength',value:10}]),undefined);
 });

@@ -1,5 +1,5 @@
 import { boundedHealth } from './status-hud.ts';
-import { calculateCharacter, PRIMARY_STATS, primaryAttributesFrom, type CharacterPanel, type CharacterStatsCatalog, type PrimaryAttributes, type BattleCharacter } from './character-stats.ts';
+import { calculateCharacter, previewGemPanel, PRIMARY_STATS, primaryAttributesFrom, type CharacterPanel, type CharacterStatsCatalog, type Modifier, type PrimaryAttributes, type BattleCharacter } from './character-stats.ts';
 import type { SkillConfigurationState } from './skill-configuration.ts';
 import type { CounterattackMode } from './party-ai.ts';
 import { CompanionSkillProgression, generateCompanion, MERCENARY_CLASS_ORDER, randomInteger, weightedIndex, type CompanionGenerationRules, type CompanionGroupEffect, type CompanionGroupSkill, type GeneratedCompanion } from './companion-progression.ts';
@@ -97,18 +97,29 @@ export class CompanionMember {
   }
   get classId():string{return this.definition.classId;}
   get level():number{return this.currentLevel;}
+  private get allocated():PrimaryAttributes{
+    const base=this.stats.classes[this.definition.classId],total=this.growth[this.currentLevel-1]!;
+    return primaryAttributesFrom(Object.fromEntries(PRIMARY_STATS.map(stat=>[stat,total[stat]-2*base[stat]+this.generated.baseAttributes[stat]])));
+  }
   private panelCache?:{revision:number;level:number;panel:CharacterPanel};
   get panel():CharacterPanel{
     // 战斗每个逻辑帧会多次读面板（技能频率、HP/MP 上限）；只在等级或背包实例变化时重算。
     const cached=this.panelCache;
     if(cached&&cached.revision===this.bag.revision&&cached.level===this.currentLevel)return cached.panel;
-    const base=this.stats.classes[this.definition.classId],total=this.growth[this.currentLevel-1]!;
-    const allocated=primaryAttributesFrom(Object.fromEntries(PRIMARY_STATS.map(stat=>[stat,total[stat]-2*base[stat]+this.generated.baseAttributes[stat]])));
+    const allocated=this.allocated;
     const equipped=this.bag.equipmentFor(this.id);
     const panel=calculateCharacter(this.stats,this.items,this.definition.classId,this.currentLevel,allocated,
       Object.fromEntries(Object.entries(equipped).map(([slot,item])=>[slot,this.bag.get(item!)])));
     this.panelCache={revision:this.bag.revision,level:this.currentLevel,panel};
     return panel;
+  }
+  /** 预览把目标的宝石词条换成 `gemModifiers` 后的面板；目标未穿戴且没有空槽时返回 undefined。 */
+  previewGemChange(targetId:string,gemModifiers:Modifier[]):CharacterPanel|undefined {
+    const equipped=this.bag.equipmentFor(this.id),worn=Object.values(equipped).includes(targetId);
+    const emptySlot=worn?undefined:this.bag.emptyEquipSlot(targetId,this.id,this.definition.classId,this.currentLevel);
+    if(!worn&&!emptySlot)return undefined;
+    return previewGemPanel({catalog:this.stats,items:this.items,classId:this.definition.classId,level:this.currentLevel,
+      allocated:this.allocated,equipped,bag:this.bag,targetId,gemModifiers,emptySlot});
   }
   get player(){const panel=this.panel,limits=this.combatResourceLimits??panel;return {level:this.level,health:this.currentHealth,maxHealth:limits.maxHealth,
     mana:this.currentMana,maxMana:limits.maxMana,experience:this.currentExperience,
