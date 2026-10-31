@@ -170,6 +170,8 @@ test('a fallen character is revived through the combat port', () => {
   const combat: GmCombatPort = {
     setInvincible: () => ({ ok: true }),
     isInvincible: () => false,
+    setOneHitKill: () => ({ ok: true }),
+    isOneHitKill: () => false,
     revive: id => {
       const session = holder.session!;
       session.hero!.setHealth(session.hero!.player.maxHealth);
@@ -286,6 +288,8 @@ test('setInvincible needs a combat port and shows on the character list', () => 
   const { gm } = harness(undefined, {
     setInvincible: (id, enabled) => { if (enabled) flags.add(id); else flags.delete(id); return { ok: true }; },
     isInvincible: id => flags.has(id),
+    setOneHitKill: () => ({ ok: true }),
+    isOneHitKill: () => false,
   });
   assert.equal(gm.setInvincible('player', true).ok, true);
   assert.equal(gm.characters()[0]!.invincible, true);
@@ -293,6 +297,24 @@ test('setInvincible needs a combat port and shows on the character list', () => 
 
   const headless = harness();
   const failed = headless.gm.setInvincible('player', true);
+  assert.equal(failed.ok, false);
+  assert.match(failed.reason ?? '', /战斗场景/);
+});
+
+test('setOneHitKill needs a combat port and shows on the character list', () => {
+  const flags = new Set<string>();
+  const { gm } = harness(undefined, {
+    setInvincible: () => ({ ok: true }),
+    isInvincible: () => false,
+    setOneHitKill: (id, enabled) => { if (enabled) flags.add(id); else flags.delete(id); return { ok: true }; },
+    isOneHitKill: id => flags.has(id),
+  });
+  assert.equal(gm.setOneHitKill('player', true).ok, true);
+  assert.equal(gm.characters()[0]!.oneHitKill, true);
+  assert.equal(gm.setOneHitKill('nope', true).ok, false);
+
+  const headless = harness();
+  const failed = headless.gm.setOneHitKill('player', true);
   assert.equal(failed.ok, false);
   assert.match(failed.reason ?? '', /战斗场景/);
 });

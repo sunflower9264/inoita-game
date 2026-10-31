@@ -60,6 +60,7 @@ export interface GmCharacterState {
   maxMana: number;
   alive: boolean;
   invincible: boolean;
+  oneHitKill: boolean;
   noCooldown: boolean;
 }
 
@@ -85,6 +86,8 @@ export interface GmMoneyResult extends GmResult { money?: number }
 export interface GmCombatPort {
   setInvincible(actorId: string, enabled: boolean): GmResult;
   isInvincible(actorId: string): boolean;
+  setOneHitKill(actorId: string, enabled: boolean): GmResult;
+  isOneHitKill(actorId: string): boolean;
   /** 把倒下角色救回来并做表现收尾；没有战斗场景时省略。 */
   revive?(actorId: string): GmResult;
 }
@@ -171,6 +174,8 @@ export interface GmActions {
   recoverParty(): GmResult;
   /** 切换某个角色的无敌开关。 */
   setInvincible(id: string, enabled: boolean): GmResult;
+  /** 切换某个角色的一击必杀开关。 */
+  setOneHitKill(id: string, enabled: boolean): GmResult;
   /** 切换某个角色的技能无冷却。 */
   setNoCooldown(id: string, enabled: boolean): GmResult;
   /** 可发放物品：排除只能地面拾取的物品。 */
@@ -378,6 +383,7 @@ export function createGmActions(ports: GmPorts): GmActions {
       health: player.health, maxHealth: player.maxHealth, mana: player.mana, maxMana: player.maxMana,
       alive: player.health > 0,
       invincible: ports.combat?.isInvincible(id) ?? false,
+      oneHitKill: ports.combat?.isOneHitKill(id) ?? false,
       noCooldown: session.cooldowns.isFree(id),
     };
   };
@@ -608,6 +614,12 @@ export function createGmActions(ports: GmPorts): GmActions {
       const combat = ports.combat;
       if (!combat) return { ok: false, reason: '当前会话没有战斗场景，无法切换无敌' };
       return combat.setInvincible(id, enabled);
+    }),
+    setOneHitKill: (id, enabled) => run('setOneHitKill', [id, enabled], () => {
+      if (!activeMember(id)) return { ok: false, reason: `没有上阵角色：${id}` };
+      const combat = ports.combat;
+      if (!combat) return { ok: false, reason: '当前会话没有战斗场景，无法切换一击必杀' };
+      return combat.setOneHitKill(id, enabled);
     }),
     setNoCooldown: (id, enabled) => run('setNoCooldown', [id, enabled], () => {
       if (!activeMember(id)) return { ok: false, reason: `没有上阵角色：${id}` };

@@ -502,6 +502,11 @@ function installSession(session: Session): void {
       },
       // 开关存在会话上，换图重建战斗后仍然有效，所以读取不必经过场景。
       isInvincible: id => session.isInvincible(id),
+      setOneHitKill: (id, enabled) => {
+        const scene = worldScene();
+        return scene ? scene.setOneHitKill(id, enabled) : { ok: false, reason: '不在游戏场景里' };
+      },
+      isOneHitKill: id => session.isOneHitKill(id),
       revive: id => {
         const scene = worldScene();
         return scene ? scene.reviveMember(id) : { ok: false, reason: '不在游戏场景里' };

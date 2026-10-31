@@ -1739,9 +1739,12 @@ test('task previews keep late results on their own selection and disable unprepa
 test('the GM character page levels, heals and toggles the debug switches', async t => {
   const f = fixture(); t.after(f.cleanup);
   const flags = new Set<string>();
+  const killFlags = new Set<string>();
   const gm = createGmActions({ session: f.session, campaign, report: async () => true, combat: {
     setInvincible: (id, enabled) => { if (enabled) flags.add(id); else flags.delete(id); return { ok: true }; },
     isInvincible: id => flags.has(id),
+    setOneHitKill: (id, enabled) => { if (enabled) killFlags.add(id); else killFlags.delete(id); return { ok: true }; },
+    isOneHitKill: id => killFlags.has(id),
   } });
   Object.defineProperty(f.app, 'gm', { value: gm, configurable: true });
   f.menu.show('system'); f.scene.click(f.scene.button('调试'));
@@ -1754,7 +1757,7 @@ test('the GM character page levels, heals and toggles the debug switches', async
   f.scene.click(f.scene.button('调试页 人物'));
   assert.ok(f.scene.texts().some(text => text.includes('等级 Lv.')), f.scene.texts().join(' | '));
   assert.equal(f.scene.buttons('角色 player').length, 1);
-  for (const label of ['升一级', '回满 HP', '回满 MP', '全队回满', '无敌', '技能无 CD']) {
+  for (const label of ['升一级', '回满 HP', '回满 MP', '全队回满', '无敌', '技能无 CD', '一击必杀']) {
     assert.equal(f.scene.buttons(label).length, 1, label);
   }
 
@@ -1770,6 +1773,10 @@ test('the GM character page levels, heals and toggles the debug switches', async
   f.scene.click(f.scene.button('无敌'));
   assert.equal(gm.characters()[0]!.invincible, true);
   assert.equal(f.scene.button('无敌').getData('selected'), true);
+
+  f.scene.click(f.scene.button('一击必杀'));
+  assert.equal(gm.characters()[0]!.oneHitKill, true);
+  assert.equal(f.scene.button('一击必杀').getData('selected'), true);
 });
 
 test('the GM item page scrolls addable items, shows details and gives a chosen quantity', async t => {

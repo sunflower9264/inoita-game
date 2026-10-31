@@ -137,6 +137,12 @@ export class Session {
     if(enabled)this.invincible.add(actorId);else this.invincible.delete(actorId);
   }
   isInvincible(actorId:string):boolean { return this.invincible.has(actorId); }
+  /** GM 调试开关：这些角色命中敌人时直接击杀。和无敌一样不写存档、不随剧情回退。 */
+  private readonly oneHitKill = new Set<string>();
+  setOneHitKill(actorId:string,enabled:boolean):void {
+    if(enabled)this.oneHitKill.add(actorId);else this.oneHitKill.delete(actorId);
+  }
+  isOneHitKill(actorId:string):boolean { return this.oneHitKill.has(actorId); }
   readonly frenzyAnimations = new FrenzyAnimationMemory();
   readonly skills: StorySkillProgression;
   readonly campaign: Campaign;

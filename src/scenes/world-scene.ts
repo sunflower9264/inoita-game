@@ -1460,6 +1460,12 @@ export class WorldScene extends Phaser.Scene {
     this.app.session.setInvincible(actorId,enabled);
     return {ok:true};
   }
+  /** GM 一击必杀开关：同样写到会话级集合，换图重建战斗后仍然有效。 */
+  setOneHitKill(actorId:string,enabled:boolean):{ok:boolean;reason?:string}{
+    if(!this.app.session.hero)return {ok:false,reason:'当前会话没有角色系统'};
+    this.app.session.setOneHitKill(actorId,enabled);
+    return {ok:true};
+  }
   /** GM 复活：先补满 HP/MP，再交给战斗侧做表现收尾（`reviveMember` 要求生命值大于 0）。 */
   reviveMember(id:string):{ok:boolean;reason?:string}{
     const session=this.app.session,member=id==='player'?session.hero:session.party?.get(id);

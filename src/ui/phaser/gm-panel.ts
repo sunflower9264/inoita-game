@@ -210,7 +210,7 @@ export class GmPanel {
       : '经验 —（已满级）', 60, 144, 900, 18);
     body.text(`HP ${selected.health} / ${selected.maxHealth}`, 60, 176, 900, 18);
     body.text(`MP ${selected.mana} / ${selected.maxMana}`, 60, 208, 900, 18);
-    body.text(`无敌 ${selected.invincible ? '开' : '关'} · 技能 ${selected.noCooldown ? '无 CD' : '正常冷却'}`,
+    body.text(`无敌 ${selected.invincible ? '开' : '关'} · 一击必杀 ${selected.oneHitKill ? '开' : '关'} · 技能 ${selected.noCooldown ? '无 CD' : '正常冷却'}`,
       60, 240, 900, 18);
     // 回满 HP 对倒下的角色也开放：动作层会走战斗侧复活，所以不按存活禁用。
     body.button('升一级', 60, 286, 160, 46, () => this.onLevelUp(),
@@ -223,7 +223,9 @@ export class GmPanel {
       () => this.onToggleInvincible(selected), { selected: selected.invincible }).setData('label', '无敌');
     body.button(`技能无 CD：${selected.noCooldown ? '开' : '关'}`, 232, 346, 170, 46,
       () => this.onToggleNoCooldown(selected), { selected: selected.noCooldown }).setData('label', '技能无 CD');
-    return '升级只升不降；倒下角色点「回满 HP」即可复活。无敌只挡战斗伤害，不挡剧情直接改血。';
+    body.button(`一击必杀：${selected.oneHitKill ? '开' : '关'}`, 416, 346, 190, 46,
+      () => this.onToggleOneHitKill(selected), { selected: selected.oneHitKill }).setData('label', '一击必杀');
+    return '升级只升不降；倒下角色点「回满 HP」即可复活。无敌只挡战斗伤害，不挡剧情直接改血；一击必杀在命中敌人时直接击杀，未命中仍然落空。';
   }
 
   /** 道具页：背包同款格子整页滚动；点格子打开与背包一致的详情层。 */
@@ -312,6 +314,11 @@ export class GmPanel {
   private onToggleInvincible(character: GmCharacterState): void {
     const result = this.gm.setInvincible(character.id, !character.invincible);
     this.result = result.ok ? `无敌：${!character.invincible ? '开' : '关'}` : `切换失败：${result.reason}`;
+    this.hooks.render();
+  }
+  private onToggleOneHitKill(character: GmCharacterState): void {
+    const result = this.gm.setOneHitKill(character.id, !character.oneHitKill);
+    this.result = result.ok ? `一击必杀：${!character.oneHitKill ? '开' : '关'}` : `切换失败：${result.reason}`;
     this.hooks.render();
   }
   private onToggleNoCooldown(character: GmCharacterState): void {

@@ -1111,6 +1111,8 @@ captureStoryActors():SceneActorState[] {
         });}
       else if(targetEnemy){
         const before=this.roster.enemySnapshot(targetEnemy.key,targetEnemy.definition,hero.level)!;
+        // GM 一击必杀：命中后按目标当前生命结算，跳过防御与减伤；未命中的攻击仍然落空。
+        if(this.app.session.isOneHitKill(event.casterId))hit.damage=Math.max(hit.damage,before.health);
         const proposed=Math.max(0,before.health-hit.damage);
         const interrupted=hit.damage>0&&this.app.director?.healthChanged?.(targetEnemy.definition.id,before.health,proposed,before.maxHealth,{id:targetEnemy.key,map:this.scene.map!.id,x:targetEnemy.visual.container.x,y:targetEnemy.visual.container.y});
         // 捕捉已完成：这一槽已经变成同格 NPC。源怪要立刻退场，否则同一串多段伤害
