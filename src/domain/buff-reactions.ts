@@ -50,7 +50,7 @@ type BuffReactionCommand=ApplyBuffCommand
   | {kind:'apply-state';attributeOwner:string;targetId:string;state:BattleStateKey;durationAttribute:BattleStatKey};
 
 /** 输入只包含当前生效的配置；不查询已学技能、不保留母子节点移除关系。 */
-export function resolveBuffReactions(reactions:readonly BuffReaction[],event:Exclude<BuffReactionEvent,{kind:'physical-success-threat'}|{kind:'physical-success'}>):ApplyBuffCommand[];
+export function resolveBuffReactions(reactions:readonly BuffReaction[],event:Exclude<BuffReactionEvent,{kind:'physical-success-threat'}|{kind:'physical-success'}|{kind:'weapon-block-stun'}>):ApplyBuffCommand[];
 export function resolveBuffReactions(reactions:readonly BuffReaction[],event:BuffReactionEvent):BuffReactionCommand[];
 export function resolveBuffReactions(reactions:readonly BuffReaction[],event:BuffReactionEvent):BuffReactionCommand[] {
   if(event.damageKind!=='physical')return [];
