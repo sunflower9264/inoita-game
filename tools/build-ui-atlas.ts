@@ -30,7 +30,8 @@ function pngSize(file: string): { w: number; h: number } {
  * - 共用按钮和任务弹窗边：按钮皮肤 / 九宫格按整张纹理取图；
  * - 标题页的提示条：标题页只加载这 7 张，进图集会把整页图集提前拉下来；
  * - 操作皮肤：摇杆和操作键按文件路径直接取纹理（`controlSkinAssets` 的 key 是文件路径）。
- * 超过 2048 或非 PNG 的图也退回单图，避免睡不进去或解码失败。
+ * 超过 2048 或非 PNG 的图也退回单图，避免睡不进去或解码失败；尺寸判断按四周
+ * 各留 PADDING 像素后的占位算，正好卡在 2048 的图不会再被截掉底部。
  */
 export function uiAtlasFiles(): string[] {
   const panels = read('menu-panels.json');
@@ -47,7 +48,10 @@ export function uiAtlasFiles(): string[] {
   return [...new Set(core)]
     .filter((file): file is string => typeof file === 'string' && file.startsWith('assets/') && file.endsWith('.png'))
     .filter(file => !excluded.has(file) && UI_ICON_FRAMES[file] === undefined)
-    .filter(file => { const { w, h } = pngSize(file); return w <= MAX_SIZE && h <= MAX_SIZE; })
+    .filter(file => {
+      const { w, h } = pngSize(file);
+      return w + PADDING * 2 <= MAX_SIZE && h + PADDING * 2 <= MAX_SIZE;
+    })
     .sort();
 }
 
