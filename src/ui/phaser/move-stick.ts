@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { ControlLayoutPreferences, resolveControlLayout } from '../control-layout.ts';
+import { CONTROL_SIZES, ControlLayoutPreferences, resolveControlLayout } from '../control-layout.ts';
 import { controlViewport } from './control-layout-viewport.ts';
 import type { ControlSkin } from '../../domain/control-skin.ts';
 import type { Hud } from '../../rendering/hud.ts';
@@ -8,14 +8,15 @@ import { keyBindings as defaultKeyBindings, type KeyBindingPreferences } from '.
 import { MOVE_BINDING_ACTIONS, type KeyBindingAction } from '../../domain/key-bindings.ts';
 
 /** 原版摇杆尺寸参数 */
-const STICK_BASE_RADIUS = 105, STICK_KNOB_RADIUS = 35;
+const STICK_BASE_RADIUS = CONTROL_SIZES.move.width / 2, STICK_KNOB_RADIUS = 35;
 const STICK_KNOB_LIMIT = STICK_BASE_RADIUS * 0.6;
 const STICK_DEAD_ZONE = 8.75;
 
 /** 符文十字按键参数（放大 30%） */
-const DPAD_BASE_RADIUS = 137;
-const DPAD_RUNE_SCALE = 1.08, DPAD_RUNE_ALPHA = 0.75;
-const DPAD_ARROW_OFFSET = 73, DPAD_ARROW_SCALE_NORM = 1.14, DPAD_ARROW_SCALE_GLOW = 1.25;
+export const DPAD_BASE_RADIUS = 137;
+export const DPAD_RUNE_SCALE = 1.08, DPAD_RUNE_ALPHA = 0.75;
+export const DPAD_ARROW_OFFSET = 73, DPAD_ARROW_SCALE_NORM = 1.14;
+const DPAD_ARROW_SCALE_GLOW = 1.25;
 const DPAD_DEAD_ZONE = 12;
 
 type CardinalDir = 'up' | 'down' | 'left' | 'right';

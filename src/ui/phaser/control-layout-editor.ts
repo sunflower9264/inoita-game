@@ -1,9 +1,10 @@
 import Phaser from 'phaser';
 import { UI_EVENTS } from '../../application/ui-events.ts';
 import type { ControlSkin } from '../../domain/control-skin.ts';
-import { CONTROL_IDS, normalizeControlPosition, resolveControlLayout, type ControlId, type ControlPoint } from '../control-layout.ts';
+import { CONTROL_IDS, CONTROL_SIZES, normalizeControlPosition, resolveControlLayout, type ControlId, type ControlPoint } from '../control-layout.ts';
 import type { ControlLayoutPreferences } from '../control-layout.ts';
 import type { ShortcutSlot } from './action-controls.ts';
+import { DPAD_ARROW_OFFSET, DPAD_ARROW_SCALE_NORM, DPAD_BASE_RADIUS, DPAD_RUNE_ALPHA, DPAD_RUNE_SCALE } from './move-stick.ts';
 import { controlSettings } from '../../application/control-settings.ts';
 import { controlViewport } from './control-layout-viewport.ts';
 import { UiSurface } from './widgets.ts';
@@ -80,25 +81,26 @@ export class ControlLayoutEditor {
     for (const id of CONTROL_IDS) {
       const object=this.scene.add.container(0,0).setData('uiAction',true).setData('controlId',id);
       this.canvas.root.add(object);this.controls.set(id,object);
-      let width=94,height=94;
+      let width:number=CONTROL_SIZES.slot.width,height:number=CONTROL_SIZES.slot.height;
       const image=(file:string,w:number,h=w,x=-w/2,y=-h/2)=>this.canvas.image(file,x,y,w,h,object);
       if(id==='move') {
         if (controlSettings.moveStyle === 'dpad') {
-          width = height = 274;
-          const ring = this.scene.add.image(0, 0, this.skin['stick-base']).setScale(1.08).setAlpha(0.75);
-          const up = this.scene.add.image(0, -73, this.skin['arrow-up']).setScale(1.14);
-          const down = this.scene.add.image(0, 73, this.skin['arrow-down']).setScale(1.14);
-          const left = this.scene.add.image(-73, 0, this.skin['arrow-left']).setScale(1.14);
-          const right = this.scene.add.image(73, 0, this.skin['arrow-right']).setScale(1.14);
+          width = height = DPAD_BASE_RADIUS * 2;
+          const ring = this.scene.add.image(0, 0, this.skin['stick-base']).setScale(DPAD_RUNE_SCALE).setAlpha(DPAD_RUNE_ALPHA);
+          const up = this.scene.add.image(0, -DPAD_ARROW_OFFSET, this.skin['arrow-up']).setScale(DPAD_ARROW_SCALE_NORM);
+          const down = this.scene.add.image(0, DPAD_ARROW_OFFSET, this.skin['arrow-down']).setScale(DPAD_ARROW_SCALE_NORM);
+          const left = this.scene.add.image(-DPAD_ARROW_OFFSET, 0, this.skin['arrow-left']).setScale(DPAD_ARROW_SCALE_NORM);
+          const right = this.scene.add.image(DPAD_ARROW_OFFSET, 0, this.skin['arrow-right']).setScale(DPAD_ARROW_SCALE_NORM);
           object.add([ring, up, down, left, right]);
         } else {
-          width = height = 210; image(this.skin['stick-base'], 210); image(this.skin.button, 70);
+          width = CONTROL_SIZES.move.width; height = CONTROL_SIZES.move.height;
+          image(this.skin['stick-base'], CONTROL_SIZES.move.width); image(this.skin.button, 70);
         }
       }
-      else if(id==='attack') {width=159;height=160;image(this.skin.button,width,height);}
-      else if(id==='swap') {width=height=75;image(this.skin.swap,75);}
+      else if(id==='attack') {width=CONTROL_SIZES.attack.width;height=CONTROL_SIZES.attack.height;image(this.skin.button,width,height);}
+      else if(id==='swap') {width=CONTROL_SIZES.swap.width;height=CONTROL_SIZES.swap.height;image(this.skin.swap,CONTROL_SIZES.swap.width);}
       else {
-        image(this.skin['slot-shadow'],94);image(this.skin['slot-ring'],94);
+        image(this.skin['slot-shadow'],CONTROL_SIZES.slot.width);image(this.skin['slot-ring'],CONTROL_SIZES.slot.width);
         const slot=this.slots[Number(id.slice(5))],isItem=slot?.entry?.kind==='item',size=isItem?64:75;
         if(slot?.entry&&slot.icon)image(slot.icon,size);
         const cooldown=slot?.cooldown;

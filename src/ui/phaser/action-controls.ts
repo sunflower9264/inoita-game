@@ -4,7 +4,7 @@ import type { ControlSkin } from '../../domain/control-skin.ts';
 import type { Cooldown } from '../../domain/combat.ts';
 import type { ActionControlsHandlers } from '../../rendering/action-controls.ts';
 import { SHORTCUT_SLOT_COUNT, type ShortcutEntry } from '../../domain/shortcut-bar.ts';
-import { ControlLayoutPreferences, resolveControlLayout, type ControlId } from '../control-layout.ts';
+import { CONTROL_SIZES, ControlLayoutPreferences, resolveControlLayout, type ControlId } from '../control-layout.ts';
 import { controlViewport } from './control-layout-viewport.ts';
 import { ActionPressGate } from '../action-press-gate.ts';
 import { uiImageFor } from './widgets.ts';
@@ -12,12 +12,12 @@ import { FONT } from '../text-style.ts';
 import { cooldownFanState, drawCooldownFan, shortcutCooldown } from './cooldown-fan.ts';
 
 interface ControlSize {width:number;height:number;hitRadius:number;iconSize:number}
-const ATTACK_SIZE:ControlSize = {width:159,height:160,hitRadius:79.5,iconSize:0};
+const ATTACK_SIZE:ControlSize = {width:CONTROL_SIZES.attack.width,height:CONTROL_SIZES.attack.height,hitRadius:CONTROL_SIZES.attack.width / 2,iconSize:0};
 /** 快捷位内图的边长：技能 75、物品 64（原版消耗品位就是 64×64，见 findings/native-control-layout）。 */
 export const SLOT_ICON_SIZE = 75;
 export const ITEM_ICON_SIZE = 64;
-const SLOT_SIZE:ControlSize = {width:94,height:94,hitRadius:40,iconSize:SLOT_ICON_SIZE};
-const SWAP_SIZE:ControlSize = {width:75,height:75,hitRadius:37.5,iconSize:0};
+const SLOT_SIZE:ControlSize = {width:CONTROL_SIZES.slot.width,height:CONTROL_SIZES.slot.height,hitRadius:40,iconSize:SLOT_ICON_SIZE};
+const SWAP_SIZE:ControlSize = {width:CONTROL_SIZES.swap.width,height:CONTROL_SIZES.swap.height,hitRadius:CONTROL_SIZES.swap.width / 2,iconSize:0};
 /** 默认操作区锚点，供登记屏的装饰布局使用；控件自身位置由共用 resolver 提供。 */
 export function controlPlacement(scene:Phaser.Scene,width:number,height:number):{scale:number;anchor:{x:number;y:number}} {
   const {attack}=resolveControlLayout(controlViewport(scene,width,height));

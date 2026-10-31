@@ -6,7 +6,7 @@ import { LOGIC_FRAME_MS } from '../../domain/battle.ts';
 import { buffIconBlinking,buffIconPosition,gaugeFillWidth,memberColumnLayout,memberPanelIds,targetNameAnchor,targetNameColor } from '../../domain/status-hud.ts';
 import type { HudGauge,StatusHudSkin,TargetStatus } from '../../domain/status-hud.ts';
 import type { PartySnapshot } from '../../domain/party.ts';
-import { readSafeArea } from '../viewport.ts';
+import { readSafeArea, uiUnitScale } from '../viewport.ts';
 import { resolveControlLayout } from '../control-layout.ts';
 import { controlViewport } from './control-layout-viewport.ts';
 import { uiImage } from './widgets.ts';
@@ -240,7 +240,7 @@ export class StatusHud {
     entries.forEach((condition,index)=>this.playerIconImages[index].setData('remainingMs',condition.remainingMs));
     for(const image of this.playerIconImages.slice(entries.length))image.setData('remainingMs',undefined);
   }
-  layout():void{const scene=this.hud.scene,bounds=scene.game.canvas.getBoundingClientRect(),safe=readSafeArea(),unit=scene.scale.width/Math.max(1,bounds.width),size=Math.min(scene.scale.width/800,scene.scale.height/480);
+  layout():void{const scene=this.hud.scene,bounds=scene.game.canvas.getBoundingClientRect(),safe=readSafeArea(),unit=scene.scale.width/Math.max(1,bounds.width),size=uiUnitScale(scene.scale.width,scene.scale.height);
     const right=scene.scale.width-safe.right*unit,top=safe.top*unit;
     // 右缘对齐以素材可见边框为准：图幅四周是透明留白，两块面板的留白并不相同。
     const playerEdge=this.skin.player.width-this.skin.player.inset.right;

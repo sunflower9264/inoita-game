@@ -1,3 +1,5 @@
+import { GAME_WIDTH, GAME_HEIGHT } from './viewport.ts';
+
 /** 操作键位属于设备偏好；角色、存档和两组快捷栏共用。 */
 export const CONTROL_IDS = ['move', 'attack', 'slot-0', 'slot-1', 'slot-2', 'slot-3', 'slot-4', 'slot-5', 'swap'] as const;
 export type ControlId = typeof CONTROL_IDS[number];
@@ -7,6 +9,14 @@ export type ControlLayoutOverrides = Partial<Record<ControlId, ControlPoint>>;
 export interface StorageLike { getItem(key: string): string | null; setItem(key: string, value: string): void }
 export const CONTROL_LAYOUT_STORAGE_KEY = 'inotia-control-layout';
 const FORMAT = 1;
+
+/** 各类操作控件的基准尺寸（界面单位）；布局解析与绘制层共用这一份。 */
+export const CONTROL_SIZES = {
+  move: { width: 210, height: 210 },
+  attack: { width: 159, height: 160 },
+  swap: { width: 75, height: 75 },
+  slot: { width: 94, height: 94 }
+} as const;
 
 export const SHORTCUT_OFFSETS = [
   {x:-342,y:33},{x:-242,y:33},{x:-142,y:33},
@@ -87,8 +97,8 @@ function fitPoint(viewport: ControlViewport, point: ControlPoint, size: {width: 
 /** 默认摇杆沿用全画布缩放，其余控件沿用安全区缩放。 */
 export function resolveControlLayout(viewport: ControlViewport, overrides: ControlLayoutOverrides = {}): Record<ControlId, ControlPlacement> {
   const safe = safeArea(viewport);
-  const actionScale = Math.min(safe.width / 960, safe.height / 640);
-  const moveScale = Math.min(viewport.width / 960, viewport.height / 640);
+  const actionScale = Math.min(safe.width / GAME_WIDTH, safe.height / GAME_HEIGHT);
+  const moveScale = Math.min(viewport.width / GAME_WIDTH, viewport.height / GAME_HEIGHT);
   const attack = {x: viewport.width - viewport.insets.right - 104 * actionScale,
     y: viewport.height - viewport.insets.bottom - 80 * actionScale};
   const placement = (id: ControlId, point: ControlPoint, scale: number, width: number, height: number): ControlPlacement => {
@@ -98,13 +108,13 @@ export function resolveControlLayout(viewport: ControlViewport, overrides: Contr
     return {...position, scale, ...size};
   };
   const result = {
-    move: placement('move', {x: safe.left + 129 * moveScale, y: viewport.height - viewport.insets.bottom - 129 * moveScale}, moveScale, 210, 210),
-    attack: placement('attack', attack, actionScale, 159, 160),
-    swap: placement('swap', {x: attack.x + SWAP_OFFSET.x * actionScale, y: attack.y + SWAP_OFFSET.y * actionScale}, actionScale, 75, 75)
+    move: placement('move', {x: safe.left + 129 * moveScale, y: viewport.height - viewport.insets.bottom - 129 * moveScale}, moveScale, CONTROL_SIZES.move.width, CONTROL_SIZES.move.height),
+    attack: placement('attack', attack, actionScale, CONTROL_SIZES.attack.width, CONTROL_SIZES.attack.height),
+    swap: placement('swap', {x: attack.x + SWAP_OFFSET.x * actionScale, y: attack.y + SWAP_OFFSET.y * actionScale}, actionScale, CONTROL_SIZES.swap.width, CONTROL_SIZES.swap.height)
   } as Record<ControlId, ControlPlacement>;
   SHORTCUT_OFFSETS.forEach((offset, index) => {
     const id = `slot-${index}` as ControlId;
-    result[id] = placement(id, {x: attack.x + offset.x * actionScale, y: attack.y + offset.y * actionScale}, actionScale, 94, 94);
+    result[id] = placement(id, {x: attack.x + offset.x * actionScale, y: attack.y + offset.y * actionScale}, actionScale, CONTROL_SIZES.slot.width, CONTROL_SIZES.slot.height);
   });
   return result;
 }
