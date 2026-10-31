@@ -60,3 +60,20 @@ test('a level-zero map is clamped to level one for the pull',()=>{
   assert.equal(result.success,true);
   assert.equal(session.legendaryWeapons.isPulled('map-zero','sword-zero'),true);
 });
+
+test('group skill 122 adds an extra unique upgrade roll',()=>{
+  const hit=rollLegendaryWeapon(drops,stats,50,sequence([0.01,0.1,0,0,0,0.029,0]),30);
+  assert.ok(hit);assert.equal(hit.unique,true);
+  const miss=rollLegendaryWeapon(drops,stats,50,sequence([0.01,0.1,0,0,0,0.031]),30);
+  assert.ok(miss);assert.equal(miss.unique,false);
+  const rescued=rollLegendaryWeapon(drops,stats,50,sequence([0.97,0.029,0]),30);
+  assert.ok(rescued);assert.equal(rescued.unique,true);
+});
+
+test('the pull passes the group skill bonus through to the reward roll',()=>{
+  const session=createSession();session.hero!.addExperience(100000);
+  session.hero!.commitAllocation({strength:10,dexterity:0,vitality:0,intelligence:0,mentality:0});
+  const result=pullLegendaryWeapon(session,stats,drops,'map-skill','sword-skill',10,sequence([0,0.01,0.1,0,0,0,0.029,0]),{x:1,y:2},30);
+  assert.equal(result.success,true);assert.equal(result.unique,true);
+  assert.equal(result.message,'获得了传说中的武器。');
+});

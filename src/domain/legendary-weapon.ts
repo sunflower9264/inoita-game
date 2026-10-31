@@ -37,7 +37,7 @@ export function legendaryStatGate(attributes:PrimaryAttributes,mapLevel:number,r
   return {stat,value,success:mapLevel>0&&value>=2*mapLevel};
 }
 
-export function pullLegendaryWeapon(session:Session,stats:CharacterStatsCatalog,catalog:DropCatalog,mapId:string,entityId:string,mapLevel:number,random:()=>number,position:{x:number;y:number}):LegendaryPullResult {
+export function pullLegendaryWeapon(session:Session,stats:CharacterStatsCatalog,catalog:DropCatalog,mapId:string,entityId:string,mapLevel:number,random:()=>number,position:{x:number;y:number},uniqueBonus=0):LegendaryPullResult {
   // 原版先 CHAR_SetSituation(...,5) 再判定：失败也会消耗。
   session.legendaryWeapons.markPulled(mapId,entityId);
   const hero=session.hero;
@@ -46,7 +46,7 @@ export function pullLegendaryWeapon(session:Session,stats:CharacterStatsCatalog,
   const level=Math.max(1,mapLevel);
   const gate=legendaryStatGate(hero.panel.attributes,level,random);
   if(!gate.success)return {success:false,message:'能力不足，无法获得武器。'};
-  const reward=rollLegendaryWeapon(catalog,stats,level,random);
+  const reward=rollLegendaryWeapon(catalog,stats,level,random,uniqueBonus);
   if(!reward)return {success:false,message:'能力不足，无法获得武器。'};
   let prepared:ItemInstance|undefined;
   try {

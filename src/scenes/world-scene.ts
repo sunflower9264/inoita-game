@@ -1136,8 +1136,9 @@ export class WorldScene extends Phaser.Scene {
     const map=this.map, drops=this.dropCatalog;
     if(!map||!drops||this.app.session.legendaryWeapons.isPulled(map.id,target.entity.id))return;
     this.playStory(async()=>{
+      const uniqueBonus=this.app.session.party?.groupModifiers()['ancient-legendary-chance']??0;
       const result=pullLegendaryWeapon(this.app.session,this.app.characterStats,drops,map.id,target.entity.id,map.lootLevel??0,Math.random,
-        {x:target.entity.x,y:target.entity.y});
+        {x:target.entity.x,y:target.entity.y},uniqueBonus);
       if(result.success)this.app.audio?.effect('UI_Ground_sword');
       this.app.ui.showInstant(result.message);
       this.app.autoSave?.('legendary-sword');

@@ -266,22 +266,24 @@ function pickLegendaryWeapon(catalog:DropCatalog,mapLevel:number,random:()=>numb
   return nearest[0]?.item;
 }
 
-/** 原版 `ITEMSYSTEM_GenerateGrade` 模式 6；第一版不接组队技能 122 的权重修正。 */
-export function rollLegendaryWeapon(catalog:DropCatalog,stats:CharacterStatsCatalog,mapLevel:number,random:()=>number):LegendaryReward|undefined {
+function uniqueLegendaryReward(catalog:DropCatalog,stats:CharacterStatsCatalog,mapLevel:number,random:()=>number):LegendaryReward|undefined {
+  const item=pickUnique(catalog,mapLevel,random);
+  if(!item)return undefined;
+  const equipment=stats.equipment[item];
+  const rolled=equipment?staticGrade(stats,equipment):undefined;
+  if(!rolled)return undefined;
+  return {item,grade:rolled,sockets:false,unique:true};
+}
+
+/** 原版 `ITEMSYSTEM_GenerateGrade` 模式 6 的基础分布。 */
+function baseLegendaryReward(catalog:DropCatalog,stats:CharacterStatsCatalog,mapLevel:number,random:()=>number):LegendaryReward|undefined {
   const tier=weightedIndex([95,570,285,50],random);
   if(tier>=3)return undefined;
   const grade=tier===0?weightedIndex([383,233,134,250],random):
     tier===1?4+weightedIndex([300,500,200],random):
     7+weightedIndex([300,500,200],random);
   if(grade>=10)return undefined;
-  if(grade===3){
-    const item=pickUnique(catalog,mapLevel,random);
-    if(!item)return undefined;
-    const equipment=stats.equipment[item];
-    const rolled=equipment?staticGrade(stats,equipment):undefined;
-    if(!rolled)return undefined;
-    return {item,grade:rolled,sockets:false,unique:true};
-  }
+  if(grade===3)return uniqueLegendaryReward(catalog,stats,mapLevel,random);
   const item=pickLegendaryWeapon(catalog,mapLevel,random);
   if(!item)return undefined;
   const equipment=stats.equipment[item];
@@ -291,6 +293,20 @@ export function rollLegendaryWeapon(catalog:DropCatalog,stats:CharacterStatsCata
   const variant=equipment.gradeVariants[index];
   if(!variant)return undefined;
   return {item,grade:{grade:index,gradeName:variant.name,attack:variant.attack,defense:variant.defense,optionCount:variant.optionCount,socketLimit:variant.socketLimit},sockets:true,unique:false};
+}
+
+/**
+ * 组队技能 122「被选择的英雄」：原版把 30 点权重加到会被装备构造拒绝的 10 级档，
+ * 和“传说装备 +3%”的描述对不上。体验版按描述实现：基础结果后再掷一次，
+ * 普通装备或空手失败命中就升级为唯一物品；已经是唯一物品则不重复判定。
+ */
+export function rollLegendaryWeapon(catalog:DropCatalog,stats:CharacterStatsCatalog,mapLevel:number,random:()=>number,uniqueBonus=0):LegendaryReward|undefined {
+  const base=baseLegendaryReward(catalog,stats,mapLevel,random);
+  if(base?.unique)return base;
+  const bonus=Math.max(0,Math.min(1000,uniqueBonus));
+  if(bonus<=0)return base;
+  if(draw(random,1000)<bonus)return uniqueLegendaryReward(catalog,stats,mapLevel,random)??base;
+  return base;
 }
 
 function pickEpic(catalog:DropCatalog,cap:number,random:()=>number):string|undefined {
