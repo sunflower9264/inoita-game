@@ -18,6 +18,20 @@ export function partyFormationOffset(facing: Facing, slot: 0 | 1): Point {
   return { x: back.x * 20 + left.x * side, y: back.y * 20 + left.y * side };
 }
 
+/**
+ * 队形偏移沿队长周围的圆弧平滑旋转，而不是直接对 x/y 线性插值。
+ * 线性插值会让偏移经过队长脚下，落点避让再把角色甩到远处，看起来就是瞬移。
+ */
+export function smoothFormationOffset(current: Point, target: Point, alpha: number): Point {
+  const currentAngle = Math.atan2(current.y, current.x);
+  const targetAngle = Math.atan2(target.y, target.x);
+  const turn = Math.atan2(Math.sin(targetAngle - currentAngle), Math.cos(targetAngle - currentAngle));
+  const angle = currentAngle + turn * alpha;
+  const currentRadius = Math.hypot(current.x, current.y);
+  const radius = currentRadius + (Math.hypot(target.x, target.y) - currentRadius) * alpha;
+  return { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
+}
+
 /** 两个队伍单位按同一碰撞盒落位时是否重叠；边贴边不算重叠。 */
 export function partyBodyOverlaps(point: Point, other: Point, shape: NavigationShape): boolean {
   const box = shape.collision;

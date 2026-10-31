@@ -59,6 +59,7 @@ function fixture(options:{sealed?:boolean;wall?:boolean}={}){
   }
   const allies=[ally('companion',{x:64,y:64}),ally('second',{x:600,y:600})];
   const state={app:{session:{party}},scene:{player:hero,facing:'south'},movement,allies,
+    formationOffsets:new Map<string,Point>(),
     arena:[] as TestEnemy[],pendingDefeats:new Set<string>(),fallen:new Set<string>(),closed:false};
   const combat=Object.setPrototypeOf(state,WorldCombat.prototype) as unknown as InstanceType<typeof WorldCombat>;
   return {combat,navigation,movement,positions,actors,party,hero,allies,moved,cancelled,fallen:state.fallen,app:state.app,
@@ -79,9 +80,10 @@ test('regrouping pulls every living ally beside the hero without changing the co
   assert.deepEqual(f.moved.sort(),['companion','second']);
 });
 
-test('a stuck follower is pulled beside the controlled member without moving the rest of the party',()=>{
+test('a far stuck follower is pulled beside the controlled member without moving the rest of the party',()=>{
   const f=fixture();f.party.controlledId='player';
   const follower=f.allies[1]!,other=f.allies[0]!;
+  Object.assign(f.positions.get(follower.visual)!,{x:0,y:0});
   const otherBefore={...f.positions.get(other.visual)!};
   Reflect.get(WorldCombat.prototype,'catchUpFollower').call(f.combat,'second');
   const hero=f.positions.get(f.hero)!;
@@ -188,7 +190,7 @@ test('the party landing anchor is the hero, not the controlled mercenary',()=>{
   assert.ok(Math.hypot(landing.x-64,landing.y-64)>100,'不是围着被操控的佣兵');
 });
 
-test('follow goals use opposite formation slots and rotate with the leader',()=>{
+test('follow goals use opposite formation slots and rotate smoothly with movement',()=>{
   const f=fixture();f.party.controlledId='player';
   const goal=(id:string)=>Reflect.get(WorldCombat.prototype,'partyFollowGoal').call(f.combat,id) as Point|undefined;
   const first=goal('companion'),second=goal('second');
@@ -196,11 +198,31 @@ test('follow goals use opposite formation slots and rotate with the leader',()=>
   assert.notDeepEqual(first,second);
   const hero=f.positions.get(f.hero)!;
   assert.ok(first.x<hero.x&&second.x>hero.x,'面朝南时两名佣兵分在左右');
-  (f.combat as unknown as {scene:{facing:string}}).scene.facing='east';
-  const eastFirst=goal('companion'),eastSecond=goal('second');
-  assert.ok(eastFirst&&eastSecond);
-  assert.ok(eastFirst.x<hero.x&&eastSecond.x<hero.x,'面朝东时两名佣兵都在队长背后');
-  assert.notEqual(eastFirst.y,eastSecond.y,'左右槽位在垂直方向分开');
+  let previousFirstOffset={x:first.x-hero.x,y:first.y-hero.y};
+  let previousSecondOffset={x:second.x-hero.x,y:second.y-hero.y};
+  // 队长向北移动：队形要平滑转到另一侧，单步偏移不能跳过去。
+  for(let step=0;step<10;step++){
+    hero.y-=8;
+    const nextFirst=goal('companion'),nextSecond=goal('second');
+    assert.ok(nextFirst&&nextSecond);
+    const firstOffset={x:nextFirst.x-hero.x,y:nextFirst.y-hero.y};
+    const secondOffset={x:nextSecond.x-hero.x,y:nextSecond.y-hero.y};
+    assert.ok(Math.hypot(firstOffset.x-previousFirstOffset.x,firstOffset.y-previousFirstOffset.y)<16,
+      `换边要平滑，不能瞬移：${JSON.stringify(previousFirstOffset)} -> ${JSON.stringify(firstOffset)}`);
+    assert.ok(Math.hypot(secondOffset.x-previousSecondOffset.x,secondOffset.y-previousSecondOffset.y)<16,
+      `换边要平滑，不能瞬移：${JSON.stringify(previousSecondOffset)} -> ${JSON.stringify(secondOffset)}`);
+    previousFirstOffset=firstOffset;previousSecondOffset=secondOffset;
+  }
+  assert.ok(previousFirstOffset.x>0&&previousSecondOffset.x<0,'向北走后队形转到另一侧');
+});
+
+test('a nearby stuck follower is re-pathed without teleporting',()=>{
+  const f=fixture();f.party.controlledId='player';
+  const follower=f.allies[1]!,before={...f.positions.get(follower.visual)!};
+  Reflect.get(WorldCombat.prototype,'catchUpFollower').call(f.combat,'second');
+  assert.deepEqual(f.positions.get(follower.visual),before);
+  assert.ok(f.cancelled.includes('second'));
+  assert.ok(!f.moved.includes('second'));
 });
 
 test('story settlement separates allies that already overlap the hero or each other',()=>{

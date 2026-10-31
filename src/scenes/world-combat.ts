@@ -32,7 +32,7 @@ import { enemyAwarenessRangeUnits } from '../domain/enemy-engagement.ts';
 import { FriendlySummonController } from '../domain/friendly-summon-ai.ts';
 import { SummonCombatAwareness } from '../domain/summon-tactics.ts';
 import { canTraverse } from '../domain/pathfinding.ts';
-import { choosePartyLanding, partyBodyOverlaps, partyFormationOffset } from '../domain/party-placement.ts';
+import { choosePartyLanding, partyBodyOverlaps, partyFormationOffset, smoothFormationOffset } from '../domain/party-placement.ts';
 import type { NavigationActor, NavigationShape } from '../domain/navigation-world.ts';
 import { overlapsFootRect } from '../domain/navigation.ts';
 import { PartyController, type PartyPort } from '../domain/party-ai.ts';
@@ -222,6 +222,11 @@ export class WorldCombat {
   private relocationFailures: { id: string; position: Point }[] = [];
   /** 跟随长时间没有进展、被收拢到队长身边的次数；用于上报排查。 */
   private followerCatchUps = 0;
+  /** 每名佣兵当前平滑后的队形偏移；队长转身时慢慢转过去，不瞬间跳边。 */
+  private readonly formationOffsets = new Map<string,Point>();
+  private formationFacing:Facing='south';
+  private formationLeaderId?:string;
+  private formationLeaderPosition?:Point;
   constructor(scene:WorldScene,app:StoryContext,roster:WorldEnemyRoster,hero:BattleCharacter,drops:DropCatalog){
     this.scene=scene;this.app=app;this.roster=roster;this.hero=hero;this.drops=drops;
     this.threat=this.createThreatSystem();
@@ -2073,7 +2078,27 @@ captureStoryActors():SceneActorState[] {
       .map(ally=>this.movement!.position(ally.visual))];
     return choosePartyLanding(this.movement.navigation,shape,origin,ignore,avoid);
   }
-  /** 跟随 AI 的目标点：队长背后、按朝向左右分开的槽位；不可站时就近避让队友。 */
+  /**
+   * 跟随时队形朝向只跟「队的实际移动方向」，不跟瞬时面朝方向。
+   * 原地转身不会让左右槽位瞬间交换；移动方向变化时槽位目标还会再做一次平滑。
+   */
+  private updateFormationFacing(anchor:Point):void {
+    if(this.formationLeaderId!==this.controlledId){
+      this.formationLeaderId=this.controlledId;
+      this.formationLeaderPosition={...anchor};
+      this.formationOffsets.clear();
+      this.formationFacing=this.controlledId==='player'?this.scene.facing
+        :(combatActor(this.allies,this.controlledId,actor=>actor.id)?.facing??'south');
+      return;
+    }
+    const previous=this.formationLeaderPosition;
+    this.formationLeaderPosition={...anchor};
+    if(!previous)return;
+    const dx=anchor.x-previous.x,dy=anchor.y-previous.y;
+    if(Math.hypot(dx,dy)<1)return;
+    this.formationFacing=Math.abs(dx)>=Math.abs(dy)?(dx>0?'east':'west'):(dy>0?'south':'north');
+  }
+  /** 跟随 AI 的目标点：平滑后的队形槽位，再加一点远离同伴的分离力。 */
   private partyFollowGoal(id:string):Point|undefined {
     if(!this.movement)return undefined;
     const slot=this.app.session.party?.slotOf(id);
@@ -2081,10 +2106,24 @@ captureStoryActors():SceneActorState[] {
     const leader=this.controlledVisual;
     if(!leader)return undefined;
     const anchor=this.movement.position(leader);
-    const facing=this.controlledId==='player'?this.scene.facing
-      :(combatActor(this.allies,this.controlledId,actor=>actor.id)?.facing??'south');
-    const offset=partyFormationOffset(facing,slot);
-    const preferred={x:anchor.x+offset.x,y:anchor.y+offset.y};
+    this.updateFormationFacing(anchor);
+    const target=partyFormationOffset(this.formationFacing,slot);
+    const current=this.formationOffsets.get(id)??{...target};
+    // 每逻辑帧沿队长周围的圆弧转一小段，约 350ms 完成换边；不会经过队长脚下。
+    const next=smoothFormationOffset(current,target,0.15);
+    this.formationOffsets.set(id,next);
+    const preferred={x:anchor.x+next.x,y:anchor.y+next.y};
+    // 分离力：即使两个槽位在平滑过程中短暂靠近，也把目标轻轻推开。
+    const separation=24;
+    for(const other of this.allies){
+      if(other.id===id||!other.member.player.health||this.fallen.has(other.id)||!other.visual.container.active)continue;
+      const otherPosition=this.movement.position(other.visual);
+      const dx=preferred.x-otherPosition.x,dy=preferred.y-otherPosition.y;
+      const distance=Math.hypot(dx,dy);
+      if(distance<=0||distance>=separation)continue;
+      const push=(separation-distance)/separation*6;
+      preferred.x+=dx/distance*push;preferred.y+=dy/distance*push;
+    }
     const visual=this.visualOf(id);
     if(!visual)return preferred;
     const actor=this.movement.actor(visual),shape=actor.shape();
@@ -2174,7 +2213,10 @@ captureStoryActors():SceneActorState[] {
     const landing=this.partyLanding(actor.shape(),actor,id,leader);
     if(!landing)return;
     ally.ai.cancel();
-    this.movement.place(ally.visual,landing);
+    // 普通跟随卡住时先重新找路，不在玩家眼前瞬移；只有掉队很远或在剧情遮挡里才直接落位。
+    const position=this.movement.position(ally.visual);
+    if(Math.hypot(position.x-landing.x,position.y-landing.y)>200||this.performanceHidden)
+      this.movement.place(ally.visual,landing);
     setCharacterClip(this.scene,ally.visual,`idle-${ally.facing}`,true);
     this.followerCatchUps++;
   }
