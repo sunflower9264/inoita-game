@@ -3,8 +3,8 @@ import { UI_EVENTS } from '../../application/ui-events.ts';
 import type { ControlSkin } from '../../domain/control-skin.ts';
 import { CONTROL_IDS, CONTROL_SIZES, normalizeControlPosition, resolveControlLayout, type ControlId, type ControlPoint } from '../control-layout.ts';
 import type { ControlLayoutPreferences } from '../control-layout.ts';
-import type { ShortcutSlot } from './action-controls.ts';
-import { DPAD_ARROW_OFFSET, DPAD_ARROW_SCALE_NORM, DPAD_BASE_RADIUS, DPAD_RUNE_ALPHA, DPAD_RUNE_SCALE } from './move-stick.ts';
+import { ITEM_ICON_SIZE, SLOT_ICON_SIZE, type ShortcutSlot } from './action-controls.ts';
+import { DPAD_ARROW_OFFSET, DPAD_ARROW_SCALE_NORM, DPAD_BASE_RADIUS, DPAD_RUNE_ALPHA, DPAD_RUNE_SCALE, STICK_KNOB_RADIUS } from './move-stick.ts';
 import { controlSettings } from '../../application/control-settings.ts';
 import { controlViewport } from './control-layout-viewport.ts';
 import { UiSurface } from './widgets.ts';
@@ -94,14 +94,14 @@ export class ControlLayoutEditor {
           object.add([ring, up, down, left, right]);
         } else {
           width = CONTROL_SIZES.move.width; height = CONTROL_SIZES.move.height;
-          image(this.skin['stick-base'], CONTROL_SIZES.move.width); image(this.skin.button, 70);
+          image(this.skin['stick-base'], CONTROL_SIZES.move.width); image(this.skin.button, STICK_KNOB_RADIUS * 2);
         }
       }
       else if(id==='attack') {width=CONTROL_SIZES.attack.width;height=CONTROL_SIZES.attack.height;image(this.skin.button,width,height);}
       else if(id==='swap') {width=CONTROL_SIZES.swap.width;height=CONTROL_SIZES.swap.height;image(this.skin.swap,CONTROL_SIZES.swap.width);}
       else {
         image(this.skin['slot-shadow'],CONTROL_SIZES.slot.width);image(this.skin['slot-ring'],CONTROL_SIZES.slot.width);
-        const slot=this.slots[Number(id.slice(5))],isItem=slot?.entry?.kind==='item',size=isItem?64:75;
+        const slot=this.slots[Number(id.slice(5))],isItem=slot?.entry?.kind==='item',size=isItem?ITEM_ICON_SIZE:SLOT_ICON_SIZE;
         if(slot?.entry&&slot.icon)image(slot.icon,size);
         const cooldown=slot?.cooldown;
         if(cooldown&&cooldown.durationMs>0&&cooldown.remainingMs>0) {

@@ -7,7 +7,7 @@ import { equipmentColor, equipmentGrade } from './item-name-color.ts';
 import { TEXT_COLORS } from './text-style.ts';
 
 /** 物品说明按词条来源取色，保留原版 UIDesc_AddOption 的配色。 */
-const GEM_MODIFIER_COLOR = '#bf0000';
+const GEM_MODIFIER_COLOR = TEXT_COLORS.gemModifier;
 const EQUIPMENT_MODIFIER_COLOR = '#7878ff';
 const DESCRIPTION_COLOR = '#00b4ff';
 

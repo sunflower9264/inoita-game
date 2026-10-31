@@ -6,6 +6,8 @@
  * 商店侧写成 `83`。依据见 `work/findings/bag-layout-2026-10-09.md`。
  */
 
+import { TEXT_COLORS } from './text-style.ts';
+
 /** 物品格：74 见方，图标内缩 5，选中框外扩 5。 */
 export const SLOT = {size:74, icon:{x:5, y:5, size:64}, selection:{x:-5, y:-5, size:84}};
 
@@ -20,7 +22,7 @@ export const SLOT_STRIDE = 83;
  * `offset` 是金额在所属框内的落点，`plateOffset` 是它下面那块 323 宽的底板（比金额低 3 像素）。
  */
 export const MONEY = {
-  stride:103, coin:{width:44, height:40}, digit:{x:44, y:6}, color:'#ffffff',
+  stride:103, coin:{width:44, height:40}, digit:{x:44, y:6}, color:TEXT_COLORS.white,
   offset:{x:34, y:365}, plateOffset:{x:34, y:368, width:323},
 };
 

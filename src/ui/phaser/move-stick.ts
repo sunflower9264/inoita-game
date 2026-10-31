@@ -8,7 +8,8 @@ import { keyBindings as defaultKeyBindings, type KeyBindingPreferences } from '.
 import { MOVE_BINDING_ACTIONS, type KeyBindingAction } from '../../domain/key-bindings.ts';
 
 /** 原版摇杆尺寸参数 */
-const STICK_BASE_RADIUS = CONTROL_SIZES.move.width / 2, STICK_KNOB_RADIUS = 35;
+const STICK_BASE_RADIUS = CONTROL_SIZES.move.width / 2;
+export const STICK_KNOB_RADIUS = 35;
 const STICK_KNOB_LIMIT = STICK_BASE_RADIUS * 0.6;
 const STICK_DEAD_ZONE = 8.75;
 

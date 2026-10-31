@@ -29,5 +29,7 @@ export const TEXT_COLORS = {
   /** 弱化、未鉴定或占位文字。 */
   muted: '#808080',
   /** 条件或点数不满足时的要求文字。 */
-  requirementUnmet: '#ff0000'
+  requirementUnmet: '#ff0000',
+  /** 宝石词条。 */
+  gemModifier: '#bf0000'
 } as const;

@@ -43,7 +43,7 @@ export function drawDescriptionSeparator(v: UiSurface, x: number, y: number, wid
 }
 
 /**
- * 说明面板的正文：一行行文字，遇到 `separator` 画那条点线。返回正文总高，
+ * 说明面板的正文：逐行绘制 `row.parts`。返回正文总高，
  * 调用方接着画宝石图标或底部按钮。背包页与商店共用，保证两处行序与样式一致。
  */
 export function drawDescriptionRows(v: UiSurface, rows: ItemDescriptionRow[], width: number, parent?: Phaser.GameObjects.Container): number {

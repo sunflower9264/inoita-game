@@ -201,7 +201,7 @@ export class ForgePanel {
       if(!filled){v.text('空',84,y,110,18,TEXT_COLORS.secondary,left.content);continue;}
       const gemItem=this.bag.catalog.items[target.gems[index]!],modifier=modifiers[index];
       v.text(gemItem?.name??'宝石',84,y,110,18,activeIndex===index?TEXT_COLORS.white:TEXT_COLORS.primary,left.content);
-      if(modifier)v.text(this.gemEffectText(modifier),198,y,242,18,'#bf0000',left.content);
+      if(modifier)v.text(this.gemEffectText(modifier),198,y,242,18,TEXT_COLORS.gemModifier,left.content);
     }
     const canAdd=target.gems.length<sockets;
     // 孔位越多，属性行越长；提示和操作按钮跟着属性行下移，避免和内容叠在一起。
