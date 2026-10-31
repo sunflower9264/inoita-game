@@ -112,6 +112,44 @@ export function descriptionPanel(width:number) {
   };
 }
 
+export interface DescriptionActionLayout {
+  /** 动作变多时正文滚动区要让出上面一行按钮的高度。 */
+  scrollHeight: number;
+  columns: number;
+  rows: number;
+  buttons: { x:number; y:number; width:number; height:number; fontSize:number }[];
+}
+
+/**
+ * 说明面板底部动作按钮。1–3 个保持原版一横排；4 个改 2×2，5–6 个改 3×2，
+ * 避免为了塞进一行把按钮压到 92 宽。坐标相对面板左上角。
+ */
+export function descriptionActionLayout(panelWidth:number, count:number): DescriptionActionLayout {
+  const panel = descriptionPanel(panelWidth), menu = panel.menu;
+  if (count <= 0) return { scrollHeight: panel.scroll.height, columns: 0, rows: 0, buttons: [] };
+  if (count <= 3) return {
+    scrollHeight: panel.scroll.height, columns: count, rows: 1,
+    buttons: Array.from({ length: count }, (_, index) => ({
+      x: menu.x + menu.offsets[count] + index * menu.button.stride, y: menu.y,
+      width: menu.button.width, height: menu.button.height, fontSize: 18,
+    })),
+  };
+  const columns = count === 4 ? 2 : 3, gap = 8, rowGap = 7;
+  const width = Math.floor((menu.width - gap * (columns - 1)) / columns);
+  const rows = Math.ceil(count / columns), bottom = panel.height - 14;
+  const rowHeight = Math.min(menu.button.height,
+    Math.floor((bottom - panel.scroll.y - 20 - rowGap * (rows - 1)) / rows));
+  const firstY = bottom - rows * rowHeight - rowGap * (rows - 1);
+  return {
+    scrollHeight: firstY - panel.scroll.y - 10, columns, rows,
+    buttons: Array.from({ length: count }, (_, index) => ({
+      x: menu.x + (index % columns) * (width + gap),
+      y: firstY + Math.floor(index / columns) * (rowHeight + rowGap),
+      width, height: rowHeight, fontSize: columns === 2 ? 18 : 14,
+    })),
+  };
+}
+
 /**
  * 说明面板盖住背包栏时的宽度：384 = 右侧分类列外框的左边缘（按钮矩形 389 再往左 5 像素）。
  * 面板到 384 就停，右边那一列 6 个分类按钮仍然看得见、点得到。

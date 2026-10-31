@@ -49,7 +49,7 @@ import { centerModal } from './phaser/modal-placement.ts';
 import { itemResultDetails } from './item-result-details.ts';
 import { itemDescriptionBody } from './item-detail-lines.ts';
 import { slotFrameImage } from './slot-frame.ts';
-import { bagLayout, BAG_DESCRIPTION_WIDTH, DESCRIPTION_PANEL, descriptionPanel, SIDE_FILTER_TEXT_SIZE } from './bag-layout.ts';
+import { bagLayout, BAG_DESCRIPTION_WIDTH, DESCRIPTION_PANEL, descriptionActionLayout, descriptionPanel, SIDE_FILTER_TEXT_SIZE } from './bag-layout.ts';
 import { skillDescriptionParts, skillLearningParts, skillNextLevelPreview } from './skill-detail-lines.ts';
 import { drawDescriptionText } from './phaser/description-text.ts';
 import { tradeLayout } from './shop-layout.ts';
@@ -1144,7 +1144,8 @@ export class StoryUI {
     drawDescriptionPanel(v,this.app.menuPanels.assets,left,top,panel.width);
     // 滚动区必须建在说明层上（末尾的 `v`）：面板底色、图框与物品名都画在这一层，
     // 滚动区若留在内容块那一层（默认值）会被面板自己的黑底压住，正文看起来就是灰的。
-    const detail=this.scroll('item',left+panel.scroll.x,top+panel.scroll.y,panel.scroll.width,panel.scroll.height,v);
+    const actions=this.bagMenu(entry,worn),actionLayout=descriptionActionLayout(panel.width,actions.length);
+    const detail=this.scroll('item',left+panel.scroll.x,top+panel.scroll.y,panel.scroll.width,actionLayout.scrollHeight,v);
     // 标题、颜色与正文由同一个实例说明生成器提供；当前查看的成员决定职业与等级条件。
     const body=itemDescriptionBody({item,entry,numbers:this.app.characterStats.equipment[entry.item],catalog:this.app.characterStats,
       grades:this.app.shops.grades,member:this.member(),classNames:this.classNames(),gemNames:entry.gems.map(id=>bag.catalog.items[id]?.name),skill:entry.skill?bag.catalog.skillDescriptions?.[entry.skill]:undefined});
@@ -1153,13 +1154,12 @@ export class StoryUI {
     this.finishScroll('item',detail,y);
     // 关闭按钮挂在面板右上角：那枚 67×67 的圆钮（原版矩形 349,−6，本作右移到贴边）。
     drawDescriptionClose(v,this.app.menuPanels.assets,panel,left,top,()=>{this.itemNotice=undefined;this.selectedItem=undefined;this.render();});
-    // 底部操作行：常规 125×55、步长 126；4 个动作时整行改 92×55 文字按钮，避免 149×75 的图互相压住。
-    const actions=this.bagMenu(entry,worn),rowY=top+panel.menu.y;
+    // 底部操作行：1–3 个保持原版一横排；4 个改 2×2，5–6 个改 3×2，避免按钮被压得太小。
     if(actions.length){
-      const dense=actions.length>3,width=dense?92:panel.menu.button.width,height=panel.menu.button.height,
-        stride=dense?94:panel.menu.button.stride,rowX=left+panel.menu.x+(dense?0:panel.menu.offsets[Math.min(actions.length,3)]);
       actions.forEach((action,index)=>{
-        v.button(action.label,rowX+index*stride,rowY,width,height,action.run,{fontSize:dense?14:18,disabled:action.disabled}).setData('label',action.label);
+        const button=actionLayout.buttons[index]!;
+        v.button(action.label,left+button.x,top+button.y,button.width,button.height,action.run,
+          {fontSize:button.fontSize,disabled:action.disabled}).setData('label',action.label);
       });
     }
   }

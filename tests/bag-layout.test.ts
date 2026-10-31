@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { bagLayout, DESCRIPTION_PANEL, descriptionPanel } from '../src/ui/bag-layout.ts';
+import { bagLayout, DESCRIPTION_PANEL, descriptionActionLayout, descriptionPanel } from '../src/ui/bag-layout.ts';
 import { EQUIPMENT_SLOT_ORDER } from '../src/domain/items.ts';
 
 const menuPanels = JSON.parse(fs.readFileSync(
@@ -48,6 +48,20 @@ test('bag side buttons and money follow the native coordinates', () => {
   assert.equal(layout.money.plate.y - layout.money.y, 3);
   // 数量角标按 ITEM_DrawPorting 画在 (+67,+47)，白色右对齐。
   assert.deepEqual(layout.badge, { x:67, y:47, color:'#ffffff' });
+});
+
+test('description actions use two rows when there are four buttons', () => {
+  const four = descriptionActionLayout(409, 4);
+  assert.deepEqual([four.columns, four.rows, four.scrollHeight], [2, 2, 230]);
+  assert.deepEqual(four.buttons.map(button => [button.x, button.y]),
+    [[15, 300], [191, 300], [15, 362], [191, 362]]);
+  assert.ok(four.buttons.every(button => button.x + button.width <= 409 && button.y + button.height <= 431));
+  const three = descriptionActionLayout(409, 3);
+  assert.deepEqual([three.columns, three.rows, three.scrollHeight], [3, 1, 258]);
+  assert.deepEqual(three.buttons.map(button => button.x), [15, 141, 267]);
+  const five = descriptionActionLayout(384, 5);
+  assert.deepEqual([five.columns, five.rows], [3, 2]);
+  assert.ok(five.buttons.every(button => button.x + button.width <= 384 && button.y + button.height <= 431));
 });
 
 test('description panel keeps the native panel, scroll, close and menu rects', () => {

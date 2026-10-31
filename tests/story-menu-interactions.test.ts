@@ -786,7 +786,7 @@ test('forge repaints the menu once per action', t => {
   assert.equal(render.mock.callCount(),2,'结算只重绘一次，不叠加会话通知');
 });
 
-test('dense action row fits four actions including the forge entry', async t => {
+test('four actions use two rows including the forge entry', async t => {
   const f=fixture();t.after(f.cleanup);f.hero.addExperience(Number.MAX_SAFE_INTEGER);
   const first=f.add('ferrule'),second=f.add('copper-ring'),third=f.add('crystal-ring');
   const equip=async(id:string)=>{f.menu.debugDescribe(id);f.scene.click(f.scene.button('装备'));await Promise.resolve();};
@@ -795,11 +795,9 @@ test('dense action row fits four actions including the forge entry', async t => 
   target.numbers!.sockets=1;f.session.bag.restoreState(state);
   f.menu.debugDescribe(third.id);
   const buttons=['替换戒指','替换饰品','镶嵌','丢弃'].map(label=>f.scene.button(label));
-  assert.ok(buttons.every(button=>button.input!.hitArea.width===92),'4 个动作都改文字按钮');
+  assert.ok(buttons.every(button=>button.input!.hitArea.width===168),'4 个动作改两行大按钮');
   assert.ok(buttons.every(button=>button.getData('labelText')),'4 个动作都有文字');
-  const xs=buttons.map(button=>button.x).sort((left,right)=>left-right);
-  for(let index=1;index<xs.length;index++)assert.equal(xs[index]-xs[index-1],94,'按钮步长 94');
-  assert.ok(xs.at(-1)!-xs[0]!+92<=377,'4 个按钮总宽不超出操作行');
+  assert.deepEqual(buttons.map(button=>[button.x,button.y]),[[100,300],[276,300],[100,362],[276,362]],'两行两列');
 });
 
 test('hero bag still applies skill reset and supreme elixir', t => {
