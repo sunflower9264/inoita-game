@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { bagLayout, descriptionPanel, EQUIPMENT_SLOT_ORDER } from '../src/ui/bag-layout.ts';
+import { bagLayout, DESCRIPTION_PANEL, descriptionPanel, EQUIPMENT_SLOT_ORDER } from '../src/ui/bag-layout.ts';
 
 const menuPanels = JSON.parse(fs.readFileSync(
   new URL('../public/content/menu-panels.json', import.meta.url), 'utf8')) as {
@@ -50,14 +50,14 @@ test('bag side buttons and money follow the native coordinates', () => {
 });
 
 test('description panel keeps the native panel, scroll, close and menu rects', () => {
-  const { description, leftFrame, bagFrame } = bagLayout();
+  const { leftFrame, bagFrame } = bagLayout(), description = DESCRIPTION_PANEL;
   // 面板矩形是原版常量：宽 442（建面板时的硬常量），高 431（与内容栏同高，纵向图框素材
   // 24×383 = 431−48 反证）。原版把它放在 y=133，而 133 正是内容框顶边，所以本作等于 0，
   // 不需要任何纵向适配。
   assert.equal(description.width, 442);
   assert.equal(description.height, leftFrame.height);
   assert.equal(description.y, 0);
-  assert.deepEqual(description.x, { left:85, right:496 }, '物品停在左栏，身上装备停在右栏');
+  assert.deepEqual([leftFrame.x, bagFrame.x], [85, 496], '物品停在左栏，身上装备停在右栏');
   // 面板自带底色：内缩 10 取原版（UIDesc_Draw 里 GRPX_FillRectAlpha 的参数 0x3c=60），
   // 不透明度本作提到 85%——面板要压得住底下那一栏的格子与图标。
   assert.deepEqual([description.inset, description.background, description.backgroundAlpha], [10, 0x000000, .85]);
@@ -75,8 +75,7 @@ test('description panel keeps the native panel, scroll, close and menu rects', (
   assert.equal(description.menu.offsets[3] + 2 * description.menu.button.stride + description.menu.button.width,
     description.menu.width);
   // 面板原点就是点选来源那一栏的左边——85 与 496 分别等于左右框的 x。
-  assert.equal(description.x.left, leftFrame.x);
-  assert.equal(description.x.right, bagFrame.x);
+  assert.deepEqual([leftFrame.x, bagFrame.x], [85, 496]);
   // 正文滚动区与底部菜单行都收在面板矩形内；面板比单栏宽，因为它本来就盖住本栏并压过右侧间隙。
   for (const part of [
     { x:description.scroll.x, y:description.scroll.y, width:description.scroll.width, height:description.scroll.height },

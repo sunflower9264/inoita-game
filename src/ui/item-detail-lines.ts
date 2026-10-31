@@ -5,12 +5,11 @@ import type { ShopCatalog } from '../domain/shop.ts';
 import type { DescriptionTextPart } from '../domain/description-text.ts';
 import { equipmentColor, equipmentGrade } from './item-name-color.ts';
 
-export type ItemDescriptionRow = string | { parts: DescriptionTextPart[] };
+export type ItemDescriptionRow = { parts: DescriptionTextPart[] };
 interface ItemDescriptionBody {
   title: string;
   color?: string;
   rows: ItemDescriptionRow[];
-  sockets: number;
 }
 
 /** 原版 UIDesc_AddOption 按词条来源选色，并使用原有的冒号及十分之一百分比。 */
@@ -66,13 +65,12 @@ export function itemDescriptionBody(options: {
   concealed?: boolean;
 }): ItemDescriptionBody {
   const {item, entry, numbers, catalog, grades, member, classNames, gemNames, skill} = options;
-  if (options.concealed) return {title:`${item.typeName}（未鉴定）`, color:'#808080', rows:[], sockets:0};
+  if (options.concealed) return {title:`${item.typeName}（未鉴定）`, color:'#808080', rows:[]};
   const equipment = item.equipment, grade = equipmentGrade(entry.numbers, numbers);
   const prefix = equipment && grade !== 2 ? item.priceKind === 'weapon' ? grades[grade]?.name : grades[grade]?.armorName ?? grades[grade]?.name : '';
   const title = `${prefix ? prefix + ' ' : ''}${item.name}${equipment && entry.enhancement ? '+' + entry.enhancement : ''}`;
   const color = equipment ? equipmentColor(entry.numbers, numbers, grades) : undefined;
   const parts: DescriptionTextPart[] = [];
-  let sockets = 0;
   if (equipment) {
     parts.push({text:item.typeName, color:member && !equipment.classes.includes(member.classId) ? '#ff0000' : '#ffffff'},
       {text:'\n等级 '}, {text:String(equipmentLevel(item,entry)), color:member && member.level < equipmentLevel(item,entry) ? '#ff0000' : '#ffffff'});
@@ -84,8 +82,7 @@ export function itemDescriptionBody(options: {
     }
     if (equipment.description?.showEnhancementUses ?? (item.priceKind === 'weapon' || item.priceKind === 'armor'))
       parts.push({text:`\n强化耐久度 ${entry.numbers?.enhancementUses ?? 0}`});
-    sockets = entry.numbers?.sockets ?? 0;
-    parts.push({text:`\n宝石孔数量 ${sockets}`});
+    parts.push({text:`\n宝石孔数量 ${entry.numbers?.sockets ?? 0}`});
     if (equipment.description?.attackSpeed) parts.push({text:`\n${equipment.description.attackSpeed}`});
     if (numbers) {
       const power = equipmentPower(numbers, entry);
@@ -113,5 +110,5 @@ export function itemDescriptionBody(options: {
     if (parts.length) parts.push({text:'\n\n'});
     parts.push(...description);
   }
-  return {title, color, rows:parts.length ? [{parts}] : [], sockets};
+  return {title, color, rows:parts.length ? [{parts}] : []};
 }

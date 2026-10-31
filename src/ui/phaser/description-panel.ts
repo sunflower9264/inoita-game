@@ -48,10 +48,7 @@ export function drawDescriptionSeparator(v: UiSurface, x: number, y: number, wid
  */
 export function drawDescriptionRows(v: UiSurface, rows: ItemDescriptionRow[], width: number, parent?: Phaser.GameObjects.Container): number {
   let y = 0;
-  for (const row of rows) {
-    if (row === 'separator') { drawDescriptionSeparator(v, 0, y + 6, width, parent); y += 13; continue; }
-    y += drawDescriptionText(v, typeof row === 'string' ? [{text:row}] : row.parts, 0, y, width, 22, parent) + 5;
-  }
+  for (const row of rows) y += drawDescriptionText(v, row.parts, 0, y, width, 22, parent) + 5;
   return y;
 }
 

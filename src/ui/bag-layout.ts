@@ -50,8 +50,6 @@ interface BagLayout {
   leftFrame:BagRect;
   /** 人物预览：内容区绝对坐标（原版局部 129,110 加左框基址 85）。 */
   preview:BagRect;
-  /** 左框底部的等级与职业行。 */
-  level:{x:number; y:number; width:number};
   bagFrame:BagRect;
   grid:{x:number; y:number; width:number; height:number; stride:number; columns:number};
   slot:typeof SLOT;
@@ -61,17 +59,6 @@ interface BagLayout {
   organize:BagRect;
   money:{x:number; y:number; plate:BagRect; stride:number; coin:{width:number; height:number}; digit:{x:number; y:number}; color:string};
   badge:{x:number; y:number; color:string};
-  /**
-   * 说明面板。点选物品时停在左栏（x=85），点选身上装备时停在右栏（x=496），y 恒为 133。
-   * 依据：`UIEquip_InvenItemControlEventProc @0x149f18` 与
-   * `UIEquip_InvenBagControlEventProc @0x14a198` 都传 0，`UIEquip_EquipControlEventProc
-   * @0x149998` 传 1。面板内部的滚动区、右上角关闭按钮与底部菜单行都相对面板左上角。
-   */
-  description:{y:number; x:{left:number; right:number}; width:number; height:number;
-    inset:number; background:number; backgroundAlpha:number;
-    title:{x:number; y:number; right:number; size:number};
-    scroll:BagRect; close:{x:number; y:number; size:number};
-    menu:{x:number; y:number; width:number; height:number; button:{width:number; height:number; stride:number}; offsets:Record<number, number>}};
 }
 
 /**
@@ -149,7 +136,6 @@ export function bagLayout():BagLayout {
   return {
     leftFrame:{ x:85, y:0, width:409, height:431 },
     preview:{ x:85+129, y:110, width:157, height:157 },
-    level:{ x:131, y:368, width:323 },
     bagFrame,
     // 网格组在右框内 (34,27)，格子按格宽步长铺四列四行。
     grid:{ x:bagFrame.x+34, y:bagFrame.y+27, width:323, height:323, stride:SLOT_STRIDE, columns:4 },
@@ -161,7 +147,5 @@ export function bagLayout():BagLayout {
       plate:{ x:bagFrame.x+MONEY.plateOffset.x, y:bagFrame.y+MONEY.plateOffset.y, width:MONEY.plateOffset.width, height:34 },
       stride:MONEY.stride, coin:MONEY.coin, digit:MONEY.digit, color:MONEY.color },
     badge:{ x:67, y:47, color:'#ffffff' },
-    // 面板原点落在点选来源那一栏的左边（85 与 496 就是左右框的 x），纵向与那一栏的顶边对齐。
-    description:{ ...DESCRIPTION_PANEL, x:{ left:85, right:496 } },
   };
 }

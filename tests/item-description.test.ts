@@ -91,7 +91,7 @@ test('all fifteen grades retain native colors, including unnamed rare and epic e
 
 test('concealed stock changes its title and hides values until purchase without rerolling',()=>{
   const value=entry('短剑'),before=structuredClone(value);
-  assert.deepEqual(describe(value,undefined,true),{title:'短剑（未鉴定）',color:'#808080',rows:[],sockets:0});
+  assert.deepEqual(describe(value,undefined,true),{title:'短剑（未鉴定）',color:'#808080',rows:[]});
   assert.deepEqual(value,before);assert(bodyText(describe(value)).includes('强化耐久度 7'));
 });
 

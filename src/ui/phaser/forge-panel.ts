@@ -34,7 +34,6 @@ export class ForgePanel {
     this.bag=bag;this.panels=panels;this.stats=stats;this.memberId=memberId;
     this.changed=changed;this.sound=sound;this.notify=notify;this.preview=preview;
   }
-  get modalOpen():boolean{return !!this.confirmation;}
   get confirming():boolean{return !!this.confirmation;}
   open(targetId:string,tab:ForgeTab='enchant'):void {
     this.targetId=targetId;this.tab=tab;

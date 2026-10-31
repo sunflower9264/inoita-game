@@ -147,7 +147,7 @@ export class StatusHud {
   private readonly playerIcons:Phaser.GameObjects.Container;
   private readonly unsubscribe:()=>void;private player?:Readonly<StoryPlayerState>;private target?:TargetStatus;private visible=false;
   private targetSignature='';private lastTick=-1;
-  private partySignature='';private playerIconImages:Phaser.GameObjects.Image[]=[];private memberCount=0;
+  private playerIconImages:Phaser.GameObjects.Image[]=[];private memberCount=0;
   private playerIconSignature='';private portraitKey?:string;private visibilityApplied=false;
   constructor(hud:Hud,skin:StatusHudSkin,readPlayer:()=>Readonly<StoryPlayerState>|undefined,subscribe:(listener:()=>void)=>()=>void,
     readParty?:()=>PartySnapshot|undefined,onSelect?:(id:string)=>void,portraitFor?:(id:string)=>string|undefined,onFocus?:()=>void,
@@ -174,8 +174,7 @@ export class StatusHud {
     });
     this.panels=(skin.member.slots??[]).map(()=>new MemberPanel(scene,hud,skin,id=>onSelect?.(id)));
     const refresh=()=>{
-      this.player=readPlayer();const snapshot=readParty?.(),signature=JSON.stringify([snapshot?.active,snapshot?.controlled,snapshot?.living]);
-      if(signature!==this.partySignature){this.partySignature=signature;}
+      this.player=readPlayer();const snapshot=readParty?.();
       const active=snapshot?.active??['player'];
       const controlled=snapshot?.controlled??'player';
       // 大面板常驻当前操控者；竖排只列其余成员，按队伍顺序紧接在大面板下方。

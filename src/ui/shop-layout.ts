@@ -77,7 +77,7 @@ export const tradeLayout = {
   quantity:{width:450,height:350,
     plate:{x:TRADE_INSET,y:TRADE_INSET,width:450-TRADE_INSET*2,height:350-TRADE_INSET*2},
     field:{x:95,y:50,width:260,height:58},
-    step:{width:51,height:58,left:0,right:209},
+    step:{width:51,height:58,right:209},
     icon:{x:150,y:47,size:64},
     count:{x:233,y:56,color:'#e2cb9e'},
     textPlate:{x:63,y:168,width:QUANTITY_PLATE_WIDTH},

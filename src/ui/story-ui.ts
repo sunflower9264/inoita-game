@@ -8,7 +8,7 @@ import {EquipmentCrafting} from '../domain/crafting.ts';
 import {skillForGrowth,memberSkillGrowth} from '../domain/battle.ts';
 import type Phaser from 'phaser';
 import { SHORTCUT_PAGE_COUNT, SHORTCUT_SLOT_COUNT, ShortcutBar, type ShortcutEntry } from '../domain/shortcut-bar.ts';
-import { SLOT_ICON_SIZE, ITEM_ICON_SIZE, PENDING_OFFSET, controlPlacement } from './phaser/action-controls.ts';
+import { SLOT_ICON_SIZE, ITEM_ICON_SIZE, controlPlacement } from './phaser/action-controls.ts';
 import { AttributeAllocation } from '../domain/attribute-allocation.ts';
 import { effectiveCharacterPanel, PRIMARY_STATS, type Modifier, type PrimaryStat } from '../domain/character-stats.ts';
 import { memberCombatModifiers } from '../domain/party-combat.ts';
@@ -33,7 +33,7 @@ import type { GmActions } from '../debug/gm-actions.ts';
 import { readSafeArea, uiUnitScale } from './viewport.ts';
 import { ControlLayoutEditor } from './phaser/control-layout-editor.ts';
 import { KeyBindingEditor } from './phaser/key-binding-editor.ts';
-import { HUD_SIDE_BUTTON_SIZE, resolveControlLayout, type ControlId } from './control-layout.ts';
+import { HUD_SIDE_BUTTON_SIZE, PENDING_OFFSET, resolveControlLayout, type ControlId } from './control-layout.ts';
 import { controlViewport } from './phaser/control-layout-viewport.ts';
 import { UiSurface, uiImageFor, type ScrollArea } from './phaser/widgets.ts';
 import { drawDescriptionClose, drawDescriptionPanel, drawDescriptionRows, drawDescriptionSeparator, drawDescriptionTitle } from './phaser/description-panel.ts';
@@ -1071,14 +1071,14 @@ export class StoryUI {
     const panelCoversBag=(describing||showingResult)&&this.descSide==='right';
     if(!covered){
       if(!describing)this.selectedItem=undefined;
-      const preview={x:214,y:110,width:157,height:157},appearance=this.app.equipmentAppearance?.(this.selectedMemberId),clip=appearance?.clips['idle-south'];
+      const preview=bagLayout().preview,appearance=this.app.equipmentAppearance?.(this.selectedMemberId),clip=appearance?.clips['idle-south'];
       if(appearance&&this.scene&&clip?.layers.every(layer=>this.scene!.textures.exists(layer.key))){
         // 合成立绘按预览洞缩放到刚好放得下、并在洞里居中：原版这个洞是 157×157（左框局部 129,110），
         // 立绘必须落在洞内。CharacterPreview 同一外观只合成一次：点格子、翻物品重画时不重建精灵。
         const character=this.bagPortrait??(this.bagPortrait=new CharacterPreview(this.scene));
         character.show(v,appearance,preview);
       }
-      else v.image(this.selectedMemberId==='player'?panels.classes[member.classId].preview:art.partyIcon,214,110,157,157);
+      else v.image(this.selectedMemberId==='player'?panels.classes[member.classId].preview:art.partyIcon,preview.x,preview.y,preview.width,preview.height);
       for(const slot of panels.equipmentSlots){const entry=equipment[slot.id as EquipmentSlot],instance=entry?bag.get(entry):undefined,item=instance?bag.catalog.items[instance.item]:undefined;const button=v.button('',85+slot.x,slot.y,74,74,()=>{if(!entry)return;this.selectItem(entry,'right');},{image:slotFrameImage(this.app,this.session!,instance)});v.image(item?.icon??slot.emptyIcon,item?5:13,item?5:13,item?64:48,item?64:48,button);button.setData('label',slot.name);this.drops.push({object:button,entry,slot:slot.id as EquipmentSlot});}
       // 等级／职业行：`UIEquip_DrawEquip` 在左框内 (46,368) 画 323 宽的文本底板，文字居中于它、
       // 颜色 #e2cb9e、纵向上沿在底板顶边下 7 像素（`GRPX_DrawStringWithFont(..., y+375, 居中)`）。

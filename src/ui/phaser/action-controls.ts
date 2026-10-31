@@ -6,7 +6,6 @@ import type { ActionControlsHandlers } from '../../rendering/action-controls.ts'
 import { SHORTCUT_SLOT_COUNT, type ShortcutEntry } from '../../domain/shortcut-bar.ts';
 import { ControlLayoutPreferences, resolveControlLayout, type ControlId } from '../control-layout.ts';
 import { controlViewport } from './control-layout-viewport.ts';
-export { SHORTCUT_OFFSETS, SWAP_OFFSET, PENDING_OFFSET } from '../control-layout.ts';
 import { ActionPressGate } from '../action-press-gate.ts';
 import { uiImageFor } from './widgets.ts';
 import { FONT } from '../text-style.ts';
