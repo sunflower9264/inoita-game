@@ -2,7 +2,7 @@ import type { SaveGame } from '../domain/save-game.ts';
 import type { Session } from '../domain/session.ts';
 
 /** 自动存档的写入原因；只用于诊断与测试，玩家看不到。 */
-export type AutoSaveReason = 'map-entry' | 'story-event' | 'quest' | 'timer';
+export type AutoSaveReason = 'map-entry' | 'story-event' | 'quest' | 'timer' | 'rest' | 'legendary-sword';
 
 export interface AutoSavePorts<World = unknown> {
   /** 世界还没就绪（换图、未进图）时返回 undefined，这一次就不写。 */

@@ -66,17 +66,28 @@ function machine(map:WorldMap):EntityPlacement {
   return map.entities.find(entity=>world.actors[entity.actor]?.service==='fusion-machine')!;
 }
 
+function sword(map:WorldMap):EntityPlacement {
+  return map.entities.find(entity=>world.actors[entity.actor]?.service==='legendary-sword')!;
+}
+
+function innkeeper(map:WorldMap):EntityPlacement {
+  return map.entities.find(entity=>world.actors[entity.actor]?.service==='innkeeper')!;
+}
+
 /** 站在融合器正下方，面朝它按一次攻击键。 */
-function pressAttack(mapId:string,current=new Session(campaign,undefined,undefined,items,new BattleCharacter('dark-knight',stats,items))) {
-  const map=mapOf(mapId),entity=machine(map),calls:string[]=[],animations=new Set<string>();
+function pressAttack(mapId:string,current=new Session(campaign,undefined,undefined,items,new BattleCharacter('dark-knight',stats,items)),select=(map:WorldMap)=>machine(map)) {
+  const map=mapOf(mapId),entity=select(map),calls:string[]=[],animations=new Set<string>();
   current.chests.enterMap(map.id);
   const combat={controlledVisual:undefined as {container:Display}|undefined,controlledMember:{level:100},
     facing:'north' as Facing,cannotAct:false,playerCannotAct:()=>false,hasHostileTarget:()=>false,
     attack:()=>calls.push('attack'),setPerformanceActive(){},syncChestEnemies(){}};
   const state={
-    app:{world,items,session:current,campaign,locked:false,suspended:false,
-      ui:{ready:true,controlLayoutEditing:false},audio:{ui:(sound:string)=>calls.push(sound)},shops:{shops:{}},
-      director:{interact:(_entity:EntityPlacement,actor:ActorDefinition)=>{calls.push(`interact:${actor.id}`);return Promise.resolve(true);}},
+    app:{world,items,session:current,campaign,locked:false,suspended:false,characterStats:stats,
+      autoSave:(reason:string)=>calls.push(`autosave:${reason}`),
+      ui:{ready:true,controlLayoutEditing:false,showInstant:(message:string)=>calls.push(`instant:${message}`)},
+      audio:{ui:(sound:string)=>calls.push(sound),effect:(sound:string)=>calls.push(`effect:${sound}`)},shops:{shops:{}},
+      director:{interact:(_entity:EntityPlacement,actor:ActorDefinition)=>{calls.push(`interact:${actor.id}`);return Promise.resolve(true);},
+        visitInnkeeper:(actor:ActorDefinition,quote:{cost:number},rest:()=>void)=>{calls.push(`visitInnkeeper:${actor.id}:${quote.cost}`);rest();return Promise.resolve(true);}},
       openCrafting:(actorId:string)=>calls.push(`openCrafting:${actorId}`)},
     map,dropCatalog:drops,player:{container:new Display()},characters:[] as Character[],near:null as Character|null,combat,
     autoAttack:{engage(){}},performing:false,loadingWorld:false,active:true,chestFades:new Map(),
@@ -85,7 +96,7 @@ function pressAttack(mapId:string,current=new Session(campaign,undefined,undefin
     anims:{exists:(key:string)=>animations.has(key),create:({key}:{key:string})=>animations.add(key),generateFrameNumbers:()=>[]},
     movement:{register(){},setEnabled(){}},
     tweens:{add:()=>({paused:false,pause(){},resume(){}})},
-    refreshCombatTarget(){},refreshLoadout(){}
+    refreshCombatTarget(){},refreshLoadout(){},refreshState(){calls.push('refresh');},syncHud(){},checkpointStoryWorld(){calls.push('checkpoint');}
   };
   const scene=Object.setPrototypeOf(state,WorldScene.prototype) as unknown as SceneHooks;
   state.characters.push(scene.createActor({...entity}));
@@ -120,4 +131,42 @@ test('an active fusion quest does not block the crafting panel',()=>{
 test('a fusion machine without any offer opens the crafting panel',()=>{
   const {calls,entity}=pressAttack('hall-of-afterlife-0780bd4c');
   assert.deepEqual(calls,[`openCrafting:${entity.actor}`]);
+});
+
+test('a level-zero map still lets the ancient sword be pulled',()=>{
+  const current=session(),mapId='underground-prison-guardpost-358b2781',before=current.bag.entries.length,original=Math.random;
+  const values=[0,0.01,0.1,0,0,0];let index=0;Math.random=()=>values[index++]??0.5;
+  try {
+    const {calls,entity}=pressAttack(mapId,current,map=>sword(map));
+    assert.equal(current.legendaryWeapons.isPulled(mapId,entity.id),true);
+    assert.ok(calls.includes('effect:UI_Ground_sword'));
+    assert.ok(calls.includes('autosave:legendary-sword'));
+    assert.ok(calls.includes('checkpoint'));
+    assert.ok(current.bag.entries.length>before);
+  } finally { Math.random=original; }
+});
+
+test('the innkeeper confirmation charges, restores and autosaves',()=>{
+  const current=session();current.gainMoney(100);current.hero!.setHealth(1);current.hero!.setMana(1);
+  const {calls}=pressAttack('kamuran-village-inn-29c0e2b1',current,map=>innkeeper(map));
+  assert.ok(calls.some(call=>call.startsWith('visitInnkeeper:innkeeper-ad05fa66:1')));
+  assert.ok(calls.includes('autosave:rest'));
+  assert.ok(calls.some(call=>call.startsWith('instant:已恢复全部的生命和魔法。')));
+  assert.ok(calls.includes('checkpoint'));
+  assert.equal(current.money,99);
+  assert.equal(current.hero!.player.health,current.hero!.player.maxHealth);
+  assert.equal(current.hero!.player.mana,current.hero!.player.maxMana);
+});
+
+test('a successful ancient sword pull grants a weapon and plays the sword sound',()=>{
+  const current=session();current.hero!.addExperience(100000);
+  const mapId='shadow-training-dungeon1-5e8c19b4',before=current.bag.entries.length,original=Math.random;
+  const values=[0,0.01,0.1,0,0,0];let index=0;Math.random=()=>values[index++]??0.5;
+  try {
+    const {calls,entity}=pressAttack(mapId,current,map=>sword(map));
+    assert.equal(current.legendaryWeapons.isPulled(mapId,entity.id),true);
+    assert.ok(calls.includes('effect:UI_Ground_sword'));
+    assert.ok(calls.includes('autosave:legendary-sword'));
+    assert.ok(current.bag.entries.length>before);
+  } finally { Math.random=original; }
 });

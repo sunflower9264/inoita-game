@@ -236,6 +236,63 @@ function pickUnique(catalog:DropCatalog,cap:number,random:()=>number):string|und
   return pickFromPool(catalog.equipment.unique,cap,random);
 }
 
+export interface LegendaryReward {
+  item:string;
+  grade:EquipmentGradeSeed;
+  sockets:boolean;
+  unique:boolean;
+}
+
+function weightedIndex(weights:readonly number[],random:()=>number):number {
+  const total=weights.reduce((sum,weight)=>sum+weight,0);
+  let roll=draw(random,total);
+  for(let index=0;index<weights.length;index+=1){
+    roll-=weights[index]!;
+    if(roll<0)return index;
+  }
+  return weights.length-1;
+}
+
+function pickLegendaryWeapon(catalog:DropCatalog,mapLevel:number,random:()=>number):string|undefined {
+  if(mapLevel<1)return undefined;
+  const lowBase=mapLevel<10?1:Math.floor(mapLevel*157287/262144);
+  const span=mapLevel-lowBase+1;
+  const first=lowBase+draw(random,span),second=lowBase+draw(random,span);
+  const base=Math.max(6,Math.trunc((first+second)/2));
+  const low=base-5,high=base+2;
+  const options=catalog.equipment.weapon.filter(choice=>choice.dropLevel>=low&&choice.dropLevel<=high);
+  if(options.length)return options[draw(random,options.length)]?.item;
+  const nearest=[...catalog.equipment.weapon].sort((left,right)=>Math.abs(left.dropLevel-base)-Math.abs(right.dropLevel-base));
+  return nearest[0]?.item;
+}
+
+/** 原版 `ITEMSYSTEM_GenerateGrade` 模式 6；第一版不接组队技能 122 的权重修正。 */
+export function rollLegendaryWeapon(catalog:DropCatalog,stats:CharacterStatsCatalog,mapLevel:number,random:()=>number):LegendaryReward|undefined {
+  const tier=weightedIndex([95,570,285,50],random);
+  if(tier>=3)return undefined;
+  const grade=tier===0?weightedIndex([383,233,134,250],random):
+    tier===1?4+weightedIndex([300,500,200],random):
+    7+weightedIndex([300,500,200],random);
+  if(grade>=10)return undefined;
+  if(grade===3){
+    const item=pickUnique(catalog,mapLevel,random);
+    if(!item)return undefined;
+    const equipment=stats.equipment[item];
+    const rolled=equipment?staticGrade(stats,equipment):undefined;
+    if(!rolled)return undefined;
+    return {item,grade:rolled,sockets:false,unique:true};
+  }
+  const item=pickLegendaryWeapon(catalog,mapLevel,random);
+  if(!item)return undefined;
+  const equipment=stats.equipment[item];
+  if(!equipment?.gradeVariants?.length)return undefined;
+  let index=grade;
+  while(index>0&&!equipment.gradeVariants[index])index-=1;
+  const variant=equipment.gradeVariants[index];
+  if(!variant)return undefined;
+  return {item,grade:{grade:index,gradeName:variant.name,attack:variant.attack,defense:variant.defense,optionCount:variant.optionCount,socketLimit:variant.socketLimit},sockets:true,unique:false};
+}
+
 function pickEpic(catalog:DropCatalog,cap:number,random:()=>number):string|undefined {
   return pickFromPool(catalog.equipment.epic,cap,random);
 }

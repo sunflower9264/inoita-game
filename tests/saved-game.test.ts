@@ -167,3 +167,16 @@ test('format 37 pity counters migrate to unique and epic counters',()=>{
   assert.deepEqual(state.bossDefeats,['enemy-boss']);
   assert.deepEqual(saved,before,'升级不改写槽里的原件');
 });
+
+test('format 38 saves gain an empty consumed-sword set on upgrade',()=>{
+  const saved=record();saved.format=38;delete (saved.session as {legendaryWeapons?:unknown}).legendaryWeapons;
+  const before=structuredClone(saved),candidate=prepareSavedGame(saved,content);
+  assert.deepEqual(candidate.session.legendaryWeapons.captureState(),{used:[]});
+  assert.deepEqual(saved,before,'升级不改写槽里的原件');
+});
+
+test('current saves keep the per-map consumed sword list',()=>{
+  const saved=record();saved.session.legendaryWeapons={used:['map-a:sword-001','map-a:sword-005']};
+  const candidate=prepareSavedGame(saved,content);
+  assert.deepEqual(candidate.session.legendaryWeapons.captureState(),{used:['map-a:sword-001','map-a:sword-005']});
+});

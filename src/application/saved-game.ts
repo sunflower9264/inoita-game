@@ -98,6 +98,11 @@ const SAVE_UPGRADES:Record<number,SaveUpgrade>={
     }
     game.format=38;
   },
+  38:game=>{
+    // 38 → 39：记录每张地图已拔出的古老武器；旧档视为一把都没拔。
+    game.session.legendaryWeapons={used:[]};
+    game.format=39;
+  },
 };
 function upgradeSavedGame(game:SaveGame<StoryWorldViewSnapshot>):SaveGame<StoryWorldViewSnapshot>{
   if(game.format===SAVE_FORMAT)return game;

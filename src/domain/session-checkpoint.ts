@@ -9,7 +9,10 @@ export class SessionCheckpoint<WorldState = undefined> {
   get available():boolean { return !!this.snapshot; }
   peek():CheckpointSnapshot<WorldState>|undefined { return this.snapshot?structuredClone(this.snapshot):undefined; }
   capture(session:Session,location:CheckpointLocation,world:WorldState):void {
-    this.snapshot=structuredClone({session:session.captureState(),location,world});
+    const state=session.captureState();
+    // 已拔出的古老武器是存档级进度；死亡检查点不回滚它，否则同一存档能反复拔同一把剑。
+    delete state.legendaryWeapons;
+    this.snapshot=structuredClone({session:state,location,world});
   }
   restore(session:Session):{location:CheckpointLocation;world:WorldState}|undefined {
     if(!this.snapshot)return;

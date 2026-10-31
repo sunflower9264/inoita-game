@@ -28,6 +28,8 @@ import { parseDrops, rollChestLoot, type DropCatalog, type DropReward } from '..
 import { BODY_ADJACENT_GAP, canReachChest, CHEST_OPEN_MS, facesTarget, nearInteractable, nearInteractive, SHOP_COUNTER_GAP } from '../domain/chests.ts';
 import { parseSprings, rollSpringEffect, type SpringCatalog } from '../domain/springs.ts';
 import { groundLootFor } from '../domain/ground-loot.ts';
+import { innRestQuote, restAtInn } from '../domain/inns.ts';
+import { pullLegendaryWeapon } from '../domain/legendary-weapon.ts';
 import { GroundLootView } from '../rendering/ground-loot.ts';
 import { PickupMessages } from '../rendering/pickup-messages.ts';
 import { BasicAttackRepeat } from '../domain/basic-attack-repeat.ts';
@@ -957,12 +959,12 @@ export class WorldScene extends Phaser.Scene {
     this.combat?.setPerformanceActive(this.performing);
     const { session } = this.app;
     for (const character of this.characters) {
-      const opened = this.chestOpened(character);
+      const opened = this.chestOpened(character), consumed = this.legendarySwordConsumed(character);
       // `actor-visibility` / `remove-character` 记在本图角色状态里；静态摆放也要立即隐藏并停碰撞。
       const present = !this.map || session.storyWorld.actorVisible(this.map.id, character.entity.actor, character.entity.characterId);
       character.container.setVisible(!this.performing && present && session.visible(character.entity) &&
-        (!opened || this.chestFades.has(character.entity.id)));
-      this.movement?.setEnabled(character, character.container.visible && !opened);
+        (!opened || this.chestFades.has(character.entity.id)) && !consumed);
+      this.movement?.setEnabled(character, character.container.visible && !opened && !consumed);
       if (character.marker) {
         const status = session.marker(character.entity.actor,character.entity.characterId);
         character.marker.container.setVisible(!!status);
@@ -1115,12 +1117,52 @@ export class WorldScene extends Phaser.Scene {
       if(this.takesQuestSlot(target.entity)){this.playStory(()=>this.app.director.interact(target.entity,target.actor));return true;}
       this.playStory(()=>this.app.director.visitHealer(target.actor,()=>this.combat?.reviveAtHealer()));return true;
     }
+    if(target.actor.service==='legendary-sword'){
+      if(this.takesQuestSlot(target.entity)){this.playStory(()=>this.app.director.interact(target.entity,target.actor));return true;}
+      this.pullLegendarySword(target);return true;
+    }
+    if(target.actor.service==='innkeeper'){
+      if(this.takesQuestSlot(target.entity)){this.playStory(()=>this.app.director.interact(target.entity,target.actor));return true;}
+      this.restAtInnkeeper(target);return true;
+    }
     const shop=this.app.shops.shops[target.entity.actor];
     if(shop&&!target.entity.objective&&!this.takesQuestSlot(target.entity)) {
       this.app.openShop(target.entity.actor,this.map?.id??'');return true;
     }
     this.playStory(() => this.app.director.interact(target.entity, target.actor));
     return true;
+  }
+  private pullLegendarySword(target:Character):void {
+    const map=this.map, drops=this.dropCatalog;
+    if(!map||!drops||this.app.session.legendaryWeapons.isPulled(map.id,target.entity.id))return;
+    this.playStory(async()=>{
+      const result=pullLegendaryWeapon(this.app.session,this.app.characterStats,drops,map.id,target.entity.id,map.lootLevel??0,Math.random,
+        {x:target.entity.x,y:target.entity.y});
+      if(result.success)this.app.audio?.effect('UI_Ground_sword');
+      this.app.ui.showInstant(result.message);
+      this.app.autoSave?.('legendary-sword');
+      this.checkpointStoryWorld();
+      this.refreshState();
+      this.updateInteractionTarget();
+      this.syncHud();
+      return true;
+    });
+  }
+  private restAtInnkeeper(target:Character):void {
+    const quote=innRestQuote(this.app.session);
+    this.playStory(()=>this.app.director.visitInnkeeper(target.actor,quote,()=>{
+      this.app.session.transaction(()=>{
+        this.app.session.spendMoney(quote.cost);
+        restAtInn(this.app.session,quote);
+      });
+      this.app.autoSave?.('rest');
+      this.checkpointStoryWorld();
+      this.app.ui.showInstant('已恢复全部的生命和魔法。');
+      this.syncHud();
+    }));
+  }
+  private legendarySwordConsumed(character:Character):boolean {
+    return character.actor.service==='legendary-sword'&&!!this.map&&this.app.session.legendaryWeapons.isPulled(this.map.id,character.entity.id);
   }
   /** 这个 NPC 的原版任务槽当前是否压过商店/合成等功能（待交付或可接）。 */
   private takesQuestSlot(entity:EntityPlacement):boolean {
@@ -1735,13 +1777,14 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
     for (const character of this.characters) {
       if (!character.container.visible) continue;
       if (this.chestOpened(character)) continue;
+      if (this.legendarySwordConsumed(character)) continue;
       if (character.entity.spring && this.map && this.app.session.springs.isEmpty(this.map.id, character.entity.id)) continue;
-      // 宝箱按原版「身边 24 px」选目标；机关按真实碰撞盒贴边兜底。商店能隔着柜台
-      // 说话，普通剧情/NPC 只放宽到贴身一格，避免隔两三格选中净化石这类目标。
-      const shop = !!this.app.shops?.shops[character.entity.actor];
-      if (!(character.actor.chest
+      // 宝箱和古剑按原版「身边 24 px」选目标；机关按真实碰撞盒贴边兜底。商店和
+      // 旅店能隔着柜台说话，普通剧情/NPC 只放宽到贴身一格，避免隔两三格选中净化石这类目标。
+      const shop = !!this.app.shops?.shops[character.entity.actor], inn = character.actor.service === 'innkeeper', sword = character.actor.service === 'legendary-sword';
+      if (!(character.actor.chest || sword
         ? nearInteractable(controlled.container, character.container)
-        : nearInteractive(controlled.container, character.container, character.actor.collision, !!character.entity.flip, shop ? SHOP_COUNTER_GAP : BODY_ADJACENT_GAP))) continue;
+        : nearInteractive(controlled.container, character.container, character.actor.collision, !!character.entity.flip, shop || inn ? SHOP_COUNTER_GAP : BODY_ADJACENT_GAP))) continue;
       const candidate = this.interactionCandidate(character);
       if (candidate === null) continue;
       const d = Math.abs(character.container.x - controlled.container.x) + Math.abs(character.container.y - controlled.container.y);

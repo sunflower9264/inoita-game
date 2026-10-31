@@ -167,3 +167,17 @@ test('event 32 opens the prison gates before Izelynn can be approached',()=>{
  assert.equal(approachExists(map,gateWorld(map),{x:440,y:472},goal),false);
  assert.equal(approachExists(map,gateWorld(map,'event-32'),{x:440,y:472},goal),true);
 });
+
+test('ancient swords and innkeepers carry their interaction services',()=>{
+ assert.equal(world.actors['the-legendary-sword-cb440e18'].service,'legendary-sword');
+ for(const id of ['innkeeper-ad05fa66','innkeeper-4c9ac51d','innkeeper-dfa04fff','innkeeper-b8f0066b'])assert.equal(world.actors[id].service,'innkeeper');
+ let swords=0,innkeepers=0;
+ for(const reference of world.maps){
+  const map=read<WorldMap>(reference.file);
+  for(const entity of map.entities){
+   if(entity.characterId==='npc-39')swords+=1;
+   if(['npc-5','npc-358','npc-379','npc-590'].includes(entity.characterId??''))innkeepers+=1;
+  }
+ }
+ assert.equal(swords,23);assert.equal(innkeepers,8);
+});

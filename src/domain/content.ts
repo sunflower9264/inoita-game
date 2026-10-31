@@ -99,8 +99,8 @@ interface AnimationLayer {
 
 export type ChestKind = 'ordinary' | 'improved' | 'boss';
 
-/** 人物提供的固定服务：灵魂治疗师与融合机。 */
-type ActorService = 'soul-healer' | 'fusion-machine';
+/** 人物提供的固定服务：灵魂治疗师、融合机、古老武器与旅店休息。 */
+type ActorService = 'soul-healer' | 'fusion-machine' | 'legendary-sword' | 'innkeeper';
 
 /** 一种人物（同一个编号的所有同名角色共用）。 */
 export interface ActorDefinition {

@@ -144,3 +144,13 @@ test('checkpoint restores buff resource limits before applying the saved combat 
   });
   assert.deepEqual(session.captureState(),before);
 });
+
+test('a death checkpoint does not bring consumed ancient swords back',()=>{
+  const session=createSession(),checkpoint=new SessionCheckpoint<undefined>();
+  session.legendaryWeapons.markPulled('map-a','sword-001');
+  checkpoint.capture(session,{map:campaign.start.map,x:16,y:24},undefined);
+  session.legendaryWeapons.markPulled('map-a','sword-002');
+  checkpoint.restore(session);
+  assert.equal(session.legendaryWeapons.isPulled('map-a','sword-001'),true);
+  assert.equal(session.legendaryWeapons.isPulled('map-a','sword-002'),true);
+});

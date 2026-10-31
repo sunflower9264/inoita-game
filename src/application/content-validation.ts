@@ -435,7 +435,7 @@ export function validateMenuClasses(menu:MenuPanels,catalog:BattleCatalog):void 
 }
 const box={x:number,y:number,width:positive,height:positive};
 const clip=shape<AnimationClip>({frameWidth:positive,frameHeight:positive,frames:positive,originX:number,originY:number,frameRate:positive,mirrorX:boolean,layers:array(object({key:text,file,blend:oneOf('normal','screen','add','multiply','color-dodge')}))});
-const actor=shape<ActorDefinition>({chest:optional(oneOf('ordinary','improved')),service:optional(oneOf('soul-healer','fusion-machine')),id:text,name:text,description:text,clips:record(clip),portrait:nullable(text),collision:optional(object(box)),effectAnchor:optional(object({x:number,y:number})),headAnchor:optional(object({x:number,y:number}))});
+const actor=shape<ActorDefinition>({chest:optional(oneOf('ordinary','improved')),service:optional(oneOf('soul-healer','fusion-machine','legendary-sword','innkeeper')),id:text,name:text,description:text,clips:record(clip),portrait:nullable(text),collision:optional(object(box)),effectAnchor:optional(object({x:number,y:number})),headAnchor:optional(object({x:number,y:number}))});
 const storyClasses=shape<StoryClassCatalog>({defaultClass:text,background:file,
   assets:object({selected:file,title:file,back:file,start:file,startPressed:file,descriptionTop:file,attributesTop:file,panelLeft:file,panelRight:file}),
   classes:array(object({id:text,name:text,description:text,icon:file,attributes:array(object({name:text,value:integer})),

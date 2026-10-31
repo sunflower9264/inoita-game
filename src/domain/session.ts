@@ -6,6 +6,7 @@ import { CombatResourceRecovery, type CombatResourceRecoveryState, type Resource
 import { ShopVisits, type ShopVisitsState } from './shop.ts';
 import { ChestVisits, type ChestVisitsState } from './chests.ts';
 import { SpringVisits, type SpringVisitsState } from './springs.ts';
+import { LegendaryWeapons, type LegendaryWeaponsState } from './legendary-weapon.ts';
 import { groundLootFor, GroundLootStore, type GroundLootState } from './ground-loot.ts';
 import { QuestItemGenerators, type QuestItemGenerationState } from './quest-item-spawns.ts';
 import { boundedHealth } from './status-hud.ts';
@@ -61,6 +62,7 @@ export interface SessionState {
   frenzyAnimations?:[string,number][];
   chests:ChestVisitsState;
   springs:SpringVisitsState;
+  legendaryWeapons?:LegendaryWeaponsState;
   shops:ShopVisitsState;
   groundLoot:GroundLootState;
   questItemGeneration:QuestItemGenerationState;
@@ -74,6 +76,7 @@ export interface SessionState {
 export class Session {
   readonly chests = new ChestVisits();
   readonly springs = new SpringVisits();
+  readonly legendaryWeapons = new LegendaryWeapons();
   readonly shops = new ShopVisits();
   readonly questItemGenerators = new QuestItemGenerators();
   /** 掉落保底：按成员记录连续未出装备/稀有，命中后清零。 */
@@ -314,7 +317,7 @@ export class Session {
       factSequences:[...this.factSequences],trackedQuest:this.trackedQuest,debugFocusQuest:this.debugFocusQuestValue,player:this.playerState,money:this.coins,gameTimeMs:this.gameTimeMs,
       enemies:[...this.enemyStates].map(([id,enemy])=>[id,structuredClone(enemy)]),bag:this.bag.captureState(),hero:this.hero?.captureState(),skills:this.skills.captureState(),
       party:this.party?.captureState(),recovery:this.recovery.captureState(),resourceRecovery:this.resourceRecovery.captureState(),
-      combatClock:this.combatClock.captureState(),cooldowns:this.cooldowns.captureState(),frenzyAnimations:this.frenzyAnimations.captureState(),chests:this.chests.captureState(),springs:this.springs.captureState(),shops:this.shops.captureState(),
+      combatClock:this.combatClock.captureState(),cooldowns:this.cooldowns.captureState(),frenzyAnimations:this.frenzyAnimations.captureState(),chests:this.chests.captureState(),springs:this.springs.captureState(),legendaryWeapons:this.legendaryWeapons.captureState(),shops:this.shops.captureState(),
       questItemGeneration:this.questItemGenerators.captureState(),groundLoot:groundLootFor(this).captureState(),
       lootPity:this.lootPity.captureState(),partyItemChance:this.partyItemChance};
   }
@@ -335,7 +338,7 @@ export class Session {
     this.enemyStates.clear();for(const [id,enemy] of restored.enemies)this.enemyStates.set(id,enemy);
     this.trackedQuest=restored.trackedQuest;this.debugFocusQuestValue=restored.debugFocusQuest;this.playerState=restored.player?Object.freeze({...restored.player}):undefined;
     this.coins=restored.money;this.gameTimeMs=restored.gameTimeMs;
-    this.recovery.restoreState(restored.recovery);this.chests.restoreState(restored.chests);this.springs.restoreState(restored.springs);this.shops.restoreState(restored.shops);
+    this.recovery.restoreState(restored.recovery);this.chests.restoreState(restored.chests);this.springs.restoreState(restored.springs);this.legendaryWeapons.restoreState(restored.legendaryWeapons);this.shops.restoreState(restored.shops);
     const clock=restored.combatClock??{frame:Math.floor(restored.resourceRecovery.elapsedMs/LOGIC_FRAME_MS),remainderMs:restored.resourceRecovery.elapsedMs%LOGIC_FRAME_MS};
     this.combatClock.restoreState(clock);this.cooldowns.restoreState(restored.cooldowns??{actors:[]});
     this.frenzyAnimations.restoreState(restored.frenzyAnimations??[]);
@@ -359,6 +362,7 @@ export class Session {
         if(slot.kind==='item'&&knownItems&&!this.bag.catalog.items[slot.id]||slot.kind==='skill'&&this.battle&&!this.battle.skills[slot.id])throw new Error('快捷栏引用不存在');
       }
     }
+    if(state.legendaryWeapons&&(!Array.isArray(state.legendaryWeapons.used)||state.legendaryWeapons.used.some(key=>typeof key!=='string'||!key.includes(':'))))throw new Error('已拔古剑记录无效');
   }
   private validateSkillState(state:SessionState):void {
     const validate=(skills:SkillConfigurationState)=>{
