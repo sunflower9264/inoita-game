@@ -6,7 +6,7 @@ export const UI_ATLAS_PAGES: readonly UiAtlasPage[] = [
     "file": "assets/ui/menu-ui-0.png",
     "data": "assets/ui/menu-ui-0.json",
     "frame": "assets/ui/shop/category-divider.png",
-    "width": 2048,
+    "width": 2046,
     "height": 1204
   }
 ];
@@ -1197,4 +1197,4 @@ export const UI_ATLAS_FRAMES: Readonly<Record<string, { key: string; frame: stri
     "page": 0
   }
 };
-export const UI_ATLAS_SOURCE_DIGEST = "6c20d6ab919b5e13d5d3213533d1bb297f71936d883cba93061a8e6c7b5c68f6";
+export const UI_ATLAS_SOURCE_DIGEST = "ed5d0650c811828ccb50e52376a0c1c988591e061c6efaf5ff2fd327d052421a";
