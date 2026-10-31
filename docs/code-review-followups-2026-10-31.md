@@ -6,8 +6,7 @@
 
 - `rush-of-anger-runtime`：AI 音效期望写于初始提交，2026-10-23 的 `ad197ec` 有意让所有玩家阵营成员的技能派发都出声；测试已同步。测试夹具缺少 `terrainFree`/`bodyTerrainFree`，已补。
 - `isOneHitKill`：`breakable-drops` 和 `molten-armor` 的夹具缺少生产 `settleHit` 会调用的 `session.isOneHitKill`，已补返回 `false` 的桩。
-
-仍失败、未处理：`tests/frenzy-attack.test.ts` 3 条 Phaser 播放测试在 `main` 基线也失败（`animationcomplete` 后 `finished` 仍为 `false` 等），属于既有测试基础设施问题，未混入本轮改动。
+- `frenzy-attack`：3 条播放测试的假 `Sprite` 缺少 `scene` 字段，生产 `isCurrentLayers` 把它误判成“已销毁”，收尾时没有停动画、也没有恢复可见性。夹具补上 `scene` 后 9 条全部通过。
 
 ## 本轮已处理
 
@@ -39,6 +38,6 @@
 ## 本轮验证
 
 - `npm run typecheck` 通过。
-- 本轮相关 39 个测试文件、402 条用例通过；`rush-of-anger` 9 条通过；`breakable-drops`/`molten-armor` 19 条通过。
+- 本轮相关 40 个测试文件、412 条用例通过；`rush-of-anger` 9 条通过；`breakable-drops`/`molten-armor` 19 条通过。
 - `npm run validate:content` 通过（416 张地图、12061 个素材）。
 - `npm run debug-start:check` 通过（487 个任务、0 gap）。

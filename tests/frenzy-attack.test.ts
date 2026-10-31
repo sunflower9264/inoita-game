@@ -39,6 +39,8 @@ function profile(frames=5,strike=2,swing:number|null=2){
   return {actor,definition,character,attack:resolveBasicAttack({basicAttacks:{frenzy:definition}},character)};
 }
 class Sprite extends FakeSprite {
+  /** 生产用 `isCurrentLayers` 检查 scene 是否存在来判断 Sprite 是否已被销毁。 */
+  scene={};
   stopped=false;
   visible=true;
   definitions:{frames:{frame:number}[];frameRate:number}[]=[];
