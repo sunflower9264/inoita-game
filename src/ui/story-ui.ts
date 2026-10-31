@@ -3,13 +3,14 @@ import { displaySettings } from '../application/display-settings.ts';
 import { fullscreenActive, fullscreenStatus, onFullscreenChange, setFullscreen } from '../application/fullscreen.ts';
 import { controlSettings, nextControlMode, type ControlMode } from '../application/control-settings.ts';
 import {CraftingPanel} from './phaser/crafting-panel.ts';
+import {ForgePanel, type ForgeTab} from './phaser/forge-panel.ts';
 import {EquipmentCrafting} from '../domain/crafting.ts';
 import {skillForGrowth,memberSkillGrowth} from '../domain/battle.ts';
 import type Phaser from 'phaser';
 import { SHORTCUT_PAGE_COUNT, SHORTCUT_SLOT_COUNT, ShortcutBar, type ShortcutEntry } from '../domain/shortcut-bar.ts';
 import { SLOT_ICON_SIZE, ITEM_ICON_SIZE, PENDING_OFFSET, controlPlacement } from './phaser/action-controls.ts';
 import { AttributeAllocation } from '../domain/attribute-allocation.ts';
-import { effectiveCharacterPanel, PRIMARY_STATS, type PrimaryStat } from '../domain/character-stats.ts';
+import { effectiveCharacterPanel, PRIMARY_STATS, type Modifier, type PrimaryStat } from '../domain/character-stats.ts';
 import { memberCombatModifiers } from '../domain/party-combat.ts';
 import { characterCombatValues } from './character-values.ts';
 import type { StoryUIContext } from '../application/ports.ts';
@@ -78,7 +79,7 @@ const CONTENT_ORIGIN={x:32,y:172} as const;
 /** 这些使用方式走独立操作面板，不出现在背包的「使用」菜单里。 */
 const NON_MENU_USE_KINDS=new Set(['enchant','socket','purify']);
 interface Operation {entry:string;kind:'use'|'discard';member?:string;skill?:string;quantity:number;confirmed?:boolean;error?:string}
-interface BagMenuAction {label:string;image:string;run:()=>void;disabled?:boolean}
+interface BagMenuAction {label:string;image:string;run:()=>void;disabled?:boolean;text?:boolean;fontSize?:number}
 /** 正式菜单读取 Session，操作仍由背包、技能、队伍和商店领域对象执行。 */
 export class StoryUI {
   private readonly app:StoryUIContext;
@@ -119,7 +120,7 @@ export class StoryUI {
   private allocation?:AttributeAllocation;private allocationExit?:()=>void;private allocationError='';
   /** 能力加点按钮的长按连发；每次重画都会换按钮，所以只记指针和这一步要加的属性。 */
   private allocationHold?:Phaser.Time.TimerEvent;
-  private craftingPanel?:CraftingPanel;private craftingActor?:string;
+  private craftingPanel?:CraftingPanel;private craftingActor?:string;private forge?:ForgePanel;
   private shopPanel?:ShopPanel;private partyPanel?:PartyPanel;private notice='';
   private keyboardFocus?:Phaser.GameObjects.Container;
   /**
@@ -155,9 +156,9 @@ export class StoryUI {
     this.shortcutScreen.enabled=()=>this.open&&!this.app.ui.suspended&&!this.busy&&!!this.shortcutEdit;
     this.backTab.enabled=()=>this.shortcutScreen!.enabled();
     this.hudButtons=new UiSurface(scene,960,640,50);this.backdrop=scene.add.rectangle(0,0,1,1,0x000000,.65).setOrigin(0).setDepth(99).setInteractive();
-    this.surface.enabled=()=>this.open&&!this.app.ui.suspended&&!this.busy&&!this.app.ui.controlLayoutEditing&&!this.app.ui.keyBindingEditing&&!this.shortcutEdit&&!this.operation&&!this.itemNotice&&!this.allocationExit&&!this.skillReset&&this.saveConfirm===undefined&&this.loadConfirm===undefined&&this.deleteConfirm===undefined&&this.renameRef===undefined&&!this.craftingPanel?.modalOpen&&!this.shopPanel?.modalOpen&&!this.partyPanel?.modalOpen;
+    this.surface.enabled=()=>this.open&&!this.app.ui.suspended&&!this.busy&&!this.app.ui.controlLayoutEditing&&!this.app.ui.keyBindingEditing&&!this.shortcutEdit&&!this.operation&&!this.itemNotice&&!this.allocationExit&&!this.skillReset&&this.saveConfirm===undefined&&this.loadConfirm===undefined&&this.deleteConfirm===undefined&&this.renameRef===undefined&&!this.craftingPanel?.modalOpen&&!this.shopPanel?.modalOpen&&!this.partyPanel?.modalOpen&&!this.forge;
     this.body.enabled=()=>this.surface!.enabled();this.description.enabled=()=>this.body!.enabled();
-    this.modal.enabled=()=>this.open&&!this.app.ui.suspended&&!this.busy&&(!!this.operation||!!this.itemNotice||!!this.allocationExit||this.skillReset||this.saveConfirm!==undefined||this.loadConfirm!==undefined||this.deleteConfirm!==undefined||!!this.craftingPanel?.modalOpen||!!this.shopPanel?.modalOpen||!!this.partyPanel?.modalOpen);
+    this.modal.enabled=()=>this.open&&!this.app.ui.suspended&&!this.busy&&(!!this.operation||!!this.itemNotice||!!this.allocationExit||this.skillReset||this.saveConfirm!==undefined||this.loadConfirm!==undefined||this.deleteConfirm!==undefined||!!this.craftingPanel?.modalOpen||!!this.shopPanel?.modalOpen||!!this.partyPanel?.modalOpen||!!this.forge);
     this.hudButtons.enabled=()=>this.app.ui.mode==='game'&&this.app.ui.ready&&!this.app.ui.locked&&!this.app.ui.suspended;
     scene.scale.on('resize',this.resize,this);scene.input.keyboard?.on('keydown',this.key,this);
     // 浏览器自身的退出（Esc、手势）不会走设置页的按钮，靠事件把开关状态同步回来。
@@ -189,8 +190,8 @@ export class StoryUI {
     if(active&&this.hudButtons&&this.hudButtons.root.length===0){const v=this.hudButtons;v.button('',0,0,56,56,()=>this.show('save'),{image:this.content!.assets.save}).setData('label','存档');v.button('',0,64,56,56,()=>this.show('bag'),{image:this.content!.assets.menu}).setData('label','菜单');}
     // 登记快捷键时菜单本体整块让位，只留背后的遮罩与这一屏自己，画面里那层游戏背景就露出来了。
     const menu=this.open&&!this.app.ui.suspended&&!this.shortcutEdit&&!this.app.ui.controlLayoutEditing&&!this.app.ui.keyBindingEditing;
-    this.surface?.visible(menu);this.body?.visible(menu);this.description?.visible(menu);
-    const modal=menu&&(!!this.operation||!!this.itemNotice||!!this.allocationExit||this.skillReset||this.saveConfirm!==undefined||this.loadConfirm!==undefined||this.deleteConfirm!==undefined||!!this.craftingPanel?.modalOpen||!!this.shopPanel?.modalOpen||!!this.partyPanel?.modalOpen);
+    this.surface?.visible(menu&&!this.forge);this.body?.visible(menu&&!this.forge);this.description?.visible(menu&&!this.forge);
+    const modal=menu&&(!!this.operation||!!this.itemNotice||!!this.allocationExit||this.skillReset||this.saveConfirm!==undefined||this.loadConfirm!==undefined||this.deleteConfirm!==undefined||!!this.craftingPanel?.modalOpen||!!this.shopPanel?.modalOpen||!!this.partyPanel?.modalOpen||!!this.forge);
     if(modal&&!this.modalActive)this.app.ui.resetInput();
     this.modalActive=modal;this.modal?.visible(modal);
     this.shortcutScreen?.visible(this.open&&!this.app.ui.suspended&&!!this.shortcutEdit);this.backTab?.visible(this.open&&!this.app.ui.suspended&&!!this.shortcutEdit);
@@ -255,13 +256,13 @@ export class StoryUI {
   debugDescribe(entry:string,side:'left'|'right'='left'):void{
     if(!this.session?.bag.get(entry))return;
     // `selectItem` 对同一条是「再点一次就收起」，调试条连点两下会把面板关掉，所以先清空再选。
-    this.selectedItem=undefined;this.applying=undefined;
+    this.selectedItem=undefined;this.applying=undefined;this.forge=undefined;
     this.show('bag');this.selectItem(entry,side);
   }
   /** 调试入口：直接打开某件物品的使用弹层。`kind='discard'` 打开丢弃框。 */
   debugUse(entry:string,kind:'use'|'discard'='use'):void{
     if(!this.session?.bag.get(entry))return;
-    this.show('bag');this.beginOperation(entry,kind);
+    this.forge=undefined;this.show('bag');this.beginOperation(entry,kind);
   }
   /** 调试入口：打开商店并停在该店的某个交易步骤；`shopId` 必须是 shops.json 里存在的键。 */
   debugShop(shopId:string,step:'browse'|'description'|'quantity'|'confirm'|'notice'='browse',kind:'buy'|'sell'='buy',mapId=''):void|Promise<void>{
@@ -273,9 +274,9 @@ export class StoryUI {
   close():void{
     if(this.open&&this.requestAllocationExit(()=>this.close()))return;
     if(!this.open)return;this.controlEditor?.close();this.app.ui.setControlLayoutEditing(false);
-    this.keyBindingEditor?.close();this.app.ui.setKeyBindingEditing(false);this.cancelOperation();this.applying=undefined;this.modalActive=false;this.shortcutEdit=undefined;this.shortcutScreen?.clear();this.backTab?.clear();this.shopPanel=undefined;this.bagPortrait?.visual.container.destroy();this.bagPortrait=undefined;this.craftingPanel=undefined;this.craftingActor=undefined;this.open=false;this.scrollNames.forEach((scroll,name)=>this.scrollOffsets.set(`${this.page}:${name}`,scroll.scrollTop));this.scrollNames.clear();this.body?.clear();this.description?.clear();if(this.surface&&this.body){this.surface.root.remove(this.body.root);this.surface.clear();this.surface.root.add(this.body.root);}this.keyboardFocus=undefined;this.surface?.visible(false);this.body?.visible(false);this.description?.visible(false);this.modal?.visible(false);this.shortcutScreen?.visible(false);this.backTab?.visible(false);this.backdrop?.setVisible(false);this.app.ui.resetInput();this.app.ui.lock(false,'story-menu');
+    this.keyBindingEditor?.close();this.app.ui.setKeyBindingEditing(false);this.cancelOperation();this.applying=undefined;this.modalActive=false;this.shortcutEdit=undefined;this.shortcutScreen?.clear();this.backTab?.clear();this.shopPanel=undefined;this.bagPortrait?.visual.container.destroy();this.bagPortrait=undefined;this.craftingPanel=undefined;this.craftingActor=undefined;this.forge=undefined;this.open=false;this.scrollNames.forEach((scroll,name)=>this.scrollOffsets.set(`${this.page}:${name}`,scroll.scrollTop));this.scrollNames.clear();this.body?.clear();this.description?.clear();if(this.surface&&this.body){this.surface.root.remove(this.body.root);this.surface.clear();this.surface.root.add(this.body.root);}this.keyboardFocus=undefined;this.surface?.visible(false);this.body?.visible(false);this.description?.visible(false);this.modal?.visible(false);this.shortcutScreen?.visible(false);this.backTab?.visible(false);this.backdrop?.setVisible(false);this.app.ui.resetInput();this.app.ui.lock(false,'story-menu');
   }
-  private cancelOperation():void{this.cancelDrag();this.request.abort();this.request=new AbortController();this.busy=false;this.operation=undefined;this.itemNotice=undefined;this.skillReset=false;this.saveConfirm=undefined;this.loadConfirm=undefined;this.deleteConfirm=undefined;this.renameRef=undefined;this.prompt?.close();this.partyPanel?.close();this.craftingPanel?.close();this.modal?.clear();this.modal?.visible(false);}
+  private cancelOperation():void{this.cancelDrag();this.request.abort();this.request=new AbortController();this.busy=false;this.operation=undefined;this.itemNotice=undefined;this.skillReset=false;this.saveConfirm=undefined;this.loadConfirm=undefined;this.deleteConfirm=undefined;this.renameRef=undefined;this.prompt?.close();this.partyPanel?.close();this.craftingPanel?.close();this.forge=undefined;this.modal?.clear();this.modal?.visible(false);}
   private key(event:KeyboardEvent):void{
     if(this.app.ui.suspended)return;
     // 捕获按键时整块键盘归键位面板：Tab、Enter、空格不再操作菜单。
@@ -296,8 +297,8 @@ export class StoryUI {
     if(event.key==='Escape'&&this.loadConfirm!==undefined){event.preventDefault();this.loadConfirm=undefined;this.render();return;}
     if(event.key==='Escape'&&this.saveConfirm!==undefined){event.preventDefault();this.saveConfirm=undefined;this.render();return;}
     if(event.key==='Escape'&&this.allocationExit){event.preventDefault();this.finishAllocation(false);return;}
-    if(event.key==='Escape'){event.preventDefault();if(this.busy){this.close();return;}if(this.shortcutEdit){this.closeShortcutScreen();return;}if(this.skillReset){this.skillReset=false;this.render();}else if(this.applying){this.applying=undefined;this.notice='';this.render();}else if(this.craftingPanel?.modalOpen){this.craftingPanel.cancel();}else if(this.shopPanel?.active){this.shopPanel.cancel();}else if(this.partyPanel?.modalOpen){this.partyPanel.cancel();}else if(this.operation){this.operation=undefined;this.render();}else if(this.page==='bag'&&this.selectedItem){this.selectedItem=undefined;this.render();}else this.close();return;}
-    const surfaces=this.operation||this.itemNotice||this.allocationExit||this.skillReset||this.saveConfirm!==undefined||this.loadConfirm!==undefined||this.deleteConfirm!==undefined||this.craftingPanel?.modalOpen||this.shopPanel?.modalOpen||this.partyPanel?.modalOpen
+    if(event.key==='Escape'){event.preventDefault();if(this.busy){this.close();return;}if(this.shortcutEdit){this.closeShortcutScreen();return;}if(this.skillReset){this.skillReset=false;this.render();}else if(this.forge?.confirming){this.forge.cancelConfirmation();}else if(this.forge){this.closeForge();}else if(this.applying){this.applying=undefined;this.notice='';this.render();}else if(this.craftingPanel?.modalOpen){this.craftingPanel.cancel();}else if(this.shopPanel?.active){this.shopPanel.cancel();}else if(this.partyPanel?.modalOpen){this.partyPanel.cancel();}else if(this.operation){this.operation=undefined;this.render();}else if(this.page==='bag'&&this.selectedItem){this.selectedItem=undefined;this.render();}else this.close();return;}
+    const surfaces=this.operation||this.itemNotice||this.allocationExit||this.skillReset||this.saveConfirm!==undefined||this.loadConfirm!==undefined||this.deleteConfirm!==undefined||this.craftingPanel?.modalOpen||this.shopPanel?.modalOpen||this.partyPanel?.modalOpen||this.forge
       ?[this.modal!]:this.shortcutEdit?[this.shortcutScreen!,this.backTab!]:[this.surface!,this.body!,this.description!];
     const buttons=surfaces.flatMap(surface=>surface.focusables());
     if(this.keyboardFocus&&!buttons.includes(this.keyboardFocus))this.keyboardFocus=undefined;
@@ -409,7 +410,7 @@ export class StoryUI {
   }
   private renderNow():void{
     if(!this.open||!this.surface||!this.body||!this.session)return;
-    this.craftingPanel?.captureScroll();this.shopPanel?.captureScroll();this.questPanel?.captureScroll();this.partyPanel?.captureScroll();this.scrollNames.forEach((scroll,name)=>this.scrollOffsets.set(`${this.page}:${name}`,scroll.scrollTop));this.scrollNames.clear();this.surface.root.remove(this.body.root);this.surface.clear();if(this.bagPortrait)this.body.root.remove(this.bagPortrait.visual.container);this.body.clear();this.description?.clear();this.modal!.clear();this.surface.root.add(this.body.root);this.drops=[];this.keyboardFocus=undefined;
+    this.forge?.captureScroll();this.craftingPanel?.captureScroll();this.shopPanel?.captureScroll();this.questPanel?.captureScroll();this.partyPanel?.captureScroll();this.scrollNames.forEach((scroll,name)=>this.scrollOffsets.set(`${this.page}:${name}`,scroll.scrollTop));this.scrollNames.clear();this.surface.root.remove(this.body.root);this.surface.clear();if(this.bagPortrait)this.body.root.remove(this.bagPortrait.visual.container);this.body.clear();this.description?.clear();this.modal!.clear();this.surface.root.add(this.body.root);this.drops=[];this.keyboardFocus=undefined;
     if(!this.member()){this.discardAllocation();this.selectedMemberId='player';}const v=this.surface;
     this.body.root.setPosition(CONTENT_ORIGIN.x,CONTENT_ORIGIN.y);
     // 登记快捷键时菜单本体不画：只重画那一屏（它自己在 `sync` 里显示、菜单整块隐藏）。
@@ -462,6 +463,7 @@ export class StoryUI {
     }
     if(this.page==='save'||this.page==='load')this.renderSaveSlots();
     if(this.page==='settings')this.renderSettings();
+    if(this.forge)this.forge.render(this.modal!,this.placeModal);
     if(this.notice)this.surface.text(this.notice,512,614,880,18).setOrigin(.5,0);
     if(this.operation)this.renderOperation();if(this.allocationExit)this.renderAllocationConfirmation();if(this.skillReset)this.renderSkillResetConfirmation();
     if(this.itemNotice){this.beginModal(1024,640);drawNativeMessage(this.modal!,this.app.menuPanels.assets,this.itemNotice,()=>{this.itemNotice=undefined;this.render();});}
@@ -1150,14 +1152,22 @@ export class StoryUI {
     this.finishScroll('item',detail,y);
     // 关闭按钮挂在面板右上角：那枚 67×67 的圆钮（原版矩形 349,−6，本作右移到贴边）。
     drawDescriptionClose(v,this.app.menuPanels.assets,panel,left,top,()=>{this.itemNotice=undefined;this.selectedItem=undefined;this.render();});
-    // 底部操作行：125×55、步长 126，按按钮数量取偏移 126/64/0。原版最多三个。
-    const assets=this.app.menuPanels.assets,actions=this.bagMenu(entry,worn),rowX=left+panel.menu.x+panel.menu.offsets[Math.min(actions.length,3)],rowY=top+panel.menu.y;
-    actions.forEach((action,index)=>{
-      const hit=v.button('',rowX+index*panel.menu.button.stride,rowY,
-        panel.menu.button.width,panel.menu.button.height,action.run,{bare:true,disabled:action.disabled,
+    // 底部操作行：常规 125×55、步长 126；4 个动作时整行改 92×55 文字按钮，避免 149×75 的图互相压住。
+    const assets=this.app.menuPanels.assets,actions=this.bagMenu(entry,worn),rowY=top+panel.menu.y;
+    if(actions.length){
+      const dense=actions.length>3,width=dense?92:panel.menu.button.width,height=panel.menu.button.height,
+        stride=dense?94:panel.menu.button.stride,rowX=left+panel.menu.x+(dense?0:panel.menu.offsets[Math.min(actions.length,3)]);
+      actions.forEach((action,index)=>{
+        const x=rowX+index*stride;
+        if(dense||action.text){
+          v.button(action.label,x,rowY,width,height,action.run,{fontSize:dense?14:action.fontSize??16,disabled:action.disabled}).setData('label',action.label);
+          return;
+        }
+        const hit=v.button('',x,rowY,width,height,action.run,{bare:true,disabled:action.disabled,
           pressed:assets['skill-button-pressed'],pressedRect:{x:-12,y:-9,width:149,height:75},pressedAdd:true}).setData('label',action.label);
-      hit.addAt(v.image(action.image,-12,-9,149,75,hit),0);
-    });
+        hit.addAt(v.image(action.image,-12,-9,149,75,hit),0);
+      });
+    }
   }
   /**
    * GM 道具页的详情层：用背包同一套说明面板与正文生成器，画在独立的说明画布（深度 300）上，
@@ -1206,6 +1216,8 @@ export class StoryUI {
         if(fallback)actions.push({label:'装备',image:assets['item-equip'],run:()=>{},disabled:true});
       }
     }
+    const forgeLabel=this.forgeLabel(entry);
+    if(forgeLabel)actions.push({label:forgeLabel,image:'',text:true,fontSize:forgeLabel.length>2?16:undefined,run:()=>this.openForge(entry.id)});
     if(item.use&&!NON_MENU_USE_KINDS.has(item.use.kind)&&!worn)actions.push({label:USE_LABELS[item.use.kind],image:assets['item-use'],run:()=>this.beginOperation(entry.id),disabled:!!this.itemUseProblem(entry)});
     if(item.use&&NON_MENU_USE_KINDS.has(item.use.kind)&&!worn)actions.push({label:USE_LABELS[item.use.kind],image:assets['item-use'],run:()=>this.beginApply(entry.id)});
     // 快捷键：与技能页同一套文案与同一屏。已配到任一组的这枚按钮改成「取消快捷键」，点了直接清掉
@@ -1218,6 +1230,32 @@ export class StoryUI {
     if(item.discardable&&!worn)actions.push({label:'丢弃',image:assets['item-discard'],run:()=>this.beginOperation(entry.id,'discard')});
     return actions;
   }
+  /** 装备说明底部的入口文案：能力组合决定是强化、镶嵌还是净化。 */
+  private forgeLabel(entry:ItemInstance):string|undefined {
+    const equipment=this.session!.bag.catalog.items[entry.item].equipment;
+    if(!equipment)return undefined;
+    const sockets=entry.numbers?.sockets??equipment.socketCapacity;
+    const canEnchant=equipment.enchantable,canSocket=sockets>0&&!equipment.locked,canPurify=!!entry.numbers?.chaos;
+    if(canEnchant&&canSocket)return '强化/镶嵌';
+    if(canEnchant)return '强化';
+    if(canSocket)return '镶嵌';
+    if(canPurify)return '净化';
+    return undefined;
+  }
+  private openForge(targetId:string):void {
+    const bag=this.session?.bag,target=bag?.get(targetId),equipment=target&&bag?bag.catalog.items[target.item].equipment:undefined;
+    if(!bag||!target||!equipment||this.busy)return;
+    this.cancelDrag();this.operation=undefined;this.itemNotice=undefined;this.applying=undefined;this.notice='';
+    this.selectedItem=targetId;
+    const sockets=target.numbers?.sockets??equipment.socketCapacity;
+    const tab:ForgeTab=equipment.enchantable?'enchant':sockets>0?'socket':target.numbers?.chaos?'purify':'enchant';
+    const member=this.member();
+    const preview=(id:string,modifiers:Modifier[])=>member?.previewGemChange(id,modifiers);
+    this.forge=new ForgePanel(bag,this.app.menuPanels,this.app.characterStats,this.selectedMemberId,
+      ()=>this.render(),()=>this.app.audio?.ui('enchant'),()=>this.closeForge(),preview);
+    this.forge.open(targetId,tab);this.render();
+  }
+  private closeForge():void {this.forge=undefined;this.render();}
   private async changeEquipment(entry:string|undefined,slot:EquipmentSlot):Promise<void>{
     if(this.busy)return;this.busy=true;this.cancelDrag();const signal=this.request.signal;this.render();
     try{await this.app.changeEquipment!(entry,slot,signal,this.selectedMemberId);if(signal.aborted)return;this.selectedItem=undefined;this.notice='';}

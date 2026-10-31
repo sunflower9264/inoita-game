@@ -29,6 +29,7 @@ import { GameUI } from '../src/ui/game-ui.ts';
 import type { ScrollArea, UiSurface } from '../src/ui/phaser/widgets.ts';
 import { COMMON_BUTTON } from '../src/ui/common-button.ts';
 import { createGmActions } from '../src/debug/gm-actions.ts';
+import type { ForgePanel } from '../src/ui/phaser/forge-panel.ts';
 
 // Only Phaser's drawing boundary is replaced. StoryUI, UiSurface, ScrollArea,
 // button events, GameUI locks and every domain transaction run their real code.
@@ -227,6 +228,7 @@ const panels = read<MenuPanels>('menu-panels'), content = read<StoryInterface>('
 interface MenuInternals {
   selectedMemberId: string;
   applying?: string;
+  forge?: ForgePanel;
   operation?: { entry: string; kind: 'use' | 'discard'; quantity: number };
   keyboardFocus?: Display;
   body: UiSurface;
@@ -281,6 +283,20 @@ function keyboardFocus(f: ReturnType<typeof fixture>, label: string, shift = fal
     if (f.internals.keyboardFocus?.getData('label') === label) return f.internals.keyboardFocus;
   }
   assert.fail(`键盘能够到达 ${label}`);
+}
+
+function setHeroWeapon(f: ReturnType<typeof fixture>, sockets: number, uses: number, enhancement = 0) {
+  const weapon = f.hero.bag.get(f.hero.bag.equipment['main-hand']!)!;
+  const state = f.hero.bag.captureState(), target = state.instances.find(entry => entry.id === weapon.id)!;
+  target.numbers!.sockets = sockets; target.numbers!.enhancementUses = uses; target.enhancement = enhancement;
+  f.hero.bag.restoreState(state);
+  return weapon;
+}
+
+function openHeroForge(f: ReturnType<typeof fixture>, label = '强化/镶嵌') {
+  f.menu.show('bag'); f.scene.click(f.scene.button('主手')); f.scene.click(f.scene.button(label));
+  assert.ok(f.internals.forge, 'forge 已打开');
+  return f.internals.forge!;
 }
 
 test('character allocation uses native arrow art and keeps points in the allocation area', t => {
@@ -622,6 +638,117 @@ test('purify jewels remove chaos through the detail button and report the result
   assert.equal(f.session.bag.get(weapon.id)!.numbers!.chaos,undefined);
   assert.equal(f.controls.instant.text,`${items.items[weapon.item].name}的混沌属性已净化`);
   assert.equal(f.session.bag.count('jewel-of-catharsis'),0);
+});
+
+test('forge opens from the worn equipment and enhances continuously', t => {
+  const f=fixture();t.after(f.cleanup);
+  const weapon=setHeroWeapon(f,3,3);f.add('novice-weapon-scroll',3);
+  t.mock.method(Math,'random',()=>0.99);
+  const forge=openHeroForge(f);
+  assert.equal(f.internals.surface.root.visible,false,'forge 打开时背包层隐藏');
+  assert.equal(f.internals.modal.root.visible,true);
+  assert.equal(forge.targetId,weapon.id);
+  assert.equal(f.scene.buttons('强化').length,1,'强化页签唯一');
+  assert.equal(f.scene.buttons('镶嵌').length,1,'镶嵌页签唯一');
+  assert.ok(f.scene.texts().some(text=>text.includes('+1 确定，+2 25%')),'强化页显示概率');
+  f.scene.click(f.scene.button('卷轴:低级武器强化卷轴'));
+  assert.equal(f.hero.bag.get(weapon.id)!.enhancement,1);
+  assert.equal(f.hero.bag.get(weapon.id)!.numbers!.enhancementUses,2);
+  assert.ok(f.scene.texts().some(text=>text.includes('强化 +1')),'结果行保留在 forge 内');
+  assert.equal(f.scene.buttons('卷轴:低级武器强化卷轴').length,1,'卷轴还有剩余，行仍在');
+  f.scene.click(f.scene.button('卷轴:低级武器强化卷轴'));
+  assert.equal(f.hero.bag.get(weapon.id)!.enhancement,2);
+  assert.equal(f.hero.bag.get(weapon.id)!.numbers!.enhancementUses,1);
+});
+
+test('forge disables normal scrolls at zero durability and highlights chaos', t => {
+  const f=fixture();t.after(f.cleanup);
+  const weapon=setHeroWeapon(f,3,0,10);f.add('novice-weapon-scroll');f.add('chaos-weapon-scroll');
+  openHeroForge(f);
+  assert.equal(f.scene.button('卷轴:低级武器强化卷轴').input!.enabled,false,'普通卷轴耐久不足');
+  assert.ok(f.scene.texts().some(text=>text.includes('耐久度不足')));
+  assert.ok(f.scene.nodes.some(node=>node.shown&&node.getData('forge-highlight')==='chaos'),'混沌卷轴高亮');
+  const chaos=f.scene.button('卷轴:混沌武器强化卷轴');
+  assert.ok(chaos.input!.enabled,'混沌卷轴可用');
+  t.mock.method(Math,'random',()=>0.999);
+  f.scene.click(chaos);
+  assert.equal(f.hero.bag.get(weapon.id)!.enhancement,9,'混沌失败降 1 级');
+  assert.equal(f.hero.bag.get(weapon.id)!.numbers!.enhancementUses,0,'混沌不消耗耐久');
+  assert.ok(f.scene.texts().some(text=>text.includes('强化失败')));
+});
+
+test('forge sockets, removes and replaces gems with confirmation', t => {
+  const f=fixture();t.after(f.cleanup);
+  const weapon=setHeroWeapon(f,3,3);
+  const first=f.add('novice-jewel'),second=f.add('standard-jewel'),replacement=f.add('advanced-jewel');
+  openHeroForge(f);
+  f.scene.click(f.scene.button('镶嵌'));
+  f.scene.click(f.scene.button(`宝石:${first.id}`));
+  assert.ok(f.scene.texts().some(text=>text.includes('镶嵌后')),'镶嵌前显示角色面板差值');
+  f.scene.click(f.scene.button('确认镶嵌'));
+  assert.equal(f.hero.bag.get(weapon.id)!.gems.length,1);
+  assert.equal(f.hero.bag.get(weapon.id)!.numbers!.gemModifiers.length,1);
+  f.scene.click(f.scene.button('孔位1'));
+  f.scene.click(f.scene.button('取出'));
+  assert.ok(f.internals.forge!.confirming);
+  f.scene.click(f.scene.button('是'));
+  assert.equal(f.hero.bag.get(weapon.id)!.gems.length,0);
+  assert.equal(f.hero.bag.count('novice-jewel'),1,'宝石回到背包');
+  f.scene.click(f.scene.button(`宝石:${second.id}`));
+  f.scene.click(f.scene.button('确认镶嵌'));
+  assert.equal(f.hero.bag.get(weapon.id)!.gems.length,1);
+  f.scene.click(f.scene.button('孔位1'));
+  f.scene.click(f.scene.button('替换'));
+  f.scene.click(f.scene.button(`宝石:${replacement.id}`));
+  f.scene.click(f.scene.button('确认替换'));
+  assert.ok(f.internals.forge!.confirming,'替换也要二次确认');
+  f.scene.click(f.scene.button('是'));
+  const after=f.hero.bag.get(weapon.id)!;
+  assert.equal(after.gems[0],replacement.item);
+  assert.equal(f.hero.bag.count('standard-jewel'),1,'旧宝石回到背包');
+});
+
+test('forge purifies chaos and Escape returns to the description', t => {
+  const f=fixture();t.after(f.cleanup);
+  const weapon=setHeroWeapon(f,3,3);
+  const state=f.hero.bag.captureState(),target=state.instances.find(entry=>entry.id===weapon.id)!;
+  target.numbers!.chaos={tier:'chaos',valuePercent:10,levelOffset:0};f.hero.bag.restoreState(state);
+  f.add('jewel-of-catharsis');
+  openHeroForge(f);
+  f.scene.click(f.scene.button('净化'));
+  f.scene.click(f.scene.button('净化石:净化之宝石'));
+  assert.equal(f.hero.bag.get(weapon.id)!.numbers!.chaos,undefined);
+  assert.equal(f.hero.bag.count('jewel-of-catharsis'),0);
+  f.add('novice-jewel');
+  f.scene.click(f.scene.button('镶嵌'));
+  const gem=f.hero.bag.entries.find(entry=>entry.item==='novice-jewel')!;
+  f.scene.click(f.scene.button(`宝石:${gem.id}`));
+  f.scene.click(f.scene.button('确认镶嵌'));
+  f.scene.click(f.scene.button('孔位1'));
+  f.scene.click(f.scene.button('取出'));
+  assert.ok(f.internals.forge!.confirming);
+  assert(f.scene.key('Escape'));
+  assert.equal(f.internals.forge!.confirming,false,'Escape 先取消确认');
+  assert.ok(f.internals.forge);
+  assert(f.scene.key('Escape'));
+  assert.equal(f.internals.forge,undefined,'再按一次关闭 forge');
+  assert.equal(f.internals.surface.root.visible,true);
+  assert.equal(f.scene.buttons('强化/镶嵌').length,1,'回到装备说明');
+});
+
+test('dense action row fits four actions including the forge entry', async t => {
+  const f=fixture();t.after(f.cleanup);f.hero.addExperience(Number.MAX_SAFE_INTEGER);
+  const first=f.add('ferrule'),second=f.add('copper-ring'),third=f.add('crystal-ring');
+  const equip=async(id:string)=>{f.menu.debugDescribe(id);f.scene.click(f.scene.button('装备'));await Promise.resolve();};
+  await equip(first.id);await equip(second.id);
+  const state=f.session.bag.captureState(),target=state.instances.find(entry=>entry.id===third.id)!;
+  target.numbers!.sockets=1;f.session.bag.restoreState(state);
+  f.menu.debugDescribe(third.id);
+  const buttons=['替换戒指','替换饰品','镶嵌','丢弃'].map(label=>f.scene.button(label));
+  assert.ok(buttons.every(button=>button.input!.hitArea.width===92),'4 个动作都改文字按钮');
+  const xs=buttons.map(button=>button.x).sort((left,right)=>left-right);
+  for(let index=1;index<xs.length;index++)assert.equal(xs[index]-xs[index-1],94,'按钮步长 94');
+  assert.ok(xs.at(-1)!-xs[0]!+92<=377,'4 个按钮总宽不超出操作行');
 });
 
 test('hero bag still applies skill reset and supreme elixir', t => {
