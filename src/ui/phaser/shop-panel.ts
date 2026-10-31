@@ -1,7 +1,7 @@
 import type { Session } from '../../domain/session.ts';
 import type { ItemInstance } from '../../domain/items.ts';
 import type { ShopCatalog, Storefront } from '../../domain/shop.ts';
-import { splitMoney } from '../money-display.ts';
+import { moneyText, splitMoney } from '../../domain/money.ts';
 import { itemDescriptionBody } from '../item-detail-lines.ts';
 import { INVENTORY_LABELS, INVENTORY_SIDE_FILTERS, matchesFilter, type InventoryFilter } from '../../domain/inventory.ts';
 
@@ -18,14 +18,6 @@ const SHELF_SLOTS=16;
 /** 金额的三个单位，顺序与金币那一行的横坐标一致。 */
 const MONEY_UNITS=['gold','silver','copper'] as const;
 const AREA_COLOR='#e2cb9e';
-/** 批量出售的合计金额：只列非零单位，避免“0金0银5铜”这种长串。 */
-function moneyText(amount:number):string{
-  const {gold,silver,copper}=splitMoney(amount),parts:string[]=[];
-  if(gold)parts.push(`${gold}金`);
-  if(silver)parts.push(`${silver}银`);
-  if(copper||!parts.length)parts.push(`${copper}铜`);
-  return parts.join('');
-}
 
 /** The merchant and the player's bag remain visible throughout a trade. */
 export class ShopPanel {

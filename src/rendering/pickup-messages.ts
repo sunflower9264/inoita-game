@@ -1,7 +1,7 @@
 import type Phaser from 'phaser';
 import type { DropReward } from '../domain/drops.ts';
 import type { ItemCatalog } from '../domain/items.ts';
-import { splitMoney } from '../ui/money-display.ts';
+import { splitMoney } from '../domain/money.ts';
 import { FONT } from '../ui/text-style.ts';
 import { itemNameColor } from '../ui/item-name-color.ts';
 import { UI_UNIT_HEIGHT, UI_UNIT_WIDTH } from '../ui/viewport.ts';

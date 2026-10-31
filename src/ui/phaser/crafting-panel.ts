@@ -8,7 +8,7 @@ import type {ChaosTier} from '../../domain/chaos-equipment.ts';
 import type {MenuPanels} from '../../domain/menu-panels.ts';
 import {inventoryView,INVENTORY_SIDE_FILTERS,INVENTORY_LABELS,type InventoryView} from '../../domain/inventory.ts';
 import {bagLayout} from '../bag-layout.ts';
-import {splitMoney} from '../money-display.ts';
+import {moneyText,splitMoney} from '../../domain/money.ts';
 import {drawNativeMessage} from './native-message.ts';
 import type {UiSurface,ScrollArea} from './widgets.ts';
 
@@ -129,7 +129,7 @@ export class CraftingPanel {
       v.text(`${available}/${material.quantity}`,x+37,288,0,22,available<material.quantity?'#ff0000':'#e2cb9e').setOrigin(.5,0);
       v.text(definition.name,x+37,310,96,13,'#c8b78f').setOrigin(.5,0);
     }
-    v.text(`合成费 ${recipe.cost} 金币`,241,334,300,18,'#ffffff').setOrigin(.5,0);
+    v.text(`合成费 ${moneyText(recipe.cost)}`,241,334,300,18,'#ffffff').setOrigin(.5,0);
     v.button('',139,360,205,62,()=>this.beginRecipe(),{image:assets['craft-button'],pressed:assets['craft-button-pressed'],native:true,pressedAdd:true}).setData('label','组合');
   }
   private renderChaos(v:UiSurface):void {

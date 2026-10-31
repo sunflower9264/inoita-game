@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { splitMoney } from '../src/ui/money-display.ts';
+import { moneyText, splitMoney } from '../src/domain/money.ts';
 import { layoutQuestText, questPopupContent, questPopupLayout } from '../src/ui/quest-popup-layout.ts';
 
 const textLines = (value: string, width: number) => layoutQuestText(value, width, text => Array.from(text).length)
@@ -69,4 +69,8 @@ test('money uses copper units with original 100 and 10000 thresholds and display
   assert.deepEqual(splitMoney(10_101), { gold: 1, silver: 1, copper: 1 });
   assert.deepEqual(splitMoney(100_000_000), { gold: 9999, silver: 99, copper: 99 });
   assert.deepEqual(splitMoney(-1), { gold: 0, silver: 0, copper: 0 });
+  assert.equal(moneyText(0), '0铜');
+  assert.equal(moneyText(15), '15铜');
+  assert.equal(moneyText(720), '7银20铜');
+  assert.equal(moneyText(10_101), '1金1银1铜');
 });

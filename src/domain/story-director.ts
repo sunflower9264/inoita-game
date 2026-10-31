@@ -8,6 +8,7 @@ import type { StoryNodeCommit, StoryOccurrence, StoryPlaybackContext } from './s
 import type { StoryCommand, StoryEvent, StoryNode, StoryTriggerSource } from './story-graph.ts';
 import { healerRevivalQuote } from './party-revival.ts';
 import type { InnRestQuote } from './inns.ts';
+import { moneyText } from './money.ts';
 
 export interface StoryUI {
   dialogue(line: DialogueLine, signal?: AbortSignal): Promise<void>;
@@ -496,7 +497,7 @@ export class StoryDirector {
     return this.run(async () => {
       const quote = healerRevivalQuote(this.session);
       if (!quote.memberIds.length) { await this.dialogue({ actor: actor.id, speaker: actor.name, text: '现在没有需要复活的同伴。' }); return; }
-      const answer = await this.choice(actor.name, [{ label: '复活同伴', value: 'revive' }, { label: '离开', value: 'cancel' }], `${actor.description}\n\n复活费用：${quote.cost} 金币`);
+      const answer = await this.choice(actor.name, [{ label: '复活同伴', value: 'revive' }, { label: '离开', value: 'cancel' }], `${actor.description}\n\n复活费用：${moneyText(quote.cost)}`);
       if (answer.value !== 'revive') return;
       if (this.session.money < healerRevivalQuote(this.session).cost) { await this.dialogue({ actor: actor.id, speaker: actor.name, text: '金币不足，无法治疗受伤的灵魂。' }); return; }
       revive();
@@ -506,7 +507,7 @@ export class StoryDirector {
   visitInnkeeper(actor: ActorDefinition, quote: InnRestQuote, rest: () => void): Promise<boolean> {
     return this.run(async () => {
       if (this.session.money < quote.cost) { await this.dialogue({ actor: actor.id, speaker: actor.name, text: '您的金币不足。' }); return; }
-      const description = `${actor.description ? `${actor.description}\n\n` : ''}休息费用：${quote.cost} 金币`;
+      const description = `${actor.description ? `${actor.description}\n\n` : ''}休息费用：${moneyText(quote.cost)}`;
       const answer = await this.choice('是否现在休息？', [{ label: '休息', value: 'rest' }, { label: '离开', value: 'cancel' }], description);
       if (answer.value !== 'rest') return;
       rest();

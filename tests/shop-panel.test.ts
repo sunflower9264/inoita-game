@@ -10,7 +10,7 @@ import { parseShops } from '../src/application/content-validation.ts';
 import { BAG_DESCRIPTION_WIDTH, DESCRIPTION_PANEL } from '../src/ui/bag-layout.ts';
 import { descriptionPanel, POPUP_FRAME, shopLayout, tradeLayout, tradeMessageLayout } from '../src/ui/shop-layout.ts';
 import { INVENTORY_LABELS, INVENTORY_SIDE_FILTERS } from '../src/domain/inventory.ts';
-import { splitMoney } from '../src/ui/money-display.ts';
+import { splitMoney } from '../src/domain/money.ts';
 import { ShopPanel } from '../src/ui/phaser/shop-panel.ts';
 import { centerModal } from '../src/ui/phaser/modal-placement.ts';
 

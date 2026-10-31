@@ -53,7 +53,7 @@ import { bagLayout, BAG_DESCRIPTION_WIDTH, DESCRIPTION_PANEL, descriptionPanel, 
 import { skillDescriptionParts, skillLearningParts, skillNextLevelPreview } from './skill-detail-lines.ts';
 import { drawDescriptionText } from './phaser/description-text.ts';
 import { tradeLayout } from './shop-layout.ts';
-import { splitMoney } from './money-display.ts';
+import { splitMoney } from '../domain/money.ts';
 import { createCharacter, type CharacterVisual } from '../rendering/characters.ts';
 
 type Page='status'|'bag'|'skills'|'party'|'quests'|'system'|'save'|'load'|'settings'|'shop'|'crafting'|'forge'|'debug';

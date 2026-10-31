@@ -7,6 +7,7 @@ import { BattleCharacter, type CharacterStatsCatalog } from '../src/domain/chara
 import type { WorldIndex } from '../src/domain/content.ts';
 import type { ItemCatalog } from '../src/domain/items.ts';
 import { innRestQuote, restAtInn } from '../src/domain/inns.ts';
+import { moneyText } from '../src/domain/money.ts';
 import type { CompanionCatalog } from '../src/domain/party.ts';
 import { Session } from '../src/domain/session.ts';
 import { StoryDirector } from '../src/domain/story-director.ts';
@@ -52,7 +53,7 @@ test('innkeeper confirmation charges once and cancellation changes nothing',asyn
   const actor=world.actors['innkeeper-ad05fa66'];
   const rest=()=>{session.transaction(()=>{session.spendMoney(quote.cost);restAtInn(session,quote);});};
   const cancelled=director.visitInnkeeper(actor,quote,rest);
-  assert.equal(ui.locked,true);assert.match(ui.choices!.description,new RegExp(String(quote.cost)));
+  assert.equal(ui.locked,true);assert.match(ui.choices!.description,new RegExp(`休息费用：${moneyText(quote.cost)}`));
   ui.choices!.choose(ui.choices!.options[1]);assert.equal(await cancelled,true);
   assert.equal(session.money,quote.cost);assert.equal(hero.player.health,1);assert.equal(ui.locked,false);
   const confirmed=director.visitInnkeeper(actor,quote,rest);

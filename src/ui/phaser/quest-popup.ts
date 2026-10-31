@@ -2,7 +2,7 @@ import { UI_EVENTS } from '../../application/ui-events.ts';
 import type Phaser from 'phaser';
 import type { GameUI } from '../game-ui.ts';
 import { MONEY } from '../item-layout.ts';
-import { splitMoney } from '../money-display.ts';
+import { splitMoney } from '../../domain/money.ts';
 import { readSafeArea } from '../viewport.ts';
 import { questPopupContent, questPopupLayout } from '../quest-popup-layout.ts';
 import { UiSurface } from './widgets.ts';
