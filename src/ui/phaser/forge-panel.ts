@@ -183,8 +183,9 @@ export class ForgePanel {
     const canAdd=target.gems.length<sockets;
     if(this.replaceIndex!==undefined)v.text(`替换第 ${this.replaceIndex+1} 孔`,30,258,420,18,'#e2cb9e');
     else if(!canAdd)v.text('宝石孔已满。点已镶孔可以取出或替换。',30,258,420,18,'#ff6b6b');
+    else if(!this.selectedItem)v.text('点已镶孔可以取出或替换；点下方宝石可以镶嵌。',30,258,430,18,'#c8b78f');
     if(this.selectedItem)this.renderGemPreview(v,target,modifiers);
-    else if(this.replaceIndex===undefined)v.text('选择一颗宝石。',30,278,420,18,'#c8b78f');
+    else if(this.replaceIndex!==undefined)v.text('选择一颗宝石。',30,278,420,18,'#c8b78f');
     v.button(this.replaceIndex===undefined?'确认镶嵌':'确认替换',139,342,205,55,()=>this.confirmSocket(),{fontSize:20,
       disabled:!this.selectedItem||!this.bag.get(this.selectedItem)?.numbers?.modifiers?.length||(!canAdd&&this.replaceIndex===undefined)});
   }

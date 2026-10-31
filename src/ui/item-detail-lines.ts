@@ -1,5 +1,5 @@
 import { equipmentLevel } from '../domain/chaos-equipment.ts';
-import { equipmentPower, type CharacterStatsCatalog, type EquipmentNumbers, type Modifier } from '../domain/character-stats.ts';
+import { enhancementBonus, equipmentPower, type CharacterStatsCatalog, type EquipmentNumbers, type Modifier } from '../domain/character-stats.ts';
 import type { ItemDefinition, ItemInstance } from '../domain/items.ts';
 import type { ShopCatalog } from '../domain/shop.ts';
 import type { DescriptionTextPart } from '../domain/description-text.ts';
@@ -15,7 +15,7 @@ interface ItemDescriptionBody {
 
 /** 原版 UIDesc_AddOption 按词条来源选色，并使用原有的冒号及十分之一百分比。 */
 function equipmentAttributeLines(catalog: CharacterStatsCatalog, entry: ItemInstance,
-  standaloneGem = false): DescriptionTextPart[] {
+  standaloneGem = false, gemNames?: (string | undefined)[]): DescriptionTextPart[] {
   const result: DescriptionTextPart[] = [];
   const add = (modifiers: Modifier[], color: string) => {
     for (const modifier of modifiers) {
@@ -25,8 +25,28 @@ function equipmentAttributeLines(catalog: CharacterStatsCatalog, entry: ItemInst
       result.push({text:`${descriptor.label}: ${value}`, color});
     }
   };
-  add(entry.numbers?.modifiers ?? [], standaloneGem ? '#bf0000' : '#7878ff');
-  add(entry.numbers?.gemModifiers ?? [], '#bf0000');
+  if (standaloneGem) {
+    add(entry.numbers?.modifiers ?? [], '#bf0000');
+    return result;
+  }
+  add(entry.numbers?.modifiers ?? [], '#7878ff');
+  const gems = entry.numbers?.gemModifiers ?? [];
+  if ((entry.gems?.length ?? 0) !== gems.length) {
+    if (result.length) result.push({text:'\n'});
+    result.push({text:'宝石数据不完整', color:'#ff6b6b'});
+    return result;
+  }
+  if (!gems.length) return result;
+  if (result.length) result.push({text:'\n'});
+  result.push({text:'镶嵌效果', color:'#ffffff'});
+  gems.forEach((modifier, index) => {
+    const descriptor = catalog.modifiers[modifier.stat];
+    const value = descriptor.percent ? `${(modifier.value / 10).toFixed(1)}%` : String(modifier.value);
+    const signed = modifier.value > 0 ? `+${value}` : value;
+    const name = gemNames?.[index];
+    result.push({text:'\n'});
+    result.push({text:`${name ? `${name}：` : ''}${descriptor.label} ${signed}`, color:'#bf0000'});
+  });
   return result;
 }
 
@@ -40,10 +60,12 @@ export function itemDescriptionBody(options: {
   member?: { classId: string; level: number };
   /** 职业 id → 显示名；提供时在详情里列出适用职业。 */
   classNames?: Record<string, string>;
+  /** 与 `entry.gems` 同序的宝石显示名；没有时只显示词条。 */
+  gemNames?: (string | undefined)[];
   skill?: { name: string; className: string };
   concealed?: boolean;
 }): ItemDescriptionBody {
-  const {item, entry, numbers, catalog, grades, member, classNames, skill} = options;
+  const {item, entry, numbers, catalog, grades, member, classNames, gemNames, skill} = options;
   if (options.concealed) return {title:`${item.typeName}（未鉴定）`, color:'#808080', rows:[], sockets:0};
   const equipment = item.equipment, grade = equipmentGrade(entry.numbers, numbers);
   const prefix = equipment && grade !== 2 ? item.priceKind === 'weapon' ? grades[grade]?.name : grades[grade]?.armorName ?? grades[grade]?.name : '';
@@ -70,10 +92,14 @@ export function itemDescriptionBody(options: {
       if (item.priceKind === 'weapon') parts.push({text:`\n\n物理攻击 ${power.attack}\n魔法攻击 ${power.magicAttack}`});
       else if (item.priceKind === 'armor') parts.push({text:`\n\n防御力 ${power.defense}`});
     }
+    if (entry.enhancement > 0 && entry.numbers?.enhancementRule) {
+      const stat = item.priceKind === 'weapon' ? '攻击' : item.priceKind === 'armor' ? '防御' : undefined;
+      if (stat) parts.push({text:`\n强化效果：+${entry.enhancement}（${stat} +${enhancementBonus(entry)}）`});
+    }
     if (equipment.description?.classAttributes.length)
       parts.push({text:'\n'}, ...equipment.description.classAttributes);
   }
-  const attributes = equipmentAttributeLines(catalog, entry, item.use?.kind === 'socket');
+  const attributes = equipmentAttributeLines(catalog, entry, item.use?.kind === 'socket', gemNames);
   if (attributes.length) {
     if (parts.length) parts.push({text:'\n\n'});
     parts.push(...attributes);

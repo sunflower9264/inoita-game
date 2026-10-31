@@ -39,7 +39,7 @@ test('purification clears only chaos and updates actual power, level conditions 
   assert.equal(power.attack,Math.trunc((stats.equipment[target.item].attack+4)*1.5));
   assert.match(bag.equipProblem(target.id,'main-hand')!,/需要等级 3/);
   assert.match(bag.equipProblem(target.id,'main-hand','companion',hero.classId,1)!,/需要等级 3/);
-  const body=itemDescriptionBody({item:items.items[target.item],entry:before,numbers:stats.equipment[target.item],catalog:stats,grades:shops.grades,member:{classId:hero.classId,level:1}});
+  const body=itemDescriptionBody({item:items.items[target.item],entry:before,numbers:stats.equipment[target.item],catalog:stats,grades:shops.grades,member:{classId:hero.classId,level:1},gemNames:before.gems.map(id=>items.items[id]?.name)});
   assert.equal(body.color,'#ff6c00');assert(JSON.stringify(body.rows).includes('3'));
   const purifier=Object.entries(items.items).find(([,item])=>item.use?.kind==='purify')![0];bag.add(purifier,2);
   const source=bag.entries.find(value=>value.item===purifier)!;const layouts=bag.captureState();let changes=0;hero.subscribe(()=>changes++);

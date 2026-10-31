@@ -152,9 +152,12 @@ function itemRandom(identity:string): (min:number,max:number)=>number {
   for(const char of identity)seed=Math.imul(seed^char.charCodeAt(0),16777619)>>>0;
   return (min,max)=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return min+Math.floor(seed/4294967296*(max-min+1));};
 }
-export function equipmentPower(definition:EquipmentNumbers, entry:ItemInstance) {
+export function enhancementBonus(entry:ItemInstance):number {
   const rule=entry.numbers?.enhancementRule;
-  const bonus=rule?entry.enhancement*rule.step+Math.max(0,entry.enhancement-rule.threshold+1)*rule.extra:0;
+  return rule?entry.enhancement*rule.step+Math.max(0,entry.enhancement-rule.threshold+1)*rule.extra:0;
+}
+export function equipmentPower(definition:EquipmentNumbers, entry:ItemInstance) {
+  const bonus=enhancementBonus(entry);
   const baseAttack=entry.numbers?.baseAttack??definition.attack,baseDefense=entry.numbers?.baseDefense??definition.defense;
   const rate=entry.numbers?.chaos?.valuePercent??100;
   const attack=baseAttack?(entry.numbers?.chaos?Math.max(1,trunc((baseAttack+bonus)*rate/100)):baseAttack+bonus):0;

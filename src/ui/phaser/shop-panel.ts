@@ -293,7 +293,7 @@ export class ShopPanel {
     drawDescriptionPanel(v,this.frames,left,top,panel.width);
     const member=this.viewedMember();
     const body=itemDescriptionBody({item,entry,numbers:this.store.characterStats.equipment[entry.item],catalog:this.store.characterStats,
-      grades:this.catalog.grades,member,classNames:this.classNames,skill:entry.skill?this.session.bag.catalog.skillDescriptions?.[entry.skill]:undefined,concealed:offer?.concealed});
+      grades:this.catalog.grades,member,classNames:this.classNames,gemNames:entry.gems.map(id=>this.session.bag.catalog.items[id]?.name),skill:entry.skill?this.session.bag.catalog.skillDescriptions?.[entry.skill]:undefined,concealed:offer?.concealed});
     drawDescriptionTitle(v,body.title,left,top,panel.width,body.color);
     const detail=v.scroll(left+panel.scroll.x,top+panel.scroll.y,panel.scroll.width,panel.scroll.height);
     let y=drawDescriptionRows(v,body.rows,panel.scroll.width,detail.content);

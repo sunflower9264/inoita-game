@@ -132,7 +132,7 @@ export class CraftingPanel {
     if(item)v.image(item.icon,5,5,64,64,slot);
     this.drops.push({object:slot,craft:true});
     if(item&&target){
-      const numbers=session.hero?.catalog.equipment[target.item],body=session.hero?itemDescriptionBody({item,entry:target,numbers,catalog:session.hero.catalog,grades:this.grades}):undefined;
+      const numbers=session.hero?.catalog.equipment[target.item],body=session.hero?itemDescriptionBody({item,entry:target,numbers,catalog:session.hero.catalog,grades:this.grades,gemNames:target.gems.map(id=>bag.catalog.items[id]?.name)}):undefined;
       v.text(body?.title??item.name,241,133,410,22,body?.color??'#e2cb9e').setOrigin(.5,0);
       if(numbers){const power=equipmentPower(numbers,target);v.text(`等级 ${equipmentLevel(item,target)}　${item.priceKind==='weapon'?`物理攻击 ${power.attack}　魔法攻击 ${power.magicAttack}`:`防御力 ${power.defense}`}`,241,162,410,18,'#e2cb9e').setOrigin(.5,0);}
     }

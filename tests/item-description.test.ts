@@ -15,7 +15,8 @@ const keyOf = (name: string) => Object.entries(items.items).find(([, value]) => 
 const entry = (name:string, grade=7):ItemInstance => ({id:'instance',item:keyOf(name),quantity:1,enhancement:3,gems:[],
   numbers:{modifiers:[],gemModifiers:[],magicPercent:20,sockets:3,enhancementUses:7,grade,baseAttack:300,baseDefense:50}});
 const describe = (value:ItemInstance, member?:{classId:string;level:number}, concealed=false, classNames?:Record<string,string>) => itemDescriptionBody({
-  item:items.items[value.item],entry:value,numbers:stats.equipment[value.item],catalog:stats,grades:shops.grades,member,classNames,concealed});
+  item:items.items[value.item],entry:value,numbers:stats.equipment[value.item],catalog:stats,grades:shops.grades,member,classNames,
+  gemNames:value.gems.map(id=>items.items[id]?.name),concealed});
 const classNames = Object.fromEntries((read<{classes:{id:string;name:string}[]}>('story-classes').classes).map(value => [value.id, value.name]));
 const bodyText = (body:ReturnType<typeof describe>) => body.rows.map(row=>typeof row==='string'?row:plainDescription(row.parts)).join('\n');
 
@@ -49,16 +50,33 @@ test('armor uses its own grade prefix and only native armor class attributes',()
 test('native condition colors use the viewed member and retain modifier and introduction colors',()=>{
   const value=entry('短剑');
   const restricted=Object.entries(items.items).find(([,item])=>item.equipment&&!item.equipment.classes.includes('priest'))!;
-  value.item=restricted[0];value.numbers!.modifiers=[{stat:'strength',value:8}];value.numbers!.gemModifiers=[{stat:'intelligence',value:4}];
+  value.item=restricted[0];value.numbers!.modifiers=[{stat:'strength',value:8}];value.gems=['novice-jewel'];value.numbers!.gemModifiers=[{stat:'intelligence',value:4}];
   const body=describe(value,{classId:'priest',level:0}),parts=(body.rows[0] as {parts:{text:string;color?:string}[]}).parts;
   assert.equal(parts[0].color,'#ff0000');assert.equal(parts.find(part=>part.text===String(items.items[value.item].level))!.color,'#ff0000');
   assert(parts.some(part=>part.text==='力量: 8'&&part.color==='#7878ff'));
-  assert(parts.some(part=>part.text==='智力: 4'&&part.color==='#bf0000'));
+  assert(parts.some(part=>part.text==='镶嵌效果'&&part.color==='#ffffff'));
+  assert(parts.some(part=>part.text==='低级宝石：智力 +4'&&part.color==='#bf0000'));
   const potion=Object.entries(items.items).find(([,item])=>item.name==='恢复药水（小）')![0];
   const plain:ItemInstance={id:'potion',item:potion,quantity:4,enhancement:0,gems:[]};
   const description=describe(plain);
   assert.equal(bodyText(description),'恢复2400~3200的生命值。');
   assert.equal((description.rows[0] as {parts:{color?:string}[]}).parts[0].color,'#00b4ff');
+});
+
+test('equipment descriptions show the enhancement bonus and named gem effects',()=>{
+  const value=entry('短剑');
+  value.numbers!.enhancementRule={step:1,threshold:10,extra:1};
+  value.gems=['novice-jewel'];
+  value.numbers!.gemModifiers=[{stat:'strength',value:3}];
+  const text=bodyText(describe(value));
+  assert(text.includes('强化效果：+3（攻击 +3）'));
+  assert(text.includes('镶嵌效果'));
+  assert(text.includes('低级宝石：力量 +3'));
+});
+
+test('equipment descriptions guard incomplete gem data',()=>{
+  const value=entry('短剑');value.gems=['novice-jewel'];
+  assert(bodyText(describe(value)).includes('宝石数据不完整'));
 });
 
 test('all fifteen grades retain native colors, including unnamed rare and epic equipment',()=>{

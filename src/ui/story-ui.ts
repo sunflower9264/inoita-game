@@ -1128,7 +1128,7 @@ export class StoryUI {
     const detail=this.scroll('item',left+panel.scroll.x,top+panel.scroll.y,panel.scroll.width,panel.scroll.height,v);
     // 标题、颜色与正文由同一个实例说明生成器提供；当前查看的成员决定职业与等级条件。
     const body=itemDescriptionBody({item,entry,numbers:this.app.characterStats.equipment[entry.item],catalog:this.app.characterStats,
-      grades:this.app.shops.grades,member:this.member(),classNames:this.classNames(),skill:entry.skill?bag.catalog.skillDescriptions?.[entry.skill]:undefined});
+      grades:this.app.shops.grades,member:this.member(),classNames:this.classNames(),gemNames:entry.gems.map(id=>bag.catalog.items[id]?.name),skill:entry.skill?bag.catalog.skillDescriptions?.[entry.skill]:undefined});
     drawDescriptionTitle(v,body.title,left,top,panel.width,body.color);
     let y=drawDescriptionRows(v,body.rows,panel.scroll.width,detail.content);
     this.finishScroll('item',detail,y);
@@ -1167,7 +1167,7 @@ export class StoryUI {
     const detail=this.scroll('item',left+panel.scroll.x,top+panel.scroll.y,panel.scroll.width,panel.scroll.height,v);
     const body=itemDescriptionBody({item,entry,numbers:this.app.characterStats.equipment[entry.item],
       catalog:this.app.characterStats,grades:this.app.shops.grades,member:this.member(),
-      classNames:this.classNames(),skill:entry.skill?catalog.skillDescriptions?.[entry.skill]:undefined});
+      classNames:this.classNames(),gemNames:entry.gems.map(id=>catalog.items[id]?.name),skill:entry.skill?catalog.skillDescriptions?.[entry.skill]:undefined});
     drawDescriptionTitle(v,body.title,left,top,panel.width,body.color);
     const height=drawDescriptionRows(v,body.rows,panel.scroll.width,detail.content);
     this.finishScroll('item',detail,height);
