@@ -22,17 +22,17 @@ type Confirmation={kind:'unsocket';index:number}|{kind:'swap';index:number;gem:s
  */
 export class ForgePanel {
   readonly bag:Bag;readonly panels:MenuPanels;readonly stats:CharacterStatsCatalog;readonly memberId:string;
-  private readonly changed:()=>void;private readonly sound:()=>void;private readonly onClose:()=>void;
+  private readonly changed:()=>void;private readonly sound:()=>void;
   private readonly preview:(targetId:string,gemModifiers:Modifier[])=>CharacterPanel|undefined;
   targetId?:string;tab:ForgeTab='enchant';
   private selectedItem?:string;private socketIndex?:number;private replaceIndex?:number;
   private result?:string;private resultTone:ResultTone='normal';private offset=0;
   private confirmation?:Confirmation;private scroll?:ScrollArea;
   constructor(bag:Bag,panels:MenuPanels,stats:CharacterStatsCatalog,memberId:string,
-    changed:()=>void,sound:()=>void,onClose:()=>void,
+    changed:()=>void,sound:()=>void,
     preview:(targetId:string,gemModifiers:Modifier[])=>CharacterPanel|undefined){
     this.bag=bag;this.panels=panels;this.stats=stats;this.memberId=memberId;
-    this.changed=changed;this.sound=sound;this.onClose=onClose;this.preview=preview;
+    this.changed=changed;this.sound=sound;this.preview=preview;
   }
   get modalOpen():boolean{return !!this.confirmation;}
   get confirming():boolean{return !!this.confirmation;}
@@ -49,8 +49,7 @@ export class ForgePanel {
     this.scroll=undefined;
     const target=this.targetId?this.bag.get(this.targetId):undefined,item=target?this.bag.catalog.items[target.item]:undefined;
     if(!target||!item?.equipment){
-      v.text('装备已不存在。',30,160,420,24,'#e2cb9e');
-      v.button('返回',30,200,120,40,this.onClose,{fontSize:18});
+      v.text('装备已不存在，点右上角关闭返回背包。',30,160,420,24,'#e2cb9e');
       return;
     }
     this.validateState(target);
@@ -61,9 +60,8 @@ export class ForgePanel {
     if(this.confirmation)this.renderConfirmation(modal,placeModal);
   }
   private renderNavigation(v:UiSurface):void {
-    v.button('返回',14,10,80,28,this.onClose,{fontSize:16});
     ([['enchant','强化'],['socket','镶嵌'],['purify','净化']] as const).forEach(([tab,label],index)=>{
-      v.button(label,104+index*106,10,100,28,()=>this.setTab(tab),{selected:this.tab===tab,fontSize:16});
+      v.button(label,30+index*126,10,120,28,()=>this.setTab(tab),{selected:this.tab===tab,fontSize:16});
     });
   }
   private setTab(tab:ForgeTab):void {

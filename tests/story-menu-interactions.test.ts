@@ -645,6 +645,19 @@ test('forge opens as a menu page and enhances continuously', t => {
   assert.equal(f.hero.bag.get(weapon.id)!.numbers!.enhancementUses,1);
 });
 
+test('forge top-right close returns to the bag page without closing the menu', t => {
+  const f=fixture();t.after(f.cleanup);
+  setHeroWeapon(f,3,3);
+  openHeroForge(f);
+  assert.equal(f.scene.buttons('返回').length,0,'forge 不再画左栏返回');
+  f.scene.click(f.scene.button('关闭强化'));
+  assert.equal(f.internals.forge,undefined);
+  assert.equal(f.internals.page,'bag');
+  assert.equal(f.internals.surface.root.visible,true);
+  assert.equal(f.internals.description.root.visible,true);
+  assert.equal(f.scene.buttons('强化/镶嵌').length,1,'回到装备说明');
+});
+
 test('forge explains unavailable scrolls and highlights chaos at zero durability', t => {
   const f=fixture();t.after(f.cleanup);
   const weapon=setHeroWeapon(f,3,0,10);f.add('novice-weapon-scroll');f.add('chaos-weapon-scroll');

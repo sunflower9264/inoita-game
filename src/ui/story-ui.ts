@@ -426,7 +426,7 @@ export class StoryUI {
         v.text(this.world!.actors[this.craftingActor!].name,512,25,0,28,undefined,v.staticRoot).setOrigin(.5,0);
       }
       if(this.page==='forge')v.text('装备强化',512,25,0,28,undefined,v.staticRoot).setOrigin(.5,0);
-      v.button('',947,24,51,51,()=>this.close(),{image:this.content!.assets.close,pressed:this.content!.assets['close-pressed'],parent:v.staticRoot}).setData('label','关闭菜单');
+      v.button('',947,24,51,51,()=>this.page==='forge'?this.closeForge():this.close(),{image:this.content!.assets.close,pressed:this.content!.assets['close-pressed'],parent:v.staticRoot}).setData('label',this.page==='forge'?'关闭强化':'关闭菜单');
     });
     if(this.page==='bag')this.renderBag();if(this.page==='status')this.renderStatus();if(this.page==='skills')this.renderSkills();if(this.page==='party')this.renderParty();if(this.page==='quests')this.renderQuests();if(this.page==='shop')this.shopPanel?.render(this.body,this.modal!,this.placeModal,this.description!);
     if(this.page==='crafting'&&this.craftingPanel){this.craftingPanel.render(this.body,this.modal!,this.placeModal,(pointer,entry,scroll)=>this.startDrag(pointer,entry,scroll));this.drops=this.craftingPanel.drops;}
@@ -1226,7 +1226,7 @@ export class StoryUI {
     const member=this.member();
     const preview=(id:string,modifiers:Modifier[])=>member?.previewGemChange(id,modifiers);
     this.forge=new ForgePanel(bag,this.app.menuPanels,this.app.characterStats,this.selectedMemberId,
-      ()=>this.render(),()=>this.app.audio?.ui('enchant'),()=>this.closeForge(),preview);
+      ()=>this.render(),()=>this.app.audio?.ui('enchant'),preview);
     this.forge.open(targetId,tab);this.page='forge';this.render();
   }
   private closeForge():void {
