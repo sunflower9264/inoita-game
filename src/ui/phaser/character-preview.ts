@@ -1,42 +1,49 @@
-import { createCharacter, type CharacterVisual } from '../../rendering/characters.ts';
-import type { ActorDefinition } from '../../domain/content.ts';
 import type Phaser from 'phaser';
+import type { ActorDefinition } from '../../domain/content.ts';
+import { blendModeOf } from '../../rendering/blend-modes.ts';
 import type { UiSurface } from './widgets.ts';
 
 export interface CharacterPreviewRect { x: number; y: number; width: number; height: number }
 
-/** 按预览框等比缩放并居中；行走图的脚底坐标不能直接当立绘位置。 */
-export function fitCharacterPreview(scene: Phaser.Scene, actor: ActorDefinition, rect: CharacterPreviewRect, id: string): CharacterVisual {
-  const visual = createCharacter(scene, actor, { id, actor: actor.id, x: 0, y: 0 });
-  const bounds = visual.container.getBounds();
-  const scale = Math.min(rect.width / Math.max(1, bounds.width), rect.height / Math.max(1, bounds.height));
-  visual.container.setScale(scale).setPosition(
-    rect.x + (rect.width - bounds.width * scale) / 2 - bounds.x * scale,
-    rect.y + (rect.height - bounds.height * scale) / 2 - bounds.y * scale,
-  );
-  return visual;
-}
-
-/** 菜单里的角色合成立绘：同一外观只合成一次，离开页面时摘下、回来再挂上。 */
+/**
+ * 菜单里的角色立绘。只摆角色外观的第一帧静态图，不创建会播放动画的角色。
+ * 预览图按预览框缩放居中，并跟随页面清理一起销毁：重绘、切页、点物品都不会
+ * 在场景原点留下多余的精灵。
+ */
 export class CharacterPreview {
   private readonly scene: Phaser.Scene;
-  private readonly id: string;
-  private current?: { actor: ActorDefinition; visual: CharacterVisual };
-  constructor(scene: Phaser.Scene, id: string) { this.scene = scene; this.id = id; }
+  private current?: { actor: ActorDefinition; images: Phaser.GameObjects.Image[] };
+  constructor(scene: Phaser.Scene) { this.scene = scene; }
   show(surface: UiSurface, actor: ActorDefinition, rect: CharacterPreviewRect): void {
     if (this.current?.actor !== actor) {
-      this.current?.visual.container.destroy();
-      this.current = { actor, visual: fitCharacterPreview(this.scene, actor, rect, this.id) };
+      this.destroy();
+      this.current = { actor, images: this.draw(actor, rect) };
     }
-    surface.root.add(this.current.visual.container);
+    for (const image of this.current.images) surface.root.add(image);
   }
   /** 从当前页面摘下但保留缓存，下一次 show 直接复用。 */
   detach(): void {
-    const container = this.current?.visual.container;
-    container?.parentContainer?.remove(container);
+    for (const image of this.current?.images ?? []) image.parentContainer?.remove(image);
   }
   destroy(): void {
-    this.current?.visual.container.destroy();
+    for (const image of this.current?.images ?? []) image.destroy();
     this.current = undefined;
+  }
+  private draw(actor: ActorDefinition, rect: CharacterPreviewRect): Phaser.GameObjects.Image[] {
+    const clip = actor.clips['idle-south'];
+    if (!clip) return [];
+    const scale = Math.min(rect.width / Math.max(1, clip.frameWidth), rect.height / Math.max(1, clip.frameHeight));
+    const left = -clip.originX * clip.frameWidth, top = -clip.originY * clip.frameHeight;
+    const x = rect.x + (rect.width - clip.frameWidth * scale) / 2 - left * scale;
+    const y = rect.y + (rect.height - clip.frameHeight * scale) / 2 - top * scale;
+    const images: Phaser.GameObjects.Image[] = [];
+    try {
+      for (const layer of clip.layers) images.push(this.scene.add.image(0, 0, layer.key, 0)
+        .setOrigin(clip.originX, clip.originY).setScale(scale).setPosition(x, y).setBlendMode(blendModeOf(layer.blend)));
+      return images;
+    } catch (error) {
+      for (const image of images) image.destroy();
+      throw error;
+    }
   }
 }

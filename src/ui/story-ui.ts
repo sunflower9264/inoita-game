@@ -1049,7 +1049,7 @@ export class StoryUI {
       if(appearance&&this.scene&&clip?.layers.every(layer=>this.scene!.textures.exists(layer.key))){
         // 合成立绘按预览洞缩放到刚好放得下、并在洞里居中：原版这个洞是 157×157（左框局部 129,110），
         // 立绘必须落在洞内。CharacterPreview 同一外观只合成一次：点格子、翻物品重画时不重建精灵。
-        const character=this.bagPortrait??(this.bagPortrait=new CharacterPreview(this.scene,'equipment-preview'));
+        const character=this.bagPortrait??(this.bagPortrait=new CharacterPreview(this.scene));
         character.show(v,appearance,preview);
       }
       else v.image(this.selectedMemberId==='player'?panels.classes[member.classId].preview:art.partyIcon,214,110,157,157);

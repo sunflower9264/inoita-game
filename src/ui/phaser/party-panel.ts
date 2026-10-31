@@ -153,7 +153,7 @@ export class PartyPanel {
     const appearance=this.app.equipmentAppearance?.(id),clip=appearance?.clips['idle-south'],preview={x:623,y:124,width:127,height:114};
     if(appearance&&clip?.layers.every(layer=>v.scene.textures.exists(layer.key))){
       // 和背包页共用同一套合成立绘：按预览框缩放居中，换人时替换，翻页时摘下来保留缓存。
-      const character=this.preview??(this.preview=new CharacterPreview(v.scene,'party-equipment-preview'));
+      const character=this.preview??(this.preview=new CharacterPreview(v.scene));
       character.show(v,appearance,preview);
     }else v.image(this.portrait(id),preview.x,preview.y,preview.width,preview.height);
     for(const slot of panels.equipmentSlots){
