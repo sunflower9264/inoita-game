@@ -1226,7 +1226,7 @@ export class StoryUI {
     const member=this.member();
     const preview=(id:string,modifiers:Modifier[])=>member?.previewGemChange(id,modifiers);
     this.forge=new ForgePanel(bag,this.app.menuPanels,this.app.characterStats,this.selectedMemberId,
-      ()=>this.render(),()=>this.app.audio?.ui('enchant'),preview);
+      ()=>this.render(),()=>this.app.audio?.ui('enchant'),(message)=>this.app.ui.showInstant(message),preview);
     this.forge.open(targetId,tab);this.page='forge';this.render();
   }
   private closeForge():void {

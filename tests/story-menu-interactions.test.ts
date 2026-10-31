@@ -632,13 +632,14 @@ test('forge opens as a menu page and enhances continuously', t => {
   assert.equal(forge.targetId,weapon.id);
   assert.equal(f.scene.buttons('强化').length,1,'强化页签唯一');
   assert.equal(f.scene.buttons('镶嵌').length,1,'镶嵌页签唯一');
+  assert.equal(f.scene.button('强化').x,885,'页签在右侧边栏');
+  assert.equal(f.scene.button('强化').input!.hitArea.width,57);
   assert.ok(f.scene.texts().some(text=>text.includes('选择一张强化卷轴')));
   f.scene.click(f.scene.button('卷轴:低级武器强化卷轴'));
   assert.ok(f.scene.texts().some(text=>text.includes('+1 确定，+2 25%')),'选中卷轴显示概率');
   f.scene.click(f.scene.button('确定强化'));
   assert.equal(f.hero.bag.get(weapon.id)!.enhancement,1);
   assert.equal(f.hero.bag.get(weapon.id)!.numbers!.enhancementUses,2);
-  assert.ok(f.scene.texts().some(text=>text.includes('强化 +1')),'结果留在 forge 页');
   assert.equal(f.scene.buttons('卷轴:低级武器强化卷轴').length,1,'卷轴还有剩余，格子仍在');
   f.scene.click(f.scene.button('确定强化'));
   assert.equal(f.hero.bag.get(weapon.id)!.enhancement,2);
@@ -672,7 +673,6 @@ test('forge explains unavailable scrolls and highlights chaos at zero durability
   f.scene.click(f.scene.button('确定强化'));
   assert.equal(f.hero.bag.get(weapon.id)!.enhancement,9,'混沌失败降 1 级');
   assert.equal(f.hero.bag.get(weapon.id)!.numbers!.enhancementUses,0,'混沌不消耗耐久');
-  assert.ok(f.scene.texts().some(text=>text.includes('强化失败')));
 });
 
 test('forge sockets, removes and replaces gems with confirmation', t => {
@@ -705,6 +705,7 @@ test('forge sockets, removes and replaces gems with confirmation', t => {
   const after=f.hero.bag.get(weapon.id)!;
   assert.equal(after.gems[0],replacement.item);
   assert.equal(f.hero.bag.count('standard-jewel'),1,'旧宝石回到背包');
+  assert.ok(!f.scene.texts().some(text=>text.includes('已替换')),'不再显示结果行');
 });
 
 test('forge disables socketing when the target is full until a replacement is chosen', t => {
@@ -1382,8 +1383,7 @@ test('processing items use the equipment forge instead of drag-and-drop', t => {
   f.scene.click(f.scene.button('确定强化'));
   assert.equal(f.hero.bag.count(source.item),2);
   assert.equal(f.hero.bag.get(weapon.id)!.enhancement,2);
-  assert.ok(f.scene.texts().some(text=>text.includes('强化大成功 +2')));
-  assert.equal(f.controls.instant.text,'','结果留在 forge，不走即时消息');
+  assert.equal(f.controls.instant.text,'','成功结算不弹即时消息');
 });
 
 test('fusion menu selects or drags equipment, confirms once and blocks underlying input', t => {
