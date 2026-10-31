@@ -7,7 +7,7 @@ export const UI_ATLAS_PAGES: readonly UiAtlasPage[] = [
     "data": "assets/ui/menu-ui-0.json",
     "frame": "assets/ui/shop/category-divider.png",
     "width": 2048,
-    "height": 1127
+    "height": 1204
   }
 ];
 export const UI_ATLAS_FRAMES: Readonly<Record<string, { key: string; frame: string; page: number }>> = {
@@ -121,6 +121,11 @@ export const UI_ATLAS_FRAMES: Readonly<Record<string, { key: string; frame: stri
     "frame": "assets/ui/menus/character-nw.png",
     "page": 0
   },
+  "assets/ui/menus/character-olaf.png": {
+    "key": "interface:assets/ui/menu-ui-0.png",
+    "frame": "assets/ui/menus/character-olaf.png",
+    "page": 0
+  },
   "assets/ui/menus/character-party-azad-053.png": {
     "key": "interface:assets/ui/menu-ui-0.png",
     "frame": "assets/ui/menus/character-party-azad-053.png",
@@ -134,6 +139,11 @@ export const UI_ATLAS_FRAMES: Readonly<Record<string, { key: string; frame: stri
   "assets/ui/menus/character-party-kiyan.png": {
     "key": "interface:assets/ui/menu-ui-0.png",
     "frame": "assets/ui/menus/character-party-kiyan.png",
+    "page": 0
+  },
+  "assets/ui/menus/character-party-olaf.png": {
+    "key": "interface:assets/ui/menu-ui-0.png",
+    "frame": "assets/ui/menus/character-party-olaf.png",
     "page": 0
   },
   "assets/ui/menus/character-party-portia.png": {
@@ -1187,4 +1197,4 @@ export const UI_ATLAS_FRAMES: Readonly<Record<string, { key: string; frame: stri
     "page": 0
   }
 };
-export const UI_ATLAS_SOURCE_DIGEST = "b1d586fe67d9573bf06be279d1f874e92c103c74c52a79470b2f3fc877619384";
+export const UI_ATLAS_SOURCE_DIGEST = "6c20d6ab919b5e13d5d3213533d1bb297f71936d883cba93061a8e6c7b5c68f6";

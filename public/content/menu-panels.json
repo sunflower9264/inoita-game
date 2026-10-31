@@ -314,6 +314,10 @@
       "shinty": {
         "image": "assets/ui/menus/character-shinty.png",
         "partyIcon": "assets/ui/menus/character-party-shinty.png"
+      },
+      "olaf": {
+        "image": "assets/ui/menus/character-olaf.png",
+        "partyIcon": "assets/ui/menus/character-party-olaf.png"
       }
     },
     "combatLabels": [
