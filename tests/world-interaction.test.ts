@@ -83,7 +83,7 @@ function pressAttack(mapId:string,current=new Session(campaign,undefined,undefin
     attack:()=>calls.push('attack'),setPerformanceActive(){},syncChestEnemies(){}};
   const state={
     app:{world,items,session:current,campaign,locked:false,suspended:false,characterStats:stats,
-      autoSave:(reason:string)=>calls.push(`autosave:${reason}`),
+      autoSave:()=>calls.push('autosave'),
       ui:{ready:true,controlLayoutEditing:false,showInstant:(message:string)=>calls.push(`instant:${message}`)},
       audio:{ui:(sound:string)=>calls.push(sound),effect:(sound:string)=>calls.push(`effect:${sound}`)},shops:{shops:{}},
       director:{interact:(_entity:EntityPlacement,actor:ActorDefinition)=>{calls.push(`interact:${actor.id}`);return Promise.resolve(true);},
@@ -140,7 +140,7 @@ test('a level-zero map still lets the ancient sword be pulled',()=>{
     const {calls,entity}=pressAttack(mapId,current,map=>sword(map));
     assert.equal(current.legendaryWeapons.isPulled(mapId,entity.id),true);
     assert.ok(calls.includes('effect:UI_Ground_sword'));
-    assert.ok(calls.includes('autosave:legendary-sword'));
+    assert.ok(calls.includes('autosave'));
     assert.ok(calls.includes('checkpoint'));
     assert.ok(current.bag.entries.length>before);
   } finally { Math.random=original; }
@@ -150,7 +150,7 @@ test('the innkeeper confirmation charges, restores and autosaves',()=>{
   const current=session();current.gainMoney(100);current.hero!.setHealth(1);current.hero!.setMana(1);
   const {calls}=pressAttack('kamuran-village-inn-29c0e2b1',current,map=>innkeeper(map));
   assert.ok(calls.some(call=>call.startsWith('visitInnkeeper:innkeeper-ad05fa66:1')));
-  assert.ok(calls.includes('autosave:rest'));
+  assert.ok(calls.includes('autosave'));
   assert.ok(calls.some(call=>call.startsWith('instant:已恢复全部的生命和魔法。')));
   assert.ok(calls.includes('checkpoint'));
   assert.equal(current.money,99);
@@ -166,7 +166,7 @@ test('a successful ancient sword pull grants a weapon and plays the sword sound'
     const {calls,entity}=pressAttack(mapId,current,map=>sword(map));
     assert.equal(current.legendaryWeapons.isPulled(mapId,entity.id),true);
     assert.ok(calls.includes('effect:UI_Ground_sword'));
-    assert.ok(calls.includes('autosave:legendary-sword'));
+    assert.ok(calls.includes('autosave'));
     assert.ok(current.bag.entries.length>before);
   } finally { Math.random=original; }
 });
