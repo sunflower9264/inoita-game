@@ -495,6 +495,7 @@ function installSession(session: Session): void {
       },
     },
     onDebugStory: () => app.storyUI.openDebugStory(),
+    ui: () => app.storyUI.diagnosticState(),
     combat: {
       setInvincible: (id, enabled) => {
         const scene = worldScene();

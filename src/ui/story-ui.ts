@@ -407,6 +407,32 @@ export class StoryUI {
       default:return undefined;
     }
   }
+  /** GM 上报用：列出菜单场景里不属于任何面板容器的可见显示对象。 */
+  diagnosticState(): Record<string, unknown> {
+    const scene = this.scene;
+    if (!scene) return { attached: false };
+    const owned = new Set<unknown>();
+    const visit = (node: unknown) => {
+      if (!node || owned.has(node)) return;
+      owned.add(node);
+      for (const child of ((node as { list?: unknown[] }).list ?? [])) visit(child);
+    };
+    for (const root of [this.surface?.root, this.body?.root, this.description?.root, this.modal?.root,
+      this.shortcutScreen?.root, this.backTab?.root, this.hudButtons?.root]) if (root) visit(root);
+    if (this.backdrop) owned.add(this.backdrop);
+    type LooseNode = { visible?: boolean; texture?: { key?: string }; x?: number; y?: number; width?: number; height?: number; depth?: number; type?: string };
+    const loose = ((scene as unknown as { children?: { list?: LooseNode[] } }).children?.list ?? [])
+      .filter(node => !owned.has(node) && node.visible !== false)
+      .slice(0, 20)
+      .map(node => ({
+        type: node.type ?? null,
+        texture: node.texture?.key ?? null,
+        x: Math.round(node.x ?? 0), y: Math.round(node.y ?? 0),
+        width: Math.round(node.width ?? 0), height: Math.round(node.height ?? 0),
+        depth: node.depth ?? null,
+      }));
+    return { attached: true, open: this.open, page: this.page, loose };
+  }
   private renderNow():void{
     if(!this.open||!this.surface||!this.body||!this.session)return;
     this.forge?.captureScroll();this.craftingPanel?.captureScroll();this.shopPanel?.captureScroll();this.questPanel?.captureScroll();this.partyPanel?.captureScroll();this.scrollNames.forEach((scroll,name)=>this.scrollOffsets.set(`${this.page}:${name}`,scroll.scrollTop));this.scrollNames.clear();this.surface.root.remove(this.body.root);this.surface.clear();this.bagPortrait?.detach();this.partyPanel?.detachPreview();this.body.clear();this.description?.clear();this.modal!.clear();this.surface.root.add(this.body.root);this.drops=[];this.keyboardFocus=undefined;

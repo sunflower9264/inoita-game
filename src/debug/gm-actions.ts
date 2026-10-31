@@ -137,6 +137,8 @@ export interface GmPorts {
   isNoclip?: () => boolean;
   setSpeedMultiplier?: (multiplier: number) => GmResult;
   getSpeedMultiplier?: () => number;
+  /** 菜单显示对象的诊断快照；正式 UI 场景提供，headless 省略。 */
+  ui?: () => unknown;
 }
 
 /** 既有报错收集端点（`public/diagnostics.js` 用的同一个）。只在开发服务挂载。 */
@@ -407,6 +409,7 @@ export function createGmActions(ports: GmPorts): GmActions {
       debug: session.debugFocusQuest ? { focus: session.debugFocusQuest, autoSavePaused: true } : null,
       world: worldDigest(),
       story: storyDigest(),
+      ui: ports.ui?.() ?? null,
       gm: { actions: log },
     };
   };
