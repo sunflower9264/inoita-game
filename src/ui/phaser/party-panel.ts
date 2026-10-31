@@ -7,7 +7,7 @@ import { memberArt } from '../../domain/menu-panels.ts';
 import type { EquipmentSlot } from '../../domain/items.ts';
 import { PRIMARY_STATS } from '../../domain/character-stats.ts';
 import { skillDetailEntries } from '../../domain/skill-display.ts';
-import { createCharacter } from '../../rendering/characters.ts';
+import { CharacterPreview } from './character-preview.ts';
 import type { PlaceModal } from './modal-placement.ts';
 import { drawRoundBand } from './round-band.ts';
 import { UiSurface, type ScrollArea } from './widgets.ts';
@@ -33,12 +33,16 @@ export class PartyPanel {
   private skillsScroll?:ScrollArea;
   private skillsOffset=0;
   private preparation?:AbortController;
+  private preview?:CharacterPreview;
 
   constructor(session:Session,world:WorldIndex,app:StoryUIContext,changed:()=>void,
     inspect:(id:string,page:'bag'|'skills')=>void){
     this.session=session;this.world=world;this.app=app;this.changed=changed;this.inspect=inspect;
   }
   get modalOpen():boolean{return !!this.modal;}
+  /** 重绘前把合成立绘摘下来，避免被页面清理销毁后无法复用。 */
+  detachPreview():void{this.preview?.detach();}
+  destroyPreview():void{this.preview?.destroy();this.preview=undefined;}
   close():void{this.modal=undefined;this.preparation?.abort();}
   cancel():void{this.modal=undefined;this.changed();}
   captureScroll():void{this.skillsOffset=this.skillsScroll?.scrollTop??this.skillsOffset;}
@@ -146,11 +150,12 @@ export class PartyPanel {
   }
   private renderEquipment(v:UiSurface,id:string):void{
     const panels=this.app.menuPanels,member=this.member(id)!,bag=this.session.bag,equipment=bag.equipmentFor(id);
-    const appearance=this.app.equipmentAppearance?.(id),clip=appearance?.clips['idle-south'];
+    const appearance=this.app.equipmentAppearance?.(id),clip=appearance?.clips['idle-south'],preview={x:623,y:124,width:127,height:114};
     if(appearance&&clip?.layers.every(layer=>v.scene.textures.exists(layer.key))){
-      const visual=createCharacter(v.scene,appearance,{id:'party-equipment-preview',actor:appearance.id,x:686,y:242});
-      v.root.add(visual.container);visual.container.setScale(3);
-    }else v.image(this.portrait(id),623,124,127,114);
+      // 和背包页共用同一套合成立绘：按预览框缩放居中，换人时替换，翻页时摘下来保留缓存。
+      const character=this.preview??(this.preview=new CharacterPreview(v.scene,'party-equipment-preview'));
+      character.show(v,appearance,preview);
+    }else v.image(this.portrait(id),preview.x,preview.y,preview.width,preview.height);
     for(const slot of panels.equipmentSlots){
       const entry=equipment[slot.id as EquipmentSlot],instance=entry?bag.get(entry):undefined,item=instance?bag.catalog.items[instance.item]:undefined;
       const button=v.button('',482+slot.x,slot.y,74,74,()=>this.inspect(id,'bag'),{image:slotFrameImage(this.app,this.session,instance)}).setData('label',`${slot.name}：${item?.name??'空'}`);
