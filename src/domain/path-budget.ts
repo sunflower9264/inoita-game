@@ -6,11 +6,10 @@
  * 而不是跟“这一帧有多少个 AI 想算路”走。
  */
 export class PathBudget {
-  readonly perFrame:number;
+  private readonly perFrame:number;
   private remaining:number;
   constructor(perFrame:number){this.perFrame=perFrame;this.remaining=perFrame;}
   reset():void{this.remaining=this.perFrame;}
-  get left():number{return this.remaining;}
   /** 领取最多 `limit` 个扩展；返回 0 表示这一帧不再开始/推进搜索。 */
   take(limit:number):number{
     const granted=Math.max(0,Math.min(limit,this.remaining));

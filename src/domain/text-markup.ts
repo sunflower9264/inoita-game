@@ -96,14 +96,14 @@ export function visibleIndex(value: string): { text: string; offsets: number[] }
  */
 export function typedIndex(value: string): { text: string; offsets: number[] } {
   const characters: string[] = [], offsets: number[] = [];
-  let raw = 0, count = 0;
+  let raw = 0;
   for (const token of (value ?? '').split(CODE)) {
     if (!token) continue;
     const start = raw; raw += token.length;
     if (token === '&N' || token === '&P' || token === '\n') continue;
     if (token === '&C' || token[0] === '$' && token.length === 2) continue;
     let offset = start;
-    for (const character of Array.from(token)) { characters.push(character); offsets.push(offset); offset += character.length; count++; }
+    for (const character of Array.from(token)) { characters.push(character); offsets.push(offset); offset += character.length; }
   }
   offsets.push(raw);
   return { text: characters.join(''), offsets };

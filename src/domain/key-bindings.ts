@@ -61,7 +61,6 @@ export const KEY_ACTION_LABELS: Readonly<Record<KeyBindingAction, string>> = {
 };
 
 export const MOVE_BINDING_ACTIONS = ['move.up', 'move.down', 'move.left', 'move.right'] as const;
-export type MoveBindingAction = typeof MOVE_BINDING_ACTIONS[number];
 
 const MODIFIER_CODES = new Set([
   'ShiftLeft', 'ShiftRight', 'ControlLeft', 'ControlRight',

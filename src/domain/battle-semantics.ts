@@ -10,7 +10,7 @@ export const BATTLE_STAT_KEYS = [
   'maxMana','skillDamageBonus','healingPowerRate','assassinSwordHitAdjustment',
   'stealthAttackEnabled','stealthDamageRate',
   'summonDurationBonus','moveSpeed','rearPenetrationRate','bestNormalDamage','lifeFeastRate','attackRangeBonusUnits',
-  'damageTransferPerThousand','godOfJusticeChance',
+  'damageTransferPerThousand',
   'healthRecoveryPerPulse','manaRecoveryPerPulse','manaCostRate','manaCostReductionRate',
   'moltenReflectionPerThousand','weaponBlockCounterStunDuration','sleepImmunity','stunImmunity','stateResistance',
   'threatGenerationRate','threatReductionRate','sightBonusUnits','armorBreakChance',
@@ -39,7 +39,7 @@ export const BATTLE_BUFF_KEYS = [
   'monster-emergency-recovery','monster-recovery','monster-companion-attack',
   'monster-companion-blessing','monster-blazing-armor','freeze-extreme',
   'fire-offering','critical-hit-stun','blunt-hit-stun',
-  'shield-of-rage','shield-of-trust','blood-revenge','bard-of-destruction','deep-breath','ordination-prayer','magic-insight','disturbanceThreshold','flares-of-pain','wrath-of-darkness','mana-recovery','dark-sense','revenge-incarnate',
+  'shield-of-rage','shield-of-trust','blood-revenge','bard-of-destruction','deep-breath','ordination-prayer','magic-insight','flares-of-pain','wrath-of-darkness','mana-recovery','dark-sense','revenge-incarnate',
   // 恢复泉水给的五个属性 buff，以及三条状态 buff：无法用药水、药效削弱、快捷栏封印。
   // 状态来源与消费者见 work/findings/257_equipment_attributes_78_82_and_potion_states_2026-10-31.md。
   'story-trap','spring-mana-recovery','spring-health-recovery','spring-mana-cost','spring-power-up','spring-frenzy',

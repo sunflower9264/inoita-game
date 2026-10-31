@@ -90,7 +90,6 @@ export class CombatActionDispatcher {
       return;
     }
     for(const event of skillPlaybackEvents(skill.action,index,skill.level,action.repeatState)){
-      if(action.repeatState&&!skillPlaybackEvents(skill.action,index,skill.level,action.repeatState).includes(event))continue;
       switch(event.kind){
       case 'feedback':feedback(event);break;
       case 'cast':this.visual(event.effect,'default',caster);break;

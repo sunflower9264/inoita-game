@@ -25,11 +25,6 @@ export function formationSlotOffset(backAngle: number, slot: 0 | 1): Point {
   return { x: Math.cos(angle) * FORMATION_RADIUS, y: Math.sin(angle) * FORMATION_RADIUS };
 }
 
-/** 只推进队形角度；`partyFormationOffset` 是它的静态版本，便于测试与落点复用。 */
-export function partyFormationOffset(facing: Facing, slot: 0 | 1): Point {
-  return formationSlotOffset(facingBackAngle(facing), slot);
-}
-
 /** 沿最短方向平滑旋转背后角度，避免 180° 换边时走远路。 */
 export function smoothFormationAngle(current: number, target: number, alpha: number): number {
   const turn = Math.atan2(Math.sin(target - current), Math.cos(target - current));

@@ -13,12 +13,12 @@ export function storyCommitCommands(commit: StoryNodeCommit, world: StoryWorldSt
   commands=commands.flatMap((command,index):StoryCommand[]=>{
     if(command.type!=='world'||command.command.kind!=='place'||!stage)return [command];
     const place=command.command;
-    const map=place.mapFromStage?stage.map:place.entity.map;
+    const map=place.entity.map;
     if(map!==stage.map)return [command];
     const actor=stage.scene.actors.find(actor=>actor.worldEntityId===place.entity.id);
     const dirty=changes.some(entity=>entity.id===place.entity.id&&entity.map===map);
     const laterPlacement=commands.slice(index+1).some(candidate=>candidate.type==='world'&&candidate.command.kind==='place'
-      &&candidate.command.entity.id===place.entity.id&&(candidate.command.mapFromStage?stage.map:candidate.command.entity.map)===map);
+      &&candidate.command.entity.id===place.entity.id&&candidate.command.entity.map===map);
     // 同图最后一次落位承接演出的最终姿态，生命周期与后续删除、迁移仍由节点命令决定。
     const projected:StoryCommand=dirty&&actor&&!actor.unpositioned&&!actor.removed&&!laterPlacement
       ?{...command,command:{...place,entity:{...place.entity,x:actor.x,y:actor.y,facing:actor.facing,visible:actor.visible}}}:command;

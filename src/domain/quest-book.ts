@@ -332,14 +332,11 @@ export class QuestBook {
               if (goals === state.goals) goals = { ...goals };
               goals[goal.id] = value;
             }
-            let ready = false;
-            if (quest.completion === 'all') {
-              ready = true;
-              for (const goal of quest.goals) {
-                if (goals[goal.id] >= goal.quantity) continue;
-                if (goal.kind === 'item' && quest.itemCompletion === 'equipped-item-shortcut' && (context.equippedItemCount?.(goal.target) ?? 0) > 0) break;
-                ready = false; break;
-              }
+            let ready = true;
+            for (const goal of quest.goals) {
+              if (goals[goal.id] >= goal.quantity) continue;
+              if (goal.kind === 'item' && quest.itemCompletion === 'equipped-item-shortcut' && (context.equippedItemCount?.(goal.target) ?? 0) > 0) break;
+              ready = false; break;
             }
             status = ready ? 'ready' : 'active';
             // GM 调试钉住：目标已满足也留在进行中；脚本结算命令会在批次开始时先解除。
