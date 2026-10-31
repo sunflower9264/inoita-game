@@ -27,7 +27,7 @@ import { WorldCombat, type WorldCombatState } from './world-combat.ts';
 import { QuestEnemyWatch } from '../domain/quest-enemies.ts';
 import { parseDrops, rollChestLoot, type DropCatalog, type DropReward } from '../domain/drops.ts';
 import { BODY_ADJACENT_GAP, canReachChest, CHEST_OPEN_MS, facesTarget, nearInteractable, nearInteractive, SHOP_COUNTER_GAP } from '../domain/chests.ts';
-import { parseSprings, rollSpringEffect, type SpringCatalog } from '../domain/springs.ts';
+import { applySpringRecovery, grantSpringSkillPoint, parseSprings, rollSpringEffect, springBuffScope, type SpringCatalog, type SpringPartyResources } from '../domain/springs.ts';
 import { groundLootFor } from '../domain/ground-loot.ts';
 import { innRestQuote, restAtInn } from '../domain/inns.ts';
 import { pullLegendaryWeapon } from '../domain/legendary-weapon.ts';
@@ -485,7 +485,6 @@ export class WorldScene extends Phaser.Scene {
     };
     this.loadingWorld = false;
     globalThis.storyDiagnostics?.record('start-phase',{phase:'world-ready',map:map.id});
-    this.events.emit('map-ready', map.id);
     // 剧情内换图会重建本场景；新实例的相机和物理都是新的，必须按舞台当前状态重新遮挡。
     this.syncStageOcclusion();
     this.app.audio?.enterMap(map.id);
@@ -1192,20 +1191,29 @@ export class WorldScene extends Phaser.Scene {
     for(const character of this.characters)
       if(character.entity.spring&&character.actor.id!==empty&&this.app.session.springs.isEmpty(this.map.id,character.entity.id))this.drainSpring(character);
   }
+  /** 泉水结算读取的上阵成员资源；没有队伍对象时退回只有主角的一人列表。 */
+  private springPartyMembers(): SpringPartyResources[] {
+    const party=this.app.session.party;
+    if(party)return party.activeMembers;
+    const hero=this.app.session.hero;
+    if(!hero)return [];
+    return [{id:'player',get player(){return hero.player;},
+      setHealth:(value:number)=>hero.setHealth(value),setMana:(value:number)=>hero.setMana(value),
+      grantSkillPoint:()=>hero.grantSkillPoint()}];
+  }
   /** 原版 `CHAR_DrinkSpring`：按这一档的效果表随机给一种奖励，再显示同一条原版提示。 */
   private drinkSpring(spring: Character): void {
-    const catalog=this.springCatalog,map=this.map,hero=this.app.session.hero;
+    const catalog=this.springCatalog,map=this.map;
     const controlled=this.combat?.controlledVisual??this.player;
     if(!catalog||!map||!controlled||!spring.container.visible) return;
     if(!canReachChest(controlled.container,spring.container)) return;
     const effect=rollSpringEffect(catalog,spring.entity.actor,Math.random);
     if(effect.kind==='buff'){
-      if(effect.buff)this.combat?.applySpringBuff(effect.buff);
-    }else if(hero){
-      const player=hero.player;
-      if(effect.kind==='heal') this.app.session.setHealth(player.health+Math.round(player.maxHealth*(effect.percent??0)/100));
-      else if(effect.kind==='heal-mana') hero.setMana(player.mana+Math.round(player.maxMana*(effect.percent??0)/100));
-      else if(effect.kind==='skill-point') hero.grantSkillPoint();
+      if(effect.buff)this.combat?.applySpringBuff(effect.buff,springBuffScope(effect.buff));
+    }else if(effect.kind==='heal'||effect.kind==='heal-mana'){
+      applySpringRecovery(effect,this.springPartyMembers());
+    }else if(effect.kind==='skill-point'){
+      grantSpringSkillPoint(this.springPartyMembers());
     }
     if(effect.kind==='spawn'&&effect.enemy) this.app.session.chests.spawnEnemy(map.id,spring.entity.id,effect.enemy,spring.container);
     this.app.audio?.ui('heal');

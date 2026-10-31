@@ -61,6 +61,7 @@ import { ACTIVE_PARTY_SLOT_COUNT } from '../domain/party-slots.ts';
 import type { StorySkillProgression } from '../domain/story-skills.ts';
 import type { CompanionSkillProgression } from '../domain/companion-progression.ts';
 import type { BattleBuffKey,BattleStatKey,BattleStateKey } from '../domain/battle-semantics.ts';
+import type { SpringBuffScope } from '../domain/springs.ts';
 import { passesChanceThreshold } from '../domain/action-state.ts';
 import {frameStateDurationProfile,resolveStateApplication,selectStateDurationProfile,type StateApplicationRequest} from '../domain/state-application.ts';
 import {equipmentStateImmunity} from '../domain/equipment-state-immunity.ts';
@@ -1017,7 +1018,6 @@ captureStoryActors():SceneActorState[] {
       // 计数在派发之前累加，第 3 次受击当帧就能满足延迟档的门槛。
       if(this.memberOf(event.targetId)&&!this.memberOf(event.casterId))this.damageCount++;
       if(event.skillId){
-        this.scene.events.emit('attack-contact',event);
         if(this.enemiesRunning&&!this.pendingDefeats.has(event.targetId))combatActor(this.arena,event.targetId,actor=>actor.key)?.controller?.onContact(event);
         if(this.enemiesRunning&&event.targetId!==this.controlledId)combatActor(this.allies,event.targetId,actor=>actor.id)?.ai.onContact(event);
         if(this.enemiesRunning&&event.targetId==='player'&&this.controlledId!=='player')this.heroAi?.onContact(event);
@@ -1057,7 +1057,6 @@ captureStoryActors():SceneActorState[] {
       this.resolveHitReactions(event,hit,profile.damage.effect,'basic-attack',hero,targetPosition);
       this.settleHit(event,hit,hero,targetEnemy,{style:profile?.hitEffectStyle??'weapon',sound:true});
       this.dropMana(event.casterId,hit.damage,targetPosition);
-      this.scene.events.emit('attack-contact', {...event,...hit});
       if(this.enemiesRunning&&targetEnemy&&!this.pendingDefeats.has(targetEnemy.key)&&this.arena.includes(targetEnemy))targetEnemy.controller?.onContact(event);
       if(this.enemiesRunning&&event.targetId!==this.controlledId)combatActor(this.allies,event.targetId,actor=>actor.id)?.ai.onContact(event);
       if(this.enemiesRunning&&event.targetId==='player'&&this.controlledId!=='player')this.heroAi?.onContact(event);
@@ -1847,7 +1846,6 @@ captureStoryActors():SceneActorState[] {
       if(caster)this.app.audio?.monsterAttack(caster.definition.id);
       if(options.periodic&&target)this.app.audio?.periodicDamage();
     }
-    this.scene.events.emit('combat-hit-feedback',{...event,...feedback});
   }
 
   private stopEnemies(): void {
@@ -2549,11 +2547,20 @@ captureStoryActors():SceneActorState[] {
     const recovery=this.app.battleCatalog.statusAttackBuffs?.['ambush-recovery'];
     if(recovery)this.applyActorBuff(id,'ambush-recovery',0,recovery,id);
   }
-  /** 喝泉水给的状态：原版 `CHAR_DrinkSpring` 的效果类型 4 直接建 buff，不经过技能或命中。 */
-  applySpringBuff(key:BattleBuffKey):boolean {
-    const id=this.controlledId,effect=this.app.battleCatalog.statusAttackBuffs?.[key];
+  /**
+   * 喝泉水给的状态：原版 `CHAR_DrinkSpring` 的效果类型 4 直接建 buff，不经过技能或命中。
+   * 正面状态给每名存活的上阵队员；负面或攻防混合的状态只给喝下泉水的人。
+   */
+  applySpringBuff(key:BattleBuffKey,scope:SpringBuffScope):boolean {
+    const effect=this.app.battleCatalog.statusAttackBuffs?.[key];
     if(!effect)return false;
-    return this.applyActorBuff(id,key,0,effect,id);
+    if(scope==='single')return this.applyActorBuff(this.controlledId,key,0,effect,this.controlledId);
+    let applied=false;
+    for(const id of this.activeParty){
+      if((this.memberOf(id)?.player.health??0)<=0)continue;
+      applied=this.applyActorBuff(id,key,0,effect,id)||applied;
+    }
+    return applied;
   }
   playerCannotAct():boolean{return this.conditions.cannotAct(this.controlledId)||this.defeated||!this.controlledMember.player.health;}
   private markAlreadyFallen(id:string):void {

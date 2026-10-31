@@ -45,6 +45,23 @@ test('original mercenary emblems recruit owned members, deploy two, and expel wi
   assert.equal(party.get(second.id),undefined);
 });
 
+test('activeMembers lists deployed resources player first and excludes reserves',()=>{
+  const {hero,party}=setup(),first=recruit(party),second=recruit(party),reserve=recruit(party);
+  party.deployFirstAvailable(second.id);party.deployFirstAvailable(first.id);
+  const active=party.activeMembers;
+  assert.deepEqual(active.map(member=>member.id),['player',second.id,first.id]);
+  assert.deepEqual(active.map(member=>member.id),party.activeIds,'顺序与上阵槽一致');
+  assert.equal(active.some(member=>member.id===reserve.id),false,'候补不在上阵资源里');
+  assert.equal(typeof active[0]!.grantSkillPoint,'function','主角有技能点');
+  assert.equal(active[1]!.grantSkillPoint,undefined,'佣兵没有技能点系统');
+  active[1]!.setHealth(1);active[1]!.setMana(1);
+  assert.deepEqual([second.player.health,second.player.mana],[1,1]);
+  active[0]!.setMana(1);
+  assert.equal(hero.player.mana,1);
+  active[0]!.grantSkillPoint!();
+  assert.equal(hero.skillPoints,1);
+});
+
 test('living deployed members receive experience and a scroll restores ten percent of both resources',()=>{
   const hero=new BattleCharacter('dark-knight',stats,items);
   const party=new PartyRoster(hero,stats,items,catalog,()=>{});

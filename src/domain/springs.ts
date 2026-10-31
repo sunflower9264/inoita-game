@@ -34,6 +34,75 @@ export interface SpringCatalog {
   effects: SpringEffect[];
 }
 
+/** 泉水结算读写一名上阵队员的资源；佣兵没有技能点，所以 `grantSkillPoint` 可选。 */
+export interface SpringPartyResources {
+  id: string;
+  player: { health: number; maxHealth: number; mana: number; maxMana: number };
+  setHealth(value: number): void;
+  setMana(value: number): void;
+  grantSkillPoint?(): void;
+}
+
+/** 正面、按全队生效的泉水状态：回血、回蓝、回蓝加速、攻魔提升。 */
+export const SPRING_PARTY_WIDE_BUFFS = [
+  'spring-mana-recovery', 'spring-health-recovery', 'spring-mana-cost', 'spring-power-up',
+] as const satisfies readonly BattleBuffKey[];
+
+/**
+ * 负面或攻防混合的泉水状态，只给喝下泉水的人：药水病、药效减半、技能封印，
+ * 以及攻击上升但防御下降的疯癫。
+ */
+export const SPRING_SINGLE_TARGET_BUFFS = [
+  'spring-potion-sickness', 'spring-potion-weakened', 'spring-skill-seal', 'spring-frenzy',
+] as const satisfies readonly BattleBuffKey[];
+
+export type SpringBuffScope = 'party' | 'single';
+
+/** 未登记的状态按只作用于喝的人处理，避免以后新增的泉水状态误伤全队。 */
+export function springBuffScope(key: BattleBuffKey): SpringBuffScope {
+  return (SPRING_PARTY_WIDE_BUFFS as readonly BattleBuffKey[]).includes(key) ? 'party' : 'single';
+}
+
+/**
+ * 按每名上阵队员自己的上限结算回血或回蓝，数值夹在 0 到上限之间。
+ * 默认跳过已经倒下的成员，返回这次资源确实增加过的成员 id。
+ */
+export function applySpringRecovery(effect: { kind: SpringKind; percent?: number }, members: readonly SpringPartyResources[], includeFallen = false): string[] {
+  if (effect.kind !== 'heal' && effect.kind !== 'heal-mana') return [];
+  const percent = effect.percent ?? 0;
+  if (!(percent > 0)) return [];
+  const recovered: string[] = [];
+  for (const member of members) {
+    if (!includeFallen && member.player.health <= 0) continue;
+    if (effect.kind === 'heal') {
+      const before = member.player.health, max = member.player.maxHealth;
+      const target = Math.max(0, Math.min(max, before + Math.round(max * percent / 100)));
+      member.setHealth(target);
+      if (target > before) recovered.push(member.id);
+    } else {
+      const before = member.player.mana, max = member.player.maxMana;
+      const target = Math.max(0, Math.min(max, before + Math.round(max * percent / 100)));
+      member.setMana(target);
+      if (target > before) recovered.push(member.id);
+    }
+  }
+  return recovered;
+}
+
+/**
+ * 技能点只属于主角：佣兵没有技能点系统，即使传入也不会被加。
+ * 返回真正拿到技能点的成员 id。
+ */
+export function grantSpringSkillPoint(members: readonly SpringPartyResources[]): string[] {
+  const granted: string[] = [];
+  for (const member of members) {
+    if (member.id !== 'player' || member.player.health <= 0 || !member.grantSkillPoint) continue;
+    member.grantSkillPoint();
+    granted.push(member.id);
+  }
+  return granted;
+}
+
 export function parseSprings(value: unknown): SpringCatalog {
   const catalog = value as SpringCatalog;
   if (catalog?.version !== 1 || !Array.isArray(catalog.springs) || !Array.isArray(catalog.effects))

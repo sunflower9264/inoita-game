@@ -13,31 +13,41 @@ const catalog=JSON.parse(readFileSync(new URL('../public/content/battle.json',im
 
 function fixture(){
   const conditions=new CombatConditions(),applied:{id:string;key:string}[]=[],requests:number[]=[];
-  const member={classId:'dark-knight',level:10,
+  const makeMember=(health:number)=>({classId:'dark-knight',level:10,
     bag:{equipmentFor:()=>({}),get:()=>undefined,equipmentItems:()=>({})},
     panel:{physicalAttack:10,magicAttack:10,maxHealth:100,maxMana:100},
-    player:{health:1,maxHealth:100,mana:0,maxMana:100},setHealth(){},setMana(){}};
+    player:{health,maxHealth:100,mana:0,maxMana:100},setHealth(){},setMana(){}});
+  const members=new Map([['player',makeMember(40)],['ally',makeMember(40)]]);
   const party={controlledId:'player',groupModifiers:()=>({})};
   const host=Object.setPrototypeOf({
     scene:{canCombatControl:true,player:{container:{active:true}}},
-    closed:false,defeated:false,castingSkill:false,conditions,hero:member,
+    closed:false,defeated:false,castingSkill:false,conditions,hero:members.get('player'),
     app:{battleCatalog:catalog,suspended:false,session:{party,skills:{isEquipped:()=>true}}},
-    memberOf:(id:string)=>id==='player'?member:undefined,
-    activeParty:['player'],
+    memberOf:(id:string)=>members.get(id),
+    activeParty:[...members.keys()],
     applyActorBuff:(id:string,key:string)=>{applied.push({id,key});return true;},
     runtime:{request:()=>requests.push(1)},
   },WorldCombat.prototype);
   const call=(name:string,...args:unknown[])=>Reflect.get(WorldCombat.prototype,name).call(host,...args);
-  return {conditions,party,applied,requests,call};
+  return {conditions,party,members,applied,requests,call};
 }
 
-test('spring state buffs land only on the currently controlled character',()=>{
+test('positive spring buffs reach every living active member',()=>{
   const f=fixture();
-  f.call('applySpringBuff','spring-potion-sickness');
-  assert.deepEqual(f.applied,[{id:'player',key:'spring-potion-sickness'}]);
+  f.call('applySpringBuff','spring-power-up','party');
+  assert.deepEqual(f.applied,[{id:'player',key:'spring-power-up'},{id:'ally',key:'spring-power-up'}]);
+  f.applied.length=0;
+  f.members.get('ally')!.player.health=0;
+  f.call('applySpringBuff','spring-mana-recovery','party');
+  assert.deepEqual(f.applied,[{id:'player',key:'spring-mana-recovery'}],'阵亡队员不再获得泉水正面状态');
+});
+
+test('negative and mixed spring buffs land only on the currently controlled character',()=>{
+  const f=fixture();
   f.party.controlledId='ally';
-  f.call('applySpringBuff','spring-skill-seal');
-  assert.deepEqual(f.applied,[{id:'player',key:'spring-potion-sickness'},{id:'ally',key:'spring-skill-seal'}]);
+  f.call('applySpringBuff','spring-potion-sickness','single');
+  f.call('applySpringBuff','spring-frenzy','single');
+  assert.deepEqual(f.applied,[{id:'ally',key:'spring-potion-sickness'},{id:'ally',key:'spring-frenzy'}]);
 });
 
 test('shortcut seal blocks skill input and the skill slot before the runtime request',()=>{

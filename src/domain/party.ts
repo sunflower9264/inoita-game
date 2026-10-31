@@ -7,6 +7,7 @@ export type { CompanionGroupEffect, CompanionGroupSkill } from './companion-prog
 const MERCENARY_SLOT_COUNT=18;
 import type { ItemCatalog, ItemResult } from './items.ts';
 import type { Bag } from './bag.ts';
+import type { SpringPartyResources } from './springs.ts';
 
 export interface CompanionDefinition {
   defaultShield?:boolean;
@@ -210,6 +211,16 @@ export class PartyRoster {
   }
   get controlledId():string{return this.selected;}
   get activeIds():string[]{return ['player',...this.slots.filter((id):id is string=>!!id)];}
+  /** 上阵队员的资源读写入口，顺序为主角、上阵槽；候补名册不在内。 */
+  get activeMembers():SpringPartyResources[]{
+    return this.activeIds.map(id=>{
+      if(id==='player'){const hero=this.hero;return {id,get player(){return hero.player;},
+        setHealth:(value:number)=>hero.setHealth(value),setMana:(value:number)=>hero.setMana(value),
+        grantSkillPoint:()=>hero.grantSkillPoint()};}
+      const member=this.owned.get(id)!;
+      return {id,get player(){return member.player;},setHealth:(value:number)=>member.setHealth(value),setMana:(value:number)=>member.setMana(value)};
+    });
+  }
   /** 上阵空间槽位：0 屏幕左侧、1 屏幕右侧；名册与候补返回 undefined。 */
   slotOf(id:string):0|1|undefined {
     const index=this.slots.indexOf(id);

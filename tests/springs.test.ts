@@ -1,10 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { parseSprings, rollSpring, rollSpringEffect, SpringVisits } from '../src/domain/springs.ts';
+import { applySpringRecovery, grantSpringSkillPoint, parseSprings, rollSpring, rollSpringEffect, springBuffScope,
+  SpringVisits, SPRING_PARTY_WIDE_BUFFS, SPRING_SINGLE_TARGET_BUFFS } from '../src/domain/springs.ts';
 import { BATTLE_BUFF_KEYS } from '../src/domain/battle-semantics.ts';
 
 const springs=parseSprings(JSON.parse(fs.readFileSync(new URL('../public/content/springs.json',import.meta.url),'utf8')));
+
+function springMember(id:string,health:number,maxHealth:number,mana:number,maxMana:number){
+  const state={health,mana,skillPoints:0};
+  return {id,get player(){return {health:state.health,maxHealth,mana:state.mana,maxMana};},
+    setHealth(value:number){state.health=value;},setMana(value:number){state.mana=value;},
+    grantSkillPoint(){state.skillPoints++;},get skillPoints(){return state.skillPoints;}};
+}
 
 test('exported springs keep the native five tiers and twenty effects',()=>{
   assert.deepEqual(springs.springs.map(spring=>[spring.name,spring.unlockLevel]),
@@ -61,6 +69,42 @@ test('spring buff effects resolve to declared battle buffs',()=>{
     assert.equal(effect.simulationFrames.lastActiveFrame,300);
     assert.equal(effect.stateDurationProfiles[effect.states[0]].normal.lastActiveFrame,450);
   }
+});
+
+test('spring recovery heals each living active member against their own maximum',()=>{
+  const hero=springMember('player',100,200,10,100),ally=springMember('ally',70,80,10,40),fallen=springMember('fallen',0,120,0,80);
+  assert.deepEqual(applySpringRecovery({kind:'heal',percent:100},[hero,ally,fallen]),['player','ally']);
+  assert.deepEqual([hero.player.health,ally.player.health,fallen.player.health],[200,80,0],'按各自上限夹取并跳过阵亡成员');
+  assert.equal(ally.player.health,ally.player.maxHealth);
+});
+
+test('spring mana recovery uses each member own mana maximum',()=>{
+  const hero=springMember('player',100,200,10,100),ally=springMember('ally',70,80,10,40);
+  assert.deepEqual(applySpringRecovery({kind:'heal-mana',percent:50},[hero,ally]),['player','ally']);
+  assert.deepEqual([hero.player.mana,ally.player.mana],[60,30]);
+  assert.deepEqual(applySpringRecovery({kind:'heal-mana',percent:100},[hero,ally]),['player','ally']);
+  assert.deepEqual([hero.player.mana,ally.player.mana],[100,40]);
+  assert.deepEqual(applySpringRecovery({kind:'heal-mana',percent:100},[hero,ally]),[], '已经满蓝的成员不再列入受益名单');
+});
+
+test('spring skill points only go to the living hero',()=>{
+  const hero=springMember('player',100,200,10,100),ally=springMember('ally',70,80,10,40);
+  assert.deepEqual(grantSpringSkillPoint([hero,ally]),['player']);
+  assert.deepEqual([hero.skillPoints,ally.skillPoints],[1,0],'佣兵没有技能点系统');
+  hero.setHealth(0);
+  assert.deepEqual(grantSpringSkillPoint([hero,ally]),[]);
+});
+
+test('spring buffs split into party-wide positive effects and single-target negative effects',()=>{
+  const buffs=new Set(springs.effects.filter(effect=>effect.kind==='buff').map(effect=>effect.buff!));
+  const partyWide=new Set<string>(SPRING_PARTY_WIDE_BUFFS),singleTarget=new Set<string>(SPRING_SINGLE_TARGET_BUFFS);
+  for(const key of buffs) assert.ok(partyWide.has(key)||singleTarget.has(key),`${key} 未分类`);
+  assert.equal(partyWide.size+singleTarget.size,buffs.size,'每个泉水状态只归一类');
+  // 战斗目录里的修饰项决定正负：回血、回蓝、降耗、攻魔提升给全队；带状态的药水病与封印、攻升防降的疯癫只给喝的人。
+  assert.deepEqual([...SPRING_PARTY_WIDE_BUFFS],['spring-mana-recovery','spring-health-recovery','spring-mana-cost','spring-power-up']);
+  assert.deepEqual([...SPRING_SINGLE_TARGET_BUFFS],['spring-potion-sickness','spring-potion-weakened','spring-skill-seal','spring-frenzy']);
+  assert.equal(springBuffScope('spring-power-up'),'party');
+  assert.equal(springBuffScope('spring-frenzy'),'single','攻升防降按负面/混合只给喝的人');
 });
 
 test('spring parser rejects broken catalogs',()=>{

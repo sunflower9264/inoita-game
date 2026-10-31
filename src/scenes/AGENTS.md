@@ -18,6 +18,7 @@ Phaser 场景层：驱动生命周期、转发输入，把 domain、rendering、
 ## 规则
 
 - 场景只驱动生命周期、转发输入、调度下层模块；判定和数值规则写进 `src/domain/`，具体绘制交给 `src/rendering/` 与 `src/ui/phaser/`。
+- 喝泉水的回血回蓝和技能点结算调用 `domain/springs.ts` 的 `applySpringRecovery`、`grantSpringSkillPoint`；正面状态按存活上阵队员逐个施加，负面或攻防混合状态只给当前操控者。
 - 场景键从 `SCENE_KEYS`（`src/application/scene-keys.ts`）取，构造、查找、启动都用它，不写裸字符串。
 - 新增场景在 `src/main.ts` 注册，并接上对应模式与 URL 参数的启动分支。
 - 跨场景状态通过 `src/application/ports.ts` 的能力接口传递，不挂全局变量或模块级可变状态。
