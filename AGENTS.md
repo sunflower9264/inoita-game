@@ -4,6 +4,13 @@ Phaser 4.2.1 + TypeScript 的剧情与任务体验版。源码、内容、素材
 
 **游戏行为以 `src/`、`public/content/` 和 `tests/` 为准。** 规则不清楚时读现有实现、内容定义和测试；不要依赖仓库外的资料。
 
+## 规则层级
+
+- 本文件是全局规则；各代码目录的 `AGENTS.md` 只补该目录的局部约束，不整段复制全局规则。
+- 冲突时以离被改文件最近的 `AGENTS.md` 为准；聊天里的明确指令优先。
+- 每个含 `AGENTS.md` 的目录同时有一个指向它的 `CLAUDE.md` 符号链接。规则只改 `AGENTS.md`，`CLAUDE.md` 不单独维护。新增代码子目录时补一对。
+- 游戏实现改了，就同步更新对应的 `AGENTS.md`；文件增删、命令变化和约束变化都算。
+
 ## 沟通
 
 面向用户的解释里禁止直接使用未经解释的内部简称。先用日常语言说清它解决什么问题，再出现技术词。
@@ -15,31 +22,18 @@ Phaser 4.2.1 + TypeScript 的剧情与任务体验版。源码、内容、素材
 
 ## 1. 实现功能先走 Phaser 内置能力，再走技能，最后查文档
 
-游戏界面使用 Phaser 4 的场景、游戏对象与现有界面组件实现。按这个顺序找解法，不要跳步：
+界面用 Phaser 4.2.1 的内置 API；内置 API 不够时查 `.agents/skills/`；技能没覆盖时查 4.2.1 官方文档。Phaser 4 和 3 差异很大，不要凭记忆写 v3 写法。分层、import 方向和具体取舍见 `src/AGENTS.md`。
 
-1. **Phaser 内置 API**。移动和碰撞交给 Arcade Physics（`this.physics`，技能 `physics-arcade`），镜头跟随用 `this.cameras.main.startFollow()`（技能 `cameras`），逐帧动画用 AnimationManager（`this.anims`，技能 `animations`）。不要自己写循环——自己造轮子会丢掉内置的碰撞分离、视口剔除和时序处理。
-2. **项目内技能**。`.agents/skills/` 里有 Phaser 4 的场景、动画、物理、相机、瓦片地图、输入、文本、粒子、滤镜等技能；Claude Code 通过 `.claude/skills` 读取。用 Skill 工具按功能调用。
-3. **Phaser 4.2.1 官方文档**。技能没覆盖时查对应版本的文档。
-
-Phaser 4 和 3 的差异很大：渲染管线从 pipeline 改成 render node，FX 和 mask 改成 filter，tint 系统和纹理坐标也变了。公开语料里 Phaser 3 的代码远多于 4，不要凭记忆写 v3 写法。引擎版本以 `package.json` 声明为准；升级引擎时同步更新本文档和 `README.md`。
+引擎版本以 `package.json` 为准；升级 Phaser 时同步更新 `README.md` 和本规则。
 
 ## 2. 先定义游戏语义，再写 Phaser 代码
 
-游戏代码里只出现有语义的名字，不出现解析过程的中间产物。
-
-| 别这样写 | 要这样写 |
-|---|---|
-| `pos = { x: -rec.u_5, y: -rec.u_7 }` | `worldPosition = { x: -rec.tileX, y: -rec.tileY }` |
-| `if (tileId & 0x3FFF)` / `flags >> 14` | `getTileIndex(cell)`、`isFlippedHorizontally(cell)` |
-| `if (idx === 0x2484) alpha = 0` | 解码时算出 `transparentIndex`，渲染只读这个字段 |
-| `paletteSetId = MAPINFOBASE[map].byte[3]` | 导出阶段就展开成 `world.tilePalette` |
-
-边界保持一致：
+游戏代码里只出现有语义的名字，不出现解析过程的中间产物；命名示例和分层说明见 `src/AGENTS.md`。
 
 - **工程自包含**。运行、测试和普通构建只读取本目录的源码、`public/` 和测试。
 - **剧情独立创作**。`public/content/campaign.json` 是剧情、任务和角色摆放的源文件；新增字段先定义游戏含义、单位和消费方式，内容加载和构建共用校验器。
 - **名字用游戏里的概念**。动画叫 `walk-east`、`idle-south`，地图属性叫 `blocked`、`exits`、`entities`，剧情行为叫 `dialogue`、`choice`。
-- **存档兼容上一版**。当前代码必须能读回最近一次发布的存档格式。改了存档结构或校验口径就把 `src/domain/save-game.ts` 的 `SAVE_FORMAT` 加一，同时在 `src/application/saved-game.ts` 的升级链里补上旧版到新版的迁移和旧档测试；升级链覆盖的旧档正常读取，更早的档案显示为空槽。
+- **存档兼容上一版**。当前代码必须能读回最近一次发布的存档格式；升级流程见 `src/domain/AGENTS.md`，迁移链在 `src/application/saved-game.ts`。
 
 ## 3. 测试与验证
 
@@ -54,8 +48,7 @@ npm test -- tests/example.test.ts
 - TypeScript 改动需要类型检查；没有相关用例时运行 `npm run typecheck`。
 - 内容、内容校验器或素材引用有变化时运行 `npm run validate:content`。
 - 相关检查通过后继续完成任务；只有新改动、新失败或尚未解决的疑点才扩大测试。
-- 全量单元测试只在用户明确要求时使用 `npm run test:all`。
-- 独立安装与构建验收用 `npm run test:standalone`。
+- 全量单元测试只在用户明确要求时使用 `npm run test:all`；独立安装与构建验收用 `npm run test:standalone`。测试写法见 `tests/AGENTS.md`。
 
 **验证不主动调用浏览器。** Playwright、headless Chrome 以及任何等价手段都不自行启动；界面与实际运行效果交给用户验收。只有用户明确要求时才用浏览器。
 
@@ -84,22 +77,24 @@ package.json           依赖与命令；Phaser 版本以这里为准
 index.html             页面入口，Vite 从这里打包
 vite.config.ts         开发服务 4003；打包产物放 dist/
 tsconfig.json          类型检查；只用可擦除语法，测试用 node --test 直接跑 .ts
-src/                   游戏源码
+src/                   游戏源码（规则见 src/AGENTS.md）
   app.ts               启动装配；场景与界面使用 application/ports.ts 的能力接口
   main.ts              游戏配置与启动
-  scenes/              地图、剧情舞台、菜单与调试场景
-  domain/              内容类型、会话状态、剧情调度、通行、战斗规则
-  rendering/           角色、世界、战斗与特效表现
-  ui/                  菜单、HUD、对话与 Phaser 面板
-  debug/               GM 动作层与剧情跳转
+  application/         端口装配、内容加载、存档迁移（AGENTS.md）
+  scenes/              地图、剧情舞台、菜单与调试场景（AGENTS.md）
+  domain/              内容类型、会话状态、剧情调度、通行、战斗规则（AGENTS.md）
+  rendering/           角色、世界、战斗与特效表现（AGENTS.md）
+  ui/                  菜单、HUD、对话与 Phaser 面板（AGENTS.md；ui/phaser 另有）
+  debug/               GM 动作层与剧情跳转（AGENTS.md）
+  generated/           图集常量，生成物（AGENTS.md）
 public/                原样复制进构建产物的静态资源和内容
   content/             剧情、任务、地图、战斗、物品、音频等内容 JSON
   assets/              图片与音频素材
-tests/                 单元测试（*.test.ts）与独立构建验证
-tools/                 构建、校验、调试现场表生成、静态服务、APK 打包
+tests/                 单元测试（AGENTS.md；helpers、support 另有）
+tools/                 构建、校验、调试现场表生成、静态服务、APK 打包（AGENTS.md；debug-start 另有）
 deploy/                nginx 站点等部署配置
 docs/                  架构、掉落、剧情创作、音频、部署、调试与诊断
-android/               Android WebView 壳（可选）
+android/               Android WebView 壳（可选，规则见 AGENTS.md）
 .agents/skills/        Phaser 4 开发技能
 .claude/skills         指向 ../.agents/skills 的符号链接
 ```
