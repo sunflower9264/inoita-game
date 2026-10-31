@@ -180,7 +180,7 @@ export class ForgePanel {
     if(!canAdd&&replacing===undefined){v.text('宝石孔已满。点已镶嵌的宝石可以取出或替换。',692,250,0,20,'#e2cb9e').setOrigin(.5,0);return;}
     const gems=this.bag.entries.filter(entry=>this.bag.catalog.items[entry.item].use?.kind==='socket');
     if(!gems.length){v.text('背包里没有宝石。',692,250,0,20,'#e2cb9e').setOrigin(.5,0);return;}
-    if(replacing!==undefined)v.text(`替换第 ${replacing+1} 孔`,472,240,300,20,'#e2cb9e');
+    if(replacing!==undefined)v.text(`替换第 ${replacing+1} 孔`,472,210,300,20,'#e2cb9e');
     this.renderGemPreview(v,target,modifiers);
     const scroll=v.scroll(472,330,472,150);this.scroll=scroll;
     const rowHeight=64;
