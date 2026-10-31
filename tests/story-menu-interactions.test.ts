@@ -684,13 +684,16 @@ test('forge sockets, removes and replaces gems with confirmation', t => {
   const first=f.add('novice-jewel'),second=f.add('standard-jewel'),replacement=f.add('advanced-jewel');
   openHeroForge(f);
   f.scene.click(f.scene.button('镶嵌'));
-  assert.ok(f.scene.texts().some(text=>text.includes('点已镶孔可以取出或替换')),'镶嵌页提示替换入口');
+  assert.ok(f.scene.texts().some(text=>text.includes('从右侧选择一颗宝石')),'空孔提示从右侧选宝石');
   f.scene.click(f.scene.button(`宝石:${first.id}`));
+  assert.ok(f.scene.texts().some(text=>text.includes('待镶')),'选中宝石后显示待镶信息');
   assert.ok(f.scene.texts().some(text=>text.includes('镶嵌后')),'镶嵌前显示角色面板差值');
   f.scene.click(f.scene.button('确认镶嵌'));
   assert.equal(f.hero.bag.get(weapon.id)!.gems.length,1);
   assert.equal(f.hero.bag.get(weapon.id)!.numbers!.gemModifiers.length,1);
+  assert.ok(f.scene.texts().some(text=>text.includes('低级宝石')),'已镶宝石和效果常驻显示');
   f.scene.click(f.scene.button('孔位1'));
+  assert.ok(f.scene.texts().some(text=>text.includes('取出后')),'选中已镶孔后显示取出差值');
   f.scene.click(f.scene.button('取出'));
   assert.ok(f.internals.forge!.confirming);
   f.scene.click(f.scene.button('是'));

@@ -168,43 +168,75 @@ export class ForgePanel {
     if(sockets<=0){v.text('这件装备没有宝石孔。',40,190,400,18,'#ff6b6b');return;}
     const modifiers=target.numbers?.gemModifiers;
     const valid=!!target.numbers&&!!modifiers&&modifiers.length===target.gems.length;
+    const activeIndex=this.socketIndex??this.replaceIndex;
     for(let index=0;index<sockets;index++){
       const x=40+index*60,y=190,filled=index<target.gems.length;
       const button=v.button('',x,y,54,54,()=>{if(!filled)return;this.socketIndex=index;this.replaceIndex=undefined;this.selectedItem=undefined;this.changed();},
         {image:this.panels.assets['inventory-slot'],disabled:!filled}).setData('label',`孔位${index+1}`);
       if(filled){const gemItem=this.bag.catalog.items[target.gems[index]!];if(gemItem)v.image(gemItem.icon,5,5,44,44,button);}
-      if(this.socketIndex===index)v.image(this.panels.assets['inventory-selected'],-5,-5,64,64,button).setData('forge-highlight','socket');
+      if(activeIndex===index)v.image(this.panels.assets['inventory-selected'],-5,-5,64,64,button).setData('forge-highlight','socket');
     }
-    if(!valid){v.text('宝石数据不完整，无法修改宝石。',40,264,400,18,'#ff6b6b');return;}
-    if(this.socketIndex!==undefined){
-      const index=this.socketIndex,gemItem=this.bag.catalog.items[target.gems[index]!],modifier=modifiers[index];
-      if(!gemItem||!modifier){v.text('宝石数据不完整，无法修改宝石。',40,292,400,18,'#ff6b6b');return;}
-      v.text(`${gemItem.name}：${this.modifierText(modifier)}`,40,292,400,18,'#bf0000');
-      v.button('取出',40,316,90,32,()=>{this.confirmation={kind:'unsocket',index};this.changed();},{fontSize:16});
-      v.button('替换',140,316,90,32,()=>{this.replaceIndex=index;this.socketIndex=undefined;this.selectedItem=undefined;this.changed();},{fontSize:16});
-      return;
+    if(!valid){v.text('宝石数据不完整，无法修改宝石。',40,252,400,18,'#ff6b6b');return;}
+    // 每个孔固定占一行，任何时候都能看到已镶宝石带来的属性。
+    for(let index=0;index<sockets;index++){
+      const y=252+index*22,filled=index<target.gems.length;
+      v.text(`孔${index+1}`,40,y,40,18,'#c8b78f');
+      if(!filled){v.text('空',84,y,110,18,'#c8b78f');continue;}
+      const gemItem=this.bag.catalog.items[target.gems[index]!],modifier=modifiers[index];
+      v.text(gemItem?.name??'宝石',84,y,110,18,activeIndex===index?'#ffffff':'#e2cb9e');
+      if(modifier)v.text(this.gemEffectText(modifier),198,y,242,18,'#bf0000');
     }
     const canAdd=target.gems.length<sockets;
-    if(this.replaceIndex!==undefined)v.text(`替换第 ${this.replaceIndex+1} 孔`,40,264,400,18,'#e2cb9e');
-    else if(!canAdd)v.text('宝石孔已满。点已镶孔可以取出或替换。',40,264,400,18,'#ff6b6b');
-    else if(!this.selectedItem)v.text('点已镶孔可以取出或替换；点下方宝石可以镶嵌。',40,264,400,18,'#c8b78f');
-    if(this.selectedItem)this.renderGemPreview(v,target,modifiers);
-    else if(this.replaceIndex!==undefined)v.text('选择一颗宝石。',40,292,400,18,'#c8b78f');
+    if(this.socketIndex!==undefined){
+      const index=this.socketIndex,gemItem=this.bag.catalog.items[target.gems[index]!],modifier=modifiers[index];
+      if(!gemItem||!modifier){v.text('宝石数据不完整，无法修改宝石。',40,318,400,14,'#ff6b6b');return;}
+      const outcome=this.socketOutcome(target.id,modifiers,modifiers.filter((_value,slot)=>slot!==index),'取出后');
+      if(outcome)this.socketHint(v,outcome,'#e2cb9e');
+      v.button('取出',40,342,195,55,()=>{this.confirmation={kind:'unsocket',index};this.changed();},{fontSize:20});
+      v.button('替换',245,342,195,55,()=>{this.replaceIndex=index;this.socketIndex=undefined;this.selectedItem=undefined;this.changed();},{fontSize:20});
+      return;
+    }
+    if(!canAdd&&this.replaceIndex===undefined)this.socketHint(v,'宝石孔已满','#ff6b6b');
+    else if(this.replaceIndex!==undefined&&!this.selectedItem)this.socketHint(v,'从右侧选择要替换的宝石','#c8b78f');
+    else if(!this.selectedItem)this.socketHint(v,'从右侧选择一颗宝石','#c8b78f');
+    if(this.selectedItem){
+      const gem=this.bag.get(this.selectedItem),definition=gem?this.bag.catalog.items[gem.item]:undefined,modifier=gem?.numbers?.modifiers?.[0];
+      if(!gem||!definition||!modifier){v.text('宝石数据不完整。',40,318,400,14,'#ff6b6b');return;}
+      if(this.replaceIndex!==undefined){
+        const index=this.replaceIndex,oldName=this.bag.catalog.items[target.gems[index]!]?.name??`孔${index+1}`;
+        v.text(`替换 孔${index+1} ${oldName} → ${definition.name}`,504,360,355,18,'#e2cb9e');
+        const outcome=this.socketOutcome(target.id,modifiers,modifiers.map((value,slot)=>slot===index?{...modifier}:value),'替换后');
+        if(outcome)v.text(outcome,504,384,355,18,'#e2cb9e');
+      }else{
+        v.text(`待镶 ${definition.name} · ${this.gemEffectText(modifier)}`,504,360,355,18,'#e2cb9e');
+        const worn=Object.values(this.bag.equipmentFor(this.memberId)).includes(target.id);
+        const outcome=this.socketOutcome(target.id,modifiers,[...modifiers,{...modifier}],worn?'镶嵌后':'装备后');
+        if(outcome)v.text(outcome,504,384,355,18,'#e2cb9e');
+      }
+    }
     v.button(this.replaceIndex===undefined?'确认镶嵌':'确认替换',139,342,205,55,()=>this.confirmSocket(),{fontSize:20,
       disabled:!this.selectedItem||!this.bag.get(this.selectedItem)?.numbers?.modifiers?.length||(!canAdd&&this.replaceIndex===undefined)});
   }
-  private renderGemPreview(v:UiSurface,target:ItemInstance,modifiers:Modifier[]):void {
-    const gemId=this.selectedItem;if(!gemId)return;
-    const gem=this.bag.get(gemId),definition=gem?this.bag.catalog.items[gem.item]:undefined,modifier=gem?.numbers?.modifiers?.[0];
-    if(!gem||!definition||!modifier){v.text('宝石数据不完整。',40,292,400,18,'#ff6b6b');return;}
-    const current=modifiers.map(value=>({...value}));
-    const next=this.replaceIndex===undefined?[...current,{...modifier}]:current.map((value,index)=>index===this.replaceIndex?{...modifier}:value);
-    const after=this.preview(target.id,next);
-    v.text(`${definition.name}：${this.modifierText(modifier)}`,40,292,400,18,'#bf0000');
-    if(!after)return;
-    const before=this.preview(target.id,current),diff=before?this.panelDiff(before,after):[];
-    const worn=Object.values(this.bag.equipmentFor(this.memberId)).includes(target.id);
-    v.text(`${worn?'镶嵌后':'装备后'}：${diff.length?diff.slice(0,3).join('　'):'角色面板无变化'}`,40,316,400,18,'#e2cb9e');
+
+  /** 左栏只留一句状态或结果，放在孔位效果列表下面。 */
+  private socketHint(v:UiSurface,text:string,color:string):void {
+    v.text(text,40,318,400,14,color);
+  }
+
+  /** 宝石词条的短写法：`暴击率 +2.5%`，用于孔位效果列表和镶嵌预览。 */
+  private gemEffectText(modifier:Modifier):string {
+    const descriptor=this.stats.modifiers[modifier.stat];
+    const value=descriptor?.percent?`${(modifier.value/10).toFixed(1)}%`:`${modifier.value}`;
+    return `${descriptor?.label??modifier.stat} ${modifier.value>=0?'+':''}${value}`;
+  }
+
+  /** 把一组宝石词条换成角色面板差值；目标未穿戴且没有空槽时不显示。 */
+  private socketOutcome(targetId:string,current:Modifier[],next:Modifier[],label:string):string|undefined {
+    const before=this.preview(targetId,current.map(value=>({...value})));
+    const after=this.preview(targetId,next.map(value=>({...value})));
+    if(!before||!after)return undefined;
+    const diff=this.panelDiff(before,after);
+    return `${label} ${diff.length?diff.slice(0,2).join('　'):'角色面板无变化'}`;
   }
   private panelDiff(before:CharacterPanel,after:CharacterPanel):string[] {
     const lines:string[]=[];
@@ -222,11 +254,6 @@ export class ForgePanel {
     add('回避率',before.evasionRate,after.evasionRate);
     add('盾牌格挡',before.shieldBlock,after.shieldBlock);
     return lines.slice(0,5);
-  }
-  private modifierText(modifier:Modifier):string {
-    const descriptor=this.stats.modifiers[modifier.stat];
-    const value=descriptor?.percent?`${(modifier.value/10).toFixed(1)}%`:String(modifier.value);
-    return `${descriptor?.label??modifier.stat}: ${value}`;
   }
   private renderPurifyDetails(v:UiSurface,target:ItemInstance):void {
     if(!target.numbers?.chaos){v.text('这件装备没有混沌属性。',40,190,400,18,'#ff6b6b');return;}
