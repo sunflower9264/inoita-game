@@ -437,7 +437,7 @@ const box={x:number,y:number,width:positive,height:positive};
 const clip=shape<AnimationClip>({frameWidth:positive,frameHeight:positive,frames:positive,originX:number,originY:number,frameRate:positive,mirrorX:boolean,layers:array(object({key:text,file,blend:oneOf('normal','screen','add','multiply','color-dodge')}))});
 const actor=shape<ActorDefinition>({chest:optional(oneOf('ordinary','improved')),service:optional(oneOf('soul-healer','fusion-machine','legendary-sword','innkeeper')),id:text,name:text,description:text,clips:record(clip),portrait:nullable(text),collision:optional(object(box)),effectAnchor:optional(object({x:number,y:number})),headAnchor:optional(object({x:number,y:number}))});
 const storyClasses=shape<StoryClassCatalog>({defaultClass:text,background:file,
-  assets:object({selected:file,title:file,back:file,start:file,startPressed:file,descriptionTop:file,attributesTop:file,panelLeft:file,panelRight:file}),
+  assets:object({selected:file,title:file,start:file,startPressed:file,descriptionTop:file,attributesTop:file,panelLeft:file,panelRight:file}),
   classes:array(object({id:text,name:text,description:text,icon:file,attributes:array(object({name:text,value:integer})),
     previewActor:actor,playerActor:actor,player:object({level:count,health:integer,maxHealth:count,mana:integer,maxMana:count,experience:integer,nextLevelExperience:count})}))});
 export function parseStoryClasses(value:unknown):StoryClassCatalog {
@@ -638,7 +638,6 @@ const debugStart=object({
   requiresProfile:optional(object({items:optional(array(debugItem)),money:optional(integer)})),
 });
 const debugPlay=object({script:text,node:optional(text),event:optional(text),cut:oneOf('before-opening','after-accept','event-end')});
-const debugAccept=object({event:optional(text),script:optional(text),node:optional(text),actor:optional(text),giver:optional(text)});
 const debugGap=object({quest:text,title:optional(text),kind:text,detail:text,evidence:optional(text),fixHint:optional(text)});
 const debugCoverage=object({eligible:integer,verified:integer,gaps:integer,excludedNoIntake:integer,
   excludedUnreachableEvents:integer,unreachableNodes:integer,byGapKind:record(integer)});
@@ -648,7 +647,7 @@ const debugTask=object({
   quest:text,phase:oneOf('available','active'),
   entry:object({type:oneOf('fixed'),map:text,x:number,y:number,source:text}),
   scripts:optional(strings),
-  start:optional(debugStart),play:optional(debugPlay),accept:optional(debugAccept),
+  start:optional(debugStart),play:optional(debugPlay),
   sourceHash:optional(text),
   basis:optional((v,p)=>requireValue(!!v&&typeof v==='object'&&!Array.isArray(v),p,'需要对象')),
 });
@@ -1169,7 +1168,7 @@ export function parseStatusHud(value:unknown):StatusHudSkin {
     target:object({width:count,height:count,name:hudRect,gauge:hudGauge}),
     overhead:object({frame:hudRect,leader:hudRect,
       health:object({x:number,y:number,width:count,height:count,color}),mana:object({x:number,y:number,width:count,height:count,color})}),
-    levelColors:array(object({minDifference:number,color})),lowestLevelColor:color})(value,'statusHud');
+    levelColors:array(object({minDifference:number,color}))})(value,'statusHud');
   const result=value as StatusHudSkin;
   for(const part of STATUS_PARTS)requireValue(result.assets[part],'statusHud.assets',`状态素材缺失 ${part}`);
   requireValue(result.levelColors.length>0&&result.levelColors.every((entry,i)=>Number.isInteger(entry.minDifference)&&(!i||result.levelColors[i-1].minDifference>entry.minDifference)),

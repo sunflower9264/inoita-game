@@ -20,7 +20,7 @@ export interface StoryClass {
 export interface StoryClassCatalog {
   defaultClass: string;
   background: string;
-  assets: { selected: string; title: string; back: string; start: string; startPressed: string;
+  assets: { selected: string; title: string; start: string; startPressed: string;
     descriptionTop: string; attributesTop: string; panelLeft: string; panelRight: string };
   classes: StoryClass[];
 }

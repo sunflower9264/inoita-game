@@ -101,11 +101,10 @@ export class FormalUiScene extends Phaser.Scene implements GameUiView {
    * 对白按物理屏幕满幅绘制，坐标以 `-offset`（物理左缘）为基准；姓名、正文与立绘
    * 改用安全区左右缘，避免刘海压住内容，背景本身仍满幅。
    */
-  private dialogueSafeEdges():{left:number;right:number;span:number}{
+  private dialogueSafeEdges():{left:number;right:number}{
     const bounds=this.game.canvas.getBoundingClientRect(),safe=readSafeArea(),scale=this.surface.root.scaleX||1;
     const perCss=this.scale.width/Math.max(1,bounds.width)/scale,physicalLeft=-this.surface.root.x/scale;
-    return{left:physicalLeft+safe.left*perCss,right:physicalLeft+this.scale.width/scale-safe.right*perCss,
-      span:this.scale.width/scale};
+    return{left:physicalLeft+safe.left*perCss,right:physicalLeft+this.scale.width/scale-safe.right*perCss};
   }
   private textBox(ui:GameUI):{x:number;y:number;width:number;lines:number;size:number}{
     const edges=this.dialogueSafeEdges(),usable=edges.right-edges.left;
@@ -142,7 +141,7 @@ export class FormalUiScene extends Phaser.Scene implements GameUiView {
     const v=this.surface,box=this.textBox(ui),screen=ui.dialogueLine?.presentation==='screen';
     const next:{text:string;x:number;y:number;color:string}[]=[];
     this.dialogueMetrics(box.size,(measure,lineHeight)=>{
-      const layout=layoutDialogueText(ui.page,DIALOGUE_TEXT_COLOR,box.width,measure,lineHeight);
+      const layout=layoutDialogueText(ui.page,DIALOGUE_TEXT_COLOR,box.width,measure);
       this.dialogueLayout=layout;
       const top=screen?320-layout.lines.length*lineHeight/2:box.y;
       layout.lines.forEach((line,index)=>{

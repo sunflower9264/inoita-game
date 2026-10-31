@@ -17,25 +17,10 @@ export interface StoryDebugTask {
   start?: StoryDebugStartTable;
   /** 进入任务后直接开演的开幕演出。 */
   play?: StoryDebugPlay;
-  /** 接取来源：哪个事件/哪段脚本/哪个人物把任务接进来。 */
-  accept?: StoryDebugAccept;
   /** 现场表与导出输入的对应版本。 */
   sourceHash?: string;
   /** 证据链摘要，供审计/面板展示。 */
   basis?: Record<string, unknown>;
-}
-
-export interface StoryDebugAccept {
-  /** 接取任务的事件标识。 */
-  event?: string;
-  /** 事件所在脚本。 */
-  script?: string;
-  /** 接取节点。 */
-  node?: string;
-  /** 发布任务的人物标识。 */
-  actor?: string;
-  /** 发布任务的人物身份（characterId）。 */
-  giver?: string;
 }
 
 export interface StoryDebugCatalog {
@@ -83,8 +68,6 @@ export interface StoryDebugStartTable {
     completedCycles?: number;
     /** 只存非零目标，其余按任务定义补零。 */
     goals?: Record<string, number>;
-    /** 证据索引，指向导出器台账。 */
-    e?: number;
   }[];
   running?: string[];
   world?: Omit<Partial<import('./story-world.ts').StoryWorldSnapshot>, 'location'> & {
@@ -97,17 +80,17 @@ export interface StoryDebugStartTable {
     /** 同上，展开成 `["absent-enemy",map,enemyId]`。 */
     absentEnemies?: { map: string; enemyId: string }[];
   };
-  items?: { item: string; quantity: number; e?: number }[];
+  items?: { item: string; quantity: number }[];
   /** 运行时先清掉的场景控制物品 id。 */
   itemReset?: string[];
   party?: { join?: string[]; leave?: string[]; control?: string };
   /** 任务路径上用到的已完成事件；整局开场（`source: 'start'`）由安装器补全，见 story-jump。 */
-  completedEvents?: { id: string; e?: number }[];
+  completedEvents?: { id: string }[];
   occurrenceSequences?: [string, number][];
   factSequences?: [string, number][];
   /** 消耗玩家已有资源的先决条件；不足时明确失败，不伪造。 */
   requiresProfile?: {
-    items?: { item: string; quantity: number; e?: number }[];
+    items?: { item: string; quantity: number }[];
     money?: number;
   };
 }
@@ -141,17 +124,13 @@ export function debugGapFor(campaign: Campaign, quest: string): StoryDebugGap | 
 }
 
 /**
- * 这条任务的证据条数：现场表里带证据索引的条目，加上导出器记在 `basis` 里的
- * 前置事件、推演步骤、选择与战斗。面板与命令行显示「证据 N 条」用。
+ * 这条任务的证据条数：导出器记在 `basis` 里的前置事件、推演步骤、选择与战斗。
+ * 面板与命令行显示「证据 N 条」用。
  */
 export function storyDebugEvidenceCount(task: StoryDebugTask): number {
   const start = task.start;
   if (!start) return 0;
   let count = 0;
-  for (const entry of start.quests ?? []) if (entry.e !== undefined) count += 1;
-  for (const item of start.items ?? []) if (item.e !== undefined) count += 1;
-  for (const item of start.requiresProfile?.items ?? []) if (item.e !== undefined) count += 1;
-  for (const event of start.completedEvents ?? []) if (event.e !== undefined) count += 1;
   const basis = task.basis as {
     before?: unknown[]; steps?: unknown[]; choices?: unknown[]; battles?: unknown[];
     opening?: unknown; giver?: unknown;
@@ -205,13 +184,6 @@ export function validateStoryDebug(campaign: Campaign): void {
     require(nonEmpty(task.sourceHash), `剧情调试任务 ${task.quest} 的现场表缺少来源 hash`);
     validateStartTable(task.start!, quests, events, `debug:${task.quest}`);
     if (task.play) validatePlay(task.play, campaign, events, task.quest);
-    if (task.accept) {
-      require(isObject(task.accept), `剧情调试任务 ${task.quest} 的接取来源无效`);
-      for (const value of Object.values(task.accept))
-        require(value === undefined || nonEmpty(value), `剧情调试任务 ${task.quest} 的接取来源无效`);
-      if (task.accept.event) require(events.has(task.accept.event), `剧情调试任务 ${task.quest} 的接取事件不存在`);
-      if (task.accept.script) require(!!campaign.scripts[task.accept.script], `剧情调试任务 ${task.quest} 的接取脚本不存在`);
-    }
     if (task.basis !== undefined) require(isObject(task.basis), `剧情调试任务 ${task.quest} 的证摘要无效`);
   }
   const gapSeen = new Set<string>();
@@ -264,7 +236,7 @@ function validateStartTable(start: StoryDebugStartTable, quests: Map<string, Cam
     require(!declared.has(entry.id), `${owner}: 现场表任务重复 ${entry.id}`);
     declared.set(entry.id, entry);
     require(QUEST_STATUSES.includes(entry.status), `${owner}: 任务 ${entry.id} 状态无效`);
-    for (const value of [entry.cycle, entry.completedCycles, entry.e])
+    for (const value of [entry.cycle, entry.completedCycles])
       require(value === undefined || isCount(value), `${owner}: 任务 ${entry.id} 数值无效`);
     for (const [goalId, count] of Object.entries(entry.goals ?? {})) {
       const goal = definition!.goals.find(value => value.id === goalId);
@@ -326,7 +298,6 @@ function validateStartTable(start: StoryDebugStartTable, quests: Map<string, Cam
     require(!items.has(item.item), `${owner}: 现场表物品重复 ${item.item}`);
     items.add(item.item);
     require(isPositive(item.quantity), `${owner}: 现场表物品数量无效 ${item.item}`);
-    require(item.e === undefined || isCount(item.e), `${owner}: 现场表物品证据索引无效 ${item.item}`);
   }
   const reset = new Set<string>();
   for (const id of start.itemReset ?? []) {
@@ -345,7 +316,6 @@ function validateStartTable(start: StoryDebugStartTable, quests: Map<string, Cam
     require(events.has(entry.id), `${owner}: 现场表完成事件不存在 ${entry.id}`);
     require(!completed.has(entry.id), `${owner}: 现场表完成事件重复 ${entry.id}`);
     completed.add(entry.id);
-    require(entry.e === undefined || isCount(entry.e), `${owner}: 现场表完成事件证据索引无效 ${entry.id}`);
   }
   for (const [label, sequences] of [['剧情', start.occurrenceSequences], ['任务', start.factSequences]] as const) {
     const sources = new Set<string>();
@@ -360,7 +330,6 @@ function validateStartTable(start: StoryDebugStartTable, quests: Map<string, Cam
     require(isObject(start.requiresProfile), `${owner}: 现场表玩家资源先决条件无效`);
     for (const item of start.requiresProfile.items ?? []) {
       require(isObject(item) && nonEmpty(item.item) && isPositive(item.quantity), `${owner}: 现场表玩家物品先决条件无效`);
-      require(item.e === undefined || isCount(item.e), `${owner}: 现场表玩家物品证据索引无效 ${item.item}`);
     }
     require(start.requiresProfile.money === undefined || isCount(start.requiresProfile.money),
       `${owner}: 现场表玩家金币先决条件无效`);

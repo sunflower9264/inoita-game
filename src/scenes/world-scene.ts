@@ -109,7 +109,6 @@ export class WorldScene extends Phaser.Scene {
   private readonly projectedMemberEquipment=new Map<string,string>();
   private projectedPlayerEquipment='';
   private equippedActor?: ActorDefinition;
-  equipmentPreview?: string;
   private outfitRequest=0;
   readonly app: StoryContext;
   /** 本次进图的参数。 */
@@ -188,7 +187,7 @@ export class WorldScene extends Phaser.Scene {
   init(options: SceneOptions): void {
     this.companionWardrobes.clear();this.companionOutfits.clear();this.companionPreparations.clear();
     this.projectedMemberEquipment.clear();this.projectedPlayerEquipment='';
-    this.wardrobe=undefined;this.equippedActor=undefined;this.equipmentPreview=undefined;this.outfitRequest++;
+    this.wardrobe=undefined;this.equippedActor=undefined;this.outfitRequest++;
     this.request.abort(); this.request = new AbortController();
     this.mapLayers?.destroy(); this.mapLayers = undefined;
     this.performing = false; this.player = undefined; this.noclipVisual = undefined; this.map = undefined;
@@ -391,7 +390,7 @@ export class WorldScene extends Phaser.Scene {
     this.app.clearMapPrefetch();
     this.wardrobe=new Wardrobe(this,this.app.wardrobe,this.app.items,(ids,signal)=>this.app.content.wardrobePoses(ids,signal));
     const outfit=await this.wardrobe.prepare(this.app.session.character!.appearance,this.app.session.bag.equipmentItems(),this.app.session.character!.classId);
-    signal.throwIfAborted();this.wardrobe.activate(outfit);this.equippedActor=outfit.actor;this.equipmentPreview=outfit.preview;
+    signal.throwIfAborted();this.wardrobe.activate(outfit);this.equippedActor=outfit.actor;
     globalThis.storyDiagnostics?.record('start-phase',{phase:'wardrobe-ready',map:map.id});
     this.projectedPlayerEquipment=JSON.stringify(this.app.session.bag.equipmentItems());
     this.statusHud=new StatusHud(this.hud!,this.app.statusHud,()=>this.combat?.controlledState??this.app.session.player,listener=>this.app.session.subscribe(listener),
@@ -482,7 +481,7 @@ export class WorldScene extends Phaser.Scene {
     this.unsubscribe = this.app.session.subscribe(() => this.refreshState());
     ui.drawPortrait = (actor, portrait, portraitSignal) => {
       const key = portrait === undefined ? (actor ? world.actors[actor]?.portrait : undefined) : portrait;
-      return ui.portrait(key ? this.app.storyInterface.portraits[key] : undefined, actor ? world.actors[actor]?.name : undefined, portraitSignal);
+      return ui.portrait(key ? this.app.storyInterface.portraits[key] : undefined, portraitSignal);
     };
     this.loadingWorld = false;
     globalThis.storyDiagnostics?.record('start-phase',{phase:'world-ready',map:map.id});
@@ -494,7 +493,7 @@ export class WorldScene extends Phaser.Scene {
     if(!this.app.checkpoint.available){this.captureCheckpoint();this.checkpointPending=true;}
     options.onReady?.();
     // 进图后写自动存档。读档进场只是把刚存下的状态装回来，不必再写一遍。
-    if(!options.resumeStory)this.app.autoSave?.('map-entry');
+    if(!options.resumeStory)this.app.autoSave?.();
     this.lastProjectedLocation=JSON.stringify(this.app.session.storyWorld.currentLocation);
     this.app.session.setStoryWorldContext(()=>this.storyWorldContext());
     // 进图时按运行时同一条链预取本图可能触发的剧情素材。开演前的
@@ -743,7 +742,7 @@ export class WorldScene extends Phaser.Scene {
             { kind: 'image', key: map.id + '-canopy', file: map.canopy }
           ], () => {}, true);
           if (signal.aborted || this.prefetchTarget !== target) lease.release();
-          else this.app.retainMapPrefetch(target, lease);
+          else this.app.retainMapPrefetch(lease);
         } catch {
           if (signal.aborted) return;
         }
@@ -790,7 +789,7 @@ export class WorldScene extends Phaser.Scene {
     const outfit=await this.wardrobe.prepare(this.app.session.character!.appearance,bag.equipmentItems(next),this.app.session.character!.classId);
     signal?.throwIfAborted();
     if(this.destroyed||request!==this.outfitRequest||revision!==bag.revision)throw new Error('装备状态已改变，请重新选择');
-    this.wardrobe.activate(outfit);this.equippedActor=outfit.actor;this.equipmentPreview=outfit.preview;
+    this.wardrobe.activate(outfit);this.equippedActor=outfit.actor;
     this.player.actor=outfit.actor;setCharacterClip(this,this.player,`idle-${this.facing}`,true);
     this.movement?.refreshShape(this.player);
     if(entry)bag.equip(entry,slot);else bag.unequip(slot);
@@ -1141,7 +1140,7 @@ export class WorldScene extends Phaser.Scene {
         {x:target.entity.x,y:target.entity.y},uniqueBonus);
       if(result.success)this.app.audio?.effect('UI_Ground_sword');
       this.app.ui.showInstant(result.message);
-      this.app.autoSave?.('legendary-sword');
+      this.app.autoSave?.();
       this.checkpointStoryWorld();
       this.refreshState();
       this.updateInteractionTarget();
@@ -1156,7 +1155,7 @@ export class WorldScene extends Phaser.Scene {
         this.app.session.spendMoney(quote.cost);
         restAtInn(this.app.session,quote);
       });
-      this.app.autoSave?.('rest');
+      this.app.autoSave?.();
       this.checkpointStoryWorld();
       this.app.ui.showInstant('已恢复全部的生命和魔法。');
       this.syncHud();
@@ -1673,7 +1672,7 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
       const outfit=await this.wardrobe.prepare(character.appearance,equipment,character.classId);
       signal.throwIfAborted();
       if(this.destroyed||request!==this.outfitRequest||signature!==JSON.stringify(session.bag.equipmentItems()))throw new Error('剧情装备状态已改变');
-      this.wardrobe.activate(outfit);this.equippedActor=outfit.actor;this.equipmentPreview=outfit.preview;
+      this.wardrobe.activate(outfit);this.equippedActor=outfit.actor;
       this.player.actor=outfit.actor;this.setClip(this.player,`idle-${this.facing}`);this.movement?.refreshShape(this.player);
       this.combat?.updateEquipment();this.projectedPlayerEquipment=signature;
     }
@@ -1735,18 +1734,14 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
     this.overheadStatus?.setVisible(backgroundVisible);
     const target = this.near?.container.visible ? this.near : null;
     // 敌人数值只在逻辑帧里变化；同一战斗帧的多个渲染帧复用同一份目标状态。
-    const tick=this.app.session?.combatTick,actorId=target?.entity.id??'';
+    const tick=this.app.session.combatTick,actorId=target?.entity.id??'';
     let targetStatus:ReturnType<WorldCombat['targetStatus']>,hostile:boolean;
-    if(tick===undefined){
-      targetStatus=this.combat?.targetStatus?.();hostile=!!this.combat?.hasHostileTarget?.();
-    }else{
-      let targetCache=this.targetStatusCache;
-      if(!targetCache||targetCache.tick!==tick||targetCache.actor!==actorId){
-        targetCache={tick,actor:actorId,status:this.combat?.targetStatus?.(),hostile:!!this.combat?.hasHostileTarget?.()};
-        this.targetStatusCache=targetCache;
-      }
-      targetStatus=targetCache.status;hostile=targetCache.hostile;
+    let targetCache=this.targetStatusCache;
+    if(!targetCache||targetCache.tick!==tick||targetCache.actor!==actorId){
+      targetCache={tick,actor:actorId,status:this.combat?.targetStatus?.(),hostile:!!this.combat?.hasHostileTarget?.()};
+      this.targetStatusCache=targetCache;
     }
+    targetStatus=targetCache.status;hostile=targetCache.hostile;
     // 名称条同样每帧同步：新对象默认隐藏，等摘要变化才显示会把换图后的提示吞掉。
     this.nameBanner?.sync(backgroundVisible, target ? target.entity.name || target.actor.name : null);
     // 方法同时承担「状态变化后立即同步」和「逐帧兜底」两种调用；决定文字与按钮的状态

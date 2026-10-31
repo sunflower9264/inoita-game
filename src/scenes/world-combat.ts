@@ -386,7 +386,7 @@ export class WorldCombat {
         summonedBy: enemy.summonedBy ?? null,
         visible: enemy.visual.container.visible,
       })),
-      relocationFailures: [...(this.relocationFailures ?? [])],
+      relocationFailures: [...this.relocationFailures],
       followerCatchUps: this.followerCatchUps,
     };
   }
@@ -676,7 +676,6 @@ captureStoryActors():SceneActorState[] {
     if (this.movement.navigation.terrainFree(position) && this.movement.navigation.bodyTerrainFree(shape, position)) {
       this.movement.place(visual, position); return true;
     }
-    this.relocationFailures ??= [];
     this.relocationFailures.push({ id: visual.entity.id, position: { ...position } });
     if (this.relocationFailures.length > 8) this.relocationFailures.shift();
     return false;
@@ -1324,15 +1323,15 @@ captureStoryActors():SceneActorState[] {
     const view=()=>this.presenterFor(casterId);
     return {catalog:this.app.battleCatalog,runtime:this.runtime,random:()=>Math.random(),active:()=>!this.closed&&!this.defeated,
       actor:id=>this.combatant(id),loadout:id=>{
-        const member=this.memberOf(id);if(!member||!this.app.session)return;
+        const member=this.memberOf(id);if(!member)return;
         const configuration=this.skillConfiguration(id,member);
         return configuration?{classId:member.classId,skills:configuration.draft(this.app.battleCatalog,member.classId)}:undefined;
       },casterStrikes:(id,strikes)=>{const presenter=view();if(presenter)this.dispatcherFor(presenter).casterStrikes(id,strikes);},
       flight:{actor:id=>this.combatant(id),emit:event=>view()?.renderFlight(event),effect:(name,position)=>view()?.renderEffect(name,'default',position)},
       execute:(owner,target,skillId,level,action,origin)=>this.runSkillUnitSequence({casterId:owner,skillId,level,action,origin,selectedTargetId:target,presenter:view()})};
   }
-  private lightningOfHellReaction(casterId:string,targetId:string):void {if(!this.memberOf(casterId)||!this.app.session)return;combatFollowUp('lightning-of-hell',casterId,targetId,this.followUpPort(casterId));}
-  private godOfJusticeReaction(casterId:string,targetId:string):void {if(!this.memberOf(casterId)||!this.app.session)return;combatFollowUp('god-of-justice',casterId,targetId,this.followUpPort(casterId));}
+  private lightningOfHellReaction(casterId:string,targetId:string):void {if(!this.memberOf(casterId))return;combatFollowUp('lightning-of-hell',casterId,targetId,this.followUpPort(casterId));}
+  private godOfJusticeReaction(casterId:string,targetId:string):void {if(!this.memberOf(casterId))return;combatFollowUp('god-of-justice',casterId,targetId,this.followUpPort(casterId));}
 
   private runSkillUnitSequence(request:{casterId:string;skillId:string;level:number;action:SkillAction;
       origin?:Point;selectedTargetId?:string;presenter?:CombatPresenter}):void {
@@ -1349,8 +1348,6 @@ captureStoryActors():SceneActorState[] {
     });
   }
   private disturbanceReaction(attackerId:string,defenderId:string):void {
-    // 队伍会话是这一项的前提：没有它就没有已学等级，也没有候选池。
-    if(!this.app.session)return;
     const member=this.memberOf(defenderId);if(!member)return;
     // 没有技能配置就等于没学过这条被动（不入队的角色本来也没有已学等级）。
     const configuration=defenderId==='player'?this.app.session?.skills:(member as CompanionMember).skills;

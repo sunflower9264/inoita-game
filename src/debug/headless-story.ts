@@ -61,8 +61,6 @@ export interface ReplayOptions {
   choices?: ChoicePolicy;
   /** 遭遇战的结算策略；缺省按正常推进打赢。 */
   battle?: (info: {encounter: string; script: string; node: string}) => {result: string; basis: string};
-  occurrenceSource?: StoryTriggerSource;
-  occurrenceSequence?: number;
   /** 分支事件按舞台声明的地图继续，而不是沿用触发时必须所在的当前图。 */
   honorDeclaredMap?: boolean;
   /** 只用于把选择决定写回证据；不影响回放。 */
@@ -75,7 +73,6 @@ export interface ReplayResult {
   status: 'completed' | 'waiting' | 'deferred' | 'skipped';
   choices: ChoiceDecision[];
   battles: BattleDecision[];
-  waiting?: string;
 }
 
 /**
@@ -133,20 +130,13 @@ export class HeadlessStory {
     this.stage = undefined;
   }
 
-  /** 当前地图的确定性场景投影：地图静态实体 + 剧情摆放 + 世界可见性。 */
-  sceneSnapshot(mapId = this.currentMap()): SceneSnapshot {
-    if (!mapId) throw new Error('当前没有地图落点');
-    return this.buildScene(mapId);
-  }
-
   /** 开场第一幕可能在会话落点写入之前执行，此时按新游戏起点算当前地图。 */
   private currentMap(): string {
     return this.session.storyWorld.currentLocation?.map ?? this.initialLocation.map;
   }
 
   async replayEvent(event: StoryEvent, options: ReplayOptions = {}): Promise<ReplayResult> {
-    return this.replayScript(event.script, {...options, eventId: event.id,
-      occurrenceSource: options.occurrenceSource ?? event.source});
+    return this.replayScript(event.script, {...options, eventId: event.id});
   }
 
   async replayScript(script: string, options: ReplayOptions = {}): Promise<ReplayResult> {

@@ -42,5 +42,5 @@ test('a choice completes once and its old callback cannot select the next choice
 test('a missing optional portrait leaves readable dialogue while cancellation still rejects',async()=>{
   const ui=new GameUI();ui.view={sync(){},renderText(){},paginate:(_ui,text)=>[{text,end:text.length}],portrait:async()=>{throw new Error('missing image');}};
   await ui.portrait('/missing.png');assert.equal(ui.portraitFile,undefined);
-  const controller=new AbortController();controller.abort();await assert.rejects(ui.portrait('/missing.png','',controller.signal),{name:'AbortError'});
+  const controller=new AbortController();controller.abort();await assert.rejects(ui.portrait('/missing.png',controller.signal),{name:'AbortError'});
 });

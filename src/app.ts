@@ -25,7 +25,6 @@ import type { GameAudio } from './application/game-audio.ts';
 import type { ShopCatalog } from './domain/shop.ts';
 import type { CompanionCatalog } from './domain/party.ts';
 
-export type { GameMode } from './application/control-state.ts';
 import type { GameMode } from './application/control-state.ts';
 import { ContentLoader } from './application/content-loader.ts';
 import type { AssetLease } from './application/assets.ts';
@@ -47,8 +46,8 @@ import { keyBindings as defaultKeyBindings } from './application/key-bindings.ts
  * 3. `boot()`（Phaser 就绪）里接线：`game`、`enterGame`、`returnToMenu`、`startStory`、
  *    `prepareStory`、`prepareMenu`、`prefetchStory`、`storyUI`、`syncLifecycle`。
  * 4. `finishStoryStart()`（选定职业、进入世界）里接线：`session`、`storySignal`、`director`、
- *    `changeEquipment`、`equipmentPreview`、`equipmentAppearance`、`preparePartyMember`、
- *    `focusPartyTarget`、`revivePartyMember`、`openCrafting`、`openShop`。
+ *    `changeEquipment`、`equipmentAppearance`、`preparePartyMember`、
+ *    `revivePartyMember`、`openCrafting`、`openShop`。
  * 5. **由场景填、不由 main.ts 填**：`audio` 由音效场景启动时写入；`uiAssets` 由正式界面场景
  *    或 UI 调试场景各登记一份；`useRecoveryItem` 由 `WorldCombat` 进入战斗时写入，
  *    **战斗结束时清回 `undefined`**——有值与否不是单调的。
@@ -68,7 +67,7 @@ export class StoryApp {
   /** 本次游戏从标题选择或成功读写的手动存档槽序号。 */
   saveSlot?:number;
   /** 自动存档触发口：世界侧把时机交给装配好的 `AutoSaver`。 */
-  autoSave?: (reason: import('./application/auto-save.ts').AutoSaveReason) => void;
+  autoSave?: () => void;
   storySignal?:AbortSignal;
   revivePartyMember?: (id:string,item:string)=>ItemResult;
   preparePartyMember?: (id:string,signal?:AbortSignal)=>Promise<void>;
@@ -91,9 +90,7 @@ export class StoryApp {
   }
   wardrobe!: WardrobeCatalog;
   changeEquipment?: (entry: string | undefined, slot: EquipmentSlot, signal?: AbortSignal, memberId?:string) => Promise<string>;
-  equipmentPreview?: () => string | undefined;
   equipmentAppearance?:(memberId:string)=>import('./domain/content.ts').ActorDefinition|undefined;
-  focusPartyTarget?:()=>void;
   menuPanels!: MenuPanels;
   storyClasses!: StoryClassCatalog;
   /** 当前界面场景持有的菜单图片租约账；正式 UI 场景与 UI 调试场景各登记一份。 */
@@ -151,20 +148,20 @@ export class StoryApp {
   get suspended() { return this.ui.suspended; }
   /** 最近几张地图用到的纹理键，用来释放旧地图占的显存。 */
   private mapAssetHistory: AssetLease[] = [];
-  private mapPrefetch?: { id: string; lease: AssetLease };
+  private mapPrefetch?: AssetLease;
   /** 运行时兜底预取过的剧情地图；进图释放落脚图，返回菜单/读档时整体清空。 */
   private readonly storyPrefetches = new Map<string, AssetLease>();
   retainMapAssets(lease: AssetLease): void {
     this.mapAssetHistory.push(lease);
     while(this.mapAssetHistory.length+(this.mapPrefetch ? 1 : 0)>3)this.mapAssetHistory.shift()!.release();
   }
-  retainMapPrefetch(id: string, lease: AssetLease): void {
+  retainMapPrefetch(lease: AssetLease): void {
     this.clearMapPrefetch();
-    this.mapPrefetch = { id, lease };
+    this.mapPrefetch = lease;
     while(this.mapAssetHistory.length+1>3)this.mapAssetHistory.shift()!.release();
   }
   clearMapPrefetch(): void {
-    this.mapPrefetch?.lease.release();
+    this.mapPrefetch?.release();
     this.mapPrefetch=undefined;
   }
   retainStoryPrefetch(id: string, lease: AssetLease): void {

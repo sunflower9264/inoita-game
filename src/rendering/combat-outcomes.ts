@@ -4,8 +4,6 @@ import { COMBAT_OUTCOME_EFFECTS, ENEMY_DEFEAT_FADE_MS, ENEMY_DEFEAT_HOLD_MS } fr
 import type { CharacterVisual } from './characters.ts';
 import { createEffect } from './effects.ts';
 
-export { combatOutcomeAssets } from './combat-asset-descriptors.ts';
-
 /** Scene-owned recovery, death and level-up visuals, independent of attack cancellation. */
 export class CombatOutcomes {
   private readonly scene: Phaser.Scene;

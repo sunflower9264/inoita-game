@@ -21,23 +21,20 @@ export function defaultGmStorage(): SaveStorage {
 export class GmMode {
   private readonly storage: SaveStorage;
   private value: boolean;
-  private persisted: boolean;
 
   constructor(storage?: SaveStorage) {
     this.storage = storage ?? defaultGmStorage();
     const raw = this.read();
     this.value = raw === 'on';
-    this.persisted = true;
   }
 
   get on(): boolean { return this.value; }
-  /** 开关值有没有真的写进存储。写不进去时（隐私模式）只影响本次运行。 */
-  get stored(): boolean { return this.persisted; }
 
   set(on: boolean): boolean {
     this.value = on;
-    try { on ? this.storage.setItem(GM_KEY, 'on') : this.storage.removeItem(GM_KEY); this.persisted = true; }
-    catch { this.persisted = false; }
+    // 写不进去时（隐私模式）只影响刷新后的保留，不影响本次运行。
+    try { on ? this.storage.setItem(GM_KEY, 'on') : this.storage.removeItem(GM_KEY); }
+    catch { /* 一个调试开关不该让游戏启动失败 */ }
     return this.value;
   }
   toggle(): boolean { return this.set(!this.value); }

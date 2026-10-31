@@ -37,7 +37,7 @@ function harness(content: Campaign = campaign) {
   const view = (name: string) => ({ setVisible(value: boolean) { visible[name] = value; }, reset() {}, resetInput() {}, setAttack() {}, sync() {} });
   const host = {
     get canControl() { return !ui.locked; }, get canCombatControl() { return !ui.locked; },
-    performing: false, loadingWorld: false, sys: { isActive: () => true }, app: { ui, suspended: false },
+    performing: false, loadingWorld: false, sys: { isActive: () => true }, app: { ui, suspended: false, session },
     player: { container: {} }, movement: { stop() { counters.stops++; } },
     combat: { setPaused(value: boolean) { counters.pauses.push(value); }, hasHostileTarget: () => false },
     chestFades: new Map(), near: null, refreshCombatTarget() {},

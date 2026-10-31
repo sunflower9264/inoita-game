@@ -38,10 +38,6 @@ export class KeyBindingPreferences {
 
   get(action: KeyBindingAction): KeyBinding { return { ...this.bindings[action] }; }
 
-  snapshot(): Readonly<Record<KeyBindingAction, KeyBinding>> {
-    return Object.fromEntries(KEY_ACTIONS.map(action => [action, { ...this.bindings[action] }])) as Record<KeyBindingAction, KeyBinding>;
-  }
-
   /** 检查一次绑定能否写入；返回给玩家看的中文原因，`undefined` 表示可用。 */
   validate(action: KeyBindingAction, binding: KeyBinding): string | undefined {
     const reserved = reservedBindingReason(binding);

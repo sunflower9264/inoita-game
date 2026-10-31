@@ -4,7 +4,6 @@ import { damageDigits, digitSequence, feedbackPlan, reusableDigit, type CombatHi
 import type { CharacterVisual } from './characters.ts';
 import { createEffect } from './effects.ts';
 
-export { combatFeedbackAssets } from './combat-asset-descriptors.ts';
 interface Digit {effect:Phaser.GameObjects.Container;sequence:number[]}
 
 /** 命中反馈由地图持有，攻击动作结束或中断不提前销毁已生成的数字。 */

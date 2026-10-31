@@ -3,7 +3,7 @@ import type { QuestStatus } from '../domain/content.ts';
 import type { QuestBookState } from '../domain/quest-book.ts';
 import type { Session, SessionState } from '../domain/session.ts';
 import {
-  debugTask, storyDebugEvidenceCount, type StoryDebugAccept, type StoryDebugPlay,
+  debugTask, storyDebugEvidenceCount, type StoryDebugPlay,
   type StoryDebugStartTable, type StoryDebugTarget, type StoryDebugTask,
 } from '../domain/story-debug.ts';
 import type { StoryRuntimeSnapshot } from '../domain/story-runtime.ts';
@@ -21,7 +21,6 @@ export interface StoryDebugPreview {
   phase: 'available' | 'active';
   location: StoryDebugScene;
   sourceHash?: string;
-  accept?: StoryDebugAccept;
   play?: StoryDebugPlay;
   /** 现场表里指向证据台账的引用条数。 */
   evidence?: number;
@@ -274,7 +273,6 @@ export function storyTaskPreview(campaign: Campaign, target: StoryDebugTarget, s
     phase: progress?.status === 'available' ? 'available' : 'active',
     location: { map: location.map, x: location.x, y: location.y },
     ...(task.sourceHash ? { sourceHash: task.sourceHash } : {}),
-    ...(task.accept ? { accept: task.accept } : {}),
     ...(task.play ? { play: task.play } : {}),
     evidence: storyDebugEvidenceCount(task),
   };

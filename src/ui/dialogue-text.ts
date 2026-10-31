@@ -5,7 +5,6 @@ import { layoutKeyedText, type KeyedTextLine, type KeyedTextPart } from './quest
 export interface DialogueTextLayout {
   /** 按显示行分组的带色片段，`x` 是这一行里相对行首的偏移。 */
   lines: KeyedTextLine<string>[];
-  lineHeight: number;
 }
 
 /** 把一段对白按色段摊开；控制码给出的换行转成显式断行。 */
@@ -73,9 +72,9 @@ export function dialoguePages(value: string, options: { width: number; lines: nu
 
 /** 把一页对白排成带色片段；测量函数由调用方提供（浏览器的字体度量）。 */
 export function layoutDialogueText(value: string, base: string, width: number,
-  measure: (text: string) => number, lineHeight: number): DialogueTextLayout {
+  measure: (text: string) => number): DialogueTextLayout {
   const lines = layoutKeyedText(dialogueTextParts(value, base), width, measure);
-  return { lines, lineHeight };
+  return { lines };
 }
 
 /** 前缀的可见长度——逐字显示到第几个字符。 */

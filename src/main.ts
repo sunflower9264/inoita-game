@@ -384,10 +384,8 @@ function installSession(session: Session): void {
   app.storySignal = modeRequest.signal;
   app.checkpoint.clear();
   app.changeEquipment=async(entry,slot,signal,memberId)=>requireWorldScene().changeEquipment(entry,slot,signal,memberId);
-  app.equipmentPreview=()=>worldScene()?.equipmentPreview;
   app.equipmentAppearance=memberId=>worldScene()?.equipmentAppearance(memberId);
   app.preparePartyMember=async(id,signal)=>{const scene=worldScene();if(scene)await scene.preparePartyMember(id,signal);};
-  app.focusPartyTarget=()=>worldScene()?.focusSelected();
   app.revivePartyMember=(id,item)=>requireWorldScene().revivePartyMember(id,item);
   ui.playerActor = campaign.start.actor;
   app.storyUI.bind(session, app.world, presentation);
@@ -425,7 +423,7 @@ function installSession(session: Session): void {
   });
   app.director = director;
   // 事件播完（世界投影已经结束）写入自动存档；节点中途不写。
-  director.onEventCompleted = () => autoSaver?.request('story-event');
+  director.onEventCompleted = () => autoSaver?.request();
   director.onError = (error, retry) => {
     if (app.director !== director || app.mode !== 'game') return;
     console.error(error);
@@ -473,7 +471,7 @@ function installSession(session: Session): void {
       resume: () => {
         autoSaver?.resume();
         worldScene()?.checkpointStoryWorld();
-        autoSaver?.request('quest');
+        autoSaver?.request();
       },
       // 回滚流程（死亡回检查点）接管调试现场：此刻画面还停在调试现场，只能恢复写入，不能记检查点。
       resumeAfterRollback: () => autoSaver?.resume(),
@@ -571,7 +569,7 @@ function boot(): void {
   app.prepareStory = prepareStory; app.prepareMenu = prepareMenu;
   app.resumeSlot = resumeSlot;
   app.captureSaveWorld = () => worldScene()?.captureSaveWorld() ?? {ok:false,reason:'not-ready'};
-  app.autoSave = reason => autoSaver?.request(reason);
+  app.autoSave = () => autoSaver?.request();
   app.captureControlPreview = () => worldScene()?.getControlLayoutPreview()??[];
   app.prefetchStory = () => afterFirstPaint(() => {
     if (modeRequest.signal.aborted || app.mode !== 'class-select') return;

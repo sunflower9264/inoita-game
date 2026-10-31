@@ -32,7 +32,6 @@ export interface StatusHudSkin {
   /** 头顶状态槽相对头部锚点的布局，单位为地图像素。 */
   overhead: {frame:HudRect;leader:HudRect;health:HudRect & {color:string};mana:HudRect & {color:string}};
   levelColors:{minDifference:number;color:string}[];
-  lowestLevelColor:string;
 }
 /**
  * 状态图标排在面板左下角、依次向左：第一枚的下边缘齐面板底边、左边缘在面板左缘左侧半个
@@ -101,7 +100,7 @@ export function gaugeFillWidth(value:number,max:number,width:number):number {
 }
 export function targetNameColor(skin:StatusHudSkin,playerLevel:number,target:Pick<TargetStatus,'level'|'sceneLevel'>):string {
   if(target.sceneLevel)return '#ffffff';
-  // 低 8 级以上的原版颜色是灰色（lowestLevelColor），在明暗不一的地图上看不清，改用白色。
+  // 低 8 级以上的原版颜色是灰色，在明暗不一的地图上看不清，改用白色。
   return skin.levelColors.find(entry=>target.level-playerLevel>=entry.minDifference)?.color??'#ffffff';
 }
 

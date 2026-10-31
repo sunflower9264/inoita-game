@@ -31,7 +31,7 @@ export interface StoryClassContext {
   syncLifecycle?: () => void;
 }
 
-type SceneUI = Pick<GameUI,'ready'|'locked'|'mode'|'loading'|'loaded'|'error'|'location'|'toast'|'showInstant'|'resetInput'|'setMode'|'showDefeat'|'closeDefeat'|'controlLayoutEditing'|'keyBindingEditing'|'preloadPortraits'|'setWorldRebuildCover'>;
+type SceneUI = Pick<GameUI,'ready'|'locked'|'mode'|'loading'|'loaded'|'error'|'toast'|'showInstant'|'resetInput'|'setMode'|'showDefeat'|'closeDefeat'|'controlLayoutEditing'|'keyBindingEditing'|'preloadPortraits'|'setWorldRebuildCover'>;
 export interface StoryContext {
   readonly controlLayout:ControlLayoutPreferences;
   readonly keyBindings:KeyBindingPreferences;
@@ -68,14 +68,14 @@ export interface StoryContext {
   readonly locked: boolean;
   readonly suspended: boolean;
   retainMapAssets(lease:AssetLease):void;
-  retainMapPrefetch(id:string,lease:AssetLease):void;
+  retainMapPrefetch(lease:AssetLease):void;
   clearMapPrefetch():void;
   retainStoryPrefetch(id:string,lease:AssetLease):void;
   releaseStoryPrefetch(id:string):void;
   clearStoryPrefetch():void;
   syncLifecycle?:()=>void;
-  /** 自动存档触发：世界侧（进图等）把原因交给装配好的 `AutoSaver`。 */
-  autoSave?: (reason: import('./auto-save.ts').AutoSaveReason) => void;
+  /** 自动存档触发：世界侧（进图等）交给装配好的 `AutoSaver`。 */
+  autoSave?: () => void;
 }
 export interface StoryUIContext {
   /** 商店装备表按需加载（生产内容包与 shops.json 分开）。 */
@@ -96,9 +96,7 @@ export interface StoryUIContext {
   /** 当前地图与世界的存档快照；地图或战斗还没就绪时没有可存的东西。摘要由界面按菜单内容补上。 */
   captureSaveWorld?: () => SaveWorldResult;
   changeEquipment?: (entry: string | undefined, slot: EquipmentSlot, signal?: AbortSignal, memberId?:string) => Promise<string>;
-  equipmentPreview?: () => string | undefined;
   equipmentAppearance?:(memberId:string)=>import('../domain/content.ts').ActorDefinition|undefined;
-  focusPartyTarget?:()=>void;
   readonly battleCatalog: BattleCatalog;
   readonly storyClasses: StoryClassCatalog;
   readonly menuPanels: MenuPanels;

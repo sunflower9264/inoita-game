@@ -1,5 +1,4 @@
 import type { StoryCommand } from '../domain/story-graph.ts';
-import type { Campaign } from '../domain/campaign.ts';
 
 /**
  * 任务道具「发多少」与「要多少」的对照。
@@ -59,6 +58,3 @@ export function questItemOverflows(campaign: QuestGrantSource): QuestItemOverflo
   }
   return overflows;
 }
-
-/** 类型层面的自检：真实的战役内容必须能直接喂进来。 */
-export type CampaignIsQuestGrantSource = Campaign extends QuestGrantSource ? true : never;

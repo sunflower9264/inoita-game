@@ -66,7 +66,6 @@ export class GameUI {
   /** 原版 `INSTANTMSGSYSTEM_Add` 的屏幕提示（泉水效果文本走这条），与 toast 各自独立。 */
   readonly instant=new InstantMessage();
   showInstant(message:string):void{this.instant.show(message);}
-  locationName='';
   dialogueLine?:DialogueLine;
   portraitFile?:string;
   choices?:{prompt:string;description:string;options:ChoiceOption[];choose:(option:ChoiceOption)=>void};
@@ -135,7 +134,6 @@ export class GameUI {
     }
   }
   closeDefeat():void {if(!this.defeatFlow)return;this.defeatFlow=undefined;this.lock(false,'defeat');}
-  location(name:string):void{this.locationName=name;this.view?.sync(this);}
   toast(message:string):void{this.toastMessage=message;this.toastRemaining=TOAST_DURATION_MS;this.view?.sync(this);}
   tick(delta:number):void{
     if(this.suspended)return;
@@ -163,7 +161,7 @@ export class GameUI {
       this.quest={kind,definition:quest,reward,confirm:()=>{if(settled||this.suspended)return;settled=true;clean();resolve();}};this.view?.sync(this);
     });
   }
-  async portrait(file:string|null|undefined,_name='',signal?:AbortSignal):Promise<void>{
+  async portrait(file:string|null|undefined,signal?:AbortSignal):Promise<void>{
     signal?.throwIfAborted();const token=Symbol('portrait');this.portraitToken=token;this.portraitFile=undefined;
     if(!file){this.view?.sync(this);return;}
     try{await this.view?.portrait(file,signal);}catch{signal?.throwIfAborted();this.view?.sync(this);return;}signal?.throwIfAborted();

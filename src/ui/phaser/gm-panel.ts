@@ -85,7 +85,6 @@ interface TaskPreview {
   phase: 'available' | 'active';
   location: { map: string; x: number; y: number };
   sourceHash?: string;
-  accept?: { event?: string; script?: string; node?: string; actor?: string; giver?: string };
   play?: { script?: string; node?: string; event?: string; cut?: string };
   evidence?: number;
 }
@@ -433,7 +432,6 @@ export class GmPanel {
     body.text(clipText(`地点：${mapName}`,28),442,234,466,15,'#b8ab92');
     body.text(`默认起点：${PHASE_LABELS[phase]}`,442,254,466,15,'#b8ab92');
     body.text(clipText(this.startSourceLabel(row.task,preview),58),442,274,466,15,'#b8ab92');
-    body.text(clipText(this.acceptLabel(row.task,preview),58),442,294,466,15,'#b8ab92');
     body.text(clipText(this.playLabel(row.task,preview),58),442,314,466,15,'#b8ab92');
     const failure=!prepared.result?'正在准备任务现场…'
       :!prepared.result.ok?prepared.result.reason??'预览失败，原因未记录'
@@ -450,18 +448,6 @@ export class GmPanel {
     const evidence = preview?.evidence ?? storyDebugEvidenceCount(task);
     const hash = task.sourceHash ?? preview?.sourceHash;
     return `现场表：已核查 · 证据 ${evidence} 条${hash?` · 摘要 ${hash.slice(0,10)}`:''}`;
-  }
-
-  /** 接取事件只显示人话，不把事件/脚本编号摊在界面上。 */
-  private acceptLabel(task: StoryDebugTask, preview?: TaskPreview): string {
-    const accept = task.accept ?? preview?.accept;
-    if (!accept) return '接取事件：—';
-    const parts: string[] = [];
-    if (accept.event || accept.script || accept.node) parts.push('剧情事件');
-    if (accept.actor) parts.push(this.references.actorName?.(accept.actor) ?? '原版人物');
-    else if (accept.giver) parts.push('原版人物');
-    if (!parts.length) parts.push('原版证据');
-    return `接取事件：${parts.join(' · ')}`;
   }
 
   private playLabel(task: StoryDebugTask, preview?: TaskPreview): string {

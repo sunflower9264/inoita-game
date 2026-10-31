@@ -59,8 +59,7 @@ test('a line that opens with a control code pages without stalling or repeating'
 });
 
 test('layout keeps the native palette and the reveal truncates run by run', () => {
-  const layout = layoutDialogueText('$S凯恩$B大人。$R小心$B', '#f5eedf', 400, measure, 30);
-  assert.equal(layout.lineHeight, 30);
+  const layout = layoutDialogueText('$S凯恩$B大人。$R小心$B', '#f5eedf', 400, measure);
   assert.deepEqual(layout.lines.map(line => line.runs.map(run => [run.text, run.key])),
     [[['凯恩', '#00b4ff'], ['大人。', '#f5eedf'], ['小心', '#ff0000']]]);
   // 逐字揭示：只截断每个色段的文字，段落顺序与位置不变。
@@ -73,7 +72,7 @@ test('layout keeps the native palette and the reveal truncates run by run', () =
 });
 
 test('a wrapped line reports where each colored run starts', () => {
-  const layout = layoutDialogueText('$R一二三四$B五六', '#f5eedf', 60, measure, 30);   // 每行 3 字
+  const layout = layoutDialogueText('$R一二三四$B五六', '#f5eedf', 60, measure);   // 每行 3 字
   assert.deepEqual(layout.lines.map(line => line.runs.map(run => [run.text, run.x])),
     [[['一二三', 0]], [['四', 0], ['五六', 20]]]);
 });

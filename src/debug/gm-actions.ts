@@ -1,5 +1,5 @@
 import { prepareTaskStart, storyTaskPreview, type StoryDebugPreview } from './story-jump.ts';
-import { debugGapFor, debugTask, type StoryDebugAccept, type StoryDebugGap, type StoryDebugPlay, type StoryDebugTarget } from '../domain/story-debug.ts';
+import { debugGapFor, debugTask, type StoryDebugGap, type StoryDebugPlay, type StoryDebugTarget } from '../domain/story-debug.ts';
 /**
  * GM（调试）动作层——**三种消费者共用的唯一实现**：
  *
@@ -30,7 +30,6 @@ export interface GmStoryPreview extends GmResult {
 }
 export interface GmStoryJumpResult extends GmResult {
   sourceHash?: string;
-  accept?: StoryDebugAccept;
   play?: StoryDebugPlay;
   gap?: StoryDebugGap;
 }
@@ -536,7 +535,7 @@ export function createGmActions(ports: GmPorts): GmActions {
         run.started = true;
         if (run.pending) scheduleDebugFinish(run);
         return {ok:true, ...(task.sourceHash ? { sourceHash: task.sourceHash } : {}),
-          ...(task.accept ? { accept: task.accept } : {}), ...(play ? { play } : {})};
+          ...(play ? { play } : {})};
       } catch (error) {
         if (installed) {
           try { await restoreOrigin(); }

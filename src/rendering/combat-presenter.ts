@@ -13,7 +13,6 @@ import {createEffect,setEffectClip} from './effects.ts';
 import {effectLayerTextureKeys} from './combat-asset-descriptors.ts';
 import {CombatEffects} from './combat-effects.ts';
 export type {ActionDispatchRunner} from '../domain/combat-action-dispatcher.ts';
-export { basicAttackEffects, classEffects } from './combat-asset-descriptors.ts';
 
 /** Phaser 动作表现适配器。实体身份由场景解析，规则不保存 Sprite 或 DOM。 */
 export class CombatPresenter {

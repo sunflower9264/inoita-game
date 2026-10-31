@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { AutoSaver, type AutoSaveReason } from '../src/application/auto-save.ts';
+import { AutoSaver } from '../src/application/auto-save.ts';
 import type { SaveGame } from '../src/domain/save-game.ts';
 
 const wait=(ms:number)=>new Promise<void>(resolve=>setTimeout(resolve,ms));
@@ -22,28 +22,28 @@ function harness(options:{enabled?:boolean;locked?:boolean;game?:SaveGame<{id:st
 
 test('several triggers inside the debounce window collapse into one write',async t=>{
   const f=harness();t.after(()=>f.saver.stop());
-  f.saver.request('map-entry');f.saver.request('story-event');f.saver.request('quest');
+  f.saver.request();f.saver.request();f.saver.request();
   await wait(20);
   assert.equal(f.writes.length,1,'三次触发只写一次');
-  f.saver.request('timer');
+  f.saver.request();
   await wait(20);
   assert.equal(f.writes.length,2,'窗口结束后的新触发再写一次');
 });
 
 test('nothing is written while auto saving is disabled',async t=>{
   const f=harness({enabled:false});t.after(()=>f.saver.stop());
-  f.saver.request('map-entry');
+  f.saver.request();
   await wait(20);
   assert.equal(f.writes.length,0);
   f.state.enabled=true;
-  f.saver.request('map-entry');
+  f.saver.request();
   await wait(20);
   assert.equal(f.writes.length,1);
 });
 
 test('a world that is not ready yet is retried until it can be captured',async t=>{
   const f=harness({game:undefined});t.after(()=>f.saver.stop());
-  f.saver.request('map-entry');
+  f.saver.request();
   await wait(16);
   assert.equal(f.writes.length,0,'换图途中不写坏档');
   f.state.game=save('auto');
@@ -53,7 +53,7 @@ test('a world that is not ready yet is retried until it can be captured',async t
 
 test('story presentation defers the write instead of saving mid-performance',async t=>{
   const f=harness({locked:true});t.after(()=>f.saver.stop());
-  f.saver.request('story-event');
+  f.saver.request();
   await wait(20);
   assert.equal(f.writes.length,0);
   f.state.locked=false;
@@ -63,14 +63,14 @@ test('story presentation defers the write instead of saving mid-performance',asy
 
 test('a failing storage never throws and stops retrying in a loop',async t=>{
   const f=harness({writeThrows:true});t.after(()=>f.saver.stop());
-  assert.doesNotThrow(()=>f.saver.request('map-entry'));
+  assert.doesNotThrow(()=>f.saver.request());
   await wait(20);
   assert.equal(f.writes.length,0);
 });
 
 test('stop cancels a pending write',async ()=>{
   const f=harness();
-  f.saver.request('map-entry');
+  f.saver.request();
   f.saver.stop();
   await wait(20);
   assert.equal(f.writes.length,0);
@@ -79,24 +79,24 @@ test('stop cancels a pending write',async ()=>{
 test('suspend stops writes until resume, including an already pending one',async t=>{
   const f=harness();t.after(()=>f.saver.stop());
   // 已经排队的待写在暂停时被清掉：调试现场的安装不该补写一份存档。
-  f.saver.request('map-entry');
+  f.saver.request();
   f.saver.suspend();
   assert.equal(f.saver.isSuspended,true);
   await wait(20);
   assert.equal(f.writes.length,0,'暂停期间不写');
-  f.saver.request('quest');
+  f.saver.request();
   await wait(20);
   assert.equal(f.writes.length,0,'暂停期间的新触发也不排队');
   f.saver.resume();
   assert.equal(f.saver.isSuspended,false);
-  f.saver.request('quest');
+  f.saver.request();
   await wait(20);
   assert.equal(f.writes.length,1,'恢复后按正常节奏写一次');
 });
 
 test('background flush writes immediately and cancels the queued write',async t=>{
   const f=harness();t.after(()=>f.saver.stop());
-  f.saver.request('map-entry');
+  f.saver.request();
   f.saver.flushForBackground();
   assert.equal(f.writes.length,1,'页面隐藏时同步写一次');
   await wait(20);
@@ -151,9 +151,9 @@ test('quest accept and completion trigger a write while progress-only updates do
   off();
 });
 
-test('trigger reasons are accepted without changing behaviour',async t=>{
+test('repeated triggers are accepted without changing behaviour',async t=>{
   const f=harness();t.after(()=>f.saver.stop());
-  for(const reason of ['map-entry','story-event','quest','timer'] as AutoSaveReason[])f.saver.request(reason);
+  for(let i=0;i<4;i++)f.saver.request();
   await wait(20);
   assert.equal(f.writes.length,1);
 });

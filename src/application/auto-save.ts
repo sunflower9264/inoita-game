@@ -1,9 +1,6 @@
 import type { SaveGame } from '../domain/save-game.ts';
 import type { Session } from '../domain/session.ts';
 
-/** 自动存档的写入原因；只用于诊断与测试，玩家看不到。 */
-export type AutoSaveReason = 'map-entry' | 'story-event' | 'quest' | 'timer' | 'rest' | 'legendary-sword';
-
 export interface AutoSavePorts<World = unknown> {
   /** 世界还没就绪（换图、未进图）时返回 undefined，这一次就不写。 */
   capture(): SaveGame<World> | undefined;
@@ -58,7 +55,7 @@ export class AutoSaver<World = unknown> {
   get isSuspended():boolean { return this.suspended; }
 
   /** 记一次待写；窗口内的重复触发合并。 */
-  request(_reason:AutoSaveReason):void {
+  request():void {
     if(this.suspended||!this.ports.enabled()||this.debounce)return;
     this.debounce=setTimeout(()=>{ this.debounce=undefined; this.flush(); },this.debounceMs);
   }
@@ -112,14 +109,14 @@ export class AutoSaver<World = unknown> {
         if(statuses.get(id)!==state.status&&(state.status==='active'||state.status==='completed'))changed=true;
       }
       statuses=next;
-      if(changed)this.request('quest');
+      if(changed)this.request();
     });
   }
 
   /** 定时存档；重复调用会先停掉旧计时器。 */
   start(intervalMs=DEFAULT_INTERVAL_MS):void {
     this.stopTimer();
-    this.interval=setInterval(()=>this.request('timer'),intervalMs);
+    this.interval=setInterval(()=>this.request(),intervalMs);
   }
 
   stop():void {
