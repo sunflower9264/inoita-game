@@ -118,7 +118,8 @@ test('manual and AI equipment entries resolve Rush of Anger damage, target aura 
     assert.deepEqual(f.attempts.map(hit=>[hit.cueIndex,hit.casterId,hit.targetId]),[[0,f.casterId,'enemy'],[1,f.casterId,'enemy']]);
     assert.equal(f.conditions.hasState('enemy','stun'),true);assert.equal(f.conditions.hasState(f.casterId,'stun'),false);
     assert.deepEqual(f.events.slice(0,3),[`hit:hit:${firstRankDamage(entry)}`,'effect:rage-aura:enemy','state:enemy:stun']);
-    assert.deepEqual(f.sounds,entry==='manual'?['Wa_Anger_Rush']:[]);
+    // 佣兵和主角同属玩家阵营：技能派发音效不只给当前操控角色。
+    assert.deepEqual(f.sounds,['Wa_Anger_Rush']);
   }
 });
 
@@ -195,7 +196,8 @@ test('a skill relocation blocked for the whole body stays put instead of telepor
   const host=Object.setPrototypeOf({relocationFailures:[],movement:{
     place:(_visual:unknown,point:{x:number;y:number})=>placed.push({...point}),
     actor:()=>actor,
-    navigation:{canPlaceBody:(_shape:unknown,point:{x:number;y:number})=>point.x===3&&point.y===4},
+    navigation:{canPlaceBody:(_shape:unknown,point:{x:number;y:number})=>point.x===3&&point.y===4,
+      terrainFree:()=>false,bodyTerrainFree:()=>false},
   }},WorldCombat.prototype);
   const relocate=method('relocateVisual');
   assert.equal(relocate.call(host,visual,{x:8,y:0}),false);

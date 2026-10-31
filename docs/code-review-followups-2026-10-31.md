@@ -2,14 +2,14 @@
 
 本轮处理了审查建议里的 1–4 步：修行为问题、修门禁问题、删低风险死代码、收敛文字颜色和控件尺寸。下面记录没有处理或需要人工确认的项目，避免以后误删行为。
 
-## 预存在的测试失败
+## 已修复的预存在失败
 
-`tests/rush-of-anger-runtime.test.ts` 在 `main` 基线和本分支都失败，不是本轮改动引入：
+`tests/rush-of-anger-runtime.test.ts` 在 `main` 基线失败，不是本轮死代码改动引入；根因已确认并修复（2026-10-31）：
 
-- 第 121 行：AI 路径期望 `sounds=[]`，实际拿到 `['Wa_Anger_Rush']`。
-- 第 191 行：测试夹具的 `navigation` 只有 `canPlaceBody`，没有 `terrainFree`/`bodyTerrainFree`，`relocateVisual` 走到兜底判断时抛 `TypeError`。
+- AI 音效：测试期望写于初始提交（2026-10-22）。2026-10-23 的 `ad197ec` 有意把音效门槛从“只有当前操控角色”改成“所有玩家阵营成员”，注释写明“切到佣兵前他们出手全静音”。生产行为正确，测试期望已同步为手动和 AI 都播放 `Wa_Anger_Rush`。
+- `terrainFree`：测试夹具写于初始提交（2026-10-22）。2026-10-25 的 `4b6dd64` 给 `relocateVisual` 加了地形兜底检查，但没有同步夹具。已补 `terrainFree` / `bodyTerrainFree` 返回 `false`，保持“整盒站不下就留在原地”的原意。
 
-处理建议：单独修测试夹具或确认 AI 路径是否应该播放音效，不要和本轮死代码删除混在一起。
+验证：`tests/rush-of-anger-runtime.test.ts` 9 条全部通过。
 
 ## 保留的“看似死代码”
 
