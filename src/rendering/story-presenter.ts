@@ -127,6 +127,7 @@ export class StoryPresenter implements StoryPresentationPort {
         // 舞台为了不画重复演员而临时隐藏的副本不属于正式世界改动。
         if (!actor.worldEntityId || actor.unpositioned || actor.stageHidden) continue;
         if (change.before && change.before.worldEntityId === actor.worldEntityId
+          && change.before.characterId === actor.characterId && change.before.authority === actor.authority
           && change.before.actor === actor.actor && change.before.x === actor.x && change.before.y === actor.y
           && change.before.facing === actor.facing && change.before.visible === actor.visible) continue;
         changes.push({ id: actor.worldEntityId, map, actor: actor.actor,

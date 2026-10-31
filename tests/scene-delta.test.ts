@@ -31,6 +31,17 @@ test('scene deltas ignore purely visual fields that are not in the commit contra
   assert.deepEqual(diffSceneActors(before,after).changes,[]);
 });
 
+test('scene deltas report a party actor rebound to another world entity',()=>{
+  // 同一个队伍成员换绑到另一个世界实体时，位置、朝向和可见性都没变；
+  // 身份字段本身的变化必须产生 update，否则正式世界会继续用旧实体。
+  const before=snapshot([actor('ally',{memberId:'ally',worldEntityId:'gate'})]);
+  const after=snapshot([actor('ally',{memberId:'ally',worldEntityId:'post'})]);
+  const delta=diffSceneActors(before,after);
+  assert.deepEqual(delta.changes.map(change=>[change.kind,change.ref]),[
+    ['update',{source:'party',memberId:'ally'}],
+  ]);
+});
+
 test('scene deltas reject duplicate source instances before they reach commit',()=>{
   assert.throws(()=>diffSceneActors(snapshot([],),snapshot([
     actor('one',{worldEntityId:'gate'}),

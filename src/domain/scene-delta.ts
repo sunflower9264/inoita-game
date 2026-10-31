@@ -16,7 +16,9 @@ export interface SceneDelta {
 function changed(before:SceneActorState,after:SceneActorState):boolean {
   return before.actor!==after.actor||before.x!==after.x||before.y!==after.y||before.facing!==after.facing
     ||before.visible!==after.visible||!!before.removed!==!!after.removed
-    ||!!before.stageHidden!==!!after.stageHidden||!!before.unpositioned!==!!after.unpositioned;
+    ||!!before.stageHidden!==!!after.stageHidden||!!before.unpositioned!==!!after.unpositioned
+    ||before.worldEntityId!==after.worldEntityId||before.characterId!==after.characterId
+    ||before.authority!==after.authority;
 }
 
 /**
