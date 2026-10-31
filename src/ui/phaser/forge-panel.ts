@@ -26,8 +26,8 @@ export class ForgePanel {
   private readonly preview:(targetId:string,gemModifiers:Modifier[])=>CharacterPanel|undefined;
   targetId?:string;tab:ForgeTab='enchant';
   private selectedItem?:string;private socketIndex?:number;private replaceIndex?:number;
-  private offset=0;
-  private confirmation?:Confirmation;private scroll?:ScrollArea;
+  private offset=0;private leftOffset=0;
+  private confirmation?:Confirmation;private scroll?:ScrollArea;private leftScroll?:ScrollArea;
   constructor(bag:Bag,panels:MenuPanels,stats:CharacterStatsCatalog,memberId:string,
     changed:()=>void,sound:()=>void,notify:(message:string)=>void,
     preview:(targetId:string,gemModifiers:Modifier[])=>CharacterPanel|undefined){
@@ -39,24 +39,32 @@ export class ForgePanel {
   open(targetId:string,tab:ForgeTab='enchant'):void {
     this.targetId=targetId;this.tab=tab;
     this.selectedItem=undefined;this.socketIndex=undefined;this.replaceIndex=undefined;
-    this.offset=0;this.confirmation=undefined;this.scroll=undefined;
+    this.offset=0;this.leftOffset=0;this.confirmation=undefined;this.scroll=undefined;this.leftScroll=undefined;
   }
-  captureScroll():void {this.offset=this.scroll?.scrollTop??this.offset;}
+  captureScroll():void {
+    this.offset=this.scroll?.scrollTop??this.offset;
+    this.leftOffset=this.leftScroll?.scrollTop??this.leftOffset;
+  }
   cancelConfirmation():void {this.confirmation=undefined;this.changed();}
   render(v:UiSurface,modal:UiSurface,placeModal:(width:number,height:number)=>void):void {
     const assets=this.panels.assets;
     v.border(assets,10,0,462,431);v.border(assets,484,0,395,431);
-    this.scroll=undefined;
+    this.scroll=undefined;this.leftScroll=undefined;
+    // 左框内容可能随强化概率、宝石孔和属性条数变长，统一放进可滚动区。
+    const left=v.scroll(0,0,458,431);this.leftScroll=left;
     const target=this.targetId?this.bag.get(this.targetId):undefined,item=target?this.bag.catalog.items[target.item]:undefined;
     if(!target||!item?.equipment){
-      v.text('装备已不存在，点右上角关闭返回背包。',40,160,400,24,'#e2cb9e');
-      return;
+      v.text('装备已不存在，点右上角关闭返回背包。',40,160,400,24,'#e2cb9e',left.content);
+      left.setHeight(431);return;
     }
     this.validateState(target);
-    this.renderSummary(v,target,item);
+    const summaryBottom=this.renderSummary(v,target,item,left);
     this.renderTabs(v);
     this.renderGrid(v,target);
-    this.renderDetails(v,target,item);
+    const detailsBottom=this.renderDetails(v,target,item,left);
+    left.setHeight(Math.max(431,summaryBottom,detailsBottom));
+    left.scrollTop=this.leftOffset;
+    left.onScroll=()=>{this.leftOffset=left.scrollTop;};
     if(this.confirmation)this.renderConfirmation(modal,placeModal);
   }
   private renderTabs(v:UiSurface):void {
@@ -71,7 +79,7 @@ export class ForgePanel {
   private setTab(tab:ForgeTab):void {
     if(this.tab===tab)return;
     this.tab=tab;this.selectedItem=undefined;this.socketIndex=undefined;this.replaceIndex=undefined;
-    this.offset=0;this.scroll=undefined;this.changed();
+    this.offset=0;this.leftOffset=0;this.scroll=undefined;this.leftScroll=undefined;this.changed();
   }
   private validateState(target:ItemInstance):void {
     if(this.selectedItem&&!this.bag.get(this.selectedItem))this.selectedItem=undefined;
@@ -79,12 +87,12 @@ export class ForgePanel {
     if(this.socketIndex!==undefined&&(this.socketIndex<0||this.socketIndex>=count))this.socketIndex=undefined;
     if(this.replaceIndex!==undefined&&(this.replaceIndex<0||this.replaceIndex>=count))this.replaceIndex=undefined;
   }
-  private renderSummary(v:UiSurface,target:ItemInstance,item:ItemDefinition):void {
+  private renderSummary(v:UiSurface,target:ItemInstance,item:ItemDefinition,left:ScrollArea):number {
     const numbers=this.stats.equipment[target.item];
-    v.image(item.icon,384,36,56,56);
-    v.text(`${item.name}${target.enhancement?` +${target.enhancement}`:''}`,40,36,320,22,'#e2cb9e');
+    v.image(item.icon,384,36,56,56,left.content);
+    v.text(`${item.name}${target.enhancement?` +${target.enhancement}`:''}`,40,36,320,22,'#e2cb9e',left.content);
     let y=64;
-    const line=(text:string)=>{v.text(text,40,y,320,18,'#c8b78f');y+=20;};
+    const line=(text:string)=>{v.text(text,40,y,320,18,'#c8b78f',left.content);y+=20;};
     line(`等级 ${equipmentLevel(item,target)}`);
     line(`强化耐久度 ${target.numbers?.enhancementUses??0}`);
     line(`宝石孔 ${target.gems.length}/${target.numbers?.sockets??item.equipment!.socketCapacity}`);
@@ -94,6 +102,7 @@ export class ForgePanel {
       else if(item.priceKind==='armor')line(`防御力 ${power.defense}`);
     }
     line(`混沌属性 ${target.numbers?.chaos?(target.numbers.chaos.tier==='epic-chaos'?'深渊混沌':'混沌'):'无'}`);
+    return y;
   }
   private gridEntries():ItemInstance[] {
     const kind=this.tab==='enchant'?'enchant':this.tab==='socket'?'socket':'purify';
@@ -135,73 +144,85 @@ export class ForgePanel {
     const notice=this.bag.applicationProblem(source.id,target.id);
     return notice?this.panels.itemMessages[notice]??notice:undefined;
   }
-  private renderDetails(v:UiSurface,target:ItemInstance,item:ItemDefinition):void {
-    if(this.tab==='enchant')this.renderEnchantDetails(v,target,item);
-    else if(this.tab==='socket')this.renderSocketDetails(v,target,item);
-    else this.renderPurifyDetails(v,target);
+  private renderDetails(v:UiSurface,target:ItemInstance,item:ItemDefinition,left:ScrollArea):number {
+    if(this.tab==='enchant')return this.renderEnchantDetails(v,target,item,left);
+    if(this.tab==='socket')return this.renderSocketDetails(v,target,item,left);
+    return this.renderPurifyDetails(v,target,left);
   }
-  private renderEnchantDetails(v:UiSurface,target:ItemInstance,item:ItemDefinition):void {
-    if(!item.equipment?.enchantable){v.text('这件装备不能强化。',40,190,400,18,'#ff6b6b');return;}
+  private renderEnchantDetails(v:UiSurface,target:ItemInstance,item:ItemDefinition,left:ScrollArea):number {
+    if(!item.equipment?.enchantable){v.text('这件装备不能强化。',40,190,400,18,'#ff6b6b',left.content);return 208;}
     const selected=this.selectedItem?this.bag.get(this.selectedItem):undefined;
-    if(!selected){v.text('选择一张强化卷轴。',40,190,400,18,'#c8b78f');v.button('确定强化',139,342,205,55,()=>{}, {fontSize:20,disabled:true});return;}
+    if(!selected){
+      v.text('选择一张强化卷轴。',40,190,400,18,'#c8b78f',left.content);
+      v.button('确定强化',139,342,205,55,()=>{}, {fontSize:20,disabled:true,parent:left.content,guard:left.guard});
+      return 397;
+    }
     const definition=this.bag.catalog.items[selected.item],problem=this.problemText(selected,target),odds=problem?undefined:this.bag.applicationOdds(selected.id,target.id);
-    v.text(definition.name,40,190,400,18,'#e2cb9e');
-    if(problem)v.text(problem,40,214,400,18,'#ff6b6b');
+    v.text(definition.name,40,190,400,18,'#e2cb9e',left.content);
+    let buttonY=342;
+    if(problem)v.text(problem,40,214,400,18,'#ff6b6b',left.content);
     else if(odds){
       const view=enhancementOddsView(odds,target.enhancement,target.numbers?.enhancementUses);
-      if(view.sentence)v.text(view.sentence,40,ENHANCEMENT_ODDS_TOP,400,18,'#c8b78f');
-      if(view.current)v.text(view.current,40,ENHANCEMENT_ODDS_TOP,400,18,'#c8b78f');
+      if(view.sentence)v.text(view.sentence,40,ENHANCEMENT_ODDS_TOP,400,18,'#c8b78f',left.content);
+      if(view.current)v.text(view.current,40,ENHANCEMENT_ODDS_TOP,400,18,'#c8b78f',left.content);
       view.rows.forEach((row,index)=>{
         const y=ENHANCEMENT_ODDS_ROW_TOP+index*ENHANCEMENT_ODDS_ROW_STRIDE,color=OUTCOME_COLORS[row.tone];
-        v.text(row.result,40,y,360,18,color);
-        v.text(row.chance,440,y,0,18,color).setOrigin(1,0);
+        v.text(row.result,40,y,360,18,color,left.content);
+        v.text(row.chance,440,y,0,18,color,left.content).setOrigin(1,0);
       });
-      v.text(view.cost,40,view.costY,400,18,'#c8b78f');
+      v.text(view.cost,40,view.costY,400,18,'#c8b78f',left.content);
+      // 概率行多时费用会往下走，按钮必须跟着下移，不能压住费用。
+      buttonY=Math.max(342,view.costY+28);
     }
-    v.button('确定强化',139,342,205,55,()=>this.useScroll(selected.id),{fontSize:20,disabled:!!problem});
+    v.button('确定强化',139,buttonY,205,55,()=>this.useScroll(selected.id),{fontSize:20,disabled:!!problem,parent:left.content,guard:left.guard});
+    return buttonY+55;
   }
-  private renderSocketDetails(v:UiSurface,target:ItemInstance,item:ItemDefinition):void {
+  private renderSocketDetails(v:UiSurface,target:ItemInstance,item:ItemDefinition,left:ScrollArea):number {
     const equipment=item.equipment;
-    if(!equipment)return;
-    if(equipment.locked){v.text('这件装备已锁定，不能镶嵌。',40,190,400,18,'#ff6b6b');return;}
+    if(!equipment)return 208;
+    if(equipment.locked){v.text('这件装备已锁定，不能镶嵌。',40,190,400,18,'#ff6b6b',left.content);return 208;}
     const sockets=target.numbers?.sockets??equipment.socketCapacity;
-    if(sockets<=0){v.text('这件装备没有宝石孔。',40,190,400,18,'#ff6b6b');return;}
+    if(sockets<=0){v.text('这件装备没有宝石孔。',40,190,400,18,'#ff6b6b',left.content);return 208;}
     const modifiers=target.numbers?.gemModifiers;
     const valid=!!target.numbers&&!!modifiers&&modifiers.length===target.gems.length;
     const activeIndex=this.socketIndex??this.replaceIndex;
     for(let index=0;index<sockets;index++){
       const x=40+index*60,y=190,filled=index<target.gems.length;
       const button=v.button('',x,y,54,54,()=>{if(!filled)return;this.socketIndex=index;this.replaceIndex=undefined;this.selectedItem=undefined;this.changed();},
-        {image:this.panels.assets['inventory-slot'],disabled:!filled}).setData('label',`孔位${index+1}`);
+        {image:this.panels.assets['inventory-slot'],disabled:!filled,parent:left.content,guard:left.guard}).setData('label',`孔位${index+1}`);
       if(filled){const gemItem=this.bag.catalog.items[target.gems[index]!];if(gemItem)v.image(gemItem.icon,5,5,44,44,button);}
       if(activeIndex===index)v.image(this.panels.assets['inventory-selected'],-5,-5,64,64,button).setData('forge-highlight','socket');
     }
-    if(!valid){v.text('宝石数据不完整，无法修改宝石。',40,252,400,18,'#ff6b6b');return;}
+    if(!valid){v.text('宝石数据不完整，无法修改宝石。',40,252,400,18,'#ff6b6b',left.content);return 270;}
     // 每个孔固定占一行，任何时候都能看到已镶宝石带来的属性。
     for(let index=0;index<sockets;index++){
       const y=252+index*22,filled=index<target.gems.length;
-      v.text(`孔${index+1}`,40,y,40,18,'#c8b78f');
-      if(!filled){v.text('空',84,y,110,18,'#c8b78f');continue;}
+      v.text(`孔${index+1}`,40,y,40,18,'#c8b78f',left.content);
+      if(!filled){v.text('空',84,y,110,18,'#c8b78f',left.content);continue;}
       const gemItem=this.bag.catalog.items[target.gems[index]!],modifier=modifiers[index];
-      v.text(gemItem?.name??'宝石',84,y,110,18,activeIndex===index?'#ffffff':'#e2cb9e');
-      if(modifier)v.text(this.gemEffectText(modifier),198,y,242,18,'#bf0000');
+      v.text(gemItem?.name??'宝石',84,y,110,18,activeIndex===index?'#ffffff':'#e2cb9e',left.content);
+      if(modifier)v.text(this.gemEffectText(modifier),198,y,242,18,'#bf0000',left.content);
     }
     const canAdd=target.gems.length<sockets;
+    // 孔位越多，属性行越长；提示和操作按钮跟着属性行下移，避免和内容叠在一起。
+    const rowsBottom=252+sockets*22;
+    const hintY=Math.max(318,rowsBottom+4);
+    const actionY=Math.max(342,hintY+24);
     if(this.socketIndex!==undefined){
       const index=this.socketIndex,gemItem=this.bag.catalog.items[target.gems[index]!],modifier=modifiers[index];
-      if(!gemItem||!modifier){v.text('宝石数据不完整，无法修改宝石。',40,318,400,14,'#ff6b6b');return;}
+      if(!gemItem||!modifier){v.text('宝石数据不完整，无法修改宝石。',40,hintY,400,14,'#ff6b6b',left.content);return hintY+18;}
       const outcome=this.socketOutcome(target.id,modifiers,modifiers.filter((_value,slot)=>slot!==index),'取出后');
-      if(outcome)this.socketHint(v,outcome,'#e2cb9e');
-      v.button('取出',40,342,195,55,()=>{this.confirmation={kind:'unsocket',index};this.changed();},{fontSize:20});
-      v.button('替换',245,342,195,55,()=>{this.replaceIndex=index;this.socketIndex=undefined;this.selectedItem=undefined;this.changed();},{fontSize:20});
-      return;
+      if(outcome)this.socketHint(v,outcome,'#e2cb9e',left,hintY);
+      v.button('取出',40,actionY,195,55,()=>{this.confirmation={kind:'unsocket',index};this.changed();},{fontSize:20,parent:left.content,guard:left.guard});
+      v.button('替换',245,actionY,195,55,()=>{this.replaceIndex=index;this.socketIndex=undefined;this.selectedItem=undefined;this.changed();},{fontSize:20,parent:left.content,guard:left.guard});
+      return actionY+55;
     }
-    if(!canAdd&&this.replaceIndex===undefined)this.socketHint(v,'宝石孔已满','#ff6b6b');
-    else if(this.replaceIndex!==undefined&&!this.selectedItem)this.socketHint(v,'从右侧选择要替换的宝石','#c8b78f');
-    else if(!this.selectedItem)this.socketHint(v,'从右侧选择一颗宝石','#c8b78f');
+    if(!canAdd&&this.replaceIndex===undefined)this.socketHint(v,'宝石孔已满','#ff6b6b',left,hintY);
+    else if(this.replaceIndex!==undefined&&!this.selectedItem)this.socketHint(v,'从右侧选择要替换的宝石','#c8b78f',left,hintY);
+    else if(!this.selectedItem)this.socketHint(v,'从右侧选择一颗宝石','#c8b78f',left,hintY);
     if(this.selectedItem){
       const gem=this.bag.get(this.selectedItem),definition=gem?this.bag.catalog.items[gem.item]:undefined,modifier=gem?.numbers?.modifiers?.[0];
-      if(!gem||!definition||!modifier){v.text('宝石数据不完整。',40,318,400,14,'#ff6b6b');return;}
+      if(!gem||!definition||!modifier){v.text('宝石数据不完整。',40,hintY,400,14,'#ff6b6b',left.content);return hintY+18;}
       if(this.replaceIndex!==undefined){
         const index=this.replaceIndex,oldName=this.bag.catalog.items[target.gems[index]!]?.name??`孔${index+1}`;
         v.text(`替换 孔${index+1} ${oldName} → ${definition.name}`,504,360,355,18,'#e2cb9e');
@@ -214,13 +235,15 @@ export class ForgePanel {
         if(outcome)v.text(outcome,504,384,355,18,'#e2cb9e');
       }
     }
-    v.button(this.replaceIndex===undefined?'确认镶嵌':'确认替换',139,342,205,55,()=>this.confirmSocket(),{fontSize:20,
-      disabled:!this.selectedItem||!this.bag.get(this.selectedItem)?.numbers?.modifiers?.length||(!canAdd&&this.replaceIndex===undefined)});
+    v.button(this.replaceIndex===undefined?'确认镶嵌':'确认替换',139,actionY,205,55,()=>this.confirmSocket(),{fontSize:20,
+      disabled:!this.selectedItem||!this.bag.get(this.selectedItem)?.numbers?.modifiers?.length||(!canAdd&&this.replaceIndex===undefined),
+      parent:left.content,guard:left.guard});
+    return actionY+55;
   }
 
   /** 左栏只留一句状态或结果，放在孔位效果列表下面。 */
-  private socketHint(v:UiSurface,text:string,color:string):void {
-    v.text(text,40,318,400,14,color);
+  private socketHint(v:UiSurface,text:string,color:string,left:ScrollArea,y:number):void {
+    v.text(text,40,y,400,14,color,left.content);
   }
 
   /** 宝石词条的短写法：`暴击率 +2.5%`，用于孔位效果列表和镶嵌预览。 */
@@ -255,14 +278,19 @@ export class ForgePanel {
     add('盾牌格挡',before.shieldBlock,after.shieldBlock);
     return lines.slice(0,5);
   }
-  private renderPurifyDetails(v:UiSurface,target:ItemInstance):void {
-    if(!target.numbers?.chaos){v.text('这件装备没有混沌属性。',40,190,400,18,'#ff6b6b');return;}
+  private renderPurifyDetails(v:UiSurface,target:ItemInstance,left:ScrollArea):number {
+    if(!target.numbers?.chaos){v.text('这件装备没有混沌属性。',40,190,400,18,'#ff6b6b',left.content);return 208;}
     const selected=this.selectedItem?this.bag.get(this.selectedItem):undefined;
-    if(!selected){v.text('选择净化之宝石。',40,190,400,18,'#c8b78f');v.button('确定净化',139,342,205,55,()=>{}, {fontSize:20,disabled:true});return;}
+    if(!selected){
+      v.text('选择净化之宝石。',40,190,400,18,'#c8b78f',left.content);
+      v.button('确定净化',139,342,205,55,()=>{}, {fontSize:20,disabled:true,parent:left.content,guard:left.guard});
+      return 397;
+    }
     const definition=this.bag.catalog.items[selected.item];
-    v.text(definition.name,40,190,400,18,'#e2cb9e');
-    v.text('净化后清除混沌属性，保留强化、耐久和宝石。',40,214,400,18,'#c8b78f');
-    v.button('确定净化',139,342,205,55,()=>this.usePurify(selected.id),{fontSize:20});
+    v.text(definition.name,40,190,400,18,'#e2cb9e',left.content);
+    v.text('净化后清除混沌属性，保留强化、耐久和宝石。',40,214,400,18,'#c8b78f',left.content);
+    v.button('确定净化',139,342,205,55,()=>this.usePurify(selected.id),{fontSize:20,parent:left.content,guard:left.guard});
+    return 397;
   }
   private useScroll(sourceId:string):void {
     const targetId=this.targetId;if(!targetId)return;
