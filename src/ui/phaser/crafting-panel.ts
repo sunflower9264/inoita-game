@@ -91,12 +91,13 @@ export class CraftingPanel {
     }
   }
   private renderModeStrip(v:UiSurface):void {
+    // 模式切换放在左侧框上方，不再占用框内第一行；按钮同步放大，手机上也更好点。
     const tab=(label:string,data:string,x:number,width:number,selected:boolean,mode:'recipes'|ChaosTier|'socket')=>
-      v.button(label,x,10,width,30,()=>this.chooseMode(mode),{selected,fontSize:16}).setData('label',data);
-    tab('配方','切换融合模式',14,90,this.mode==='recipes','recipes');
-    tab('混沌','混沌合成',108,90,this.mode==='chaos'&&this.tier==='chaos','chaos');
-    tab('深渊混沌','深渊混沌合成',202,120,this.mode==='chaos'&&this.tier==='epic-chaos','epic-chaos');
-    tab('宝石孔','宝石孔生成',326,110,this.mode==='socket','socket');
+      v.button(label,x,-38,width,34,()=>this.chooseMode(mode),{selected,fontSize:18}).setData('label',data);
+    tab('配方','切换融合模式',8,104,this.mode==='recipes','recipes');
+    tab('混沌','混沌合成',116,104,this.mode==='chaos'&&this.tier==='chaos','chaos');
+    tab('深渊混沌','深渊混沌合成',224,132,this.mode==='chaos'&&this.tier==='epic-chaos','epic-chaos');
+    tab('宝石孔','宝石孔生成',360,112,this.mode==='socket','socket');
   }
   private renderRecipes(v:UiSurface):void {
     const assets=this.panels.assets,bag=this.crafting.session.bag,recipe=this.recipe?this.crafting.recipe(this.recipe):undefined;
