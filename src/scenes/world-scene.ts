@@ -1742,14 +1742,19 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
     this.overheadStatus?.setVisible(backgroundVisible);
     const target = this.near?.container.visible ? this.near : null;
     // 敌人数值只在逻辑帧里变化；同一战斗帧的多个渲染帧复用同一份目标状态。
-    const tick=this.app.session.combatTick,actorId=target?.entity.id??'';
+    const tick=this.app.session?.combatTick,actorId=target?.entity.id??'';
     let targetStatus:ReturnType<WorldCombat['targetStatus']>,hostile:boolean;
-    let targetCache=this.targetStatusCache;
-    if(!targetCache||targetCache.tick!==tick||targetCache.actor!==actorId){
-      targetCache={tick,actor:actorId,status:this.combat?.targetStatus?.(),hostile:!!this.combat?.hasHostileTarget?.()};
-      this.targetStatusCache=targetCache;
+    if(tick===undefined){
+      // 菜单启动阶段还没有会话：直接取当前战斗状态，不做按帧缓存。
+      targetStatus=this.combat?.targetStatus?.();hostile=!!this.combat?.hasHostileTarget?.();
+    }else{
+      let targetCache=this.targetStatusCache;
+      if(!targetCache||targetCache.tick!==tick||targetCache.actor!==actorId){
+        targetCache={tick,actor:actorId,status:this.combat?.targetStatus?.(),hostile:!!this.combat?.hasHostileTarget?.()};
+        this.targetStatusCache=targetCache;
+      }
+      targetStatus=targetCache.status;hostile=targetCache.hostile;
     }
-    targetStatus=targetCache.status;hostile=targetCache.hostile;
     // 名称条同样每帧同步：新对象默认隐藏，等摘要变化才显示会把换图后的提示吞掉。
     this.nameBanner?.sync(backgroundVisible, target ? target.entity.name || target.actor.name : null);
     // 方法同时承担「状态变化后立即同步」和「逐帧兜底」两种调用；决定文字与按钮的状态

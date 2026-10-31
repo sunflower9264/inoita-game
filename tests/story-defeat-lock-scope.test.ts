@@ -53,6 +53,22 @@ function harness(content: Campaign = campaign) {
   return { session, ui, director, locks, visible, counters };
 }
 
+test('syncHud tolerates the boot state before a session is installed', () => {
+  const ui = new GameUI();
+  ui.mode = 'menu'; ui.ready = false;
+  const view = () => ({ setVisible() {} });
+  const host = {
+    canControl: false, performing: false, loadingWorld: true,
+    sys: { isActive: () => false },
+    app: { ui, suspended: false, session: undefined },
+    player: { container: {} }, near: null, chestFades: new Map(),
+    stick: view(), controls: { ...view(), setAttack() {} },
+    skillHud: view(), minimap: view(), statusHud: { ...view(), setTarget() {} }, overheadStatus: view(),
+    nameBanner: { sync() {} },
+  };
+  assert.doesNotThrow(() => WorldScene.prototype.syncHud.call(host));
+});
+
 test('a defeat with no matching battle event leaves the input, the pose and the HUD untouched', async () => {
   // 每杀一只普通怪都会报一次 `defeat:`，而内容里只有十几条击败事件。没有匹配就不该接管游戏：
   // 上锁会重置输入、停移动、把主角切回待机并隐藏摇杆与各面板。
