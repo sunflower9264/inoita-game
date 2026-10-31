@@ -213,12 +213,14 @@ export class PartyRoster {
   get activeIds():string[]{return ['player',...this.slots.filter((id):id is string=>!!id)];}
   /** 上阵队员的资源读写入口，顺序为主角、上阵槽；候补名册不在内。 */
   get activeMembers():SpringPartyResources[]{
-    return this.activeIds.map(id=>{
-      if(id==='player'){const hero=this.hero;return {id,get player(){return hero.player;},
+    return this.activeIds.flatMap(id=>{
+      if(id==='player'){const hero=this.hero;return [{id,get player(){return hero.player;},
         setHealth:(value:number)=>hero.setHealth(value),setMana:(value:number)=>hero.setMana(value),
-        grantSkillPoint:()=>hero.grantSkillPoint()};}
-      const member=this.owned.get(id)!;
-      return {id,get player(){return member.player;},setHealth:(value:number)=>member.setHealth(value),setMana:(value:number)=>member.setMana(value)};
+        grantSkillPoint:()=>hero.grantSkillPoint()}];}
+      const member=this.owned.get(id);
+      // 槽位引用了已不在名册的成员时跳过，别把不变量错误变成读取 undefined 的 TypeError。
+      if(!member)return [];
+      return [{id,get player(){return member.player;},setHealth:(value:number)=>member.setHealth(value),setMana:(value:number)=>member.setMana(value)}];
     });
   }
   /** 上阵空间槽位：0 屏幕左侧、1 屏幕右侧；名册与候补返回 undefined。 */

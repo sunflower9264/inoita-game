@@ -77,13 +77,15 @@ export function applySpringRecovery(effect: { kind: SpringKind; percent?: number
     if (effect.kind === 'heal') {
       const before = member.player.health, max = member.player.maxHealth;
       const target = Math.max(0, Math.min(max, before + Math.round(max * percent / 100)));
+      if (target === before) continue;
       member.setHealth(target);
-      if (target > before) recovered.push(member.id);
+      recovered.push(member.id);
     } else {
       const before = member.player.mana, max = member.player.maxMana;
       const target = Math.max(0, Math.min(max, before + Math.round(max * percent / 100)));
+      if (target === before) continue;
       member.setMana(target);
-      if (target > before) recovered.push(member.id);
+      recovered.push(member.id);
     }
   }
   return recovered;

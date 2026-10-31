@@ -8,6 +8,16 @@
 - `isOneHitKill`：`breakable-drops` 和 `molten-armor` 的夹具缺少生产 `settleHit` 会调用的 `session.isOneHitKill`，已补返回 `false` 的桩。
 - `frenzy-attack`：3 条播放测试的假 `Sprite` 缺少 `scene` 字段，生产 `isCurrentLayers` 把它误判成“已销毁”，收尾时没有停动画、也没有恢复可见性。夹具补上 `scene` 后 9 条全部通过。
 
+## 线上启动事故（2026-10-31）
+
+死代码清理误删了 `WorldScene.syncHud` 的 `tick===undefined` 启动兜底。菜单创建时 `session` 尚未装配，`syncHud` 直接读 `app.session.combatTick` 会抛 `TypeError`，页面停在启动阶段；客户端诊断日志记录了 457 条同类错误。已恢复可选链和按作战帧缓存的分支，补了“没有 session 时调用 syncHud”的回归测试，并重新部署。
+
+## 审计后的防御性补修
+
+- `PartyRoster.activeMembers` 遇到槽位里已不在名册的成员时跳过，避免裸断言变成 `TypeError`。
+- `applySpringRecovery` 在成员已经满血/满蓝时不再调用 `setHealth`/`setMana`，避免无意义的状态通知。
+- 三路审计结论：除上述 `syncHud` 外，没有发现其他被误删的运行期兜底，也没有发现其他启动期直接读取未装配会话的路径。
+
 ## 本轮已处理
 
 - 泉水：回血/回蓝按每名存活上阵队员自己的上限结算；正面状态给所有存活上阵队员；负面或攻防混合状态只给喝下泉水的人；技能点只给主角；死亡和候补成员不参与。
@@ -39,5 +49,6 @@
 
 - `npm run typecheck` 通过。
 - 本轮相关 40 个测试文件、412 条用例通过；`rush-of-anger` 9 条通过；`breakable-drops`/`molten-armor` 19 条通过。
+- 启动事故修复与防御性补修：`tests/story-defeat-lock-scope.test.ts`、`tests/springs.test.ts`、`tests/spring-potion-states.test.ts`、`tests/party.test.ts` 共 37 条通过。
 - `npm run validate:content` 通过（416 张地图、12061 个素材）。
 - `npm run debug-start:check` 通过（487 个任务、0 gap）。

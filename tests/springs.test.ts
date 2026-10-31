@@ -14,6 +14,15 @@ function springMember(id:string,health:number,maxHealth:number,mana:number,maxMa
     grantSkillPoint(){state.skillPoints++;},get skillPoints(){return state.skillPoints;}};
 }
 
+test('recovery skips full resources without writing or notifying',()=>{
+  let writes = 0;
+  const full = { id: 'player', player: { health: 10, maxHealth: 10, mana: 5, maxMana: 5 },
+    setHealth() { writes += 1; }, setMana() { writes += 1; } };
+  assert.deepEqual(applySpringRecovery({ kind: 'heal', percent: 50 }, [full]), []);
+  assert.deepEqual(applySpringRecovery({ kind: 'heal-mana', percent: 50 }, [full]), []);
+  assert.equal(writes, 0);
+});
+
 test('exported springs keep the native five tiers and twenty effects',()=>{
   assert.deepEqual(springs.springs.map(spring=>[spring.name,spring.unlockLevel]),
     [['清澈的泉水',1],['凉爽的泉水',20],['未知的泉水',40],['魔界之泉水',60],['混沌之泉水',80]]);
