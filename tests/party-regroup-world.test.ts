@@ -11,8 +11,10 @@ const { WorldCombat }=await import('../src/scenes/world-combat.ts');
 hook.deregister();
 
 const body={x:-8,y:-8,width:16,height:16};
-interface TestVisual { id:string; actor:{collision:typeof body;clips:Record<string,never>}; container:{active:boolean;visible:boolean} }
-interface TestAlly { id:string; visual:TestVisual; member:{player:{health:number}}; facing:'south'; ai:{cancel():void;actionState():string;selectedTargetId():string|undefined} }
+interface TestContainer { active:boolean; visible:boolean; setAlpha(value:number):TestContainer; setVisible(value:boolean):TestContainer }
+interface TestVisual { id:string; actor:{collision:typeof body;clips:Record<string,never>}; container:TestContainer }
+interface TestAlly { id:string; visual:TestVisual; member:{player:{health:number};clearCombatResourceLimits?():void}; facing:'south';
+  ai:{cancel():void;actionState():string;selectedTargetId():string|undefined;reset?():void} }
 interface TestEnemy { key:string; visual:TestVisual; facing:'south'; summonedBy?:string; summonRemainingMs?:number;
   controller?:{cancel():void;actionState():string} }
 
@@ -23,7 +25,9 @@ function fixture(options:{sealed?:boolean;wall?:boolean}={}){
   const navigation=new NavigationWorld({name:'party-regroup',tileSize:16,columns:40,rows:40,blocked});
   const positions=new Map<TestVisual,Point>(),actors=new Map<TestVisual,NavigationActor>();
   function addVisual(id:string,point:Point):TestVisual{
-    const visual={id,actor:{collision:{...body},clips:{}},container:{active:true,visible:true}};
+    const container:TestContainer={active:true,visible:true,
+      setAlpha(){return container;},setVisible(value){container.visible=value;return container;}};
+    const visual={id,actor:{collision:{...body},clips:{}},container};
     const position={...point};positions.set(visual,position);
     const actor:NavigationActor={shape:()=>visual.actor,position:()=>position,enabled:()=>visual.container.visible};
     actors.set(visual,actor);navigation.register(actor);return visual;
@@ -43,19 +47,20 @@ function fixture(options:{sealed?:boolean;wall?:boolean}={}){
     placeAll:(values:{visual:TestVisual;position:Point}[])=>{
       for(const value of values){Object.assign(positions.get(value.visual)!,value.position);moved.push(value.visual.id);}
     },
+    setEnabled:()=>{},
     stop:()=>{},
   };
   const party={activeIds:['player','companion','second'],controlledId:'companion',
     switchControl:()=>{switches+=1;return true;}};
   function ally(id:string,point:Point):TestAlly{
     const visual=addVisual(id,point);
-    return {id,visual,member:{player:{health:50}},facing:'south',ai:{cancel(){cancelled.push(id);},actionState:()=> 'idle',selectedTargetId:()=>undefined}};
+    return {id,visual,member:{player:{health:50}},facing:'south',ai:{cancel(){cancelled.push(id);},actionState:()=> 'idle',selectedTargetId:()=>undefined,reset(){}}};
   }
   const allies=[ally('companion',{x:64,y:64}),ally('second',{x:600,y:600})];
   const state={app:{session:{party}},scene:{player:hero,facing:'south'},movement,allies,
     arena:[] as TestEnemy[],pendingDefeats:new Set<string>(),fallen:new Set<string>(),closed:false};
   const combat=Object.setPrototypeOf(state,WorldCombat.prototype) as unknown as InstanceType<typeof WorldCombat>;
-  return {combat,navigation,positions,actors,party,hero,allies,moved,cancelled,fallen:state.fallen,app:state.app,
+  return {combat,navigation,movement,positions,actors,party,hero,allies,moved,cancelled,fallen:state.fallen,app:state.app,
     addVisual,arena:state.arena,pendingDefeats:state.pendingDefeats,switches:()=>switches};
 }
 
@@ -180,4 +185,34 @@ test('the party landing anchor is the hero, not the controlled mercenary',()=>{
   assert.ok(landing);
   assert.ok(Math.hypot(landing.x-512,landing.y-512)<=48,'落点由主角位置决定');
   assert.ok(Math.hypot(landing.x-64,landing.y-64)>100,'不是围着被操控的佣兵');
+});
+
+test('story settlement separates allies that already overlap the hero or each other',()=>{
+  const f=fixture();f.party.controlledId='player';
+  const heroPosition={...f.positions.get(f.hero)!};
+  for(const ally of f.allies)Object.assign(f.positions.get(ally.visual)!,heroPosition);
+  f.combat.settleFriendlyUnitsAroundHero();
+  const points=[f.positions.get(f.hero)!,...f.allies.map(ally=>f.positions.get(ally.visual)!)];
+  for(let left=0;left<points.length;left++)for(let right=left+1;right<points.length;right++)
+    assert.ok(Math.abs(points[left]!.x-points[right]!.x)>=16||Math.abs(points[left]!.y-points[right]!.y)>=16,
+      `单位 ${left}/${right} 仍然重叠`);
+});
+
+test('reviving two allies places them apart',()=>{
+  const f=fixture();f.party.controlledId='player';
+  const revived:string[]=[];
+  for(const ally of f.allies){ally.member.player.health=1;ally.member.clearCombatResourceLimits=()=>{};}
+  Object.defineProperty(f.combat,'visualOf',{value:(id:string)=>f.allies.find(ally=>ally.id===id)?.visual});
+  Object.defineProperty(f.combat,'memberOf',{value:(id:string)=>f.allies.find(ally=>ally.id===id)?.member});
+  Object.defineProperty(f.combat,'runtime',{value:{cancel(){}}});
+  Object.assign(f.combat as unknown as Record<string,unknown>,{
+    partyDefeatWork:new Map(),deathTweens:new Map(),dealtDamage:new Set(),
+    conditions:{remove(){}},partyControllers:new Map(),outcomes:{recover(){}},
+    app:{...f.app,session:{...f.app.session,reviveCombatActor:(id:string)=>revived.push(id)}},
+    movement:{...f.movement,setEnabled(){}},
+  });
+  f.combat.reviveMember('companion');f.combat.reviveMember('second');
+  const [first,second]=f.allies.map(ally=>f.positions.get(ally.visual)!);
+  assert.ok(Math.abs(first!.x-second!.x)>=16||Math.abs(first!.y-second!.y)>=16,'两名复活的佣兵不能重叠');
+  assert.deepEqual(revived,['companion','second']);
 });

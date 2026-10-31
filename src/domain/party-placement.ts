@@ -1,6 +1,16 @@
 import type { Point } from './navigation.ts';
 import type { NavigationActor, NavigationShape, NavigationWorld } from './navigation-world.ts';
 
+/** 两个队伍单位按同一碰撞盒落位时是否重叠；边贴边不算重叠。 */
+export function partyBodyOverlaps(point: Point, other: Point, shape: NavigationShape): boolean {
+  const box = shape.collision;
+  if (!box) return Math.hypot(point.x - other.x, point.y - other.y) < 16;
+  const left = point.x + box.x, top = point.y + box.y;
+  const otherLeft = other.x + box.x, otherTop = other.y + box.y;
+  return left < otherLeft + box.width && otherLeft < left + box.width
+    && top < otherTop + box.height && otherTop < top + box.height;
+}
+
 /**
  * 给上阵队员在主角身边找一个能放下整个身体、且从主角身边走得到的落点。
  *
@@ -14,8 +24,8 @@ import type { NavigationActor, NavigationShape, NavigationWorld } from './naviga
 export function choosePartyLanding(navigation: NavigationWorld, shape: NavigationShape, origin: Point,
   ignore?: NavigationActor, avoid: readonly Point[] = []): Point | undefined {
   // 队友之间可以挤过彼此，但落位不能直接叠在主角或已站好的队友身上。
-  const size = Math.max(shape.collision?.width ?? 0, shape.collision?.height ?? 0, 16);
-  const clear = (point: Point) => avoid.every(other => Math.hypot(point.x - other.x, point.y - other.y) >= size);
+  // 用碰撞盒重叠判断而不是中心点距离，斜向候选也不会留下部分重叠。
+  const clear = (point: Point) => avoid.every(other => !partyBodyOverlaps(point, other, shape));
   const settle = (point: Point) => clear(point) && navigation.terrainFree(point)
     && navigation.canPlaceBody(shape, point, ignore);
   const preferred = navigation.nearestBody(shape, origin, ignore, [], clear);

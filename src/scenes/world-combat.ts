@@ -32,7 +32,7 @@ import { enemyAwarenessRangeUnits } from '../domain/enemy-engagement.ts';
 import { FriendlySummonController } from '../domain/friendly-summon-ai.ts';
 import { SummonCombatAwareness } from '../domain/summon-tactics.ts';
 import { canTraverse } from '../domain/pathfinding.ts';
-import { choosePartyLanding } from '../domain/party-placement.ts';
+import { choosePartyLanding, partyBodyOverlaps } from '../domain/party-placement.ts';
 import type { NavigationActor, NavigationShape } from '../domain/navigation-world.ts';
 import { overlapsFootRect } from '../domain/navigation.ts';
 import { PartyController, type PartyPort } from '../domain/party-ai.ts';
@@ -2087,12 +2087,18 @@ captureStoryActors():SceneActorState[] {
       setCharacterClip(this.scene,ally.visual,`idle-${ally.facing}`,true);
     }
   }
-  /** 是否该在剧情收尾时把单位拉回主角身边：太远，或整盒已经不合法的位置。 */
-  private shouldSettleFriendly(visual:CharacterVisual,actor:NavigationActor):boolean {
+  /** 是否该在剧情收尾时把单位拉回主角身边：太远、整盒不合法，或已经和队友叠在一起。 */
+  private shouldSettleFriendly(visual:CharacterVisual,actor:NavigationActor,id?:string):boolean {
     const position=this.movement!.position(visual),hero=this.movement!.position(this.player);
     if(Math.hypot(position.x-hero.x,position.y-hero.y)>64)return true;
     const navigation=this.movement!.navigation;
-    return !navigation.terrainFree(position)||!navigation.canPlaceBody(actor.shape(),position,actor);
+    if(!navigation.terrainFree(position)||!navigation.canPlaceBody(actor.shape(),position,actor))return true;
+    if(!id)return false;
+    // 读档可能带进旧重叠；已经和主角或另一名存活队员站在同一个盒子里时也重新落位。
+    const shape=actor.shape();
+    return [this.player,...this.allies.filter(other=>other.id!==id&&other.member.player.health>0&&!this.fallen.has(other.id))
+      .map(other=>other.visual)]
+      .some(other=>partyBodyOverlaps(position,this.movement!.position(other),shape));
   }
   /**
    * 剧情正常结束后，把掉队或被剧情障碍困住的佣兵、友方召唤物收拢到主角身边。
@@ -2109,7 +2115,7 @@ captureStoryActors():SceneActorState[] {
       const ally=combatActor(this.allies,id,actor=>actor.id);
       if(!ally||!ally.member.player.health||this.fallen.has(id)||!ally.visual.container.active)continue;
       const actor=this.movement.actor(ally.visual);
-      if(ally.ai.actionState()!=='idle'||ally.ai.selectedTargetId()||!this.shouldSettleFriendly(ally.visual,actor))continue;
+      if(ally.ai.actionState()!=='idle'||ally.ai.selectedTargetId()||!this.shouldSettleFriendly(ally.visual,actor,id))continue;
       const landing=this.partyLanding(actor.shape(),actor);
       if(!landing)continue;
       ally.ai.cancel();this.movement.place(ally.visual,landing);
@@ -2525,7 +2531,11 @@ captureStoryActors():SceneActorState[] {
     this.conditions.remove(id);member.clearCombatResourceLimits();this.partyControllers.get(id)?.reset();
     if(id==='player')this.heroAi?.reset();else combatActor(this.allies,id,actor=>actor.id)?.ai.reset();
     const actor=this.movement.actor(visual);
-    const landing=this.movement.navigation.nearestBody(actor.shape(),origin,actor)
+    // 一次复活两名队员时不能让两人落在同一个 origin 上：避开复活点、主角和其余队员。
+    const avoid=[origin,...this.allies.filter(other=>other.id!==id).map(other=>this.movement!.position(other.visual))];
+    if(this.scene.player)avoid.push(this.movement.position(this.player));
+    const landing=choosePartyLanding(this.movement.navigation,actor.shape(),origin,actor,avoid)
+      ??this.movement.navigation.nearestBody(actor.shape(),origin,actor)
       ??this.movement.navigation.nearest(actor.shape(),origin,actor);
     this.relocateVisual(visual,landing);this.movement.setEnabled(visual,true);
     visual.container.setAlpha(1).setVisible(!this.performanceHidden);setCharacterClip(this.scene,visual,'idle-south',true);
