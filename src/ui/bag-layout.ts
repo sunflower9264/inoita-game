@@ -23,7 +23,6 @@
  * `work/bag-items/evidence/`；布局结论见 `work/findings/bag-layout-2026-10-09.md`，
  * 说明面板的矩形与底色见 `work/findings/desc-panel-2026-10-12.md`。
  */
-import type { EquipmentSlot } from '../domain/items.ts';
 import { MONEY, SIDE_BUTTON_OFFSETS, SLOT, SLOT_STRIDE } from './item-layout.ts';
 import { TEXT_COLORS } from './text-style.ts';
 
@@ -31,15 +30,6 @@ import { TEXT_COLORS } from './text-style.ts';
 export const DESCRIPTION_TEXT = TEXT_COLORS.white;
 
 interface BagRect { x:number; y:number; width:number; height:number }
-
-/**
- * 装备槽在界面上的次序。原版按表 `0xbbad6` 把界面位置映射到装备编号
- * `[0,7,8,9,3,2,5,6,1,4]`，所以界面次序不是装备编号次序——首行是头/项链/戒指/饰品，
- * 第二行是身体/披风，第三行是主手/副手，末行是手部/脚部。这里直接用槽位名表达，
- * `content/menu-panels.json` 的 `equipmentSlots` 必须与之同序。
- */
-export const EQUIPMENT_SLOT_ORDER: readonly EquipmentSlot[] =
-  ['head','neck','ring','accessory','body','back','main-hand','off-hand','hands','feet'];
 
 /** 侧边分类列的文字字号：背包页与商店页的分类列都读它，两处始终一样大（每格 57×57，19 号字左右各留 9 像素）。 */
 export const SIDE_FILTER_TEXT_SIZE = 19;

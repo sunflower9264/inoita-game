@@ -5,8 +5,11 @@ import { parseCampaign } from '../src/application/content-validation.ts';
 import type { Campaign } from '../src/domain/campaign.ts';
 import type { QuestProgress } from '../src/domain/quest-book.ts';
 import { questJournal, questJournalText } from '../src/domain/quest-journal.ts';
-import { plainQuestText, questTextParts } from '../src/domain/quest-text.ts';
+import { questTextParts } from '../src/domain/quest-text.ts';
 import { Session } from '../src/domain/session.ts';
+
+const visibleQuestText = (value: string): string =>
+  questTextParts(value).map(part => 'break' in part ? '\n' : part.text).join('');
 
 const campaign = parseCampaign(JSON.parse(readFileSync(new URL('../public/content/campaign.json', import.meta.url), 'utf8')));
 const names: Record<string, string> = { janus: '贝伦多', portia: '费罗赛普妮' };
@@ -115,8 +118,8 @@ test('journal shows live objective progress and uniformly gray completed descrip
   const parts = questTextParts(text), completedStart = parts.findIndex(part => 'text' in part && part.text === '[完成]');
   assert.ok(completedStart > 0);
   assert.ok(parts.slice(completedStart).filter(part => 'text' in part && part.text.trim()).every(part => 'text' in part && part.tone === 'muted'));
-  assert.equal(plainQuestText(text).includes('$'), false);
-  assert.equal(plainQuestText(text).includes('&C'), false);
+  assert.equal(visibleQuestText(text).includes('$'), false);
+  assert.equal(visibleQuestText(text).includes('&C'), false);
   progress.set('knight-uniform', questProgress('ready',{objective:9}));
   group = questJournal(campaign, progress)[0];
   text = questJournalText(group, id => names[id]);
@@ -144,7 +147,7 @@ test('multiple goals display independent counts and colors, without inferring co
   const group=questJournal(content,states({[quest.id]:questProgress('active',{meat:5,bone:2})}))[0];
   const text=questJournalText(group,id=>id);
   assert.ok(text.includes('$S&N蛆虫肉: 5/5$B$R&N蝙蝠脆骨: 2/5$B'));
-  assert.equal(group.ready,false);assert.ok(plainQuestText(text).includes('蛆虫肉: 5/5\n蝙蝠脆骨: 2/5'));
+  assert.equal(group.ready,false);assert.ok(visibleQuestText(text).includes('蛆虫肉: 5/5\n蝙蝠脆骨: 2/5'));
 });
 
 test('hidden and internal tasks keep their progress outside the player journal',()=>{

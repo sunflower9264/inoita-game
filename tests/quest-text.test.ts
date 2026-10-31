@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { plainQuestText, questTextParts } from '../src/domain/quest-text.ts';
+import { questTextParts } from '../src/domain/quest-text.ts';
 
 test('original quest color and line controls preserve visible wording', () => {
   const source = '团长$S卓拉德$B命令：$R刺杀伯爵$B。&N回去复命。';
@@ -9,7 +9,8 @@ test('original quest color and line controls preserve visible wording', () => {
     { text: '命令：', tone: 'base' }, { text: '刺杀伯爵', tone: 'target' },
     { text: '。', tone: 'base' }, { break: true }, { text: '回去复命。', tone: 'base' },
   ]);
-  assert.equal(plainQuestText(source), '团长卓拉德命令：刺杀伯爵。\n回去复命。');
+  assert.equal(questTextParts(source).map(part => 'break' in part ? '\n' : part.text).join(''),
+    '团长卓拉德命令：刺杀伯爵。\n回去复命。');
 });
 
 test('completed paragraph color stays locked across inline targets and restores after its closing control', () => {

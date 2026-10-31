@@ -20,7 +20,3 @@ export function questTextParts(value: string): QuestTextPart[] {
   }
   return parts;
 }
-
-export function plainQuestText(value: string): string {
-  return questTextParts(value).map(part => 'break' in part ? '\n' : part.text).join('');
-}

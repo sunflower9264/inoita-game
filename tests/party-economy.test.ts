@@ -8,11 +8,13 @@ import type { Campaign } from '../src/domain/campaign.ts';
 import type { ItemCatalog } from '../src/domain/items.ts';
 import { Session } from '../src/domain/session.ts';
 import { Storefront, saleValue, type ShopCatalog } from '../src/domain/shop.ts';
-import { rollEnemyDrops, rollBreakableLoot, type DropCatalog, type DropModifiers } from '../src/domain/drops.ts';
+import { rollEnemyLoot, rollBreakableLoot, type DropCatalog, type DropModifiers } from '../src/domain/drops.ts';
 
 const read=<T>(name:string):T=>JSON.parse(readFileSync(new URL(`../public/content/${name}.json`,import.meta.url),'utf8')) as T;
 const campaign=read<Campaign>('campaign'),items=read<ItemCatalog>('items'),stats=read<CharacterStatsCatalog>('character-stats');
 const battle=read<BattleCatalog>('battle'),companions=read<CompanionCatalog>('companions'),shops=read<ShopCatalog>('shops');
+const enemyDrops=(data:DropCatalog,enemyId:string,playerLevel:number,random:()=>number,modifiers?:DropModifiers)=>
+  rollEnemyLoot(data,stats,enemyId,playerLevel,playerLevel,random,modifiers).rewards;
 function withGroups(effects:CompanionGroupEffect[]):Session {
   const hero=new BattleCharacter('dark-knight',stats,items),session=new Session(campaign,undefined,undefined,items,hero,battle,stats,companions);
   session.bag.add('mercenary-emblem-priest');
@@ -61,10 +63,10 @@ test('drop talents add absolute chances after level scaling and never enable a z
       equipment:{weapon:[{item:'fixture-weapon',dropLevel:1}],armor:[],special:[],unique:[],epic:[]}};
     const random=()=>{let n=0;return()=>n++===0?5/9999:0;};
     const modifiers:DropModifiers={[effect]:value};
-    assert.deepEqual(rollEnemyDrops(data,'fixture',99,random()),[]);
-    assert.equal(rollEnemyDrops(data,'fixture',99,random(),modifiers).length,1);
+    assert.deepEqual(enemyDrops(data,'fixture',99,random()),[]);
+    assert.equal(enemyDrops(data,'fixture',99,random(),modifiers).length,1);
     data.enemies.fixture.chances[slot]=0;
-    assert.deepEqual(rollEnemyDrops(data,'fixture',99,()=>0,modifiers),[]);
+    assert.deepEqual(enemyDrops(data,'fixture',99,()=>0,modifiers),[]);
   }
 });
 

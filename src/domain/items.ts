@@ -6,6 +6,14 @@ import type { DescriptionTextPart } from './description-text.ts';
 
 export const EQUIPMENT_SLOTS = ['head', 'hands', 'back', 'body', 'feet', 'main-hand', 'off-hand', 'neck', 'ring', 'accessory'] as const;
 export type EquipmentSlot = typeof EQUIPMENT_SLOTS[number];
+/**
+ * 装备槽在界面上的次序。原版按表 `0xbbad6` 把界面位置映射到装备编号
+ * `[0,7,8,9,3,2,5,6,1,4]`，所以界面次序不是装备编号次序——首行是头/项链/戒指/饰品，
+ * 第二行是身体/披风，第三行是主手/副手，末行是手部/脚部。这里直接用槽位名表达，
+ * `content/menu-panels.json` 的 `equipmentSlots` 必须与之同序。
+ */
+export const EQUIPMENT_SLOT_ORDER: readonly EquipmentSlot[] =
+  ['head','neck','ring','accessory','body','back','main-hand','off-hand','hands','feet'];
 export const ITEM_USES = ['recover-health', 'consume', 'enchant', 'socket', 'purify', 'pack', 'box', 'unseal', 'learn', 'regenerate',
   'reset-skills', 'recruit', 'merchant', 'revive', 'recipe', 'dungeon'] as const;
 export type ItemUseKind = typeof ITEM_USES[number];

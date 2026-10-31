@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import type { BattleCatalog } from '../src/domain/battle.ts';
 import { skillForGrowth } from '../src/domain/battle.ts';
 import { plainDescription } from '../src/domain/description-text.ts';
-import { skillDetailText, skillDescriptionParts, skillLearningParts, skillNextLevelPreview } from '../src/ui/skill-detail-lines.ts';
+import { skillDescriptionParts, skillLearningParts, skillNextLevelPreview } from '../src/ui/skill-detail-lines.ts';
 
 const catalog=JSON.parse(fs.readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')) as BattleCatalog;
 
@@ -29,7 +29,8 @@ test('current description preserves native spaces, blue numeric runs and white b
   assert.equal(plainDescription(parts),`${skill.name} (LV 1)\n${skill.description}\n魔法消耗量: 40\n冷却时间: 6秒\n（攻击+力量x1.2+智力）x210.5%\n伤害增加： +21.0%\n剑之灵魂持续时间： 5秒\n`);
   assert(parts.some(part=>part.text==='210.5%'&&part.color==='#00b4ff'));
   assert.equal(parts[0].color,undefined);
-  assert.equal(skillDetailText(skill.ranks[0].details![3]!,3,'active'),'伤害增加： +21.0%');
+  const damage=skill.ranks[0].details![3]!;
+  assert.deepEqual([damage.label,damage.value,damage.valueSpacing],['伤害增加：','+21.0%',true]);
   assert(!plainDescription(parts).includes('主动技能'));
 });
 
@@ -49,8 +50,8 @@ test('all ninety skills retain both role profiles, effective row identities and 
     assert.equal(skill.ranks.length,8);
     for(const rank of skill.ranks){
       assert(rank.investedSkillPoints!>=rank.pointCost);
-      rank.details!.forEach((detail,index)=>{
-        assert(!skillDetailText(detail,index,skill.kind).includes('：：'));
+      rank.details!.forEach(detail=>{
+        assert(!detail.label.includes('：：')&&!detail.value.includes('：：'));
         if(detail.kind==='effect')assert.equal(plainDescription(detail.valueParts!),detail.value);
       });
     }

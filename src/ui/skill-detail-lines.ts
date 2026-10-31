@@ -1,4 +1,4 @@
-import type { SkillDetail, SkillDisplayRow, SkillRank } from '../domain/battle.ts';
+import type { SkillDisplayRow, SkillRank } from '../domain/battle.ts';
 import type { DescriptionTextPart } from '../domain/description-text.ts';
 import type { StorySkillProgression } from '../domain/story-skills.ts';
 import type { SkillDefinition } from '../domain/battle.ts';
@@ -10,10 +10,6 @@ type RankLike = Pick<SkillRank, 'manaCost' | 'details' | 'displayValues'>;
 
 function skillDetailLabel(detail: Pick<SkillDetailEntry, 'label' | 'valueSpacing'>, index: number, kind: SkillKind): string {
   return `${detail.label}${kind === 'active' && index < 2 ? ': ' : detail.valueSpacing ? ' ' : ''}`;
-}
-
-export function skillDetailText(detail: SkillDetail, index: number, kind: SkillKind): string {
-  return `${skillDetailLabel(detail,index,kind)}${detail.value}`;
 }
 
 export function skillDescriptionParts(skill: SkillDefinition, level: number, companionMaximum?: number): DescriptionTextPart[] {

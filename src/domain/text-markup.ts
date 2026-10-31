@@ -63,11 +63,6 @@ export function textRuns(value: string, base: string = DEFAULT_BASE): TextRun[] 
   return runs;
 }
 
-/** 去掉控制码之后真正显示出来的文本。 */
-export function plainText(value: string): string {
-  return textRuns(value).map(run => run.text).join('');
-}
-
 /**
  * 可见文本，以及每个可见字符在原文里的起始下标；末尾多一项，指向原文长度。
  * 分页与逐字显示都按可见字符计，控制码不占宽度、也不该被显示。

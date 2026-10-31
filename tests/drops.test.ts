@@ -1,12 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { parseDrops, rollEnemyDrops, rollQuestDrops, type DropCatalog, type EnemyDropRule } from '../src/domain/drops.ts';
+import { parseDrops, rollEnemyLoot, rollQuestDrops, type DropCatalog, type EnemyDropRule } from '../src/domain/drops.ts';
+import type { CharacterStatsCatalog } from '../src/domain/character-stats.ts';
 import { GroundLootStore } from '../src/domain/ground-loot.ts';
 import type { ItemCatalog } from '../src/domain/items.ts';
 import { Bag } from '../src/domain/bag.ts';
 
 const items={items:{scale:{category:'material',level:1},cloak:{category:'equipment',level:20},amulet:{category:'equipment',level:25},potion:{category:'consumable',level:1}}} as unknown as ItemCatalog;
+/** 掉落规则用例不生成装备实例：属性目录里没有任何装备品级快照。 */
+const stats={equipment:{}} as unknown as CharacterStatsCatalog;
+const enemyDrops=(data:DropCatalog,enemyId:string,playerLevel:number,random:()=>number)=>
+  rollEnemyLoot(data,stats,enemyId,playerLevel,playerLevel,random).rewards;
 const chances=()=>({money:0,equipment:0,consumable:0,upgrade:0,crafting:0,misc:0,unique:0,fixed:0});
 const chests=():DropCatalog['chests']=>({
   ordinary:{pool:'ordinary',rolls:1,chances:chances(),fixed:[],uniqueChance:{numerator:0,levelOffset:100}},
@@ -18,7 +23,7 @@ const random=(...values:number[])=>{let index=0;return()=>values[index++]??0;};
 test('fixed rewards and coin amount use independent death rolls',()=>{
   const rule:EnemyDropRule={level:30,pool:'ordinary',rolls:1,chances:{...chances(),money:9999,fixed:9999},
     fixed:[{item:'scale',weight:400},{item:'cloak',weight:600}]};
-  assert.deepEqual(rollEnemyDrops(catalog(rule),'enemy',30,random(0,.5,0,.75)),[
+  assert.deepEqual(enemyDrops(catalog(rule),'enemy',30,random(0,.5,0,.75)),[
     {kind:'money',amount:210},{kind:'item',item:'cloak',quantity:1}
   ]);
 });
@@ -26,22 +31,22 @@ test('fixed rewards and coin amount use independent death rolls',()=>{
 test('a successful random slot can select a level tier, an empty slot, or empty range',()=>{
   const rule:EnemyDropRule={level:20,pool:'ordinary',rolls:1,chances:{...chances(),consumable:9999},fixed:[]};
   const data=catalog(rule);
-  assert.deepEqual(rollEnemyDrops(data,'enemy',20,random(0,0)),[{kind:'item',item:'potion',quantity:1}]);
-  assert.deepEqual(rollEnemyDrops(data,'enemy',20,random(0,.55)),[]);
-  assert.deepEqual(rollEnemyDrops(data,'enemy',20,random(0,.9)),[]);
+  assert.deepEqual(enemyDrops(data,'enemy',20,random(0,0)),[{kind:'item',item:'potion',quantity:1}]);
+  assert.deepEqual(enemyDrops(data,'enemy',20,random(0,.55)),[]);
+  assert.deepEqual(enemyDrops(data,'enemy',20,random(0,.9)),[]);
   assert.equal(parseDrops(data,items,['enemy']).enemies.enemy.pool,'ordinary');
 });
 
 test('fixed-only enemies settle three independent drop passes',()=>{
   const rule:EnemyDropRule={level:30,pool:'fixed-only',rolls:3,chances:{...chances(),fixed:9999},fixed:[{item:'scale',weight:1000}]};
   const data:DropCatalog={version:2,questItems:{},chests:chests(),enemies:{enemy:rule},equipment:{weapon:[],armor:[],special:[],unique:[],epic:[]},pools:{'fixed-only':{}}};
-  assert.equal(rollEnemyDrops(data,'enemy',30,random(0,0,0,0,0,0)).length,3);
+  assert.equal(enemyDrops(data,'enemy',30,random(0,0,0,0,0,0)).length,3);
 });
 
 test('native no-normal-drop flag suppresses ordinary loot without touching quest drops',()=>{
   const rule:EnemyDropRule={level:30,pool:'ordinary',rolls:1,noNormalDrops:true,chances:{...chances(),money:9999},fixed:[]};
   const data:DropCatalog={...catalog(rule),questItems:{enemy:[{item:'scale',threshold:99}]}};
-  assert.deepEqual(rollEnemyDrops(data,'enemy',30,()=>0),[]);
+  assert.deepEqual(enemyDrops(data,'enemy',30,()=>0),[]);
   assert.deepEqual(rollQuestDrops(data,'enemy',[[{item:'scale',quantity:1,owned:0}]],()=>0),
     [{kind:'item',item:'scale',quantity:1}],'任务掉落仍在 CHARSYSTEM_Die 的闸门之后执行');
   assert.throws(()=>parseDrops({...data,enemies:{enemy:{...rule,noNormalDrops:1 as unknown as boolean}}},items,['enemy']),/无掉落标志/);
@@ -58,9 +63,9 @@ test('published no-normal-drop enemies match the native MONDATABASE bit4 set',()
     'enemy-head-goblin-yirzuch-1','enemy-principle-guardian-1','enemy-redhood-bandits-boss-1',
     'enemy-shin-1','enemy-summoned-cursed-creature-1','enemy-summoned-pawn-of-hell-1','enemy-tindalrose-1',
   ].sort());
-  assert.deepEqual(rollEnemyDrops(drops,'enemy-earl-grafton-1',3,()=>0),[],'伯爵原版不走普通掉落');
+  assert.deepEqual(enemyDrops(drops,'enemy-earl-grafton-1',3,()=>0),[],'伯爵原版不走普通掉落');
   assert.equal(drops.enemies['enemy-berkel-soldier-2'].noNormalDrops,undefined);
-  assert.notDeepEqual(rollEnemyDrops(drops,'enemy-berkel-soldier-2',1,()=>0),[])
+  assert.notDeepEqual(enemyDrops(drops,'enemy-berkel-soldier-2',1,()=>0),[])
 });
 
 test('equipment levels, class proportions and unique armor follow separate draws',()=>{
@@ -68,14 +73,14 @@ test('equipment levels, class proportions and unique armor follow separate draws
   data.equipment.unique=[{item:'scale',dropLevel:20}];
   assert.throws(()=>parseDrops(data,items,['enemy']),/装备掉落池无效/);
   data.equipment.unique=[{item:'amulet',dropLevel:25}];
-  assert.deepEqual(rollEnemyDrops(data,'enemy',30,random(0,.5,.5,0,0,0,0)),[
+  assert.deepEqual(enemyDrops(data,'enemy',30,random(0,.5,.5,0,0,0,0)),[
     {kind:'item',item:'cloak',quantity:1},{kind:'item',item:'amulet',quantity:1}
   ]);
-  assert.deepEqual(rollEnemyDrops(data,'enemy',30,random(0,.75,.75,.3,0,0,0)),[
+  assert.deepEqual(enemyDrops(data,'enemy',30,random(0,.75,.75,.3,0,0,0)),[
     {kind:'item',item:'amulet',quantity:1},{kind:'item',item:'amulet',quantity:1}
   ]);
   const early=catalog({level:1,pool:'ordinary',rolls:1,chances:{...chances(),equipment:9999},fixed:[]});
-  assert.deepEqual(rollEnemyDrops(early,'enemy',1,random(0,0,0,.8,0)),[{kind:'item',item:'potion',quantity:1}]);
+  assert.deepEqual(enemyDrops(early,'enemy',1,random(0,0,0,.8,0)),[{kind:'item',item:'potion',quantity:1}]);
 });
 
 test('ground loot appears at the death position and is immediately collectible in its map',()=>{

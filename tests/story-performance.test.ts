@@ -8,7 +8,7 @@ import { Session } from '../src/domain/session.ts';
 import { parseCampaign, parseWorld } from '../src/application/content-validation.ts';
 import { validateStoryPerformance } from '../src/application/story-performance-validation.ts';
 import { cameraDuration, type PerformancePlayback, type StoryPresentationPort } from '../src/domain/story-performance.ts';
-import { compileScript, storyScriptActions } from '../src/domain/story-script.ts';
+import { compileScript, storyScriptActions } from './support/story-fixtures.ts';
 import type { Campaign } from '../src/domain/campaign.ts';
 import type { ChoiceOption, ScriptAction } from '../src/domain/content.ts';
 

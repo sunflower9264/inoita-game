@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { StoryDirector, type StoryUI } from '../src/domain/story-director.ts';
 import { Session } from '../src/domain/session.ts';
-import { compileScript } from '../src/domain/story-script.ts';
+import { compileScript } from './support/story-fixtures.ts';
 import type { Campaign } from '../src/domain/campaign.ts';
 import type { ChoiceOption } from '../src/domain/content.ts';
 import { parseCampaign, parseControlSkin } from '../src/application/content-validation.ts';

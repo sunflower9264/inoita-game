@@ -1,4 +1,4 @@
-import { compileScript } from '../src/domain/story-script.ts';
+import { compileScript } from './support/story-fixtures.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { plainText, textRuns, typedIndex, typedLength, typedOffset, visibleIndex, TEXT_COLOR_CODES } from '../src/domain/text-markup.ts';
+import { textRuns, typedIndex, typedLength, typedOffset, visibleIndex, TEXT_COLOR_CODES } from '../src/domain/text-markup.ts';
+import { plainText } from './support/story-fixtures.ts';
 
 test('native color codes map to the libgame palette and $B restores the window base color', () => {
   // 色表来自 libgame.so 的 0xbb9c8（X_TEXTCTRL_GetColorFromCode@0x144f3c）。

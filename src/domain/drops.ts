@@ -334,12 +334,6 @@ export function specialDropEligibility(catalog:DropCatalog,playerLevel:number,co
   return {cap,withinWindow,unique,epic};
 }
 
-/** One call per defeated map enemy. A returned item can be empty after a successful pool roll. */
-export function rollEnemyDrops(catalog:DropCatalog,enemyId:string,playerLevel:number,random:()=>number=Math.random,modifiers:DropModifiers={}):DropReward[] {
-  const rule=catalog.enemies[enemyId];if(!rule||rule.noNormalDrops)return [];
-  return rollDropRule(catalog,rule,playerLevel,random,undefined,modifiers).rewards;
-}
-
 /** One task item at most, using the native inclusive 1..99 roll and strict threshold. */
 export function rollQuestDrops(catalog:DropCatalog,enemyId:string,quests:readonly (readonly QuestDropRequirement[])[],random:()=>number=Math.random):DropReward[] {
   const rules=catalog.questItems[enemyId]??[];

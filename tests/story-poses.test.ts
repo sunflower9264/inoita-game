@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { parseCampaign, parseWorld } from '../src/application/content-validation.ts';
 import { validateStoryPerformance } from '../src/application/story-performance-validation.ts';
-import { compileScript, storyScriptActions } from '../src/domain/story-script.ts';
+import { compileScript, storyScriptActions } from './support/story-fixtures.ts';
 import { STORY_POSE_NAMES } from '../src/domain/content.ts';
 import type { Campaign } from '../src/domain/campaign.ts';
 import type { PerformanceAction } from '../src/domain/story-performance.ts';

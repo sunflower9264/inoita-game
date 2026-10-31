@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { plainText } from '../src/domain/text-markup.ts';
+import { plainText } from './support/story-fixtures.ts';
 import { dialoguePages, dialogueTextParts, layoutDialogueText, revealedRuns } from '../src/ui/dialogue-text.ts';
 
 /** 一个字符固定 20px 宽；窄框 + 少行数就能把分页逼到多条。 */

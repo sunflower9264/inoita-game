@@ -1,11 +1,20 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { parseBattle } from '../src/application/content-validation.ts';
 import {resolveStateApplication,selectStateDurationProfile,type StateApplicationRequest,type StateApplicationRules} from '../src/domain/state-application.ts';
 import type {StateDurationProfile} from '../src/domain/battle.ts';
 
 const action:StateApplicationRequest={kind:'action',state:'stun',sourceRelation:'hostile',chanceThreshold:1000};
 const noRoll=()=>assert.fail('this state branch does not consume a random number');
 const allowed={allowed:true,durationScale:1,buffDurationScale:1,frameDurationScale:1};
+
+test('shield-bash stores state chance and duration in its first two formulas',()=>{
+  const catalog=parseBattle(JSON.parse(readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')));
+  const stun=catalog.skills['shield-bash'].action!.combatUnits!.find(unit=>unit.effect==='state')!;
+  assert.deepEqual(stun.ranks[0],{chanceThreshold:1000,durationMs:1200,
+    stateDurationProfile:{normal:{lastActiveFrame:19},targetShortened:{lastActiveFrame:9}}});
+});
 
 test('action probability runs before immunity, uses a strict threshold and only 1000 skips its roll',()=>{
   assert.deepEqual(resolveStateApplication(action,noRoll),allowed);

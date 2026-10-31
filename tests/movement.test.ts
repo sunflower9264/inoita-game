@@ -9,7 +9,7 @@ import { MovementInterpolation } from '../src/rendering/movement-interpolation.t
 import { GAME_FRAME_TIMING, installFrameLimitClock } from '../src/application/game-timing.ts';
 import { WalkRoute } from '../src/domain/walk-route.ts';
 import type { CollisionMap, Point } from '../src/domain/navigation.ts';
-import { storyScriptActions } from '../src/domain/story-script.ts';
+import { storyScriptActions } from './support/story-fixtures.ts';
 import type { Campaign } from '../src/domain/campaign.ts';
 import type { WorldIndex, WorldMap } from '../src/domain/content.ts';
 import type { PerformanceAction } from '../src/domain/story-performance.ts';

@@ -19,7 +19,7 @@ import { performanceTargets } from '../domain/story-performance.ts';
 import type { PerformanceAction, StoryCastMember } from '../domain/story-performance.ts';
 import { ITEM_CATEGORIES, MINIMAP_ASSETS, type StoryInterface } from '../domain/story-interface.ts';
 import type { StoryClassCatalog } from '../domain/story-class.ts';
-import { EQUIPMENT_SLOTS, ITEM_USES, type ItemCatalog } from '../domain/items.ts';
+import { EQUIPMENT_SLOTS, EQUIPMENT_SLOT_ORDER, ITEM_USES, type ItemCatalog } from '../domain/items.ts';
 import type { WardrobeCatalog } from '../domain/wardrobe.ts';
 import type { ShopCatalog, WeightedItem } from '../domain/shop.ts';
 import { PRIMARY_STATS, type CharacterStatsCatalog, type EnhancementRule, type ModifierRange } from '../domain/character-stats.ts';
@@ -423,6 +423,7 @@ export function parseMenuPanels(value:unknown):MenuPanels {
   requireValue(result.skillColumns.length===3&&new Set(result.skillColumns.map(column=>column.label)).size===3&&result.skillColumns.every(column=>column.label.trim()),
     'menuPanels.skillColumns','需要三个独立技能列标题');
   requireValue(slots.size===10&&result.equipmentSlots.length===10&&EQUIPMENT_SLOTS.every(slot=>slots.has(slot)),'menuPanels.equipmentSlots','需要十个独立装备槽');
+  requireValue(result.equipmentSlots.every((slot,index)=>slot.id===EQUIPMENT_SLOT_ORDER[index]),'menuPanels.equipmentSlots','装备槽顺序与界面次序不一致');
   requireValue(result.skillPanel.labels.counterattackTitle.trim()&&result.skillPanel.labels.initialSkillPoints.trim()&&result.skillPanel.labels.resetButton.trim(),
     'menuPanels.skillPanel.labels','需要设置页的自动反击标题、初始技能点与初始化按钮文案');
   requireValue(result.skillPositions.length===15&&new Set(result.skillPositions.map(p=>`${p.column},${p.row}`)).size===15,'menuPanels.skillPositions','需要十五个独立技能位置');

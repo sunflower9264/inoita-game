@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { bagLayout, DESCRIPTION_PANEL, descriptionPanel, EQUIPMENT_SLOT_ORDER } from '../src/ui/bag-layout.ts';
+import { bagLayout, DESCRIPTION_PANEL, descriptionPanel } from '../src/ui/bag-layout.ts';
+import { EQUIPMENT_SLOT_ORDER } from '../src/domain/items.ts';
 
 const menuPanels = JSON.parse(fs.readFileSync(
   new URL('../public/content/menu-panels.json', import.meta.url), 'utf8')) as {
