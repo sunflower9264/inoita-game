@@ -59,8 +59,8 @@ const PARTY_FOLLOW_STUCK_MS = 1500;
 const PARTY_CHASE_RECOVERY_MS = 2400;
 /** 位移超过这个距离才算“还在走”；碰撞抖动不算进展。 */
 const PARTY_FOLLOW_PROGRESS_PX = 4;
-/** 离队长还有这么远才值得收拢；贴身的轻微卡顿继续走寻路恢复。 */
-const PARTY_REGROUP_DISTANCE_PX = 48;
+/** 几乎贴脸时才不触发收拢；薄墙两侧 8px 以上也要能脱困。 */
+const PARTY_REGROUP_MIN_DISTANCE_PX = 8;
 
 /** 原版自动反击档位：0 未启用、1 延迟、2 启用。 */
 export type CounterattackMode = 0 | 1 | 2;
@@ -301,9 +301,11 @@ export class PartyController {
     // 搜索跨帧推进：寻路一次算不完时保留现场、下一帧接着算。以前每次重开搜索，
     // 超过单帧预算的长路（远距离或要绕墙）永远算不出来，佣兵就停在原地不跟随。
     const followTarget=goal??leader.position;
+    // 槽位目标变化通常小于队长移动阈值；用更小的重算距离，交换槽位或 90° 转向才不会继续走旧位置。
+    const repathDistance=goal?16:PARTY_REPATH_DISTANCE_PX;
     if(this.search)this.advanceSearch(actor);
     else if(this.clock>=this.nextPathAt&&(!this.destination
-      ||targetDistance(this.destination,followTarget)>=PARTY_REPATH_DISTANCE_PX
+      ||targetDistance(this.destination,followTarget)>=repathDistance
       ||!this.path.length||!this.nextWaypoint())){
       // 先领预算再建查询：没有预算的帧连地图边界都不该读。
       const granted=this.port.pathBudget?.take(PARTY_SEARCH_CAP)??PARTY_SEARCH_CAP;
@@ -318,13 +320,15 @@ export class PartyController {
    */
   private trackFollowProgress(actor:Combatant,leader:Combatant):boolean {
     if(!this.port.regroup)return false;
+    // 寻路还在跨帧推进时角色本来就不该移动，不能把它当成卡住。
+    if(this.search)return false;
     const previous=this.followProgress;
     if(!previous||Math.hypot(actor.position.x-previous.x,actor.position.y-previous.y)>=PARTY_FOLLOW_PROGRESS_PX){
       this.followProgress={...actor.position};this.followProgressAt=this.clock;return false;
     }
     if(this.clock-this.followProgressAt<PARTY_FOLLOW_STUCK_MS)return false;
-    if(Math.hypot(actor.position.x-leader.position.x,actor.position.y-leader.position.y)<PARTY_REGROUP_DISTANCE_PX){
-      // 已经在队长身边，只是被挤了一下；继续用正常寻路微调，不打断队形。
+    // 只有几乎贴脸时才不触发收拢；薄墙两侧 8~48px 的不可达位置也要能脱困。
+    if(Math.hypot(actor.position.x-leader.position.x,actor.position.y-leader.position.y)<PARTY_REGROUP_MIN_DISTANCE_PX){
       this.followProgressAt=this.clock;return false;
     }
     this.followProgress={...actor.position};this.followProgressAt=this.clock;

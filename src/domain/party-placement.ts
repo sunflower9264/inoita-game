@@ -6,30 +6,34 @@ const FORMATION_FORWARD: Record<Facing, Point> = {
   north: { x: 0, y: -1 }, south: { x: 0, y: 1 }, east: { x: 1, y: 0 }, west: { x: -1, y: 0 },
 };
 
-/**
- * 跟随队形槽位：站在队长背后 20px，再按上阵槽位向左或向右偏 16px。
- * 槽位 0 在队长左手边，槽位 1 在右手边；朝向变化时整组队形一起转。
- */
-export function partyFormationOffset(facing: Facing, slot: 0 | 1): Point {
+const FORMATION_RADIUS = Math.hypot(16, 20);
+const FORMATION_SPREAD = Math.atan2(16, 20);
+
+/** 队长朝向对应的背后方向角（屏幕坐标）。 */
+export function facingBackAngle(facing: Facing): number {
   const forward = FORMATION_FORWARD[facing];
-  const left = { x: forward.y, y: -forward.x };
-  const back = { x: -forward.x, y: -forward.y };
-  const side = (slot === 0 ? -1 : 1) * 16;
-  return { x: back.x * 20 + left.x * side, y: back.y * 20 + left.y * side };
+  return Math.atan2(-forward.y, -forward.x);
 }
 
 /**
- * 队形偏移沿队长周围的圆弧平滑旋转，而不是直接对 x/y 线性插值。
- * 线性插值会让偏移经过队长脚下，落点避让再把角色甩到远处，看起来就是瞬移。
+ * 按当前背后方向角和上阵槽位算偏移：站在队长背后约 25.6px，
+ * 再沿圆弧向两侧各偏 38.7°。槽位 0 在屏幕左侧、槽位 1 在屏幕右侧（面朝南时）。
+ * 两名佣兵共享同一个背后角度，平滑过程中也不会在同一侧重合。
  */
-export function smoothFormationOffset(current: Point, target: Point, alpha: number): Point {
-  const currentAngle = Math.atan2(current.y, current.x);
-  const targetAngle = Math.atan2(target.y, target.x);
-  const turn = Math.atan2(Math.sin(targetAngle - currentAngle), Math.cos(targetAngle - currentAngle));
-  const angle = currentAngle + turn * alpha;
-  const currentRadius = Math.hypot(current.x, current.y);
-  const radius = currentRadius + (Math.hypot(target.x, target.y) - currentRadius) * alpha;
-  return { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
+export function formationSlotOffset(backAngle: number, slot: 0 | 1): Point {
+  const angle = backAngle + (slot === 0 ? -FORMATION_SPREAD : FORMATION_SPREAD);
+  return { x: Math.cos(angle) * FORMATION_RADIUS, y: Math.sin(angle) * FORMATION_RADIUS };
+}
+
+/** 只推进队形角度；`partyFormationOffset` 是它的静态版本，便于测试与落点复用。 */
+export function partyFormationOffset(facing: Facing, slot: 0 | 1): Point {
+  return formationSlotOffset(facingBackAngle(facing), slot);
+}
+
+/** 沿最短方向平滑旋转背后角度，避免 180° 换边时走远路。 */
+export function smoothFormationAngle(current: number, target: number, alpha: number): number {
+  const turn = Math.atan2(Math.sin(target - current), Math.cos(target - current));
+  return current + turn * alpha;
 }
 
 /** 两个队伍单位按同一碰撞盒落位时是否重叠；边贴边不算重叠。 */
