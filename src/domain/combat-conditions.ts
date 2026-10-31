@@ -359,11 +359,14 @@ export class CombatConditions {
     const defense=Math.max(0,value('defense',base.defense??0));
     const defenseRate=Math.max(0,value('defenseRate',base.defenseRate??0));
     const effectiveDefense=calculateEffectiveDefense(defense,defenseRate);
-    const physicalResistance=base.defense===undefined?value('physicalResistanceBonus',base.physicalResistance):
+    const rawPhysicalResistance=base.defense===undefined?value('physicalResistanceBonus',base.physicalResistance):
       Math.trunc(1000*effectiveDefense/(effectiveDefense+20*(base.level+3)))+value('physicalResistanceBonus',base.physicalResistanceBonus??0);
+    // 狂战士防御侧：只对非负减伤率扣自身比例，装备者因此承受更多物理伤害。
+    const zealotRate=Math.max(0,value('zealotRate',base.zealotRate??0));
+    const physicalResistance=rawPhysicalResistance-Math.trunc(Math.max(0,rawPhysicalResistance)*zealotRate/1000);
     const magicResistance=value('magicResistance',base.magicResistance??0);
     return {...base,defense:base.defense===undefined?undefined:defense,defenseRate,physicalAttack:Math.trunc(physicalAttack*(1000+physicalBonus+(stealthAttackEnabled?stealthDamageRate:0))/1000),physicalDamageRate:physicalBonus,
-      stealthAttackEnabled,stealthDamageRate,
+      zealotRate,stealthAttackEnabled,stealthDamageRate,
       magicDamageRate:value('magicDamageRate',0),conditionalMagicDamageRate:value('conditionalMagicDamageRate',0),
       magicAttack:value('magicAttack',base.magicAttack??0),criticalRate:value('criticalRate',base.criticalRate),
       criticalResistance:value('criticalResistance',base.criticalResistance),criticalDamageResistance:value('criticalDamageResistance',base.criticalDamageResistance),

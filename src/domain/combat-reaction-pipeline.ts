@@ -19,6 +19,10 @@ export interface HitReactionPort {
   activePartySlots():string[];
   partyRevengeReactions(casterId:string,kind:'physical'|'magic',outcome:PhysicalHit['kind']):void;
   equipmentRecovery(id:string):{lifeDrainPerThousand:number};
+  /** 物理成功链上的重力摆、冰霜、治愈气息；在元素附伤之前，零伤和格挡也触发。 */
+  physicalSuccessEquipmentProcs(event:AttackContact,hit:PhysicalHit,random?:()=>number):void;
+  /** 物理或魔法 MISS 时的瞬间恢复；不抽随机数，魔法盾挡不触发。 */
+  instantRecoveryOnMiss(event:AttackContact):void;
   isTwoHanded(id:string):boolean;
   moltenReflection(event:AttackContact,rate:number):void;
   holySacrificeTransfer(event:AttackContact,hit:PhysicalHit,kind:'physical'|'magic'):void;
@@ -35,7 +39,11 @@ export function resolveHitReactionPipeline(event:AttackContact,hit:PhysicalHit,d
       if(fortitudeChance>0)port.react({kind:'physical-defense-instinct',ownerId:event.targetId,opponentId:event.casterId,
         damageKind,outcome:hit.kind,chanceThreshold:fortitudeChance});
     }
-    if(hit.kind==='miss'||damageKind==='magic'&&hit.kind==='shield-block')return;
+    if(hit.kind==='miss'){
+      port.instantRecoveryOnMiss(event);
+      return;
+    }
+    if(damageKind==='magic'&&hit.kind==='shield-block')return;
     // 地狱之落雷：魔法暴击的落雷判定在成功链最前，落雷自己的暴击也会再进来。
     if(damageKind==='magic'&&hit.kind==='critical')port.lightningOfHellReaction(event.casterId,event.targetId);
     // 神之定义：神圣一击与天罚之锤的暴击也在这里判，两类伤害都算。
@@ -61,6 +69,8 @@ export function resolveHitReactionPipeline(event:AttackContact,hit:PhysicalHit,d
     // 所以残影的骰子在这里才消耗。
     port.react({kind:'attack-success',ownerId:event.casterId,opponentId:event.targetId,damageKind,
       outcome:hit.kind,hitDamage:hit.damage,otherLifeDrainPerThousand:port.equipmentRecovery(event.casterId).lifeDrainPerThousand});
+    if(damageKind==='physical')
+      port.physicalSuccessEquipmentProcs(event,hit);
     if(damageKind==='physical')
       port.react({kind:'physical-flare',ownerId:event.casterId,opponentId:event.targetId,damageKind,outcome:hit.kind,hand:event.hand});
     if(damageKind==='physical'){

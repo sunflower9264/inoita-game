@@ -21,6 +21,8 @@ export interface PhysicalFighter {
   physicalResistance: number;
   magicResistance?:number;
   physicalDamageRate?:number;
+  /** 狂战士：攻击侧按千分比增伤，防御侧同时降低自身物理减伤率。 */
+  zealotRate?:number;
   stealthAttackEnabled?:boolean;
   stealthDamageRate?:number;
   magicDamageRate?:number;
@@ -77,7 +79,7 @@ export function rollPhysicalHit(attacker: PhysicalFighter, target: PhysicalFight
     kind = 'critical';
 
   const stealthRate=attacker.stealthAttackEnabled?attacker.stealthDamageRate??0:0;
-  let damage = div(baseDamage*(1000+(attacker.physicalDamageRate??0)+stealthRate+extraDamageRate),1000);
+  let damage = div(baseDamage*(1000+(attacker.physicalDamageRate??0)+stealthRate+extraDamageRate+(attacker.zealotRate??0)),1000);
   if(attacker.stealthAttackEnabled&&skillPhysicalAttack)
     damage+=div(skillPhysicalAttack()*(1000+stealthRate),1000);
   if (kind === 'weapon-block') damage = div(damage * 700, 1000);

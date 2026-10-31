@@ -44,6 +44,7 @@ import type { ItemResult } from '../domain/items.ts';
 import { calculateMagicResistance, rollMagicHit, rollPhysicalHit, type PhysicalFighter, type PhysicalHit } from '../domain/physical-hit.ts';
 import {AttackProcExecutor} from '../domain/attack-proc.ts';
 import {equipmentAttackProcs} from '../domain/equipment-attack-procs.ts';
+import {equipmentCombatProcs} from '../domain/equipment-combat-procs.ts';
 import {selectAttackSplashCenter,attackSplashTargets} from '../domain/attack-splash.ts';
 import {applyCombatOperation} from '../domain/combat-operation.ts';
 import { calculateEnemy } from '../domain/enemy-stats.ts';
@@ -1364,6 +1365,37 @@ captureStoryActors():SceneActorState[] {
     const equipped=member?Object.values(member.bag.equipmentFor(id)).flatMap(item=>{const entry=member.bag.get(item!);return entry?[entry]:[];}):[];
     return equipmentRecoveryModifiers(equipped);
   }
+  private combatProcs(id:string):ReturnType<typeof equipmentCombatProcs> {
+    const member=this.memberOf(id);
+    const equipped=member?Object.values(member.bag.equipmentFor(id)).flatMap(item=>{const entry=member.bag.get(item!);return entry?[entry]:[];}):[];
+    return equipmentCombatProcs(equipped);
+  }
+  /** 原版物理成功链：重力摆 -> 冰霜 -> 治愈气息，均在主伤害提交前结算。 */
+  private physicalSuccessEquipmentProcs(event:AttackContact,_hit:PhysicalHit,random:()=>number=Math.random):void {
+    const caster=this.combatProcs(event.casterId),target=this.combatProcs(event.targetId);
+    if(caster.pendulumStunChance>0){
+      const decision=resolveStateApplication({...this.stateApplicationRequest(event.casterId,event.targetId,'stun'),
+        kind:'action',chanceThreshold:caster.pendulumStunChance},random);
+      if(decision.allowed){
+        const timing=selectStateDurationProfile(frameStateDurationProfile(30),decision);
+        this.conditions.applyStateFrames(event.targetId,'stun',timing.lastActiveFrame,event.casterId);
+        this.recordSummonContact?.(event.casterId,event.targetId);
+        this.applyStateConsequences(event.targetId,['stun']);
+      }
+    }
+    if(target.frostRetaliationChance>0&&passesChanceThreshold(target.frostRetaliationChance,random)){
+      const effect=this.app.battleCatalog.statusAttackBuffs?.['attack-slow'];
+      if(effect)this.applyActorBuff(event.casterId,'attack-slow',0,effect,event.targetId);
+    }
+    if(caster.healingEnergyChance>0&&passesChanceThreshold(caster.healingEnergyChance,random))
+      this.restoreHealth(event.casterId,Math.trunc(this.readResourceCapacity(event.casterId,'maxHealth')/50));
+  }
+  /** 原版 CHAR_SuccessOnMiss：被落空者按 attr82 回复最大生命的千分比，不抽随机数。 */
+  private instantRecoveryOnMiss(event:AttackContact):void {
+    const rate=this.combatProcs(event.targetId).instantRecoveryPerThousand;
+    if(rate<1)return;
+    this.restoreHealth(event.targetId,Math.trunc(this.readResourceCapacity(event.targetId,'maxHealth')*rate/1000));
+  }
   private resolveHitReactions(event:AttackContact,hit:PhysicalHit,damageKind:'physical'|'magic',actionId:string,
     hero:BattleCharacter,targetPosition?:Point):void {
     resolveHitReactionPipeline(event,hit,damageKind,actionId,{
@@ -1373,6 +1405,8 @@ captureStoryActors():SceneActorState[] {
       activePartySlots:()=>this.activePartySlots(),partySide:id=>this.partySide(id),partyRevengeReactions:(caster,kind,outcome)=>this.partyRevengeReactions(caster,kind,outcome),
       equipmentRecovery:id=>this.equipmentRecovery(id),isTwoHanded:id=>{const member=this.memberOf(id),main=member?.bag.equipmentItems(member.bag.equipmentFor(id))['main-hand'];return !!(main&&this.app.items.items[main]?.equipment?.twoHanded);},
       moltenReflection:(event,rate)=>this.moltenReflection(event,hero,rate),holySacrificeTransfer:(event,hit,kind)=>this.holySacrificeTransfer(event,hit,kind),
+      physicalSuccessEquipmentProcs:(event,hit,random)=>this.physicalSuccessEquipmentProcs(event,hit,random),
+      instantRecoveryOnMiss:event=>this.instantRecoveryOnMiss(event),
       attackProc:(event,hit,position)=>this.attackProc(event,hit,hero,position),
     },targetPosition);
   }
@@ -1561,7 +1595,8 @@ captureStoryActors():SceneActorState[] {
     return this.conditions.fighter(id,{level,physicalAttack:panel.physicalAttack,defense:panel.baseDefense,defenseRate:panel.defenseRate,magicAttack:panel.magicAttack,maxHealth:panel.maxHealth,hitBase:panel.hitBase,hitBonus:panel.hitBonus,
       evasionBase:panel.evasionBase,evasionBonus:panel.evasionBonus,criticalRate:panel.criticalRate,criticalResistance:panel.criticalResistance,
       criticalDamage:panel.criticalDamage,criticalDamageResistance:panel.criticalDamageResistance,
-      weaponBlock:panel.weaponBlock,shieldBlock:panel.shieldBlock,physicalResistance:panel.physicalResistance,magicResistance:panel.baseMagicResistance},passives,
+      weaponBlock:panel.weaponBlock,shieldBlock:panel.shieldBlock,physicalResistance:panel.physicalResistance,magicResistance:panel.baseMagicResistance,
+      zealotRate:this.combatProcs(id).zealotRate},passives,
       {offhandShield:panel.offhandShield});
   }
   private actorAttributes(id:string):CombatActorAttributes|undefined {
@@ -1653,9 +1688,12 @@ captureStoryActors():SceneActorState[] {
     const defaults=defaultResourceAttributes(member?'member':'monster',member?.level??enemyState?.level??0);
     let original:number;
     const attackProcAttribute=['windStrikeChance','fireSplashChance','frostStrikeChance','divineStrikeChance','darknessStrikeChance','poisonStrikeChance'].includes(key);
+    const equipmentCombatAttribute=['pendulumStunChance','frostRetaliationChance','healingEnergyChance','zealotRate','instantRecoveryPerThousand'].includes(key);
     if(attackProcAttribute){
       const equipped=member?Object.values(member.bag.equipmentFor(id)).flatMap(item=>{const entry=member.bag.get(item!);return entry?[entry]:[];}):[];
       original=equipmentAttackProcs(equipped)[key as keyof ReturnType<typeof equipmentAttackProcs>];
+    }else if(equipmentCombatAttribute){
+      original=this.combatProcs(id)[key as keyof ReturnType<typeof equipmentCombatProcs>];
     }else if(key==='threatReductionRate'){
       const equipped=member?Object.values(member.bag.equipmentFor(id)).flatMap(item=>{const entry=member.bag.get(item!);return entry?[entry]:[];}):[];
       original=equipmentThreatReduction(equipped);
@@ -1674,7 +1712,7 @@ captureStoryActors():SceneActorState[] {
     }
     const value=this.conditions.attribute(id,key,original,member?this.partyPassives(id):[]);
     if(key==='magicResistance')return this.conditions.cachedAttribute(id,key)??calculateMagicResistance(value);
-    return attackProcAttribute||key in defaults||key==='physicalAttack'||key==='magicAttack'||key==='defense'||key==='defenseRate'||key==='healingPowerRate'||key==='threatGenerationRate'||key==='threatReductionRate'||key==='sightBonusUnits'||key==='bloodThirstChance'||key==='bloodThirstLifeDrainPerThousand'||key==='bloodThirstManaRecovery'||key==='revengeChance'||key==='cooldownResetChance'||key==='defenseCooldownResetChance'||key==='offhandAttackChance'||key==='frenzyAttackChance'?Math.max(0,value):value;
+    return attackProcAttribute||equipmentCombatAttribute||key in defaults||key==='physicalAttack'||key==='magicAttack'||key==='defense'||key==='defenseRate'||key==='healingPowerRate'||key==='threatGenerationRate'||key==='threatReductionRate'||key==='sightBonusUnits'||key==='bloodThirstChance'||key==='bloodThirstLifeDrainPerThousand'||key==='bloodThirstManaRecovery'||key==='revengeChance'||key==='cooldownResetChance'||key==='defenseCooldownResetChance'||key==='offhandAttackChance'||key==='frenzyAttackChance'?Math.max(0,value):value;
   }
   private periodicTick(tick:PeriodicTick):void {
     if(this.defeated||this.closed||this.pendingDefeats.has(tick.targetId))return;
