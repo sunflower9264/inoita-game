@@ -1,5 +1,6 @@
 import type {Campaign} from '../domain/campaign.ts';
 import type {EntityPlacement, WorldMap} from '../domain/content.ts';
+import type {StoryCastMember} from '../domain/story-performance.ts';
 import type {StoryCondition} from '../domain/story-condition.ts';
 import type {StoryDebugCatalog, StoryDebugTask} from '../domain/story-debug.ts';
 
@@ -11,9 +12,8 @@ export interface DebugCatalogInput {
 
 const absentKey = (map: string, character: string): string => JSON.stringify(['absent-actor', map, character]);
 const actorBase = (actor: string): string => actor.replace(/-[0-9a-f]{8}$/, '');
-const worldBound = (member: {binding?: string; worldEntityId?: string; characterId?: string;
-  memberId?: string; enemyId?: string}): boolean =>
-  member.binding === 'world' || member.binding === 'inherit' || !!member.worldEntityId
+const worldBound = (member: StoryCastMember): boolean =>
+  member.binding === 'world' || member.inheritPosition === true || !!member.worldEntityId
   || !!member.characterId || !!member.memberId || !!member.enemyId;
 
 /** 现场表里的标记条件只需要判定标记；未知条件不冒充否定，交给运行时安装复核。 */
@@ -67,7 +67,7 @@ function assertEntryCast(task: StoryDebugTask, campaign: Campaign,
         (member.worldEntityId && entity.id === member.worldEntityId)
         || (member.characterId && entity.characterId === member.characterId)
         || entity.actor === member.actor);
-      if (!found && member.binding === 'world')
+      if (!found && worldBound(member))
         throw new Error(`调试现场表 ${task.quest} 的开幕演员不可见：${stageMap}/${member.id}`);
     }
   }
