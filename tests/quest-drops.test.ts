@@ -115,6 +115,24 @@ test('the first matching fulfilled goal skips the rest of its quest without draw
   assert.deepEqual(rollQuestDrops(data,enemy,[[need('unrelated'),need('ectoplasm')],[need('mithril')]],()=>{assert.equal(++draws,2);return 0;}),[reward]);
 });
 
+test('uncollected task drops count toward the requirement and stop further production',()=>{
+  const run=session(),ground=groundLootFor(run);
+  run.accept('knight-uniform');
+  for(let index=0;index<5;index++){
+    const rewards=rollQuestDrops(catalog,enemy,run.questDropRequirements(ground.pendingItemCounts()),()=>0);
+    assert.deepEqual(rewards,[reward]);
+    ground.add(map.id,200+index*24,200,rewards);
+  }
+  assert.equal(ground.pendingItemCounts().get('ectoplasm'),5);
+  assert.deepEqual(rollQuestDrops(catalog,enemy,run.questDropRequirements(ground.pendingItemCounts()),
+    ()=>assert.fail('five already on the ground')),[]);
+  for(const drop of ground.forMap(map.id))
+    ground.collectNearby(map.id,drop.x,drop.y,reward=>{if(reward.kind==='item')run.bag.add(reward.item,reward.quantity);});
+  run.emit();
+  assert.equal(run.itemCount('ectoplasm'),5);
+  assert.equal(run.status('knight-uniform'),'ready');
+});
+
 test('session preserves quest boundaries, acceptance order, duplicate items and fulfilled goals',()=>{
   const base=campaign.quests.find(quest=>quest.id==='knight-uniform')!;
   const first={...base,id:'first',hidden:true,handoverItems:[],rewards:undefined,completeScript:null,goals:[

@@ -78,6 +78,18 @@ export class GroundLootStore {
     }
   }
   forMap(map:string):GroundDrop[] {return this.onMap(map).map(drop=>structuredClone(drop));}
+  /**
+   * 所有地图上已产出、尚未拾取的物品数量。
+   * 任务掉落用它把地面存货计入有效持有量，避免连续击杀时同一只怪反复产出。
+   */
+  pendingItemCounts():Map<string,number> {
+    const counts=new Map<string,number>();
+    for(const drop of this.drops.values()){
+      if(drop.reward.kind!=='item')continue;
+      counts.set(drop.reward.item,(counts.get(drop.reward.item)??0)+drop.reward.quantity);
+    }
+    return counts;
+  }
   /** 附近 12px 内的落地掉落：只有一张共享背包，谁走过来都能拾取。 */
   collectNearby(map:string,x:number,y:number,collect:(reward:DropReward)=>unknown):GroundDrop[] {
     const nearby=this.onMap(map).filter(drop=>!drop.flight

@@ -199,14 +199,20 @@ export class Session {
   }
   readonly character?: Readonly<{ classId: string; appearance: ActorDefinition }>;
   itemCount(id: string): number { return this.bag.count(id); }
-  questDropRequirements():readonly (readonly QuestDropRequirement[])[] {
+  /**
+   * `pending` 是已经产出但还没被捡起的同类物品数量。
+   * 任务掉落必须按「背包 + 地面」计算有效持有量，否则连续击杀时每一只都会再产一件，
+   * 一次性捡起后就会超过任务需求。
+   */
+  questDropRequirements(pending:ReadonlyMap<string,number>=new Map()):readonly (readonly QuestDropRequirement[])[] {
     this.refresh();
     const focus=this.debugFocusQuestValue;
     return this.questBook.runningQuestIds.filter(id=>!focus||id===focus).flatMap(id=>{
       const quest=this.definition(id)!;
       if(this.questBook.status(id)!=='active'||quest.completion!=='all')return [];
       const goals=quest.goals.filter(goal=>goal.kind==='item')
-        .map(goal=>({item:goal.target,quantity:goal.quantity,owned:this.itemCount(goal.target)}));
+        .map(goal=>({item:goal.target,quantity:goal.quantity,
+          owned:this.itemCount(goal.target)+(pending.get(goal.target)??0)}));
       return goals.length?[goals]:[];
     });
   }

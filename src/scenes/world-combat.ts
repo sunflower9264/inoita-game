@@ -1175,7 +1175,9 @@ captureStoryActors():SceneActorState[] {
                 });
               }
               // 任务掉落保持共享：每次击杀最多一件，不随队伍人数翻倍。
-              this.scene.spawnLootOnMap(map,x,y,rollQuestDrops(this.drops,enemyId,session.questDropRequirements()),render&&!this.closed);
+              // 已掉在地上还没捡的同类物品也要算进持有量，避免任务需求满了还继续产出。
+              this.scene.spawnLootOnMap(map,x,y,rollQuestDrops(this.drops,enemyId,
+                session.questDropRequirements(groundLootFor(session).pendingItemCounts())),render&&!this.closed);
             }
             this.removeEnemy(key);
             if(breakable)this.syncChestEnemies();
