@@ -223,15 +223,18 @@ export class NavigationWorld {
     return evicted;
   }
   /** 就近找一个能落脚的点。落位允许没有实体范围的角色贴在墙上，落脚不行，所以这里额外要求地形可站。 */
-  nearest(shape: NavigationShape, point: Point, ignore?: NavigationActor, placements: readonly Placement[] = []): Point {
-    const best = this.scanNearest(p => this.terrainFree(p) && this.canPlace(shape, p, ignore, placements), point);
+  nearest(shape: NavigationShape, point: Point, ignore?: NavigationActor, placements: readonly Placement[] = [],
+    extra?: (point: Point) => boolean): Point {
+    const best = this.scanNearest(p => this.terrainFree(p) && this.canPlace(shape, p, ignore, placements)
+      && (!extra || extra(p)), point);
     if (!best) throw new Error(`地图没有可通行区域：${this.name}`);
     return best;
   }
   /** 整盒版就近落点：整个碰撞盒站得住，且不与现有实体重叠；地图上没有这样的位置时返回 undefined。 */
-  nearestBody(shape: NavigationShape, point: Point, ignore?: NavigationActor, placements: readonly Placement[] = []): Point | undefined {
+  nearestBody(shape: NavigationShape, point: Point, ignore?: NavigationActor, placements: readonly Placement[] = [],
+    extra?: (point: Point) => boolean): Point | undefined {
     if (!shape.collision) return undefined;
-    return this.scanNearest(p => this.canPlaceBody(shape, p, ignore, placements), point);
+    return this.scanNearest(p => this.canPlaceBody(shape, p, ignore, placements) && (!extra || extra(p)), point);
   }
   /**
    * 队伍单位落位用的就近点：整盒可站之外还要求脚点地形可站。
@@ -240,9 +243,11 @@ export class NavigationWorld {
    * 只用 `nearestBody` 选点会在矩形边界附近选出「整盒通过、脚点仍压阻挡格」的位置，
    * 前面的修正看着成功，最后整组校验却失败。这里把两个条件合成同一个候选谓词。
    */
-  nearestSettledBody(shape: NavigationShape, point: Point, ignore?: NavigationActor, placements: readonly Placement[] = []): Point | undefined {
+  nearestSettledBody(shape: NavigationShape, point: Point, ignore?: NavigationActor, placements: readonly Placement[] = [],
+    extra?: (point: Point) => boolean): Point | undefined {
     if (!shape.collision) return undefined;
-    return this.scanNearest(p => this.terrainFree(p) && this.canPlaceBody(shape, p, ignore, placements), point);
+    return this.scanNearest(p => this.terrainFree(p) && this.canPlaceBody(shape, p, ignore, placements)
+      && (!extra || extra(p)), point);
   }
   /**
    * 召唤落点：`preferred` 整盒可站、且能从 `origin` 沿地形走到时原样返回；否则用
@@ -252,10 +257,10 @@ export class NavigationWorld {
    * 落点本身仍走 `canPlaceBody`，出生瞬间不能把身体压进墙里或叠在别人身上。
    */
   nearestReachableBody(shape: NavigationShape, origin: Point, preferred?: Point,
-    ignore?: NavigationActor, placements: readonly Placement[] = []): Point | undefined {
+    ignore?: NavigationActor, placements: readonly Placement[] = [], extra?: (point: Point) => boolean): Point | undefined {
     if (!shape.collision) return undefined;
-    if (preferred && this.canPlaceBody(shape, preferred, ignore, placements) && this.terrainRoute(origin, preferred))
-      return { ...preferred };
+    if (preferred && this.canPlaceBody(shape, preferred, ignore, placements) && this.terrainRoute(origin, preferred)
+      && (!extra || extra(preferred))) return { ...preferred };
     let landing: Point | undefined;
     const free = (point: Point) => this.terrainFree(point);
     const search = createPathSearch(origin, {
@@ -263,6 +268,7 @@ export class NavigationWorld {
       canStand: free,
       isGoal: point => {
         if (!this.canPlaceBody(shape, point, ignore, placements)) return false;
+        if (extra && !extra(point)) return false;
         landing = { ...point };
         return true;
       },

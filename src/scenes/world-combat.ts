@@ -2062,7 +2062,10 @@ captureStoryActors():SceneActorState[] {
   /** 以主角脚点为锚点给队员选整盒合法落点；与当前操控者是谁无关。 */
   private partyLanding(shape:NavigationShape,ignore?:NavigationActor):Point|undefined {
     if(!this.movement)return undefined;
-    return choosePartyLanding(this.movement.navigation,shape,this.movement.position(this.player),ignore);
+    const hero=this.movement.position(this.player);
+    const avoid=[hero,...this.allies.filter(ally=>this.movement!.actor(ally.visual)!==ignore)
+      .map(ally=>this.movement!.position(ally.visual))];
+    return choosePartyLanding(this.movement.navigation,shape,hero,ignore,avoid);
   }
   /**
    * 剧情把主角送到新位置后，把其余上阵队员收拢到主角身边。
@@ -2077,7 +2080,8 @@ captureStoryActors():SceneActorState[] {
       if(!ally||!ally.member.player.health||this.fallen.has(id)||!ally.visual.container.active)continue;
       ally.ai.cancel();
       const actor=this.movement.actor(ally.visual);
-      const landing=choosePartyLanding(this.movement.navigation,actor.shape(),heroPosition,actor);
+      const avoid=[heroPosition,...this.allies.filter(other=>other.id!==id).map(other=>this.movement!.position(other.visual))];
+      const landing=choosePartyLanding(this.movement.navigation,actor.shape(),heroPosition,actor,avoid);
       if(!landing)continue;
       this.movement.place(ally.visual,landing);
       setCharacterClip(this.scene,ally.visual,`idle-${ally.facing}`,true);
@@ -2135,7 +2139,9 @@ captureStoryActors():SceneActorState[] {
     const leader=this.controlledVisual;
     if(!leader)return;
     const actor=this.movement.actor(ally.visual);
-    const landing=choosePartyLanding(this.movement.navigation,actor.shape(),this.movement.position(leader),actor);
+    const leaderPosition=this.movement.position(leader);
+    const avoid=[leaderPosition,...this.allies.filter(other=>other.id!==id).map(other=>this.movement!.position(other.visual))];
+    const landing=choosePartyLanding(this.movement.navigation,actor.shape(),leaderPosition,actor,avoid);
     if(!landing)return;
     ally.ai.cancel();
     this.movement.place(ally.visual,landing);

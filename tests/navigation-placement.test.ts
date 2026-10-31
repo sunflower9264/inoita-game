@@ -203,6 +203,19 @@ test('a party member lands beside the hero with both foot and body free', () => 
   assert.ok(Math.hypot(landing.x - 100, landing.y - 100) <= 40, '落点应在主角旁边');
 });
 
+test('a party landing keeps clear of the hero and allies after a regroup', () => {
+  const navigation = new NavigationWorld(openMap());
+  const body = { x: -8, y: -8, width: 16, height: 16 };
+  const hero = actorAt(100, 100); navigation.register(hero);
+  const first = choosePartyLanding(navigation, { collision: body }, { x: 100, y: 100 });
+  assert.ok(first);
+  const second = choosePartyLanding(navigation, { collision: body }, { x: 100, y: 100 }, undefined,
+    [{ x: 100, y: 100 }, first]);
+  assert.ok(second);
+  assert.ok(Math.hypot(second.x - 100, second.y - 100) >= 16, '不能叠在主角身上');
+  assert.ok(Math.hypot(second.x - first.x, second.y - first.y) >= 16, '不能叠在已有队友身上');
+});
+
 test('a party member stays on the hero side of a wall and remains walkable', () => {
   const walled = openMap();
   for (let row = 0; row < 20; row++) walled.blocked[row * 20 + 10] = true;

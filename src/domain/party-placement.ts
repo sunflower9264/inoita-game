@@ -12,13 +12,17 @@ import type { NavigationActor, NavigationShape, NavigationWorld } from './naviga
  *   `undefined`，由调用方决定报错还是保持原位。
  */
 export function choosePartyLanding(navigation: NavigationWorld, shape: NavigationShape, origin: Point,
-  ignore?: NavigationActor): Point | undefined {
-  const settle = (point: Point) => navigation.terrainFree(point) && navigation.canPlaceBody(shape, point, ignore);
-  const preferred = navigation.nearestBody(shape, origin, ignore);
+  ignore?: NavigationActor, avoid: readonly Point[] = []): Point | undefined {
+  // 队友之间可以挤过彼此，但落位不能直接叠在主角或已站好的队友身上。
+  const size = Math.max(shape.collision?.width ?? 0, shape.collision?.height ?? 0, 16);
+  const clear = (point: Point) => avoid.every(other => Math.hypot(point.x - other.x, point.y - other.y) >= size);
+  const settle = (point: Point) => clear(point) && navigation.terrainFree(point)
+    && navigation.canPlaceBody(shape, point, ignore);
+  const preferred = navigation.nearestBody(shape, origin, ignore, [], clear);
   if (preferred) {
-    const reachable = navigation.nearestReachableBody(shape, origin, preferred, ignore);
+    const reachable = navigation.nearestReachableBody(shape, origin, preferred, ignore, [], clear);
     if (reachable && settle(reachable)) return reachable;
     if (settle(preferred)) return preferred;
   }
-  try { return navigation.nearest(shape, origin, ignore); } catch { return undefined; }
+  try { return navigation.nearest(shape, origin, ignore, [], clear); } catch { return undefined; }
 }
