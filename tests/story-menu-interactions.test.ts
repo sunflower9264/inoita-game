@@ -636,7 +636,7 @@ test('forge opens as a menu page and enhances continuously', t => {
   assert.equal(f.scene.button('强化').input!.hitArea.width,57);
   assert.ok(f.scene.texts().some(text=>text.includes('选择一张强化卷轴')));
   f.scene.click(f.scene.button('卷轴:低级武器强化卷轴'));
-  assert.ok(f.scene.texts().some(text=>text.includes('+1 确定，+2 25%')),'选中卷轴显示概率');
+  assert.ok(f.scene.texts().some(text=>text.includes('当前 +0：75% 到 +1，25% 到 +2')),'选中卷轴显示结果和概率');
   f.scene.click(f.scene.button('确定强化'));
   assert.equal(f.hero.bag.get(weapon.id)!.enhancement,1);
   assert.equal(f.hero.bag.get(weapon.id)!.numbers!.enhancementUses,2);
@@ -669,6 +669,9 @@ test('forge explains unavailable scrolls and highlights chaos at zero durability
   assert.ok(f.scene.nodes.some(node=>node.shown&&node.getData('forge-highlight')==='chaos'),'混沌卷轴高亮');
   f.scene.click(f.scene.button('卷轴:混沌武器强化卷轴'));
   assert.ok(f.scene.button('确定强化').input!.enabled,'混沌卷轴可用');
+  assert.ok(f.scene.texts().some(text=>text.includes('当前 +10')),'混沌卷轴显示当前等级');
+  assert.ok(f.scene.texts().some(text=>text.includes('→ +9')),'混沌卷轴显示降级结果');
+  assert.ok(f.scene.texts().some(text=>text.includes('不消耗耐久')),'混沌卷轴不消耗耐久');
   t.mock.method(Math,'random',()=>0.999);
   f.scene.click(f.scene.button('确定强化'));
   assert.equal(f.hero.bag.get(weapon.id)!.enhancement,9,'混沌失败降 1 级');

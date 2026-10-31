@@ -1,17 +1,18 @@
 import { equipmentPower, type CharacterPanel, type CharacterStatsCatalog, type Modifier } from '../../domain/character-stats.ts';
 import { equipmentLevel } from '../../domain/chaos-equipment.ts';
-import type { EnhancementOdds } from '../../domain/enhancement.ts';
 import { ItemApplicationError } from '../../domain/item-application.ts';
 import type { Bag } from '../../domain/bag.ts';
 import type { ItemDefinition, ItemInstance } from '../../domain/items.ts';
 import type { MenuPanels } from '../../domain/menu-panels.ts';
 import { bagLayout } from '../bag-layout.ts';
 import { SIDE_BUTTON_OFFSETS, SLOT, SLOT_STRIDE } from '../item-layout.ts';
+import { ENHANCEMENT_ODDS_ROW_STRIDE, ENHANCEMENT_ODDS_ROW_TOP, ENHANCEMENT_ODDS_TOP, enhancementOddsView, type EnhancementOutcomeTone } from '../enhancement-odds-lines.ts';
 import { drawNativeMessage } from './native-message.ts';
 import type { UiSurface, ScrollArea } from './widgets.ts';
 
 export type ForgeTab='enchant'|'socket'|'purify';
 type Confirmation={kind:'unsocket';index:number}|{kind:'swap';index:number;gem:string};
+const OUTCOME_COLORS:Record<EnhancementOutcomeTone,string>={loss:'#ff6b6b',single:'#c8b78f',double:'#ffd75e'};
 
 /**
  * 装备强化台：和合成台同级的菜单页。
@@ -134,13 +135,6 @@ export class ForgePanel {
     const notice=this.bag.applicationProblem(source.id,target.id);
     return notice?this.panels.itemMessages[notice]??notice:undefined;
   }
-  private oddsText(odds:EnhancementOdds|undefined):string {
-    if(!odds)return '';
-    const percent=(value:number)=>{const p=value*100;return `${p>=10?Math.round(p):Math.round(p*10)/10}%`;};
-    return odds.losesLevel
-      ?`不降级 ${percent(odds.success)}，降 1 级 ${percent(odds.failure)}；+2 ${percent(odds.double)}`
-      :`+1 确定，+2 ${percent(odds.double)}`;
-  }
   private renderDetails(v:UiSurface,target:ItemInstance,item:ItemDefinition):void {
     if(this.tab==='enchant')this.renderEnchantDetails(v,target,item);
     else if(this.tab==='socket')this.renderSocketDetails(v,target,item);
@@ -152,8 +146,18 @@ export class ForgePanel {
     if(!selected){v.text('选择一张强化卷轴。',40,190,400,18,'#c8b78f');v.button('确定强化',139,342,205,55,()=>{}, {fontSize:20,disabled:true});return;}
     const definition=this.bag.catalog.items[selected.item],problem=this.problemText(selected,target),odds=problem?undefined:this.bag.applicationOdds(selected.id,target.id);
     v.text(definition.name,40,190,400,18,'#e2cb9e');
-    v.text(problem??this.oddsText(odds),40,214,400,18,problem?'#ff6b6b':'#c8b78f');
-    v.text(definition.use?.requiresEnhanced?'不消耗耐久':'消耗 1 点耐久',40,238,400,18,'#c8b78f');
+    if(problem)v.text(problem,40,214,400,18,'#ff6b6b');
+    else if(odds){
+      const view=enhancementOddsView(odds,target.enhancement,target.numbers?.enhancementUses);
+      if(view.sentence)v.text(view.sentence,40,ENHANCEMENT_ODDS_TOP,400,18,'#c8b78f');
+      if(view.current)v.text(view.current,40,ENHANCEMENT_ODDS_TOP,400,18,'#c8b78f');
+      view.rows.forEach((row,index)=>{
+        const y=ENHANCEMENT_ODDS_ROW_TOP+index*ENHANCEMENT_ODDS_ROW_STRIDE,color=OUTCOME_COLORS[row.tone];
+        v.text(row.result,40,y,360,18,color);
+        v.text(row.chance,440,y,0,18,color).setOrigin(1,0);
+      });
+      v.text(view.cost,40,view.costY,400,18,'#c8b78f');
+    }
     v.button('确定强化',139,342,205,55,()=>this.useScroll(selected.id),{fontSize:20,disabled:!!problem});
   }
   private renderSocketDetails(v:UiSurface,target:ItemInstance,item:ItemDefinition):void {
