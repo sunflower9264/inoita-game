@@ -41,18 +41,12 @@ test('splash uses strict chance boundaries, consumes a zero-threshold roll, and 
   assert.equal(rollMoltenSplash(0,1000,()=>.99999),0);
 });
 
-test('center selection preserves current target, consumes gaze first, and searches by facing score',()=>{
+test('center selection preserves current target and searches by facing score',()=>{
   const source=actor('defender',0,0,'party'),behind=actor('behind',-6),forward=actor('forward',10),tie=actor('tie',10);
   assert.equal(selectAttackSplashCenter(source,[behind,forward,tie],4).targetId,'forward');
   assert.equal(selectAttackSplashCenter(source,[behind,forward],4,{currentTargetId:'behind'}).targetId,'behind');
-  assert.deepEqual(selectAttackSplashCenter(source,[behind,forward],4,{currentTargetId:'behind',gazeTargetId:'forward'}),
-    {center:forward.position,targetId:'forward',consumedGaze:true});
-  assert.deepEqual(selectAttackSplashCenter(source,[behind,forward],4,{currentTargetId:'behind',gazeTargetId:'forward',retainCurrentTarget:true}),
-    {center:behind.position,targetId:'behind',consumedGaze:false});
   const far=actor('far',100);
-  assert.deepEqual(selectAttackSplashCenter(source,[far,forward],4,{currentTargetId:'far'}),{center:source.position,consumedGaze:false});
-  assert.deepEqual(selectAttackSplashCenter(source,[far,forward],4,{currentTargetId:'forward',gazeTargetId:'far'}),
-    {center:source.position,consumedGaze:true});
+  assert.deepEqual(selectAttackSplashCenter(source,[far,forward],4,{currentTargetId:'far'}),{center:source.position});
   assert.equal(selectAttackSplashCenter(source,[actor('edge',31)],4).targetId,'edge');
   assert.equal(selectAttackSplashCenter(source,[actor('outside',32)],4).targetId,undefined);
   assert.equal(selectAttackSplashCenter(source,[actor('zero-score',-32)],4).targetId,undefined);
@@ -114,7 +108,7 @@ function fixture(){
   const host=Object.setPrototypeOf({runtime,
     hero:defender,app:{battleCatalog:{...catalog,basicAttacks:{...catalog.basicAttacks,
       [enemyDefinition.basicAttack!.profileId]:{...catalog.basicAttacks[enemyDefinition.basicAttack!.profileId],damage}}},
-      audio:{monsterDeath:()=>order.push('death-sound')},session:{}},
+      audio:{monsterDeath:()=>order.push('death-sound')},session:{isOneHitKill:()=>false}},
     conditions,arena:enemies,allies:[],partyControllers:new Map([['player',controller]]),
     pendingDefeats:new PendingEnemyDefeats(),hitResolution:new CombatHitResolution(),
     memberOf:(id:string)=>id==='player'?defender:undefined,partyPassives:()=>[],equipmentRecovery:()=>({lifeDrainPerThousand:0}),

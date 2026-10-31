@@ -129,7 +129,7 @@ test('a stealth-breaking action keeps the bonus through its hit and loses it bef
 
 test('ordinary attacks consume the same state-conditioned critical attribute',t=>{
   t.mock.method(Math,'random',()=>0.18);const f=fixture();const definition=catalog.basicAttacks['longsword-slash'];
-  const basicAttack:ResolvedBasicAttack={...definition,effectiveCycleFrames:definition.cycleFrames,durationMs:definition.cycleFrames*60,
+  const basicAttack:ResolvedBasicAttack={...definition,effectiveCycleFrames:definition.cycleFrames,
     clips:{north:'attack-north',south:'attack-south',east:'attack-east',west:'attack-west'},sequence:{north:[],south:[],east:[],west:[]}};
   f.conditions.applyState('player','stealthed',10000);
   f.call('attackContact',{casterId:'player',targetId:'target',basicAttack});assert.deepEqual(f.hits.at(-1),{kind:'critical',damage:200});

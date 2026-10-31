@@ -85,7 +85,7 @@ test('fixed basic animation uses complete source frames and ignores a speed cycl
   for(const [frames,strike]of [[5,2],[8,4],[12,4]]){
     const run=profile(frames,strike,null);
     const attack=resolveBasicAttack({basicAttacks:{frenzy:run.definition}},run.character,1);
-    assert.equal(attack.effectiveCycleFrames,frames);assert.equal(attack.durationMs,frames*60);
+    assert.equal(attack.effectiveCycleFrames,frames);
     for(const facing of FACINGS)assert.deepEqual(attack.sequence[facing],Array.from({length:frames},(_,index)=>index));
     run.character.actor.clips[normal.clips.south]!.frames--;
     assert.throws(()=>resolveBasicAttack({basicAttacks:{frenzy:run.definition}},run.character),/帧数不匹配/);

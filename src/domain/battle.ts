@@ -55,7 +55,6 @@ export interface BasicAttackBinding {
 export interface ResolvedBasicAttack extends BasicAttackDefinition {
   /** 有效周期帧数，不小于配置周期，且一定覆盖出手帧。 */
   readonly effectiveCycleFrames: number;
-  readonly durationMs: number;
   readonly clips: Record<Facing, ClipName>;
   /** 每个方向的逻辑帧序列，条目是素材帧号，长度等于有效周期。 */
   readonly sequence: Record<Facing, number[]>;

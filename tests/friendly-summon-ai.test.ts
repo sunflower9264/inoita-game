@@ -7,7 +7,7 @@ import type { EnemyBehavior, ResolvedBasicAttack } from '../src/domain/battle.ts
 import type { GameRectangle, Point } from '../src/domain/navigation.ts';
 
 const box={x:-8,y:-8,width:16,height:16};
-const attack:ResolvedBasicAttack={frameDurationMs:60,cycleFrames:15,effectiveCycleFrames:15,durationMs:900,
+const attack:ResolvedBasicAttack={frameDurationMs:60,cycleFrames:15,effectiveCycleFrames:15,
   damage:{effect:'physical',source:'bestNormalDamage',attributeWeights:{strength:0,dexterity:0,vitality:0,intelligence:0,mentality:0},ranks:[{fixedAddition:0,operation:{kind:'add',amount:0}}]},
   approachDistanceUnits:4,searchRadiusPx:64,strikeFrame:8,swingFrame:null,swings:[],impacts:[],projectile:null,
   clips:{north:'attack-north',south:'attack-south',east:'attack-east',west:'attack-west'},

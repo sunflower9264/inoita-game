@@ -45,8 +45,8 @@ test('all eight learned frenzy ranks use a strict current threshold and real fix
     f.learn(index+1);assert.equal(f.call('actorAttribute','player','frenzyAttackChance'),chance);
     for(const [kind,frames,strike]of [['longsword',8,4],['axe',8,4],['mace',8,4],['two-handed',12,4],['dagger',5,2],['staff',8,7]] as const){
       f.equip(kind);roll=chance;const before=rolls;assert.equal(f.select(),f.normal);assert.equal(rolls,before+1);
-      roll=chance-1;const selected=attack(f.select());assert.equal(selected.cycleFrames,frames);assert.equal(selected.strikeFrame,strike);
-      assert.equal(selected.durationMs,frames*60);assert.equal(selected.timing,'fixed-animation');
+      roll=chance-1;const selected=attack(f.select());assert.equal(selected.cycleFrames,frames);assert.equal(selected.effectiveCycleFrames,frames);assert.equal(selected.strikeFrame,strike);
+      assert.equal(selected.timing,'fixed-animation');
     }
   }
   f.learn(0);const before=rolls;assert.equal(f.select(),f.normal);assert.equal(rolls,before);

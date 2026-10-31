@@ -65,7 +65,7 @@ export function resolveBasicAttack(catalog: Pick<BattleCatalog,'basicAttacks'>, 
     resolvedClips[facing] = name;
     sequence[facing] = attackSequence(clip.frames, effectiveCycleFrames);
   }
-  return { ...definition, effectiveCycleFrames, durationMs: effectiveCycleFrames * definition.frameDurationMs, clips: resolvedClips, sequence };
+  return { ...definition, effectiveCycleFrames, clips: resolvedClips, sequence };
 }
 
 /** 选敌使用的整数近似距离；用于选敌和投射物到达判断。 */

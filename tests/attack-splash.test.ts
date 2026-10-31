@@ -12,7 +12,7 @@ test('fire current target uses body reach and falls back to caster without searc
   assert.equal(selectAttackSplashCenter(source,[current,near],3,{currentTargetId:'current'}).targetId,'current');
   current.position.x=32;
   assert.deepEqual(selectAttackSplashCenter(source,[current,near],3,{currentTargetId:'current'}),
-    {center:source.position,consumedGaze:false});
+    {center:source.position});
   assert.deepEqual(attackSplashTargets(source,source.position,[current],3),[]);
 });
 

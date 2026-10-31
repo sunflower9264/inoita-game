@@ -9,7 +9,7 @@ import type { EnemyBehavior, EnemyPlayableSkill, ResolvedBasicAttack } from '../
 import type { Point } from '../src/domain/navigation.ts';
 
 const clips={north:'attack-north',south:'attack-south',east:'attack-east',west:'attack-west'} as const;
-const basic:ResolvedBasicAttack={frameDurationMs:60,cycleFrames:4,effectiveCycleFrames:4,durationMs:240,
+const basic:ResolvedBasicAttack={frameDurationMs:60,cycleFrames:4,effectiveCycleFrames:4,
   damage:{effect:'physical',source:'bestNormalDamage',attributeWeights:{strength:0,dexterity:0,vitality:0,intelligence:0,mentality:0},ranks:[{fixedAddition:0,operation:{kind:'add',amount:0}}]},
   approachDistanceUnits:2,searchRadiusPx:100,strikeFrame:1,swingFrame:null,swings:[],impacts:[],projectile:null,
   clips,sequence:{north:[0,1,2,3],south:[0,1,2,3],east:[0,1,2,3],west:[0,1,2,3]}};

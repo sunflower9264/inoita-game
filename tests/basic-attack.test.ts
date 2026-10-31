@@ -32,7 +32,6 @@ test('six initial weapons keep their verified source frames, cycles, events and 
     assert.equal(attack.frameDurationMs,60,id);
     assert.equal(attack.cycleFrames,want.cycle,id);
     assert.equal(attack.effectiveCycleFrames,want.cycle,id);
-    assert.equal(attack.durationMs,want.cycle*60,id);
     for(const facing of FACINGS){
       const clip=character.actor.clips[attack.clips[facing]]!;
       // 图集只保留源动画帧；周期由配置决定，末帧停留由序列展开。
