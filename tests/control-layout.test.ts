@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { CONTROL_IDS, CONTROL_LAYOUT_STORAGE_KEY, ControlLayoutPreferences, normalizeControlPosition, resolveControlLayout,
+import { CONTROL_IDS, CONTROL_LAYOUT_STORAGE_KEY, CONTROL_SIZES, ControlLayoutPreferences, normalizeControlPosition, resolveControlLayout,
   type ControlLayoutOverrides, type ControlViewport, type StorageLike } from '../src/ui/control-layout.ts';
 import { controlViewport } from '../src/ui/phaser/control-layout-viewport.ts';
 
@@ -71,6 +71,27 @@ test('default positions and sizes preserve the original action arc and movement 
   assert.equal(withInsets.attack.y, 545);
 });
 
+test('dpad movement disk uses the 274 diameter and stays inside the safe area', () => {
+  const stick = resolveControlLayout(viewport);
+  assert.deepEqual(stick.move, {x: 129, y: 511, width: 210, height: 210, scale: 1});
+
+  const dpad = resolveControlLayout(viewport, {}, CONTROL_SIZES.moveDpad);
+  assert.deepEqual(dpad.move, {x: 137, y: 503, width: 274, height: 274, scale: 1});
+  assert.ok(dpad.move.x - dpad.move.width / 2 >= 0);
+  assert.ok(dpad.move.y - dpad.move.height / 2 >= 0);
+  assert.deepEqual(dpad.attack, stick.attack, '动作区不随移动样式改变');
+  assert.deepEqual(dpad.swap, stick.swap);
+  assert.deepEqual(Array.from({length: 6}, (_, index) => dpad[`slot-${index}` as keyof typeof dpad]),
+    Array.from({length: 6}, (_, index) => stick[`slot-${index}` as keyof typeof stick]));
+
+  const insetLayout = resolveControlLayout({...viewport, insets: {left: 30, right: 30, top: 10, bottom: 20}}, {}, CONTROL_SIZES.moveDpad).move;
+  assert.deepEqual(insetLayout, {x: 167, y: 483, width: 274, height: 274, scale: 1});
+  assert.ok(insetLayout.x - insetLayout.width / 2 >= 30);
+  assert.ok(insetLayout.y - insetLayout.height / 2 >= 10);
+  assert.ok(insetLayout.x + insetLayout.width / 2 <= viewport.width - 30);
+  assert.ok(insetLayout.y + insetLayout.height / 2 <= viewport.height - 20);
+});
+
 test('dragging clamps each complete control into the safe area, permits overlap and roundtrips', () => {
   const safeViewport: ControlViewport = {width: 1920, height: 1280, insets: {left: 80, right: 40, top: 20, bottom: 40}};
   for (const id of CONTROL_IDS) {
@@ -82,6 +103,13 @@ test('dragging clamps each complete control into the safe area, permits overlap 
     assert.ok(Math.abs(high.x + high.width / 2 - 1880) < 1e-9);
     assert.ok(Math.abs(high.y + high.height / 2 - 1240) < 1e-9);
   }
+  const dpadLayout = (point: {x: number; y: number}) => resolveControlLayout(safeViewport,
+    {move: normalizeControlPosition(safeViewport, 'move', point, {}, CONTROL_SIZES.moveDpad)}, CONTROL_SIZES.moveDpad).move;
+  const dpadLow = dpadLayout({x: -100, y: -100}), dpadHigh = dpadLayout({x: 9000, y: 9000});
+  assert.ok(Math.abs(dpadLow.x - dpadLow.width / 2 - 80) < 1e-9);
+  assert.ok(Math.abs(dpadLow.y - dpadLow.height / 2 - 20) < 1e-9);
+  assert.ok(Math.abs(dpadHigh.x + dpadHigh.width / 2 - 1880) < 1e-9);
+  assert.ok(Math.abs(dpadHigh.y + dpadHigh.height / 2 - 1240) < 1e-9);
   const overrides: ControlLayoutOverrides = Object.fromEntries(CONTROL_IDS.map(id => [id, {x: .5, y: .5}]));
   const overlapping = resolveControlLayout(safeViewport, overrides);
   for (const id of CONTROL_IDS) assert.deepEqual([overlapping[id].x, overlapping[id].y], [980, 630]);

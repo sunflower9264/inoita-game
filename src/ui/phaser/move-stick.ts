@@ -13,9 +13,9 @@ export const STICK_KNOB_RADIUS = 35;
 const STICK_KNOB_LIMIT = STICK_BASE_RADIUS * 0.6;
 const STICK_DEAD_ZONE = 8.75;
 
-/** 符文十字按键参数（放大 30%） */
-export const DPAD_BASE_RADIUS = 137;
-export const DPAD_RUNE_SCALE = 1.08, DPAD_RUNE_ALPHA = 0.75;
+/** 符文十字按键参数：圆盘可见直径与热区共用同一份 274。 */
+export const DPAD_BASE_RADIUS = CONTROL_SIZES.moveDpad.width / 2;
+export const DPAD_RUNE_ALPHA = 0.75;
 export const DPAD_ARROW_OFFSET = 73, DPAD_ARROW_SCALE_NORM = 1.14;
 const DPAD_ARROW_SCALE_GLOW = 1.25;
 const DPAD_DEAD_ZONE = 12;
@@ -96,7 +96,8 @@ export class MoveStick {
     this.stickKnob = scene.add.image(0, 0, skin.button).setDisplaySize(STICK_KNOB_RADIUS * 2, STICK_KNOB_RADIUS * 2);
 
     // 2. 符文四向十字按键图层
-    this.dpadBase = scene.add.image(0, 0, skin['stick-base']).setScale(DPAD_RUNE_SCALE).setAlpha(DPAD_RUNE_ALPHA);
+    this.dpadBase = scene.add.image(0, 0, skin['stick-base'])
+      .setDisplaySize(DPAD_BASE_RADIUS * 2, DPAD_BASE_RADIUS * 2).setAlpha(DPAD_RUNE_ALPHA);
     this.arrowUp = scene.add.image(0, -DPAD_ARROW_OFFSET, skin['arrow-up']).setScale(DPAD_ARROW_SCALE_NORM);
     this.arrowDown = scene.add.image(0, DPAD_ARROW_OFFSET, skin['arrow-down']).setScale(DPAD_ARROW_SCALE_NORM);
     this.arrowLeft = scene.add.image(-DPAD_ARROW_OFFSET, 0, skin['arrow-left']).setScale(DPAD_ARROW_SCALE_NORM);
@@ -166,6 +167,8 @@ export class MoveStick {
     this.mode = mode;
     // applyTouchStyle 会 reset：切到电脑模式时清掉按住中的方向和触摸指针。
     this.applyTouchStyle(controlSettings.moveStyle);
+    // 十字键圆盘更大，切换样式后立刻按新尺寸重算位置，不等下一次缩放。
+    if (this.layoutHeight !== undefined) this.layout(this.layoutHeight);
     this.refreshDisplay();
   }
 
@@ -288,7 +291,8 @@ export class MoveStick {
 
   layout(height: number): void {
     this.layoutHeight = height;
-    const position = resolveControlLayout(controlViewport(this.scene, this.scene.scale.width, height), this.preferences?.snapshot()).move;
+    const moveSize = controlSettings.moveStyle === 'dpad' ? CONTROL_SIZES.moveDpad : CONTROL_SIZES.move;
+    const position = resolveControlLayout(controlViewport(this.scene, this.scene.scale.width, height), this.preferences?.snapshot(), moveSize).move;
     this.center = { x: position.x, y: position.y };
     this.container.setScale(position.scale);
     this.container.setPosition(position.x, position.y);

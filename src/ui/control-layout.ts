@@ -13,6 +13,8 @@ const FORMAT = 1;
 /** 各类操作控件的基准尺寸（界面单位）；布局解析与绘制层共用这一份。 */
 export const CONTROL_SIZES = {
   move: { width: 210, height: 210 },
+  /** 十字键的可见圆盘与热区同直径；摇杆模式仍用 `move` 的 210。 */
+  moveDpad: { width: 274, height: 274 },
   attack: { width: 159, height: 160 },
   swap: { width: 75, height: 75 },
   slot: { width: 94, height: 94 }
@@ -94,8 +96,12 @@ function fitPoint(viewport: ControlViewport, point: ControlPoint, size: {width: 
   return {x: constrain(point.x, safe.left, safe.width, size.width), y: constrain(point.y, safe.top, safe.height, size.height)};
 }
 
-/** 默认摇杆沿用全画布缩放，其余控件沿用安全区缩放。 */
-export function resolveControlLayout(viewport: ControlViewport, overrides: ControlLayoutOverrides = {}): Record<ControlId, ControlPlacement> {
+/**
+ * 默认摇杆沿用全画布缩放，其余控件沿用安全区缩放。
+ * `moveSize` 由调用方按当前移动样式传入：摇杆 210，十字键 274。
+ */
+export function resolveControlLayout(viewport: ControlViewport, overrides: ControlLayoutOverrides = {},
+  moveSize: {width: number; height: number} = CONTROL_SIZES.move): Record<ControlId, ControlPlacement> {
   const safe = safeArea(viewport);
   const actionScale = Math.min(safe.width / GAME_WIDTH, safe.height / GAME_HEIGHT);
   const moveScale = Math.min(viewport.width / GAME_WIDTH, viewport.height / GAME_HEIGHT);
@@ -107,8 +113,10 @@ export function resolveControlLayout(viewport: ControlViewport, overrides: Contr
     const position = custom ? fitPoint(viewport, {x: safe.left + custom.x * safe.width, y: safe.top + custom.y * safe.height}, size) : point;
     return {...position, scale, ...size};
   };
+  // 十字键圆盘比摇杆大：中心离安全区边缘至少留出半个直径，避免贴边被裁掉。
+  const moveOffset = Math.max(129, moveSize.width / 2) * moveScale;
   const result = {
-    move: placement('move', {x: safe.left + 129 * moveScale, y: viewport.height - viewport.insets.bottom - 129 * moveScale}, moveScale, CONTROL_SIZES.move.width, CONTROL_SIZES.move.height),
+    move: placement('move', {x: safe.left + moveOffset, y: viewport.height - viewport.insets.bottom - moveOffset}, moveScale, moveSize.width, moveSize.height),
     attack: placement('attack', attack, actionScale, CONTROL_SIZES.attack.width, CONTROL_SIZES.attack.height),
     swap: placement('swap', {x: attack.x + SWAP_OFFSET.x * actionScale, y: attack.y + SWAP_OFFSET.y * actionScale}, actionScale, CONTROL_SIZES.swap.width, CONTROL_SIZES.swap.height)
   } as Record<ControlId, ControlPlacement>;
@@ -120,7 +128,8 @@ export function resolveControlLayout(viewport: ControlViewport, overrides: Contr
 }
 
 /** 拖动点先限制图片完整留在安全区，再转为可跨尺寸保存的坐标。 */
-export function normalizeControlPosition(viewport: ControlViewport, id: ControlId, point: ControlPoint, overrides: ControlLayoutOverrides = {}): ControlPoint {
-  const safe = safeArea(viewport), position = fitPoint(viewport, point, resolveControlLayout(viewport, overrides)[id]);
+export function normalizeControlPosition(viewport: ControlViewport, id: ControlId, point: ControlPoint,
+  overrides: ControlLayoutOverrides = {}, moveSize: {width: number; height: number} = CONTROL_SIZES.move): ControlPoint {
+  const safe = safeArea(viewport), position = fitPoint(viewport, point, resolveControlLayout(viewport, overrides, moveSize)[id]);
   return {x: (position.x - safe.left) / safe.width, y: (position.y - safe.top) / safe.height};
 }

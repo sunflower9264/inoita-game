@@ -4,7 +4,7 @@ import type { ControlSkin } from '../../domain/control-skin.ts';
 import { CONTROL_IDS, CONTROL_SIZES, normalizeControlPosition, resolveControlLayout, type ControlId, type ControlPoint } from '../control-layout.ts';
 import type { ControlLayoutPreferences } from '../control-layout.ts';
 import { ITEM_ICON_SIZE, SLOT_ICON_SIZE, type ShortcutSlot } from './action-controls.ts';
-import { DPAD_ARROW_OFFSET, DPAD_ARROW_SCALE_NORM, DPAD_BASE_RADIUS, DPAD_RUNE_ALPHA, DPAD_RUNE_SCALE, STICK_KNOB_RADIUS } from './move-stick.ts';
+import { DPAD_ARROW_OFFSET, DPAD_ARROW_SCALE_NORM, DPAD_BASE_RADIUS, DPAD_RUNE_ALPHA, STICK_KNOB_RADIUS } from './move-stick.ts';
 import { controlSettings } from '../../application/control-settings.ts';
 import { controlViewport } from './control-layout-viewport.ts';
 import { UiSurface } from './widgets.ts';
@@ -49,7 +49,7 @@ export class ControlLayoutEditor {
   layout(): void {
     const viewport=controlViewport(this.scene),key=JSON.stringify(viewport);
     if(key!==this.viewportKey) {this.viewportKey=key;this.cancelDrags();}
-    const positions=resolveControlLayout(viewport,this.preferences.snapshot());
+    const positions=resolveControlLayout(viewport,this.preferences.snapshot(),this.moveSize());
     for(const [id,object]of this.controls) {
       if(this.drags.has(id))continue;
       const point=positions[id];object.setPosition(point.x,point.y).setScale(point.scale);
@@ -62,6 +62,11 @@ export class ControlLayoutEditor {
   visible(value: boolean): void {
     if(!value)this.cancel();
     this.canvas.visible(value&&this.active);this.toolbar.visible(value&&this.active);
+  }
+
+  /** 预览框与实战一样按移动样式取尺寸：十字键 274，摇杆 210。 */
+  private moveSize(): {width: number; height: number} {
+    return controlSettings.moveStyle === 'dpad' ? CONTROL_SIZES.moveDpad : CONTROL_SIZES.move;
   }
 
   key(event: KeyboardEvent): void {this.toolbar.key(event);}
@@ -86,7 +91,8 @@ export class ControlLayoutEditor {
       if(id==='move') {
         if (controlSettings.moveStyle === 'dpad') {
           width = height = DPAD_BASE_RADIUS * 2;
-          const ring = this.scene.add.image(0, 0, this.skin['stick-base']).setScale(DPAD_RUNE_SCALE).setAlpha(DPAD_RUNE_ALPHA);
+          const ring = this.scene.add.image(0, 0, this.skin['stick-base'])
+            .setDisplaySize(DPAD_BASE_RADIUS * 2, DPAD_BASE_RADIUS * 2).setAlpha(DPAD_RUNE_ALPHA);
           const up = this.scene.add.image(0, -DPAD_ARROW_OFFSET, this.skin['arrow-up']).setScale(DPAD_ARROW_SCALE_NORM);
           const down = this.scene.add.image(0, DPAD_ARROW_OFFSET, this.skin['arrow-down']).setScale(DPAD_ARROW_SCALE_NORM);
           const left = this.scene.add.image(-DPAD_ARROW_OFFSET, 0, this.skin['arrow-left']).setScale(DPAD_ARROW_SCALE_NORM);
@@ -124,9 +130,9 @@ export class ControlLayoutEditor {
       });
       object.on('drag',(pointer:Phaser.Input.Pointer,x:number,y:number)=>{
         const drag=this.drags.get(id);if(!drag||drag.pointer.id!==pointer.id)return;
-        const viewport=controlViewport(this.scene),positions=this.preferences.snapshot();
-        drag.point=normalizeControlPosition(viewport,id,{x,y},positions);
-        const position=resolveControlLayout(viewport,{...positions,[id]:drag.point})[id];
+        const viewport=controlViewport(this.scene),positions=this.preferences.snapshot(),moveSize=this.moveSize();
+        drag.point=normalizeControlPosition(viewport,id,{x,y},positions,moveSize);
+        const position=resolveControlLayout(viewport,{...positions,[id]:drag.point},moveSize)[id];
         object.setPosition(position.x,position.y);
       });
       object.on('dragend',(pointer:Phaser.Input.Pointer)=>{

@@ -13,6 +13,7 @@
 - 本目录只做布局、断行、格式化和提示内容；实际绘制在 `src/ui/phaser/`。
 - 这里不运行时导入 `phaser`；需要 Phaser 类型时用 `import type`，写法参考 `story-ui.ts`。
 - 文本宽度、换行、选项高度和滚动范围在进入 Phaser 前算完，绘制层只按结果摆放。
+- 控件尺寸从 `control-layout.ts` 的 `CONTROL_SIZES` 取；D-pad 视觉与布局用 `moveDpad` 274×274，摇杆用 `move` 210×210。
 - 字体、字号和颜色取 `text-style.ts`，新面板不再另建一套字体栈。
 - 新增面板先在这里补几何和文本函数，再在 `src/ui/phaser/` 实现绘制。
 - **强化结果先写人话。** 普通卷轴写成「当前 +N：X% 到 +N+1，Y% 到 +N+2」；混沌卷轴写成三行结果表。概率文案统一由 `enhancement-odds-lines.ts` 生成，面板只负责画。
