@@ -693,6 +693,24 @@ test('forge sockets, removes and replaces gems with confirmation', t => {
   assert.equal(f.hero.bag.count('standard-jewel'),1,'旧宝石回到背包');
 });
 
+test('forge disables socketing when the target is full until a replacement is chosen', t => {
+  const f=fixture();t.after(f.cleanup);
+  const weapon=setHeroWeapon(f,1,3);
+  const first=f.add('novice-jewel'),second=f.add('standard-jewel');
+  openHeroForge(f);
+  f.scene.click(f.scene.button('镶嵌'));
+  f.scene.click(f.scene.button(`宝石:${first.id}`));
+  f.scene.click(f.scene.button('确认镶嵌'));
+  assert.equal(f.hero.bag.get(weapon.id)!.gems.length,1);
+  f.scene.click(f.scene.button(`宝石:${second.id}`));
+  assert.equal(f.scene.button('确认镶嵌').input!.enabled,false,'满孔时不能继续镶嵌');
+  assert.ok(f.scene.texts().some(text=>text.includes('宝石孔已满')));
+  f.scene.click(f.scene.button('孔位1'));
+  f.scene.click(f.scene.button('替换'));
+  f.scene.click(f.scene.button(`宝石:${second.id}`));
+  assert.ok(f.scene.button('确认替换').input!.enabled,'满孔仍可替换');
+});
+
 test('forge purifies chaos and Escape returns to the description', t => {
   const f=fixture();t.after(f.cleanup);
   const weapon=setHeroWeapon(f,3,3);

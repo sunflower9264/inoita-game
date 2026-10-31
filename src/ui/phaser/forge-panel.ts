@@ -180,10 +180,13 @@ export class ForgePanel {
       v.button('替换',130,304,90,32,()=>{this.replaceIndex=index;this.socketIndex=undefined;this.selectedItem=undefined;this.changed();},{fontSize:16});
       return;
     }
+    const canAdd=target.gems.length<sockets;
     if(this.replaceIndex!==undefined)v.text(`替换第 ${this.replaceIndex+1} 孔`,30,258,420,18,'#e2cb9e');
+    else if(!canAdd)v.text('宝石孔已满。点已镶孔可以取出或替换。',30,258,420,18,'#ff6b6b');
     if(this.selectedItem)this.renderGemPreview(v,target,modifiers);
     else if(this.replaceIndex===undefined)v.text('选择一颗宝石。',30,278,420,18,'#c8b78f');
-    v.button(this.replaceIndex===undefined?'确认镶嵌':'确认替换',139,342,205,55,()=>this.confirmSocket(),{fontSize:20,disabled:!this.selectedItem||!this.bag.get(this.selectedItem)?.numbers?.modifiers?.length});
+    v.button(this.replaceIndex===undefined?'确认镶嵌':'确认替换',139,342,205,55,()=>this.confirmSocket(),{fontSize:20,
+      disabled:!this.selectedItem||!this.bag.get(this.selectedItem)?.numbers?.modifiers?.length||(!canAdd&&this.replaceIndex===undefined)});
   }
   private renderGemPreview(v:UiSurface,target:ItemInstance,modifiers:Modifier[]):void {
     const gemId=this.selectedItem;if(!gemId)return;
@@ -250,7 +253,8 @@ export class ForgePanel {
   private confirmSocket():void {
     const targetId=this.targetId,gemId=this.selectedItem;if(!targetId||!gemId)return;
     if(!this.bag.get(gemId)?.numbers?.modifiers?.length)return;
-    const replacing=this.replaceIndex;
+    const replacing=this.replaceIndex,target=this.bag.get(targetId),definition=target?this.bag.catalog.items[target.item]:undefined;
+    if(replacing===undefined&&target&&definition?.equipment&&target.gems.length>=(target.numbers?.sockets??definition.equipment.socketCapacity))return;
     if(replacing!==undefined){this.confirmation={kind:'swap',index:replacing,gem:gemId};this.changed();return;}
     try {const result=this.bag.use(gemId,targetId);this.result=result.message;this.resultTone='normal';this.sound();}
     catch(error) {this.result=this.errorText(error);this.resultTone='failure';}
