@@ -58,28 +58,24 @@ export function overlapsFootRect(point: Point, rectangle: GameRectangle): boolea
 }
 
 /**
- * 进图后要先真正离开到达出口，再走回来，出口才会触发。
- * 只判断“当前没压住”不够：落点常常只离回程出口一两像素，走一步就会弹回上一张图。
+ * 进图后要先走过这段距离，出口才会触发。
+ * 落点常常贴着回程出口，走一步就会弹回上一张图；改成累计实际走过的距离后，
+ * 在走满之前任何出口都不触发，走满之后才按脚底接触判定。
  */
 export const EXIT_REARM_DISTANCE = 24;
 
-/** 落点是否仍处在出口的重新武装范围内；距离按脚点中心算。 */
-export function nearExit(point: Point, exit: GameRectangle, distance = EXIT_REARM_DISTANCE): boolean {
-  return point.x > exit.x - distance && point.x < exit.x + exit.width + distance
-    && point.y > exit.y - distance && point.y < exit.y + exit.height + distance;
-}
-
 export class ExitTrigger<T extends GameRectangle = GameRectangle> {
   private readonly exits: T[];
-  /** 到达缓冲区模式：逐出口记录是否已离开落点附近。 */
+  /** 到达缓冲区模式：进图后累计走过的距离。 */
   private readonly guarded: boolean;
-  private readonly blocked: Set<T>;
   /** 兼容模式（无头剧情走位）沿用旧的“整组出口一起武装”状态。 */
   private armed: boolean;
+  private walked = 0;
+  private last: Point;
   constructor(exits: T[], spawn: Point, arrivalGuard = true) {
     this.exits = exits;
     this.guarded = arrivalGuard;
-    this.blocked = new Set(arrivalGuard ? exits.filter(exit => nearExit(spawn, exit)) : []);
+    this.last = { x: spawn.x, y: spawn.y };
     this.armed = !arrivalGuard && !exits.some(exit => overlapsFootRect(spawn, exit));
   }
   update(position: Point, moving: boolean, available: (exit:T)=>boolean = ()=>true): T | null {
@@ -89,11 +85,12 @@ export class ExitTrigger<T extends GameRectangle = GameRectangle> {
       if (!this.armed || !moving) return null;
       this.armed = false; return exit;
     }
-    for (const exit of this.blocked) if (!nearExit(position, exit)) this.blocked.delete(exit);
-    const exit = this.exits.find(exit => !this.blocked.has(exit) && available(exit) && overlapsFootRect(position, exit));
+    this.walked += Math.hypot(position.x - this.last.x, position.y - this.last.y);
+    this.last = { x: position.x, y: position.y };
+    if (this.walked < EXIT_REARM_DISTANCE) return null;
+    const exit = this.exits.find(exit => available(exit) && overlapsFootRect(position, exit));
     if (!exit || !moving) return null;
-    // 整簇门洞都锁上，避免旁边相邻的出口格在同一位置接着触发。
-    for (const other of this.exits) if (nearExit(position, other)) this.blocked.add(other);
-    return exit;
+    // 触发后重新计数，避免在同一位置连续触发。
+    this.walked = 0; return exit;
   }
 }

@@ -66,9 +66,20 @@ test('a spawn inside an exit requires walking clear of that doorway first',()=>{
  gate.update({x:0,y:40},true);
  assert.equal(gate.update({x:40,y:40},true),exit);
 });
+test('an exit only fires after the player has walked the rearm distance',()=>{
+ const exit={x:0,y:0,width:64,height:64,destination:'next'},gate=new ExitTrigger([exit],{x:32,y:32});
+ assert.equal(gate.update({x:55,y:32},true),null,'累计 23px，还差 1px');
+ assert.equal(gate.update({x:56,y:32},true),exit,'累计满 24px 后脚底压住出口就触发');
+});
+test('the goblin lair doorway opens after 24px of movement',()=>{
+ const north={x:64,y:0,width:64,height:16,destination:'goblin-prison-2-27ab25e1'};
+ const gate=new ExitTrigger([north],{x:88,y:24});
+ assert.equal(gate.update({x:88,y:4},true),null,'只向上走 20px，还没满 24px');
+ assert.equal(gate.update({x:88,y:8},true),north,'退 4px 补满 24px，脚底已在出口格里');
+});
 test('the foot can reach a blocked edge exit from its walkable approach',()=>{
  const map={name:'fixture',tileSize:16,columns:4,rows:3,blocked:Array.from({length:12},(_,i)=>i%4===3)};
- const exit={x:48,y:16,width:16,height:16},gate=new ExitTrigger([exit],{x:24,y:24});
+ const exit={x:48,y:16,width:16,height:16},gate=new ExitTrigger([exit],{x:0,y:24});
  const p=new NavigationWorld(map).constrainTerrain({x:24,y:24},30,0);
  assert.ok(p.x<48&&canStandOnTerrain(map,p.x,p.y));
  assert.equal(gate.update(p,true),exit);
