@@ -55,7 +55,7 @@ import { tradeLayout } from './shop-layout.ts';
 import { splitMoney } from './money-display.ts';
 import { createCharacter, type CharacterVisual } from '../rendering/characters.ts';
 
-type Page='status'|'bag'|'skills'|'party'|'quests'|'system'|'save'|'load'|'settings'|'shop'|'crafting'|'debug';
+type Page='status'|'bag'|'skills'|'party'|'quests'|'system'|'save'|'load'|'settings'|'shop'|'crafting'|'forge'|'debug';
 const tabs:[Page,string][]=[['status','人物'],['bag','背包'],['skills','技能'],['party','队伍'],['quests','任务'],['system','系统']];
 /** 设置页「操作方式」一行上显示的当前选择。 */
 const CONTROL_MODE_LABELS:Record<ControlMode,string>={stick:'虚拟摇杆',dpad:'十字按键',keyboard:'电脑模式'};
@@ -78,7 +78,7 @@ const CONTENT_ORIGIN={x:32,y:172} as const;
 /** 这些使用方式走独立操作面板，不出现在背包的「使用」菜单里。 */
 const NON_MENU_USE_KINDS=new Set(['enchant','socket','purify']);
 interface Operation {entry:string;kind:'use'|'discard';member?:string;skill?:string;quantity:number;confirmed?:boolean;error?:string}
-interface BagMenuAction {label:string;image:string;run:()=>void;disabled?:boolean;text?:boolean;fontSize?:number}
+interface BagMenuAction {label:string;run:()=>void;disabled?:boolean}
 /** 正式菜单读取 Session，操作仍由背包、技能、队伍和商店领域对象执行。 */
 export class StoryUI {
   private readonly app:StoryUIContext;
@@ -155,9 +155,9 @@ export class StoryUI {
     this.shortcutScreen.enabled=()=>this.open&&!this.app.ui.suspended&&!this.busy&&!!this.shortcutEdit;
     this.backTab.enabled=()=>this.shortcutScreen!.enabled();
     this.hudButtons=new UiSurface(scene,960,640,50);this.backdrop=scene.add.rectangle(0,0,1,1,0x000000,.65).setOrigin(0).setDepth(99).setInteractive();
-    this.surface.enabled=()=>this.open&&!this.app.ui.suspended&&!this.busy&&!this.app.ui.controlLayoutEditing&&!this.app.ui.keyBindingEditing&&!this.shortcutEdit&&!this.operation&&!this.itemNotice&&!this.allocationExit&&!this.skillReset&&this.saveConfirm===undefined&&this.loadConfirm===undefined&&this.deleteConfirm===undefined&&this.renameRef===undefined&&!this.craftingPanel?.modalOpen&&!this.shopPanel?.modalOpen&&!this.partyPanel?.modalOpen&&!this.forge;
+    this.surface.enabled=()=>this.open&&!this.app.ui.suspended&&!this.busy&&!this.app.ui.controlLayoutEditing&&!this.app.ui.keyBindingEditing&&!this.shortcutEdit&&!this.operation&&!this.itemNotice&&!this.allocationExit&&!this.skillReset&&this.saveConfirm===undefined&&this.loadConfirm===undefined&&this.deleteConfirm===undefined&&this.renameRef===undefined&&!this.craftingPanel?.modalOpen&&!this.shopPanel?.modalOpen&&!this.partyPanel?.modalOpen&&!this.forge?.confirming;
     this.body.enabled=()=>this.surface!.enabled();this.description.enabled=()=>this.body!.enabled();
-    this.modal.enabled=()=>this.open&&!this.app.ui.suspended&&!this.busy&&(!!this.operation||!!this.itemNotice||!!this.allocationExit||this.skillReset||this.saveConfirm!==undefined||this.loadConfirm!==undefined||this.deleteConfirm!==undefined||!!this.craftingPanel?.modalOpen||!!this.shopPanel?.modalOpen||!!this.partyPanel?.modalOpen||!!this.forge);
+    this.modal.enabled=()=>this.open&&!this.app.ui.suspended&&!this.busy&&(!!this.operation||!!this.itemNotice||!!this.allocationExit||this.skillReset||this.saveConfirm!==undefined||this.loadConfirm!==undefined||this.deleteConfirm!==undefined||!!this.craftingPanel?.modalOpen||!!this.shopPanel?.modalOpen||!!this.partyPanel?.modalOpen||!!this.forge?.confirming);
     this.hudButtons.enabled=()=>this.app.ui.mode==='game'&&this.app.ui.ready&&!this.app.ui.locked&&!this.app.ui.suspended;
     scene.scale.on('resize',this.resize,this);scene.input.keyboard?.on('keydown',this.key,this);
     // 浏览器自身的退出（Esc、手势）不会走设置页的按钮，靠事件把开关状态同步回来。
@@ -174,8 +174,9 @@ export class StoryUI {
     this.questPanel=new QuestPanel(session,world,this.app.menuPanels,()=>this.render());
     this.partyPanel=new PartyPanel(session,world,this.app,()=>this.render(),(id,page)=>this.selectMember(id,page));
     this.unsubscribe=session.subscribe(()=>{
-      // 快捷键登记与控制布局编辑时菜单本体被藏起来；退出这两个模式时调用方会显式重绘。
-      if(!this.open||this.busy||this.shortcutEdit||this.app.ui.controlLayoutEditing)return;
+      // 快捷键登记、控制布局编辑与强化台打开时由各自的界面显式重绘；
+      // 强化台的动作在完成后调 changed 统一重绘一次，避免会话通知再画一遍。
+      if(!this.open||this.busy||this.shortcutEdit||this.app.ui.controlLayoutEditing||this.page==='forge')return;
       const signature=this.sessionDataSignature();
       if(signature===undefined||signature!==this.sessionSignature)this.render();
     });this.sync();
@@ -189,8 +190,8 @@ export class StoryUI {
     if(active&&this.hudButtons&&this.hudButtons.root.length===0){const v=this.hudButtons;v.button('',0,0,56,56,()=>this.show('save'),{image:this.content!.assets.save}).setData('label','存档');v.button('',0,64,56,56,()=>this.show('bag'),{image:this.content!.assets.menu}).setData('label','菜单');}
     // 登记快捷键时菜单本体整块让位，只留背后的遮罩与这一屏自己，画面里那层游戏背景就露出来了。
     const menu=this.open&&!this.app.ui.suspended&&!this.shortcutEdit&&!this.app.ui.controlLayoutEditing&&!this.app.ui.keyBindingEditing;
-    this.surface?.visible(menu&&!this.forge);this.body?.visible(menu&&!this.forge);this.description?.visible(menu&&!this.forge);
-    const modal=menu&&(!!this.operation||!!this.itemNotice||!!this.allocationExit||this.skillReset||this.saveConfirm!==undefined||this.loadConfirm!==undefined||this.deleteConfirm!==undefined||!!this.craftingPanel?.modalOpen||!!this.shopPanel?.modalOpen||!!this.partyPanel?.modalOpen||!!this.forge);
+    this.surface?.visible(menu);this.body?.visible(menu);this.description?.visible(menu&&!this.forge);
+    const modal=menu&&(!!this.operation||!!this.itemNotice||!!this.allocationExit||this.skillReset||this.saveConfirm!==undefined||this.loadConfirm!==undefined||this.deleteConfirm!==undefined||!!this.craftingPanel?.modalOpen||!!this.shopPanel?.modalOpen||!!this.partyPanel?.modalOpen||!!this.forge?.confirming);
     if(modal&&!this.modalActive)this.app.ui.resetInput();
     this.modalActive=modal;this.modal?.visible(modal);
     this.shortcutScreen?.visible(this.open&&!this.app.ui.suspended&&!!this.shortcutEdit);this.backTab?.visible(this.open&&!this.app.ui.suspended&&!!this.shortcutEdit);
@@ -296,8 +297,8 @@ export class StoryUI {
     if(event.key==='Escape'&&this.loadConfirm!==undefined){event.preventDefault();this.loadConfirm=undefined;this.render();return;}
     if(event.key==='Escape'&&this.saveConfirm!==undefined){event.preventDefault();this.saveConfirm=undefined;this.render();return;}
     if(event.key==='Escape'&&this.allocationExit){event.preventDefault();this.finishAllocation(false);return;}
-    if(event.key==='Escape'){event.preventDefault();if(this.busy){this.close();return;}if(this.shortcutEdit){this.closeShortcutScreen();return;}if(this.skillReset){this.skillReset=false;this.render();}else if(this.forge?.confirming){this.forge.cancelConfirmation();}else if(this.forge){this.closeForge();}else if(this.craftingPanel?.modalOpen){this.craftingPanel.cancel();}else if(this.shopPanel?.active){this.shopPanel.cancel();}else if(this.partyPanel?.modalOpen){this.partyPanel.cancel();}else if(this.operation){this.operation=undefined;this.render();}else if(this.page==='bag'&&this.selectedItem){this.selectedItem=undefined;this.render();}else this.close();return;}
-    const surfaces=this.operation||this.itemNotice||this.allocationExit||this.skillReset||this.saveConfirm!==undefined||this.loadConfirm!==undefined||this.deleteConfirm!==undefined||this.craftingPanel?.modalOpen||this.shopPanel?.modalOpen||this.partyPanel?.modalOpen||this.forge
+    if(event.key==='Escape'){event.preventDefault();if(this.busy){this.close();return;}if(this.page==='forge'){if(this.forge?.confirming)this.forge.cancelConfirmation();else this.closeForge();return;}if(this.shortcutEdit){this.closeShortcutScreen();return;}if(this.skillReset){this.skillReset=false;this.render();}else if(this.craftingPanel?.modalOpen){this.craftingPanel.cancel();}else if(this.shopPanel?.active){this.shopPanel.cancel();}else if(this.partyPanel?.modalOpen){this.partyPanel.cancel();}else if(this.operation){this.operation=undefined;this.render();}else if(this.page==='bag'&&this.selectedItem){this.selectedItem=undefined;this.render();}else this.close();return;}
+    const surfaces=this.operation||this.itemNotice||this.allocationExit||this.skillReset||this.saveConfirm!==undefined||this.loadConfirm!==undefined||this.deleteConfirm!==undefined||this.craftingPanel?.modalOpen||this.shopPanel?.modalOpen||this.partyPanel?.modalOpen||this.forge?.confirming
       ?[this.modal!]:this.shortcutEdit?[this.shortcutScreen!,this.backTab!]:[this.surface!,this.body!,this.description!];
     const buttons=surfaces.flatMap(surface=>surface.focusables());
     if(this.keyboardFocus&&!buttons.includes(this.keyboardFocus))this.keyboardFocus=undefined;
@@ -403,6 +404,7 @@ export class StoryUI {
       }
       case 'shop':return `shop|${this.selectedMemberId}|${bag}|${money}|${partyShape}`;
       case 'crafting':return `crafting|${this.selectedMemberId}|${bag}|${money}|${member?.level??0}|${partyShape}`;
+      case 'forge':return 'forge';
       case 'save':case 'load':case 'settings':case 'system':return this.page;
       default:return undefined;
     }
@@ -419,14 +421,16 @@ export class StoryUI {
     if(this.page!=='bag'&&this.page!=='shop')this.body.clearStatic();
     const chromeKey=`chrome:${this.page}${this.page==='crafting'?`:${this.craftingActor}`:''}`;
     v.staticLayer(chromeKey,()=>{
-      if(this.page!=='shop'&&this.page!=='crafting'&&this.page!=='save'&&this.page!=='load')tabs.forEach(([page,label],index)=>{const button=v.button('',35+index*149,25,102,116,()=>this.show(page),{bare:true,parent:v.staticRoot}).setData('label',label);v.image(this.content!.assets[`tab-${page}`],12,0,78,78,button);v.text(label,51,85,90,20,undefined,button).setOrigin(.5,0);button.setAlpha(this.page===page||(['settings','debug'] as Page[]).includes(this.page)&&page==='system'?1:.65);});
+      if(this.page!=='shop'&&this.page!=='crafting'&&this.page!=='forge'&&this.page!=='save'&&this.page!=='load')tabs.forEach(([page,label],index)=>{const button=v.button('',35+index*149,25,102,116,()=>this.show(page),{bare:true,parent:v.staticRoot}).setData('label',label);v.image(this.content!.assets[`tab-${page}`],12,0,78,78,button);v.text(label,51,85,90,20,undefined,button).setOrigin(.5,0);button.setAlpha(this.page===page||(['settings','debug'] as Page[]).includes(this.page)&&page==='system'?1:.65);});
       if(this.page==='crafting'&&this.craftingPanel){
         v.text(this.world!.actors[this.craftingActor!].name,512,25,0,28,undefined,v.staticRoot).setOrigin(.5,0);
       }
+      if(this.page==='forge')v.text('装备强化',512,25,0,28,undefined,v.staticRoot).setOrigin(.5,0);
       v.button('',947,24,51,51,()=>this.close(),{image:this.content!.assets.close,pressed:this.content!.assets['close-pressed'],parent:v.staticRoot}).setData('label','关闭菜单');
     });
     if(this.page==='bag')this.renderBag();if(this.page==='status')this.renderStatus();if(this.page==='skills')this.renderSkills();if(this.page==='party')this.renderParty();if(this.page==='quests')this.renderQuests();if(this.page==='shop')this.shopPanel?.render(this.body,this.modal!,this.placeModal,this.description!);
     if(this.page==='crafting'&&this.craftingPanel){this.craftingPanel.render(this.body,this.modal!,this.placeModal,(pointer,entry,scroll)=>this.startDrag(pointer,entry,scroll));this.drops=this.craftingPanel.drops;}
+    if(this.page==='forge'&&this.forge)this.forge.render(this.body,this.modal!,this.placeModal);
     if(this.page==='system'){
       const actions:[string,()=>void][]=[['保存游戏',()=>this.show('save')],['读取存档',()=>this.show('load')],['设置',()=>this.show('settings')]];
       // 「调试」只在 GM 打开时出现；关闭时这一项根本不存在，不需要靠权限判断挡住。
@@ -462,7 +466,6 @@ export class StoryUI {
     }
     if(this.page==='save'||this.page==='load')this.renderSaveSlots();
     if(this.page==='settings')this.renderSettings();
-    if(this.forge)this.forge.render(this.modal!,this.placeModal);
     if(this.notice)this.surface.text(this.notice,512,614,880,18).setOrigin(.5,0);
     if(this.operation)this.renderOperation();if(this.allocationExit)this.renderAllocationConfirmation();if(this.skillReset)this.renderSkillResetConfirmation();
     if(this.itemNotice){this.beginModal(1024,640);drawNativeMessage(this.modal!,this.app.menuPanels.assets,this.itemNotice,()=>{this.itemNotice=undefined;this.render();});}
@@ -1132,19 +1135,12 @@ export class StoryUI {
     // 关闭按钮挂在面板右上角：那枚 67×67 的圆钮（原版矩形 349,−6，本作右移到贴边）。
     drawDescriptionClose(v,this.app.menuPanels.assets,panel,left,top,()=>{this.itemNotice=undefined;this.selectedItem=undefined;this.render();});
     // 底部操作行：常规 125×55、步长 126；4 个动作时整行改 92×55 文字按钮，避免 149×75 的图互相压住。
-    const assets=this.app.menuPanels.assets,actions=this.bagMenu(entry,worn),rowY=top+panel.menu.y;
+    const actions=this.bagMenu(entry,worn),rowY=top+panel.menu.y;
     if(actions.length){
       const dense=actions.length>3,width=dense?92:panel.menu.button.width,height=panel.menu.button.height,
         stride=dense?94:panel.menu.button.stride,rowX=left+panel.menu.x+(dense?0:panel.menu.offsets[Math.min(actions.length,3)]);
       actions.forEach((action,index)=>{
-        const x=rowX+index*stride;
-        if(dense||action.text){
-          v.button(action.label,x,rowY,width,height,action.run,{fontSize:dense?14:action.fontSize??16,disabled:action.disabled}).setData('label',action.label);
-          return;
-        }
-        const hit=v.button('',x,rowY,width,height,action.run,{bare:true,disabled:action.disabled,
-          pressed:assets['skill-button-pressed'],pressedRect:{x:-12,y:-9,width:149,height:75},pressedAdd:true}).setData('label',action.label);
-        hit.addAt(v.image(action.image,-12,-9,149,75,hit),0);
+        v.button(action.label,rowX+index*stride,rowY,width,height,action.run,{fontSize:dense?14:18,disabled:action.disabled}).setData('label',action.label);
       });
     }
   }
@@ -1179,33 +1175,33 @@ export class StoryUI {
   }
   /** 底部操作行的内容与次序照原版 `UIEquip_SetDescMenu`：先装备态动作，再使用，最后丢弃。 */
   private bagMenu(entry:ItemInstance,worn?:EquipmentSlot):BagMenuAction[]{
-    const bag=this.session!.bag,item=bag.catalog.items[entry.item],assets=this.app.menuPanels.assets,actions:BagMenuAction[]=[];
-    if(worn)actions.push({label:'卸下',image:assets['item-unequip'],run:()=>void this.changeEquipment(undefined,worn)});
+    const bag=this.session!.bag,item=bag.catalog.items[entry.item],actions:BagMenuAction[]=[];
+    if(worn)actions.push({label:'卸下',run:()=>void this.changeEquipment(undefined,worn)});
     else{
       const member=this.member()!;
       const slots=bag.equippableSlots(entry.id,this.selectedMemberId,member.classId,member.level);
       const empty=bag.emptyEquipSlot(entry.id,this.selectedMemberId,member.classId,member.level);
       const slotName=(slot:EquipmentSlot)=>this.app.menuPanels.equipmentSlots.find(value=>value.id===slot)?.name??slot;
-      if(empty)actions.push({label:'装备',image:assets['item-equip'],run:()=>void this.changeEquipment(entry.id,empty)});
-      else if(slots.length===1)actions.push({label:'装备',image:assets['item-equip'],run:()=>void this.changeEquipment(entry.id,slots[0]!)});
+      if(empty)actions.push({label:'装备',run:()=>void this.changeEquipment(entry.id,empty)});
+      else if(slots.length===1)actions.push({label:'装备',run:()=>void this.changeEquipment(entry.id,slots[0]!)});
       else if(slots.length>1)for(const slot of slots)
-        actions.push({label:`替换${slotName(slot)}`,image:assets['item-equip'],run:()=>void this.changeEquipment(entry.id,slot)});
+        actions.push({label:`替换${slotName(slot)}`,run:()=>void this.changeEquipment(entry.id,slot)});
       else{
         const fallback=bag.slotsFor(entry.id,member.classId)[0];
-        if(fallback)actions.push({label:'装备',image:assets['item-equip'],run:()=>{},disabled:true});
+        if(fallback)actions.push({label:'装备',run:()=>{},disabled:true});
       }
     }
     const forgeLabel=this.forgeLabel(entry);
-    if(forgeLabel)actions.push({label:forgeLabel,image:'',text:true,fontSize:forgeLabel.length>2?16:undefined,run:()=>this.openForge(entry.id)});
-    if(item.use&&!NON_MENU_USE_KINDS.has(item.use.kind)&&!worn)actions.push({label:USE_LABELS[item.use.kind],image:assets['item-use'],run:()=>this.beginOperation(entry.id),disabled:!!this.itemUseProblem(entry)});
+    if(forgeLabel)actions.push({label:forgeLabel,run:()=>this.openForge(entry.id)});
+    if(item.use&&!NON_MENU_USE_KINDS.has(item.use.kind)&&!worn)actions.push({label:USE_LABELS[item.use.kind],run:()=>this.beginOperation(entry.id),disabled:!!this.itemUseProblem(entry)});
     // 快捷键：与技能页同一套文案与同一屏。已配到任一组的这枚按钮改成「取消快捷键」，点了直接清掉
     // （原版 `UIEquip_ButtonRemoveShortCutExe 0x14c514` → `PLAYER_RemoveShortcutAll(char, 2, 物品编号)`）。
     if(item.shortcut&&!worn){
       const assigned=this.shortcutBar().assigned('item',entry.item);
-      actions.push({label:assigned?'取消快捷键':'快捷键',image:assets[assigned?'skill-shortcut-cancel':'skill-shortcut'],
+      actions.push({label:assigned?'取消快捷键':'快捷键',
         run:()=>assigned?this.clearShortcut('item',entry.item):this.openShortcutScreen('item',entry.item)});
     }
-    if(item.discardable&&!worn)actions.push({label:'丢弃',image:assets['item-discard'],run:()=>this.beginOperation(entry.id,'discard')});
+    if(item.discardable&&!worn)actions.push({label:'丢弃',run:()=>this.beginOperation(entry.id,'discard')});
     return actions;
   }
   /** 装备说明底部的入口文案：能力组合决定是强化、镶嵌还是净化。 */
@@ -1231,9 +1227,12 @@ export class StoryUI {
     const preview=(id:string,modifiers:Modifier[])=>member?.previewGemChange(id,modifiers);
     this.forge=new ForgePanel(bag,this.app.menuPanels,this.app.characterStats,this.selectedMemberId,
       ()=>this.render(),()=>this.app.audio?.ui('enchant'),()=>this.closeForge(),preview);
-    this.forge.open(targetId,tab);this.render();
+    this.forge.open(targetId,tab);this.page='forge';this.render();
   }
-  private closeForge():void {this.forge=undefined;this.render();}
+  private closeForge():void {
+    const targetId=this.forge?.targetId;
+    this.forge=undefined;this.page='bag';if(targetId)this.selectedItem=targetId;this.render();
+  }
   private async changeEquipment(entry:string|undefined,slot:EquipmentSlot):Promise<void>{
     if(this.busy)return;this.busy=true;this.cancelDrag();const signal=this.request.signal;this.render();
     try{await this.app.changeEquipment!(entry,slot,signal,this.selectedMemberId);if(signal.aborted)return;this.selectedItem=undefined;this.notice='';}

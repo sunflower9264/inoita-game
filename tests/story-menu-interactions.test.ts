@@ -228,6 +228,7 @@ const panels = read<MenuPanels>('menu-panels'), content = read<StoryInterface>('
 interface MenuInternals {
   selectedMemberId: string;
   forge?: ForgePanel;
+  page: string;
   operation?: { entry: string; kind: 'use' | 'discard'; quantity: number };
   keyboardFocus?: Display;
   body: UiSurface;
@@ -618,38 +619,44 @@ test('equipment without enhancement, sockets or chaos has no forge button', t =>
   for(const label of ['强化','镶嵌','净化','强化/镶嵌'])assert.equal(f.scene.buttons(label).length,0,label);
 });
 
-test('forge opens from the worn equipment and enhances continuously', t => {
+test('forge opens as a menu page and enhances continuously', t => {
   const f=fixture();t.after(f.cleanup);
   const weapon=setHeroWeapon(f,3,3);f.add('novice-weapon-scroll',3);
   t.mock.method(Math,'random',()=>0.99);
   const forge=openHeroForge(f);
-  assert.equal(f.internals.surface.root.visible,false,'forge 打开时背包层隐藏');
-  assert.equal(f.internals.modal.root.visible,true);
+  assert.equal(f.internals.page,'forge','forge 是独立菜单页');
+  assert.equal(f.internals.surface.root.visible,true,'forge 页不藏菜单');
+  assert.equal(f.internals.body.root.visible,true);
+  assert.equal(f.internals.description.root.visible,false,'装备说明层让位给 forge');
+  assert.equal(f.internals.modal.root.visible,false,'forge 页不铺黑色弹层');
   assert.equal(forge.targetId,weapon.id);
   assert.equal(f.scene.buttons('强化').length,1,'强化页签唯一');
   assert.equal(f.scene.buttons('镶嵌').length,1,'镶嵌页签唯一');
-  assert.ok(f.scene.texts().some(text=>text.includes('+1 确定，+2 25%')),'强化页显示概率');
+  assert.ok(f.scene.texts().some(text=>text.includes('选择一张强化卷轴')));
   f.scene.click(f.scene.button('卷轴:低级武器强化卷轴'));
+  assert.ok(f.scene.texts().some(text=>text.includes('+1 确定，+2 25%')),'选中卷轴显示概率');
+  f.scene.click(f.scene.button('确定强化'));
   assert.equal(f.hero.bag.get(weapon.id)!.enhancement,1);
   assert.equal(f.hero.bag.get(weapon.id)!.numbers!.enhancementUses,2);
-  assert.ok(f.scene.texts().some(text=>text.includes('强化 +1')),'结果行保留在 forge 内');
-  assert.equal(f.scene.buttons('卷轴:低级武器强化卷轴').length,1,'卷轴还有剩余，行仍在');
-  f.scene.click(f.scene.button('卷轴:低级武器强化卷轴'));
+  assert.ok(f.scene.texts().some(text=>text.includes('强化 +1')),'结果留在 forge 页');
+  assert.equal(f.scene.buttons('卷轴:低级武器强化卷轴').length,1,'卷轴还有剩余，格子仍在');
+  f.scene.click(f.scene.button('确定强化'));
   assert.equal(f.hero.bag.get(weapon.id)!.enhancement,2);
   assert.equal(f.hero.bag.get(weapon.id)!.numbers!.enhancementUses,1);
 });
 
-test('forge disables normal scrolls at zero durability and highlights chaos', t => {
+test('forge explains unavailable scrolls and highlights chaos at zero durability', t => {
   const f=fixture();t.after(f.cleanup);
   const weapon=setHeroWeapon(f,3,0,10);f.add('novice-weapon-scroll');f.add('chaos-weapon-scroll');
   openHeroForge(f);
-  assert.equal(f.scene.button('卷轴:低级武器强化卷轴').input!.enabled,false,'普通卷轴耐久不足');
-  assert.ok(f.scene.texts().some(text=>text.includes('耐久度不足')));
+  f.scene.click(f.scene.button('卷轴:低级武器强化卷轴'));
+  assert.ok(f.scene.texts().some(text=>text.includes('耐久度不足')),'选中普通卷轴显示原因');
+  assert.equal(f.scene.button('确定强化').input!.enabled,false,'耐久不足时动作按钮不可点');
   assert.ok(f.scene.nodes.some(node=>node.shown&&node.getData('forge-highlight')==='chaos'),'混沌卷轴高亮');
-  const chaos=f.scene.button('卷轴:混沌武器强化卷轴');
-  assert.ok(chaos.input!.enabled,'混沌卷轴可用');
+  f.scene.click(f.scene.button('卷轴:混沌武器强化卷轴'));
+  assert.ok(f.scene.button('确定强化').input!.enabled,'混沌卷轴可用');
   t.mock.method(Math,'random',()=>0.999);
-  f.scene.click(chaos);
+  f.scene.click(f.scene.button('确定强化'));
   assert.equal(f.hero.bag.get(weapon.id)!.enhancement,9,'混沌失败降 1 级');
   assert.equal(f.hero.bag.get(weapon.id)!.numbers!.enhancementUses,0,'混沌不消耗耐久');
   assert.ok(f.scene.texts().some(text=>text.includes('强化失败')));
@@ -695,6 +702,7 @@ test('forge purifies chaos and Escape returns to the description', t => {
   openHeroForge(f);
   f.scene.click(f.scene.button('净化'));
   f.scene.click(f.scene.button('净化石:净化之宝石'));
+  f.scene.click(f.scene.button('确定净化'));
   assert.equal(f.hero.bag.get(weapon.id)!.numbers!.chaos,undefined);
   assert.equal(f.hero.bag.count('jewel-of-catharsis'),0);
   f.add('novice-jewel');
@@ -710,8 +718,33 @@ test('forge purifies chaos and Escape returns to the description', t => {
   assert.ok(f.internals.forge);
   assert(f.scene.key('Escape'));
   assert.equal(f.internals.forge,undefined,'再按一次关闭 forge');
+  assert.equal(f.internals.page,'bag','回到背包页');
   assert.equal(f.internals.surface.root.visible,true);
+  assert.equal(f.internals.description.root.visible,true,'装备说明重新显示');
   assert.equal(f.scene.buttons('强化/镶嵌').length,1,'回到装备说明');
+});
+
+test('item description actions use text buttons instead of baked images', t => {
+  const f=fixture();t.after(f.cleanup);
+  const weapon=setHeroWeapon(f,3,3);
+  f.menu.debugDescribe(weapon.id);
+  for(const label of ['卸下','强化/镶嵌']){
+    const button=f.scene.button(label);
+    assert.ok(button.getData('labelText'),`${label} 是文字按钮`);
+    assert.ok(!String(button.getData('face')?.texture?.key??'').includes('item-'),`${label} 不使用动作图`);
+  }
+});
+
+test('forge repaints the menu once per action', t => {
+  const f=fixture();t.after(f.cleanup);
+  setHeroWeapon(f,3,3);f.add('novice-weapon-scroll',2);
+  openHeroForge(f);
+  const render=t.mock.method(f.menu as any,'render') as any;
+  f.scene.click(f.scene.button('卷轴:低级武器强化卷轴'));
+  assert.equal(render.mock.callCount(),1,'选择格子只重绘一次');
+  t.mock.method(Math,'random',()=>0.99);
+  f.scene.click(f.scene.button('确定强化'));
+  assert.equal(render.mock.callCount(),2,'结算只重绘一次，不叠加会话通知');
 });
 
 test('dense action row fits four actions including the forge entry', async t => {
@@ -724,6 +757,7 @@ test('dense action row fits four actions including the forge entry', async t => 
   f.menu.debugDescribe(third.id);
   const buttons=['替换戒指','替换饰品','镶嵌','丢弃'].map(label=>f.scene.button(label));
   assert.ok(buttons.every(button=>button.input!.hitArea.width===92),'4 个动作都改文字按钮');
+  assert.ok(buttons.every(button=>button.getData('labelText')),'4 个动作都有文字');
   const xs=buttons.map(button=>button.x).sort((left,right)=>left-right);
   for(let index=1;index<xs.length;index++)assert.equal(xs[index]-xs[index-1],94,'按钮步长 94');
   assert.ok(xs.at(-1)!-xs[0]!+92<=377,'4 个按钮总宽不超出操作行');
@@ -1313,6 +1347,7 @@ test('processing items use the equipment forge instead of drag-and-drop', t => {
   assert.ok(f.internals.forge);
   const originalRandom=Math.random;Math.random=()=>0;t.after(()=>{Math.random=originalRandom;});
   f.scene.click(f.scene.button('卷轴:低级武器强化卷轴'));
+  f.scene.click(f.scene.button('确定强化'));
   assert.equal(f.hero.bag.count(source.item),2);
   assert.equal(f.hero.bag.get(weapon.id)!.enhancement,2);
   assert.ok(f.scene.texts().some(text=>text.includes('强化大成功 +2')));
