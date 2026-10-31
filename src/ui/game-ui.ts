@@ -108,7 +108,8 @@ export class GameUI {
     this.loadingState!.actionLabel=actionLabel;this.updateControls();
   }
   showDefeat(actions:DefeatActions):void {
-    if(this.defeatFlow)return;
+    // 旧流程残留时不能让新的全灭被静默吞掉：替换并记录一次，界面重新弹出。
+    if(this.defeatFlow)globalThis.storyDiagnostics?.record('defeat-flow-replaced',{});
     this.defeatFlow={actions,busy:false};this.toastMessage='';this.loadingState=undefined;this.lock(true,'defeat');
   }
   selectDefeatAction(action:DefeatAction):void {

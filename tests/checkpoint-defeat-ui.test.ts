@@ -39,3 +39,12 @@ test('an old asynchronous action cannot close a newer defeat screen',async()=>{
   finish();await pending;assert.equal(ui.defeated,true);assert.equal(ui.defeatState!.prayerCount,2);
   ui.suspended=true;ui.selectDefeatAction('checkpoint');await ui.confirmDefeat();assert.equal(ui.defeatState!.confirmation,undefined);
 });
+
+test('a new wipeout replaces a stale defeat flow instead of being ignored',()=>{
+  const ui=new GameUI();
+  ui.showDefeat({prayerCount:()=>0,revive:()=>false,restore:()=>{}});
+  ui.showDefeat({prayerCount:()=>3,revive:()=>true,restore:()=>{}});
+  assert.equal(ui.defeated,true);
+  assert.equal(ui.defeatState!.prayerCount,3);
+  assert.equal(ui.locked,true);
+});

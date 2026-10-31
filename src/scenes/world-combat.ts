@@ -207,6 +207,8 @@ export class WorldCombat {
   private performanceHidden=false;
   private closed=false;
   private defeated=false;
+  /** 全队已经确认阵亡，但结算界面还没弹出；暂停或重建战斗后用它补触发。 */
+  private wipeoutPending=false;
   private wipeoutPosition?:Point;
   private generation=0;
   private playerAssets?:AssetLease;
@@ -465,7 +467,7 @@ captureStoryActors():SceneActorState[] {
     this.combatEffects.clear();this.buffLoops.clear();
     for(const id of this.activeParty)this.presenterFor(id)?.reset();
     for(const tween of this.deathTweens.values())tween.stop();this.deathTweens.clear();this.fallen.clear();
-    this.defeated=false;
+    this.defeated=false;this.wipeoutPending=false;
     this.clearEnemies(true);this.roster.restoreState(state.roster);this.conditions.restoreState(state.conditions);
     this.syncControlled();
     this.focusTargetId=state.focusTargetId;this.damageCount=state.damageCount??0;
@@ -2409,7 +2411,7 @@ captureStoryActors():SceneActorState[] {
     for(const id of [...this.fallen])if(this.memberOf(id)?.player.health)this.reviveMember(id);
     const party=this.app.session.party;
     if(this.defeated&&(party?.livingIds.length??this.hero.player.health)>0){
-      this.defeated=false;this.wipeoutPosition=undefined;this.focusTargetId=undefined;
+      this.defeated=false;this.wipeoutPending=false;this.wipeoutPosition=undefined;this.focusTargetId=undefined;
       if(party&&!party.alive(party.controlledId))party.switchControl(party.livingIds[0]);
       this.syncControlled();
     }
@@ -2600,8 +2602,10 @@ captureStoryActors():SceneActorState[] {
       this.deathTweens.delete(id);
       if(this.closed||this.memberOf(id)?.player.health)return;
       visual.container.setVisible(false);
-      if(this.app.session.party?.onDefeat(id)??!this.hero.player.health){if(!this.deathTweens.size)this.playerDefeated();}
-      else this.syncControlled();
+      // 全灭以队伍存活数为准，不等最后一条死亡演出：演出可能被暂停或重建清掉。
+      if(this.app.session.party?.onDefeat(id)??!this.hero.player.health){
+        this.wipeoutPending=true;this.playerDefeated();
+      }else this.syncControlled();
     };
     const facing=id==='player'?this.scene.facing:combatActor(this.allies,id,actor=>actor.id)!.facing;
     const deathClip=`die-${facing}` as const,clip=id==='player'?undefined:visual.actor.clips[deathClip];
@@ -2615,9 +2619,20 @@ captureStoryActors():SceneActorState[] {
     (this.partyDefeatWork??=new Map()).set(id,finish);
     this.runtime.schedule(`party-defeat:${id}`,10+(clip?Math.ceil(clip.frames*1000/clip.frameRate/LOGIC_FRAME_MS):0),finish);
   }
+  private isPartyWiped():boolean{
+    const party=this.app.session.party;
+    return party?party.livingIds.length===0:this.hero.player.health<=0;
+  }
   private playerDefeated():void{
     if(this.defeated||this.closed)return;
-    this.defeated=true;this.outcomes.setPaused(true);this.runtime.setPaused('control',true);
+    this.defeated=true;this.wipeoutPending=false;
+    // 全灭已确认：不再等剩余死亡演出，一次收尾，避免暂停后留下半截角色。
+    for(const [id,tween] of this.deathTweens){
+      tween.stop();this.visualOf(id)?.container.setVisible(false);
+      this.partyDefeatWork?.delete(id);this.runtime.cancel(`party-defeat:${id}`);
+    }
+    this.deathTweens.clear();
+    this.outcomes.setPaused(true);this.runtime.setPaused('control',true);
     for(const controller of this.partyControllers.values())controller.cancel(true);
     this.stopEnemies();this.movement.stop(this.controlledVisual);
     this.scene.handleCombatDefeat();
@@ -2649,7 +2664,7 @@ captureStoryActors():SceneActorState[] {
     const result=party.revive(id,item);
     for(const member of dead)if(party.alive(member))this.reviveMember(member,origin);
     this.wipeoutPosition=undefined;
-    this.defeated=false;this.focusTargetId=undefined;
+    this.defeated=false;this.wipeoutPending=false;this.focusTargetId=undefined;
     if(!party.alive(party.controlledId))party.switchControl(party.livingIds[0]);
     this.syncControlled();this.app.audio?.ui('heal');return result;
   }
@@ -2658,7 +2673,7 @@ captureStoryActors():SceneActorState[] {
     const party=this.app.session.party;if(!party)return;
     const origin=this.wipeoutPosition??this.movement.position(this.controlledVisual);
     this.reviveMember(id,origin);
-    this.wipeoutPosition=undefined;this.defeated=false;this.focusTargetId=undefined;
+    this.wipeoutPosition=undefined;this.defeated=false;this.wipeoutPending=false;this.focusTargetId=undefined;
     if(!party.alive(party.controlledId))party.switchControl(party.livingIds[0]);
     this.syncControlled();this.app.audio?.ui('heal');
   }
@@ -2731,6 +2746,8 @@ captureStoryActors():SceneActorState[] {
     this.setPaused(!enabled||this.defeated);
     if(!enabled||this.defeated){
       this.syncBuffLoops();
+      // 队伍已全灭但死亡演出被暂停或重建清掉时，结算不能一直等下去。
+      if(!this.defeated&&(this.wipeoutPending||this.isPartyWiped()))this.playerDefeated();
       if(!this.defeated)for(const id of this.activeParty)this.syncCombatResourceLimits(id);
       return;
     }
