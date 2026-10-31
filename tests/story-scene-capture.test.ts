@@ -113,6 +113,8 @@ test('scene snapshot rejects ambiguous identities and invalid reconstruction dat
     (snapshot:SceneSnapshot)=>{snapshot.actors[0]!.alpha=2;},
     (snapshot:SceneSnapshot)=>{snapshot.actors[0]!.animationProgress=2;},
     (snapshot:SceneSnapshot)=>{snapshot.actors[0]!.worldEntityId='';},
+    (snapshot:SceneSnapshot)=>{snapshot.actors[0]!.followsPlayer='yes' as unknown as boolean;},
+    (snapshot:SceneSnapshot)=>{snapshot.actors[0]!.followVisibility=1 as unknown as boolean;},
     (snapshot:SceneSnapshot)=>{snapshot.actors[0]!.appearance!.clips['idle-south']!.layers[0]!.key='';},
   ]){
     const invalid=structuredClone(valid);change(invalid);assert.throws(()=>validateSceneSnapshot(invalid),/快照/);
