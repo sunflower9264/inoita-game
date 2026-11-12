@@ -39,10 +39,6 @@ const GAME_VERSION='v1.0.4';
 const FAN_WORK_NOTICE='同人作品 · 仅供个人学习研究 · 请支持官方正版';
 const CLOSE_IMAGE='/assets/ui/menus/close.png';
 const CLOSE_PRESSED='/assets/ui/menus/close-pressed.png';
-/** 更新日志弹窗复用背包面板的 24 像素图框。 */
-const CHANGELOG_BORDER:Record<string,string>=Object.fromEntries(
-  ['edge-horizontal','edge-vertical','corner-nw','corner-ne','corner-sw','corner-se']
-    .map(name=>[name,`/assets/ui/menus/${name}.png`]));
 /** DOM 文字不跟随 Phaser 容器的 alpha；禁用按钮的标签用同透明度的颜色变暗。 */
 function fadeColor(color:string,alpha:number):string {
   const match=/^#([0-9a-f]{6})$/i.exec(color);
@@ -249,12 +245,11 @@ export class MenuScene extends Phaser.Scene {
     this.app.releaseChangelog?.();
     this.render();
   }
-  /** 更新日志弹窗：复用标题页存档/设置框，内层铺不透明底，右上角圆形关闭。 */
+  /** 更新日志弹窗：复用标题页设置页的 slot 图框，金线就是面板外沿，右上角圆形关闭。 */
   private drawChangelog(v:UiSurface):void{
     const {panel,scroll:area,close,textSize}=CHANGELOG_LAYOUT;
-    // 和背包面板同一套图框：不透明底板 + 四角/四边，文字区域整体在框内。
-    v.rect(panel.x,panel.y,panel.width,panel.height,0x15100b,1);
-    v.border(CHANGELOG_BORDER,panel.x,panel.y,panel.width,panel.height);
+    // 标题页的面板都是 `slot` 图框：内部半透明，金线贴外沿，不会在边框和背景之间露出一圈黑色。
+    v.image(art('slot'),panel.x,panel.y,panel.width,panel.height);
     const scroll=v.scroll(area.x,area.y,area.width,area.height);
     this.changelogScroll=scroll;
     scroll.onScroll=()=>{this.changelogScrollTop=scroll.scrollTop;this.rebuildChangelogSpecs();this.menuText?.renderPage('changelog');};
@@ -268,8 +263,8 @@ export class MenuScene extends Phaser.Scene {
   }
   /** 弹层顶部居中的版本号与说明；不随日志条目滚动。 */
   private changelogTitleSpec():MenuTextSpec {
-    const {panel}=CHANGELOG_LAYOUT;
-    return {key:'changelog-title',text:`${GAME_VERSION} 更新说明`,x:panel.x+panel.width/2,y:panel.y+42,
+    const {panel,titleY}=CHANGELOG_LAYOUT;
+    return {key:'changelog-title',text:`${GAME_VERSION} 更新说明`,x:panel.x+panel.width/2,y:titleY,
       style:{size:28,color:GOLD,anchorX:.5,anchorY:.5,align:'center'},space:'modal'};
   }
   private changelogEntryText(index:number):string {
