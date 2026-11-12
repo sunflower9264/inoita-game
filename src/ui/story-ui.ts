@@ -31,7 +31,7 @@ import { inventoryView,INVENTORY_LABELS,INVENTORY_SIDE_FILTERS,type InventoryVie
 import { EQUIPMENT_SLOTS,SKILL_POINT_ITEM,USE_LABELS,unimplementedItemUse,type EquipmentSlot,type ItemInstance,type ItemResult } from '../domain/items.ts';
 import { GmPanel } from './phaser/gm-panel.ts';
 import type { GmActions } from '../debug/gm-actions.ts';
-import { canvasCssScale, readSafeArea, uiUnitScale } from './viewport.ts';
+import { canvasCssScale, frameRect, readSafeArea, uiUnitScale } from './viewport.ts';
 import { ControlLayoutEditor } from './phaser/control-layout-editor.ts';
 import { KeyBindingEditor } from './phaser/key-binding-editor.ts';
 import { CONTROL_SIZES, HUD_SIDE_BUTTON_SIZE, PENDING_OFFSET, resolveControlLayout, type ControlId } from './control-layout.ts';
@@ -611,14 +611,17 @@ export class StoryUI {
     // 登记快捷键那一屏按原版的屏幕坐标摆：缩放取操作区的缩放，屏幕左上角为原点；
     // 圆形关闭钮再让开设备安全区，其余内容里的 HUD 锚点已经算过安全区。
     if(this.scene&&this.shortcutScreen&&this.backTab){
-      const {scale}=controlPlacement(this.scene,this.scene.scale.width,this.scene.scale.height),bounds=this.scene.game.canvas.getBoundingClientRect(),safe=readSafeArea(),unit=this.scene.scale.width/Math.max(1,bounds.width);
-      this.shortcutScreen.root.setPosition(0,0).setScale(scale);this.backTab.root.setPosition(safe.left*unit,safe.top*unit).setScale(scale);
+      const {scale}=controlPlacement(this.scene,this.scene.scale.width,this.scene.scale.height),frame=frameRect(),safe=readSafeArea(),unit=this.scene.scale.width/Math.max(1,frame.width);
+      // 登记屏的内容按整屏坐标摆，根节点也要铺满整屏：小于内容的根节点会把右侧按钮裁掉。
+      this.shortcutScreen.root.setPosition(0,0).setScale(scale)
+        .setSize(this.scene.scale.width/scale,this.scene.scale.height/scale);
+      this.backTab.root.setPosition(safe.left*unit,safe.top*unit).setScale(scale);
     }
     this.body?.scrolls.forEach(scroll=>scroll.layout());this.description?.scrolls.forEach(scroll=>scroll.layout());this.modal?.scrolls.forEach(scroll=>scroll.layout());
     if(this.hudButtons&&this.scene){
       const v=this.hudButtons,viewport=controlViewport(this.scene),scale=uiUnitScale(viewport.width,viewport.height);
-      // 12 是界面里的固定留白；贴安全区时也要跟着画布倍率换成游戏单位。
-      const unit=this.scene.scale.width/Math.max(1,this.scene.game.canvas.getBoundingClientRect().width);
+      // 12 是界面里的固定留白；贴安全区时也要跟着画框倍率换成游戏单位。
+      const unit=this.scene.scale.width/Math.max(1,frameRect().width);
       v.root.setScale(scale).setPosition(viewport.insets.left+12*unit,viewport.insets.top);
       let index=0;
       for(const button of v.root.list){

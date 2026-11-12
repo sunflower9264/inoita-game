@@ -1,6 +1,6 @@
 import type Phaser from 'phaser';
 import { UI_EVENTS } from '../../application/ui-events.ts';
-import { readSafeArea } from '../viewport.ts';
+import { frameRect, readSafeArea } from '../viewport.ts';
 import { COMMON_BUTTON } from '../common-button.ts';
 import { domAssets } from './assets.ts';
 import { UiNode,UiImage,UiText,uiMount,uiPointer,type UiPointer } from './node.ts';
@@ -21,7 +21,7 @@ export class UiSurface {
     scene.game.events.on(UI_EVENTS.cancelInput,this.cancelInput);
   }
   layout(padding=12):void{
-    const bounds=this.scene.game.canvas.getBoundingClientRect(),safe=readSafeArea(),unit=this.scene.scale.width/Math.max(1,bounds.width);
+    const frame=frameRect(),safe=readSafeArea(),unit=this.scene.scale.width/Math.max(1,frame.width);
     const left=(safe.left+padding)*unit,right=(safe.right+padding)*unit,top=(safe.top+padding)*unit,bottom=(safe.bottom+padding)*unit;
     const factor=Math.max(.01,Math.min((this.scene.scale.width-left-right)/this.width,(this.scene.scale.height-top-bottom)/this.height));
     this.root.setScale(factor).setPosition(left+(this.scene.scale.width-left-right-this.width*factor)/2,top+(this.scene.scale.height-top-bottom-this.height*factor)/2);

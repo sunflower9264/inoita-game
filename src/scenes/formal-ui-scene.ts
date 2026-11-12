@@ -15,7 +15,7 @@ import { layoutChoicePanel } from '../ui/choice-layout.ts';
 import { SceneUiAssets } from '../ui/phaser/ui-asset-host.ts';
 import { QuestPopup } from '../ui/phaser/quest-popup.ts';
 import { screenCoverage } from '../ui/phaser/modal-placement.ts';
-import { canvasCssScale, readSafeArea } from '../ui/viewport.ts';
+import { canvasCssScale, frameRect, readSafeArea } from '../ui/viewport.ts';
 import type { AssetLease } from '../application/assets.ts';
 import type { DomLabel } from '../ui/dom/dom-ui.ts';
 
@@ -174,8 +174,8 @@ export class FormalUiScene extends Phaser.Scene implements GameUiView {
    * 改用安全区左右缘，避免刘海压住内容，背景本身仍满幅。
    */
   private dialogueSafeEdges():{left:number;right:number}{
-    const bounds=this.game.canvas.getBoundingClientRect(),safe=readSafeArea(),scale=this.surface.root.scaleX||1;
-    const perCss=this.scale.width/Math.max(1,bounds.width)/scale,physicalLeft=-this.surface.root.x/scale;
+    const frame=frameRect(),safe=readSafeArea(),scale=this.surface.root.scaleX||1;
+    const perCss=this.scale.width/Math.max(1,frame.width)/scale,physicalLeft=-this.surface.root.x/scale;
     return{left:physicalLeft+safe.left*perCss,right:physicalLeft+this.scale.width/scale-safe.right*perCss};
   }
   private textBox(ui:GameUI):{x:number;y:number;width:number;lines:number;size:number}{

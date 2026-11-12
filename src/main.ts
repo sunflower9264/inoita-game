@@ -777,7 +777,7 @@ function boot(): void {
       applyTextureBatching();
       game.events.once(Phaser.Core.Events.DESTROY, displaySettings.subscribeTextureBatching(applyTextureBatching));
     } },
-    scale: { mode: Phaser.Scale.NONE, autoCenter: Phaser.Scale.CENTER_BOTH, width: GAME_WIDTH, height: GAME_HEIGHT },
+    scale: { mode: Phaser.Scale.NONE, autoCenter: Phaser.Scale.NO_CENTER, width: GAME_WIDTH, height: GAME_HEIGHT },
     render: { powerPreference: 'high-performance', batchSize: 16384, autoMobileTextures: false },
     input: { activePointers: 3, keyboard: true }, loader: { maxParallelDownloads: 6, timeout: 15000, maxRetries: 1 },
     scene: [], banner: false, audio: { disableWebAudio: false }

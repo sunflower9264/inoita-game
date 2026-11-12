@@ -10,7 +10,7 @@ import { SceneUiAssets } from '../ui/phaser/ui-asset-host.ts';
 import { SAVE_BOARD, SAVE_BOARD_LAYOUT, drawSaveBoardRow, newestFirstSlots, saveBoardOrigin, saveRowTitle, setSaveBoardTextSink, type SaveBoardControl, type SaveBoardTextSpec } from '../ui/phaser/save-board.ts';
 import { MenuTextLayer, type MenuTextClip, type MenuTextOcclude, type MenuTextPoint, type MenuTextSpec, type MenuTextWriter } from '../ui/dom/menu-text.ts';
 import type { DomLabel, DomUi } from '../ui/dom/dom-ui.ts';
-import { canvasCssScale } from '../ui/viewport.ts';
+import { canvasCssScale, frameRect } from '../ui/viewport.ts';
 import { drawNativeMessage, NATIVE_MESSAGE_EDGE, type NativeMessageBand } from '../ui/phaser/native-message.ts';
 import { centerModal } from '../ui/phaser/modal-placement.ts';
 import { CHANGELOG_LAYOUT, changelogMetrics, changelogVisibleRange } from '../ui/changelog-layout.ts';
@@ -989,21 +989,20 @@ export class MenuScene extends Phaser.Scene {
       && !this.passwordPrompt?.active;
   }
 
-  /** 把面板里的两行矩形换算成画布坐标；输入框挂在 `#game-frame` 内，画布移动时自动跟随。 */
+  /** 把面板里的两行矩形换算成画框 CSS 坐标；输入框挂在 `#game-frame` 内，画框移动时自动跟随。 */
   private credentialRects():{account:CredentialInputRect;password:CredentialInputRect}|undefined {
     if(!this.surface)return;
-    const bounds=this.game.canvas.getBoundingClientRect();
-    if(!bounds.width||!bounds.height)return;
-    const matrix=this.surface.root.getWorldTransformMatrix();
-    const scaleX=bounds.width/this.scale.width, scaleY=bounds.height/this.scale.height;
+    const frame=frameRect();
+    if(!frame.width||!frame.height)return;
+    const matrix=this.surface.root.getWorldTransformMatrix(),css=canvasCssScale(this);
     const map=(local:{x:number;y:number;width:number;height:number;fontSize:number}):CredentialInputRect=>{
       const point=matrix.transformPoint(local.x,local.y);
       return {
-        left:point.x*scaleX,
-        top:point.y*scaleY,
-        width:local.width*matrix.scaleX*scaleX,
-        height:local.height*matrix.scaleY*scaleY,
-        fontSize:local.fontSize*matrix.scaleY*scaleY,
+        left:point.x*css,
+        top:point.y*css,
+        width:local.width*matrix.scaleX*css,
+        height:local.height*matrix.scaleY*css,
+        fontSize:local.fontSize*matrix.scaleY*css,
       };
     };
     return {account:map(CLOUD_PAGE.accountInput),password:map(CLOUD_PAGE.passwordInput)};

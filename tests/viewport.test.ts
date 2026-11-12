@@ -85,7 +85,7 @@ test('Android landscape uses the visible top edge for both browser and packaged 
  const style={setProperty(){}};
  try{
   globals.window={visualViewport:{width:802,height:360,offsetLeft:0,offsetTop:0}};
-  globals.document={getElementById:(id:string)=>id==='game-frame'?{style}:{}};
+  globals.document={getElementById:(id:string)=>id==='game-frame'?{style,getBoundingClientRect:()=>({width:802,height:360,left:0,top:0})}:{}};
   globals.getComputedStyle=()=>({paddingLeft:'24px',paddingRight:'8px',paddingTop:'32px',paddingBottom:'12px'});
   Object.defineProperty(globalThis,'navigator',{configurable:true,value:{userAgent:'Mozilla/5.0 (Linux; Android 11)'}});
   globals.innerWidth=802;globals.innerHeight=360;
@@ -108,12 +108,20 @@ test('Android landscape uses the visible top edge for both browser and packaged 
  }
 });
 
-test('canvas pixel width converts back to frame CSS pixels',()=>{
- const scene=(zoom:number)=>({scale:{zoom}}) as unknown as import('phaser').Scene;
- assert.equal(canvasCssScale(scene(1)),1);
- assert.equal(canvasCssScale(scene(.999)),1);
- assert.equal(canvasCssScale(scene(.5)),.5);
- assert.ok(Math.abs(canvasCssScale(scene(1/3))-1/3)<1e-9);
+test('game pixels convert to frame CSS pixels with the same width the mount uses',()=>{
+ const globals=globalThis as unknown as Record<string,unknown>;
+ const original=['document'].map(name=>[name,Object.getOwnPropertyDescriptor(globalThis,name)] as const);
+ const frame={width:800,height:500};
+ try{
+  globals.document={getElementById:(id:string)=>id==='game-frame'?{getBoundingClientRect:()=>frame}:{}};
+  const scene=(width:number)=>({scale:{width}}) as unknown as import('phaser').Scene;
+  assert.equal(canvasCssScale(scene(800)),1);
+  assert.ok(Math.abs(canvasCssScale(scene(1600))-.5)<1e-9);
+  frame.width=767;
+  assert.ok(Math.abs(canvasCssScale(scene(2109))-767/2109)<1e-9,'画框与画布不一致时按画框宽度换算');
+ }finally{
+  for(const[name,descriptor]of original){if(descriptor)Object.defineProperty(globalThis,name,descriptor);else delete globals[name];}
+ }
 });
 
 test('canvas follows the chosen render scale without exceeding the device pixel ratio',()=>{

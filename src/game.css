@@ -1,6 +1,6 @@
 :root{color-scheme:dark;--gold:#e2c88d;--ink:#101d24}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none;background:#080d12;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;color:#f5f0df;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-text-size-adjust:100%;text-size-adjust:100%}img{-webkit-user-drag:none}button{font:inherit;color:inherit;cursor:pointer;touch-action:none}button:focus-visible{outline:2px solid var(--gold);outline-offset:4px}[hidden]{display:none!important}
-#safe-area{position:fixed;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}#game-frame{position:fixed;overflow:hidden;background:var(--ink)}#game{position:absolute;inset:0}#game canvas{display:block}
+#safe-area{position:fixed;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}#game-frame{position:fixed;overflow:hidden;background:var(--ink)}#game{position:absolute;inset:0}#game canvas{display:block;margin:0}
 
 /* 屏幕图片与控件按场景分层；独立文字位于同层图片之上。 */
 #ui-root{position:absolute;inset:0;z-index:4;pointer-events:none;contain:layout style paint;isolation:isolate;overflow:hidden;font-family:var(--font-game);-webkit-text-size-adjust:100%;text-size-adjust:100%}

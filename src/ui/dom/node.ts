@@ -3,6 +3,7 @@ import { domAssets, type DomImageSource } from './assets.ts';
 import type { AssetLease } from '../../application/assets.ts';
 import { FONT } from '../text-style.ts';
 import { wrapText } from '../text-layout.ts';
+import { frameRect } from '../viewport.ts';
 
 export interface UiPointer { id:number; x:number; y:number; isDown:boolean; event:PointerEvent }
 type Listener = (...args:any[])=>void;
@@ -13,7 +14,13 @@ const mounts=new WeakMap<Phaser.Scene,Map<string,HTMLElement>>();
 const pointers=new WeakMap<Phaser.Scene,Map<number,UiPointer>>();
 const interactiveNodes=new WeakMap<Phaser.Scene,Set<UiNode>>();
 
-/** 屏幕节点的逻辑坐标与场景一致，浏览器按实际 CSS 尺寸缩放原图。 */
+/**
+ * 屏幕节点的逻辑坐标与场景一致，浏览器按实际 CSS 尺寸缩放原图。
+ *
+ * 缩放基准统一取 `#game-frame`（可视画框），不取画布矩形：直接写 CSS 的 DOM 文字
+ * 也是按画框换算的，两层必须落在同一个原点和倍率上。画布被浏览器居中、留边或
+ * 像素取整时，按画布矩形缩放会让图片和遮罩整体偏离文字，右侧露出空隙。
+ */
 export function uiMount(scene:Phaser.Scene,layer='screen'):HTMLElement {
   let layers=mounts.get(scene);if(!layers){layers=new Map();mounts.set(scene,layers);}
   const old=layers.get(layer);if(old)return old;
@@ -22,8 +29,9 @@ export function uiMount(scene:Phaser.Scene,layer='screen'):HTMLElement {
   Object.assign(element.style,{position:'absolute',pointerEvents:'none',transformOrigin:'0 0'});
   parent.appendChild(element);layers.set(layer,element);
   const layout=()=>{
-    const bounds=scene.game.canvas.getBoundingClientRect(),frame=document.getElementById('game-frame')!.getBoundingClientRect();
-    Object.assign(element.style,{left:`${bounds.left-frame.left}px`,top:`${bounds.top-frame.top}px`,width:`${scene.scale.width}px`,height:`${scene.scale.height}px`,transform:`scale(${bounds.width/scene.scale.width},${bounds.height/scene.scale.height})`});
+    const frame=frameRect();
+    Object.assign(element.style,{left:'0px',top:'0px',width:`${scene.scale.width}px`,height:`${scene.scale.height}px`,
+      transform:`scale(${frame.width/scene.scale.width},${frame.height/scene.scale.height})`});
   };
   layout();scene.scale.on('resize',layout);
   const hide=()=>{element.hidden=true;for(const pointer of pointers.get(scene)?.values()??[])pointer.isDown=false;for(const node of interactiveNodes.get(scene)??[])node.cancelPress();},show=()=>{element.hidden=false;};
@@ -36,16 +44,16 @@ export function uiMount(scene:Phaser.Scene,layer='screen'):HTMLElement {
   return element;
 }
 
-// 触屏摇杆每秒会送来几十次 pointer 事件；每次都量画布位置会强制浏览器同步布局。
-// 画布位置只在窗口尺寸变化时更新，其余时候直接用缓存。
-const canvasBoundsCache=new WeakMap<Phaser.Scene,{left:number;top:number;width:number;height:number}>();
-function canvasBounds(scene:Phaser.Scene):{left:number;top:number;width:number;height:number}{
-  let cached=canvasBoundsCache.get(scene);
+// 触屏摇杆每秒会送来几十次 pointer 事件；每次量画框位置都会强制浏览器同步布局。
+// 画框位置只在窗口尺寸变化时更新，其余时候直接用缓存。
+const frameBoundsCache=new WeakMap<Phaser.Scene,{left:number;top:number;width:number;height:number}>();
+function frameBounds(scene:Phaser.Scene):{left:number;top:number;width:number;height:number}{
+  let cached=frameBoundsCache.get(scene);
   if(cached)return cached;
-  const rect=scene.game.canvas.getBoundingClientRect();
+  const rect=frameRect();
   cached={left:rect.left,top:rect.top,width:rect.width,height:rect.height};
-  canvasBoundsCache.set(scene,cached);
-  const invalidate=():void=>{canvasBoundsCache.delete(scene);};
+  frameBoundsCache.set(scene,cached);
+  const invalidate=():void=>{frameBoundsCache.delete(scene);};
   scene.scale.once('resize',invalidate);
   window.addEventListener('resize',invalidate,{once:true,passive:true});
   window.addEventListener('scroll',invalidate,{once:true,passive:true});
@@ -53,7 +61,7 @@ function canvasBounds(scene:Phaser.Scene):{left:number;top:number;width:number;h
 }
 
 export function uiPointer(scene:Phaser.Scene,event:PointerEvent):UiPointer {
-  const bounds=canvasBounds(scene);
+  const bounds=frameBounds(scene);
   let table=pointers.get(scene);if(!table){table=new Map();pointers.set(scene,table);}
   let pointer=table.get(event.pointerId);if(!pointer){pointer={id:event.pointerId,x:0,y:0,isDown:false,event};table.set(event.pointerId,pointer);}
   Object.assign(pointer,{x:(event.clientX-bounds.left)*scene.scale.width/bounds.width,y:(event.clientY-bounds.top)*scene.scale.height/bounds.height,isDown:event.type!=='pointercancel'&&event.type!=='pointerup'&&event.buttons!==0,event});

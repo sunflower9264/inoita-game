@@ -178,7 +178,8 @@ test('canvas helper converts CSS safe-area pixels using each canvas axis', () =>
   const globals = globalThis as unknown as Record<string, unknown>;
   const original = ['document', 'getComputedStyle'].map(name => [name, Object.getOwnPropertyDescriptor(globalThis, name)] as const);
   try {
-    globals.document = {getElementById: () => ({})};
+    globals.document = {getElementById: (id: string) => id === 'game-frame'
+      ? {getBoundingClientRect: () => ({width: 960, height: 640})} : {}};
     globals.getComputedStyle = () => ({paddingLeft: '20px', paddingRight: '30px', paddingTop: '10px', paddingBottom: '15px'});
     const scene = {scale: {width: 1920, height: 1280}, game: {canvas: {getBoundingClientRect: () => ({width: 960, height: 640})}}} as unknown as import('phaser').Scene;
     assert.deepEqual(controlViewport(scene), {width: 1920, height: 1280, insets: {left: 40, right: 60, top: 20, bottom: 30}});

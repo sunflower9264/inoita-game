@@ -21,10 +21,26 @@ export function uiUnitScale(width: number, height: number): number {
   return Math.min(width / UI_UNIT_WIDTH, height / UI_UNIT_HEIGHT);
 }
 
-/** 画布像素换算到画框 CSS 像素；1× 渲染时正好是 1。 */
+/** 画框（可视区）的 CSS 矩形。DOM 图形、HUD 和文字统一按它换算，不按画布矩形。 */
+export function frameRect(): { left: number; top: number; width: number; height: number } {
+  const rect = element('game-frame').getBoundingClientRect();
+  return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+}
+
+/**
+ * 画布像素换算到画框 CSS 像素；1× 渲染时正好是 1。
+ * 和 `uiMount` 用同一份画框宽度，文字和图框才会落在同一倍率上。
+ */
+let frameScaleCache: { width: number; revision: number; value: number } | undefined;
 export function canvasCssScale(scene: import('phaser').Scene): number {
-  const zoom = scene.scale.zoom;
-  return zoom > 0 && Math.abs(zoom - 1) >= 0.002 ? zoom : 1;
+  if (typeof document === 'undefined') return 1;
+  const width = Math.max(1, scene.scale.width);
+  const cached = frameScaleCache;
+  if (cached?.width === width && cached.revision === safeAreaRevision) return cached.value;
+  const ratio = frameRect().width / width;
+  const value = ratio > 0 ? ratio : 1;
+  frameScaleCache = { width, revision: safeAreaRevision, value };
+  return value;
 }
 
 let safeAreaRevision = 0;

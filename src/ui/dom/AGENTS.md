@@ -6,7 +6,7 @@
 - 图片或图集加载失败时写 `asset-load-error` 诊断（`source` 为 `dom-image` 或 `dom-atlas`），真机裁剪素材后据此确认没有漏图。
 - 组件按稳定标识复用节点，只更新变化的内容、位置和可见性。
 - 任务标记和拾取提示在同一游戏帧共用画框、画布的尺寸与位置测量；镜头坐标和倍率始终实时读取，视口重排立即使测量失效。
-- **画布放大后，DOM 坐标分两套写。** `UiSurface`/`UiNode` 用游戏单位，由 `uiMount` 统一缩到画框，不要再乘采样比例；直接写 CSS 的 `DomUi` 文字（world/hud/screen/overlay 四层都算）用 `canvasCssScale` 把游戏坐标换成 CSS，HUD 组件用 `controlViewportCss` 的 CSS 宽高与安全区。1× 时两套比例都是 1。
+- **画布放大后，DOM 坐标分两套写，基准都是画框。** `UiSurface`/`UiNode` 用游戏单位，由 `uiMount` 统一缩到画框，不要再乘采样比例；直接写 CSS 的 `DomUi` 文字（world/hud/screen/overlay 四层都算）用 `canvasCssScale` 把游戏坐标换成 CSS，HUD 组件用 `controlViewportCss` 的 CSS 宽高与安全区。图框、遮罩和文字都按 `#game-frame` 的矩形取位置与倍率，不按画布矩形，否则画布被居中或取整时两层会错开，右侧露出空隙。1× 时两套比例都是 1。
 - 图片与文字在同一组件内排层；确认框和全屏遮挡同时管理显示和输入。
 - 指针捕获在松手、取消、失去捕获、隐藏和销毁时清理；每次物理输入只执行一次动作。
 - 键盘动作通过统一 InputRouter 路由，游戏规则由已有动作接口执行。
