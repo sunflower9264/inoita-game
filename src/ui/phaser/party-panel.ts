@@ -61,6 +61,8 @@ export class PartyPanel {
   private surface?:UiSurface;
   private selectionMarks=new Map<string,UiNode>();
   private detailNodes:UiNode[]=[];
+  private tabs=new Map<DetailTab,UiNode>();
+  private bands:{plain:UiNode[];equipment:UiNode[]}={plain:[],equipment:[]};
   private rosterTextCount=0;
 
   constructor(session:Session,world:WorldIndex,app:StoryUIContext,changed:()=>void,
@@ -151,7 +153,7 @@ export class PartyPanel {
     return{lineHeight,height:Math.max(0,lines.length*lineHeight-5)};
   }
   render(v:UiSurface,modal:UiSurface,placeModal?:PlaceModal):void{
-    this.placeModal=placeModal;this.pageText=[];this.surface=v;this.selectionMarks.clear();
+    this.placeModal=placeModal;this.pageText=[];this.surface=v;this.selectionMarks.clear();this.tabs.clear();
     const party=this.session.party;if(!party)return;
     const snapshot=party.snapshot(),assets=this.app.menuPanels.assets;
     // The protagonist and story members do not consume mercenary roster slots.
@@ -185,14 +187,33 @@ export class PartyPanel {
     // 面板里露出的是黑色 65% 遮罩下的世界画面。
     v.border(assets,482,0,409,431);
     // 面板里那条压暗的圆角带：`UIMercenary_Draw @0x151ae4` 画在 `(x+34, y+136, 341, 101)`、强度 50。
-    drawRoundBand(v,assets,516,136,341,101,50,this.tab==='equipment'?{x:623,y:124,width:127,height:114}:undefined);
+    let bandStart=v.root.list.length;
+    drawRoundBand(v,assets,516,136,341,101,50);
+    this.bands.plain=v.root.list.slice(bandStart);
+    bandStart=v.root.list.length;
+    drawRoundBand(v,assets,516,136,341,101,50,{x:623,y:124,width:127,height:114});
+    this.bands.equipment=v.root.list.slice(bandStart);
+    this.bands.plain.forEach(node=>node.setVisible(this.tab!=='equipment'));
+    this.bands.equipment.forEach(node=>node.setVisible(this.tab==='equipment'));
     (['info','equipment','skills'] as const).forEach((tab,index)=>{
-      const button=v.button('',882,33+index*117,50,130,()=>{this.tab=tab;this.skillsOffset=0;this.skillsScroll=undefined;this.changed();},
+      const button=v.button('',882,33+index*117,50,130,()=>this.switchTab(tab),
         {image:assets[`party-tab-${tab}`],disabled:!member}).setData('label',{info:'人物能力',equipment:'装备',skills:'技能目录'}[tab]);
-      button.setAlpha(!member ? .4 : this.tab===tab ? 1 : .55);
+      button.setAlpha(!member ? .4 : this.tab===tab ? 1 : .55);this.tabs.set(tab,button);
     });
     this.rosterTextCount=this.pageText.length;this.renderSelected(v);
     if(this.modal)this.renderModal(modal);
+  }
+  private switchTab(tab:DetailTab):void{
+    if(this.tab===tab)return;
+    this.tab=tab;this.skillsOffset=0;
+    for(const [name,button] of this.tabs)button.setAlpha(name===tab?1:.55);
+    this.bands.plain.forEach(node=>node.setVisible(tab!=='equipment'));
+    this.bands.equipment.forEach(node=>node.setVisible(tab==='equipment'));
+    const surface=this.surface;if(!surface){this.changed();return;}
+    for(const node of this.detailNodes)node.destroy();this.detailNodes=[];
+    if(this.skillsScroll){this.removeScroll(this.skillsScroll);this.skillsScroll=undefined;}
+    this.preview?.detach();this.previewSlot=undefined;surface.pruneDestroyed();
+    this.pageText.length=this.rosterTextCount;this.renderSelected(surface);this.updateSelection();
   }
   private renderSelected(v:UiSurface):void{
     const before=new Set(v.root.list),id=this.selected,member=id?this.member(id):undefined,party=this.session.party!;

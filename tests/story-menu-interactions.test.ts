@@ -2637,6 +2637,19 @@ test('switching members in the party panel retains the roster and tabs',t=>{
   }
 });
 
+test('switching party detail tabs keeps the roster and tab controls',t=>{
+  const f=fixture();t.after(f.cleanup);const member=f.recruit('warlock');f.menu.show('party');
+  const roster=f.scene.button(member.definition.name),info=f.scene.button('人物能力');
+  const equipment=f.scene.button('装备'),skills=f.scene.button('技能目录');
+  for(const tab of [equipment,skills,info]){
+    f.scene.click(tab);
+    assert.equal(f.scene.button(member.definition.name),roster);
+    assert.equal(f.scene.button('人物能力'),info);
+    assert.equal(f.scene.button('装备'),equipment);
+    assert.equal(f.scene.button('技能目录'),skills);
+  }
+});
+
 test('opening and closing party confirmation keeps the roster and details',t=>{
   const f=fixture();t.after(f.cleanup);const member=f.recruit('warlock');
   f.session.party!.reserve(member.id);
