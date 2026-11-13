@@ -1614,7 +1614,12 @@ test('opening and closing shop details keeps shelf and bag controls',t=>{
   assert.deepEqual(body.scrolls,scrolls);
   assert.deepEqual(body.root.list,controls);
   assert.ok(f.scene.button('出售'));
-  f.scene.click(f.scene.button('关闭'));
+  f.scene.click(f.scene.button('出售'));
+  assert.equal(f.scene.button(`出售 ${items.items[entry.item].name}`),button,'打开确认时保留商品');
+  assert.deepEqual(body.scrolls,scrolls);
+  f.scene.click(f.scene.button('取消'));
+  assert.equal(f.scene.button(`出售 ${items.items[entry.item].name}`),button,'取消交易保留商品');
+  f.scene.click(button);f.scene.click(f.scene.button('关闭'));
   assert.equal(f.scene.button(`出售 ${items.items[entry.item].name}`),button);
   assert.deepEqual(body.scrolls,scrolls);
   assert.deepEqual(body.root.list,controls);

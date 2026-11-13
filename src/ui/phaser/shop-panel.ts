@@ -23,6 +23,7 @@ interface ShopTextTarget {
   setText(key:string,text:string):void;
   refresh():void;
   updateDescription?(draw:()=>void):void;
+  updateModal?(draw:()=>void):void;
 }
 
 type Selection = {kind:'buy'|'sell'; id:string; step:'description'|'quantity'|'confirm'|'notice'; quantity:number; error?:string};
@@ -76,9 +77,11 @@ export class ShopPanel {
   private text?:ShopTextTarget;
   private view?:UiSurface;
   private description?:UiSurface;
+  private modal?:UiSurface;
   private selectionButtons=new Map<string,UiNode>();
   private selectionMarker?:UiImage;
   private batchControls:UiNode[]=[];
+  private incrementalDescription=false;
 
   private bagOffset=0;
   private categoryOffset=0;
@@ -111,10 +114,15 @@ export class ShopPanel {
   captureScroll():void{this.bagOffset=this.pendingBagOffset??this.bagScroll?.scrollTop??this.bagOffset;this.pendingBagOffset=undefined;this.categoryOffset=this.categoryScroll?.scrollTop??this.categoryOffset;}
   cancel():void{
     if(this.cleaning){if(this.selection){this.selection=undefined;this.changed();}else this.leaveCleanup();return;}
-    const detailOpen=this.selection?.step==='description';
+    const selection=this.selection;
+    const incremental=this.incrementalDescription;
     this.selection=undefined;
     this.batch=false;this.batchSelection.clear();this.batchError=undefined;
-    if(detailOpen&&this.refreshDescription())return;
+    if(incremental&&selection){
+      this.refreshDescription();
+      if(selection.step!=='description')this.text?.updateModal?.(()=>{});
+      return;
+    }
     this.changed();
   }
   /**
@@ -147,7 +155,7 @@ export class ShopPanel {
     this.selection={kind,id,step:'description',quantity:1};
     const entry=kind==='sell'?this.session.bag.get(id):undefined;
     if(kind==='sell'&&(!entry||this.store.sellPrice(entry)===0))this.selection.step='notice';
-    if(this.selection.step==='description'&&!this.cleaning&&this.refreshDescription())return;
+    if(this.selection.step==='description'&&!this.cleaning&&this.refreshDescription()){this.incrementalDescription=true;return;}
     this.changed();
   }
   private refreshDescription():boolean{
@@ -171,7 +179,14 @@ export class ShopPanel {
   private beginTrade():void{
     const selection=this.selection!;
     selection.step=this.maximum(selection.kind)>1?'quantity':'confirm';
+    if(this.incrementalDescription&&this.refreshModal())return;
     this.changed();
+  }
+  private refreshModal():boolean{
+    const modal=this.modal,target=this.text;
+    if(!modal||!target?.updateModal)return false;
+    target.updateModal(()=>this.renderModal(modal));
+    return true;
   }
   /** 普通堆叠商品可一次买 1–99；限量随机商品与不可堆叠商品一次一件；出售上限是持有数量。 */
   private maximum(kind:'buy'|'sell'):number{
@@ -339,7 +354,8 @@ export class ShopPanel {
   }
   render(v:UiSurface,modal:UiSurface,placeModal?:PlaceModal,description?:UiSurface,text?:ShopTextTarget):void{
     this.placeModal=placeModal;this.pageText=[];this.modalText=[];this.detailText=[];this.text=text;
-    this.view=v;this.description=description;this.selectionButtons.clear();this.selectionMarker=undefined;this.batchControls=[];
+    this.view=v;this.description=description;this.modal=modal;this.incrementalDescription=false;
+    this.selectionButtons.clear();this.selectionMarker=undefined;this.batchControls=[];
     const {store,session,catalog}=this,classified=store.shop.categories.length>0;
     const layout=this.layout=shopLayout(classified),{leftFrame,bagFrame,title,shelf,bag,slot,category}=layout;
     // 两栏内容区保留透明背景，背包侧栏使用共用图框和底色。
@@ -504,6 +520,7 @@ export class ShopPanel {
     });
   }
   private renderModal(v:UiSurface):void{
+    this.modalText=[];
     const selection=this.selection!;
     const offer=selection.kind==='buy'?this.store.offers.find(offer=>offer.id===selection.id&&!offer.sold):undefined;
     const entry:ItemInstance|undefined=selection.kind==='buy'?offer?.instance:this.session.bag.get(selection.id);
@@ -545,7 +562,7 @@ export class ShopPanel {
     this.money(v,total,box.money.x,box.money.y,'shop-quantity-money',true);
     // 重画时（比如买完之后会话又通知了一次）把箭头按当前数量重新摆好，不能沿用上一件的灰态。
     this.syncQuantity();
-    v.button('',button.left,button.y,button.width,button.height,()=>{selection.step='confirm';this.changed();}).setData('label','确定');
+    v.button('',button.left,button.y,button.width,button.height,()=>{selection.step='confirm';if(!this.incrementalDescription||!this.refreshModal())this.changed();}).setData('label','确定');
     this.buttonText('shop-quantity-confirm','确定',button.left,button.y,button.width,button.height,true);
     v.button('',button.right,button.y,button.width,button.height,()=>this.cancel()).setData('label','取消');
     this.buttonText('shop-quantity-cancel','取消',button.right,button.y,button.width,button.height,true);
