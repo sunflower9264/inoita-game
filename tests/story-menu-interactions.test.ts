@@ -2482,7 +2482,10 @@ test('the GM item page scrolls addable items, shows details and gives a chosen q
   assert.ok(slots().some(node=>node.getData('label')===`道具 ${gm.items().at(-1)!.id}`),'最后一件道具可滚动到');
   grid.scrollTop=0;grid.onScroll?.();
 
-  f.scene.click(f.scene.button('过滤 装备'));
+  const filterButton=f.scene.button('过滤 装备'),unchangedGrid=grid,quantityBefore=f.scene.button('数量 +10');
+  f.scene.click(filterButton);
+  assert.equal(f.internals.body.scrolls.find(scroll=>scroll.x===60&&scroll.y===100),unchangedGrid);
+  assert.equal(f.scene.button('过滤 装备'),filterButton);assert.equal(f.scene.button('数量 +10'),quantityBefore);
   assert.ok(slots().every(node => {
     const id = String(node.getData('label')).replace(/^道具 /, '');
     return items.items[id]!.category === 'equipment';

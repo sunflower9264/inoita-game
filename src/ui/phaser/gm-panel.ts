@@ -303,11 +303,11 @@ export class GmPanel {
 
   /** 道具页：背包同款格子整页滚动；点格子打开与背包一致的详情层。 */
   private renderItems(body: UiSurface): string {
-    const entries = this.gm.items(this.itemFilter);
+    let entries = this.gm.items(this.itemFilter);
     const grid = body.scroll(ITEM_GRID_X, ITEM_GRID_Y, ITEM_COLUMNS * ITEM_STRIDE, ITEM_ROWS * ITEM_STRIDE);
     let selectedId=this.itemSelected;
     let refreshSelection=()=>{};
-    const slots = Array.from({length:Math.min(entries.length,ITEM_COLUMNS*(ITEM_ROWS+1))},()=>{
+    const slots = Array.from({length:Math.min(this.gm.items('all').length,ITEM_COLUMNS*(ITEM_ROWS+1))},()=>{
       let entry:GmItemEntry|undefined;
       const button = this.button(body, '', 0, 0, ITEM_SLOT, ITEM_SLOT,
         () => {
@@ -370,13 +370,21 @@ export class GmPanel {
       this.button(body, label, 280 + index * 100, 404, index === 2 ? 100 : 90, 40,
         () => this.onGainMoney(amount)).setData('label', `金币 ${label}`));
     this.text('滚轮或拖动列表查看更多', 610, 412, 340, 16);
-    ITEM_FILTERS.forEach((filter, index) =>
-      this.button(body, INVENTORY_LABELS[filter], 60 + index * 110, 56, 104, 32,
+    const filterButtons=new Map<GmItemFilter,UiNode>();
+    ITEM_FILTERS.forEach((filter, index) => {
+      const button=this.button(body, INVENTORY_LABELS[filter], 60 + index * 110, 56, 104, 32,
         () => {
-          this.itemFilter = filter; this.itemScroll = 0; this.itemSelected = undefined;
-          this.itemDetail = undefined; this.result = ''; this.hooks.render();
+          if(this.itemFilter===filter)return;
+          this.itemFilter=filter;this.itemScroll=0;this.itemSelected=undefined;this.itemDetail=undefined;this.result='';
+          if(!this.references.updateItemDetail||!this.references.setText){this.hooks.render();return;}
+          entries=this.gm.items(filter);grid.setHeight(Math.ceil(entries.length/ITEM_COLUMNS)*ITEM_STRIDE);grid.scrollTop=0;
+          for(const [key,control] of filterButtons)(control.getData('setSelected') as (value:boolean)=>void)(key===filter);
+          refreshSelection();if(this.resultTextKey)this.references.setText(this.resultTextKey,`共 ${entries.length} 件；不含地面拾取物品。`);
+          this.references.updateItemDetail(undefined,()=>{});
         },
-        { selected: this.itemFilter === filter }).setData('label', `过滤 ${INVENTORY_LABELS[filter]}`));
+        { selected: this.itemFilter === filter }).setData('label', `过滤 ${INVENTORY_LABELS[filter]}`);
+      filterButtons.set(filter,button);
+    });
     // 详情画在装配方提供的说明层上（与背包详情同一套面板）；关闭后重画本页。
     if (this.itemDetail && this.references.itemDetail)
       this.references.itemDetail(this.itemDetail, () => { this.itemDetail = undefined; if(this.references.updateItemDetail)this.references.updateItemDetail(undefined,()=>{});else this.hooks.render(); });
