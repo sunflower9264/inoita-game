@@ -42,7 +42,7 @@ import type { DomLabel } from './dom/dom-ui.ts';
 import { setSaveBoardTextSink, type SaveBoardTextSpec } from './phaser/save-board.ts';
 import { drawDescriptionClose, drawDescriptionPanel, drawDescriptionRows, drawDescriptionSeparator, drawDescriptionTitle } from './phaser/description-panel.ts';
 import { drawNativeMessage, NATIVE_MESSAGE_EDGE, type NativeMessageBand } from './phaser/native-message.ts';
-import { drawBagRail, drawBagRailSelection } from './phaser/bag-rail.ts';
+import { drawBagRail } from './phaser/bag-rail.ts';
 import type { SaveGame } from '../domain/save-game.ts';
 import { SavePage } from './save-page.ts';
 import type { SaveWorldReason, StoryWorldViewSnapshot } from '../scenes/world-scene.ts';
@@ -195,6 +195,7 @@ export class StoryUI {
   private backdropPieces:UiNode[]=[];
   private bagPreview?:UiNode;
   private bagSelection?:UiImage;
+  private bagFilterHighlight?:UiNode;
   private bagEquipment=new Map<EquipmentSlot,{button:UiNode;icon:UiImage;drop:{object:UiNode;entry?:string;slot:EquipmentSlot}}>();
   /** 背包网格的显示对象，按格子/物品身份复用；数据变化时只动变化的格子。 */
   private bagSlots:BagSlotView[]=[];
@@ -1742,9 +1743,9 @@ export class StoryUI {
     this.bagTextSpecs.push({key:'bag-organize',text:'整理',x:organize.x+organize.width/2,y:organize.y+organize.height/2,
       style:{size:Math.min(22,organize.height*.42),anchorX:.5,anchorY:.5,width:organize.width-12,align:'center',wrap:'word'}});
     const side=layout.sideButtons;
+    this.bagFilterHighlight=v.rect(side.x,side.y+side.offsets[INVENTORY_SIDE_FILTERS.indexOf(this.filter)],side.width,side.height,0xe2c88d,.10);
     INVENTORY_SIDE_FILTERS.forEach((filter,index)=>{
       const rowY=side.y+side.offsets[index];
-      if(this.filter===filter)drawBagRailSelection(v,side.x,rowY,side.width,side.height);
       const button=v.button('',side.x,rowY,side.width,side.height,()=>{this.cancelDrag();this.filter=filter;this.itemResult=undefined;this.selectedItem=undefined;this.itemNotice=undefined;this.scrollOffsets.delete('bag:inventory');this.render();},{bare:true});
       this.bagTextSpecs.push({key:`bag-filter-${filter}`,text:INVENTORY_LABELS[filter],
         x:side.x+side.width/2,y:rowY+side.height/2,
@@ -1842,8 +1843,14 @@ export class StoryUI {
   private updateBagPage():void{
     // 队员栏在网格之前画、层级也压在网格下面；队伍人数或顺序变了就整页重画一次，
     // 避免为了几个头像把后来的节点盖到装备和格子上。
-    if(this.bagPartyState()!==this.bagPartyKey||this.bagFilterView!==this.filter){this.renderNow();return;}
+    if(this.bagPartyState()!==this.bagPartyKey){this.renderNow();return;}
     const bag=this.session!.bag,grid=this.bagGrid!,layout=bagLayout(),cells=layout.grid;
+    const filterChanged=this.bagFilterView!==this.filter;
+    if(filterChanged){
+      const side=layout.sideButtons;
+      this.bagFilterHighlight?.setPosition(side.x,side.y+side.offsets[INVENTORY_SIDE_FILTERS.indexOf(this.filter)]);
+      grid.scrollTop=0;
+    }
     const {slots,slotCount}=inventoryView({all:bag.allCells,...bag.pouchCells},this.filter);
     const wasDetail=this.bagDetailOpen,describing=!!this.selectedItem&&!!bag.get(this.selectedItem);
     this.bagDetailOpen=describing;

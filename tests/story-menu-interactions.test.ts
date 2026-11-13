@@ -1632,6 +1632,24 @@ test('bag grid drags swap special items and organise from a category updates eve
   f.scene.click(f.scene.button('整理'));assert.equal(updates,1,'重复整理无更新');
 });
 
+test('changing bag categories keeps the grid, character controls and category buttons',t=>{
+  const f=fixture();t.after(f.cleanup);
+  const source=f.add('novice-weapon-scroll');
+  f.menu.show('bag');
+  const body=f.internals.body,grid=body.scrolls.find(scroll=>scroll.x===496+34)!;
+  const category=f.scene.button('材料'),organize=f.scene.button('整理'),weapon=f.scene.button('主手');
+  f.scene.click(category);
+  assert.equal(body.scrolls.find(scroll=>scroll.x===496+34),grid);
+  assert.equal(f.scene.button('材料'),category);
+  assert.equal(f.scene.button('整理'),organize);
+  assert.equal(f.scene.button('主手'),weapon);
+  assert.ok(f.scene.button(items.items[source.item].name));
+  assert.equal(grid.scrollTop,0);
+  f.scene.click(f.scene.button('全部'));
+  assert.equal(f.scene.button('整理'),organize);
+  assert.equal(f.scene.button('主手'),weapon);
+});
+
 test('bag data changes reuse the grid and only touch changed slots', t => {
   const f=fixture();t.after(f.cleanup);
   const scroll=f.add('novice-weapon-scroll'),jewel=f.add('novice-jewel');
