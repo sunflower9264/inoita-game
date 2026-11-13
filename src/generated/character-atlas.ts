@@ -566,437 +566,445 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
     "file": "assets/character-atlas/characters-70.png",
     "data": "assets/character-atlas/characters-70.json",
     "frame": "b28ce7904b-000",
-    "width": 1018,
-    "height": 1009
+    "width": 1019,
+    "height": 998
   },
   {
     "key": "characters-atlas:71",
     "file": "assets/character-atlas/characters-71.png",
     "data": "assets/character-atlas/characters-71.json",
-    "frame": "6cb30f8a86-000",
-    "width": 1021,
+    "frame": "30c3b53058-000",
+    "width": 1022,
     "height": 988
   },
   {
     "key": "characters-atlas:72",
     "file": "assets/character-atlas/characters-72.png",
     "data": "assets/character-atlas/characters-72.json",
-    "frame": "805591cd71-000",
-    "width": 984,
-    "height": 944
+    "frame": "c7849a1870-000",
+    "width": 1021,
+    "height": 1009
   },
   {
     "key": "characters-atlas:73",
     "file": "assets/character-atlas/characters-73.png",
     "data": "assets/character-atlas/characters-73.json",
-    "frame": "ac4c797fc9-000",
-    "width": 1020,
-    "height": 839
+    "frame": "692689a4e3-000",
+    "width": 1008,
+    "height": 857
   },
   {
     "key": "characters-atlas:74",
     "file": "assets/character-atlas/characters-74.png",
     "data": "assets/character-atlas/characters-74.json",
-    "frame": "4b05bbc3b2-000",
-    "width": 1019,
-    "height": 768
+    "frame": "f130fc4f6b-000",
+    "width": 1018,
+    "height": 785
   },
   {
     "key": "characters-atlas:75",
     "file": "assets/character-atlas/characters-75.png",
     "data": "assets/character-atlas/characters-75.json",
-    "frame": "915a0af7f7-000",
-    "width": 1020,
-    "height": 799
+    "frame": "642e325188-000",
+    "width": 1022,
+    "height": 798
   },
   {
     "key": "characters-atlas:76",
     "file": "assets/character-atlas/characters-76.png",
     "data": "assets/character-atlas/characters-76.json",
-    "frame": "12a6244ca5-000",
-    "width": 1002,
-    "height": 762
+    "frame": "566f43b294-000",
+    "width": 1010,
+    "height": 778
   },
   {
     "key": "characters-atlas:77",
     "file": "assets/character-atlas/characters-77.png",
     "data": "assets/character-atlas/characters-77.json",
-    "frame": "50a30d1713-000",
-    "width": 1014,
-    "height": 1016
+    "frame": "29021b8bb7-000",
+    "width": 1022,
+    "height": 710
   },
   {
     "key": "characters-atlas:78",
     "file": "assets/character-atlas/characters-78.png",
     "data": "assets/character-atlas/characters-78.json",
-    "frame": "79a02eddf2-000",
-    "width": 1020,
-    "height": 962
+    "frame": "840ca4664a-000",
+    "width": 1017,
+    "height": 1009
   },
   {
     "key": "characters-atlas:79",
     "file": "assets/character-atlas/characters-79.png",
     "data": "assets/character-atlas/characters-79.json",
-    "frame": "de70c01b1f-000",
+    "frame": "d2a21889d8-000",
     "width": 1020,
-    "height": 912
+    "height": 961
   },
   {
     "key": "characters-atlas:80",
     "file": "assets/character-atlas/characters-80.png",
     "data": "assets/character-atlas/characters-80.json",
-    "frame": "49262d6e1b-000",
+    "frame": "ca34d216f6-000",
     "width": 1020,
-    "height": 872
+    "height": 974
   },
   {
     "key": "characters-atlas:81",
     "file": "assets/character-atlas/characters-81.png",
     "data": "assets/character-atlas/characters-81.json",
-    "frame": "da633c5687-000",
-    "width": 1022,
-    "height": 861
+    "frame": "c78ea745f0-000",
+    "width": 1019,
+    "height": 893
   },
   {
     "key": "characters-atlas:82",
     "file": "assets/character-atlas/characters-82.png",
     "data": "assets/character-atlas/characters-82.json",
-    "frame": "bbc17f8642-000",
+    "frame": "4fde0ad1a1-000",
     "width": 1022,
-    "height": 862
+    "height": 870
   },
   {
     "key": "characters-atlas:83",
     "file": "assets/character-atlas/characters-83.png",
     "data": "assets/character-atlas/characters-83.json",
-    "frame": "97e6865aa3-000",
-    "width": 1014,
-    "height": 837
+    "frame": "a403252ebb-000",
+    "width": 1016,
+    "height": 891
   },
   {
     "key": "characters-atlas:84",
     "file": "assets/character-atlas/characters-84.png",
     "data": "assets/character-atlas/characters-84.json",
-    "frame": "a0f66c69a8-000",
-    "width": 1018,
-    "height": 759
+    "frame": "97e6865aa3-000",
+    "width": 1014,
+    "height": 837
   },
   {
     "key": "characters-atlas:85",
     "file": "assets/character-atlas/characters-85.png",
     "data": "assets/character-atlas/characters-85.json",
-    "frame": "ac5206b27c-000",
-    "width": 1022,
-    "height": 978
+    "frame": "a0f66c69a8-000",
+    "width": 1018,
+    "height": 1016
   },
   {
     "key": "characters-atlas:86",
     "file": "assets/character-atlas/characters-86.png",
     "data": "assets/character-atlas/characters-86.json",
-    "frame": "db7568d6cf-000",
-    "width": 1021,
-    "height": 913
+    "frame": "1e6b2b188a-000",
+    "width": 1022,
+    "height": 1001
   },
   {
     "key": "characters-atlas:87",
     "file": "assets/character-atlas/characters-87.png",
     "data": "assets/character-atlas/characters-87.json",
-    "frame": "ed68567015-000",
+    "frame": "f9b1b99d6d-000",
     "width": 1022,
-    "height": 1002
+    "height": 837
   },
   {
     "key": "characters-atlas:88",
     "file": "assets/character-atlas/characters-88.png",
     "data": "assets/character-atlas/characters-88.json",
-    "frame": "82a66c1b59-000",
-    "width": 1020,
-    "height": 996
+    "frame": "60396ef652-000",
+    "width": 1022,
+    "height": 824
   },
   {
     "key": "characters-atlas:89",
     "file": "assets/character-atlas/characters-89.png",
     "data": "assets/character-atlas/characters-89.json",
-    "frame": "5997995ecf-000",
+    "frame": "2c9ffe1a17-000",
     "width": 1022,
-    "height": 983
+    "height": 972
   },
   {
     "key": "characters-atlas:90",
     "file": "assets/character-atlas/characters-90.png",
     "data": "assets/character-atlas/characters-90.json",
-    "frame": "21fbb74c8e-000",
+    "frame": "bd945c7f32-000",
     "width": 1022,
-    "height": 866
+    "height": 987
   },
   {
     "key": "characters-atlas:91",
     "file": "assets/character-atlas/characters-91.png",
     "data": "assets/character-atlas/characters-91.json",
-    "frame": "4e9198a1c9-000",
+    "frame": "83d28815b9-000",
     "width": 1022,
-    "height": 875
+    "height": 883
   },
   {
     "key": "characters-atlas:92",
     "file": "assets/character-atlas/characters-92.png",
     "data": "assets/character-atlas/characters-92.json",
-    "frame": "416bf29223-000",
+    "frame": "b7bc752b60-000",
     "width": 1022,
-    "height": 1002
+    "height": 874
   },
   {
     "key": "characters-atlas:93",
     "file": "assets/character-atlas/characters-93.png",
     "data": "assets/character-atlas/characters-93.json",
-    "frame": "a4828c2de5-000",
+    "frame": "70a1a6e680-000",
     "width": 1022,
-    "height": 1023
+    "height": 991
   },
   {
     "key": "characters-atlas:94",
     "file": "assets/character-atlas/characters-94.png",
     "data": "assets/character-atlas/characters-94.json",
-    "frame": "748d271f7f-000",
-    "width": 1021,
-    "height": 942
+    "frame": "3102f5af28-000",
+    "width": 1022,
+    "height": 1011
   },
   {
     "key": "characters-atlas:95",
     "file": "assets/character-atlas/characters-95.png",
     "data": "assets/character-atlas/characters-95.json",
-    "frame": "dcac45df26-000",
+    "frame": "1118275a85-000",
     "width": 1022,
-    "height": 929
+    "height": 977
   },
   {
     "key": "characters-atlas:96",
     "file": "assets/character-atlas/characters-96.png",
     "data": "assets/character-atlas/characters-96.json",
-    "frame": "f465adb3ad-000",
-    "width": 1021,
-    "height": 1023
+    "frame": "402cc10862-000",
+    "width": 1022,
+    "height": 900
   },
   {
     "key": "characters-atlas:97",
     "file": "assets/character-atlas/characters-97.png",
     "data": "assets/character-atlas/characters-97.json",
-    "frame": "61d435b3dc-000",
-    "width": 1022,
-    "height": 918
+    "frame": "e0685ddb52-000",
+    "width": 1021,
+    "height": 968
   },
   {
     "key": "characters-atlas:98",
     "file": "assets/character-atlas/characters-98.png",
     "data": "assets/character-atlas/characters-98.json",
-    "frame": "cbafbb856b-000",
-    "width": 1022,
-    "height": 1018
+    "frame": "a048184fe1-000",
+    "width": 1019,
+    "height": 960
   },
   {
     "key": "characters-atlas:99",
     "file": "assets/character-atlas/characters-99.png",
     "data": "assets/character-atlas/characters-99.json",
-    "frame": "a05b1ee1d8-000",
+    "frame": "7ae48d991d-000",
     "width": 1022,
-    "height": 879
+    "height": 963
   },
   {
     "key": "characters-atlas:100",
     "file": "assets/character-atlas/characters-100.png",
     "data": "assets/character-atlas/characters-100.json",
-    "frame": "6984be6434-000",
-    "width": 1021,
-    "height": 1014
+    "frame": "3696753cdb-000",
+    "width": 1017,
+    "height": 893
   },
   {
     "key": "characters-atlas:101",
     "file": "assets/character-atlas/characters-101.png",
     "data": "assets/character-atlas/characters-101.json",
-    "frame": "f579415894-000",
-    "width": 1022,
-    "height": 987
+    "frame": "5ff2d69c96-000",
+    "width": 1021,
+    "height": 938
   },
   {
     "key": "characters-atlas:102",
     "file": "assets/character-atlas/characters-102.png",
     "data": "assets/character-atlas/characters-102.json",
-    "frame": "02ae701cbf-000",
-    "width": 1022,
-    "height": 1007
+    "frame": "c919712dc7-000",
+    "width": 1021,
+    "height": 1010
   },
   {
     "key": "characters-atlas:103",
     "file": "assets/character-atlas/characters-103.png",
     "data": "assets/character-atlas/characters-103.json",
-    "frame": "7b688c9c8f-000",
-    "width": 1020,
-    "height": 959
+    "frame": "5d503f2904-000",
+    "width": 1018,
+    "height": 955
   },
   {
     "key": "characters-atlas:104",
     "file": "assets/character-atlas/characters-104.png",
     "data": "assets/character-atlas/characters-104.json",
-    "frame": "3b8d109d46-000",
-    "width": 1022,
-    "height": 1018
+    "frame": "0ca1303e0a-000",
+    "width": 1018,
+    "height": 971
   },
   {
     "key": "characters-atlas:105",
     "file": "assets/character-atlas/characters-105.png",
     "data": "assets/character-atlas/characters-105.json",
-    "frame": "792d28483a-000",
+    "frame": "32d5847dbd-000",
     "width": 1022,
-    "height": 1018
+    "height": 1023
   },
   {
     "key": "characters-atlas:106",
     "file": "assets/character-atlas/characters-106.png",
     "data": "assets/character-atlas/characters-106.json",
-    "frame": "ce7df0db77-000",
+    "frame": "7d31020ac2-000",
     "width": 1022,
-    "height": 950
+    "height": 973
   },
   {
     "key": "characters-atlas:107",
     "file": "assets/character-atlas/characters-107.png",
     "data": "assets/character-atlas/characters-107.json",
-    "frame": "8940007b0e-000",
+    "frame": "40e54a1456-000",
     "width": 1022,
-    "height": 969
+    "height": 938
   },
   {
     "key": "characters-atlas:108",
     "file": "assets/character-atlas/characters-108.png",
     "data": "assets/character-atlas/characters-108.json",
-    "frame": "0515fd5477-000",
+    "frame": "f85a15f2c0-000",
     "width": 1022,
-    "height": 1002
+    "height": 1012
   },
   {
     "key": "characters-atlas:109",
     "file": "assets/character-atlas/characters-109.png",
     "data": "assets/character-atlas/characters-109.json",
-    "frame": "3ce91aa05c-000",
-    "width": 1022,
-    "height": 979
+    "frame": "0ec7f68c69-000",
+    "width": 1021,
+    "height": 914
   },
   {
     "key": "characters-atlas:110",
     "file": "assets/character-atlas/characters-110.png",
     "data": "assets/character-atlas/characters-110.json",
-    "frame": "10bfaf152f-000",
-    "width": 1022,
-    "height": 956
+    "frame": "40b7cea11e-000",
+    "width": 1020,
+    "height": 932
   },
   {
     "key": "characters-atlas:111",
     "file": "assets/character-atlas/characters-111.png",
     "data": "assets/character-atlas/characters-111.json",
-    "frame": "c6a33fb916-000",
-    "width": 1020,
-    "height": 969
+    "frame": "32b69a279f-000",
+    "width": 1022,
+    "height": 961
   },
   {
     "key": "characters-atlas:112",
     "file": "assets/character-atlas/characters-112.png",
     "data": "assets/character-atlas/characters-112.json",
-    "frame": "763e50a278-000",
-    "width": 1022,
-    "height": 921
+    "frame": "c6a33fb916-000",
+    "width": 1020,
+    "height": 969
   },
   {
     "key": "characters-atlas:113",
     "file": "assets/character-atlas/characters-113.png",
     "data": "assets/character-atlas/characters-113.json",
-    "frame": "35bfb0298d-000",
+    "frame": "763e50a278-000",
     "width": 1022,
-    "height": 1014
+    "height": 921
   },
   {
     "key": "characters-atlas:114",
     "file": "assets/character-atlas/characters-114.png",
     "data": "assets/character-atlas/characters-114.json",
-    "frame": "84177f6a2e-000",
-    "width": 1018,
-    "height": 921
+    "frame": "35bfb0298d-000",
+    "width": 1022,
+    "height": 1014
   },
   {
     "key": "characters-atlas:115",
     "file": "assets/character-atlas/characters-115.png",
     "data": "assets/character-atlas/characters-115.json",
-    "frame": "46c4fe0057-000",
-    "width": 1022,
-    "height": 1010
+    "frame": "84177f6a2e-000",
+    "width": 1018,
+    "height": 921
   },
   {
     "key": "characters-atlas:116",
     "file": "assets/character-atlas/characters-116.png",
     "data": "assets/character-atlas/characters-116.json",
-    "frame": "646d57c5d6-000",
+    "frame": "46c4fe0057-000",
     "width": 1022,
-    "height": 962
+    "height": 1010
   },
   {
     "key": "characters-atlas:117",
     "file": "assets/character-atlas/characters-117.png",
     "data": "assets/character-atlas/characters-117.json",
-    "frame": "aedb4c0ede-000",
+    "frame": "646d57c5d6-000",
     "width": 1022,
-    "height": 1007
+    "height": 962
   },
   {
     "key": "characters-atlas:118",
     "file": "assets/character-atlas/characters-118.png",
     "data": "assets/character-atlas/characters-118.json",
-    "frame": "ecbb7eb5ad-000",
+    "frame": "aedb4c0ede-000",
     "width": 1022,
-    "height": 997
+    "height": 1007
   },
   {
     "key": "characters-atlas:119",
     "file": "assets/character-atlas/characters-119.png",
     "data": "assets/character-atlas/characters-119.json",
-    "frame": "2f7518f994-000",
-    "width": 1021,
+    "frame": "ecbb7eb5ad-000",
+    "width": 1022,
     "height": 997
   },
   {
     "key": "characters-atlas:120",
     "file": "assets/character-atlas/characters-120.png",
     "data": "assets/character-atlas/characters-120.json",
-    "frame": "0cc1f3495e-000",
-    "width": 1022,
-    "height": 1021
+    "frame": "2f7518f994-000",
+    "width": 1021,
+    "height": 997
   },
   {
     "key": "characters-atlas:121",
     "file": "assets/character-atlas/characters-121.png",
     "data": "assets/character-atlas/characters-121.json",
-    "frame": "24ea0aa16a-000",
+    "frame": "0cc1f3495e-000",
     "width": 1022,
-    "height": 978
+    "height": 1021
   },
   {
     "key": "characters-atlas:122",
     "file": "assets/character-atlas/characters-122.png",
     "data": "assets/character-atlas/characters-122.json",
-    "frame": "9cc1efb11a-000",
-    "width": 1021,
-    "height": 1015
+    "frame": "24ea0aa16a-000",
+    "width": 1022,
+    "height": 978
   },
   {
     "key": "characters-atlas:123",
     "file": "assets/character-atlas/characters-123.png",
     "data": "assets/character-atlas/characters-123.json",
-    "frame": "e6cebe1300-000",
-    "width": 1022,
-    "height": 1019
+    "frame": "9cc1efb11a-000",
+    "width": 1021,
+    "height": 1015
   },
   {
     "key": "characters-atlas:124",
     "file": "assets/character-atlas/characters-124.png",
     "data": "assets/character-atlas/characters-124.json",
+    "frame": "e6cebe1300-000",
+    "width": 1022,
+    "height": 1019
+  },
+  {
+    "key": "characters-atlas:125",
+    "file": "assets/character-atlas/characters-125.png",
+    "data": "assets/character-atlas/characters-125.json",
     "frame": "b11e668a6a-000",
     "width": 1021,
     "height": 471
@@ -1006,102 +1014,142 @@ export interface CharacterAtlasEntry { pages: readonly number[]; prefix: string 
 export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntry>> = {
   "assets/characters/adventurer-simon-a81b6e1f/idle-south-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "061e2db1b3"
   },
   "assets/characters/altar-of-covenant-e803f6da/idle-south-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "5b0ff1b5ea"
   },
   "assets/characters/amarok-harris-234/idle-east-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "d40edfc380"
   },
   "assets/characters/amarok-harris-234/idle-north-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "ce85432b7d"
   },
   "assets/characters/amarok-walter-197/idle-east-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "c3abe60085"
   },
   "assets/characters/amarok-walter-197/idle-north-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "3dbad072a5"
   },
   "assets/characters/armor-trader-58d99f9d/idle-south-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "e6cebe1300"
   },
   "assets/characters/armor-trader-70af4958/idle-east-normal.png": {
     "pages": [
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
+    ],
+    "prefix": "f8b46dc858"
+  },
+  "assets/characters/armor-trader-9146c50b/idle-south-normal.png": {
+    "pages": [
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
+    ],
+    "prefix": "42f621a57b"
+  },
+  "assets/characters/armor-trader-a1b9c2a9/idle-south-normal.png": {
+    "pages": [
       123,
       123,
       123,
@@ -1117,103 +1165,63 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
       123,
       123
     ],
-    "prefix": "f8b46dc858"
-  },
-  "assets/characters/armor-trader-9146c50b/idle-south-normal.png": {
-    "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
-    ],
-    "prefix": "42f621a57b"
-  },
-  "assets/characters/armor-trader-a1b9c2a9/idle-south-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
     "prefix": "c73563ea71"
   },
   "assets/characters/armor-trader-d67d23b9/idle-south-normal.png": {
     "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
     ],
     "prefix": "413fdaea3b"
   },
   "assets/characters/baldwin-4c77766c/idle-south-normal.png": {
     "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
     ],
     "prefix": "907714c13c"
   },
   "assets/characters/bandit-door-295/idle-south-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "2dd5c69377"
   },
   "assets/characters/barricade-221/idle-south-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "5974624038"
   },
   "assets/characters/barricade-4ae2c96a/idle-south-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "335ea98480"
   },
@@ -1904,97 +1912,97 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/battle-dark-knight/attack-east-normal.png": {
     "pages": [
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85
     ],
     "prefix": "25db908174"
   },
   "assets/characters/battle-dark-knight/attack-north-normal.png": {
     "pages": [
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85
     ],
     "prefix": "ac8946e2cc"
   },
   "assets/characters/battle-dark-knight/attack-south-normal.png": {
     "pages": [
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85
     ],
     "prefix": "a0f66c69a8"
   },
   "assets/characters/battle-dark-knight/idle-east-normal.png": {
     "pages": [
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85
     ],
     "prefix": "4bec103a6b"
   },
   "assets/characters/battle-dark-knight/idle-north-normal.png": {
     "pages": [
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85
     ],
     "prefix": "535c7f8a06"
   },
   "assets/characters/battle-dark-knight/idle-south-normal.png": {
     "pages": [
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85
     ],
     "prefix": "84bdfd99f6"
   },
@@ -2375,40 +2383,40 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/battle-dark-knight/walk-east-normal.png": {
     "pages": [
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85
     ],
     "prefix": "f2e50d174d"
   },
   "assets/characters/battle-dark-knight/walk-north-normal.png": {
     "pages": [
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85
     ],
     "prefix": "ddc411ff33"
   },
   "assets/characters/battle-dark-knight/walk-south-normal.png": {
     "pages": [
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85
     ],
     "prefix": "559b795e2b"
   },
@@ -4624,582 +4632,582 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/bear-s-body-403c5c60/idle-south-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "c77e254397"
   },
   "assets/characters/beatrice-d4103820/idle-south-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "62119db5cc"
   },
   "assets/characters/ben-a380d77f/idle-south-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "ed69850771"
   },
   "assets/characters/ben-s-butler-4af2836d/idle-south-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "6a834da93a"
   },
   "assets/characters/berkel-castle-knight-28dd5010/idle-east-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "21ec2ec61a"
   },
   "assets/characters/berkel-castle-knight-28dd5010/idle-north-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "4ad13b4a5b"
   },
   "assets/characters/berkel-soldier-1f8decbe/idle-east-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "da847cdc88"
   },
   "assets/characters/berkel-soldier-1f8decbe/idle-north-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "0e53ad97bf"
   },
   "assets/characters/berkel-soldier-1f8decbe/walk-east-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "9c4a40c068"
   },
   "assets/characters/berkel-soldier-1f8decbe/walk-north-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "e123dd217e"
   },
   "assets/characters/berkel-soldier-48d3f50d/attack-east-normal.png": {
     "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
     ],
     "prefix": "91998c9b26"
   },
   "assets/characters/berkel-soldier-48d3f50d/attack-north-normal.png": {
     "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
     ],
     "prefix": "62a11cfa80"
   },
   "assets/characters/berkel-soldier-48d3f50d/lie-down-east-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "cb81162763"
   },
   "assets/characters/black-bear-statue-fc3b28a8/idle-south-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "1d4bfa7410"
   },
   "assets/characters/bloody-den-68a7be08/idle-south-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "9b6f4e45b9"
   },
   "assets/characters/bone-orc-guard-315/idle-east-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "6220c3e33a"
   },
   "assets/characters/bone-orc-guard-315/idle-north-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "64659b8e4f"
   },
   "assets/characters/boulder-49479eb3/idle-south-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "ce52d050e7"
   },
   "assets/characters/boulder-blocking-the-cave-fc43f63b/idle-south-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "855c7d71ac"
   },
   "assets/characters/boulder-obstacle-16f7106b/idle-south-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "7a5cd06a4f"
   },
   "assets/characters/bounty-hunter-arnold-42fe291f/idle-south-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "c7806adcd6"
   },
   "assets/characters/bowl-of-flesh-8437464e/idle-south-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "302c8e474a"
   },
   "assets/characters/box-5f6f8808/idle-east-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "7f151658fc"
   },
   "assets/characters/box-5f6f8808/idle-north-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "741add5976"
   },
   "assets/characters/bridge-00bff61d/idle-south-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "0bc6c01897"
   },
   "assets/characters/brown-bear-statue-cd37cbc0/idle-south-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "503c3d1f8f"
   },
   "assets/characters/bundle-of-straw-at-the-storage-3be2dd3c/idle-south-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "a9a5696890"
   },
   "assets/characters/busybody-luna/idle-east-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "8578d8b4ea"
   },
   "assets/characters/campfire-1881bee0/idle-south-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "51014b0cbb"
   },
   "assets/characters/campfire-1881bee0/idle-south-screen.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "7abe79b641"
   },
   "assets/characters/captain-of-arnen-chasers-c9df1bc7/idle-east-normal.png": {
     "pages": [
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93
     ],
     "prefix": "f2f5db26b1"
   },
   "assets/characters/captain-of-arnen-chasers-c9df1bc7/idle-north-normal.png": {
     "pages": [
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93
     ],
     "prefix": "5a4471dc04"
   },
   "assets/characters/captain-of-arnen-chasers-c9df1bc7/idle-south-normal.png": {
     "pages": [
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93
     ],
     "prefix": "27248d7339"
   },
   "assets/characters/captain-of-arnen-chasers-c9df1bc7/walk-east-normal.png": {
     "pages": [
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93
     ],
     "prefix": "0ba8310918"
   },
   "assets/characters/captain-of-arnen-chasers-c9df1bc7/walk-north-normal.png": {
     "pages": [
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93
     ],
     "prefix": "2e6758adcc"
   },
   "assets/characters/captain-of-arnen-chasers-c9df1bc7/walk-south-normal.png": {
     "pages": [
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93
     ],
     "prefix": "9f359ee40e"
   },
   "assets/characters/captive-61b45937/idle-south-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "ed519094b1"
   },
   "assets/characters/carp-sage-7311190b/idle-south-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "7ee17b6d88"
   },
   "assets/characters/chapel-s-steel-door-257/idle-south-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "9a12171c49"
   },
   "assets/characters/claude-654192ed/idle-south-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "dbed2bd3dc"
   },
   "assets/characters/claude-e6e221a8/idle-east-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "4423f86827"
   },
   "assets/characters/claude-e6e221a8/idle-north-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "4a74a0b0bc"
   },
   "assets/characters/claude-e6e221a8/walk-east-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "1978a3eb93"
   },
   "assets/characters/claude-e6e221a8/walk-north-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "598acd3ce1"
   },
   "assets/characters/claude-e6e221a8/walk-south-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "1ebbb71512"
   },
   "assets/characters/clear-springs-f6f095b4/idle-south-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "5a93bf10bb"
   },
   "assets/characters/crooked-street-vendor-582a688d/idle-south-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "48979456ef"
   },
   "assets/characters/crystal-a415bc46/idle-south-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "82c483260d"
   },
@@ -5341,131 +5349,131 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/dark-knight-guard-73d31196/idle-east-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "304d2a6a30"
   },
   "assets/characters/dark-knight-guard-73d31196/idle-north-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "88f33b5540"
   },
   "assets/characters/dark-sorcerer-kane-369ccd17/idle-south-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "89e226d19a"
   },
   "assets/characters/deponin-s-supply-chief-d3772532/idle-south-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "12b547f205"
   },
   "assets/characters/dominique-53cded7e/idle-south-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "15d5002f78"
   },
   "assets/characters/dominique-632/idle-east-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "6038f83415"
   },
   "assets/characters/dominique-632/idle-north-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "08a99c6087"
   },
   "assets/characters/dominique-632/idle-south-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "6d6e511301"
   },
@@ -5586,134 +5594,147 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/door-of-memories-1d4383e7/idle-south-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "299defb886"
   },
   "assets/characters/drow-leader-412/idle-east-normal.png": {
     "pages": [
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101
     ],
     "prefix": "cda9061fe0"
   },
   "assets/characters/drow-leader-412/idle-north-normal.png": {
     "pages": [
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101
     ],
     "prefix": "ed7c3a6ed8"
   },
   "assets/characters/drow-leader-412/idle-south-normal.png": {
     "pages": [
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101
     ],
     "prefix": "be29bc938d"
   },
   "assets/characters/drow-warrior-3c7a1bd4/idle-south-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "138e13aded"
   },
   "assets/characters/drum-2a8c3243/idle-south-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "847bec7e69"
   },
   "assets/characters/dwarf-village-guard-8826e45e/idle-south-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "95c9cb8931"
   },
   "assets/characters/eara-859b3729/idle-south-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "04fb36ffe1"
   },
   "assets/characters/earl-grafton/idle-east-normal.png": {
     "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
     ],
     "prefix": "cbc9f9093e"
   },
   "assets/characters/earl-grafton/idle-north-normal.png": {
     "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "3e16def8b2"
+  },
+  "assets/characters/earl-grafton/walk-east-normal.png": {
+    "pages": [
       122,
       122,
       122,
@@ -5723,40 +5744,27 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
       122,
       122
     ],
-    "prefix": "3e16def8b2"
-  },
-  "assets/characters/earl-grafton/walk-east-normal.png": {
-    "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
-    ],
     "prefix": "20e894846a"
   },
   "assets/characters/earl-grafton/walk-north-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "bb0b2d57ea"
   },
   "assets/characters/ectoplasm-spirit/idle-south-screen.png": {
     "pages": [
-      124,
-      124,
-      124,
-      124
+      125,
+      125,
+      125,
+      125
     ],
     "prefix": "9a1f2ceb02"
   },
@@ -5819,110 +5827,366 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/elven-sanctuary-keeper-4783ec1b/idle-south-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "2b3707596a"
   },
   "assets/characters/enchanted-stone-3509eb9a/idle-south-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "d8bf2862d4"
   },
   "assets/characters/enemy-1000-year-old-fountain-snake-1/attack-east-normal.png": {
     "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
     ],
     "prefix": "763e50a278"
   },
   "assets/characters/enemy-1000-year-old-fountain-snake-1/attack-north-normal.png": {
     "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
     ],
     "prefix": "c928fe02a9"
   },
   "assets/characters/enemy-1000-year-old-fountain-snake-1/idle-east-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "57c6c75098"
   },
   "assets/characters/enemy-1000-year-old-fountain-snake-1/idle-north-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "3a20b38814"
   },
   "assets/characters/enemy-1000-year-old-fountain-snake-1/walk-east-normal.png": {
     "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
     ],
     "prefix": "8a457d8598"
   },
   "assets/characters/enemy-1000-year-old-fountain-snake-1/walk-north-normal.png": {
     "pages": [
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
+    ],
+    "prefix": "36ea911cfe"
+  },
+  "assets/characters/enemy-abandoned-creature-1/attack-east-normal.png": {
+    "pages": [
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90
+    ],
+    "prefix": "1e32381c46"
+  },
+  "assets/characters/enemy-abandoned-creature-1/attack-north-normal.png": {
+    "pages": [
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90
+    ],
+    "prefix": "0ea747b99a"
+  },
+  "assets/characters/enemy-abandoned-creature-1/idle-east-normal.png": {
+    "pages": [
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90
+    ],
+    "prefix": "bf6d7cb0c3"
+  },
+  "assets/characters/enemy-abandoned-creature-1/idle-north-normal.png": {
+    "pages": [
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90
+    ],
+    "prefix": "380a00bc8f"
+  },
+  "assets/characters/enemy-abandoned-creature-1/walk-east-normal.png": {
+    "pages": [
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90
+    ],
+    "prefix": "1fa3c5ea76"
+  },
+  "assets/characters/enemy-abandoned-creature-1/walk-north-normal.png": {
+    "pages": [
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90
+    ],
+    "prefix": "7e627ff666"
+  },
+  "assets/characters/enemy-acts-leader-schmitt-1/attack-east-normal.png": {
+    "pages": [
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75
+    ],
+    "prefix": "35baa84d8d"
+  },
+  "assets/characters/enemy-acts-leader-schmitt-1/attack-north-normal.png": {
+    "pages": [
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75
+    ],
+    "prefix": "642e325188"
+  },
+  "assets/characters/enemy-acts-leader-schmitt-1/attack-south-normal.png": {
+    "pages": [
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75
+    ],
+    "prefix": "ecf9b0d456"
+  },
+  "assets/characters/enemy-acts-leader-schmitt-1/idle-east-normal.png": {
+    "pages": [
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75
+    ],
+    "prefix": "6f6990d681"
+  },
+  "assets/characters/enemy-acts-leader-schmitt-1/idle-north-normal.png": {
+    "pages": [
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75
+    ],
+    "prefix": "0fe0a0a41a"
+  },
+  "assets/characters/enemy-acts-leader-schmitt-1/idle-south-normal.png": {
+    "pages": [
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75
+    ],
+    "prefix": "e9784efeda"
+  },
+  "assets/characters/enemy-acts-leader-schmitt-1/walk-east-normal.png": {
+    "pages": [
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75
+    ],
+    "prefix": "d931dd5b1f"
+  },
+  "assets/characters/enemy-acts-leader-schmitt-1/walk-north-normal.png": {
+    "pages": [
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75
+    ],
+    "prefix": "e9fab2824e"
+  },
+  "assets/characters/enemy-acts-leader-schmitt-1/walk-south-normal.png": {
+    "pages": [
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75,
+      75
+    ],
+    "prefix": "d4ccb44436"
+  },
+  "assets/characters/enemy-aggressive-mimic-1/attack-east-normal.png": {
+    "pages": [
+      112,
+      112,
       112,
       112,
       112,
@@ -5932,332 +6196,76 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
       112,
       112
     ],
-    "prefix": "36ea911cfe"
-  },
-  "assets/characters/enemy-abandoned-creature-1/attack-east-normal.png": {
-    "pages": [
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89
-    ],
-    "prefix": "1e32381c46"
-  },
-  "assets/characters/enemy-abandoned-creature-1/attack-north-normal.png": {
-    "pages": [
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89
-    ],
-    "prefix": "0ea747b99a"
-  },
-  "assets/characters/enemy-abandoned-creature-1/idle-east-normal.png": {
-    "pages": [
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89
-    ],
-    "prefix": "bf6d7cb0c3"
-  },
-  "assets/characters/enemy-abandoned-creature-1/idle-north-normal.png": {
-    "pages": [
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89
-    ],
-    "prefix": "380a00bc8f"
-  },
-  "assets/characters/enemy-abandoned-creature-1/walk-east-normal.png": {
-    "pages": [
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89
-    ],
-    "prefix": "1fa3c5ea76"
-  },
-  "assets/characters/enemy-abandoned-creature-1/walk-north-normal.png": {
-    "pages": [
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89
-    ],
-    "prefix": "7e627ff666"
-  },
-  "assets/characters/enemy-acts-leader-schmitt-1/attack-east-normal.png": {
-    "pages": [
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74
-    ],
-    "prefix": "35baa84d8d"
-  },
-  "assets/characters/enemy-acts-leader-schmitt-1/attack-north-normal.png": {
-    "pages": [
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74
-    ],
-    "prefix": "642e325188"
-  },
-  "assets/characters/enemy-acts-leader-schmitt-1/attack-south-normal.png": {
-    "pages": [
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74
-    ],
-    "prefix": "ecf9b0d456"
-  },
-  "assets/characters/enemy-acts-leader-schmitt-1/idle-east-normal.png": {
-    "pages": [
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74
-    ],
-    "prefix": "6f6990d681"
-  },
-  "assets/characters/enemy-acts-leader-schmitt-1/idle-north-normal.png": {
-    "pages": [
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74
-    ],
-    "prefix": "0fe0a0a41a"
-  },
-  "assets/characters/enemy-acts-leader-schmitt-1/idle-south-normal.png": {
-    "pages": [
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74
-    ],
-    "prefix": "e9784efeda"
-  },
-  "assets/characters/enemy-acts-leader-schmitt-1/walk-east-normal.png": {
-    "pages": [
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74
-    ],
-    "prefix": "d931dd5b1f"
-  },
-  "assets/characters/enemy-acts-leader-schmitt-1/walk-north-normal.png": {
-    "pages": [
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74
-    ],
-    "prefix": "e9fab2824e"
-  },
-  "assets/characters/enemy-acts-leader-schmitt-1/walk-south-normal.png": {
-    "pages": [
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74,
-      74
-    ],
-    "prefix": "d4ccb44436"
-  },
-  "assets/characters/enemy-aggressive-mimic-1/attack-east-normal.png": {
-    "pages": [
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111
-    ],
     "prefix": "cd5d4c0408"
   },
   "assets/characters/enemy-aggressive-mimic-1/attack-north-normal.png": {
     "pages": [
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112
     ],
     "prefix": "a0e7067bf0"
   },
   "assets/characters/enemy-aggressive-mimic-1/idle-east-normal.png": {
     "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
     ],
     "prefix": "4e76232f60"
   },
   "assets/characters/enemy-aggressive-mimic-1/idle-north-normal.png": {
     "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
     ],
     "prefix": "8484d8f165"
   },
   "assets/characters/enemy-aggressive-mimic-1/walk-east-normal.png": {
     "pages": [
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112
     ],
     "prefix": "759faeccd5"
   },
   "assets/characters/enemy-aggressive-mimic-1/walk-north-normal.png": {
     "pages": [
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112
     ],
     "prefix": "cccce23fec"
   },
@@ -6371,57 +6379,57 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-alexander-1/skill-monster-blazing-armor-east-normal.png": {
     "pages": [
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107
     ],
     "prefix": "6d909fe47d"
   },
   "assets/characters/enemy-alexander-1/skill-monster-blazing-armor-north-normal.png": {
     "pages": [
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107
     ],
     "prefix": "6af823d94b"
   },
@@ -6466,95 +6474,95 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-alligator-turtle-1/attack-east-normal.png": {
     "pages": [
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101
     ],
     "prefix": "1898b02469"
   },
   "assets/characters/enemy-alligator-turtle-1/attack-north-normal.png": {
     "pages": [
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101
     ],
     "prefix": "653807b5d5"
   },
   "assets/characters/enemy-alligator-turtle-1/idle-east-normal.png": {
     "pages": [
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108
     ],
     "prefix": "c9dffe2290"
   },
   "assets/characters/enemy-alligator-turtle-1/idle-north-normal.png": {
     "pages": [
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108
     ],
     "prefix": "2adc02c4b0"
   },
   "assets/characters/enemy-alligator-turtle-1/walk-east-normal.png": {
     "pages": [
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101
     ],
     "prefix": "b5e160c436"
   },
   "assets/characters/enemy-alligator-turtle-1/walk-north-normal.png": {
     "pages": [
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101
     ],
     "prefix": "a1f8307782"
   },
@@ -6582,41 +6590,41 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-aloof-werewolf-1/idle-east-normal.png": {
     "pages": [
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112
     ],
     "prefix": "3cea955ca4"
   },
   "assets/characters/enemy-aloof-werewolf-1/idle-north-normal.png": {
     "pages": [
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112
     ],
     "prefix": "2ee8ad0f65"
   },
@@ -6648,389 +6656,389 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-angered-spirit-1/attack-east-screen.png": {
     "pages": [
-      90,
-      90,
-      90,
-      90,
-      90,
-      90
+      91,
+      91,
+      91,
+      91,
+      91,
+      91
     ],
     "prefix": "83d28815b9"
   },
   "assets/characters/enemy-angered-spirit-1/attack-north-screen.png": {
     "pages": [
-      90,
-      90,
-      90,
-      90,
-      90,
-      90
+      91,
+      91,
+      91,
+      91,
+      91,
+      91
     ],
     "prefix": "0ca628acfa"
   },
   "assets/characters/enemy-angered-spirit-1/idle-east-screen.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "78767fbc59"
   },
   "assets/characters/enemy-angered-spirit-1/idle-north-screen.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "62a3d5e02b"
   },
   "assets/characters/enemy-angered-spirit-1/walk-east-screen.png": {
     "pages": [
-      90,
-      90,
-      90,
-      90
+      91,
+      91,
+      91,
+      91
     ],
     "prefix": "d5b32b052a"
   },
   "assets/characters/enemy-arnen-guard-leader-2/attack-east-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "c55922947c"
   },
   "assets/characters/enemy-arnen-guard-leader-2/attack-north-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "a459b04f1f"
   },
   "assets/characters/enemy-arnen-guard-leader-2/idle-east-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "bb1b8e2fd3"
   },
   "assets/characters/enemy-arnen-guard-leader-2/idle-north-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "06da5d0961"
   },
   "assets/characters/enemy-arnen-guard-leader-2/walk-east-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "4123248931"
   },
   "assets/characters/enemy-arnen-guard-leader-2/walk-north-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "3edc1b1c78"
   },
   "assets/characters/enemy-arnen-s-poisonous-scorpion-1/attack-east-normal.png": {
     "pages": [
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102
     ],
     "prefix": "6fdea36e57"
   },
   "assets/characters/enemy-arnen-s-poisonous-scorpion-1/attack-north-normal.png": {
     "pages": [
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102
     ],
     "prefix": "1fd819b5a8"
   },
   "assets/characters/enemy-arnen-s-poisonous-scorpion-1/idle-east-normal.png": {
     "pages": [
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102
     ],
     "prefix": "9745ced4fc"
   },
   "assets/characters/enemy-arnen-s-poisonous-scorpion-1/idle-north-normal.png": {
     "pages": [
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102
     ],
     "prefix": "7e312a3597"
   },
   "assets/characters/enemy-arnen-s-poisonous-scorpion-1/walk-east-normal.png": {
     "pages": [
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102
     ],
     "prefix": "46d912892a"
   },
   "assets/characters/enemy-arnen-s-poisonous-scorpion-1/walk-north-normal.png": {
     "pages": [
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102
     ],
     "prefix": "c82a94e431"
   },
   "assets/characters/enemy-artillery-turtle-1/attack-east-normal.png": {
     "pages": [
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102
     ],
     "prefix": "f596ad45d5"
   },
   "assets/characters/enemy-artillery-turtle-1/attack-north-normal.png": {
     "pages": [
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102
     ],
     "prefix": "f7ecc454e7"
   },
   "assets/characters/enemy-artillery-turtle-1/idle-east-normal.png": {
     "pages": [
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99
     ],
     "prefix": "7ae48d991d"
   },
   "assets/characters/enemy-artillery-turtle-1/idle-north-normal.png": {
     "pages": [
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99
     ],
     "prefix": "2307dbc717"
   },
   "assets/characters/enemy-artillery-turtle-1/walk-east-normal.png": {
     "pages": [
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102
     ],
     "prefix": "483ca3214d"
   },
   "assets/characters/enemy-artillery-turtle-1/walk-north-normal.png": {
     "pages": [
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102
     ],
     "prefix": "e0925998aa"
   },
   "assets/characters/enemy-baron-borgia-1/attack-east-normal.png": {
     "pages": [
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90
     ],
     "prefix": "a66453c953"
   },
   "assets/characters/enemy-baron-borgia-1/attack-north-normal.png": {
     "pages": [
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90
     ],
     "prefix": "7e511441db"
   },
   "assets/characters/enemy-baron-borgia-1/attack-south-normal.png": {
     "pages": [
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90
     ],
     "prefix": "6911b2c72e"
   },
@@ -7093,57 +7101,57 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-baron-borgia-1/skill-monster-emergency-heal-east-normal.png": {
     "pages": [
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90
     ],
     "prefix": "ff244d8093"
   },
   "assets/characters/enemy-baron-borgia-1/skill-monster-emergency-heal-north-normal.png": {
     "pages": [
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90
     ],
     "prefix": "9659943854"
   },
@@ -7188,177 +7196,177 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-bat-1/attack-east-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "997d0de6b4"
   },
   "assets/characters/enemy-bat-1/attack-north-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "a07bd5b085"
   },
   "assets/characters/enemy-bat-1/idle-east-normal.png": {
     "pages": [
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110
     ],
     "prefix": "f2ac377a1b"
   },
   "assets/characters/enemy-bat-1/idle-north-normal.png": {
     "pages": [
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110
     ],
     "prefix": "0bc45985ad"
   },
   "assets/characters/enemy-bat-1/walk-east-normal.png": {
     "pages": [
-      122,
-      122,
-      122,
-      122
+      123,
+      123,
+      123,
+      123
     ],
     "prefix": "f8d42181d7"
   },
   "assets/characters/enemy-bat-1/walk-north-normal.png": {
     "pages": [
-      122,
-      122,
-      122,
-      122
+      123,
+      123,
+      123,
+      123
     ],
     "prefix": "ea793117ae"
   },
   "assets/characters/enemy-bear-1/attack-east-normal.png": {
     "pages": [
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87
     ],
     "prefix": "8d40ce9fef"
   },
   "assets/characters/enemy-bear-1/attack-north-normal.png": {
     "pages": [
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87
     ],
     "prefix": "1dcbd56aca"
   },
   "assets/characters/enemy-bear-1/idle-east-normal.png": {
     "pages": [
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87
     ],
     "prefix": "cef9e5686a"
   },
   "assets/characters/enemy-bear-1/idle-north-normal.png": {
     "pages": [
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87
     ],
     "prefix": "90d2d88086"
   },
   "assets/characters/enemy-bear-1/walk-east-normal.png": {
     "pages": [
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87
     ],
     "prefix": "24b56d0db0"
   },
   "assets/characters/enemy-bear-1/walk-north-normal.png": {
     "pages": [
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87
     ],
     "prefix": "ffc26f8065"
   },
@@ -7404,13 +7412,305 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-bees-1/idle-east-normal.png": {
     "pages": [
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108
+    ],
+    "prefix": "f85a15f2c0"
+  },
+  "assets/characters/enemy-berkel-archer-1/attack-east-normal.png": {
+    "pages": [
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
+    ],
+    "prefix": "db8463a2c6"
+  },
+  "assets/characters/enemy-berkel-archer-1/attack-north-normal.png": {
+    "pages": [
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
+    ],
+    "prefix": "caa25dea87"
+  },
+  "assets/characters/enemy-berkel-archer-1/idle-east-normal.png": {
+    "pages": [
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
+    ],
+    "prefix": "b316fe1aa1"
+  },
+  "assets/characters/enemy-berkel-archer-1/idle-north-normal.png": {
+    "pages": [
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
+    ],
+    "prefix": "26f4dc66d7"
+  },
+  "assets/characters/enemy-berkel-archer-1/walk-east-normal.png": {
+    "pages": [
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
+    ],
+    "prefix": "711d54828a"
+  },
+  "assets/characters/enemy-berkel-archer-1/walk-north-normal.png": {
+    "pages": [
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
+    ],
+    "prefix": "117c9f1366"
+  },
+  "assets/characters/enemy-berkel-dispatch-soldier-1/attack-east-normal.png": {
+    "pages": [
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
+    ],
+    "prefix": "eb9b820c1f"
+  },
+  "assets/characters/enemy-berkel-dispatch-soldier-1/attack-north-normal.png": {
+    "pages": [
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
+    ],
+    "prefix": "4f6df05fc0"
+  },
+  "assets/characters/enemy-berkel-dispatch-soldier-1/idle-east-normal.png": {
+    "pages": [
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94
+    ],
+    "prefix": "492ac2c287"
+  },
+  "assets/characters/enemy-berkel-dispatch-soldier-1/idle-north-normal.png": {
+    "pages": [
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94
+    ],
+    "prefix": "3288fd1864"
+  },
+  "assets/characters/enemy-berkel-dispatch-soldier-1/skill-monster-power-strike-east-normal.png": {
+    "pages": [
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94
+    ],
+    "prefix": "3102f5af28"
+  },
+  "assets/characters/enemy-berkel-dispatch-soldier-1/skill-monster-power-strike-north-normal.png": {
+    "pages": [
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94
+    ],
+    "prefix": "718ed4930e"
+  },
+  "assets/characters/enemy-berkel-dispatch-soldier-1/walk-east-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "c89e3179c1"
+  },
+  "assets/characters/enemy-berkel-dispatch-soldier-1/walk-north-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "b2ead5e415"
+  },
+  "assets/characters/enemy-berkel-knight-1/attack-east-normal.png": {
+    "pages": [
       107,
       107,
       107,
       107,
       107,
       107,
+      107
+    ],
+    "prefix": "8dec98a7c3"
+  },
+  "assets/characters/enemy-berkel-knight-1/attack-north-normal.png": {
+    "pages": [
       107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107
+    ],
+    "prefix": "7489d87106"
+  },
+  "assets/characters/enemy-berkel-knight-1/idle-east-normal.png": {
+    "pages": [
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
+    ],
+    "prefix": "3904833b6a"
+  },
+  "assets/characters/enemy-berkel-knight-1/idle-north-normal.png": {
+    "pages": [
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
+    ],
+    "prefix": "875ca09d3d"
+  },
+  "assets/characters/enemy-berkel-knight-1/walk-east-normal.png": {
+    "pages": [
       107,
       107,
       107,
@@ -7420,328 +7720,61 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
       107,
       107
     ],
-    "prefix": "f85a15f2c0"
-  },
-  "assets/characters/enemy-berkel-archer-1/attack-east-normal.png": {
-    "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
-    ],
-    "prefix": "db8463a2c6"
-  },
-  "assets/characters/enemy-berkel-archer-1/attack-north-normal.png": {
-    "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
-    ],
-    "prefix": "caa25dea87"
-  },
-  "assets/characters/enemy-berkel-archer-1/idle-east-normal.png": {
-    "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
-    ],
-    "prefix": "b316fe1aa1"
-  },
-  "assets/characters/enemy-berkel-archer-1/idle-north-normal.png": {
-    "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
-    ],
-    "prefix": "26f4dc66d7"
-  },
-  "assets/characters/enemy-berkel-archer-1/walk-east-normal.png": {
-    "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
-    ],
-    "prefix": "711d54828a"
-  },
-  "assets/characters/enemy-berkel-archer-1/walk-north-normal.png": {
-    "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
-    ],
-    "prefix": "117c9f1366"
-  },
-  "assets/characters/enemy-berkel-dispatch-soldier-1/attack-east-normal.png": {
-    "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
-    ],
-    "prefix": "eb9b820c1f"
-  },
-  "assets/characters/enemy-berkel-dispatch-soldier-1/attack-north-normal.png": {
-    "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
-    ],
-    "prefix": "4f6df05fc0"
-  },
-  "assets/characters/enemy-berkel-dispatch-soldier-1/idle-east-normal.png": {
-    "pages": [
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93
-    ],
-    "prefix": "492ac2c287"
-  },
-  "assets/characters/enemy-berkel-dispatch-soldier-1/idle-north-normal.png": {
-    "pages": [
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93
-    ],
-    "prefix": "3288fd1864"
-  },
-  "assets/characters/enemy-berkel-dispatch-soldier-1/skill-monster-power-strike-east-normal.png": {
-    "pages": [
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93
-    ],
-    "prefix": "3102f5af28"
-  },
-  "assets/characters/enemy-berkel-dispatch-soldier-1/skill-monster-power-strike-north-normal.png": {
-    "pages": [
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93
-    ],
-    "prefix": "718ed4930e"
-  },
-  "assets/characters/enemy-berkel-dispatch-soldier-1/walk-east-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "c89e3179c1"
-  },
-  "assets/characters/enemy-berkel-dispatch-soldier-1/walk-north-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "b2ead5e415"
-  },
-  "assets/characters/enemy-berkel-knight-1/attack-east-normal.png": {
-    "pages": [
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106
-    ],
-    "prefix": "8dec98a7c3"
-  },
-  "assets/characters/enemy-berkel-knight-1/attack-north-normal.png": {
-    "pages": [
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106
-    ],
-    "prefix": "7489d87106"
-  },
-  "assets/characters/enemy-berkel-knight-1/idle-east-normal.png": {
-    "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
-    ],
-    "prefix": "3904833b6a"
-  },
-  "assets/characters/enemy-berkel-knight-1/idle-north-normal.png": {
-    "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
-    ],
-    "prefix": "875ca09d3d"
-  },
-  "assets/characters/enemy-berkel-knight-1/walk-east-normal.png": {
-    "pages": [
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106
-    ],
     "prefix": "6609ee9f9e"
   },
   "assets/characters/enemy-berkel-knight-1/walk-north-normal.png": {
     "pages": [
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107
     ],
     "prefix": "8dc09c5c8a"
   },
   "assets/characters/enemy-berkel-priest-1/attack-east-normal.png": {
     "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
     ],
     "prefix": "c57e014177"
   },
   "assets/characters/enemy-berkel-priest-1/attack-north-normal.png": {
     "pages": [
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
+    ],
+    "prefix": "435d4b0fbf"
+  },
+  "assets/characters/enemy-berkel-priest-1/idle-east-normal.png": {
+    "pages": [
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
       114,
       114,
       114,
@@ -7751,197 +7784,172 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
       114,
       114
     ],
-    "prefix": "435d4b0fbf"
-  },
-  "assets/characters/enemy-berkel-priest-1/idle-east-normal.png": {
-    "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
-    ],
     "prefix": "f0e19ec638"
   },
   "assets/characters/enemy-berkel-priest-1/idle-north-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "6435011b27"
   },
   "assets/characters/enemy-berkel-priest-1/walk-east-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "5c23deb33c"
   },
   "assets/characters/enemy-berkel-priest-1/walk-north-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "e89187ecd0"
   },
   "assets/characters/enemy-berkel-soldier-1/idle-east-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "9ac03215e4"
   },
   "assets/characters/enemy-berkel-soldier-1/idle-north-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "0b794d2ab1"
   },
   "assets/characters/enemy-berserk-bat-1/attack-east-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "ca8fc714a2"
   },
   "assets/characters/enemy-berserk-bat-1/attack-north-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "e489880312"
   },
   "assets/characters/enemy-berserk-bat-1/idle-east-normal.png": {
     "pages": [
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112
     ],
     "prefix": "d086723098"
   },
   "assets/characters/enemy-berserk-bat-1/idle-north-normal.png": {
     "pages": [
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112
     ],
     "prefix": "967de52d4e"
   },
   "assets/characters/enemy-berserk-bat-1/walk-east-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "5b7a67f702"
   },
   "assets/characters/enemy-berserk-bat-1/walk-north-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "c954c46e0b"
   },
@@ -8029,173 +8037,173 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-bewitched-oogle-1/attack-east-add.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "b65041bc9d"
   },
   "assets/characters/enemy-bewitched-oogle-1/attack-east-normal.png": {
     "pages": [
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91
     ],
     "prefix": "cc5253a80c"
   },
   "assets/characters/enemy-bewitched-oogle-1/attack-north-add.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "cceb1d6ddc"
   },
   "assets/characters/enemy-bewitched-oogle-1/attack-north-normal.png": {
     "pages": [
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91
     ],
     "prefix": "773be19769"
   },
   "assets/characters/enemy-bewitched-oogle-1/idle-east-normal.png": {
     "pages": [
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91
     ],
     "prefix": "838916fb39"
   },
   "assets/characters/enemy-bewitched-oogle-1/idle-north-normal.png": {
     "pages": [
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91
     ],
     "prefix": "4f5d74d019"
   },
   "assets/characters/enemy-bewitched-oogle-1/walk-east-normal.png": {
     "pages": [
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91
     ],
     "prefix": "a1ced0505c"
   },
   "assets/characters/enemy-bewitched-oogle-1/walk-north-normal.png": {
     "pages": [
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90,
-      90
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91,
+      91
     ],
     "prefix": "8b68698bf9"
   },
@@ -8297,53 +8305,66 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-bizarre-flying-book-1/attack-east-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "bf706f1809"
   },
   "assets/characters/enemy-bizarre-flying-book-1/idle-east-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "3d4fd1b53f"
   },
   "assets/characters/enemy-bizarre-flying-book-1/walk-east-normal.png": {
+    "pages": [
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
+    ],
+    "prefix": "2ecae7e66f"
+  },
+  "assets/characters/enemy-black-giant-maggot-cocoons-1/attack-east-normal.png": {
     "pages": [
       120,
       120,
@@ -8354,140 +8375,127 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
       120,
       120
     ],
-    "prefix": "2ecae7e66f"
-  },
-  "assets/characters/enemy-black-giant-maggot-cocoons-1/attack-east-normal.png": {
-    "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
-    ],
     "prefix": "695731a95f"
   },
   "assets/characters/enemy-black-giant-maggot-cocoons-1/idle-east-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "0330eef776"
   },
   "assets/characters/enemy-black-rattlesnake-1/attack-east-normal.png": {
     "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
     ],
     "prefix": "a3311ad0b5"
   },
   "assets/characters/enemy-black-rattlesnake-1/attack-north-normal.png": {
     "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
     ],
     "prefix": "a2da6e35a4"
   },
   "assets/characters/enemy-black-rattlesnake-1/idle-east-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "ec6246c7f5"
   },
   "assets/characters/enemy-black-rattlesnake-1/idle-north-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "63979336dd"
   },
   "assets/characters/enemy-black-rattlesnake-1/walk-east-normal.png": {
     "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
     ],
     "prefix": "7419246d6c"
   },
   "assets/characters/enemy-black-rattlesnake-1/walk-north-normal.png": {
     "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
     ],
     "prefix": "fccf17eb27"
   },
@@ -8521,37 +8529,37 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-black-skeleton-1/idle-east-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "6a7ecb8516"
   },
   "assets/characters/enemy-black-skeleton-1/idle-north-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "39703df845"
   },
@@ -8583,48 +8591,148 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-black-vampire-bat-1/attack-east-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "3826e0e304"
   },
   "assets/characters/enemy-black-vampire-bat-1/attack-north-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "b00110a9ab"
   },
   "assets/characters/enemy-black-vampire-bat-1/idle-east-normal.png": {
     "pages": [
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110
     ],
     "prefix": "37781b6fcb"
   },
   "assets/characters/enemy-black-vampire-bat-1/idle-north-normal.png": {
     "pages": [
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110
+    ],
+    "prefix": "3e2da892f7"
+  },
+  "assets/characters/enemy-black-vampire-bat-1/walk-east-normal.png": {
+    "pages": [
+      114,
+      114,
+      114,
+      114
+    ],
+    "prefix": "cc5c6fdc18"
+  },
+  "assets/characters/enemy-black-vampire-bat-1/walk-north-normal.png": {
+    "pages": [
+      114,
+      114,
+      114,
+      114
+    ],
+    "prefix": "7389ec708c"
+  },
+  "assets/characters/enemy-black-wolf-1/attack-east-normal.png": {
+    "pages": [
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
+    ],
+    "prefix": "29a81aa37c"
+  },
+  "assets/characters/enemy-black-wolf-1/attack-north-normal.png": {
+    "pages": [
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
+    ],
+    "prefix": "26a17b9f99"
+  },
+  "assets/characters/enemy-black-wolf-1/idle-east-normal.png": {
+    "pages": [
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109
+    ],
+    "prefix": "ad40f2e314"
+  },
+  "assets/characters/enemy-black-wolf-1/idle-north-normal.png": {
+    "pages": [
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109
+    ],
+    "prefix": "662c3f0f58"
+  },
+  "assets/characters/enemy-black-wolf-1/skill-monster-beast-strike-east-normal.png": {
+    "pages": [
       109,
       109,
       109,
@@ -8641,280 +8749,180 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
       109,
       109
     ],
-    "prefix": "3e2da892f7"
-  },
-  "assets/characters/enemy-black-vampire-bat-1/walk-east-normal.png": {
-    "pages": [
-      113,
-      113,
-      113,
-      113
-    ],
-    "prefix": "cc5c6fdc18"
-  },
-  "assets/characters/enemy-black-vampire-bat-1/walk-north-normal.png": {
-    "pages": [
-      113,
-      113,
-      113,
-      113
-    ],
-    "prefix": "7389ec708c"
-  },
-  "assets/characters/enemy-black-wolf-1/attack-east-normal.png": {
-    "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
-    ],
-    "prefix": "29a81aa37c"
-  },
-  "assets/characters/enemy-black-wolf-1/attack-north-normal.png": {
-    "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
-    ],
-    "prefix": "26a17b9f99"
-  },
-  "assets/characters/enemy-black-wolf-1/idle-east-normal.png": {
-    "pages": [
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108
-    ],
-    "prefix": "ad40f2e314"
-  },
-  "assets/characters/enemy-black-wolf-1/idle-north-normal.png": {
-    "pages": [
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108
-    ],
-    "prefix": "662c3f0f58"
-  },
-  "assets/characters/enemy-black-wolf-1/skill-monster-beast-strike-east-normal.png": {
-    "pages": [
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108
-    ],
     "prefix": "16541df2f1"
   },
   "assets/characters/enemy-black-wolf-1/skill-monster-beast-strike-north-normal.png": {
     "pages": [
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109
     ],
     "prefix": "fac61807c7"
   },
   "assets/characters/enemy-black-wolf-1/walk-east-normal.png": {
     "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
     ],
     "prefix": "08f9884a46"
   },
   "assets/characters/enemy-black-wolf-1/walk-north-normal.png": {
     "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
     ],
     "prefix": "5fa5a2b1cb"
   },
   "assets/characters/enemy-blackhood-thieves-1/attack-east-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "85c08472fc"
   },
   "assets/characters/enemy-blackhood-thieves-1/attack-north-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "f47a9f75ea"
   },
   "assets/characters/enemy-blackhood-thieves-1/attack-south-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "5c4217f48f"
   },
   "assets/characters/enemy-blackhood-thieves-1/idle-east-normal.png": {
     "pages": [
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109
     ],
     "prefix": "8c1a7687ce"
   },
   "assets/characters/enemy-blackhood-thieves-1/idle-north-normal.png": {
     "pages": [
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109
     ],
     "prefix": "f9479b1ea4"
   },
   "assets/characters/enemy-blackhood-thieves-1/idle-south-normal.png": {
     "pages": [
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109
     ],
     "prefix": "28861f29d5"
   },
   "assets/characters/enemy-blackhood-thieves-1/walk-east-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "36f1b7b4c5"
   },
   "assets/characters/enemy-blackhood-thieves-1/walk-north-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "73bc838687"
   },
   "assets/characters/enemy-blackhood-thieves-1/walk-south-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "4bece542b1"
   },
@@ -8965,61 +8973,61 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-blackhoods-archer-1/idle-east-normal.png": {
     "pages": [
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103
     ],
     "prefix": "3b72b1ef0e"
   },
   "assets/characters/enemy-blackhoods-archer-1/idle-north-normal.png": {
     "pages": [
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103
     ],
     "prefix": "24012220d1"
   },
   "assets/characters/enemy-blackhoods-archer-1/idle-south-normal.png": {
     "pages": [
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103
     ],
     "prefix": "fc73e5efde"
   },
@@ -9219,223 +9227,234 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-blackhoods-boss-1/walk-east-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "bcdf9e8e77"
   },
   "assets/characters/enemy-blackhoods-boss-1/walk-north-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "9baf3f2761"
   },
   "assets/characters/enemy-blackhoods-boss-1/walk-south-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "d997b1c47e"
   },
   "assets/characters/enemy-blackhoods-chief-1/attack-east-normal.png": {
     "pages": [
-      91,
-      91,
-      91,
-      91,
-      91
+      92,
+      92,
+      92,
+      92,
+      92
     ],
     "prefix": "f71b9a5fbb"
   },
   "assets/characters/enemy-blackhoods-chief-1/attack-north-normal.png": {
     "pages": [
-      91,
-      91,
-      91,
-      91,
-      91
+      92,
+      92,
+      92,
+      92,
+      92
     ],
     "prefix": "e458e2f35f"
   },
   "assets/characters/enemy-blackhoods-chief-1/attack-south-normal.png": {
     "pages": [
-      91,
-      91,
-      91,
-      91,
-      91
+      92,
+      92,
+      92,
+      92,
+      92
     ],
     "prefix": "e12f0ae27b"
   },
   "assets/characters/enemy-blackhoods-chief-1/idle-east-normal.png": {
     "pages": [
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92
     ],
     "prefix": "04b73ea22c"
   },
   "assets/characters/enemy-blackhoods-chief-1/idle-north-normal.png": {
     "pages": [
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92
     ],
     "prefix": "15c79ce340"
   },
   "assets/characters/enemy-blackhoods-chief-1/idle-south-normal.png": {
     "pages": [
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92
     ],
     "prefix": "3fa49baaaf"
   },
   "assets/characters/enemy-blackhoods-chief-1/walk-east-normal.png": {
     "pages": [
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92
     ],
     "prefix": "177c2b9882"
   },
   "assets/characters/enemy-blackhoods-chief-1/walk-north-normal.png": {
     "pages": [
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92
     ],
     "prefix": "a738c388ee"
   },
   "assets/characters/enemy-blackhoods-chief-1/walk-south-normal.png": {
     "pages": [
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92
     ],
     "prefix": "4ebc39943b"
   },
   "assets/characters/enemy-blood-hungry-mosquito-1/attack-east-normal.png": {
     "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
     ],
     "prefix": "1616bb577d"
   },
   "assets/characters/enemy-blood-hungry-mosquito-1/attack-north-normal.png": {
     "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
     ],
     "prefix": "c83a7373b6"
   },
   "assets/characters/enemy-blood-hungry-mosquito-1/idle-east-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "6bde2dbe09"
   },
   "assets/characters/enemy-blood-hungry-mosquito-1/idle-north-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
+    ],
+    "prefix": "5569398d18"
+  },
+  "assets/characters/enemy-blood-hungry-mosquito-1/walk-east-normal.png": {
+    "pages": [
       123,
       123,
       123,
@@ -9443,27 +9462,16 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
       123,
       123
     ],
-    "prefix": "5569398d18"
-  },
-  "assets/characters/enemy-blood-hungry-mosquito-1/walk-east-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
     "prefix": "6b34835aba"
   },
   "assets/characters/enemy-blood-hungry-mosquito-1/walk-north-normal.png": {
     "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
     ],
     "prefix": "38aa4af694"
   },
@@ -9547,173 +9555,273 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-blue-wingslime-1/attack-east-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "5aee65fa13"
   },
   "assets/characters/enemy-blue-wingslime-1/attack-north-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "f4b4ea361a"
   },
   "assets/characters/enemy-blue-wingslime-1/idle-east-normal.png": {
     "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
     ],
     "prefix": "1fc28de438"
   },
   "assets/characters/enemy-blue-wingslime-1/idle-north-normal.png": {
     "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
     ],
     "prefix": "5cdfe12d28"
   },
   "assets/characters/enemy-blue-wingslime-1/walk-east-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "81febaedec"
   },
   "assets/characters/enemy-blue-wingslime-1/walk-north-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "e3ee0dd9a5"
   },
   "assets/characters/enemy-bone-orc-sorcerer-spirit-1/attack-east-normal.png": {
     "pages": [
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98
     ],
     "prefix": "c621b83087"
   },
   "assets/characters/enemy-bone-orc-sorcerer-spirit-1/attack-north-normal.png": {
     "pages": [
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98
     ],
     "prefix": "327069bd9c"
   },
   "assets/characters/enemy-bone-orc-sorcerer-spirit-1/idle-east-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "bde83b2c28"
   },
   "assets/characters/enemy-bone-orc-sorcerer-spirit-1/idle-north-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "0176f1250a"
   },
   "assets/characters/enemy-bone-orc-sorcerer-spirit-1/walk-east-normal.png": {
     "pages": [
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98
     ],
     "prefix": "ddc902cfce"
   },
   "assets/characters/enemy-bone-orc-sorcerer-spirit-1/walk-north-normal.png": {
     "pages": [
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98
+    ],
+    "prefix": "c962472abe"
+  },
+  "assets/characters/enemy-bone-orc-warrior-ghoul-1/attack-east-normal.png": {
+    "pages": [
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96
+    ],
+    "prefix": "a9b4ecb2af"
+  },
+  "assets/characters/enemy-bone-orc-warrior-ghoul-1/attack-north-normal.png": {
+    "pages": [
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96
+    ],
+    "prefix": "015ac54137"
+  },
+  "assets/characters/enemy-bone-orc-warrior-ghoul-1/idle-east-normal.png": {
+    "pages": [
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111
+    ],
+    "prefix": "41a4fc8489"
+  },
+  "assets/characters/enemy-bone-orc-warrior-ghoul-1/idle-north-normal.png": {
+    "pages": [
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111
+    ],
+    "prefix": "a6fac3890a"
+  },
+  "assets/characters/enemy-bone-orc-warrior-ghoul-1/walk-east-normal.png": {
+    "pages": [
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96
+    ],
+    "prefix": "acc157a7b3"
+  },
+  "assets/characters/enemy-bone-orc-warrior-ghoul-1/walk-north-normal.png": {
+    "pages": [
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96
+    ],
+    "prefix": "9d0a08fd77"
+  },
+  "assets/characters/enemy-boss-skeleton-1/attack-east-normal.png": {
+    "pages": [
+      97,
       97,
       97,
       97,
@@ -9723,193 +9831,93 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
       97,
       97
     ],
-    "prefix": "c962472abe"
-  },
-  "assets/characters/enemy-bone-orc-warrior-ghoul-1/attack-east-normal.png": {
-    "pages": [
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95
-    ],
-    "prefix": "a9b4ecb2af"
-  },
-  "assets/characters/enemy-bone-orc-warrior-ghoul-1/attack-north-normal.png": {
-    "pages": [
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95
-    ],
-    "prefix": "015ac54137"
-  },
-  "assets/characters/enemy-bone-orc-warrior-ghoul-1/idle-east-normal.png": {
-    "pages": [
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110
-    ],
-    "prefix": "41a4fc8489"
-  },
-  "assets/characters/enemy-bone-orc-warrior-ghoul-1/idle-north-normal.png": {
-    "pages": [
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110
-    ],
-    "prefix": "a6fac3890a"
-  },
-  "assets/characters/enemy-bone-orc-warrior-ghoul-1/walk-east-normal.png": {
-    "pages": [
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95
-    ],
-    "prefix": "acc157a7b3"
-  },
-  "assets/characters/enemy-bone-orc-warrior-ghoul-1/walk-north-normal.png": {
-    "pages": [
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95
-    ],
-    "prefix": "9d0a08fd77"
-  },
-  "assets/characters/enemy-boss-skeleton-1/attack-east-normal.png": {
-    "pages": [
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96
-    ],
     "prefix": "e0685ddb52"
   },
   "assets/characters/enemy-boss-skeleton-1/attack-north-normal.png": {
     "pages": [
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97
     ],
     "prefix": "5c3e37987a"
   },
   "assets/characters/enemy-boss-skeleton-1/idle-east-normal.png": {
     "pages": [
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97
     ],
     "prefix": "37ec4bec2c"
   },
   "assets/characters/enemy-boss-skeleton-1/idle-north-normal.png": {
     "pages": [
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97
     ],
     "prefix": "e628cf3466"
   },
   "assets/characters/enemy-boss-skeleton-1/walk-east-normal.png": {
     "pages": [
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97
     ],
     "prefix": "a9d6006eaa"
   },
   "assets/characters/enemy-boss-skeleton-1/walk-north-normal.png": {
     "pages": [
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97
     ],
     "prefix": "c4751de31a"
   },
   "assets/characters/enemy-box-1/idle-east-normal.png": {
     "pages": [
-      122
+      123
     ],
     "prefix": "fbb34c279c"
   },
   "assets/characters/enemy-box-1/idle-north-normal.png": {
     "pages": [
-      122,
-      122,
-      122,
-      122,
-      122
+      123,
+      123,
+      123,
+      123,
+      123
     ],
     "prefix": "fc3c7ff1d8"
   },
@@ -10014,223 +10022,372 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-burning-cactus-1/attack-east-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "c57a5f8087"
   },
   "assets/characters/enemy-burning-cactus-1/idle-east-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "a5734d0baf"
   },
   "assets/characters/enemy-burning-cactus-1/walk-east-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "521e331ace"
   },
   "assets/characters/enemy-burning-cactus-1/walk-north-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "3169e57fd9"
   },
   "assets/characters/enemy-bush-1/idle-east-normal.png": {
     "pages": [
-      123
+      124
     ],
     "prefix": "6644a0af52"
   },
   "assets/characters/enemy-bush-1/idle-north-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "2fcd9a11d5"
   },
   "assets/characters/enemy-cactus-1/attack-east-normal.png": {
     "pages": [
-      115,
-      115,
-      115,
-      115
+      116,
+      116,
+      116,
+      116
     ],
     "prefix": "4cfacd042b"
   },
   "assets/characters/enemy-cactus-1/idle-east-normal.png": {
     "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
     ],
     "prefix": "878e627a4c"
   },
   "assets/characters/enemy-cactus-1/walk-east-normal.png": {
     "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
     ],
     "prefix": "cf951e23d9"
   },
   "assets/characters/enemy-cactus-1/walk-north-normal.png": {
     "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
     ],
     "prefix": "a54c8c0b68"
   },
   "assets/characters/enemy-calcareous-slime-1/attack-east-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "78594190e7"
   },
   "assets/characters/enemy-calcareous-slime-1/attack-north-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "989b69c440"
   },
   "assets/characters/enemy-calcareous-slime-1/idle-east-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "e83af473ad"
   },
   "assets/characters/enemy-calcareous-slime-1/idle-north-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "11c0857716"
   },
   "assets/characters/enemy-calcareous-slime-1/walk-east-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "a50804e346"
   },
   "assets/characters/enemy-calcareous-slime-1/walk-north-normal.png": {
     "pages": [
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
+    ],
+    "prefix": "d8cdc12d1a"
+  },
+  "assets/characters/enemy-captain-of-arnen-chasers-1/attack-east-normal.png": {
+    "pages": [
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78
+    ],
+    "prefix": "a608e5482b"
+  },
+  "assets/characters/enemy-captain-of-arnen-chasers-1/attack-north-normal.png": {
+    "pages": [
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78
+    ],
+    "prefix": "840ca4664a"
+  },
+  "assets/characters/enemy-captain-of-arnen-chasers-1/attack-south-normal.png": {
+    "pages": [
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78
+    ],
+    "prefix": "2a3d46a247"
+  },
+  "assets/characters/enemy-captain-of-arnen-chasers-1/skill-monster-landshake-east-normal.png": {
+    "pages": [
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78
+    ],
+    "prefix": "26c532da59"
+  },
+  "assets/characters/enemy-captain-of-arnen-chasers-1/skill-monster-landshake-north-normal.png": {
+    "pages": [
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78
+    ],
+    "prefix": "a03c14dd94"
+  },
+  "assets/characters/enemy-captured-archers-of-arnen-1/attack-east-normal.png": {
+    "pages": [
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
+    ],
+    "prefix": "1362bd6fd2"
+  },
+  "assets/characters/enemy-captured-archers-of-arnen-1/attack-north-normal.png": {
+    "pages": [
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
+    ],
+    "prefix": "301dcfe83c"
+  },
+  "assets/characters/enemy-captured-archers-of-arnen-1/idle-east-normal.png": {
+    "pages": [
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
       116,
       116,
       116,
@@ -10241,239 +10398,90 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
       116,
       116
     ],
-    "prefix": "d8cdc12d1a"
-  },
-  "assets/characters/enemy-captain-of-arnen-chasers-1/attack-east-normal.png": {
-    "pages": [
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77
-    ],
-    "prefix": "a608e5482b"
-  },
-  "assets/characters/enemy-captain-of-arnen-chasers-1/attack-north-normal.png": {
-    "pages": [
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77
-    ],
-    "prefix": "840ca4664a"
-  },
-  "assets/characters/enemy-captain-of-arnen-chasers-1/attack-south-normal.png": {
-    "pages": [
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77
-    ],
-    "prefix": "2a3d46a247"
-  },
-  "assets/characters/enemy-captain-of-arnen-chasers-1/skill-monster-landshake-east-normal.png": {
-    "pages": [
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77
-    ],
-    "prefix": "26c532da59"
-  },
-  "assets/characters/enemy-captain-of-arnen-chasers-1/skill-monster-landshake-north-normal.png": {
-    "pages": [
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77
-    ],
-    "prefix": "a03c14dd94"
-  },
-  "assets/characters/enemy-captured-archers-of-arnen-1/attack-east-normal.png": {
-    "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
-    ],
-    "prefix": "1362bd6fd2"
-  },
-  "assets/characters/enemy-captured-archers-of-arnen-1/attack-north-normal.png": {
-    "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
-    ],
-    "prefix": "301dcfe83c"
-  },
-  "assets/characters/enemy-captured-archers-of-arnen-1/idle-east-normal.png": {
-    "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
-    ],
     "prefix": "af264bfb2a"
   },
   "assets/characters/enemy-captured-archers-of-arnen-1/idle-north-normal.png": {
     "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
     ],
     "prefix": "95066c5f1a"
   },
   "assets/characters/enemy-captured-archers-of-arnen-1/walk-east-normal.png": {
     "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
     ],
     "prefix": "50918679da"
   },
   "assets/characters/enemy-captured-archers-of-arnen-1/walk-north-normal.png": {
     "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
     ],
     "prefix": "848b7fc7df"
   },
   "assets/characters/enemy-carnivore-flower-1/attack-east-normal.png": {
     "pages": [
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94
     ],
     "prefix": "638b2535f9"
   },
   "assets/characters/enemy-carnivore-flower-1/attack-north-normal.png": {
     "pages": [
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94
     ],
     "prefix": "987218fdc9"
   },
@@ -10529,61 +10537,61 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-carnivore-flower-1/walk-east-normal.png": {
     "pages": [
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94
     ],
     "prefix": "2369d18bfb"
   },
   "assets/characters/enemy-carnivore-flower-1/walk-north-normal.png": {
     "pages": [
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94
     ],
     "prefix": "8c4865ada4"
   },
   "assets/characters/enemy-cave-s-bizarre-plant-1/attack-east-normal.png": {
     "pages": [
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94
     ],
     "prefix": "31ff553d95"
   },
   "assets/characters/enemy-cave-s-bizarre-plant-1/attack-north-normal.png": {
     "pages": [
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94
     ],
     "prefix": "d3ecd90bd8"
   },
@@ -10639,27 +10647,27 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-cave-s-bizarre-plant-1/walk-east-normal.png": {
     "pages": [
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94
     ],
     "prefix": "d58387b10c"
   },
   "assets/characters/enemy-cave-s-bizarre-plant-1/walk-north-normal.png": {
     "pages": [
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93,
-      93
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94,
+      94
     ],
     "prefix": "3602a8d7af"
   },
@@ -10751,219 +10759,219 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-chasers-adjutant-1/attack-east-normal.png": {
     "pages": [
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83
     ],
     "prefix": "197bec102b"
   },
   "assets/characters/enemy-chasers-adjutant-1/attack-north-normal.png": {
     "pages": [
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83
     ],
     "prefix": "c3324cbf7c"
   },
   "assets/characters/enemy-chasers-adjutant-1/attack-south-normal.png": {
     "pages": [
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83
     ],
     "prefix": "a403252ebb"
   },
   "assets/characters/enemy-chasers-adjutant-1/idle-east-normal.png": {
     "pages": [
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83
     ],
     "prefix": "f06a142c1a"
   },
   "assets/characters/enemy-chasers-adjutant-1/idle-north-normal.png": {
     "pages": [
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83
     ],
     "prefix": "e29599eea9"
   },
   "assets/characters/enemy-chasers-adjutant-1/idle-south-normal.png": {
     "pages": [
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83
     ],
     "prefix": "d92c9e4db1"
   },
   "assets/characters/enemy-chasers-adjutant-1/walk-east-normal.png": {
     "pages": [
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83
     ],
     "prefix": "bafad9cae9"
   },
   "assets/characters/enemy-chasers-adjutant-1/walk-north-normal.png": {
     "pages": [
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83
     ],
     "prefix": "d877a6593b"
   },
   "assets/characters/enemy-chasers-adjutant-1/walk-south-normal.png": {
     "pages": [
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83
     ],
     "prefix": "a9ec96ef2f"
   },
   "assets/characters/enemy-chasers-elite-archer-1/idle-east-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "172c8e9d10"
   },
   "assets/characters/enemy-chasers-elite-archer-1/idle-north-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "ee910d3c71"
   },
   "assets/characters/enemy-chasers-scout-captain-1/attack-east-normal.png": {
     "pages": [
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108
     ],
     "prefix": "59b0701d16"
   },
   "assets/characters/enemy-chasers-scout-captain-1/attack-north-normal.png": {
     "pages": [
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108
     ],
     "prefix": "cb23b0ac1b"
   },
   "assets/characters/enemy-chasers-scout-captain-1/attack-south-normal.png": {
     "pages": [
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108
     ],
     "prefix": "4e9198a1c9"
   },
@@ -11026,51 +11034,383 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-chasers-scout-captain-1/skill-monster-stunning-strike-east-normal.png": {
     "pages": [
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111
     ],
     "prefix": "30de79298d"
   },
   "assets/characters/enemy-chasers-scout-captain-1/skill-monster-stunning-strike-north-normal.png": {
     "pages": [
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111
+    ],
+    "prefix": "33919ca8ff"
+  },
+  "assets/characters/enemy-chasers-scout-captain-1/walk-east-normal.png": {
+    "pages": [
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
+    ],
+    "prefix": "41e76e1ecc"
+  },
+  "assets/characters/enemy-chasers-scout-captain-1/walk-north-normal.png": {
+    "pages": [
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
+    ],
+    "prefix": "a5b29c74fd"
+  },
+  "assets/characters/enemy-chasers-scout-captain-1/walk-south-normal.png": {
+    "pages": [
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
+    ],
+    "prefix": "6c87319382"
+  },
+  "assets/characters/enemy-chief-drow-1/attack-east-normal.png": {
+    "pages": [
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76
+    ],
+    "prefix": "8cb7007d77"
+  },
+  "assets/characters/enemy-chief-drow-1/attack-north-normal.png": {
+    "pages": [
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76
+    ],
+    "prefix": "1c3aecb6cf"
+  },
+  "assets/characters/enemy-chief-drow-1/attack-south-normal.png": {
+    "pages": [
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76
+    ],
+    "prefix": "566f43b294"
+  },
+  "assets/characters/enemy-chief-drow-1/skill-monster-whirlwind-east-normal.png": {
+    "pages": [
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76
+    ],
+    "prefix": "8fe363678e"
+  },
+  "assets/characters/enemy-chief-drow-1/skill-monster-whirlwind-north-normal.png": {
+    "pages": [
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76
+    ],
+    "prefix": "f2f9b0b367"
+  },
+  "assets/characters/enemy-chief-drow-1/walk-east-normal.png": {
+    "pages": [
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76
+    ],
+    "prefix": "fd519f3e45"
+  },
+  "assets/characters/enemy-chief-drow-1/walk-north-normal.png": {
+    "pages": [
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76
+    ],
+    "prefix": "e92094de43"
+  },
+  "assets/characters/enemy-chief-drow-1/walk-south-normal.png": {
+    "pages": [
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76,
+      76
+    ],
+    "prefix": "5995d62c69"
+  },
+  "assets/characters/enemy-contaminated-arnen-soldier-1/idle-east-normal.png": {
+    "pages": [
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
+    ],
+    "prefix": "bacdae6a3a"
+  },
+  "assets/characters/enemy-contaminated-arnen-soldier-1/idle-north-normal.png": {
+    "pages": [
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
+    ],
+    "prefix": "1e3bdd6013"
+  },
+  "assets/characters/enemy-contaminated-berkel-priest-1/attack-east-normal.png": {
+    "pages": [
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110
+    ],
+    "prefix": "04291e280b"
+  },
+  "assets/characters/enemy-contaminated-berkel-priest-1/attack-north-normal.png": {
+    "pages": [
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110
+    ],
+    "prefix": "db2d5d4850"
+  },
+  "assets/characters/enemy-contaminated-berkel-priest-1/idle-east-normal.png": {
+    "pages": [
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110
+    ],
+    "prefix": "02d8b9e430"
+  },
+  "assets/characters/enemy-contaminated-berkel-priest-1/idle-north-normal.png": {
+    "pages": [
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110
+    ],
+    "prefix": "7386d29b9c"
+  },
+  "assets/characters/enemy-contaminated-berkel-priest-1/walk-east-normal.png": {
+    "pages": [
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
+    ],
+    "prefix": "86bf7f63f1"
+  },
+  "assets/characters/enemy-contaminated-berkel-priest-1/walk-north-normal.png": {
+    "pages": [
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
+    ],
+    "prefix": "54cf8845df"
+  },
+  "assets/characters/enemy-contaminated-elementals-1/attack-east-screen.png": {
+    "pages": [
       91,
       91,
       91,
@@ -11078,847 +11418,515 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
       91,
       91
     ],
-    "prefix": "33919ca8ff"
-  },
-  "assets/characters/enemy-chasers-scout-captain-1/walk-east-normal.png": {
-    "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
-    ],
-    "prefix": "41e76e1ecc"
-  },
-  "assets/characters/enemy-chasers-scout-captain-1/walk-north-normal.png": {
-    "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
-    ],
-    "prefix": "a5b29c74fd"
-  },
-  "assets/characters/enemy-chasers-scout-captain-1/walk-south-normal.png": {
-    "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
-    ],
-    "prefix": "6c87319382"
-  },
-  "assets/characters/enemy-chief-drow-1/attack-east-normal.png": {
-    "pages": [
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75
-    ],
-    "prefix": "8cb7007d77"
-  },
-  "assets/characters/enemy-chief-drow-1/attack-north-normal.png": {
-    "pages": [
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75
-    ],
-    "prefix": "1c3aecb6cf"
-  },
-  "assets/characters/enemy-chief-drow-1/attack-south-normal.png": {
-    "pages": [
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75
-    ],
-    "prefix": "566f43b294"
-  },
-  "assets/characters/enemy-chief-drow-1/skill-monster-whirlwind-east-normal.png": {
-    "pages": [
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75
-    ],
-    "prefix": "8fe363678e"
-  },
-  "assets/characters/enemy-chief-drow-1/skill-monster-whirlwind-north-normal.png": {
-    "pages": [
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75
-    ],
-    "prefix": "f2f9b0b367"
-  },
-  "assets/characters/enemy-chief-drow-1/walk-east-normal.png": {
-    "pages": [
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75
-    ],
-    "prefix": "fd519f3e45"
-  },
-  "assets/characters/enemy-chief-drow-1/walk-north-normal.png": {
-    "pages": [
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75
-    ],
-    "prefix": "e92094de43"
-  },
-  "assets/characters/enemy-chief-drow-1/walk-south-normal.png": {
-    "pages": [
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75,
-      75
-    ],
-    "prefix": "5995d62c69"
-  },
-  "assets/characters/enemy-contaminated-arnen-soldier-1/idle-east-normal.png": {
-    "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
-    ],
-    "prefix": "bacdae6a3a"
-  },
-  "assets/characters/enemy-contaminated-arnen-soldier-1/idle-north-normal.png": {
-    "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
-    ],
-    "prefix": "1e3bdd6013"
-  },
-  "assets/characters/enemy-contaminated-berkel-priest-1/attack-east-normal.png": {
-    "pages": [
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109
-    ],
-    "prefix": "04291e280b"
-  },
-  "assets/characters/enemy-contaminated-berkel-priest-1/attack-north-normal.png": {
-    "pages": [
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109
-    ],
-    "prefix": "db2d5d4850"
-  },
-  "assets/characters/enemy-contaminated-berkel-priest-1/idle-east-normal.png": {
-    "pages": [
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109
-    ],
-    "prefix": "02d8b9e430"
-  },
-  "assets/characters/enemy-contaminated-berkel-priest-1/idle-north-normal.png": {
-    "pages": [
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109
-    ],
-    "prefix": "7386d29b9c"
-  },
-  "assets/characters/enemy-contaminated-berkel-priest-1/walk-east-normal.png": {
-    "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
-    ],
-    "prefix": "86bf7f63f1"
-  },
-  "assets/characters/enemy-contaminated-berkel-priest-1/walk-north-normal.png": {
-    "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
-    ],
-    "prefix": "54cf8845df"
-  },
-  "assets/characters/enemy-contaminated-elementals-1/attack-east-screen.png": {
-    "pages": [
-      90,
-      90,
-      90,
-      90,
-      90,
-      90
-    ],
     "prefix": "bbe7fba519"
   },
   "assets/characters/enemy-contaminated-elementals-1/attack-north-screen.png": {
     "pages": [
-      90,
-      90,
-      90,
-      90,
-      90,
-      90
+      91,
+      91,
+      91,
+      91,
+      91,
+      91
     ],
     "prefix": "657e8da2f5"
   },
   "assets/characters/enemy-contaminated-elementals-1/idle-east-screen.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "4736193aac"
   },
   "assets/characters/enemy-contaminated-elementals-1/idle-north-screen.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "d16e209875"
   },
   "assets/characters/enemy-contaminated-elementals-1/walk-east-screen.png": {
     "pages": [
-      90,
-      90,
-      90,
-      90
+      91,
+      91,
+      91,
+      91
     ],
     "prefix": "f838818b08"
   },
   "assets/characters/enemy-contaminated-head-goblin-1/attack-east-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "efc971e91a"
   },
   "assets/characters/enemy-contaminated-head-goblin-1/attack-north-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "72de397bab"
   },
   "assets/characters/enemy-contaminated-head-goblin-1/idle-east-normal.png": {
     "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
     ],
     "prefix": "1c3322a966"
   },
   "assets/characters/enemy-contaminated-head-goblin-1/idle-north-normal.png": {
     "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
     ],
     "prefix": "dad79769d3"
   },
   "assets/characters/enemy-contaminated-head-goblin-1/skill-monster-haste-east-normal.png": {
     "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
     ],
     "prefix": "e7e4baffb6"
   },
   "assets/characters/enemy-contaminated-head-goblin-1/skill-monster-haste-north-normal.png": {
     "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
     ],
     "prefix": "556155eef9"
   },
   "assets/characters/enemy-contaminated-head-goblin-1/walk-east-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "64f490da0d"
   },
   "assets/characters/enemy-contaminated-head-goblin-1/walk-north-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "449689c2ae"
   },
   "assets/characters/enemy-convict-1/attack-east-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "feb670869a"
   },
   "assets/characters/enemy-convict-1/attack-north-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "ff13464091"
   },
   "assets/characters/enemy-convict-1/attack-south-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "8c75bd0228"
   },
   "assets/characters/enemy-convict-1/idle-east-normal.png": {
     "pages": [
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111
     ],
     "prefix": "181061e630"
   },
   "assets/characters/enemy-convict-1/idle-north-normal.png": {
     "pages": [
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111
     ],
     "prefix": "d201f7c841"
   },
   "assets/characters/enemy-convict-1/idle-south-normal.png": {
     "pages": [
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111
     ],
     "prefix": "d9a8cdd43a"
   },
   "assets/characters/enemy-convict-1/walk-east-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "192823edcb"
   },
   "assets/characters/enemy-convict-1/walk-north-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "fe604c7547"
   },
   "assets/characters/enemy-convict-1/walk-south-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "05d04e125e"
   },
   "assets/characters/enemy-cornette-1/attack-east-normal.png": {
     "pages": [
-      89,
-      89,
-      89,
-      89,
-      89
+      90,
+      90,
+      90,
+      90,
+      90
     ],
     "prefix": "1692091344"
   },
   "assets/characters/enemy-cornette-1/attack-north-normal.png": {
     "pages": [
-      89,
-      89,
-      89,
-      89,
-      89
+      90,
+      90,
+      90,
+      90,
+      90
     ],
     "prefix": "264ad18fa5"
   },
   "assets/characters/enemy-cornette-1/attack-south-normal.png": {
     "pages": [
-      89,
-      89,
-      89,
-      89,
-      89
+      90,
+      90,
+      90,
+      90,
+      90
     ],
     "prefix": "eff0b16d1a"
   },
   "assets/characters/enemy-cornette-1/idle-east-normal.png": {
     "pages": [
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90
     ],
     "prefix": "9969ed566e"
   },
   "assets/characters/enemy-cornette-1/idle-north-normal.png": {
     "pages": [
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90
     ],
     "prefix": "5210243db6"
   },
   "assets/characters/enemy-cornette-1/idle-south-normal.png": {
     "pages": [
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90
     ],
     "prefix": "97bd03b428"
   },
   "assets/characters/enemy-cornette-1/skill-monster-dark-sword-east-normal.png": {
     "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
     ],
     "prefix": "3058b8a575"
   },
   "assets/characters/enemy-cornette-1/skill-monster-dark-sword-north-normal.png": {
     "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
     ],
     "prefix": "f13770d8a9"
   },
   "assets/characters/enemy-cornette-1/walk-east-normal.png": {
     "pages": [
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90
     ],
     "prefix": "c5dcb94d63"
   },
   "assets/characters/enemy-cornette-1/walk-north-normal.png": {
     "pages": [
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90
     ],
     "prefix": "0ca905ee42"
   },
   "assets/characters/enemy-cornette-1/walk-south-normal.png": {
     "pages": [
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90
     ],
     "prefix": "2fb17f0f39"
   },
   "assets/characters/enemy-cursed-creature-1/attack-east-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "0459c2c0be"
   },
   "assets/characters/enemy-cursed-creature-1/attack-north-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "451174251a"
   },
@@ -11964,221 +11972,221 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-cursed-creature-1/walk-east-normal.png": {
     "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
     ],
     "prefix": "2988d16272"
   },
   "assets/characters/enemy-cursed-creature-1/walk-north-normal.png": {
     "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
     ],
     "prefix": "d2efe05bb0"
   },
   "assets/characters/enemy-cursed-one-1/attack-east-normal.png": {
     "pages": [
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80
     ],
     "prefix": "4fefecbf17"
   },
   "assets/characters/enemy-cursed-one-1/attack-north-normal.png": {
     "pages": [
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80
     ],
     "prefix": "5cded6e705"
   },
   "assets/characters/enemy-cursed-one-1/idle-east-normal.png": {
     "pages": [
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80
     ],
     "prefix": "8d64dc81a1"
   },
   "assets/characters/enemy-cursed-one-1/idle-north-normal.png": {
     "pages": [
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80
     ],
     "prefix": "046b9fe1cb"
   },
   "assets/characters/enemy-cursed-one-1/walk-east-normal.png": {
     "pages": [
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80
     ],
     "prefix": "49d7ab5024"
   },
   "assets/characters/enemy-cursed-one-1/walk-north-normal.png": {
     "pages": [
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80
     ],
     "prefix": "e9b81a5f4e"
   },
   "assets/characters/enemy-damp-slime-1/attack-east-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "8bc5c2c842"
   },
   "assets/characters/enemy-damp-slime-1/attack-north-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "db8e3037b7"
   },
   "assets/characters/enemy-damp-slime-1/idle-east-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "7acb975d23"
   },
   "assets/characters/enemy-damp-slime-1/idle-north-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "c450045c9c"
   },
   "assets/characters/enemy-damp-slime-1/walk-east-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "c73f13b593"
   },
   "assets/characters/enemy-damp-slime-1/walk-north-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "7e0dd83450"
   },
@@ -12291,59 +12299,59 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-darius-2/skill-monster-whirlwind-east-normal.png": {
     "pages": [
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107
     ],
     "prefix": "d171e33fcf"
   },
   "assets/characters/enemy-darius-2/skill-monster-whirlwind-north-normal.png": {
     "pages": [
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107
     ],
     "prefix": "6c18100726"
   },
@@ -12418,60 +12426,60 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-dark-archer-1/walk-east-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "fe9ac0f9cf"
   },
   "assets/characters/enemy-dark-archer-1/walk-north-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "24ea0aa16a"
   },
   "assets/characters/enemy-dark-creature-s-eggs-1/attack-east-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "be876fb57f"
   },
   "assets/characters/enemy-dark-creature-s-eggs-1/idle-east-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "03fccbe3bb"
   },
@@ -12617,53 +12625,124 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-dark-knight-1/attack-east-normal.png": {
     "pages": [
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101
     ],
     "prefix": "bdbe88cd79"
   },
   "assets/characters/enemy-dark-knight-1/attack-north-normal.png": {
     "pages": [
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101
     ],
     "prefix": "6964afb77e"
   },
   "assets/characters/enemy-dark-knight-1/idle-east-normal.png": {
     "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
     ],
     "prefix": "c4e342ae40"
   },
   "assets/characters/enemy-dark-knight-1/idle-north-normal.png": {
     "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
+    ],
+    "prefix": "84177f6a2e"
+  },
+  "assets/characters/enemy-dark-knight-1/walk-east-normal.png": {
+    "pages": [
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101
+    ],
+    "prefix": "29ab546649"
+  },
+  "assets/characters/enemy-dark-knight-1/walk-north-normal.png": {
+    "pages": [
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101
+    ],
+    "prefix": "cd3918f748"
+  },
+  "assets/characters/enemy-dark-knight-2/idle-east-normal.png": {
+    "pages": [
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
+    ],
+    "prefix": "6d5a180283"
+  },
+  "assets/characters/enemy-dark-knight-2/idle-north-normal.png": {
+    "pages": [
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
+    ],
+    "prefix": "2157b9b39c"
+  },
+  "assets/characters/enemy-dark-monk-1/attack-east-normal.png": {
+    "pages": [
       114,
       114,
       114,
@@ -12673,287 +12752,216 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
       114,
       114
     ],
-    "prefix": "84177f6a2e"
-  },
-  "assets/characters/enemy-dark-knight-1/walk-east-normal.png": {
-    "pages": [
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100
-    ],
-    "prefix": "29ab546649"
-  },
-  "assets/characters/enemy-dark-knight-1/walk-north-normal.png": {
-    "pages": [
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100
-    ],
-    "prefix": "cd3918f748"
-  },
-  "assets/characters/enemy-dark-knight-2/idle-east-normal.png": {
-    "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
-    ],
-    "prefix": "6d5a180283"
-  },
-  "assets/characters/enemy-dark-knight-2/idle-north-normal.png": {
-    "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
-    ],
-    "prefix": "2157b9b39c"
-  },
-  "assets/characters/enemy-dark-monk-1/attack-east-normal.png": {
-    "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
-    ],
     "prefix": "3e8ff8fe49"
   },
   "assets/characters/enemy-dark-monk-1/attack-north-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "4c1e401f6a"
   },
   "assets/characters/enemy-dark-monk-1/idle-east-normal.png": {
     "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
     ],
     "prefix": "7519cbc043"
   },
   "assets/characters/enemy-dark-monk-1/idle-north-normal.png": {
     "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
     ],
     "prefix": "017dc215d5"
   },
   "assets/characters/enemy-dark-monk-1/walk-east-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "d595fc18c7"
   },
   "assets/characters/enemy-dark-monk-1/walk-north-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "8de10888bb"
   },
   "assets/characters/enemy-dark-offerings-1/attack-east-normal.png": {
     "pages": [
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85
     ],
     "prefix": "7b6199651f"
   },
   "assets/characters/enemy-dark-offerings-1/attack-north-normal.png": {
     "pages": [
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85
     ],
     "prefix": "d4856dec3a"
   },
   "assets/characters/enemy-dark-offerings-1/idle-east-normal.png": {
     "pages": [
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85
     ],
     "prefix": "16d903542c"
   },
   "assets/characters/enemy-dark-offerings-1/idle-north-normal.png": {
     "pages": [
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85
     ],
     "prefix": "59533a63f4"
   },
   "assets/characters/enemy-dark-offerings-1/skill-monster-companion-attack-east-normal.png": {
     "pages": [
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85
     ],
     "prefix": "979387212e"
   },
   "assets/characters/enemy-dark-offerings-1/skill-monster-companion-attack-north-normal.png": {
     "pages": [
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85
     ],
     "prefix": "421eaaf5d2"
   },
   "assets/characters/enemy-dark-offerings-1/walk-east-normal.png": {
     "pages": [
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85
     ],
     "prefix": "5ef104dfe0"
   },
   "assets/characters/enemy-dark-offerings-1/walk-north-normal.png": {
     "pages": [
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85,
+      85
     ],
     "prefix": "a88dd67c2f"
   },
@@ -13159,37 +13167,37 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-dark-soldier-1/idle-east-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "63654da9de"
   },
   "assets/characters/enemy-dark-soldier-1/idle-north-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "2627759e14"
   },
@@ -13386,58 +13394,58 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-darkhoods-archer-1/idle-east-normal.png": {
     "pages": [
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105
     ],
     "prefix": "0d451c13f1"
   },
   "assets/characters/enemy-darkhoods-archer-1/idle-north-normal.png": {
     "pages": [
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105
     ],
     "prefix": "2ad894325a"
   },
   "assets/characters/enemy-darkhoods-archer-1/idle-south-normal.png": {
     "pages": [
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105
     ],
     "prefix": "440e72e341"
   },
@@ -13500,194 +13508,194 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-darkhoods-warrior-1/idle-east-normal.png": {
     "pages": [
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111
     ],
     "prefix": "92fc76f5a2"
   },
   "assets/characters/enemy-darkhoods-warrior-1/idle-north-normal.png": {
     "pages": [
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111
     ],
     "prefix": "ff92c091d8"
   },
   "assets/characters/enemy-darkhoods-warrior-1/idle-south-normal.png": {
     "pages": [
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111
     ],
     "prefix": "7500b9af86"
   },
   "assets/characters/enemy-death-stalker-scorpion-1/attack-east-normal.png": {
     "pages": [
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100
     ],
     "prefix": "3696753cdb"
   },
   "assets/characters/enemy-death-stalker-scorpion-1/attack-north-normal.png": {
     "pages": [
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100
     ],
     "prefix": "281df8df71"
   },
   "assets/characters/enemy-death-stalker-scorpion-1/idle-east-normal.png": {
     "pages": [
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100
     ],
     "prefix": "a83fbc3a3f"
   },
   "assets/characters/enemy-death-stalker-scorpion-1/idle-north-normal.png": {
     "pages": [
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100
     ],
     "prefix": "76d1a823bd"
   },
   "assets/characters/enemy-death-stalker-scorpion-1/walk-east-normal.png": {
     "pages": [
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100
     ],
     "prefix": "aced8657b5"
   },
   "assets/characters/enemy-death-stalker-scorpion-1/walk-north-normal.png": {
     "pages": [
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100
     ],
     "prefix": "6f75e770b3"
   },
   "assets/characters/enemy-delos-swamp-snake-1/idle-east-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "822513dab3"
   },
   "assets/characters/enemy-delos-swamp-snake-1/idle-north-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "31e262fe32"
   },
@@ -13721,37 +13729,37 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-demon-road-1/idle-east-normal.png": {
     "pages": [
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84
     ],
     "prefix": "3c14251b3a"
   },
   "assets/characters/enemy-demon-road-1/idle-north-normal.png": {
     "pages": [
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84
     ],
     "prefix": "d069994f65"
   },
@@ -13869,472 +13877,472 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-demon-scriptures-1/attack-east-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "361a0ff15d"
   },
   "assets/characters/enemy-demon-scriptures-1/idle-east-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "5e676b8e36"
   },
   "assets/characters/enemy-demon-scriptures-1/walk-east-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "331a9a94f5"
   },
   "assets/characters/enemy-desert-rattlesnakes-1/attack-east-normal.png": {
     "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
     ],
     "prefix": "490efa6859"
   },
   "assets/characters/enemy-desert-rattlesnakes-1/attack-north-normal.png": {
     "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
     ],
     "prefix": "45d18ad739"
   },
   "assets/characters/enemy-desert-rattlesnakes-1/idle-east-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "31d16d987f"
   },
   "assets/characters/enemy-desert-rattlesnakes-1/idle-north-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "ee0f1a69de"
   },
   "assets/characters/enemy-desert-rattlesnakes-1/walk-east-normal.png": {
     "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
     ],
     "prefix": "5ebb28da9d"
   },
   "assets/characters/enemy-desert-rattlesnakes-1/walk-north-normal.png": {
     "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
     ],
     "prefix": "fa1cb549f8"
   },
   "assets/characters/enemy-desert-soldier-1/attack-east-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "919eb13262"
   },
   "assets/characters/enemy-desert-soldier-1/attack-north-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "df65607d82"
   },
   "assets/characters/enemy-desert-soldier-1/idle-east-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "181b4911c2"
   },
   "assets/characters/enemy-desert-soldier-1/idle-north-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "ad8e035422"
   },
   "assets/characters/enemy-desert-soldier-1/walk-east-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "a49ae18003"
   },
   "assets/characters/enemy-desert-soldier-1/walk-north-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "1d6ca31787"
   },
   "assets/characters/enemy-dispatched-monk-of-arnen-1/attack-east-normal.png": {
     "pages": [
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104
     ],
     "prefix": "d8cbd361ac"
   },
   "assets/characters/enemy-dispatched-monk-of-arnen-1/attack-north-normal.png": {
     "pages": [
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104
     ],
     "prefix": "577376cb82"
   },
   "assets/characters/enemy-dispatched-monk-of-arnen-1/idle-east-normal.png": {
     "pages": [
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104
     ],
     "prefix": "0b6ee78d19"
   },
   "assets/characters/enemy-dispatched-monk-of-arnen-1/idle-north-normal.png": {
     "pages": [
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104
     ],
     "prefix": "35e1493105"
   },
   "assets/characters/enemy-dispatched-monk-of-arnen-1/walk-east-normal.png": {
     "pages": [
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104
     ],
     "prefix": "8d68e81deb"
   },
   "assets/characters/enemy-dispatched-monk-of-arnen-1/walk-north-normal.png": {
     "pages": [
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104
     ],
     "prefix": "dae70fdddf"
   },
   "assets/characters/enemy-divine-elven-figure-1/attack-east-normal.png": {
     "pages": [
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104
     ],
     "prefix": "f93b977cbd"
   },
   "assets/characters/enemy-divine-elven-figure-1/attack-north-normal.png": {
     "pages": [
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104
     ],
     "prefix": "84a92fef8a"
   },
   "assets/characters/enemy-divine-elven-figure-1/attack-south-normal.png": {
     "pages": [
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104
     ],
     "prefix": "abe328cd12"
   },
   "assets/characters/enemy-divine-elven-figure-1/idle-east-normal.png": {
     "pages": [
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98
     ],
     "prefix": "60d8802836"
   },
   "assets/characters/enemy-divine-elven-figure-1/idle-north-normal.png": {
     "pages": [
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98
     ],
     "prefix": "1aa31cbb2b"
   },
   "assets/characters/enemy-divine-elven-figure-1/idle-south-normal.png": {
     "pages": [
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98
     ],
     "prefix": "a75c5f5773"
   },
   "assets/characters/enemy-divine-elven-figure-1/walk-east-normal.png": {
     "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
     ],
     "prefix": "773a601dd7"
   },
   "assets/characters/enemy-divine-elven-figure-1/walk-north-normal.png": {
     "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
     ],
     "prefix": "f1c38bbda8"
   },
   "assets/characters/enemy-divine-elven-figure-1/walk-south-normal.png": {
     "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
     ],
     "prefix": "20555fa137"
   },
@@ -14886,307 +14894,307 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-drow-s-soul-1/attack-east-normal.png": {
     "pages": [
-      96,
-      96,
-      96,
-      96,
-      96
+      97,
+      97,
+      97,
+      97,
+      97
     ],
     "prefix": "395f8d19c7"
   },
   "assets/characters/enemy-drow-s-soul-1/attack-north-normal.png": {
     "pages": [
-      96,
-      96,
-      96,
-      96,
-      96
+      97,
+      97,
+      97,
+      97,
+      97
     ],
     "prefix": "ea063ee25f"
   },
   "assets/characters/enemy-drow-s-soul-1/attack-south-normal.png": {
     "pages": [
-      96,
-      96,
-      96,
-      96,
-      96
+      97,
+      97,
+      97,
+      97,
+      97
     ],
     "prefix": "8bc7c30e5b"
   },
   "assets/characters/enemy-drow-s-soul-1/idle-east-normal.png": {
     "pages": [
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97
     ],
     "prefix": "c3692206dc"
   },
   "assets/characters/enemy-drow-s-soul-1/idle-north-normal.png": {
     "pages": [
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97
     ],
     "prefix": "f2e90650a7"
   },
   "assets/characters/enemy-drow-s-soul-1/walk-east-normal.png": {
     "pages": [
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97
     ],
     "prefix": "28020927a7"
   },
   "assets/characters/enemy-drow-s-soul-1/walk-north-normal.png": {
     "pages": [
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97
     ],
     "prefix": "4b024d66a5"
   },
   "assets/characters/enemy-drow-s-soul-1/walk-south-normal.png": {
     "pages": [
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97
     ],
     "prefix": "eb60278571"
   },
   "assets/characters/enemy-drow-s-soul-2/attack-east-normal.png": {
     "pages": [
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89
     ],
     "prefix": "78e14de1d5"
   },
   "assets/characters/enemy-drow-s-soul-2/attack-north-normal.png": {
     "pages": [
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89
     ],
     "prefix": "3a821adc14"
   },
   "assets/characters/enemy-drow-s-soul-2/attack-south-normal.png": {
     "pages": [
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89
     ],
     "prefix": "aff301bbbc"
   },
   "assets/characters/enemy-drow-s-soul-2/idle-east-normal.png": {
     "pages": [
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89
     ],
     "prefix": "b0ae1d6ac6"
   },
   "assets/characters/enemy-drow-s-soul-2/idle-north-normal.png": {
     "pages": [
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89
     ],
     "prefix": "9dfd44c4bd"
   },
   "assets/characters/enemy-drow-s-soul-2/idle-south-normal.png": {
     "pages": [
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89
     ],
     "prefix": "5b07d5b3d8"
   },
   "assets/characters/enemy-drow-s-soul-2/walk-east-normal.png": {
     "pages": [
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89
     ],
     "prefix": "cb91b1444c"
   },
   "assets/characters/enemy-drow-s-soul-2/walk-north-normal.png": {
     "pages": [
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89
     ],
     "prefix": "8ef73dc076"
   },
   "assets/characters/enemy-drow-s-soul-2/walk-south-normal.png": {
     "pages": [
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89
     ],
     "prefix": "7a95cdcb61"
   },
   "assets/characters/enemy-earl-grafton-1/attack-east-normal.png": {
     "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
     ],
     "prefix": "e8fe3a0184"
   },
   "assets/characters/enemy-earl-grafton-1/attack-north-normal.png": {
     "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
     ],
     "prefix": "3eb8d5e79c"
   },
   "assets/characters/enemy-earl-grafton-1/idle-east-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "5ba5668143"
   },
   "assets/characters/enemy-earl-grafton-1/idle-north-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "b86758fafc"
   },
@@ -15249,195 +15257,195 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-elf-seal-protector-1/skill-monster-enrage-east-normal.png": {
     "pages": [
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112
     ],
     "prefix": "f240a7b0b0"
   },
   "assets/characters/enemy-elf-seal-protector-1/skill-monster-enrage-north-normal.png": {
     "pages": [
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112
     ],
     "prefix": "372a4dd861"
   },
   "assets/characters/enemy-elite-drow-s-soul-1/attack-east-normal.png": {
     "pages": [
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88
     ],
     "prefix": "06c50096bd"
   },
   "assets/characters/enemy-elite-drow-s-soul-1/attack-north-normal.png": {
     "pages": [
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88
     ],
     "prefix": "74a5f8bf3d"
   },
   "assets/characters/enemy-elite-drow-s-soul-1/attack-south-normal.png": {
     "pages": [
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88
     ],
     "prefix": "4916fc7596"
   },
   "assets/characters/enemy-elite-drow-s-soul-1/idle-east-normal.png": {
     "pages": [
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88
     ],
     "prefix": "2d0473e7fe"
   },
   "assets/characters/enemy-elite-drow-s-soul-1/idle-north-normal.png": {
     "pages": [
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88
     ],
     "prefix": "ba3be64cd6"
   },
   "assets/characters/enemy-elite-drow-s-soul-1/idle-south-normal.png": {
     "pages": [
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88
     ],
     "prefix": "4a03d6adcf"
   },
   "assets/characters/enemy-elite-drow-s-soul-1/walk-east-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "f0b5261ba4"
   },
   "assets/characters/enemy-elite-drow-s-soul-1/walk-north-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "60152978d1"
   },
   "assets/characters/enemy-elite-drow-s-soul-1/walk-south-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "d28229ca49"
   },
@@ -15710,280 +15718,293 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-elven-kings-soul-1/attack-east-normal.png": {
     "pages": [
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78
     ],
     "prefix": "536357457f"
   },
   "assets/characters/enemy-elven-kings-soul-1/attack-north-normal.png": {
     "pages": [
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78
     ],
     "prefix": "39149e2bf2"
   },
   "assets/characters/enemy-elven-kings-soul-1/attack-south-normal.png": {
     "pages": [
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78
     ],
     "prefix": "1d369613cb"
   },
   "assets/characters/enemy-elven-kings-soul-1/idle-east-normal.png": {
     "pages": [
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78
     ],
     "prefix": "2d0b030e07"
   },
   "assets/characters/enemy-elven-kings-soul-1/idle-north-normal.png": {
     "pages": [
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78
     ],
     "prefix": "ab9db1aed6"
   },
   "assets/characters/enemy-elven-kings-soul-1/idle-south-normal.png": {
     "pages": [
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78
     ],
     "prefix": "430f2f64c2"
   },
   "assets/characters/enemy-elven-kings-soul-1/skill-monster-thunder-east-normal.png": {
     "pages": [
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78
     ],
     "prefix": "3a407b53bb"
   },
   "assets/characters/enemy-elven-kings-soul-1/skill-monster-thunder-north-normal.png": {
     "pages": [
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78
     ],
     "prefix": "d440033ad5"
   },
   "assets/characters/enemy-elven-kings-soul-1/walk-east-normal.png": {
     "pages": [
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78
     ],
     "prefix": "50c225430c"
   },
   "assets/characters/enemy-elven-kings-soul-1/walk-north-normal.png": {
     "pages": [
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78
     ],
     "prefix": "6cee41e525"
   },
   "assets/characters/enemy-elven-kings-soul-1/walk-south-normal.png": {
     "pages": [
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77,
-      77
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78,
+      78
     ],
     "prefix": "3eb4a9f27f"
   },
   "assets/characters/enemy-elven-soul-3/attack-east-normal.png": {
     "pages": [
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109
     ],
     "prefix": "af59c55744"
   },
   "assets/characters/enemy-elven-soul-3/attack-north-normal.png": {
     "pages": [
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109
     ],
     "prefix": "c501f728bd"
   },
   "assets/characters/enemy-elven-soul-3/attack-south-normal.png": {
     "pages": [
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109
     ],
     "prefix": "506c686370"
   },
   "assets/characters/enemy-elven-soul-3/idle-east-normal.png": {
     "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
     ],
     "prefix": "0b6f81654d"
   },
   "assets/characters/enemy-elven-soul-3/idle-north-normal.png": {
     "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
     ],
     "prefix": "6ebb0211e1"
   },
   "assets/characters/enemy-elven-soul-3/idle-south-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
+    ],
+    "prefix": "7a59e95cbd"
+  },
+  "assets/characters/enemy-elven-soul-3/walk-east-normal.png": {
+    "pages": [
       120,
       120,
       120,
@@ -15993,246 +16014,118 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
       120,
       120
     ],
-    "prefix": "7a59e95cbd"
-  },
-  "assets/characters/enemy-elven-soul-3/walk-east-normal.png": {
-    "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
-    ],
     "prefix": "432b1248fa"
   },
   "assets/characters/enemy-elven-soul-3/walk-north-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "6d7536c363"
   },
   "assets/characters/enemy-elven-soul-3/walk-south-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "88018c31fe"
   },
   "assets/characters/enemy-elves-wrath-1/idle-east-normal.png": {
     "pages": [
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104
     ],
     "prefix": "e075174a06"
   },
   "assets/characters/enemy-elves-wrath-1/idle-north-normal.png": {
     "pages": [
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104
     ],
     "prefix": "0ca1303e0a"
   },
   "assets/characters/enemy-elves-wrath-1/idle-south-normal.png": {
     "pages": [
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104
     ],
     "prefix": "79fcc8fa10"
   },
   "assets/characters/enemy-enraged-cave-rat-1/attack-east-normal.png": {
     "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
     ],
     "prefix": "df99f40d64"
   },
   "assets/characters/enemy-enraged-cave-rat-1/attack-north-normal.png": {
     "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
     ],
     "prefix": "391fd70efd"
   },
   "assets/characters/enemy-enraged-cave-rat-1/idle-east-normal.png": {
     "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "c08c020b8c"
-  },
-  "assets/characters/enemy-enraged-cave-rat-1/idle-north-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "49c87bafdf"
-  },
-  "assets/characters/enemy-enraged-cave-rat-1/walk-east-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "5947ea8b3d"
-  },
-  "assets/characters/enemy-enraged-cave-rat-1/walk-north-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "60e0bea817"
-  },
-  "assets/characters/enemy-enraged-chief-drow-s-spirit-1/skill-monster-dark-sword-east-normal.png": {
-    "pages": [
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110
-    ],
-    "prefix": "235db63e64"
-  },
-  "assets/characters/enemy-enraged-chief-drow-s-spirit-1/skill-monster-dark-sword-north-normal.png": {
-    "pages": [
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110
-    ],
-    "prefix": "46d1dd62d1"
-  },
-  "assets/characters/enemy-enraged-journal-1/idle-east-normal.png": {
-    "pages": [
-      123,
       123,
       123,
       123,
@@ -16249,97 +16142,212 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
       123,
       123
     ],
+    "prefix": "c08c020b8c"
+  },
+  "assets/characters/enemy-enraged-cave-rat-1/idle-north-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "49c87bafdf"
+  },
+  "assets/characters/enemy-enraged-cave-rat-1/walk-east-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "5947ea8b3d"
+  },
+  "assets/characters/enemy-enraged-cave-rat-1/walk-north-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "60e0bea817"
+  },
+  "assets/characters/enemy-enraged-chief-drow-s-spirit-1/skill-monster-dark-sword-east-normal.png": {
+    "pages": [
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111
+    ],
+    "prefix": "235db63e64"
+  },
+  "assets/characters/enemy-enraged-chief-drow-s-spirit-1/skill-monster-dark-sword-north-normal.png": {
+    "pages": [
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111
+    ],
+    "prefix": "46d1dd62d1"
+  },
+  "assets/characters/enemy-enraged-journal-1/idle-east-normal.png": {
+    "pages": [
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
+    ],
     "prefix": "1185071299"
   },
   "assets/characters/enemy-enraged-magic-book-1/attack-east-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "0c34590bf5"
   },
   "assets/characters/enemy-enraged-magic-book-1/idle-east-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "958b37a17e"
   },
   "assets/characters/enemy-enraged-magic-book-1/walk-east-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "d6d83d0469"
   },
   "assets/characters/enemy-enraged-memory-egg-1/attack-east-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "4b8b3dbf2c"
   },
   "assets/characters/enemy-enraged-memory-egg-1/idle-east-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "715e8ec391"
   },
@@ -16389,112 +16397,244 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-enraged-wing-slime-1/attack-east-normal.png": {
     "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
     ],
     "prefix": "f66ac0180c"
   },
   "assets/characters/enemy-enraged-wing-slime-1/attack-north-normal.png": {
     "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
     ],
     "prefix": "36be05b22d"
   },
   "assets/characters/enemy-enraged-wing-slime-1/idle-east-normal.png": {
     "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
     ],
     "prefix": "38f77d9cf3"
   },
   "assets/characters/enemy-enraged-wing-slime-1/idle-north-normal.png": {
     "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
     ],
     "prefix": "46fcb1487d"
   },
   "assets/characters/enemy-enraged-wing-slime-1/walk-east-normal.png": {
     "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
     ],
     "prefix": "0356c26e53"
   },
   "assets/characters/enemy-enraged-wing-slime-1/walk-north-normal.png": {
     "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
     ],
     "prefix": "44f7189048"
   },
   "assets/characters/enemy-etherin-the-wing-slime-1/idle-east-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "0f8edcdfea"
   },
   "assets/characters/enemy-etherin-the-wing-slime-1/idle-north-normal.png": {
     "pages": [
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
+    ],
+    "prefix": "b08009588e"
+  },
+  "assets/characters/enemy-evil-creatures-1/idle-east-normal.png": {
+    "pages": [
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
+    ],
+    "prefix": "d9acc48020"
+  },
+  "assets/characters/enemy-evil-creatures-1/idle-north-normal.png": {
+    "pages": [
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
+    ],
+    "prefix": "ea2e0d5b92"
+  },
+  "assets/characters/enemy-fireball-1/attack-east-screen.png": {
+    "pages": [
+      91,
+      91,
+      91,
+      91,
+      91,
+      91
+    ],
+    "prefix": "e2fc4fdead"
+  },
+  "assets/characters/enemy-fireball-1/attack-north-screen.png": {
+    "pages": [
+      91,
+      91,
+      91,
+      91,
+      91,
+      91
+    ],
+    "prefix": "59ceea1eb5"
+  },
+  "assets/characters/enemy-fireball-1/idle-east-screen.png": {
+    "pages": [
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
+    ],
+    "prefix": "fa5f783e19"
+  },
+  "assets/characters/enemy-fireball-1/idle-north-screen.png": {
+    "pages": [
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
+    ],
+    "prefix": "bf47bf7b07"
+  },
+  "assets/characters/enemy-fireball-1/walk-east-screen.png": {
+    "pages": [
+      91,
+      91,
+      91,
+      91
+    ],
+    "prefix": "bd79899f7b"
+  },
+  "assets/characters/enemy-flying-book-1/idle-east-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
       123,
       123,
       123,
@@ -16507,161 +16647,29 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
       123,
       123
     ],
-    "prefix": "b08009588e"
-  },
-  "assets/characters/enemy-evil-creatures-1/idle-east-normal.png": {
-    "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
-    ],
-    "prefix": "d9acc48020"
-  },
-  "assets/characters/enemy-evil-creatures-1/idle-north-normal.png": {
-    "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
-    ],
-    "prefix": "ea2e0d5b92"
-  },
-  "assets/characters/enemy-fireball-1/attack-east-screen.png": {
-    "pages": [
-      90,
-      90,
-      90,
-      90,
-      90,
-      90
-    ],
-    "prefix": "e2fc4fdead"
-  },
-  "assets/characters/enemy-fireball-1/attack-north-screen.png": {
-    "pages": [
-      90,
-      90,
-      90,
-      90,
-      90,
-      90
-    ],
-    "prefix": "59ceea1eb5"
-  },
-  "assets/characters/enemy-fireball-1/idle-east-screen.png": {
-    "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
-    ],
-    "prefix": "fa5f783e19"
-  },
-  "assets/characters/enemy-fireball-1/idle-north-screen.png": {
-    "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
-    ],
-    "prefix": "bf47bf7b07"
-  },
-  "assets/characters/enemy-fireball-1/walk-east-screen.png": {
-    "pages": [
-      90,
-      90,
-      90,
-      90
-    ],
-    "prefix": "bd79899f7b"
-  },
-  "assets/characters/enemy-flying-book-1/idle-east-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
     "prefix": "ae94eb4e36"
   },
   "assets/characters/enemy-fort-of-screams-guard-leader-1/attack-east-normal.png": {
     "pages": [
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97
     ],
     "prefix": "249773cd9c"
   },
   "assets/characters/enemy-fort-of-screams-guard-leader-1/attack-north-normal.png": {
     "pages": [
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97
     ],
     "prefix": "27753cddff"
   },
@@ -16707,63 +16715,63 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-fort-of-screams-guard-leader-1/walk-east-normal.png": {
     "pages": [
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97
     ],
     "prefix": "fcf8791e61"
   },
   "assets/characters/enemy-fort-of-screams-guard-leader-1/walk-north-normal.png": {
     "pages": [
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96,
-      96
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97
     ],
     "prefix": "811c043cde"
   },
   "assets/characters/enemy-frost-werewolf-1/idle-east-normal.png": {
     "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
     ],
     "prefix": "8a29ba7e09"
   },
   "assets/characters/enemy-frost-werewolf-1/idle-north-normal.png": {
     "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
     ],
     "prefix": "f02affefa9"
   },
@@ -16966,37 +16974,37 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-ghost-2/idle-east-screen.png": {
     "pages": [
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112
     ],
     "prefix": "c87591e897"
   },
   "assets/characters/enemy-ghost-2/idle-north-screen.png": {
     "pages": [
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112
     ],
     "prefix": "b5eb8a11d9"
   },
@@ -17056,51 +17064,51 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-giant-tarantula-1/idle-east-normal.png": {
     "pages": [
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99
     ],
     "prefix": "8c1136a7e9"
   },
   "assets/characters/enemy-giant-tarantula-1/idle-north-normal.png": {
     "pages": [
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99
     ],
     "prefix": "4bcf53fe3c"
   },
@@ -17124,297 +17132,899 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-gigantic-werewolf-1/attack-east-normal.png": {
     "pages": [
-      108,
-      108,
-      108,
-      108,
-      108,
-      108
+      109,
+      109,
+      109,
+      109,
+      109,
+      109
     ],
     "prefix": "25be57c151"
   },
   "assets/characters/enemy-gigantic-werewolf-1/attack-north-normal.png": {
     "pages": [
-      108,
-      108,
-      108,
-      108,
-      108,
-      108
+      109,
+      109,
+      109,
+      109,
+      109,
+      109
     ],
     "prefix": "0ec7f68c69"
   },
   "assets/characters/enemy-gigantic-werewolf-1/idle-east-normal.png": {
     "pages": [
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112
     ],
     "prefix": "3dd8ac809f"
   },
   "assets/characters/enemy-gigantic-werewolf-1/idle-north-normal.png": {
     "pages": [
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112
     ],
     "prefix": "9a5d69b690"
   },
   "assets/characters/enemy-gigantic-werewolf-1/walk-east-normal.png": {
     "pages": [
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109
     ],
     "prefix": "c623b252ad"
   },
   "assets/characters/enemy-gigantic-werewolf-1/walk-north-normal.png": {
     "pages": [
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109
     ],
     "prefix": "9236332b38"
   },
   "assets/characters/enemy-gigantic-werewolf-2/idle-east-normal.png": {
     "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
     ],
     "prefix": "48be25cbfa"
   },
   "assets/characters/enemy-gigantic-werewolf-2/idle-north-normal.png": {
     "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
     ],
     "prefix": "84bf3c6a9c"
   },
   "assets/characters/enemy-goblin-1/attack-east-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "9e538a9d93"
   },
   "assets/characters/enemy-goblin-1/attack-north-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "ff54f5b8aa"
   },
   "assets/characters/enemy-goblin-1/idle-east-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "48606bd60c"
   },
   "assets/characters/enemy-goblin-1/idle-north-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "8c3adc6396"
   },
   "assets/characters/enemy-goblin-1/walk-east-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "61d9de5e47"
   },
   "assets/characters/enemy-goblin-1/walk-north-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "87c0187ffc"
   },
   "assets/characters/enemy-goblin-cave-1/attack-east-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "d745ff4975"
   },
   "assets/characters/enemy-goblin-cave-1/attack-north-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "97546c982d"
   },
   "assets/characters/enemy-goblin-cave-1/idle-east-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "9cf9609e76"
   },
   "assets/characters/enemy-goblin-cave-1/idle-north-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "e44fee5d45"
   },
   "assets/characters/enemy-goblin-cave-1/walk-east-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "74f8a49b0b"
   },
   "assets/characters/enemy-goblin-cave-1/walk-north-normal.png": {
     "pages": [
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
+    ],
+    "prefix": "804a33ed46"
+  },
+  "assets/characters/enemy-goblin-guard-1/idle-east-normal.png": {
+    "pages": [
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
+    ],
+    "prefix": "ffdce04d84"
+  },
+  "assets/characters/enemy-goblin-guard-1/idle-north-normal.png": {
+    "pages": [
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
+    ],
+    "prefix": "12dc2f2d9a"
+  },
+  "assets/characters/enemy-goblin-swordsman-magnatue-1/attack-east-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "a509ca3277"
+  },
+  "assets/characters/enemy-goblin-swordsman-magnatue-1/attack-north-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "b8a8ab75d2"
+  },
+  "assets/characters/enemy-goblin-swordsman-magnatue-1/idle-east-normal.png": {
+    "pages": [
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
+    ],
+    "prefix": "5ea453213b"
+  },
+  "assets/characters/enemy-goblin-swordsman-magnatue-1/idle-north-normal.png": {
+    "pages": [
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
+    ],
+    "prefix": "1fca8fb73f"
+  },
+  "assets/characters/enemy-goblin-swordsman-magnatue-1/walk-east-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "6984bd70d4"
+  },
+  "assets/characters/enemy-goblin-swordsman-magnatue-1/walk-north-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "56cacbc241"
+  },
+  "assets/characters/enemy-golem-1/attack-east-normal.png": {
+    "pages": [
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80
+    ],
+    "prefix": "77baa4b405"
+  },
+  "assets/characters/enemy-golem-1/attack-north-normal.png": {
+    "pages": [
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80,
+      80
+    ],
+    "prefix": "ca34d216f6"
+  },
+  "assets/characters/enemy-golem-1/idle-east-normal.png": {
+    "pages": [
+      77,
+      77,
+      77,
+      77,
+      77,
+      77,
+      77,
+      77,
+      77,
+      77,
+      77,
+      77,
+      77,
+      77,
+      77,
+      77,
+      77,
+      77,
+      77,
+      77
+    ],
+    "prefix": "29021b8bb7"
+  },
+  "assets/characters/enemy-golem-1/idle-north-normal.png": {
+    "pages": [
+      77,
+      77,
+      77,
+      77,
+      77,
+      77,
+      77,
+      77,
+      77,
+      77,
+      77,
+      77,
+      77,
+      77,
+      77,
+      77,
+      77,
+      77,
+      77,
+      77
+    ],
+    "prefix": "bf65ca885b"
+  },
+  "assets/characters/enemy-golem-1/walk-east-normal.png": {
+    "pages": [
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79
+    ],
+    "prefix": "0ff039c134"
+  },
+  "assets/characters/enemy-golem-1/walk-north-normal.png": {
+    "pages": [
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79
+    ],
+    "prefix": "7c5ba2fa10"
+  },
+  "assets/characters/enemy-golem-2/idle-east-normal.png": {
+    "pages": [
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84
+    ],
+    "prefix": "f9cd355eee"
+  },
+  "assets/characters/enemy-golem-2/idle-north-normal.png": {
+    "pages": [
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84
+    ],
+    "prefix": "01c34cf1f0"
+  },
+  "assets/characters/enemy-golem-2/skill-monster-strong-landshake-east-normal.png": {
+    "pages": [
+      73,
+      73,
+      73,
+      73,
+      73,
+      73,
+      73,
+      73,
+      73,
+      73,
+      73,
+      73,
+      73,
+      73,
+      73
+    ],
+    "prefix": "05958d46d7"
+  },
+  "assets/characters/enemy-golem-2/skill-monster-strong-landshake-north-normal.png": {
+    "pages": [
+      73,
+      73,
+      73,
+      73,
+      73,
+      73,
+      73,
+      73,
+      73,
+      73,
+      73,
+      73,
+      73,
+      73,
+      73
+    ],
+    "prefix": "692689a4e3"
+  },
+  "assets/characters/enemy-gray-mouse-1/attack-east-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "1cd8215245"
+  },
+  "assets/characters/enemy-gray-mouse-1/attack-north-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "1f906b52b9"
+  },
+  "assets/characters/enemy-gray-mouse-1/idle-east-normal.png": {
+    "pages": [
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
+    ],
+    "prefix": "9f76755d68"
+  },
+  "assets/characters/enemy-gray-mouse-1/idle-north-normal.png": {
+    "pages": [
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
+    ],
+    "prefix": "b36e37fd74"
+  },
+  "assets/characters/enemy-gray-mouse-1/walk-east-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "a655613a7c"
+  },
+  "assets/characters/enemy-gray-mouse-1/walk-north-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "c8226d929e"
+  },
+  "assets/characters/enemy-gray-scorpion-1/attack-east-normal.png": {
+    "pages": [
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100
+    ],
+    "prefix": "4375eb4a69"
+  },
+  "assets/characters/enemy-gray-scorpion-1/attack-north-normal.png": {
+    "pages": [
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100
+    ],
+    "prefix": "6454884a28"
+  },
+  "assets/characters/enemy-gray-scorpion-1/idle-east-normal.png": {
+    "pages": [
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100
+    ],
+    "prefix": "49f1ac4b92"
+  },
+  "assets/characters/enemy-gray-scorpion-1/idle-north-normal.png": {
+    "pages": [
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100
+    ],
+    "prefix": "78ea77df41"
+  },
+  "assets/characters/enemy-gray-scorpion-1/walk-east-normal.png": {
+    "pages": [
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100
+    ],
+    "prefix": "a60b68611a"
+  },
+  "assets/characters/enemy-gray-scorpion-1/walk-north-normal.png": {
+    "pages": [
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100
+    ],
+    "prefix": "d94b5ca7a5"
+  },
+  "assets/characters/enemy-greedy-mimic-1/attack-east-normal.png": {
+    "pages": [
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112
+    ],
+    "prefix": "ebdd7f9c78"
+  },
+  "assets/characters/enemy-greedy-mimic-1/attack-north-normal.png": {
+    "pages": [
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112
+    ],
+    "prefix": "c4b78912e2"
+  },
+  "assets/characters/enemy-greedy-mimic-1/idle-east-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "769f947a0a"
+  },
+  "assets/characters/enemy-greedy-mimic-1/idle-north-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "793ebd70d8"
+  },
+  "assets/characters/enemy-greedy-mimic-1/walk-east-normal.png": {
+    "pages": [
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112
+    ],
+    "prefix": "d7cbbd0398"
+  },
+  "assets/characters/enemy-greedy-mimic-1/walk-north-normal.png": {
+    "pages": [
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112
+    ],
+    "prefix": "b57c2da871"
+  },
+  "assets/characters/enemy-hard-boned-skeleton-soldier-1/idle-east-normal.png": {
+    "pages": [
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
       117,
       117,
       117,
@@ -17424,731 +18034,129 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
       117,
       117
     ],
-    "prefix": "804a33ed46"
-  },
-  "assets/characters/enemy-goblin-guard-1/idle-east-normal.png": {
-    "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
-    ],
-    "prefix": "ffdce04d84"
-  },
-  "assets/characters/enemy-goblin-guard-1/idle-north-normal.png": {
-    "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
-    ],
-    "prefix": "12dc2f2d9a"
-  },
-  "assets/characters/enemy-goblin-swordsman-magnatue-1/attack-east-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "a509ca3277"
-  },
-  "assets/characters/enemy-goblin-swordsman-magnatue-1/attack-north-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "b8a8ab75d2"
-  },
-  "assets/characters/enemy-goblin-swordsman-magnatue-1/idle-east-normal.png": {
-    "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
-    ],
-    "prefix": "5ea453213b"
-  },
-  "assets/characters/enemy-goblin-swordsman-magnatue-1/idle-north-normal.png": {
-    "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
-    ],
-    "prefix": "1fca8fb73f"
-  },
-  "assets/characters/enemy-goblin-swordsman-magnatue-1/walk-east-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "6984bd70d4"
-  },
-  "assets/characters/enemy-goblin-swordsman-magnatue-1/walk-north-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "56cacbc241"
-  },
-  "assets/characters/enemy-golem-1/attack-east-normal.png": {
-    "pages": [
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79
-    ],
-    "prefix": "77baa4b405"
-  },
-  "assets/characters/enemy-golem-1/attack-north-normal.png": {
-    "pages": [
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79,
-      79
-    ],
-    "prefix": "ca34d216f6"
-  },
-  "assets/characters/enemy-golem-1/idle-east-normal.png": {
-    "pages": [
-      76,
-      76,
-      76,
-      76,
-      76,
-      76,
-      76,
-      76,
-      76,
-      76,
-      76,
-      76,
-      76,
-      76,
-      76,
-      76,
-      76,
-      76,
-      76,
-      76
-    ],
-    "prefix": "29021b8bb7"
-  },
-  "assets/characters/enemy-golem-1/idle-north-normal.png": {
-    "pages": [
-      76,
-      76,
-      76,
-      76,
-      76,
-      76,
-      76,
-      76,
-      76,
-      76,
-      76,
-      76,
-      76,
-      76,
-      76,
-      76,
-      76,
-      76,
-      76,
-      76
-    ],
-    "prefix": "bf65ca885b"
-  },
-  "assets/characters/enemy-golem-1/walk-east-normal.png": {
-    "pages": [
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78
-    ],
-    "prefix": "0ff039c134"
-  },
-  "assets/characters/enemy-golem-1/walk-north-normal.png": {
-    "pages": [
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78
-    ],
-    "prefix": "7c5ba2fa10"
-  },
-  "assets/characters/enemy-golem-2/idle-east-normal.png": {
-    "pages": [
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83
-    ],
-    "prefix": "f9cd355eee"
-  },
-  "assets/characters/enemy-golem-2/idle-north-normal.png": {
-    "pages": [
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83
-    ],
-    "prefix": "01c34cf1f0"
-  },
-  "assets/characters/enemy-golem-2/skill-monster-strong-landshake-east-normal.png": {
-    "pages": [
-      72,
-      72,
-      72,
-      72,
-      72,
-      72,
-      72,
-      72,
-      72,
-      72,
-      72,
-      72,
-      72,
-      72,
-      72
-    ],
-    "prefix": "05958d46d7"
-  },
-  "assets/characters/enemy-golem-2/skill-monster-strong-landshake-north-normal.png": {
-    "pages": [
-      72,
-      72,
-      72,
-      72,
-      72,
-      72,
-      72,
-      72,
-      72,
-      72,
-      72,
-      72,
-      72,
-      72,
-      72
-    ],
-    "prefix": "692689a4e3"
-  },
-  "assets/characters/enemy-gray-mouse-1/attack-east-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "1cd8215245"
-  },
-  "assets/characters/enemy-gray-mouse-1/attack-north-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "1f906b52b9"
-  },
-  "assets/characters/enemy-gray-mouse-1/idle-east-normal.png": {
-    "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
-    ],
-    "prefix": "9f76755d68"
-  },
-  "assets/characters/enemy-gray-mouse-1/idle-north-normal.png": {
-    "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
-    ],
-    "prefix": "b36e37fd74"
-  },
-  "assets/characters/enemy-gray-mouse-1/walk-east-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "a655613a7c"
-  },
-  "assets/characters/enemy-gray-mouse-1/walk-north-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "c8226d929e"
-  },
-  "assets/characters/enemy-gray-scorpion-1/attack-east-normal.png": {
-    "pages": [
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99
-    ],
-    "prefix": "4375eb4a69"
-  },
-  "assets/characters/enemy-gray-scorpion-1/attack-north-normal.png": {
-    "pages": [
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99
-    ],
-    "prefix": "6454884a28"
-  },
-  "assets/characters/enemy-gray-scorpion-1/idle-east-normal.png": {
-    "pages": [
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99
-    ],
-    "prefix": "49f1ac4b92"
-  },
-  "assets/characters/enemy-gray-scorpion-1/idle-north-normal.png": {
-    "pages": [
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99
-    ],
-    "prefix": "78ea77df41"
-  },
-  "assets/characters/enemy-gray-scorpion-1/walk-east-normal.png": {
-    "pages": [
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99
-    ],
-    "prefix": "a60b68611a"
-  },
-  "assets/characters/enemy-gray-scorpion-1/walk-north-normal.png": {
-    "pages": [
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99
-    ],
-    "prefix": "d94b5ca7a5"
-  },
-  "assets/characters/enemy-greedy-mimic-1/attack-east-normal.png": {
-    "pages": [
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111
-    ],
-    "prefix": "ebdd7f9c78"
-  },
-  "assets/characters/enemy-greedy-mimic-1/attack-north-normal.png": {
-    "pages": [
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111
-    ],
-    "prefix": "c4b78912e2"
-  },
-  "assets/characters/enemy-greedy-mimic-1/idle-east-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "769f947a0a"
-  },
-  "assets/characters/enemy-greedy-mimic-1/idle-north-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "793ebd70d8"
-  },
-  "assets/characters/enemy-greedy-mimic-1/walk-east-normal.png": {
-    "pages": [
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111
-    ],
-    "prefix": "d7cbbd0398"
-  },
-  "assets/characters/enemy-greedy-mimic-1/walk-north-normal.png": {
-    "pages": [
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111
-    ],
-    "prefix": "b57c2da871"
-  },
-  "assets/characters/enemy-hard-boned-skeleton-soldier-1/idle-east-normal.png": {
-    "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
-    ],
     "prefix": "8ff5fdcd26"
   },
   "assets/characters/enemy-hard-boned-skeleton-soldier-1/idle-north-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "74b6c240b8"
   },
   "assets/characters/enemy-head-goblin-1/idle-east-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "49983decae"
   },
   "assets/characters/enemy-head-goblin-1/idle-north-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "af2d9438e3"
   },
   "assets/characters/enemy-head-goblin-yirzuch-1/idle-east-normal.png": {
     "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
     ],
     "prefix": "02074919e8"
   },
   "assets/characters/enemy-head-goblin-yirzuch-1/idle-north-normal.png": {
     "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
     ],
     "prefix": "b5673b0d23"
   },
   "assets/characters/enemy-head-goblin-yirzuch-1/skill-monster-haste-east-normal.png": {
     "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
     ],
     "prefix": "381b08d400"
   },
   "assets/characters/enemy-head-goblin-yirzuch-1/skill-monster-haste-north-normal.png": {
     "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
     ],
     "prefix": "a7669fd903"
   },
@@ -18496,69 +18504,69 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-honeybee-hive-1/idle-east-normal.png": {
     "pages": [
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111
     ],
     "prefix": "32b69a279f"
   },
   "assets/characters/enemy-human-monk-1/idle-east-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "bdf4d41dc3"
   },
   "assets/characters/enemy-human-monk-1/idle-north-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "35bfb0298d"
   },
@@ -18594,41 +18602,41 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-hwagan-brown-bear-1/idle-east-normal.png": {
     "pages": [
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110
     ],
     "prefix": "05ab5c3114"
   },
   "assets/characters/enemy-hwagan-brown-bear-1/idle-north-normal.png": {
     "pages": [
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110
     ],
     "prefix": "c060f56611"
   },
@@ -18660,66 +18668,205 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-ice-elementals-1/idle-east-screen.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "d2a681c306"
   },
   "assets/characters/enemy-ice-elementals-1/idle-north-screen.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "4d841f34e6"
   },
   "assets/characters/enemy-ice-mimic-1/idle-east-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "8caa8cd970"
   },
   "assets/characters/enemy-ice-mimic-1/idle-north-normal.png": {
     "pages": [
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
+    ],
+    "prefix": "c1305605b7"
+  },
+  "assets/characters/enemy-ice-tailed-scorpion-1/attack-east-normal.png": {
+    "pages": [
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100
+    ],
+    "prefix": "3a63c673ca"
+  },
+  "assets/characters/enemy-ice-tailed-scorpion-1/attack-north-normal.png": {
+    "pages": [
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100
+    ],
+    "prefix": "e5754bb2c4"
+  },
+  "assets/characters/enemy-ice-tailed-scorpion-1/idle-east-normal.png": {
+    "pages": [
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100
+    ],
+    "prefix": "0d633cc9e6"
+  },
+  "assets/characters/enemy-ice-tailed-scorpion-1/idle-north-normal.png": {
+    "pages": [
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100
+    ],
+    "prefix": "247491257f"
+  },
+  "assets/characters/enemy-ice-tailed-scorpion-1/walk-east-normal.png": {
+    "pages": [
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100
+    ],
+    "prefix": "3a7489825c"
+  },
+  "assets/characters/enemy-ice-tailed-scorpion-1/walk-north-normal.png": {
+    "pages": [
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100
+    ],
+    "prefix": "216cc959bd"
+  },
+  "assets/characters/enemy-ice-viper-1/attack-east-normal.png": {
+    "pages": [
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
+    ],
+    "prefix": "03f920c288"
+  },
+  "assets/characters/enemy-ice-viper-1/attack-north-normal.png": {
+    "pages": [
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
+    ],
+    "prefix": "79bbc3ada5"
+  },
+  "assets/characters/enemy-ice-viper-1/idle-east-normal.png": {
+    "pages": [
+      121,
       121,
       121,
       121,
@@ -18736,279 +18883,1151 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
       121,
       121
     ],
-    "prefix": "c1305605b7"
-  },
-  "assets/characters/enemy-ice-tailed-scorpion-1/attack-east-normal.png": {
-    "pages": [
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99
-    ],
-    "prefix": "3a63c673ca"
-  },
-  "assets/characters/enemy-ice-tailed-scorpion-1/attack-north-normal.png": {
-    "pages": [
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99
-    ],
-    "prefix": "e5754bb2c4"
-  },
-  "assets/characters/enemy-ice-tailed-scorpion-1/idle-east-normal.png": {
-    "pages": [
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99
-    ],
-    "prefix": "0d633cc9e6"
-  },
-  "assets/characters/enemy-ice-tailed-scorpion-1/idle-north-normal.png": {
-    "pages": [
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99
-    ],
-    "prefix": "247491257f"
-  },
-  "assets/characters/enemy-ice-tailed-scorpion-1/walk-east-normal.png": {
-    "pages": [
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99
-    ],
-    "prefix": "3a7489825c"
-  },
-  "assets/characters/enemy-ice-tailed-scorpion-1/walk-north-normal.png": {
-    "pages": [
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99
-    ],
-    "prefix": "216cc959bd"
-  },
-  "assets/characters/enemy-ice-viper-1/attack-east-normal.png": {
-    "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
-    ],
-    "prefix": "03f920c288"
-  },
-  "assets/characters/enemy-ice-viper-1/attack-north-normal.png": {
-    "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
-    ],
-    "prefix": "79bbc3ada5"
-  },
-  "assets/characters/enemy-ice-viper-1/idle-east-normal.png": {
-    "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
-    ],
     "prefix": "ccb8129e3a"
   },
   "assets/characters/enemy-ice-viper-1/idle-north-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "bf743c0582"
   },
   "assets/characters/enemy-ice-viper-1/walk-east-normal.png": {
     "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
     ],
     "prefix": "f2eb8982f5"
   },
   "assets/characters/enemy-ice-viper-1/walk-north-normal.png": {
     "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
     ],
     "prefix": "5377ed2ee4"
   },
   "assets/characters/enemy-iceshell-turtle-1/attack-east-normal.png": {
     "pages": [
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102
     ],
     "prefix": "055e731ee0"
   },
   "assets/characters/enemy-iceshell-turtle-1/attack-north-normal.png": {
     "pages": [
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102
     ],
     "prefix": "553edc0450"
   },
   "assets/characters/enemy-iceshell-turtle-1/idle-east-normal.png": {
     "pages": [
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106
     ],
     "prefix": "92db5931ad"
   },
   "assets/characters/enemy-iceshell-turtle-1/idle-north-normal.png": {
     "pages": [
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106
     ],
     "prefix": "b3d44af1fc"
   },
   "assets/characters/enemy-iceshell-turtle-1/walk-east-normal.png": {
     "pages": [
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102
     ],
     "prefix": "866d81913a"
   },
   "assets/characters/enemy-iceshell-turtle-1/walk-north-normal.png": {
     "pages": [
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102
+    ],
+    "prefix": "d885c9dfa0"
+  },
+  "assets/characters/enemy-incomplete-flagellum-1/idle-east-normal.png": {
+    "pages": [
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
+    ],
+    "prefix": "fab8692c1c"
+  },
+  "assets/characters/enemy-incomplete-flagellum-1/idle-north-normal.png": {
+    "pages": [
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
+    ],
+    "prefix": "4324e32a46"
+  },
+  "assets/characters/enemy-infected-mouse-in-a-box-1/attack-east-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "7cde8fee3a"
+  },
+  "assets/characters/enemy-infected-mouse-in-a-box-1/attack-north-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "f9240bb58b"
+  },
+  "assets/characters/enemy-infected-mouse-in-a-box-1/idle-east-normal.png": {
+    "pages": [
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
+    ],
+    "prefix": "6e1ab37718"
+  },
+  "assets/characters/enemy-infected-mouse-in-a-box-1/idle-north-normal.png": {
+    "pages": [
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
+    ],
+    "prefix": "f51a581fbe"
+  },
+  "assets/characters/enemy-infected-mouse-in-a-box-1/walk-east-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "4da2100fa6"
+  },
+  "assets/characters/enemy-infected-mouse-in-a-box-1/walk-north-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "2e62a839fb"
+  },
+  "assets/characters/enemy-ivan-1/attack-east-normal.png": {
+    "pages": [
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86
+    ],
+    "prefix": "6595bf70ff"
+  },
+  "assets/characters/enemy-ivan-1/attack-north-normal.png": {
+    "pages": [
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86
+    ],
+    "prefix": "de7dc95bfd"
+  },
+  "assets/characters/enemy-ivan-1/attack-south-normal.png": {
+    "pages": [
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86
+    ],
+    "prefix": "14eb5d4cfc"
+  },
+  "assets/characters/enemy-ivan-1/idle-east-normal.png": {
+    "pages": [
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86
+    ],
+    "prefix": "2fd0c71604"
+  },
+  "assets/characters/enemy-ivan-1/idle-north-normal.png": {
+    "pages": [
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86
+    ],
+    "prefix": "82bbeb7c54"
+  },
+  "assets/characters/enemy-ivan-1/idle-south-normal.png": {
+    "pages": [
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86
+    ],
+    "prefix": "1e1699356e"
+  },
+  "assets/characters/enemy-ivan-1/skill-monster-elimination-hammer-east-normal.png": {
+    "pages": [
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86
+    ],
+    "prefix": "1e6b2b188a"
+  },
+  "assets/characters/enemy-ivan-1/skill-monster-elimination-hammer-north-normal.png": {
+    "pages": [
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86
+    ],
+    "prefix": "cf565c42a2"
+  },
+  "assets/characters/enemy-ivan-1/walk-east-normal.png": {
+    "pages": [
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
+    ],
+    "prefix": "82b3dfa925"
+  },
+  "assets/characters/enemy-ivan-1/walk-north-normal.png": {
+    "pages": [
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
+    ],
+    "prefix": "0222bb35b2"
+  },
+  "assets/characters/enemy-ivan-1/walk-south-normal.png": {
+    "pages": [
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
+    ],
+    "prefix": "cba743d4e2"
+  },
+  "assets/characters/enemy-ivan-s-minion-2/attack-east-normal.png": {
+    "pages": [
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106
+    ],
+    "prefix": "06fbe47dd7"
+  },
+  "assets/characters/enemy-ivan-s-minion-2/attack-north-normal.png": {
+    "pages": [
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106
+    ],
+    "prefix": "ed6ea05b37"
+  },
+  "assets/characters/enemy-ivan-s-minion-2/idle-east-normal.png": {
+    "pages": [
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
+    ],
+    "prefix": "de7c463c9d"
+  },
+  "assets/characters/enemy-ivan-s-minion-2/idle-north-normal.png": {
+    "pages": [
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
+    ],
+    "prefix": "3fc6b1b1ec"
+  },
+  "assets/characters/enemy-ivan-s-minion-2/walk-east-normal.png": {
+    "pages": [
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106
+    ],
+    "prefix": "a8b21f7d13"
+  },
+  "assets/characters/enemy-ivan-s-minion-2/walk-north-normal.png": {
+    "pages": [
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106
+    ],
+    "prefix": "5c50f4feee"
+  },
+  "assets/characters/enemy-jagged-teeth-rats-1/attack-east-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "481ce9ff9d"
+  },
+  "assets/characters/enemy-jagged-teeth-rats-1/attack-north-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "627e51fe28"
+  },
+  "assets/characters/enemy-jagged-teeth-rats-1/idle-east-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "18c919c96f"
+  },
+  "assets/characters/enemy-jagged-teeth-rats-1/idle-north-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "2957d9b20b"
+  },
+  "assets/characters/enemy-jagged-teeth-rats-1/walk-east-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "f3463cc329"
+  },
+  "assets/characters/enemy-jagged-teeth-rats-1/walk-north-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "b819eb20e0"
+  },
+  "assets/characters/enemy-jar-1/idle-east-normal.png": {
+    "pages": [
+      125
+    ],
+    "prefix": "b7bd1f0780"
+  },
+  "assets/characters/enemy-jar-1/idle-north-normal.png": {
+    "pages": [
+      125,
+      125,
+      125,
+      125
+    ],
+    "prefix": "5275ecfa1f"
+  },
+  "assets/characters/enemy-jeff-the-wanted-criminal-1/attack-east-normal.png": {
+    "pages": [
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95
+    ],
+    "prefix": "f5b3141de9"
+  },
+  "assets/characters/enemy-jeff-the-wanted-criminal-1/attack-north-normal.png": {
+    "pages": [
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95
+    ],
+    "prefix": "1118275a85"
+  },
+  "assets/characters/enemy-jeff-the-wanted-criminal-1/attack-south-normal.png": {
+    "pages": [
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95
+    ],
+    "prefix": "6a75875c28"
+  },
+  "assets/characters/enemy-jeff-the-wanted-criminal-1/idle-east-normal.png": {
+    "pages": [
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105
+    ],
+    "prefix": "41813b2735"
+  },
+  "assets/characters/enemy-jeff-the-wanted-criminal-1/idle-north-normal.png": {
+    "pages": [
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105
+    ],
+    "prefix": "06dc4aad43"
+  },
+  "assets/characters/enemy-jeff-the-wanted-criminal-1/idle-south-normal.png": {
+    "pages": [
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105
+    ],
+    "prefix": "1868542a50"
+  },
+  "assets/characters/enemy-jeff-the-wanted-criminal-1/walk-east-normal.png": {
+    "pages": [
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95
+    ],
+    "prefix": "74f166c158"
+  },
+  "assets/characters/enemy-jeff-the-wanted-criminal-1/walk-north-normal.png": {
+    "pages": [
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95
+    ],
+    "prefix": "73d428fd59"
+  },
+  "assets/characters/enemy-jeff-the-wanted-criminal-1/walk-south-normal.png": {
+    "pages": [
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95
+    ],
+    "prefix": "2ebb753d79"
+  },
+  "assets/characters/enemy-killer-werewolf-jack-1/idle-east-normal.png": {
+    "pages": [
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
+    ],
+    "prefix": "a6c124ddf7"
+  },
+  "assets/characters/enemy-killer-werewolf-jack-1/idle-north-normal.png": {
+    "pages": [
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
+    ],
+    "prefix": "be0f5b0116"
+  },
+  "assets/characters/enemy-knife-needled-mosquitoes-1/attack-east-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "0b473929ba"
+  },
+  "assets/characters/enemy-knife-needled-mosquitoes-1/attack-north-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "c6427c43ae"
+  },
+  "assets/characters/enemy-knife-needled-mosquitoes-1/idle-east-normal.png": {
+    "pages": [
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
+    ],
+    "prefix": "667ad6283c"
+  },
+  "assets/characters/enemy-knife-needled-mosquitoes-1/idle-north-normal.png": {
+    "pages": [
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
+    ],
+    "prefix": "eaca3302dc"
+  },
+  "assets/characters/enemy-knife-needled-mosquitoes-1/walk-east-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "9268c362db"
+  },
+  "assets/characters/enemy-knife-needled-mosquitoes-1/walk-north-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "5b0ec7040d"
+  },
+  "assets/characters/enemy-large-wing-bat-1/idle-east-normal.png": {
+    "pages": [
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112
+    ],
+    "prefix": "4f51979368"
+  },
+  "assets/characters/enemy-large-wing-bat-1/idle-north-normal.png": {
+    "pages": [
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112
+    ],
+    "prefix": "776a7f4ca2"
+  },
+  "assets/characters/enemy-legendary-silverwolf-1/attack-east-normal.png": {
+    "pages": [
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
+    ],
+    "prefix": "bbaf171c6d"
+  },
+  "assets/characters/enemy-legendary-silverwolf-1/attack-north-normal.png": {
+    "pages": [
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
+    ],
+    "prefix": "4109a30747"
+  },
+  "assets/characters/enemy-legendary-silverwolf-1/idle-east-normal.png": {
+    "pages": [
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
+    ],
+    "prefix": "c69da6f1c0"
+  },
+  "assets/characters/enemy-legendary-silverwolf-1/idle-north-normal.png": {
+    "pages": [
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
+    ],
+    "prefix": "29cfae6b29"
+  },
+  "assets/characters/enemy-legendary-silverwolf-1/walk-east-normal.png": {
+    "pages": [
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
+    ],
+    "prefix": "026f630437"
+  },
+  "assets/characters/enemy-legendary-silverwolf-1/walk-north-normal.png": {
+    "pages": [
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
+    ],
+    "prefix": "3f74116af8"
+  },
+  "assets/characters/enemy-lunatic-berkel-archer-1/idle-east-normal.png": {
+    "pages": [
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
+    ],
+    "prefix": "71d009bab6"
+  },
+  "assets/characters/enemy-lunatic-berkel-archer-1/idle-north-normal.png": {
+    "pages": [
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
+    ],
+    "prefix": "b57762a9a1"
+  },
+  "assets/characters/enemy-lunatic-berkel-soldier-1/idle-east-normal.png": {
+    "pages": [
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
+    ],
+    "prefix": "d64d6dcbb9"
+  },
+  "assets/characters/enemy-lunatic-berkel-soldier-1/idle-north-normal.png": {
+    "pages": [
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
+    ],
+    "prefix": "94ac8a42cd"
+  },
+  "assets/characters/enemy-lunatic-chasers-captain-1/idle-east-normal.png": {
+    "pages": [
+      101,
+      101,
+      101,
+      101,
       101,
       101,
       101,
@@ -19018,1067 +20037,56 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
       101,
       101
     ],
-    "prefix": "d885c9dfa0"
-  },
-  "assets/characters/enemy-incomplete-flagellum-1/idle-east-normal.png": {
-    "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
-    ],
-    "prefix": "fab8692c1c"
-  },
-  "assets/characters/enemy-incomplete-flagellum-1/idle-north-normal.png": {
-    "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
-    ],
-    "prefix": "4324e32a46"
-  },
-  "assets/characters/enemy-infected-mouse-in-a-box-1/attack-east-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "7cde8fee3a"
-  },
-  "assets/characters/enemy-infected-mouse-in-a-box-1/attack-north-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "f9240bb58b"
-  },
-  "assets/characters/enemy-infected-mouse-in-a-box-1/idle-east-normal.png": {
-    "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
-    ],
-    "prefix": "6e1ab37718"
-  },
-  "assets/characters/enemy-infected-mouse-in-a-box-1/idle-north-normal.png": {
-    "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
-    ],
-    "prefix": "f51a581fbe"
-  },
-  "assets/characters/enemy-infected-mouse-in-a-box-1/walk-east-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "4da2100fa6"
-  },
-  "assets/characters/enemy-infected-mouse-in-a-box-1/walk-north-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "2e62a839fb"
-  },
-  "assets/characters/enemy-ivan-1/attack-east-normal.png": {
-    "pages": [
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85
-    ],
-    "prefix": "6595bf70ff"
-  },
-  "assets/characters/enemy-ivan-1/attack-north-normal.png": {
-    "pages": [
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85
-    ],
-    "prefix": "de7dc95bfd"
-  },
-  "assets/characters/enemy-ivan-1/attack-south-normal.png": {
-    "pages": [
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85
-    ],
-    "prefix": "14eb5d4cfc"
-  },
-  "assets/characters/enemy-ivan-1/idle-east-normal.png": {
-    "pages": [
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85
-    ],
-    "prefix": "2fd0c71604"
-  },
-  "assets/characters/enemy-ivan-1/idle-north-normal.png": {
-    "pages": [
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85
-    ],
-    "prefix": "82bbeb7c54"
-  },
-  "assets/characters/enemy-ivan-1/idle-south-normal.png": {
-    "pages": [
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85
-    ],
-    "prefix": "1e1699356e"
-  },
-  "assets/characters/enemy-ivan-1/skill-monster-elimination-hammer-east-normal.png": {
-    "pages": [
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85
-    ],
-    "prefix": "1e6b2b188a"
-  },
-  "assets/characters/enemy-ivan-1/skill-monster-elimination-hammer-north-normal.png": {
-    "pages": [
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85
-    ],
-    "prefix": "cf565c42a2"
-  },
-  "assets/characters/enemy-ivan-1/walk-east-normal.png": {
-    "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
-    ],
-    "prefix": "82b3dfa925"
-  },
-  "assets/characters/enemy-ivan-1/walk-north-normal.png": {
-    "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
-    ],
-    "prefix": "0222bb35b2"
-  },
-  "assets/characters/enemy-ivan-1/walk-south-normal.png": {
-    "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
-    ],
-    "prefix": "cba743d4e2"
-  },
-  "assets/characters/enemy-ivan-s-minion-2/attack-east-normal.png": {
-    "pages": [
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105
-    ],
-    "prefix": "06fbe47dd7"
-  },
-  "assets/characters/enemy-ivan-s-minion-2/attack-north-normal.png": {
-    "pages": [
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105
-    ],
-    "prefix": "ed6ea05b37"
-  },
-  "assets/characters/enemy-ivan-s-minion-2/idle-east-normal.png": {
-    "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
-    ],
-    "prefix": "de7c463c9d"
-  },
-  "assets/characters/enemy-ivan-s-minion-2/idle-north-normal.png": {
-    "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
-    ],
-    "prefix": "3fc6b1b1ec"
-  },
-  "assets/characters/enemy-ivan-s-minion-2/walk-east-normal.png": {
-    "pages": [
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105
-    ],
-    "prefix": "a8b21f7d13"
-  },
-  "assets/characters/enemy-ivan-s-minion-2/walk-north-normal.png": {
-    "pages": [
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105
-    ],
-    "prefix": "5c50f4feee"
-  },
-  "assets/characters/enemy-jagged-teeth-rats-1/attack-east-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "481ce9ff9d"
-  },
-  "assets/characters/enemy-jagged-teeth-rats-1/attack-north-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "627e51fe28"
-  },
-  "assets/characters/enemy-jagged-teeth-rats-1/idle-east-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "18c919c96f"
-  },
-  "assets/characters/enemy-jagged-teeth-rats-1/idle-north-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "2957d9b20b"
-  },
-  "assets/characters/enemy-jagged-teeth-rats-1/walk-east-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "f3463cc329"
-  },
-  "assets/characters/enemy-jagged-teeth-rats-1/walk-north-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "b819eb20e0"
-  },
-  "assets/characters/enemy-jar-1/idle-east-normal.png": {
-    "pages": [
-      124
-    ],
-    "prefix": "b7bd1f0780"
-  },
-  "assets/characters/enemy-jar-1/idle-north-normal.png": {
-    "pages": [
-      124,
-      124,
-      124,
-      124
-    ],
-    "prefix": "5275ecfa1f"
-  },
-  "assets/characters/enemy-jeff-the-wanted-criminal-1/attack-east-normal.png": {
-    "pages": [
-      94,
-      94,
-      94,
-      94,
-      94,
-      94,
-      94,
-      94,
-      94,
-      94
-    ],
-    "prefix": "f5b3141de9"
-  },
-  "assets/characters/enemy-jeff-the-wanted-criminal-1/attack-north-normal.png": {
-    "pages": [
-      94,
-      94,
-      94,
-      94,
-      94,
-      94,
-      94,
-      94,
-      94,
-      94
-    ],
-    "prefix": "1118275a85"
-  },
-  "assets/characters/enemy-jeff-the-wanted-criminal-1/attack-south-normal.png": {
-    "pages": [
-      94,
-      94,
-      94,
-      94,
-      94,
-      94,
-      94,
-      94,
-      94,
-      94
-    ],
-    "prefix": "6a75875c28"
-  },
-  "assets/characters/enemy-jeff-the-wanted-criminal-1/idle-east-normal.png": {
-    "pages": [
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104
-    ],
-    "prefix": "41813b2735"
-  },
-  "assets/characters/enemy-jeff-the-wanted-criminal-1/idle-north-normal.png": {
-    "pages": [
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104
-    ],
-    "prefix": "06dc4aad43"
-  },
-  "assets/characters/enemy-jeff-the-wanted-criminal-1/idle-south-normal.png": {
-    "pages": [
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104
-    ],
-    "prefix": "1868542a50"
-  },
-  "assets/characters/enemy-jeff-the-wanted-criminal-1/walk-east-normal.png": {
-    "pages": [
-      94,
-      94,
-      94,
-      94,
-      94,
-      94,
-      94,
-      94
-    ],
-    "prefix": "74f166c158"
-  },
-  "assets/characters/enemy-jeff-the-wanted-criminal-1/walk-north-normal.png": {
-    "pages": [
-      94,
-      94,
-      94,
-      94,
-      94,
-      94,
-      94,
-      94
-    ],
-    "prefix": "73d428fd59"
-  },
-  "assets/characters/enemy-jeff-the-wanted-criminal-1/walk-south-normal.png": {
-    "pages": [
-      94,
-      94,
-      94,
-      94,
-      94,
-      94,
-      94,
-      94
-    ],
-    "prefix": "2ebb753d79"
-  },
-  "assets/characters/enemy-killer-werewolf-jack-1/idle-east-normal.png": {
-    "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
-    ],
-    "prefix": "a6c124ddf7"
-  },
-  "assets/characters/enemy-killer-werewolf-jack-1/idle-north-normal.png": {
-    "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
-    ],
-    "prefix": "be0f5b0116"
-  },
-  "assets/characters/enemy-knife-needled-mosquitoes-1/attack-east-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "0b473929ba"
-  },
-  "assets/characters/enemy-knife-needled-mosquitoes-1/attack-north-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "c6427c43ae"
-  },
-  "assets/characters/enemy-knife-needled-mosquitoes-1/idle-east-normal.png": {
-    "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
-    ],
-    "prefix": "667ad6283c"
-  },
-  "assets/characters/enemy-knife-needled-mosquitoes-1/idle-north-normal.png": {
-    "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
-    ],
-    "prefix": "eaca3302dc"
-  },
-  "assets/characters/enemy-knife-needled-mosquitoes-1/walk-east-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "9268c362db"
-  },
-  "assets/characters/enemy-knife-needled-mosquitoes-1/walk-north-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "5b0ec7040d"
-  },
-  "assets/characters/enemy-large-wing-bat-1/idle-east-normal.png": {
-    "pages": [
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111
-    ],
-    "prefix": "4f51979368"
-  },
-  "assets/characters/enemy-large-wing-bat-1/idle-north-normal.png": {
-    "pages": [
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111
-    ],
-    "prefix": "776a7f4ca2"
-  },
-  "assets/characters/enemy-legendary-silverwolf-1/attack-east-normal.png": {
-    "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
-    ],
-    "prefix": "bbaf171c6d"
-  },
-  "assets/characters/enemy-legendary-silverwolf-1/attack-north-normal.png": {
-    "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
-    ],
-    "prefix": "4109a30747"
-  },
-  "assets/characters/enemy-legendary-silverwolf-1/idle-east-normal.png": {
-    "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
-    ],
-    "prefix": "c69da6f1c0"
-  },
-  "assets/characters/enemy-legendary-silverwolf-1/idle-north-normal.png": {
-    "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
-    ],
-    "prefix": "29cfae6b29"
-  },
-  "assets/characters/enemy-legendary-silverwolf-1/walk-east-normal.png": {
-    "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
-    ],
-    "prefix": "026f630437"
-  },
-  "assets/characters/enemy-legendary-silverwolf-1/walk-north-normal.png": {
-    "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
-    ],
-    "prefix": "3f74116af8"
-  },
-  "assets/characters/enemy-lunatic-berkel-archer-1/idle-east-normal.png": {
-    "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
-    ],
-    "prefix": "71d009bab6"
-  },
-  "assets/characters/enemy-lunatic-berkel-archer-1/idle-north-normal.png": {
-    "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
-    ],
-    "prefix": "b57762a9a1"
-  },
-  "assets/characters/enemy-lunatic-berkel-soldier-1/idle-east-normal.png": {
-    "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
-    ],
-    "prefix": "d64d6dcbb9"
-  },
-  "assets/characters/enemy-lunatic-berkel-soldier-1/idle-north-normal.png": {
-    "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
-    ],
-    "prefix": "94ac8a42cd"
-  },
-  "assets/characters/enemy-lunatic-chasers-captain-1/idle-east-normal.png": {
-    "pages": [
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100
-    ],
     "prefix": "64b13f8f4a"
   },
   "assets/characters/enemy-lunatic-chasers-captain-1/idle-north-normal.png": {
     "pages": [
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101
     ],
     "prefix": "3f8dd58cd8"
   },
   "assets/characters/enemy-lunatic-chasers-captain-1/skill-monster-lullaby-east-normal.png": {
     "pages": [
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101
     ],
     "prefix": "5ff2d69c96"
   },
   "assets/characters/enemy-lunatic-chasers-captain-1/skill-monster-lullaby-north-normal.png": {
     "pages": [
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101
     ],
     "prefix": "0d91900493"
   },
@@ -20366,22 +20374,74 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-lunatic-white-goblin-warrior-1/idle-east-normal.png": {
     "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
     ],
     "prefix": "bc9167b64a"
   },
   "assets/characters/enemy-lunatic-white-goblin-warrior-1/idle-north-normal.png": {
     "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "54f673fdfe"
+  },
+  "assets/characters/enemy-mad-dog-in-a-haystack-1/idle-east-normal.png": {
+    "pages": [
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
+    ],
+    "prefix": "aec88fe821"
+  },
+  "assets/characters/enemy-mad-dog-in-a-haystack-1/idle-north-normal.png": {
+    "pages": [
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
+    ],
+    "prefix": "2ecf4e8174"
+  },
+  "assets/characters/enemy-mad-ghostfire-1/idle-east-screen.png": {
+    "pages": [
       122,
       122,
       122,
@@ -20394,236 +20454,270 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
       122,
       122
     ],
-    "prefix": "54f673fdfe"
-  },
-  "assets/characters/enemy-mad-dog-in-a-haystack-1/idle-east-normal.png": {
-    "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
-    ],
-    "prefix": "aec88fe821"
-  },
-  "assets/characters/enemy-mad-dog-in-a-haystack-1/idle-north-normal.png": {
-    "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
-    ],
-    "prefix": "2ecf4e8174"
-  },
-  "assets/characters/enemy-mad-ghostfire-1/idle-east-screen.png": {
-    "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
-    ],
     "prefix": "fffb3fe4fb"
   },
   "assets/characters/enemy-mad-ghostfire-1/idle-north-screen.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "850eba4c83"
   },
   "assets/characters/enemy-maggot-1/attack-east-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "f09a305f44"
   },
   "assets/characters/enemy-maggot-1/attack-north-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "b705bc067a"
   },
   "assets/characters/enemy-maggot-1/idle-east-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "2cb9d50e52"
   },
   "assets/characters/enemy-maggot-1/idle-north-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "84df642840"
   },
   "assets/characters/enemy-maggot-1/walk-east-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "22adf0d795"
   },
   "assets/characters/enemy-maggot-1/walk-north-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "511783e92a"
   },
   "assets/characters/enemy-meadow-turtle-1/attack-east-normal.png": {
     "pages": [
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101
     ],
     "prefix": "b6116a6b94"
   },
   "assets/characters/enemy-meadow-turtle-1/attack-north-normal.png": {
     "pages": [
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101
     ],
     "prefix": "a57e6b63db"
   },
   "assets/characters/enemy-meadow-turtle-1/idle-east-normal.png": {
     "pages": [
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111
     ],
     "prefix": "f0391a6ebe"
   },
   "assets/characters/enemy-meadow-turtle-1/idle-north-normal.png": {
     "pages": [
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111
+    ],
+    "prefix": "996bb0feec"
+  },
+  "assets/characters/enemy-meadow-turtle-1/walk-east-normal.png": {
+    "pages": [
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101
+    ],
+    "prefix": "ddf672d5c5"
+  },
+  "assets/characters/enemy-meadow-turtle-1/walk-north-normal.png": {
+    "pages": [
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101,
+      101
+    ],
+    "prefix": "ac7dded0a7"
+  },
+  "assets/characters/enemy-mimic-1/idle-east-normal.png": {
+    "pages": [
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
+    ],
+    "prefix": "7026e6a802"
+  },
+  "assets/characters/enemy-mimic-1/idle-north-normal.png": {
+    "pages": [
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
+    ],
+    "prefix": "4c10c5e994"
+  },
+  "assets/characters/enemy-mine-bats-1/idle-east-normal.png": {
+    "pages": [
+      110,
+      110,
       110,
       110,
       110,
@@ -20638,111 +20732,25 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
       110,
       110
     ],
-    "prefix": "996bb0feec"
-  },
-  "assets/characters/enemy-meadow-turtle-1/walk-east-normal.png": {
-    "pages": [
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100
-    ],
-    "prefix": "ddf672d5c5"
-  },
-  "assets/characters/enemy-meadow-turtle-1/walk-north-normal.png": {
-    "pages": [
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100,
-      100
-    ],
-    "prefix": "ac7dded0a7"
-  },
-  "assets/characters/enemy-mimic-1/idle-east-normal.png": {
-    "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
-    ],
-    "prefix": "7026e6a802"
-  },
-  "assets/characters/enemy-mimic-1/idle-north-normal.png": {
-    "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
-    ],
-    "prefix": "4c10c5e994"
-  },
-  "assets/characters/enemy-mine-bats-1/idle-east-normal.png": {
-    "pages": [
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109
-    ],
     "prefix": "59cc833bf3"
   },
   "assets/characters/enemy-mine-bats-1/idle-north-normal.png": {
     "pages": [
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110
     ],
     "prefix": "0e03806f70"
   },
@@ -20920,173 +20928,173 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-mosquito-1/idle-east-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "cf1480ac74"
   },
   "assets/characters/enemy-mosquito-1/idle-north-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "96af3e0cd0"
   },
   "assets/characters/enemy-moving-stuffed-adult-oogle-1/attack-east-normal.png": {
     "pages": [
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93
     ],
     "prefix": "5c20bee587"
   },
   "assets/characters/enemy-moving-stuffed-adult-oogle-1/attack-north-normal.png": {
     "pages": [
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93
     ],
     "prefix": "e2837dc656"
   },
   "assets/characters/enemy-moving-stuffed-adult-oogle-1/idle-east-normal.png": {
     "pages": [
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103
     ],
     "prefix": "813a116e94"
   },
   "assets/characters/enemy-moving-stuffed-adult-oogle-1/idle-north-normal.png": {
     "pages": [
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103
     ],
     "prefix": "8434513307"
   },
   "assets/characters/enemy-moving-stuffed-adult-oogle-1/walk-east-normal.png": {
     "pages": [
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93
     ],
     "prefix": "2f768f8dfe"
   },
   "assets/characters/enemy-moving-stuffed-adult-oogle-1/walk-north-normal.png": {
     "pages": [
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93
     ],
     "prefix": "f0d4c022ea"
   },
@@ -21162,25 +21170,489 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-mutated-abbot-1/idle-east-normal.png": {
     "pages": [
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107
     ],
     "prefix": "40e54a1456"
   },
   "assets/characters/enemy-mutated-abbot-1/idle-north-normal.png": {
     "pages": [
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107
+    ],
+    "prefix": "bc3b03a656"
+  },
+  "assets/characters/enemy-mutated-abbot-1/skill-monster-sleep-curse-east-normal.png": {
+    "pages": [
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82
+    ],
+    "prefix": "4fde0ad1a1"
+  },
+  "assets/characters/enemy-mutated-abbot-1/skill-monster-sleep-curse-north-normal.png": {
+    "pages": [
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82
+    ],
+    "prefix": "ff63874f98"
+  },
+  "assets/characters/enemy-mutated-abbot-1/walk-east-normal.png": {
+    "pages": [
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82
+    ],
+    "prefix": "62efcb1783"
+  },
+  "assets/characters/enemy-mutated-abbot-1/walk-north-normal.png": {
+    "pages": [
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82
+    ],
+    "prefix": "b427cd7f90"
+  },
+  "assets/characters/enemy-mutated-desert-tortoise-1/idle-east-normal.png": {
+    "pages": [
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111
+    ],
+    "prefix": "fe23e9ed8b"
+  },
+  "assets/characters/enemy-mutated-desert-tortoise-1/idle-north-normal.png": {
+    "pages": [
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111
+    ],
+    "prefix": "3ae9e021a1"
+  },
+  "assets/characters/enemy-mutated-zombie-1/attack-east-normal.png": {
+    "pages": [
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88
+    ],
+    "prefix": "e3d5dda481"
+  },
+  "assets/characters/enemy-mutated-zombie-1/attack-north-normal.png": {
+    "pages": [
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88
+    ],
+    "prefix": "a4fea1d7b5"
+  },
+  "assets/characters/enemy-mutated-zombie-1/idle-east-normal.png": {
+    "pages": [
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79
+    ],
+    "prefix": "4448f05c5a"
+  },
+  "assets/characters/enemy-mutated-zombie-1/idle-north-normal.png": {
+    "pages": [
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79
+    ],
+    "prefix": "c0d8b616e6"
+  },
+  "assets/characters/enemy-mutated-zombie-1/skill-monster-sleep-curse-east-normal.png": {
+    "pages": [
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79
+    ],
+    "prefix": "d2a21889d8"
+  },
+  "assets/characters/enemy-mutated-zombie-1/skill-monster-sleep-curse-north-normal.png": {
+    "pages": [
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79,
+      79
+    ],
+    "prefix": "3e18749cc6"
+  },
+  "assets/characters/enemy-mutated-zombie-1/walk-east-normal.png": {
+    "pages": [
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88
+    ],
+    "prefix": "287d610b41"
+  },
+  "assets/characters/enemy-mutated-zombie-1/walk-north-normal.png": {
+    "pages": [
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88
+    ],
+    "prefix": "8d76c312b5"
+  },
+  "assets/characters/enemy-mutinous-benukes-1/idle-east-normal.png": {
+    "pages": [
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
+    ],
+    "prefix": "fa4eae0716"
+  },
+  "assets/characters/enemy-mutinous-benukes-1/idle-north-normal.png": {
+    "pages": [
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
+    ],
+    "prefix": "080c651884"
+  },
+  "assets/characters/enemy-mysterious-spring-s-slime-1/attack-east-normal.png": {
+    "pages": [
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
+    ],
+    "prefix": "06c4a83c99"
+  },
+  "assets/characters/enemy-mysterious-spring-s-slime-1/attack-north-normal.png": {
+    "pages": [
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
+    ],
+    "prefix": "12dae7ad35"
+  },
+  "assets/characters/enemy-mysterious-spring-s-slime-1/idle-east-normal.png": {
+    "pages": [
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
+    ],
+    "prefix": "46ace5f6f6"
+  },
+  "assets/characters/enemy-mysterious-spring-s-slime-1/idle-north-normal.png": {
+    "pages": [
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
+    ],
+    "prefix": "f064f7b59e"
+  },
+  "assets/characters/enemy-mysterious-spring-s-slime-1/walk-east-normal.png": {
+    "pages": [
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
+    ],
+    "prefix": "a72143e241"
+  },
+  "assets/characters/enemy-mysterious-spring-s-slime-1/walk-north-normal.png": {
+    "pages": [
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
+    ],
+    "prefix": "62df55aff5"
+  },
+  "assets/characters/enemy-nibbler-mimics-1/attack-east-normal.png": {
+    "pages": [
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112
+    ],
+    "prefix": "d61a0c4aee"
+  },
+  "assets/characters/enemy-nibbler-mimics-1/attack-north-normal.png": {
+    "pages": [
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112
+    ],
+    "prefix": "7990e35e8f"
+  },
+  "assets/characters/enemy-nibbler-mimics-1/idle-east-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "238262e9d4"
+  },
+  "assets/characters/enemy-nibbler-mimics-1/idle-north-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "b8b36ad0b4"
+  },
+  "assets/characters/enemy-nibbler-mimics-1/walk-east-normal.png": {
+    "pages": [
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112
+    ],
+    "prefix": "fccae87b47"
+  },
+  "assets/characters/enemy-nibbler-mimics-1/walk-north-normal.png": {
+    "pages": [
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112
+    ],
+    "prefix": "f269fd8bab"
+  },
+  "assets/characters/enemy-oogle-guardsman-1/attack-east-normal.png": {
+    "pages": [
+      106,
       106,
       106,
       106,
@@ -21196,581 +21668,117 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
       106,
       106
     ],
-    "prefix": "bc3b03a656"
-  },
-  "assets/characters/enemy-mutated-abbot-1/skill-monster-sleep-curse-east-normal.png": {
-    "pages": [
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81
-    ],
-    "prefix": "4fde0ad1a1"
-  },
-  "assets/characters/enemy-mutated-abbot-1/skill-monster-sleep-curse-north-normal.png": {
-    "pages": [
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81
-    ],
-    "prefix": "ff63874f98"
-  },
-  "assets/characters/enemy-mutated-abbot-1/walk-east-normal.png": {
-    "pages": [
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81
-    ],
-    "prefix": "62efcb1783"
-  },
-  "assets/characters/enemy-mutated-abbot-1/walk-north-normal.png": {
-    "pages": [
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81
-    ],
-    "prefix": "b427cd7f90"
-  },
-  "assets/characters/enemy-mutated-desert-tortoise-1/idle-east-normal.png": {
-    "pages": [
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110
-    ],
-    "prefix": "fe23e9ed8b"
-  },
-  "assets/characters/enemy-mutated-desert-tortoise-1/idle-north-normal.png": {
-    "pages": [
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110
-    ],
-    "prefix": "3ae9e021a1"
-  },
-  "assets/characters/enemy-mutated-zombie-1/attack-east-normal.png": {
-    "pages": [
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87
-    ],
-    "prefix": "e3d5dda481"
-  },
-  "assets/characters/enemy-mutated-zombie-1/attack-north-normal.png": {
-    "pages": [
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87
-    ],
-    "prefix": "a4fea1d7b5"
-  },
-  "assets/characters/enemy-mutated-zombie-1/idle-east-normal.png": {
-    "pages": [
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78
-    ],
-    "prefix": "4448f05c5a"
-  },
-  "assets/characters/enemy-mutated-zombie-1/idle-north-normal.png": {
-    "pages": [
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78
-    ],
-    "prefix": "c0d8b616e6"
-  },
-  "assets/characters/enemy-mutated-zombie-1/skill-monster-sleep-curse-east-normal.png": {
-    "pages": [
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78
-    ],
-    "prefix": "d2a21889d8"
-  },
-  "assets/characters/enemy-mutated-zombie-1/skill-monster-sleep-curse-north-normal.png": {
-    "pages": [
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78,
-      78
-    ],
-    "prefix": "3e18749cc6"
-  },
-  "assets/characters/enemy-mutated-zombie-1/walk-east-normal.png": {
-    "pages": [
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87
-    ],
-    "prefix": "287d610b41"
-  },
-  "assets/characters/enemy-mutated-zombie-1/walk-north-normal.png": {
-    "pages": [
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87
-    ],
-    "prefix": "8d76c312b5"
-  },
-  "assets/characters/enemy-mutinous-benukes-1/idle-east-normal.png": {
-    "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
-    ],
-    "prefix": "fa4eae0716"
-  },
-  "assets/characters/enemy-mutinous-benukes-1/idle-north-normal.png": {
-    "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
-    ],
-    "prefix": "080c651884"
-  },
-  "assets/characters/enemy-mysterious-spring-s-slime-1/attack-east-normal.png": {
-    "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
-    ],
-    "prefix": "06c4a83c99"
-  },
-  "assets/characters/enemy-mysterious-spring-s-slime-1/attack-north-normal.png": {
-    "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
-    ],
-    "prefix": "12dae7ad35"
-  },
-  "assets/characters/enemy-mysterious-spring-s-slime-1/idle-east-normal.png": {
-    "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
-    ],
-    "prefix": "46ace5f6f6"
-  },
-  "assets/characters/enemy-mysterious-spring-s-slime-1/idle-north-normal.png": {
-    "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
-    ],
-    "prefix": "f064f7b59e"
-  },
-  "assets/characters/enemy-mysterious-spring-s-slime-1/walk-east-normal.png": {
-    "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
-    ],
-    "prefix": "a72143e241"
-  },
-  "assets/characters/enemy-mysterious-spring-s-slime-1/walk-north-normal.png": {
-    "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
-    ],
-    "prefix": "62df55aff5"
-  },
-  "assets/characters/enemy-nibbler-mimics-1/attack-east-normal.png": {
-    "pages": [
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111
-    ],
-    "prefix": "d61a0c4aee"
-  },
-  "assets/characters/enemy-nibbler-mimics-1/attack-north-normal.png": {
-    "pages": [
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111
-    ],
-    "prefix": "7990e35e8f"
-  },
-  "assets/characters/enemy-nibbler-mimics-1/idle-east-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "238262e9d4"
-  },
-  "assets/characters/enemy-nibbler-mimics-1/idle-north-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "b8b36ad0b4"
-  },
-  "assets/characters/enemy-nibbler-mimics-1/walk-east-normal.png": {
-    "pages": [
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111
-    ],
-    "prefix": "fccae87b47"
-  },
-  "assets/characters/enemy-nibbler-mimics-1/walk-north-normal.png": {
-    "pages": [
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111
-    ],
-    "prefix": "f269fd8bab"
-  },
-  "assets/characters/enemy-oogle-guardsman-1/attack-east-normal.png": {
-    "pages": [
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105
-    ],
     "prefix": "c122e22665"
   },
   "assets/characters/enemy-oogle-guardsman-1/attack-north-normal.png": {
     "pages": [
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106
     ],
     "prefix": "3fb4bc2674"
   },
   "assets/characters/enemy-oogle-guardsman-1/idle-east-normal.png": {
     "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
     ],
     "prefix": "ef151850c8"
   },
   "assets/characters/enemy-oogle-guardsman-1/idle-north-normal.png": {
     "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
     ],
     "prefix": "22b3d3bf3d"
   },
   "assets/characters/enemy-oogle-guardsman-1/walk-east-normal.png": {
     "pages": [
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106
     ],
     "prefix": "7c4d1c1891"
   },
   "assets/characters/enemy-oogle-guardsman-1/walk-north-normal.png": {
     "pages": [
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106
     ],
     "prefix": "47c070f588"
   },
@@ -21826,338 +21834,338 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-orc-warrior-1/idle-east-normal.png": {
     "pages": [
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108
     ],
     "prefix": "b55187cb71"
   },
   "assets/characters/enemy-orc-warrior-1/idle-north-normal.png": {
     "pages": [
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108
     ],
     "prefix": "e74a418b6d"
   },
   "assets/characters/enemy-plump-maggots-1/attack-east-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "7de2c4fb83"
   },
   "assets/characters/enemy-plump-maggots-1/attack-north-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "645bf50909"
   },
   "assets/characters/enemy-plump-maggots-1/idle-east-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "afebc4bfda"
   },
   "assets/characters/enemy-plump-maggots-1/idle-north-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "d8e4b7c9e0"
   },
   "assets/characters/enemy-plump-maggots-1/walk-east-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "2a223d0884"
   },
   "assets/characters/enemy-plump-maggots-1/walk-north-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "1cc422710e"
   },
   "assets/characters/enemy-poisonfrost-spiders-1/idle-east-normal.png": {
     "pages": [
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99
     ],
     "prefix": "27a738be94"
   },
   "assets/characters/enemy-poisonfrost-spiders-1/idle-north-normal.png": {
     "pages": [
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99
     ],
     "prefix": "a2d2cfa832"
   },
   "assets/characters/enemy-poisonous-sting-maggots-1/attack-east-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "cc92dec461"
   },
   "assets/characters/enemy-poisonous-sting-maggots-1/attack-north-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "48c01707a2"
   },
   "assets/characters/enemy-poisonous-sting-maggots-1/idle-east-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "b9825858c2"
   },
   "assets/characters/enemy-poisonous-sting-maggots-1/idle-north-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "db64ba106f"
   },
   "assets/characters/enemy-poisonous-sting-maggots-1/walk-east-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "68fa3a9e24"
   },
   "assets/characters/enemy-poisonous-sting-maggots-1/walk-north-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "817294f0d9"
   },
   "assets/characters/enemy-porcupine-cactus-1/idle-east-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "0e2e405c7b"
   },
@@ -22256,57 +22264,57 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-portia-1/skill-monster-enflame-east-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "7789efeec8"
   },
   "assets/characters/enemy-portia-1/skill-monster-enflame-north-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "0129629bb7"
   },
@@ -22351,196 +22359,196 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-principle-guardian-1/idle-east-screen.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "0cc1f3495e"
   },
   "assets/characters/enemy-principle-guardian-1/idle-north-screen.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "541e926c0f"
   },
   "assets/characters/enemy-prisoner-1/idle-east-normal.png": {
     "pages": [
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109
     ],
     "prefix": "ada237e599"
   },
   "assets/characters/enemy-prisoner-1/idle-north-normal.png": {
     "pages": [
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109
     ],
     "prefix": "bfb8966aff"
   },
   "assets/characters/enemy-prisoner-1/idle-south-normal.png": {
     "pages": [
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109
     ],
     "prefix": "76da0dae45"
   },
   "assets/characters/enemy-prisoner-2/idle-east-normal.png": {
     "pages": [
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96
     ],
     "prefix": "d04ea33ea1"
   },
   "assets/characters/enemy-prisoner-2/idle-north-normal.png": {
     "pages": [
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96
     ],
     "prefix": "402cc10862"
   },
   "assets/characters/enemy-prisoner-2/idle-south-normal.png": {
     "pages": [
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95,
-      95
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96
     ],
     "prefix": "eec7da2454"
   },
   "assets/characters/enemy-prisoner-2/lie-down-east-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "02ee0d3eca"
   },
   "assets/characters/enemy-prisoner-2/lie-down-north-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "a9da08a4ed"
   },
   "assets/characters/enemy-prisoner-3/lie-down-east-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "c19e2e26c0"
   },
   "assets/characters/enemy-prisoner-3/lie-down-north-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "5fb11da7ab"
   },
@@ -22586,93 +22594,93 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-purification-cave-watcher-1/idle-east-normal.png": {
     "pages": [
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92
     ],
     "prefix": "b7bc752b60"
   },
   "assets/characters/enemy-purification-cave-watcher-1/idle-north-normal.png": {
     "pages": [
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92
     ],
     "prefix": "7370e81bb0"
   },
   "assets/characters/enemy-purification-cave-watcher-1/walk-east-normal.png": {
     "pages": [
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92
     ],
     "prefix": "d8654aeede"
   },
   "assets/characters/enemy-purification-cave-watcher-1/walk-north-normal.png": {
     "pages": [
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92,
+      92
     ],
     "prefix": "1f07d5eeef"
   },
@@ -22752,173 +22760,186 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-queen-spider-2/attack-east-normal.png": {
     "pages": [
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106
     ],
     "prefix": "7d31020ac2"
   },
   "assets/characters/enemy-queen-spider-2/attack-north-normal.png": {
     "pages": [
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106
     ],
     "prefix": "a3563dbbc4"
   },
   "assets/characters/enemy-queen-spider-2/idle-east-normal.png": {
     "pages": [
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106
     ],
     "prefix": "588647d771"
   },
   "assets/characters/enemy-queen-spider-2/idle-north-normal.png": {
     "pages": [
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106
     ],
     "prefix": "f3fded6918"
   },
   "assets/characters/enemy-queen-spider-2/walk-east-normal.png": {
     "pages": [
-      105,
-      105,
-      105,
-      105
+      106,
+      106,
+      106,
+      106
     ],
     "prefix": "9bc5afeee2"
   },
   "assets/characters/enemy-queen-spider-2/walk-north-normal.png": {
     "pages": [
-      105,
-      105,
-      105,
-      105
+      106,
+      106,
+      106,
+      106
     ],
     "prefix": "d008c9c992"
   },
   "assets/characters/enemy-raging-minotaur-1/attack-east-normal.png": {
     "pages": [
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83
     ],
     "prefix": "96ea952aaa"
   },
   "assets/characters/enemy-raging-minotaur-1/attack-north-normal.png": {
     "pages": [
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91,
-      91
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83
     ],
     "prefix": "e94a0dc263"
   },
   "assets/characters/enemy-raging-minotaur-1/idle-east-normal.png": {
     "pages": [
-      94,
-      94,
-      94,
-      94,
-      94,
-      94,
-      94,
-      94,
-      94,
-      94,
-      94,
-      94
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95
     ],
     "prefix": "fe514ac1ec"
   },
   "assets/characters/enemy-raging-minotaur-1/idle-north-normal.png": {
     "pages": [
-      94,
-      94,
-      94,
-      94,
-      94,
-      94,
-      94,
-      94,
-      94,
-      94,
-      94,
-      94
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95,
+      95
     ],
     "prefix": "da2798aadb"
   },
   "assets/characters/enemy-raging-minotaur-1/skill-monster-landshake-east-normal.png": {
     "pages": [
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83,
-      83
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84
     ],
     "prefix": "97e6865aa3"
   },
   "assets/characters/enemy-raging-minotaur-1/skill-monster-landshake-north-normal.png": {
     "pages": [
-      83,
-      83,
-      83,
-      83,
-      83,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84,
+      84
+    ],
+    "prefix": "74740baa9d"
+  },
+  "assets/characters/enemy-raging-minotaur-1/walk-east-normal.png": {
+    "pages": [
       83,
       83,
       83,
@@ -22928,142 +22949,129 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
       83,
       83
     ],
-    "prefix": "74740baa9d"
-  },
-  "assets/characters/enemy-raging-minotaur-1/walk-east-normal.png": {
-    "pages": [
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103
-    ],
     "prefix": "bfa79e192a"
   },
   "assets/characters/enemy-raging-minotaur-1/walk-north-normal.png": {
     "pages": [
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83
     ],
     "prefix": "73916b0eb8"
   },
   "assets/characters/enemy-rat-1/idle-east-normal.png": {
     "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
     ],
     "prefix": "0833837b30"
   },
   "assets/characters/enemy-rat-1/idle-north-normal.png": {
     "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
     ],
     "prefix": "ec02eebb22"
   },
   "assets/characters/enemy-reagents-1/attack-east-screen.png": {
     "pages": [
-      86,
-      86,
-      86,
-      86,
-      86,
-      86
+      87,
+      87,
+      87,
+      87,
+      87,
+      87
     ],
     "prefix": "f9b1b99d6d"
   },
   "assets/characters/enemy-reagents-1/attack-north-screen.png": {
     "pages": [
-      86,
-      86,
-      86,
-      86,
-      86,
-      86
+      87,
+      87,
+      87,
+      87,
+      87,
+      87
     ],
     "prefix": "24c9cd7ff3"
   },
   "assets/characters/enemy-reagents-1/idle-east-screen.png": {
     "pages": [
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87
     ],
     "prefix": "55892cba2e"
   },
   "assets/characters/enemy-reagents-1/idle-north-screen.png": {
     "pages": [
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86,
-      86
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87,
+      87
     ],
     "prefix": "b9e714e7bc"
   },
   "assets/characters/enemy-reagents-1/walk-east-screen.png": {
     "pages": [
-      86,
-      86,
-      86,
-      86
+      87,
+      87,
+      87,
+      87
     ],
     "prefix": "46cb11bb3e"
   },
@@ -23163,214 +23171,214 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-red-claw-bear-1/attack-east-normal.png": {
     "pages": [
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89
     ],
     "prefix": "2c9ffe1a17"
   },
   "assets/characters/enemy-red-claw-bear-1/attack-north-normal.png": {
     "pages": [
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89
     ],
     "prefix": "338e233843"
   },
   "assets/characters/enemy-red-claw-bear-1/idle-east-normal.png": {
     "pages": [
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89
     ],
     "prefix": "ba7be92252"
   },
   "assets/characters/enemy-red-claw-bear-1/idle-north-normal.png": {
     "pages": [
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89
     ],
     "prefix": "0348254dc2"
   },
   "assets/characters/enemy-red-claw-bear-1/walk-east-normal.png": {
     "pages": [
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89
     ],
     "prefix": "08857767ac"
   },
   "assets/characters/enemy-red-claw-bear-1/walk-north-normal.png": {
     "pages": [
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89
     ],
     "prefix": "4f4e972293"
   },
   "assets/characters/enemy-red-flower-cactus-1/idle-east-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "1f747cb93f"
   },
   "assets/characters/enemy-red-snake-1/attack-east-normal.png": {
     "pages": [
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105
     ],
     "prefix": "9f7b136537"
   },
   "assets/characters/enemy-red-snake-1/attack-north-normal.png": {
     "pages": [
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105
     ],
     "prefix": "81723adb0e"
   },
   "assets/characters/enemy-red-snake-1/idle-east-normal.png": {
     "pages": [
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105
     ],
     "prefix": "be348df645"
   },
   "assets/characters/enemy-red-snake-1/idle-north-normal.png": {
     "pages": [
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105
     ],
     "prefix": "3c04393ded"
   },
   "assets/characters/enemy-red-snake-1/walk-east-normal.png": {
     "pages": [
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105
     ],
     "prefix": "c4d0b47086"
   },
   "assets/characters/enemy-red-snake-1/walk-north-normal.png": {
     "pages": [
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105
     ],
     "prefix": "908ec4fef9"
   },
@@ -23505,40 +23513,40 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-redhood-bandits-boss-1/attack-east-normal.png": {
     "pages": [
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93
     ],
     "prefix": "bdc955a9b6"
   },
   "assets/characters/enemy-redhood-bandits-boss-1/attack-north-normal.png": {
     "pages": [
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93
     ],
     "prefix": "9579706c2f"
   },
   "assets/characters/enemy-redhood-bandits-boss-1/attack-south-normal.png": {
     "pages": [
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93
     ],
     "prefix": "70a1a6e680"
   },
@@ -23660,138 +23668,138 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-redhood-bandits-boss-1/walk-east-normal.png": {
     "pages": [
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93
     ],
     "prefix": "f464094bc6"
   },
   "assets/characters/enemy-redhood-bandits-boss-1/walk-north-normal.png": {
     "pages": [
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93
     ],
     "prefix": "20b75b5855"
   },
   "assets/characters/enemy-redhood-bandits-boss-1/walk-south-normal.png": {
     "pages": [
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92,
-      92
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93,
+      93
     ],
     "prefix": "3d6d6079bd"
   },
   "assets/characters/enemy-rigid-wing-slime-1/attack-east-normal.png": {
     "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
     ],
     "prefix": "9502157c9f"
   },
   "assets/characters/enemy-rigid-wing-slime-1/attack-north-normal.png": {
     "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
     ],
     "prefix": "5b310b8e30"
   },
   "assets/characters/enemy-rigid-wing-slime-1/idle-east-normal.png": {
     "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
     ],
     "prefix": "300ff26774"
   },
   "assets/characters/enemy-rigid-wing-slime-1/idle-north-normal.png": {
     "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
     ],
     "prefix": "75c9c4f3b8"
   },
   "assets/characters/enemy-rigid-wing-slime-1/walk-east-normal.png": {
     "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
     ],
     "prefix": "46c7ed83ae"
   },
   "assets/characters/enemy-rigid-wing-slime-1/walk-north-normal.png": {
     "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
     ],
     "prefix": "13d6e0f8db"
   },
@@ -23841,139 +23849,139 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-royal-family-s-knight-1/attack-east-normal.png": {
     "pages": [
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83
     ],
     "prefix": "78c1feecdd"
   },
   "assets/characters/enemy-royal-family-s-knight-1/attack-north-normal.png": {
     "pages": [
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83
     ],
     "prefix": "bbfa3264ae"
   },
   "assets/characters/enemy-royal-family-s-knight-1/attack-south-normal.png": {
     "pages": [
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83
     ],
     "prefix": "4861d2b2b8"
   },
   "assets/characters/enemy-royal-family-s-knight-1/idle-east-normal.png": {
     "pages": [
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83
     ],
     "prefix": "45122366f9"
   },
   "assets/characters/enemy-royal-family-s-knight-1/idle-north-normal.png": {
     "pages": [
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83
     ],
     "prefix": "3545bb65a2"
   },
   "assets/characters/enemy-royal-family-s-knight-1/idle-south-normal.png": {
     "pages": [
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83
     ],
     "prefix": "938b3ef6c5"
   },
   "assets/characters/enemy-royal-family-s-knight-1/walk-east-normal.png": {
     "pages": [
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83
     ],
     "prefix": "42ae77ddb3"
   },
   "assets/characters/enemy-royal-family-s-knight-1/walk-north-normal.png": {
     "pages": [
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83
     ],
     "prefix": "1c36c8a15f"
   },
   "assets/characters/enemy-royal-family-s-knight-1/walk-south-normal.png": {
     "pages": [
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82,
-      82
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83,
+      83
     ],
     "prefix": "b474f40b5d"
   },
@@ -24013,41 +24021,41 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-ruffian-1/idle-east-normal.png": {
     "pages": [
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103
     ],
     "prefix": "bf5bf091da"
   },
   "assets/characters/enemy-ruffian-1/idle-north-normal.png": {
     "pages": [
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103
     ],
     "prefix": "0a929da46d"
   },
@@ -24121,277 +24129,277 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-sandstorm-crew-archer-1/idle-east-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "7d9c31c0c2"
   },
   "assets/characters/enemy-sandstorm-crew-archer-1/idle-north-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "df7113ece1"
   },
   "assets/characters/enemy-sandstorm-crew-member-1/idle-east-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "6c05b43066"
   },
   "assets/characters/enemy-sandstorm-crew-member-1/idle-north-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "8706afa5d3"
   },
   "assets/characters/enemy-sandstorm-crew-soldier-1/idle-east-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "dc2ae79694"
   },
   "assets/characters/enemy-sandstorm-crew-soldier-1/idle-north-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "18a540dc0c"
   },
   "assets/characters/enemy-sandstorm-crew-troop-1/idle-east-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "81786bbc97"
   },
   "assets/characters/enemy-sandstorm-crew-troop-1/idle-north-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "5408ff2855"
   },
   "assets/characters/enemy-savage-rat-1/idle-east-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "66b9cb95cb"
   },
   "assets/characters/enemy-savage-rat-1/idle-north-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "841156a703"
   },
   "assets/characters/enemy-scorpion-1/attack-east-normal.png": {
     "pages": [
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100
     ],
     "prefix": "fb55a572ef"
   },
   "assets/characters/enemy-scorpion-1/attack-north-normal.png": {
     "pages": [
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100
     ],
     "prefix": "57679a5a48"
   },
   "assets/characters/enemy-scorpion-1/idle-east-normal.png": {
     "pages": [
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100
     ],
     "prefix": "254945e54f"
   },
   "assets/characters/enemy-scorpion-1/idle-north-normal.png": {
     "pages": [
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100
     ],
     "prefix": "ae2e0df6e2"
   },
   "assets/characters/enemy-scorpion-1/walk-east-normal.png": {
     "pages": [
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100
     ],
     "prefix": "463a34b7c5"
   },
   "assets/characters/enemy-scorpion-1/walk-north-normal.png": {
     "pages": [
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99,
-      99
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100
     ],
     "prefix": "6a7b906831"
   },
@@ -24429,37 +24437,37 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-sealed-succubus-1/idle-east-normal.png": {
     "pages": [
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106
     ],
     "prefix": "52f9fe199c"
   },
   "assets/characters/enemy-sealed-succubus-1/idle-north-normal.png": {
     "pages": [
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105,
-      105
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106,
+      106
     ],
     "prefix": "37fc3ce76a"
   },
@@ -24499,107 +24507,107 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-seductive-succubus-1/attack-east-normal.png": {
     "pages": [
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74
     ],
     "prefix": "f130fc4f6b"
   },
   "assets/characters/enemy-seductive-succubus-1/attack-north-normal.png": {
     "pages": [
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74
     ],
     "prefix": "60a03f4d8e"
   },
   "assets/characters/enemy-seductive-succubus-1/idle-east-normal.png": {
     "pages": [
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74
     ],
     "prefix": "1457201929"
   },
   "assets/characters/enemy-seductive-succubus-1/idle-north-normal.png": {
     "pages": [
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74
     ],
     "prefix": "5230c02322"
   },
   "assets/characters/enemy-seductive-succubus-1/walk-east-normal.png": {
     "pages": [
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74
     ],
     "prefix": "f8c8082c4f"
   },
   "assets/characters/enemy-seductive-succubus-1/walk-north-normal.png": {
     "pages": [
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73,
-      73
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74,
+      74
     ],
     "prefix": "351099fe21"
   },
@@ -24766,61 +24774,81 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-senior-elf-1/walk-east-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "fa8f7022f3"
   },
   "assets/characters/enemy-senior-elf-1/walk-north-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "a2cfa1fc02"
   },
   "assets/characters/enemy-senior-elf-1/walk-south-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "20a3670b3a"
   },
   "assets/characters/enemy-sewer-rat-1/idle-east-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "cca47263f9"
   },
   "assets/characters/enemy-sewer-rat-1/idle-north-normal.png": {
     "pages": [
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
+    ],
+    "prefix": "4f5383b6c1"
+  },
+  "assets/characters/enemy-sewer-rats-1/idle-east-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
       123,
       123,
       123,
@@ -24833,192 +24861,172 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
       123,
       123
     ],
-    "prefix": "4f5383b6c1"
-  },
-  "assets/characters/enemy-sewer-rats-1/idle-east-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
     "prefix": "4599b7c18a"
   },
   "assets/characters/enemy-sewer-rats-1/idle-north-normal.png": {
     "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
     ],
     "prefix": "28829ed380"
   },
   "assets/characters/enemy-shadow-priest-1/attack-east-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "ab92a58504"
   },
   "assets/characters/enemy-shadow-priest-1/attack-north-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "761465a355"
   },
   "assets/characters/enemy-shadow-s-senior-priest-traitor-1/idle-east-normal.png": {
     "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
     ],
     "prefix": "90489e88f4"
   },
   "assets/characters/enemy-shadow-s-senior-priest-traitor-1/idle-north-normal.png": {
     "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
     ],
     "prefix": "b4c46e97d5"
   },
   "assets/characters/enemy-shaggy-grayfang-1/idle-east-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "ecbb7eb5ad"
   },
   "assets/characters/enemy-shaggy-grayfang-1/idle-north-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "8269374def"
   },
   "assets/characters/enemy-shin-1/attack-east-normal.png": {
     "pages": [
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102
     ],
     "prefix": "7b8b6a9790"
   },
   "assets/characters/enemy-shin-1/attack-north-normal.png": {
     "pages": [
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102
     ],
     "prefix": "33a2165909"
   },
   "assets/characters/enemy-shin-1/attack-south-normal.png": {
     "pages": [
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102
     ],
     "prefix": "dd6f0ee8d2"
   },
@@ -25081,240 +25089,240 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-shin-1/skill-monster-landshake-east-normal.png": {
     "pages": [
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71
     ],
     "prefix": "30c3b53058"
   },
   "assets/characters/enemy-shin-1/skill-monster-landshake-north-normal.png": {
     "pages": [
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71
     ],
     "prefix": "7ba4b5413a"
   },
   "assets/characters/enemy-shin-1/skill-monster-whirlwind-east-normal.png": {
     "pages": [
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71
     ],
     "prefix": "26a60bdc68"
   },
   "assets/characters/enemy-shin-1/skill-monster-whirlwind-north-normal.png": {
     "pages": [
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70,
-      70
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71
     ],
     "prefix": "a14bb661b4"
   },
   "assets/characters/enemy-shin-1/walk-east-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "9f7595ab37"
   },
   "assets/characters/enemy-shin-1/walk-north-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "521145e9cf"
   },
   "assets/characters/enemy-shin-1/walk-south-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "08b372c5c2"
   },
   "assets/characters/enemy-shin-3/idle-east-normal.png": {
     "pages": [
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98
     ],
     "prefix": "241d8f0149"
   },
   "assets/characters/enemy-shin-3/idle-north-normal.png": {
     "pages": [
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98
     ],
     "prefix": "b100cce90e"
   },
   "assets/characters/enemy-shin-3/idle-south-normal.png": {
     "pages": [
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98
     ],
     "prefix": "c01d59a9fd"
   },
   "assets/characters/enemy-sin-carrier-1/idle-east-normal.png": {
     "pages": [
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109
     ],
     "prefix": "ff1a0476e0"
   },
   "assets/characters/enemy-sin-carrier-1/idle-north-normal.png": {
     "pages": [
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109
     ],
     "prefix": "e2b68d93f2"
   },
@@ -25414,224 +25422,428 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-slayer-jurupaz-1/idle-east-normal.png": {
     "pages": [
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110
     ],
     "prefix": "40b7cea11e"
   },
   "assets/characters/enemy-slayer-jurupaz-1/idle-north-normal.png": {
     "pages": [
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110
     ],
     "prefix": "f9fec7ead7"
   },
   "assets/characters/enemy-slime-1/attack-east-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "7b4f803271"
   },
   "assets/characters/enemy-slime-1/attack-north-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "1fab9610b1"
   },
   "assets/characters/enemy-slime-1/idle-east-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "cf099a1176"
   },
   "assets/characters/enemy-slime-1/idle-north-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "696fc9d180"
   },
   "assets/characters/enemy-slime-1/walk-east-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "dc829ae062"
   },
   "assets/characters/enemy-slime-1/walk-north-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "3148f09f81"
   },
   "assets/characters/enemy-slime-2/attack-east-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "5e2d34cb1e"
   },
   "assets/characters/enemy-slime-2/attack-north-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "8d5ffec8e0"
   },
   "assets/characters/enemy-slime-2/idle-east-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "fc1eecd64c"
   },
   "assets/characters/enemy-slime-2/idle-north-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "cce188f35c"
   },
   "assets/characters/enemy-slime-2/walk-east-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "7045c19811"
   },
   "assets/characters/enemy-slime-2/walk-north-normal.png": {
     "pages": [
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
+    ],
+    "prefix": "d24a12b4b4"
+  },
+  "assets/characters/enemy-sly-mimic-1/idle-east-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "4d970952a5"
+  },
+  "assets/characters/enemy-sly-mimic-1/idle-north-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "7adb6c0d06"
+  },
+  "assets/characters/enemy-smelly-goblins-1/idle-east-normal.png": {
+    "pages": [
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
+    ],
+    "prefix": "70857c8824"
+  },
+  "assets/characters/enemy-smelly-goblins-1/idle-north-normal.png": {
+    "pages": [
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
+    ],
+    "prefix": "b410cb97e9"
+  },
+  "assets/characters/enemy-snake-1/attack-east-normal.png": {
+    "pages": [
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103
+    ],
+    "prefix": "00852af4c8"
+  },
+  "assets/characters/enemy-snake-1/attack-north-normal.png": {
+    "pages": [
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103
+    ],
+    "prefix": "5c9d0eb855"
+  },
+  "assets/characters/enemy-snake-1/idle-east-normal.png": {
+    "pages": [
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103
+    ],
+    "prefix": "276f10e2ca"
+  },
+  "assets/characters/enemy-snake-1/idle-north-normal.png": {
+    "pages": [
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103
+    ],
+    "prefix": "8155bc4cde"
+  },
+  "assets/characters/enemy-snake-1/walk-east-normal.png": {
+    "pages": [
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103
+    ],
+    "prefix": "9173e9cb9d"
+  },
+  "assets/characters/enemy-snake-1/walk-north-normal.png": {
+    "pages": [
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103
+    ],
+    "prefix": "0a3d900eba"
+  },
+  "assets/characters/enemy-snow-cactus-1/attack-east-normal.png": {
+    "pages": [
+      116,
+      116,
+      116,
+      116
+    ],
+    "prefix": "ef07e862b6"
+  },
+  "assets/characters/enemy-snow-cactus-1/idle-east-normal.png": {
+    "pages": [
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
       116,
       116,
       116,
@@ -25642,985 +25854,781 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
       116,
       116
     ],
-    "prefix": "d24a12b4b4"
-  },
-  "assets/characters/enemy-sly-mimic-1/idle-east-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "4d970952a5"
-  },
-  "assets/characters/enemy-sly-mimic-1/idle-north-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "7adb6c0d06"
-  },
-  "assets/characters/enemy-smelly-goblins-1/idle-east-normal.png": {
-    "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
-    ],
-    "prefix": "70857c8824"
-  },
-  "assets/characters/enemy-smelly-goblins-1/idle-north-normal.png": {
-    "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
-    ],
-    "prefix": "b410cb97e9"
-  },
-  "assets/characters/enemy-snake-1/attack-east-normal.png": {
-    "pages": [
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102
-    ],
-    "prefix": "00852af4c8"
-  },
-  "assets/characters/enemy-snake-1/attack-north-normal.png": {
-    "pages": [
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102
-    ],
-    "prefix": "5c9d0eb855"
-  },
-  "assets/characters/enemy-snake-1/idle-east-normal.png": {
-    "pages": [
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102
-    ],
-    "prefix": "276f10e2ca"
-  },
-  "assets/characters/enemy-snake-1/idle-north-normal.png": {
-    "pages": [
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102
-    ],
-    "prefix": "8155bc4cde"
-  },
-  "assets/characters/enemy-snake-1/walk-east-normal.png": {
-    "pages": [
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102
-    ],
-    "prefix": "9173e9cb9d"
-  },
-  "assets/characters/enemy-snake-1/walk-north-normal.png": {
-    "pages": [
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102
-    ],
-    "prefix": "0a3d900eba"
-  },
-  "assets/characters/enemy-snow-cactus-1/attack-east-normal.png": {
-    "pages": [
-      115,
-      115,
-      115,
-      115
-    ],
-    "prefix": "ef07e862b6"
-  },
-  "assets/characters/enemy-snow-cactus-1/idle-east-normal.png": {
-    "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
-    ],
     "prefix": "6a185cd8ac"
   },
   "assets/characters/enemy-snow-cactus-1/walk-east-normal.png": {
     "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
     ],
     "prefix": "b2ffb49b92"
   },
   "assets/characters/enemy-snow-cactus-1/walk-north-normal.png": {
     "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
     ],
     "prefix": "e37475ec4f"
   },
   "assets/characters/enemy-snow-mouse-1/idle-east-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "6285b8add2"
   },
   "assets/characters/enemy-snow-mouse-1/idle-north-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "fa3f030b06"
   },
   "assets/characters/enemy-snowfield-snake-1/idle-east-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "96cbfb6ab8"
   },
   "assets/characters/enemy-snowfield-snake-1/idle-north-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "e6ffc92af5"
   },
   "assets/characters/enemy-snowfield-snake-2/idle-east-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "42c8267a6e"
   },
   "assets/characters/enemy-snowfield-snake-2/idle-north-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "f300a3dedc"
   },
   "assets/characters/enemy-snowfield-wolf-1/idle-east-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "ded4848675"
   },
   "assets/characters/enemy-snowfield-wolf-1/idle-north-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "c1ecd4c303"
   },
   "assets/characters/enemy-snowy-snake-1/idle-east-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "cafc8865da"
   },
   "assets/characters/enemy-snowy-snake-1/idle-north-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "6f5fba7578"
   },
   "assets/characters/enemy-spider-1/idle-east-normal.png": {
     "pages": [
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99
     ],
     "prefix": "ced5e4eb94"
   },
   "assets/characters/enemy-spider-1/idle-north-normal.png": {
     "pages": [
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99
     ],
     "prefix": "310b8af30e"
   },
   "assets/characters/enemy-spring-protector-minotaur-1/idle-east-normal.png": {
     "pages": [
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89
     ],
     "prefix": "cc5651b6c5"
   },
   "assets/characters/enemy-spring-protector-minotaur-1/idle-north-normal.png": {
     "pages": [
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89
     ],
     "prefix": "c5c811fed0"
   },
   "assets/characters/enemy-sproot-1/attack-east-normal.png": {
     "pages": [
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81
     ],
     "prefix": "31a8f00014"
   },
   "assets/characters/enemy-sproot-1/attack-north-normal.png": {
     "pages": [
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81
     ],
     "prefix": "c0e7d60c06"
   },
   "assets/characters/enemy-sproot-1/idle-east-normal.png": {
     "pages": [
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81
     ],
     "prefix": "9eeca00547"
   },
   "assets/characters/enemy-sproot-1/idle-north-normal.png": {
     "pages": [
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81
     ],
     "prefix": "164dc4dacc"
   },
   "assets/characters/enemy-sproot-1/walk-east-normal.png": {
     "pages": [
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81
     ],
     "prefix": "d3be036b98"
   },
   "assets/characters/enemy-sproot-1/walk-north-normal.png": {
     "pages": [
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81
     ],
     "prefix": "98bb2fe5fe"
   },
   "assets/characters/enemy-starving-boss-wolf-1/attack-east-normal.png": {
     "pages": [
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107
     ],
     "prefix": "e0689b7167"
   },
   "assets/characters/enemy-starving-boss-wolf-1/attack-north-normal.png": {
     "pages": [
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107
     ],
     "prefix": "140260fedb"
   },
   "assets/characters/enemy-starving-boss-wolf-1/idle-east-normal.png": {
     "pages": [
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107
     ],
     "prefix": "84405c3667"
   },
   "assets/characters/enemy-starving-boss-wolf-1/idle-north-normal.png": {
     "pages": [
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107
     ],
     "prefix": "11ffe95beb"
   },
   "assets/characters/enemy-starving-boss-wolf-1/walk-east-normal.png": {
     "pages": [
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107
     ],
     "prefix": "fc858672d8"
   },
   "assets/characters/enemy-starving-boss-wolf-1/walk-north-normal.png": {
     "pages": [
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107
     ],
     "prefix": "7fe3fc934b"
   },
   "assets/characters/enemy-steel-artillery-turtles-1/idle-east-normal.png": {
     "pages": [
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104
     ],
     "prefix": "263795d272"
   },
   "assets/characters/enemy-steel-artillery-turtles-1/idle-north-normal.png": {
     "pages": [
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104
     ],
     "prefix": "8f47f4f8a1"
   },
   "assets/characters/enemy-steel-guardian-1/idle-east-normal.png": {
     "pages": [
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81
     ],
     "prefix": "c78ea745f0"
   },
   "assets/characters/enemy-steel-guardian-1/idle-north-normal.png": {
     "pages": [
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80,
-      80
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81,
+      81
     ],
     "prefix": "44807392aa"
   },
   "assets/characters/enemy-steel-teethed-cave-mice-1/idle-east-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "a7234dcad8"
   },
   "assets/characters/enemy-steel-teethed-cave-mice-1/idle-north-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "f93b9e16da"
   },
   "assets/characters/enemy-steelbox-mimic-1/idle-east-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "e324e31dde"
   },
   "assets/characters/enemy-steelbox-mimic-1/idle-north-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "83198cc44d"
   },
   "assets/characters/enemy-strayed-artillery-turtles-1/idle-east-normal.png": {
     "pages": [
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104
     ],
     "prefix": "95a5b0825b"
   },
   "assets/characters/enemy-strayed-artillery-turtles-1/idle-north-normal.png": {
     "pages": [
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103,
-      103
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104,
+      104
     ],
     "prefix": "e3bade1874"
   },
   "assets/characters/enemy-succubus-1/idle-east-normal.png": {
     "pages": [
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102
     ],
     "prefix": "3cde3534dd"
   },
   "assets/characters/enemy-succubus-1/idle-north-normal.png": {
     "pages": [
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102
     ],
     "prefix": "c919712dc7"
   },
@@ -26694,127 +26702,127 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-summoned-pawn-of-hell-1/idle-east-screen.png": {
     "pages": [
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109
     ],
     "prefix": "d2f06a09b6"
   },
   "assets/characters/enemy-summoned-pawn-of-hell-1/idle-north-screen.png": {
     "pages": [
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109
     ],
     "prefix": "e5e9a36b96"
   },
   "assets/characters/enemy-swamp-mosquitoes-1/attack-east-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "8ba2987e37"
   },
   "assets/characters/enemy-swamp-mosquitoes-1/attack-north-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "cfc8d05f8a"
   },
   "assets/characters/enemy-swamp-mosquitoes-1/idle-east-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "549506b26e"
   },
   "assets/characters/enemy-swamp-mosquitoes-1/idle-north-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "8243e3295c"
   },
   "assets/characters/enemy-swamp-mosquitoes-1/walk-east-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "d5b527c062"
   },
   "assets/characters/enemy-swamp-mosquitoes-1/walk-north-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "d87aa02ec0"
   },
@@ -26864,141 +26872,141 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-swamp-snakes-1/idle-east-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "5a91d288f0"
   },
   "assets/characters/enemy-swamp-snakes-1/idle-north-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "ec4f09fd3d"
   },
   "assets/characters/enemy-swamp-turtle-1/attack-east-normal.png": {
     "pages": [
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88
     ],
     "prefix": "60396ef652"
   },
   "assets/characters/enemy-swamp-turtle-1/attack-north-normal.png": {
     "pages": [
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88
     ],
     "prefix": "21731cb5d3"
   },
   "assets/characters/enemy-swamp-turtle-1/idle-east-normal.png": {
     "pages": [
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88
     ],
     "prefix": "8c50f2399b"
   },
   "assets/characters/enemy-swamp-turtle-1/idle-north-normal.png": {
     "pages": [
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88
     ],
     "prefix": "fdc0953159"
   },
   "assets/characters/enemy-swamp-turtle-1/walk-east-normal.png": {
     "pages": [
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88
     ],
     "prefix": "cb8bbbcacb"
   },
   "assets/characters/enemy-swamp-turtle-1/walk-north-normal.png": {
     "pages": [
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87,
-      87
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88,
+      88
     ],
     "prefix": "76cc1bc8ef"
   },
@@ -27050,91 +27058,91 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-tethered-oogle-queen-1/skill-monster-thunder-east-normal.png": {
     "pages": [
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98
     ],
     "prefix": "a048184fe1"
   },
   "assets/characters/enemy-tethered-oogle-queen-1/skill-monster-thunder-north-normal.png": {
     "pages": [
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97,
-      97
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98,
+      98
     ],
     "prefix": "cb54200613"
   },
   "assets/characters/enemy-turtle-1/idle-east-normal.png": {
     "pages": [
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108
     ],
     "prefix": "a767719b54"
   },
   "assets/characters/enemy-turtle-1/idle-north-normal.png": {
     "pages": [
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108
     ],
     "prefix": "a6f3f10348"
   },
@@ -27288,184 +27296,696 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-vampire-bat-1/attack-east-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "9030ad65a7"
   },
   "assets/characters/enemy-vampire-bat-1/attack-north-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "bdc3587eff"
   },
   "assets/characters/enemy-vampire-bat-1/idle-east-normal.png": {
     "pages": [
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110
     ],
     "prefix": "6ceecd7a42"
   },
   "assets/characters/enemy-vampire-bat-1/idle-north-normal.png": {
     "pages": [
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110
     ],
     "prefix": "064d464f3d"
   },
   "assets/characters/enemy-vampire-bat-1/walk-east-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "3854d3d352"
   },
   "assets/characters/enemy-vampire-bat-1/walk-north-normal.png": {
     "pages": [
-      113,
-      113,
-      113,
-      113
+      114,
+      114,
+      114,
+      114
     ],
     "prefix": "7386bb6d6a"
   },
   "assets/characters/enemy-vampire-bat-2/idle-east-normal.png": {
     "pages": [
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112
     ],
     "prefix": "2d191234fc"
   },
   "assets/characters/enemy-vampire-bat-2/idle-north-normal.png": {
     "pages": [
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112
     ],
     "prefix": "c27e88010d"
   },
   "assets/characters/enemy-vicious-werewolf-1/idle-east-normal.png": {
     "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
     ],
     "prefix": "6e47223f50"
   },
   "assets/characters/enemy-vicious-werewolf-1/idle-north-normal.png": {
     "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
     ],
     "prefix": "5b78b0492c"
   },
   "assets/characters/enemy-viper-black-mamba-1/idle-east-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "fccf386aa0"
   },
   "assets/characters/enemy-viper-black-mamba-1/idle-north-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
+    ],
+    "prefix": "a327f52afc"
+  },
+  "assets/characters/enemy-virulent-slime-1/attack-east-normal.png": {
+    "pages": [
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
+    ],
+    "prefix": "76fc1904e7"
+  },
+  "assets/characters/enemy-virulent-slime-1/attack-north-normal.png": {
+    "pages": [
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
+    ],
+    "prefix": "84df162039"
+  },
+  "assets/characters/enemy-virulent-slime-1/idle-east-normal.png": {
+    "pages": [
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
+    ],
+    "prefix": "f98d4a19f7"
+  },
+  "assets/characters/enemy-virulent-slime-1/idle-north-normal.png": {
+    "pages": [
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
+    ],
+    "prefix": "a3e79605f8"
+  },
+  "assets/characters/enemy-virulent-slime-1/walk-east-normal.png": {
+    "pages": [
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
+    ],
+    "prefix": "5227e1075a"
+  },
+  "assets/characters/enemy-virulent-slime-1/walk-north-normal.png": {
+    "pages": [
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
+    ],
+    "prefix": "17ae55d219"
+  },
+  "assets/characters/enemy-white-head-goblin-1/idle-east-normal.png": {
+    "pages": [
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
+    ],
+    "prefix": "078c276e47"
+  },
+  "assets/characters/enemy-white-head-goblin-1/idle-north-normal.png": {
+    "pages": [
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
+    ],
+    "prefix": "dec12a114f"
+  },
+  "assets/characters/enemy-white-poison-sting-mosquito-1/idle-east-normal.png": {
+    "pages": [
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
+    ],
+    "prefix": "bb03f55c74"
+  },
+  "assets/characters/enemy-white-poison-sting-mosquito-1/idle-north-normal.png": {
+    "pages": [
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
+    ],
+    "prefix": "5f8fe84922"
+  },
+  "assets/characters/enemy-wild-bear-1/idle-east-normal.png": {
+    "pages": [
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112
+    ],
+    "prefix": "870e1408cf"
+  },
+  "assets/characters/enemy-wild-bear-1/idle-north-normal.png": {
+    "pages": [
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112
+    ],
+    "prefix": "3f936c8e1b"
+  },
+  "assets/characters/enemy-wild-wolf-1/attack-east-normal.png": {
+    "pages": [
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
+    ],
+    "prefix": "09ea8741cc"
+  },
+  "assets/characters/enemy-wild-wolf-1/attack-north-normal.png": {
+    "pages": [
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
+    ],
+    "prefix": "cf73378cc4"
+  },
+  "assets/characters/enemy-wild-wolf-1/idle-east-normal.png": {
+    "pages": [
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
+    ],
+    "prefix": "73a00efa2c"
+  },
+  "assets/characters/enemy-wild-wolf-1/idle-north-normal.png": {
+    "pages": [
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
+    ],
+    "prefix": "245414e643"
+  },
+  "assets/characters/enemy-wild-wolf-1/walk-east-normal.png": {
+    "pages": [
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
+    ],
+    "prefix": "a45a248529"
+  },
+  "assets/characters/enemy-wild-wolf-1/walk-north-normal.png": {
+    "pages": [
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
+    ],
+    "prefix": "91f5fdad8d"
+  },
+  "assets/characters/enemy-wing-slime-1/attack-east-normal.png": {
+    "pages": [
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
+    ],
+    "prefix": "6f49825bf8"
+  },
+  "assets/characters/enemy-wing-slime-1/attack-north-normal.png": {
+    "pages": [
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
+    ],
+    "prefix": "aff5de89b4"
+  },
+  "assets/characters/enemy-wing-slime-1/idle-east-normal.png": {
+    "pages": [
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
+    ],
+    "prefix": "1802b7769f"
+  },
+  "assets/characters/enemy-wing-slime-1/idle-north-normal.png": {
+    "pages": [
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
+    ],
+    "prefix": "5dd158e653"
+  },
+  "assets/characters/enemy-wing-slime-1/walk-east-normal.png": {
+    "pages": [
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
+    ],
+    "prefix": "7767c66444"
+  },
+  "assets/characters/enemy-wing-slime-1/walk-north-normal.png": {
+    "pages": [
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
+    ],
+    "prefix": "e1941835e5"
+  },
+  "assets/characters/enemy-wing-slime-2/attack-east-normal.png": {
+    "pages": [
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
+    ],
+    "prefix": "32c99ac055"
+  },
+  "assets/characters/enemy-wing-slime-2/attack-north-normal.png": {
+    "pages": [
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
+    ],
+    "prefix": "abdcc3aa83"
+  },
+  "assets/characters/enemy-wing-slime-2/idle-east-normal.png": {
+    "pages": [
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
+    ],
+    "prefix": "9cf5d186e1"
+  },
+  "assets/characters/enemy-wing-slime-2/idle-north-normal.png": {
+    "pages": [
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
+    ],
+    "prefix": "508c241010"
+  },
+  "assets/characters/enemy-wing-slime-2/walk-east-normal.png": {
+    "pages": [
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
+    ],
+    "prefix": "e9c3e835a6"
+  },
+  "assets/characters/enemy-wing-slime-2/walk-north-normal.png": {
+    "pages": [
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115,
+      115
+    ],
+    "prefix": "2f4736ff54"
+  },
+  "assets/characters/enemy-wolf-1/idle-east-normal.png": {
+    "pages": [
       120,
       120,
       120,
@@ -27480,607 +28000,95 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
       120,
       120
     ],
-    "prefix": "a327f52afc"
-  },
-  "assets/characters/enemy-virulent-slime-1/attack-east-normal.png": {
-    "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
-    ],
-    "prefix": "76fc1904e7"
-  },
-  "assets/characters/enemy-virulent-slime-1/attack-north-normal.png": {
-    "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
-    ],
-    "prefix": "84df162039"
-  },
-  "assets/characters/enemy-virulent-slime-1/idle-east-normal.png": {
-    "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
-    ],
-    "prefix": "f98d4a19f7"
-  },
-  "assets/characters/enemy-virulent-slime-1/idle-north-normal.png": {
-    "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
-    ],
-    "prefix": "a3e79605f8"
-  },
-  "assets/characters/enemy-virulent-slime-1/walk-east-normal.png": {
-    "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
-    ],
-    "prefix": "5227e1075a"
-  },
-  "assets/characters/enemy-virulent-slime-1/walk-north-normal.png": {
-    "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
-    ],
-    "prefix": "17ae55d219"
-  },
-  "assets/characters/enemy-white-head-goblin-1/idle-east-normal.png": {
-    "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
-    ],
-    "prefix": "078c276e47"
-  },
-  "assets/characters/enemy-white-head-goblin-1/idle-north-normal.png": {
-    "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
-    ],
-    "prefix": "dec12a114f"
-  },
-  "assets/characters/enemy-white-poison-sting-mosquito-1/idle-east-normal.png": {
-    "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
-    ],
-    "prefix": "bb03f55c74"
-  },
-  "assets/characters/enemy-white-poison-sting-mosquito-1/idle-north-normal.png": {
-    "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
-    ],
-    "prefix": "5f8fe84922"
-  },
-  "assets/characters/enemy-wild-bear-1/idle-east-normal.png": {
-    "pages": [
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111
-    ],
-    "prefix": "870e1408cf"
-  },
-  "assets/characters/enemy-wild-bear-1/idle-north-normal.png": {
-    "pages": [
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111
-    ],
-    "prefix": "3f936c8e1b"
-  },
-  "assets/characters/enemy-wild-wolf-1/attack-east-normal.png": {
-    "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
-    ],
-    "prefix": "09ea8741cc"
-  },
-  "assets/characters/enemy-wild-wolf-1/attack-north-normal.png": {
-    "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
-    ],
-    "prefix": "cf73378cc4"
-  },
-  "assets/characters/enemy-wild-wolf-1/idle-east-normal.png": {
-    "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
-    ],
-    "prefix": "73a00efa2c"
-  },
-  "assets/characters/enemy-wild-wolf-1/idle-north-normal.png": {
-    "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
-    ],
-    "prefix": "245414e643"
-  },
-  "assets/characters/enemy-wild-wolf-1/walk-east-normal.png": {
-    "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
-    ],
-    "prefix": "a45a248529"
-  },
-  "assets/characters/enemy-wild-wolf-1/walk-north-normal.png": {
-    "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
-    ],
-    "prefix": "91f5fdad8d"
-  },
-  "assets/characters/enemy-wing-slime-1/attack-east-normal.png": {
-    "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
-    ],
-    "prefix": "6f49825bf8"
-  },
-  "assets/characters/enemy-wing-slime-1/attack-north-normal.png": {
-    "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
-    ],
-    "prefix": "aff5de89b4"
-  },
-  "assets/characters/enemy-wing-slime-1/idle-east-normal.png": {
-    "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
-    ],
-    "prefix": "1802b7769f"
-  },
-  "assets/characters/enemy-wing-slime-1/idle-north-normal.png": {
-    "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
-    ],
-    "prefix": "5dd158e653"
-  },
-  "assets/characters/enemy-wing-slime-1/walk-east-normal.png": {
-    "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
-    ],
-    "prefix": "7767c66444"
-  },
-  "assets/characters/enemy-wing-slime-1/walk-north-normal.png": {
-    "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
-    ],
-    "prefix": "e1941835e5"
-  },
-  "assets/characters/enemy-wing-slime-2/attack-east-normal.png": {
-    "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
-    ],
-    "prefix": "32c99ac055"
-  },
-  "assets/characters/enemy-wing-slime-2/attack-north-normal.png": {
-    "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
-    ],
-    "prefix": "abdcc3aa83"
-  },
-  "assets/characters/enemy-wing-slime-2/idle-east-normal.png": {
-    "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
-    ],
-    "prefix": "9cf5d186e1"
-  },
-  "assets/characters/enemy-wing-slime-2/idle-north-normal.png": {
-    "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
-    ],
-    "prefix": "508c241010"
-  },
-  "assets/characters/enemy-wing-slime-2/walk-east-normal.png": {
-    "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
-    ],
-    "prefix": "e9c3e835a6"
-  },
-  "assets/characters/enemy-wing-slime-2/walk-north-normal.png": {
-    "pages": [
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114,
-      114
-    ],
-    "prefix": "2f4736ff54"
-  },
-  "assets/characters/enemy-wolf-1/idle-east-normal.png": {
-    "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
-    ],
     "prefix": "97ab35ffd7"
   },
   "assets/characters/enemy-wolf-1/idle-north-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "558418f4e2"
   },
   "assets/characters/enemy-wolrang-1/idle-east-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "a4777f31ee"
   },
   "assets/characters/enemy-wolrang-1/idle-north-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "3c3c750200"
   },
   "assets/characters/enemy-zahad-kuruhatt-1/idle-east-normal.png": {
     "pages": [
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111
     ],
     "prefix": "3f591da322"
   },
   "assets/characters/enemy-zahad-kuruhatt-1/idle-north-normal.png": {
     "pages": [
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111
     ],
     "prefix": "25a95718ec"
   },
@@ -28120,186 +28128,173 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/enemy-zahad-kuruhatt-s-spirit-1/idle-east-normal.png": {
     "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
     ],
     "prefix": "facabf3191"
   },
   "assets/characters/enemy-zahad-kuruhatt-s-spirit-1/idle-north-normal.png": {
     "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
     ],
     "prefix": "2362a285a0"
   },
   "assets/characters/enemy-zealot-manson-1/idle-east-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "286aa4c2be"
   },
   "assets/characters/enemy-zealot-manson-1/idle-north-normal.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "cd556b74db"
   },
   "assets/characters/enemy-zombie-prisoner-1/idle-east-normal.png": {
     "pages": [
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105
     ],
     "prefix": "32d5847dbd"
   },
   "assets/characters/enemy-zombie-prisoner-1/idle-north-normal.png": {
     "pages": [
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105
     ],
     "prefix": "878d260ccd"
   },
   "assets/characters/fence-3603bdd6/idle-south-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "d60560d476"
   },
   "assets/characters/fence-7de349c8/idle-south-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "5d122775c4"
   },
   "assets/characters/fusion-machine-0aa8ba92/idle-south-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "5604c0f720"
   },
   "assets/characters/ghost-josh-50e3df18/idle-south-screen.png": {
     "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
     ],
     "prefix": "2af7bfe0cb"
   },
   "assets/characters/girls-9762b8f5/idle-east-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "78663041a3"
   },
   "assets/characters/goblin-miller-a1aeb5aa/idle-east-normal.png": {
-    "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
-    ],
-    "prefix": "66b1c75007"
-  },
-  "assets/characters/goblin-miller-a1aeb5aa/idle-north-normal.png": {
     "pages": [
       124,
       124,
@@ -28309,6 +28304,19 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
       124,
       124,
       124
+    ],
+    "prefix": "66b1c75007"
+  },
+  "assets/characters/goblin-miller-a1aeb5aa/idle-north-normal.png": {
+    "pages": [
+      125,
+      125,
+      125,
+      125,
+      125,
+      125,
+      125,
+      125
     ],
     "prefix": "d5d7c61872"
   },
@@ -28390,15 +28398,174 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/gravestone-3635b2b6/idle-south-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "97cd0b4632"
   },
   "assets/characters/guard-turnak-e46028d1/idle-south-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
+    ],
+    "prefix": "f06ef04d43"
+  },
+  "assets/characters/helen-2181687e/idle-south-normal.png": {
+    "pages": [
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
+    ],
+    "prefix": "f2ddc2597d"
+  },
+  "assets/characters/horn-089799f8/idle-south-normal.png": {
+    "pages": [
+      125
+    ],
+    "prefix": "55ae335fab"
+  },
+  "assets/characters/improved-treasure-box-85467c1c/idle-south-normal.png": {
+    "pages": [
+      125
+    ],
+    "prefix": "5caee17589"
+  },
+  "assets/characters/innkeeper-ad05fa66/idle-south-normal.png": {
+    "pages": [
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
+    ],
+    "prefix": "9247126d51"
+  },
+  "assets/characters/innkeeper-b8f0066b/idle-south-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "43d03009ca"
+  },
+  "assets/characters/innkeeper-dfa04fff/idle-south-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "b5cc50fed8"
+  },
+  "assets/characters/ivan-451/idle-east-normal.png": {
+    "pages": [
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110
+    ],
+    "prefix": "73287a307d"
+  },
+  "assets/characters/ivan-451/idle-north-normal.png": {
+    "pages": [
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110
+    ],
+    "prefix": "4db93f3663"
+  },
+  "assets/characters/ivan-451/idle-south-normal.png": {
+    "pages": [
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110
+    ],
+    "prefix": "5c0e974dca"
+  },
+  "assets/characters/ivan-451/skill-2-east-normal.png": {
+    "pages": [
       120,
       120,
       120,
@@ -28411,199 +28578,40 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
       120,
       120
     ],
-    "prefix": "f06ef04d43"
-  },
-  "assets/characters/helen-2181687e/idle-south-normal.png": {
-    "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
-    ],
-    "prefix": "f2ddc2597d"
-  },
-  "assets/characters/horn-089799f8/idle-south-normal.png": {
-    "pages": [
-      124
-    ],
-    "prefix": "55ae335fab"
-  },
-  "assets/characters/improved-treasure-box-85467c1c/idle-south-normal.png": {
-    "pages": [
-      124
-    ],
-    "prefix": "5caee17589"
-  },
-  "assets/characters/innkeeper-ad05fa66/idle-south-normal.png": {
-    "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
-    ],
-    "prefix": "9247126d51"
-  },
-  "assets/characters/innkeeper-b8f0066b/idle-south-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "43d03009ca"
-  },
-  "assets/characters/innkeeper-dfa04fff/idle-south-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "b5cc50fed8"
-  },
-  "assets/characters/ivan-451/idle-east-normal.png": {
-    "pages": [
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109
-    ],
-    "prefix": "73287a307d"
-  },
-  "assets/characters/ivan-451/idle-north-normal.png": {
-    "pages": [
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109
-    ],
-    "prefix": "4db93f3663"
-  },
-  "assets/characters/ivan-451/idle-south-normal.png": {
-    "pages": [
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109
-    ],
-    "prefix": "5c0e974dca"
-  },
-  "assets/characters/ivan-451/skill-2-east-normal.png": {
-    "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
-    ],
     "prefix": "f2d2ef1fcc"
   },
   "assets/characters/ivan-451/skill-2-north-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "2f7518f994"
   },
   "assets/characters/izelynn-s-son-dd8c72f3/idle-east-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "6f9073342a"
   },
@@ -28705,341 +28713,341 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/josh-s-body-438c064b/idle-south-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "cd74623c30"
   },
   "assets/characters/juradkiel-91bbd3f6/idle-east-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "6cd434924b"
   },
   "assets/characters/juradkiel-91bbd3f6/idle-north-normal.png": {
     "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
     ],
     "prefix": "4361f7a3b3"
   },
   "assets/characters/kevin-ba9d5a88/idle-south-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "13d6ddde1d"
   },
   "assets/characters/kiyan/cry-east-normal.png": {
     "pages": [
-      81
+      82
     ],
     "prefix": "73a333926c"
   },
   "assets/characters/kiyan/cry-north-normal.png": {
     "pages": [
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82
     ],
     "prefix": "96a086f3b2"
   },
   "assets/characters/kiyan/fall-down-east-normal.png": {
     "pages": [
-      81
+      82
     ],
     "prefix": "596785853c"
   },
   "assets/characters/kiyan/fall-down-north-normal.png": {
     "pages": [
-      81
+      82
     ],
     "prefix": "312a6835de"
   },
   "assets/characters/kiyan/fall-down-south-normal.png": {
     "pages": [
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82
     ],
     "prefix": "9c7dbaeb0f"
   },
   "assets/characters/kiyan/give-east-normal.png": {
     "pages": [
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82
     ],
     "prefix": "42154fda23"
   },
   "assets/characters/kiyan/give-north-normal.png": {
     "pages": [
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82
     ],
     "prefix": "10fd085142"
   },
   "assets/characters/kiyan/lie-side-east-normal.png": {
     "pages": [
-      81
+      82
     ],
     "prefix": "ccc1256b56"
   },
   "assets/characters/kiyan/lie-side-north-normal.png": {
     "pages": [
-      81
+      82
     ],
     "prefix": "b03146682a"
   },
   "assets/characters/kiyan/look-around-east-normal.png": {
     "pages": [
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82
     ],
     "prefix": "612701c870"
   },
   "assets/characters/kiyan/look-around-north-normal.png": {
     "pages": [
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82
     ],
     "prefix": "36ac50e5e1"
   },
   "assets/characters/kiyan/pick-up-east-normal.png": {
     "pages": [
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82
     ],
     "prefix": "6c47919692"
   },
   "assets/characters/kiyan/sway-east-normal.png": {
     "pages": [
-      81,
-      81,
-      81,
-      81
+      82,
+      82,
+      82,
+      82
     ],
     "prefix": "cf5fde05d1"
   },
   "assets/characters/kiyan/sway-north-normal.png": {
     "pages": [
-      81,
-      81,
-      81,
-      81
+      82,
+      82,
+      82,
+      82
     ],
     "prefix": "2c3a79aa64"
   },
   "assets/characters/kiyan/sway-south-normal.png": {
     "pages": [
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81,
-      81
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82,
+      82
     ],
     "prefix": "4f7422f419"
   },
   "assets/characters/lamp-9e27cd7d/idle-south-add.png": {
     "pages": [
-      124,
-      124
+      125,
+      125
     ],
     "prefix": "88ba6269e6"
   },
   "assets/characters/lamp-9e27cd7d/idle-south-normal.png": {
     "pages": [
-      124,
-      124
+      125,
+      125
     ],
     "prefix": "e3ca97639b"
   },
   "assets/characters/lamp-bcc57470/idle-south-add.png": {
     "pages": [
-      124,
-      124
+      125,
+      125
     ],
     "prefix": "c8cfadddb6"
   },
   "assets/characters/lamp-bcc57470/idle-south-normal.png": {
     "pages": [
-      124,
-      124
+      125,
+      125
     ],
     "prefix": "03e0dfc898"
   },
   "assets/characters/lamp-f6c235d6/idle-south-add.png": {
     "pages": [
-      124,
-      124
+      125,
+      125
     ],
     "prefix": "993caf426b"
   },
   "assets/characters/lamp-f6c235d6/idle-south-normal.png": {
     "pages": [
-      124,
-      124
+      125,
+      125
     ],
     "prefix": "23068e091c"
   },
   "assets/characters/map-exit-38b4014e/idle-south-screen.png": {
     "pages": [
-      124,
-      124,
-      124,
-      124,
-      124,
-      124,
-      124,
-      124,
-      124,
-      124,
-      124
+      125,
+      125,
+      125,
+      125,
+      125,
+      125,
+      125,
+      125,
+      125,
+      125,
+      125
     ],
     "prefix": "eb0469d454"
   },
@@ -32977,356 +32985,356 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/mercenary-portia/attack-east-normal.png": {
     "pages": [
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
     ],
     "prefix": "580d1a1424"
   },
   "assets/characters/mercenary-portia/attack-north-normal.png": {
     "pages": [
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
     ],
     "prefix": "54efd6bce0"
   },
   "assets/characters/mercenary-portia/attack-south-normal.png": {
     "pages": [
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
     ],
     "prefix": "404f7867ff"
   },
   "assets/characters/mercenary-portia/die-east-normal.png": {
     "pages": [
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
     ],
     "prefix": "c7849a1870"
   },
   "assets/characters/mercenary-portia/idle-east-normal.png": {
     "pages": [
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
     ],
     "prefix": "621ecb8b90"
   },
   "assets/characters/mercenary-portia/idle-north-normal.png": {
     "pages": [
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
     ],
     "prefix": "918d8ab90e"
   },
   "assets/characters/mercenary-portia/idle-south-normal.png": {
     "pages": [
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
     ],
     "prefix": "9a000dc43a"
   },
   "assets/characters/mercenary-portia/skill-blood-curse-east-normal.png": {
     "pages": [
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
     ],
     "prefix": "dc34f77ce6"
   },
   "assets/characters/mercenary-portia/skill-blood-curse-north-normal.png": {
     "pages": [
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
     ],
     "prefix": "afcc77c701"
   },
   "assets/characters/mercenary-portia/skill-blood-curse-south-normal.png": {
     "pages": [
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
     ],
     "prefix": "883f6526b9"
   },
   "assets/characters/mercenary-portia/skill-monster-s-scream-east-normal.png": {
     "pages": [
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
     ],
     "prefix": "fcd53acb80"
   },
   "assets/characters/mercenary-portia/skill-monster-s-scream-north-normal.png": {
     "pages": [
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
     ],
     "prefix": "a6e3621de6"
   },
   "assets/characters/mercenary-portia/skill-monster-s-scream-south-normal.png": {
     "pages": [
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
     ],
     "prefix": "b5e8172787"
   },
   "assets/characters/mercenary-portia/skill-summon-hellfire-east-normal.png": {
     "pages": [
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
     ],
     "prefix": "de7b187500"
   },
   "assets/characters/mercenary-portia/skill-summon-hellfire-north-normal.png": {
     "pages": [
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
     ],
     "prefix": "b56a07686d"
   },
   "assets/characters/mercenary-portia/skill-summon-hellfire-south-normal.png": {
     "pages": [
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
     ],
     "prefix": "989fc13f2d"
   },
   "assets/characters/mercenary-portia/skill-touch-of-agony-east-normal.png": {
     "pages": [
-      71,
-      71,
-      71,
-      71
+      72,
+      72,
+      72,
+      72
     ],
     "prefix": "ca3e50bcec"
   },
   "assets/characters/mercenary-portia/skill-touch-of-agony-north-normal.png": {
     "pages": [
-      71,
-      71,
-      71,
-      71
+      72,
+      72,
+      72,
+      72
     ],
     "prefix": "62e1416a2a"
   },
   "assets/characters/mercenary-portia/skill-touch-of-agony-south-normal.png": {
     "pages": [
-      71,
-      71,
-      71,
-      71
+      72,
+      72,
+      72,
+      72
     ],
     "prefix": "790aebe6f9"
   },
   "assets/characters/mercenary-portia/walk-east-normal.png": {
     "pages": [
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
     ],
     "prefix": "429dcfdbb5"
   },
   "assets/characters/mercenary-portia/walk-north-normal.png": {
     "pages": [
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
     ],
     "prefix": "e3ef3c3aa9"
   },
   "assets/characters/mercenary-portia/walk-south-normal.png": {
     "pages": [
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71,
-      71
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
     ],
     "prefix": "a3579f10b4"
   },
@@ -33921,79 +33929,79 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/nirniti-3c3ca603/idle-east-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "ca9c0650ef"
   },
   "assets/characters/nirniti-3c3ca603/idle-north-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "07b01e6c86"
   },
   "assets/characters/portia/fall-down-east-normal.png": {
     "pages": [
-      115
+      116
     ],
     "prefix": "4b35a7167a"
   },
   "assets/characters/portia/fall-down-north-normal.png": {
     "pages": [
-      115
+      116
     ],
     "prefix": "091145eb98"
   },
   "assets/characters/portia/fall-down-south-normal.png": {
     "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
     ],
     "prefix": "60608749d3"
   },
   "assets/characters/prison-3f60035d/idle-south-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "a33841b6fb"
   },
   "assets/characters/red-bear-statue-f9a0d0af/idle-south-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "61dbea2772"
   },
@@ -34056,423 +34064,423 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/sahir-3dd7b1b2/attack-east-normal.png": {
     "pages": [
-      89,
-      89,
-      89,
-      89,
-      89
+      90,
+      90,
+      90,
+      90,
+      90
     ],
     "prefix": "de94372f7b"
   },
   "assets/characters/sahir-3dd7b1b2/attack-north-normal.png": {
     "pages": [
-      89,
-      89,
-      89,
-      89,
-      89
+      90,
+      90,
+      90,
+      90,
+      90
     ],
     "prefix": "bd945c7f32"
   },
   "assets/characters/sahir-3dd7b1b2/attack-south-normal.png": {
     "pages": [
-      89,
-      89,
-      89,
-      89,
-      89
+      90,
+      90,
+      90,
+      90,
+      90
     ],
     "prefix": "66494b8511"
   },
   "assets/characters/sahir-3dd7b1b2/idle-east-normal.png": {
     "pages": [
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90
     ],
     "prefix": "f6f0674716"
   },
   "assets/characters/sahir-3dd7b1b2/idle-north-normal.png": {
     "pages": [
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90
     ],
     "prefix": "95ae3ce40e"
   },
   "assets/characters/sahir-3dd7b1b2/idle-south-normal.png": {
     "pages": [
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90
     ],
     "prefix": "3c85375610"
   },
   "assets/characters/sahir-3dd7b1b2/walk-east-normal.png": {
     "pages": [
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90
     ],
     "prefix": "35580ab132"
   },
   "assets/characters/sahir-3dd7b1b2/walk-north-normal.png": {
     "pages": [
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90
     ],
     "prefix": "9511c17474"
   },
   "assets/characters/sahir-3dd7b1b2/walk-south-normal.png": {
     "pages": [
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89,
-      89
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90,
+      90
     ],
     "prefix": "2c23d08774"
   },
   "assets/characters/saint/idle-east-normal.png": {
     "pages": [
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111
     ],
     "prefix": "cd2443fe42"
   },
   "assets/characters/saint/idle-north-normal.png": {
     "pages": [
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111
     ],
     "prefix": "a5f9450fea"
   },
   "assets/characters/saint/idle-south-normal.png": {
     "pages": [
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111
     ],
     "prefix": "2b157b6d41"
   },
   "assets/characters/saint/walk-east-normal.png": {
     "pages": [
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111
     ],
     "prefix": "81d59f2c3c"
   },
   "assets/characters/saint/walk-north-normal.png": {
     "pages": [
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111
     ],
     "prefix": "3b21e6ad84"
   },
   "assets/characters/saint/walk-south-normal.png": {
     "pages": [
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111
     ],
     "prefix": "af2821901b"
   },
   "assets/characters/sealed-dungeon-barrier-eaae1bdd/idle-south-screen.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "78190b2f42"
   },
   "assets/characters/senior-elf-497/idle-east-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "751e3fc64c"
   },
   "assets/characters/senior-elf-497/idle-north-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "a0824a8a3f"
   },
   "assets/characters/senior-elf-497/idle-south-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "8b4e7b2d85"
   },
   "assets/characters/shin-d28fab6e/idle-south-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "ae422b67c8"
   },
   "assets/characters/soul-healer-20ef01d8/idle-south-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
     ],
     "prefix": "6236c3e22e"
   },
   "assets/characters/spiritual-tree-fc28bf35/idle-south-normal.png": {
     "pages": [
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112,
-      112
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113,
+      113
     ],
     "prefix": "dc6e0067e8"
   },
   "assets/characters/steel-orc-s-elder-318/idle-east-normal.png": {
     "pages": [
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107
     ],
     "prefix": "85656eba12"
   },
   "assets/characters/steel-orc-s-elder-318/idle-north-normal.png": {
     "pages": [
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107
     ],
     "prefix": "270bcd5e5b"
   },
   "assets/characters/steel-orc-s-elder-318/idle-south-normal.png": {
     "pages": [
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107
     ],
     "prefix": "fb1e22cc51"
   },
   "assets/characters/steel-orc-s-elder-318/walk-east-normal.png": {
     "pages": [
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107
     ],
     "prefix": "7a34c4419b"
   },
   "assets/characters/steel-orc-s-elder-318/walk-north-normal.png": {
     "pages": [
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107
     ],
     "prefix": "82428b2753"
   },
   "assets/characters/steel-orc-s-elder-318/walk-south-normal.png": {
     "pages": [
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106,
-      106
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107,
+      107
     ],
     "prefix": "003af295df"
   },
@@ -34597,59 +34605,59 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/story-amarok-eric-2491eaca/idle-east-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "a60b949259"
   },
   "assets/characters/story-amarok-eric-2491eaca/idle-north-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "4acbd00b4e"
   },
   "assets/characters/story-arnen-guard-c413bb4b/idle-east-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "5db95e442e"
   },
   "assets/characters/story-arnen-guard-c413bb4b/idle-north-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "8a46efbef9"
   },
   "assets/characters/story-arnen-soldier-0fb89870/idle-east-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "0bf2c9e883"
   },
@@ -34706,58 +34714,58 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/story-azad-c7a37952/idle-east-normal.png": {
     "pages": [
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99
     ],
     "prefix": "64eac3788f"
   },
   "assets/characters/story-azad-c7a37952/idle-north-normal.png": {
     "pages": [
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99
     ],
     "prefix": "936d3ca255"
   },
   "assets/characters/story-azad-c7a37952/idle-south-normal.png": {
     "pages": [
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98,
-      98
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99,
+      99
     ],
     "prefix": "a75cd9b2dd"
   },
@@ -34802,459 +34810,459 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/story-baron-borgia-458b0fa5/fall-down-east-normal.png": {
     "pages": [
-      85
+      86
     ],
     "prefix": "378ce809c5"
   },
   "assets/characters/story-baron-borgia-458b0fa5/fall-down-north-normal.png": {
     "pages": [
-      85
+      86
     ],
     "prefix": "bd8aac4c82"
   },
   "assets/characters/story-baron-borgia-458b0fa5/fall-down-south-normal.png": {
     "pages": [
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86
     ],
     "prefix": "7aae071c50"
   },
   "assets/characters/story-baron-borgia-458b0fa5/give-east-normal.png": {
     "pages": [
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86
     ],
     "prefix": "9a7b22b3c4"
   },
   "assets/characters/story-baron-borgia-458b0fa5/give-north-normal.png": {
     "pages": [
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86
     ],
     "prefix": "dd5e4d6836"
   },
   "assets/characters/story-baron-borgia-458b0fa5/look-around-east-normal.png": {
     "pages": [
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86
     ],
     "prefix": "c2eaee6504"
   },
   "assets/characters/story-baron-borgia-458b0fa5/look-around-north-normal.png": {
     "pages": [
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86
     ],
     "prefix": "3eada08171"
   },
   "assets/characters/story-baron-borgia-458b0fa5/stand-east-normal.png": {
     "pages": [
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86
     ],
     "prefix": "c7e03cfbd6"
   },
   "assets/characters/story-baron-borgia-458b0fa5/stand-north-normal.png": {
     "pages": [
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86
     ],
     "prefix": "bbd074e1ed"
   },
   "assets/characters/story-baron-borgia-458b0fa5/stand-south-normal.png": {
     "pages": [
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85,
-      85
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86,
+      86
     ],
     "prefix": "65c095ddfb"
   },
   "assets/characters/story-ben-s-men-61d2f618/idle-east-normal.png": {
     "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
     ],
     "prefix": "5ae214ad0f"
   },
   "assets/characters/story-ben-s-men-61d2f618/idle-north-normal.png": {
     "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
     ],
     "prefix": "38869d13ab"
   },
   "assets/characters/story-berkel-dispatch-soldier-c7349975/idle-east-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "f9b541a668"
   },
   "assets/characters/story-bizarre-flying-book-0a44c5d6/idle-east-normal.png": {
     "pages": [
-      124,
-      124,
-      124,
-      124,
-      124,
-      124,
-      124,
-      124,
-      124,
-      124
+      125,
+      125,
+      125,
+      125,
+      125,
+      125,
+      125,
+      125,
+      125,
+      125
     ],
     "prefix": "b11e668a6a"
   },
   "assets/characters/story-black-rattlesnake-ad67c0ea/idle-east-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "1245406d52"
   },
   "assets/characters/story-black-rattlesnake-ad67c0ea/idle-north-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "79512c2740"
   },
   "assets/characters/story-blackhood-thieves-83a5ef6e/lie-down-east-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "f3186ad893"
   },
   "assets/characters/story-blackhood-thieves-83a5ef6e/lie-down-north-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "ce95358d9d"
   },
   "assets/characters/story-blackhoods-boss-cb7e1b46/cry-east-normal.png": {
     "pages": [
-      101
+      102
     ],
     "prefix": "db4bd8bf0f"
   },
   "assets/characters/story-blackhoods-boss-cb7e1b46/cry-north-normal.png": {
     "pages": [
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102
     ],
     "prefix": "d27e1007c0"
   },
   "assets/characters/story-blackhoods-boss-cb7e1b46/fall-down-east-normal.png": {
     "pages": [
-      101
+      102
     ],
     "prefix": "7a28faaabb"
   },
   "assets/characters/story-blackhoods-boss-cb7e1b46/fall-down-north-normal.png": {
     "pages": [
-      101
+      102
     ],
     "prefix": "754fa13a90"
   },
   "assets/characters/story-blackhoods-boss-cb7e1b46/fall-down-south-normal.png": {
     "pages": [
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101,
-      101
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102,
+      102
     ],
     "prefix": "fb737eb5d7"
   },
   "assets/characters/story-book-of-evil-darkness-28ebb8e8/idle-east-normal.png": {
     "pages": [
-      124,
-      124,
-      124,
-      124,
-      124,
-      124,
-      124,
-      124,
-      124,
-      124
+      125,
+      125,
+      125,
+      125,
+      125,
+      125,
+      125,
+      125,
+      125,
+      125
     ],
     "prefix": "ebb0e94472"
   },
   "assets/characters/story-cave-goblin-s-body-d2971aa2/idle-east-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "178b0fa2c5"
   },
   "assets/characters/story-cave-goblin-s-body-d2971aa2/idle-north-normal.png": {
     "pages": [
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112
     ],
     "prefix": "c6a33fb916"
   },
   "assets/characters/story-chasers-adjutant-c69e578f/lie-down-east-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "43f2f9d2ab"
   },
   "assets/characters/story-chasers-adjutant-c69e578f/lie-down-north-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "9dd04906c2"
   },
   "assets/characters/story-chasers-chief-5de8629a/fall-down-east-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "77996b24ce"
   },
   "assets/characters/story-chasers-chief-5de8629a/fall-down-north-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "84bbbfdba3"
   },
   "assets/characters/story-chasers-scout-captain-0a9dd359/lie-down-east-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "fe177f84ab"
   },
   "assets/characters/story-chasers-scout-captain-0a9dd359/lie-down-north-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "90ebda9c91"
   },
   "assets/characters/story-chief-drow-ba6261bb/cry-east-normal.png": {
     "pages": [
-      102
+      103
     ],
     "prefix": "9dd48d8703"
   },
   "assets/characters/story-chief-drow-ba6261bb/cry-north-normal.png": {
     "pages": [
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103
     ],
     "prefix": "e01eb889eb"
   },
   "assets/characters/story-chief-drow-ba6261bb/fall-down-east-normal.png": {
     "pages": [
-      102
+      103
     ],
     "prefix": "55f7daf51c"
   },
   "assets/characters/story-chief-drow-ba6261bb/fall-down-north-normal.png": {
     "pages": [
-      102
+      103
     ],
     "prefix": "a1eb863dbb"
   },
   "assets/characters/story-chief-drow-ba6261bb/fall-down-south-normal.png": {
     "pages": [
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103
     ],
     "prefix": "d1a4976eb3"
   },
@@ -35337,699 +35345,620 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/story-collapsed-magician-grumman-26bd0daa/idle-east-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "6649ce7416"
   },
   "assets/characters/story-collapsed-magician-grumman-26bd0daa/idle-north-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "ebf78ec485"
   },
   "assets/characters/story-cornette-db80543f/pick-up-east-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "76345b4f11"
   },
   "assets/characters/story-cursed-creature-df3b3cf4/idle-east-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "f1b9dc1513"
   },
   "assets/characters/story-cursed-creature-df3b3cf4/idle-north-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "50889012a1"
   },
   "assets/characters/story-dark-knight-5479137c/idle-east-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "7b96448aab"
   },
   "assets/characters/story-dark-knight-5479137c/idle-north-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "c136cf3cb6"
   },
   "assets/characters/story-drow-adjutant-579de5c2/idle-east-normal.png": {
     "pages": [
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105
     ],
     "prefix": "3876711fa1"
   },
   "assets/characters/story-drow-adjutant-579de5c2/idle-north-normal.png": {
     "pages": [
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105
     ],
     "prefix": "bfef906d79"
   },
   "assets/characters/story-drow-adjutant-579de5c2/idle-south-normal.png": {
     "pages": [
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104,
-      104
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105,
+      105
     ],
     "prefix": "d0e9cd2286"
   },
   "assets/characters/story-eara-0079206d/idle-east-normal.png": {
     "pages": [
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108
     ],
     "prefix": "d2b93ac821"
   },
   "assets/characters/story-eara-0079206d/idle-north-normal.png": {
     "pages": [
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108
     ],
     "prefix": "bb51b4df8f"
   },
   "assets/characters/story-eara-0079206d/idle-south-normal.png": {
     "pages": [
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108
     ],
     "prefix": "0c5953a154"
   },
   "assets/characters/story-eara-0079206d/walk-east-normal.png": {
     "pages": [
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108
     ],
     "prefix": "b844410288"
   },
   "assets/characters/story-eara-0079206d/walk-north-normal.png": {
     "pages": [
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108
     ],
     "prefix": "a897e968c7"
   },
   "assets/characters/story-eara-0079206d/walk-south-normal.png": {
     "pages": [
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108
     ],
     "prefix": "b6fddb3346"
   },
   "assets/characters/story-eara-22d61f15/idle-east-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "91c9495793"
   },
   "assets/characters/story-eara-22d61f15/idle-north-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "cf8d751280"
   },
   "assets/characters/story-eara-7c52b73b/idle-east-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "cc93a70e6c"
   },
   "assets/characters/story-eara-7c52b73b/idle-north-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "8ab7684ef7"
   },
   "assets/characters/story-eara-7c52b73b/idle-south-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "6bc442a3d2"
   },
   "assets/characters/story-eara-a64df27b/idle-east-normal.png": {
     "pages": [
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108
     ],
     "prefix": "3f9b282f53"
   },
   "assets/characters/story-eara-a64df27b/idle-north-normal.png": {
     "pages": [
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108
     ],
     "prefix": "850055842b"
   },
   "assets/characters/story-eara-a64df27b/idle-south-normal.png": {
     "pages": [
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108
     ],
     "prefix": "b0511225d7"
   },
   "assets/characters/story-eara-a64df27b/walk-east-normal.png": {
     "pages": [
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108
     ],
     "prefix": "65e3f62d94"
   },
   "assets/characters/story-eara-a64df27b/walk-north-normal.png": {
     "pages": [
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108
     ],
     "prefix": "f420f0e107"
   },
   "assets/characters/story-eara-a64df27b/walk-south-normal.png": {
     "pages": [
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108
     ],
     "prefix": "325f21d188"
   },
   "assets/characters/story-eara-e221699c-disguise-mask/idle-east-normal.png": {
     "pages": [
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109
     ],
     "prefix": "710b4cf0db"
   },
   "assets/characters/story-eara-e221699c-disguise-mask/idle-north-normal.png": {
     "pages": [
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109
     ],
     "prefix": "daf65024fa"
   },
   "assets/characters/story-eara-e221699c-disguise-mask/idle-south-normal.png": {
     "pages": [
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109
     ],
     "prefix": "d724abb5af"
   },
   "assets/characters/story-eara-e221699c-disguise-mask/walk-east-normal.png": {
     "pages": [
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109
     ],
     "prefix": "67c665f34f"
   },
   "assets/characters/story-eara-e221699c-disguise-mask/walk-north-normal.png": {
     "pages": [
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109
     ],
     "prefix": "ed0c24556e"
   },
   "assets/characters/story-eara-e221699c-disguise-mask/walk-south-normal.png": {
     "pages": [
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109
     ],
     "prefix": "48b8d11af0"
   },
   "assets/characters/story-eara-e221699c/cry-east-normal.png": {
     "pages": [
-      102
+      103
     ],
     "prefix": "bc8befc090"
   },
   "assets/characters/story-eara-e221699c/cry-north-normal.png": {
     "pages": [
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103
     ],
     "prefix": "5d503f2904"
   },
   "assets/characters/story-eara-e221699c/fall-down-east-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "fbfb148ed9"
   },
   "assets/characters/story-eara-e221699c/fall-down-north-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "48dc46c9ad"
   },
   "assets/characters/story-eara-e221699c/fall-down-south-normal.png": {
     "pages": [
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103
     ],
     "prefix": "70ac092d3d"
   },
   "assets/characters/story-eara-e221699c/recovery-east-normal.png": {
     "pages": [
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103
     ],
     "prefix": "5365097651"
   },
   "assets/characters/story-eara-e221699c/recovery-north-normal.png": {
     "pages": [
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103
     ],
     "prefix": "5495138b8b"
   },
   "assets/characters/story-eara-e221699c/recovery-south-normal.png": {
     "pages": [
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102,
-      102
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103,
+      103
     ],
     "prefix": "277f8a1ec9"
   },
   "assets/characters/story-elinia-8ac11fea/walk-east-normal.png": {
     "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
-    ],
-    "prefix": "d7a3577ae5"
-  },
-  "assets/characters/story-elinia-8ac11fea/walk-north-normal.png": {
-    "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
-    ],
-    "prefix": "46c4fe0057"
-  },
-  "assets/characters/story-elinia-8ac11fea/walk-south-normal.png": {
-    "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
-    ],
-    "prefix": "5aa46b51ee"
-  },
-  "assets/characters/story-evil-spirit-of-abyss-312b8100/idle-east-screen.png": {
-    "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
-    ],
-    "prefix": "3b4b73a2a2"
-  },
-  "assets/characters/story-evil-spirit-of-abyss-312b8100/idle-north-screen.png": {
-    "pages": [
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115,
-      115
-    ],
-    "prefix": "6ca25a6232"
-  },
-  "assets/characters/story-fey-s-body-240d653d/idle-east-normal.png": {
-    "pages": [
-      124
-    ],
-    "prefix": "988ff11f45"
-  },
-  "assets/characters/story-fey-s-body-240d653d/idle-north-normal.png": {
-    "pages": [
-      124
-    ],
-    "prefix": "a593fc44e7"
-  },
-  "assets/characters/story-flame-7ce0ff5c/idle-south-screen.png": {
-    "pages": [
+      116,
+      116,
       116,
       116,
       116,
@@ -36037,19 +35966,111 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
       116,
       116
     ],
+    "prefix": "d7a3577ae5"
+  },
+  "assets/characters/story-elinia-8ac11fea/walk-north-normal.png": {
+    "pages": [
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
+    ],
+    "prefix": "46c4fe0057"
+  },
+  "assets/characters/story-elinia-8ac11fea/walk-south-normal.png": {
+    "pages": [
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
+    ],
+    "prefix": "5aa46b51ee"
+  },
+  "assets/characters/story-evil-spirit-of-abyss-312b8100/idle-east-screen.png": {
+    "pages": [
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
+    ],
+    "prefix": "3b4b73a2a2"
+  },
+  "assets/characters/story-evil-spirit-of-abyss-312b8100/idle-north-screen.png": {
+    "pages": [
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116,
+      116
+    ],
+    "prefix": "6ca25a6232"
+  },
+  "assets/characters/story-fey-s-body-240d653d/idle-east-normal.png": {
+    "pages": [
+      125
+    ],
+    "prefix": "988ff11f45"
+  },
+  "assets/characters/story-fey-s-body-240d653d/idle-north-normal.png": {
+    "pages": [
+      125
+    ],
+    "prefix": "a593fc44e7"
+  },
+  "assets/characters/story-flame-7ce0ff5c/idle-south-screen.png": {
+    "pages": [
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
+    ],
     "prefix": "646d57c5d6"
   },
   "assets/characters/story-flame1-343913ac/idle-south-screen.png": {
     "pages": [
-      124,
-      124,
-      124,
-      124
+      125,
+      125,
+      125,
+      125
     ],
     "prefix": "1d5135d73b"
   },
   "assets/characters/story-goblin-cave-4448315c/idle-north-normal.png": {
     "pages": [
+      125,
+      125,
+      125,
+      125,
+      125,
+      125,
+      125,
+      125
+    ],
+    "prefix": "03a6e7f301"
+  },
+  "assets/characters/story-goblin-guard-9e6831cf/idle-east-normal.png": {
+    "pages": [
       124,
       124,
       124,
@@ -36059,31 +36080,18 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
       124,
       124
     ],
-    "prefix": "03a6e7f301"
-  },
-  "assets/characters/story-goblin-guard-9e6831cf/idle-east-normal.png": {
-    "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
-    ],
     "prefix": "b1a5999494"
   },
   "assets/characters/story-goblin-guard-9e6831cf/idle-north-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "3ef5682c05"
   },
@@ -36251,16 +36259,16 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/story-hell-s-pawn-3595041a/idle-north-screen.png": {
     "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
     ],
     "prefix": "ea8737ed94"
   },
@@ -36362,870 +36370,309 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/story-hunter-s-body-effb10b3/idle-east-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "68c1a2afee"
   },
   "assets/characters/story-hunter-s-body-effb10b3/idle-north-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "fc75b1a25f"
   },
   "assets/characters/story-ivan-8dc12928/pick-up-east-normal.png": {
     "pages": [
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116,
-      116
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117,
+      117
     ],
     "prefix": "faaac15002"
   },
   "assets/characters/story-jagged-teeth-rats-2a4711e7/idle-east-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "449c3395e8"
   },
   "assets/characters/story-jagged-teeth-rats-2a4711e7/idle-north-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "46d38958cf"
   },
   "assets/characters/story-kiyan-815ba0f7/idle-east-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "dff1e81527"
   },
   "assets/characters/story-kiyan-815ba0f7/idle-north-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "aedb4c0ede"
   },
   "assets/characters/story-kiyan-815ba0f7/idle-south-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
     ],
     "prefix": "1dfcf307c4"
   },
   "assets/characters/story-lehman-7f389159/idle-east-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "d4818b9f5e"
   },
   "assets/characters/story-lehman-7f389159/idle-north-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "135f8b31cc"
   },
   "assets/characters/story-lehman-90989efd/idle-north-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "c4fdce15f7"
   },
   "assets/characters/story-leiden-the-alchemist-599a73ef/cry-east-normal.png": {
     "pages": [
-      123
+      124
     ],
     "prefix": "fb6c209788"
   },
   "assets/characters/story-leiden-the-alchemist-599a73ef/cry-north-normal.png": {
     "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "198921c1e5"
   },
   "assets/characters/story-little-fey-386fd7ea/idle-east-normal.png": {
     "pages": [
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110
     ],
     "prefix": "e9a6519ff7"
   },
   "assets/characters/story-little-fey-386fd7ea/idle-north-normal.png": {
     "pages": [
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110
     ],
     "prefix": "dafd98534a"
   },
   "assets/characters/story-little-fey-386fd7ea/idle-south-normal.png": {
     "pages": [
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110
     ],
     "prefix": "72484e5a33"
   },
   "assets/characters/story-little-fey-386fd7ea/look-around-east-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "6a2d0364ab"
   },
   "assets/characters/story-little-fey-386fd7ea/look-around-north-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "0dbaa1e9b4"
   },
   "assets/characters/story-little-fey-386fd7ea/walk-east-normal.png": {
     "pages": [
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110
     ],
     "prefix": "72c0f2c17d"
   },
   "assets/characters/story-little-fey-386fd7ea/walk-north-normal.png": {
     "pages": [
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110
     ],
     "prefix": "6f67efae5d"
   },
   "assets/characters/story-little-fey-386fd7ea/walk-south-normal.png": {
     "pages": [
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110
     ],
     "prefix": "a1ae1e4c65"
   },
   "assets/characters/story-lying-kiyan-75e14e3d/idle-south-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "2593febd3b"
   },
   "assets/characters/story-mutated-prisoner-1edd3985/idle-east-normal.png": {
     "pages": [
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108
-    ],
-    "prefix": "f4f03e2272"
-  },
-  "assets/characters/story-mutated-prisoner-1edd3985/idle-north-normal.png": {
-    "pages": [
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108,
-      108
-    ],
-    "prefix": "b419f18166"
-  },
-  "assets/characters/story-olaf-d48a31ff-disguise-mask/idle-east-normal.png": {
-    "pages": [
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88
-    ],
-    "prefix": "665cfe1b4c"
-  },
-  "assets/characters/story-olaf-d48a31ff-disguise-mask/idle-north-normal.png": {
-    "pages": [
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88
-    ],
-    "prefix": "890197fb05"
-  },
-  "assets/characters/story-olaf-d48a31ff-disguise-mask/idle-south-normal.png": {
-    "pages": [
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88
-    ],
-    "prefix": "b2d35ed752"
-  },
-  "assets/characters/story-olaf-d48a31ff-disguise-mask/walk-east-normal.png": {
-    "pages": [
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88
-    ],
-    "prefix": "ef4abff9de"
-  },
-  "assets/characters/story-olaf-d48a31ff-disguise-mask/walk-north-normal.png": {
-    "pages": [
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88
-    ],
-    "prefix": "69cd03f3d8"
-  },
-  "assets/characters/story-olaf-d48a31ff-disguise-mask/walk-south-normal.png": {
-    "pages": [
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88,
-      88
-    ],
-    "prefix": "163d062956"
-  },
-  "assets/characters/story-olaf-d48a31ff/idle-east-normal.png": {
-    "pages": [
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84
-    ],
-    "prefix": "0424928dac"
-  },
-  "assets/characters/story-olaf-d48a31ff/idle-north-normal.png": {
-    "pages": [
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84
-    ],
-    "prefix": "20d4cc22a5"
-  },
-  "assets/characters/story-olaf-d48a31ff/idle-south-normal.png": {
-    "pages": [
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84
-    ],
-    "prefix": "c2773c68cf"
-  },
-  "assets/characters/story-olaf-d48a31ff/pick-up-east-normal.png": {
-    "pages": [
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84
-    ],
-    "prefix": "e84b092a39"
-  },
-  "assets/characters/story-olaf-d48a31ff/walk-east-normal.png": {
-    "pages": [
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84
-    ],
-    "prefix": "dec61588aa"
-  },
-  "assets/characters/story-olaf-d48a31ff/walk-north-normal.png": {
-    "pages": [
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84
-    ],
-    "prefix": "fe845434e4"
-  },
-  "assets/characters/story-olaf-d48a31ff/walk-south-normal.png": {
-    "pages": [
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84,
-      84
-    ],
-    "prefix": "61d64395d5"
-  },
-  "assets/characters/story-pit-ea8e757e/idle-south-normal.png": {
-    "pages": [
-      124
-    ],
-    "prefix": "3d1deb847e"
-  },
-  "assets/characters/story-polluted-corpse-of-holy-priest-0d7962f1/idle-east-normal.png": {
-    "pages": [
-      124
-    ],
-    "prefix": "6a3526a4ea"
-  },
-  "assets/characters/story-pope-erasmus-6425bd68/idle-east-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "812efce27f"
-  },
-  "assets/characters/story-pope-erasmus-6425bd68/idle-north-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "9cc1efb11a"
-  },
-  "assets/characters/story-preview-assassin/idle-south-normal.png": {
-    "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
-    ],
-    "prefix": "661a21cb56"
-  },
-  "assets/characters/story-preview-dark-knight/idle-south-normal.png": {
-    "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
-    ],
-    "prefix": "ed0b7cf2ae"
-  },
-  "assets/characters/story-preview-priest/idle-south-normal.png": {
-    "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
-    ],
-    "prefix": "09b946d8cb"
-  },
-  "assets/characters/story-preview-ranger/idle-south-normal.png": {
-    "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
-    ],
-    "prefix": "79f9d149f5"
-  },
-  "assets/characters/story-preview-warlock/idle-south-normal.png": {
-    "pages": [
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120,
-      120
-    ],
-    "prefix": "98d15b7966"
-  },
-  "assets/characters/story-preview-warrior/idle-south-normal.png": {
-    "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
-    ],
-    "prefix": "21a6aceadb"
-  },
-  "assets/characters/story-red-flower-cactus-b8b1567d/idle-east-normal.png": {
-    "pages": [
-      124
-    ],
-    "prefix": "43a54f9f97"
-  },
-  "assets/characters/story-redhood-bandits-de7270e6/idle-east-normal.png": {
-    "pages": [
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110
-    ],
-    "prefix": "1eaa477313"
-  },
-  "assets/characters/story-redhood-bandits-de7270e6/idle-north-normal.png": {
-    "pages": [
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110
-    ],
-    "prefix": "cfcfa5a892"
-  },
-  "assets/characters/story-redhood-bandits-de7270e6/idle-south-normal.png": {
-    "pages": [
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110,
-      110
-    ],
-    "prefix": "abe052c57c"
-  },
-  "assets/characters/story-sailen-81e5bc90/idle-south-normal.png": {
-    "pages": [
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123,
-      123
-    ],
-    "prefix": "5121285b9c"
-  },
-  "assets/characters/story-scorpion-a750189d/idle-east-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "13c083c202"
-  },
-  "assets/characters/story-scorpion-a750189d/idle-north-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "5b1dd5c904"
-  },
-  "assets/characters/story-star-69ac5deb/idle-south-screen.png": {
-    "pages": [
-      124,
-      124
-    ],
-    "prefix": "4b9d0faffd"
-  },
-  "assets/characters/story-the-king-s-tomb-a2c73ac0/idle-east-normal.png": {
-    "pages": [
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111
-    ],
-    "prefix": "0aa6a41bc1"
-  },
-  "assets/characters/story-the-king-s-tomb-a2c73ac0/idle-north-normal.png": {
-    "pages": [
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111,
-      111
-    ],
-    "prefix": "0ff7f98d47"
-  },
-  "assets/characters/story-tindalrose-3aed1899/fall-down-south-normal.png": {
-    "pages": [
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
-      109,
       109,
       109,
       109,
@@ -37239,410 +36686,300 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
       109,
       109
     ],
-    "prefix": "b2c3a2d310"
+    "prefix": "f4f03e2272"
   },
-  "assets/characters/story-trained-battle-turtle-ab6187c8/idle-east-normal.png": {
+  "assets/characters/story-mutated-prisoner-1edd3985/idle-north-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109,
+      109
     ],
-    "prefix": "37e5835055"
+    "prefix": "b419f18166"
   },
-  "assets/characters/story-trained-battle-turtle-ab6187c8/idle-north-normal.png": {
+  "assets/characters/story-olaf-d48a31ff-disguise-mask/idle-east-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89
     ],
-    "prefix": "fe6c05fc33"
+    "prefix": "665cfe1b4c"
   },
-  "assets/characters/story-transparent-boulder-6b8aaa8f/idle-south-normal.png": {
+  "assets/characters/story-olaf-d48a31ff-disguise-mask/idle-north-normal.png": {
     "pages": [
-      124
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89
     ],
-    "prefix": "c2153f77e1"
+    "prefix": "890197fb05"
   },
-  "assets/characters/story-veteran-eaf2cb52/idle-south-normal.png": {
+  "assets/characters/story-olaf-d48a31ff-disguise-mask/idle-south-normal.png": {
     "pages": [
-      124,
-      124,
-      124,
-      124,
-      124,
-      124,
-      124,
-      124,
-      124,
-      124
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89
     ],
-    "prefix": "52655a40e7"
+    "prefix": "b2d35ed752"
   },
-  "assets/characters/story-wolfdog-grayfang-5fe4f208/idle-east-normal.png": {
+  "assets/characters/story-olaf-d48a31ff-disguise-mask/walk-east-normal.png": {
     "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89
     ],
-    "prefix": "346d4a70ff"
+    "prefix": "ef4abff9de"
   },
-  "assets/characters/story-wolfdog-grayfang-5fe4f208/idle-north-normal.png": {
+  "assets/characters/story-olaf-d48a31ff-disguise-mask/walk-north-normal.png": {
     "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89
     ],
-    "prefix": "6a22a33021"
+    "prefix": "69cd03f3d8"
   },
-  "assets/characters/story-woman-1cd165f7/idle-east-normal.png": {
+  "assets/characters/story-olaf-d48a31ff-disguise-mask/walk-south-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89,
+      89
     ],
-    "prefix": "e3449b2b23"
+    "prefix": "163d062956"
   },
-  "assets/characters/story-woman-1cd165f7/idle-north-normal.png": {
+  "assets/characters/story-olaf-d48a31ff/attack-east-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70
     ],
-    "prefix": "4badc5916e"
+    "prefix": "df9e2cdb42"
   },
-  "assets/characters/story-woman-1cd165f7/idle-south-normal.png": {
+  "assets/characters/story-olaf-d48a31ff/attack-north-normal.png": {
     "pages": [
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117,
-      117
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70
     ],
-    "prefix": "25bea0d4ba"
+    "prefix": "fddb2d6a55"
   },
-  "assets/characters/story-yirzuch-s-body-62e35872/idle-east-normal.png": {
+  "assets/characters/story-olaf-d48a31ff/attack-south-normal.png": {
     "pages": [
-      124
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70
     ],
-    "prefix": "e077e4af3d"
+    "prefix": "ac958fb27f"
   },
-  "assets/characters/story-yuhar-c13293b8/idle-east-normal.png": {
+  "assets/characters/story-olaf-d48a31ff/idle-east-normal.png": {
     "pages": [
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70
     ],
-    "prefix": "3885538270"
+    "prefix": "0424928dac"
   },
-  "assets/characters/story-yuhar-c13293b8/idle-north-normal.png": {
+  "assets/characters/story-olaf-d48a31ff/idle-north-normal.png": {
     "pages": [
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70
     ],
-    "prefix": "1c40cfe7d0"
+    "prefix": "20d4cc22a5"
   },
-  "assets/characters/story-yuhar-c13293b8/idle-south-normal.png": {
+  "assets/characters/story-olaf-d48a31ff/idle-south-normal.png": {
     "pages": [
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70
     ],
-    "prefix": "acd8d5d5f8"
+    "prefix": "c2773c68cf"
   },
-  "assets/characters/story-yuhar-c13293b8/walk-east-normal.png": {
+  "assets/characters/story-olaf-d48a31ff/pick-up-east-normal.png": {
     "pages": [
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70
     ],
-    "prefix": "663b08c22b"
+    "prefix": "e84b092a39"
   },
-  "assets/characters/story-yuhar-c13293b8/walk-north-normal.png": {
+  "assets/characters/story-olaf-d48a31ff/walk-east-normal.png": {
     "pages": [
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70
     ],
-    "prefix": "d7ca63bb99"
+    "prefix": "dec61588aa"
   },
-  "assets/characters/story-yuhar-c13293b8/walk-south-normal.png": {
+  "assets/characters/story-olaf-d48a31ff/walk-north-normal.png": {
     "pages": [
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107,
-      107
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70
     ],
-    "prefix": "6dc80c2b87"
+    "prefix": "fe845434e4"
   },
-  "assets/characters/streetlight-271d1c37/idle-south-normal.png": {
+  "assets/characters/story-olaf-d48a31ff/walk-south-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70,
+      70
     ],
-    "prefix": "51d6f93f45"
+    "prefix": "61d64395d5"
   },
-  "assets/characters/streetlight-271d1c37/idle-south-screen.png": {
+  "assets/characters/story-pit-ea8e757e/idle-south-normal.png": {
     "pages": [
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118,
-      118
+      125
     ],
-    "prefix": "ee89dac8c1"
+    "prefix": "3d1deb847e"
   },
-  "assets/characters/switch-006515f8/idle-south-normal.png": {
+  "assets/characters/story-polluted-corpse-of-holy-priest-0d7962f1/idle-east-normal.png": {
     "pages": [
-      124
+      125
     ],
-    "prefix": "8d11396a86"
+    "prefix": "6a3526a4ea"
   },
-  "assets/characters/switch-4771fd96/idle-south-normal.png": {
-    "pages": [
-      124
-    ],
-    "prefix": "b8e886a92f"
-  },
-  "assets/characters/the-legendary-sword-cb440e18/idle-south-normal.png": {
-    "pages": [
-      124
-    ],
-    "prefix": "780792f469"
-  },
-  "assets/characters/torch-427/idle-south-normal.png": {
-    "pages": [
-      124
-    ],
-    "prefix": "40cb85d49e"
-  },
-  "assets/characters/torch-45eb4a23/idle-south-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "6c80b693e8"
-  },
-  "assets/characters/torch-45eb4a23/idle-south-screen.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "804fba3f4e"
-  },
-  "assets/characters/torch-bb8efaac/idle-south-add.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "4d1d698ee8"
-  },
-  "assets/characters/torch-bb8efaac/idle-south-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "a0bb8291ae"
-  },
-  "assets/characters/village-woman-828eb08e/walk-east-normal.png": {
-    "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
-    ],
-    "prefix": "8f1e4aaca5"
-  },
-  "assets/characters/village-woman-828eb08e/walk-north-normal.png": {
-    "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
-    ],
-    "prefix": "5ce8e845e2"
-  },
-  "assets/characters/village-woman-828eb08e/walk-south-normal.png": {
-    "pages": [
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121,
-      121
-    ],
-    "prefix": "ce65981d4e"
-  },
-  "assets/characters/weapons-dealer-06ebbe75/idle-south-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "d5057a75d7"
-  },
-  "assets/characters/weapons-dealer-f31d78ce/idle-south-normal.png": {
-    "pages": [
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122,
-      122
-    ],
-    "prefix": "1591fc2043"
-  },
-  "assets/characters/well-7abb1f76/idle-south-normal.png": {
-    "pages": [
-      124
-    ],
-    "prefix": "77e2487035"
-  },
-  "assets/characters/wizard-grumman-fe20dafb/idle-north-normal.png": {
+  "assets/characters/story-pope-erasmus-6425bd68/idle-east-normal.png": {
     "pages": [
       123,
       123,
@@ -37653,39 +36990,761 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
       123,
       123
     ],
+    "prefix": "812efce27f"
+  },
+  "assets/characters/story-pope-erasmus-6425bd68/idle-north-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "9cc1efb11a"
+  },
+  "assets/characters/story-preview-assassin/idle-south-normal.png": {
+    "pages": [
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
+    ],
+    "prefix": "661a21cb56"
+  },
+  "assets/characters/story-preview-dark-knight/idle-south-normal.png": {
+    "pages": [
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
+    ],
+    "prefix": "ed0b7cf2ae"
+  },
+  "assets/characters/story-preview-priest/idle-south-normal.png": {
+    "pages": [
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
+    ],
+    "prefix": "09b946d8cb"
+  },
+  "assets/characters/story-preview-ranger/idle-south-normal.png": {
+    "pages": [
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
+    ],
+    "prefix": "79f9d149f5"
+  },
+  "assets/characters/story-preview-warlock/idle-south-normal.png": {
+    "pages": [
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121,
+      121
+    ],
+    "prefix": "98d15b7966"
+  },
+  "assets/characters/story-preview-warrior/idle-south-normal.png": {
+    "pages": [
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
+    ],
+    "prefix": "21a6aceadb"
+  },
+  "assets/characters/story-red-flower-cactus-b8b1567d/idle-east-normal.png": {
+    "pages": [
+      125
+    ],
+    "prefix": "43a54f9f97"
+  },
+  "assets/characters/story-redhood-bandits-de7270e6/idle-east-normal.png": {
+    "pages": [
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111
+    ],
+    "prefix": "1eaa477313"
+  },
+  "assets/characters/story-redhood-bandits-de7270e6/idle-north-normal.png": {
+    "pages": [
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111
+    ],
+    "prefix": "cfcfa5a892"
+  },
+  "assets/characters/story-redhood-bandits-de7270e6/idle-south-normal.png": {
+    "pages": [
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111,
+      111
+    ],
+    "prefix": "abe052c57c"
+  },
+  "assets/characters/story-sailen-81e5bc90/idle-south-normal.png": {
+    "pages": [
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
+    ],
+    "prefix": "5121285b9c"
+  },
+  "assets/characters/story-scorpion-a750189d/idle-east-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "13c083c202"
+  },
+  "assets/characters/story-scorpion-a750189d/idle-north-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "5b1dd5c904"
+  },
+  "assets/characters/story-star-69ac5deb/idle-south-screen.png": {
+    "pages": [
+      125,
+      125
+    ],
+    "prefix": "4b9d0faffd"
+  },
+  "assets/characters/story-the-king-s-tomb-a2c73ac0/idle-east-normal.png": {
+    "pages": [
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112
+    ],
+    "prefix": "0aa6a41bc1"
+  },
+  "assets/characters/story-the-king-s-tomb-a2c73ac0/idle-north-normal.png": {
+    "pages": [
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112,
+      112
+    ],
+    "prefix": "0ff7f98d47"
+  },
+  "assets/characters/story-tindalrose-3aed1899/fall-down-south-normal.png": {
+    "pages": [
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110,
+      110
+    ],
+    "prefix": "b2c3a2d310"
+  },
+  "assets/characters/story-trained-battle-turtle-ab6187c8/idle-east-normal.png": {
+    "pages": [
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
+    ],
+    "prefix": "37e5835055"
+  },
+  "assets/characters/story-trained-battle-turtle-ab6187c8/idle-north-normal.png": {
+    "pages": [
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
+    ],
+    "prefix": "fe6c05fc33"
+  },
+  "assets/characters/story-transparent-boulder-6b8aaa8f/idle-south-normal.png": {
+    "pages": [
+      125
+    ],
+    "prefix": "c2153f77e1"
+  },
+  "assets/characters/story-veteran-eaf2cb52/idle-south-normal.png": {
+    "pages": [
+      125,
+      125,
+      125,
+      125,
+      125,
+      125,
+      125,
+      125,
+      125,
+      125
+    ],
+    "prefix": "52655a40e7"
+  },
+  "assets/characters/story-wolfdog-grayfang-5fe4f208/idle-east-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "346d4a70ff"
+  },
+  "assets/characters/story-wolfdog-grayfang-5fe4f208/idle-north-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "6a22a33021"
+  },
+  "assets/characters/story-woman-1cd165f7/idle-east-normal.png": {
+    "pages": [
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
+    ],
+    "prefix": "e3449b2b23"
+  },
+  "assets/characters/story-woman-1cd165f7/idle-north-normal.png": {
+    "pages": [
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
+    ],
+    "prefix": "4badc5916e"
+  },
+  "assets/characters/story-woman-1cd165f7/idle-south-normal.png": {
+    "pages": [
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118,
+      118
+    ],
+    "prefix": "25bea0d4ba"
+  },
+  "assets/characters/story-yirzuch-s-body-62e35872/idle-east-normal.png": {
+    "pages": [
+      125
+    ],
+    "prefix": "e077e4af3d"
+  },
+  "assets/characters/story-yuhar-c13293b8/idle-east-normal.png": {
+    "pages": [
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108
+    ],
+    "prefix": "3885538270"
+  },
+  "assets/characters/story-yuhar-c13293b8/idle-north-normal.png": {
+    "pages": [
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108
+    ],
+    "prefix": "1c40cfe7d0"
+  },
+  "assets/characters/story-yuhar-c13293b8/idle-south-normal.png": {
+    "pages": [
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108
+    ],
+    "prefix": "acd8d5d5f8"
+  },
+  "assets/characters/story-yuhar-c13293b8/walk-east-normal.png": {
+    "pages": [
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108
+    ],
+    "prefix": "663b08c22b"
+  },
+  "assets/characters/story-yuhar-c13293b8/walk-north-normal.png": {
+    "pages": [
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108
+    ],
+    "prefix": "d7ca63bb99"
+  },
+  "assets/characters/story-yuhar-c13293b8/walk-south-normal.png": {
+    "pages": [
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108,
+      108
+    ],
+    "prefix": "6dc80c2b87"
+  },
+  "assets/characters/streetlight-271d1c37/idle-south-normal.png": {
+    "pages": [
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
+    ],
+    "prefix": "51d6f93f45"
+  },
+  "assets/characters/streetlight-271d1c37/idle-south-screen.png": {
+    "pages": [
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119,
+      119
+    ],
+    "prefix": "ee89dac8c1"
+  },
+  "assets/characters/switch-006515f8/idle-south-normal.png": {
+    "pages": [
+      125
+    ],
+    "prefix": "8d11396a86"
+  },
+  "assets/characters/switch-4771fd96/idle-south-normal.png": {
+    "pages": [
+      125
+    ],
+    "prefix": "b8e886a92f"
+  },
+  "assets/characters/the-legendary-sword-cb440e18/idle-south-normal.png": {
+    "pages": [
+      125
+    ],
+    "prefix": "780792f469"
+  },
+  "assets/characters/torch-427/idle-south-normal.png": {
+    "pages": [
+      125
+    ],
+    "prefix": "40cb85d49e"
+  },
+  "assets/characters/torch-45eb4a23/idle-south-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "6c80b693e8"
+  },
+  "assets/characters/torch-45eb4a23/idle-south-screen.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "804fba3f4e"
+  },
+  "assets/characters/torch-bb8efaac/idle-south-add.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "4d1d698ee8"
+  },
+  "assets/characters/torch-bb8efaac/idle-south-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "a0bb8291ae"
+  },
+  "assets/characters/village-woman-828eb08e/walk-east-normal.png": {
+    "pages": [
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
+    ],
+    "prefix": "8f1e4aaca5"
+  },
+  "assets/characters/village-woman-828eb08e/walk-north-normal.png": {
+    "pages": [
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
+    ],
+    "prefix": "5ce8e845e2"
+  },
+  "assets/characters/village-woman-828eb08e/walk-south-normal.png": {
+    "pages": [
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122,
+      122
+    ],
+    "prefix": "ce65981d4e"
+  },
+  "assets/characters/weapons-dealer-06ebbe75/idle-south-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "d5057a75d7"
+  },
+  "assets/characters/weapons-dealer-f31d78ce/idle-south-normal.png": {
+    "pages": [
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123,
+      123
+    ],
+    "prefix": "1591fc2043"
+  },
+  "assets/characters/well-7abb1f76/idle-south-normal.png": {
+    "pages": [
+      125
+    ],
+    "prefix": "77e2487035"
+  },
+  "assets/characters/wizard-grumman-fe20dafb/idle-north-normal.png": {
+    "pages": [
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
+    ],
     "prefix": "956ae933dc"
   },
   "assets/characters/woodpile-fdf23af7/idle-south-normal.png": {
     "pages": [
-      124
+      125
     ],
     "prefix": "cba756b198"
   },
   "assets/characters/zahad-kuruhatt-319/idle-east-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "ba8d4ac168"
   },
   "assets/characters/zahad-kuruhatt-319/idle-north-normal.png": {
     "pages": [
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119,
-      119
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
     ],
     "prefix": "8dfa733f8d"
   }
 };
-export const CHARACTER_ATLAS_SOURCE_DIGEST = "847d01b962f903cbe0f748d4ca4b59132e1b26f2af67256a0e32d81de6b56d11";
+export const CHARACTER_ATLAS_SOURCE_DIGEST = "d7941e41afd0be4d030f486855bfa16da8198e359c7d14e757f3cbd73be2a676";

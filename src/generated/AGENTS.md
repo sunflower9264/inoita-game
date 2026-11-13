@@ -25,3 +25,5 @@
 npm run typecheck
 npm test -- tests/icon-atlas.test.ts tests/prop-atlas.test.ts tests/effect-atlas.test.ts tests/ui-atlas.test.ts tests/character-atlas.test.ts
 ```
+
+- 剧情人物的默认攻击也纳入角色图集，四向动画按演员自身的原版动画行生成；内容指令与图集引用一起验证。

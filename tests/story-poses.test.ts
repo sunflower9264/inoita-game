@@ -47,3 +47,20 @@ test('the player performer carries every story pose it is asked to hold', () => 
     }
   }
 });
+
+test('same-map conversations keep the already present player visible',()=>{
+  for (const event of [54,60,72,74,85,352,392,393,394,395]) {
+    const first=storyScriptActions(campaign,`event-${event}`).find(action=>action.type==='stage');
+    assert.equal(first?.playerVisible,true,`event-${event}`);
+  }
+  const entrance=storyScriptActions(campaign,'event-4').find(action=>action.type==='stage');
+  assert.equal(entrance?.playerVisible,false,'搜洞剧情仍然等待主角正式入场');
+});
+
+test('native NPC default attacks use their original four-direction clips',()=>{
+  for (const [event,target] of [[109,'story-olaf-d48a31ff'],[224,'story-tindalrose-3aed1899'],[231,'story-tindalrose-3aed1899'],[242,'berkel-soldier-787a0359'],[264,'story-tindalrose-3aed1899'],[312,'story-happy-minotaur-b83e6a31']] as const) {
+    assert.ok(storyScriptActions(campaign,`event-${event}`).some(a=>a.type==='pose'&&a.target===target&&a.pose==='attack'));
+    for (const direction of ['south','north','east','west'] as const) assert.ok(world.actors[target]!.clips[`attack-${direction}`]!.frames>1);
+  }
+  assert.ok(!storyScriptActions(campaign,'event-117').some(a=>a.type==='pose'&&a.target==='story-contaminated-holy-priest-e739aef5'));
+});

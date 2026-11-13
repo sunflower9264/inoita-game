@@ -37386,7 +37386,7 @@
               "x": 472,
               "y": 392,
               "facing": "south",
-              "playerVisible": false,
+              "playerVisible": true,
               "cast": [
                 {
                   "id": "story-collapsed-magician-grumman-26bd0daa",
@@ -41824,7 +41824,7 @@
               "x": 136,
               "y": 184,
               "facing": "south",
-              "playerVisible": false,
+              "playerVisible": true,
               "cast": [
                 {
                   "id": "amarok-walter-197",
@@ -48815,7 +48815,7 @@
               "x": 120,
               "y": 152,
               "facing": "south",
-              "playerVisible": false,
+              "playerVisible": true,
               "cast": [
                 {
                   "id": "story-arnen-guard-c413bb4b-223",
@@ -50025,7 +50025,7 @@
               "x": 312,
               "y": 104,
               "facing": "south",
-              "playerVisible": false,
+              "playerVisible": true,
               "cast": [
                 {
                   "id": "nirniti-3c3ca603",
@@ -52768,7 +52768,7 @@
               "x": 600,
               "y": 552,
               "facing": "south",
-              "playerVisible": false,
+              "playerVisible": true,
               "cast": [
                 {
                   "id": "nirniti-3c3ca603",
@@ -65895,7 +65895,7 @@
             {
               "type": "pose",
               "target": "story-olaf-d48a31ff",
-              "pose": "idle",
+              "pose": "attack",
               "durationMs": 0
             },
             {
@@ -71182,9 +71182,7 @@
               "y": 232
             },
             {
-              "type": "pose",
-              "target": "story-contaminated-holy-priest-e739aef5",
-              "pose": "idle",
+              "type": "wait",
               "durationMs": 0
             },
             {
@@ -133216,7 +133214,7 @@
             {
               "type": "pose",
               "target": "story-tindalrose-3aed1899",
-              "pose": "idle",
+              "pose": "attack",
               "durationMs": 0
             },
             {
@@ -139489,7 +139487,7 @@
             {
               "type": "pose",
               "target": "story-tindalrose-3aed1899",
-              "pose": "idle",
+              "pose": "attack",
               "durationMs": 0
             },
             {
@@ -149436,7 +149434,7 @@
             {
               "type": "pose",
               "target": "berkel-soldier-787a0359",
-              "pose": "idle",
+              "pose": "attack",
               "durationMs": 0
             },
             {
@@ -158734,7 +158732,7 @@
             {
               "type": "pose",
               "target": "story-tindalrose-3aed1899",
-              "pose": "idle",
+              "pose": "attack",
               "durationMs": 0
             },
             {
@@ -182927,7 +182925,7 @@
             {
               "type": "pose",
               "target": "story-happy-minotaur-b83e6a31",
-              "pose": "idle",
+              "pose": "attack",
               "durationMs": 0
             },
             {
@@ -207840,7 +207838,7 @@
               "x": 168,
               "y": 200,
               "facing": "south",
-              "playerVisible": false,
+              "playerVisible": true,
               "cast": [
                 {
                   "id": "enemy-elven-kings-soul-1",
@@ -232571,7 +232569,7 @@
               "x": 8,
               "y": 8,
               "facing": "south",
-              "playerVisible": false,
+              "playerVisible": true,
               "cast": [
                 {
                   "id": "enemy-guardian-golem-2",
@@ -232897,7 +232895,7 @@
               "x": 8,
               "y": 8,
               "facing": "south",
-              "playerVisible": false,
+              "playerVisible": true,
               "cast": [
                 {
                   "id": "enemy-guardian-golem-2",
@@ -233259,7 +233257,7 @@
               "x": 8,
               "y": 8,
               "facing": "south",
-              "playerVisible": false,
+              "playerVisible": true,
               "cast": [
                 {
                   "id": "enemy-guardian-golem-2",
@@ -233585,7 +233583,7 @@
               "x": 8,
               "y": 8,
               "facing": "south",
-              "playerVisible": false,
+              "playerVisible": true,
               "cast": [
                 {
                   "id": "enemy-guardian-golem-2",
