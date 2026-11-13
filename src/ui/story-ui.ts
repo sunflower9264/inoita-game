@@ -1000,7 +1000,7 @@ export class StoryUI {
       if(this.gmPanelOwner!==this.app.gm){
         const gm=this.app.gm;
         const mapNames=new Map((this.world?.maps??[]).map(map=>[map.id,map.name]));
-        this.gmPanel=new GmPanel(gm,this.session.campaign,{close:()=>this.close(),render:()=>{if(this.app.gm===gm&&this.gmPanelOwner===gm)this.updateDebugPanel();},reopen:message=>{if(this.app.gm===gm)this.openDebugStoryWithMessage(message);}},{
+        this.gmPanel=new GmPanel(gm,this.session.campaign,{close:()=>this.close(),render:()=>{if(this.app.gm===gm&&this.gmPanelOwner===gm)this.updateDebugPanel();},runAction:action=>{this.busy=true;try{return action();}finally{this.busy=false;this.sessionSignature=this.sessionDataSignature()??this.sessionSignature;}},reopen:message=>{if(this.app.gm===gm)this.openDebugStoryWithMessage(message);}},{
           mapName:id=>mapNames.get(id),
           actorName:id=>this.world?.actors[id]?.name,
           questGroup:id=>this.session?.campaign.questGroups.find(group=>group.questIds.includes(id))?.title,

@@ -21,6 +21,7 @@ interface GmPanelHooks {
   close(): void;
   /** 重画整个菜单。 */
   render(): void;
+  runAction?<T>(action:()=>T):T;
   /** 播放失败时重新打开面板，让原因当场可见，而不是等下一条操作。 */
   reopen?(message:string): void;
 }
@@ -148,6 +149,10 @@ export class GmPanel {
   private storyDetailScrolls:ScrollArea[]=[];
   private storyBody?:UiSurface;
   private storyRow?:StoryTaskRow;
+  private characterControls?:{
+    members:Map<string,{button:UiNode;key:string}>;values:string[];level:UiNode;mana:UiNode;
+    toggles:{invincible:{button:UiNode;key:string};noCooldown:{button:UiNode;key:string};oneHitKill:{button:UiNode;key:string}};
+  };
   private textSerial = 0;
   private resultTextKey?:string;
 
@@ -196,7 +201,7 @@ export class GmPanel {
     this.textSerial=this.tabText.length;this.renderContent(body,writer);
   }
   private renderContent(body:UiSurface,writer?:MenuTextWriter):void{
-    this.writer=writer;this.storyBody=undefined;this.storyRow=undefined;const before=new Set(body.root.list),scrolls=new Set(body.scrolls);
+    this.writer=writer;this.storyBody=undefined;this.storyRow=undefined;this.characterControls=undefined;const before=new Set(body.root.list),scrolls=new Set(body.scrolls);
     const hint = this.page === 'story' ? this.renderStory(body)
       : this.page === 'character' ? this.renderCharacter(body)
       : this.page === 'items' ? this.renderItems(body)
@@ -263,45 +268,60 @@ export class GmPanel {
 
   /** 人物页：选人、看数值、升级/回满/全队回满/无敌/无 CD。 */
   private renderCharacter(body: UiSurface): string {
-    const characters = this.gm.characters();
-    if (!characters.length) {
-      this.text('当前会话没有角色数据。', 60, 80, 900, 20);
-      return '';
-    }
-    if (!characters.some(character => character.id === this.characterId)) this.characterId = characters[0]!.id;
-    characters.forEach((character, index) => {
-      this.button(body, `${character.name} Lv.${character.level}`, 60 + index * 180, 56, 170, 42,
-        () => { this.characterId = character.id; this.result = ''; this.hooks.render(); },
-        { selected: character.id === this.characterId }).setData('label', `角色 ${character.id}`);
+    const characters=this.gm.characters();
+    if(!characters.length){this.text('当前会话没有角色数据。',60,80,900,20);return '';}
+    if(!characters.some(character=>character.id===this.characterId))this.characterId=characters[0]!.id;
+    const members=new Map<string,{button:UiNode;key:string}>();
+    characters.forEach((character,index)=>{
+      const key=`gm-text-${this.textSerial}`;
+      const button=this.button(body,`${character.name} Lv.${character.level}`,60+index*180,56,170,42,()=>{
+        if(this.characterId===character.id)return;this.characterId=character.id;this.result='';this.refreshCharacter();
+      },{selected:character.id===this.characterId}).setData('label',`角色 ${character.id}`);
+      members.set(character.id,{button,key});
     });
-    const selected = characters.find(character => character.id === this.characterId)!;
-    this.text(`等级 Lv.${selected.level}`, 60, 112, 900, 20);
-    this.text(selected.nextLevelExperience > 0
-      ? `经验 ${selected.experience} / ${selected.nextLevelExperience}`
-      : '经验 —（已满级）', 60, 144, 900, 18);
-    this.text(`HP ${selected.health} / ${selected.maxHealth}`, 60, 176, 900, 18);
-    this.text(`MP ${selected.mana} / ${selected.maxMana}`, 60, 208, 900, 18);
-    this.text(`无敌 ${selected.invincible ? '开' : '关'} · 一击必杀 ${selected.oneHitKill ? '开' : '关'} · 技能 ${selected.noCooldown ? '无 CD' : '正常冷却'}`,
-      60, 240, 900, 18);
-    // 回满 HP 对倒下的角色也开放：动作层会走战斗侧复活，所以不按存活禁用。
-    this.button(body, '升一级', 60, 286, 160, 46, () => this.onLevelUp(),
-      { disabled: !selected.alive || selected.nextLevelExperience <= 0 }).setData('label', '升一级');
-    this.button(body, '回满 HP', 232, 286, 160, 46, () => this.onRestoreHealth()).setData('label', '回满 HP');
-    this.button(body, '回满 MP', 404, 286, 160, 46, () => this.onRestoreMana(),
-      { disabled: !selected.alive }).setData('label', '回满 MP');
-    this.button(body, '全队回满', 576, 286, 160, 46, () => this.onRecoverParty()).setData('label', '全队回满');
-    this.button(body, `无敌：${selected.invincible ? '开' : '关'}`, 60, 346, 160, 46,
-      () => this.onToggleInvincible(selected), { selected: selected.invincible }).setData('label', '无敌');
-    this.button(body, `技能无 CD：${selected.noCooldown ? '开' : '关'}`, 232, 346, 170, 46,
-      () => this.onToggleNoCooldown(selected), { selected: selected.noCooldown }).setData('label', '技能无 CD');
-    this.button(body, `一击必杀：${selected.oneHitKill ? '开' : '关'}`, 416, 346, 190, 46,
-      () => this.onToggleOneHitKill(selected), { selected: selected.oneHitKill }).setData('label', '一击必杀');
-    this.button(body, '技能全满', 624, 346, 200, 46,
-      () => this.onMaxSkills()).setData('label', '技能全满');
+    const selected=characters.find(character=>character.id===this.characterId)!,values:string[]=[];
+    const value=(text:string,y:number,size:number)=>{values.push(`gm-text-${this.textSerial}`);this.text(text,60,y,900,size);};
+    value(`等级 Lv.${selected.level}`,112,20);
+    value(selected.nextLevelExperience>0?`经验 ${selected.experience} / ${selected.nextLevelExperience}`:'经验 —（已满级）',144,18);
+    value(`HP ${selected.health} / ${selected.maxHealth}`,176,18);value(`MP ${selected.mana} / ${selected.maxMana}`,208,18);
+    value(`无敌 ${selected.invincible?'开':'关'} · 一击必杀 ${selected.oneHitKill?'开':'关'} · 技能 ${selected.noCooldown?'无 CD':'正常冷却'}`,240,18);
+    const level=this.button(body,'升一级',60,286,160,46,()=>this.onLevelUp(),{disabled:!selected.alive||selected.nextLevelExperience<=0}).setData('label','升一级');
+    this.button(body,'回满 HP',232,286,160,46,()=>this.onRestoreHealth()).setData('label','回满 HP');
+    const mana=this.button(body,'回满 MP',404,286,160,46,()=>this.onRestoreMana(),{disabled:!selected.alive}).setData('label','回满 MP');
+    this.button(body,'全队回满',576,286,160,46,()=>this.onRecoverParty()).setData('label','全队回满');
+    const toggle=(name:string,x:number,width:number,selectedValue:boolean,run:(current:GmCharacterState)=>void)=>{
+      const key=`gm-text-${this.textSerial}`;
+      const button=this.button(body,`${name}：${selectedValue?'开':'关'}`,x,346,width,46,()=>{
+        const current=this.gm.characters().find(character=>character.id===this.characterId);if(current)run(current);
+      },{selected:selectedValue}).setData('label',name);
+      return {button,key};
+    };
+    const toggles={invincible:toggle('无敌',60,160,selected.invincible,current=>this.onToggleInvincible(current)),
+      noCooldown:toggle('技能无 CD',232,170,selected.noCooldown,current=>this.onToggleNoCooldown(current)),
+      oneHitKill:toggle('一击必杀',416,190,selected.oneHitKill,current=>this.onToggleOneHitKill(current))};
+    this.button(body,'技能全满',624,346,200,46,()=>this.onMaxSkills()).setData('label','技能全满');
+    this.characterControls={members,values,level,mana,toggles};
     return '升级只升不降；倒下角色点「回满 HP」即可复活。无敌只挡战斗伤害，不挡剧情直接改血；一击必杀在命中敌人时直接击杀，未命中仍然落空。技能全满会直接拉满当前角色全部技能，不耗技能点。';
   }
+  private perform<T>(action:()=>T):T{return this.hooks.runAction?this.hooks.runAction(action):action();}
+  private refreshCharacter():void{
+    const controls=this.characterControls,setText=this.references.setText;
+    if(!controls||!setText){this.hooks.render();return;}
+    const characters=this.gm.characters(),selected=characters.find(character=>character.id===this.characterId);
+    if(!selected||characters.length!==controls.members.size){this.hooks.render();return;}
+    for(const character of characters){const control=controls.members.get(character.id);if(!control){this.hooks.render();return;}
+      setText(control.key,`${character.name} Lv.${character.level}`);control.button.getData('setSelected')?.(character.id===this.characterId);}
+    const values=[`等级 Lv.${selected.level}`,selected.nextLevelExperience>0?`经验 ${selected.experience} / ${selected.nextLevelExperience}`:'经验 —（已满级）',
+      `HP ${selected.health} / ${selected.maxHealth}`,`MP ${selected.mana} / ${selected.maxMana}`,
+      `无敌 ${selected.invincible?'开':'关'} · 一击必杀 ${selected.oneHitKill?'开':'关'} · 技能 ${selected.noCooldown?'无 CD':'正常冷却'}`];
+    values.forEach((value,index)=>setText(controls.values[index],value));
+    controls.level.getData('setEnabled')?.(selected.alive&&selected.nextLevelExperience>0);controls.mana.getData('setEnabled')?.(selected.alive);
+    for(const [key,label] of [['invincible','无敌'],['noCooldown','技能无 CD'],['oneHitKill','一击必杀']] as const){
+      const control=controls.toggles[key],enabled=selected[key];control.button.getData('setSelected')?.(enabled);setText(control.key,`${label}：${enabled?'开':'关'}`);
+    }
+    if(this.resultTextKey)setText(this.resultTextKey,this.result||'升级只升不降；倒下角色点「回满 HP」即可复活。无敌只挡战斗伤害，不挡剧情直接改血；一击必杀在命中敌人时直接击杀，未命中仍然落空。技能全满会直接拉满当前角色全部技能，不耗技能点。');
+  }
 
-  /** 道具页：背包同款格子整页滚动；点格子打开与背包一致的详情层。 */
   private renderItems(body: UiSurface): string {
     let entries = this.gm.items(this.itemFilter);
     const grid = body.scroll(ITEM_GRID_X, ITEM_GRID_Y, ITEM_COLUMNS * ITEM_STRIDE, ITEM_ROWS * ITEM_STRIDE);
@@ -403,48 +423,48 @@ export class GmPanel {
   }
 
   private onLevelUp(): void {
-    const result = this.gm.levelUp(this.characterId);
+    const result = this.perform(()=>this.gm.levelUp(this.characterId));
     this.result = result.ok ? `已升到 Lv.${result.level}` : `升级失败：${result.reason}`;
-    this.hooks.render();
+    this.refreshCharacter();
   }
   private onMaxSkills(): void {
-    const result = this.gm.maxSkills(this.characterId);
+    const result = this.perform(()=>this.gm.maxSkills(this.characterId));
     this.result = result.ok
       ? (result.learned || result.maxed
         ? `技能已全满：新学 ${result.learned ?? 0} 门，升级 ${result.maxed ?? 0} 门`
         : '技能已经全满')
       : `技能全满失败：${result.reason}`;
-    this.hooks.render();
+    this.refreshCharacter();
   }
   private onRestoreHealth(): void {
-    const result = this.gm.restoreHealth(this.characterId);
+    const result = this.perform(()=>this.gm.restoreHealth(this.characterId));
     this.result = result.ok ? 'HP 已回满' : `回血失败：${result.reason}`;
-    this.hooks.render();
+    this.refreshCharacter();
   }
   private onRestoreMana(): void {
-    const result = this.gm.restoreMana(this.characterId);
+    const result = this.perform(()=>this.gm.restoreMana(this.characterId));
     this.result = result.ok ? 'MP 已回满' : `回蓝失败：${result.reason}`;
-    this.hooks.render();
+    this.refreshCharacter();
   }
   private onRecoverParty(): void {
-    const result = this.gm.recoverParty();
+    const result = this.perform(()=>this.gm.recoverParty());
     this.result = result.ok ? `全队回满${result.reason ? `（${result.reason}）` : ''}` : `全队回满失败：${result.reason}`;
-    this.hooks.render();
+    this.refreshCharacter();
   }
   private onToggleInvincible(character: GmCharacterState): void {
-    const result = this.gm.setInvincible(character.id, !character.invincible);
+    const result = this.perform(()=>this.gm.setInvincible(character.id, !character.invincible));
     this.result = result.ok ? `无敌：${!character.invincible ? '开' : '关'}` : `切换失败：${result.reason}`;
-    this.hooks.render();
+    this.refreshCharacter();
   }
   private onToggleOneHitKill(character: GmCharacterState): void {
-    const result = this.gm.setOneHitKill(character.id, !character.oneHitKill);
+    const result = this.perform(()=>this.gm.setOneHitKill(character.id, !character.oneHitKill));
     this.result = result.ok ? `一击必杀：${!character.oneHitKill ? '开' : '关'}` : `切换失败：${result.reason}`;
-    this.hooks.render();
+    this.refreshCharacter();
   }
   private onToggleNoCooldown(character: GmCharacterState): void {
-    const result = this.gm.setNoCooldown(character.id, !character.noCooldown);
+    const result = this.perform(()=>this.gm.setNoCooldown(character.id, !character.noCooldown));
     this.result = result.ok ? `技能无 CD：${!character.noCooldown ? '开' : '关'}` : `切换失败：${result.reason}`;
-    this.hooks.render();
+    this.refreshCharacter();
   }
   private onGiveItem(entry: GmItemEntry | undefined): void {
     if (!entry) return;

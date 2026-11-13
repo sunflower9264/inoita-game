@@ -2537,10 +2537,11 @@ test('the GM character page levels, heals and toggles the debug switches', async
     assert.equal(f.scene.buttons(label).length, 1, label);
   }
 
-  const before = f.hero.level;
-  f.scene.click(f.scene.button('升一级'));
+  const before = f.hero.level,levelButton=f.scene.button('升一级'),invincibleButton=f.scene.button('无敌');
+  f.scene.click(levelButton);
   assert.equal(f.hero.level, before + 1);
   assert.equal(f.scene.button('调试页 人物'),debugTabs[1]);
+  assert.equal(f.scene.button('升一级'),levelButton);assert.equal(f.scene.button('无敌'),invincibleButton);
   assert.equal(gm.actions().at(-1)?.call, 'levelUp');
 
   f.scene.click(f.scene.button('技能全满'));
