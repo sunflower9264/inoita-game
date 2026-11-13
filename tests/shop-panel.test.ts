@@ -42,7 +42,7 @@ type Call = Record<string, unknown> & {node?:Node};
 class Surface {
   calls:Call[]=[];visibleCalls=0;width=1024;height=640;
   /** `centerModal` 会把自己的锚点写到这里，据此断言弹层居中。 */
-  root={x:0,y:0,width:1024,height:640,scaleX:1,scaleY:1,
+  root={x:0,y:0,width:1024,height:640,scaleX:1,scaleY:1,list:[] as Node[],
     setSize(width:number,height:number){this.width=width;this.height=height;return this;},
     getWorldTransformMatrix(){return {transformPoint:(x:number,y:number)=>({x,y}),scaleX:1,scaleY:1};},
     setPosition(x:number,y:number){this.x=x;this.y=y;return this;},

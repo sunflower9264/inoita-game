@@ -3175,6 +3175,22 @@ test('equipment preparation retains the page and refreshes once after completion
   assert.equal(f.scene.button('整理'),button);
 });
 
+test('entering and leaving equipment cleanup keeps the shop and eligible items',t=>{
+  const f=fixture();t.after(f.cleanup);const entry=f.add('ferrule');
+  const shop=Object.entries(f.app.shops.shops).find(([,value])=>value.categories.length&&value.stockRules.some(rule=>rule.kind==='level-range'))!;
+  f.menu.openShop(shop[0],'');const store=f.internals.shopPanel!.store,offer=store.offers[0];
+  const shelf=f.scene.buttons(`购买 ${items.items[offer.instance.item].name}`)[0]!,slot=f.scene.button(`出售 ${items.items[entry.item].name}`),scroll=f.internals.shopPanel!.bagScroll!;
+  f.scene.click(f.scene.button('清理装备'));
+  assert.equal(f.scene.buttons(`购买 ${items.items[offer.instance.item].name}`)[0],shelf);
+  assert.equal(f.scene.button(`出售 ${items.items[entry.item].name}`),slot);assert.equal(f.internals.shopPanel!.bagScroll,scroll);
+  const back=f.scene.button('返回商店');f.scene.click(slot);
+  assert.equal(f.scene.button(`出售 ${items.items[entry.item].name}`),slot);assert.equal(f.scene.button('返回商店'),back);
+  f.scene.key('Escape');assert.equal(f.scene.button(`出售 ${items.items[entry.item].name}`),slot);
+  f.scene.click(back);
+  assert.equal(f.scene.buttons(`购买 ${items.items[offer.instance.item].name}`)[0],shelf);
+  assert.equal(f.scene.button(`出售 ${items.items[entry.item].name}`),slot);assert.equal(f.internals.shopPanel!.bagScroll,scroll);
+});
+
 test('cleanup level hold preserves its node and stops on release and cancel',t=>{
   const f=fixture();t.after(f.cleanup);t.mock.timers.enable({apis:['setTimeout']});
   f.menu.openShop(f.app.shops.lampShop,'');f.scene.click(f.scene.button('清理装备'));

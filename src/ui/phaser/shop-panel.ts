@@ -61,6 +61,8 @@ export class ShopPanel {
   private cleanupSellButton?:UiNode;
   private cleanupMinus?:UiNode;
   private cleanupQualityButtons=new Map<number,UiNode>();
+  private cleanupNodes:UiNode[]=[];
+  private filterButtons=new Map<InventoryFilter,UiNode>();
   private cleanupError?:string;
   private sellingCleanup=false;
   private readonly batchSelection=new Set<string>();
@@ -125,7 +127,7 @@ export class ShopPanel {
   captureScroll():void{this.bagOffset=this.pendingBagOffset??this.bagScroll?.scrollTop??this.bagOffset;this.pendingBagOffset=undefined;this.categoryOffset=this.categoryScroll?.scrollTop??this.categoryOffset;}
   cancel():void{
     if(this.batch&&!this.selection){this.toggleBatch();return;}
-    if(this.cleaning){if(this.selection){this.selection=undefined;this.changed();}else this.leaveCleanup();return;}
+    if(this.cleaning){if(this.selection){this.selection=undefined;if(!this.refreshDescription())this.changed();}else this.leaveCleanup();return;}
     const selection=this.selection;
     const incremental=this.incrementalDescription;
     this.selection=undefined;
@@ -167,7 +169,7 @@ export class ShopPanel {
     this.selection={kind,id,step:'description',quantity:1};
     const entry=kind==='sell'?this.session.bag.get(id):undefined;
     if(kind==='sell'&&(!entry||this.store.sellPrice(entry)===0))this.selection.step='notice';
-    if(this.selection.step==='description'&&!this.cleaning&&this.refreshDescription()){this.incrementalDescription=true;return;}
+    if(this.selection.step==='description'&&this.refreshDescription()){this.incrementalDescription=true;return;}
     this.changed();
   }
   private refreshDescription():boolean{
@@ -180,7 +182,7 @@ export class ShopPanel {
       if(button){const slot=this.layout.slot.selection;
         this.selectionMarker=view.image(this.catalog.assets.selection,slot.x,slot.y,slot.size,slot.size,button);}
     }
-    for(const control of this.batchControls)control.setVisible(!selection);
+    for(const control of this.batchControls)control.setVisible(!selection&&!this.cleaning);
     target.updateDescription(()=>{
       this.detailText=[];
       if(selection)this.renderDescription(description,selection);
@@ -213,12 +215,33 @@ export class ShopPanel {
     this.normalBagOffset=this.bagScroll?.scrollTop??this.bagOffset;this.bagOffset=0;this.pendingBagOffset=0;
     this.cleaning=true;this.batch=false;this.batchSelection.clear();this.selection=undefined;
     this.cleanupLevel=this.viewedMember()?.level??1;this.cleanupRarities=new Set([0]);this.cleanupError=undefined;
-    this.changed();
+    if(!this.updateCleanupMode())this.changed();
   }
   private leaveCleanup():void {
     this.cleaning=false;this.selection=undefined;this.cleanupQuote=undefined;this.cleanupError=undefined;
     this.bagOffset=this.normalBagOffset;this.pendingBagOffset=this.normalBagOffset;
-    this.changed();
+    if(!this.updateCleanupMode())this.changed();
+  }
+  private updateCleanupMode():boolean{
+    const v=this.view,target=this.text,scroll=this.bagScroll;
+    if(!v||!target?.updatePage||!scroll)return false;
+    this.selectionMarker?.destroy();this.selectionMarker=undefined;
+    target.updateDescription?.(()=>{this.detailText=[];});
+    for(const [key,button] of this.selectionButtons)if(key.startsWith('buy:'))button.getData('setEnabled')?.(!this.cleaning);
+    for(const button of this.categoryButtons.values())button.getData('setEnabled')?.(!this.cleaning);
+    for(const button of this.filterButtons.values())button.setVisible(!this.cleaning);
+    this.filterHighlight?.setVisible(!this.cleaning);
+    for(const button of this.batchControls)button.setVisible(!this.cleaning);
+    if(this.cleaning){
+      this.cleanupQuote=this.store.previewCleanup(this.cleanupSettings());this.bagOffset=0;scroll.scrollTop=0;
+      const before=new Set(v.root.list);this.renderCleanupControls(v);this.renderCleanupText(v);
+      this.cleanupNodes=v.root.list.filter(node=>!before.has(node));
+    }else{
+      for(const node of this.cleanupNodes)node.destroy();this.cleanupNodes=[];this.cleanupQualityButtons.clear();
+      this.pageText=this.pageText.filter(spec=>!spec.key.startsWith('cleanup-')||spec.key==='cleanup-entry');
+    }
+    this.renderBagCells(v);if(!this.cleaning){scroll.scrollTop=this.normalBagOffset;this.pendingBagOffset=undefined;}
+    v.pruneDestroyed();target.updatePage();return true;
   }
   private sellCleanup():void {
     if(this.sellingCleanup||!this.cleanupQuote?.entries.length)return;
@@ -251,7 +274,7 @@ export class ShopPanel {
   private renderCleanupControls(v:UiSurface):void {
     const l=cleanupLayout;
     const button=(label:string,r:{x:number;y:number;width:number;height:number},run:()=>void,hold=false)=>
-      v.button('',r.x,r.y,r.width,r.height,run,{parent:v.staticRoot,hold:hold?QUANTITY_HOLD:undefined}).setData('label',label);
+      v.button('',r.x,r.y,r.width,r.height,run,{hold:hold?QUANTITY_HOLD:undefined}).setData('label',label);
     button('返回商店',l.back,()=>this.leaveCleanup());
     this.cleanupSellButton=button('全部出售',l.sell,()=>this.sellCleanup());
     this.cleanupMinus=button('降低等级上限',l.minus,()=>this.stepCleanupLevel(-1),true);
@@ -413,7 +436,8 @@ export class ShopPanel {
     // 再换上面板自己的文字；店名、分类列这些面板外的东西照常显示。
     const covered=this.descriptionCovered();
     for(const spec of this.pageText)
-      if(!(this.selection&&(spec.key==='shop-batch-toggle'||spec.key==='cleanup-entry'))&&(!covered||spec.x<covered.x||spec.x>covered.x+covered.width||spec.y<covered.y||spec.y>covered.y+covered.height))writer.add(spec);
+      if(!(this.cleaning&&(spec.key.startsWith('shop-filter-')||spec.key==='shop-batch-toggle'||spec.key==='cleanup-entry'))
+        &&!(this.selection&&(spec.key==='shop-batch-toggle'||spec.key==='cleanup-entry'))&&(!covered||spec.x<covered.x||spec.x>covered.x+covered.width||spec.y<covered.y||spec.y>covered.y+covered.height))writer.add(spec);
     for(const spec of this.detailText)writer.add(spec);
   }
   renderModalText(writer:MenuTextWriter):void{for(const spec of this.modalText)writer.add(spec);}
@@ -495,14 +519,13 @@ export class ShopPanel {
   render(v:UiSurface,modal:UiSurface,placeModal?:PlaceModal,description?:UiSurface,text?:ShopTextTarget):void{
     this.placeModal=placeModal;this.pageText=[];this.modalText=[];this.detailText=[];this.text=text;
     this.view=v;this.description=description;this.modal=modal;this.incrementalDescription=false;
-    this.selectionButtons.clear();this.categoryButtons.clear();this.batchMarkers.clear();this.batchSellButton=undefined;this.batchToggleButton=undefined;this.cleanupEntryButton=undefined;this.moneyIcons=[];this.bagSlots=[];this.filterHighlight=undefined;this.selectionMarker=undefined;this.batchControls=[];
+    this.selectionButtons.clear();this.categoryButtons.clear();this.batchMarkers.clear();this.batchSellButton=undefined;this.batchToggleButton=undefined;this.cleanupEntryButton=undefined;this.cleanupNodes=[];this.filterButtons.clear();this.moneyIcons=[];this.bagSlots=[];this.filterHighlight=undefined;this.selectionMarker=undefined;this.batchControls=[];
     const {store,session,catalog}=this,classified=store.shop.categories.length>0;
     const layout=this.layout=shopLayout(classified),{leftFrame,bagFrame,title,shelf,bag,slot,category}=layout;
     // 两栏内容区保留透明背景，背包侧栏使用共用图框和底色。
     // 两栏图框、店名和货架空格子不随筛选/选中变化，放进静态层只画一次。
     if(this.cleaning)this.cleanupQuote=this.store.previewCleanup(this.cleanupSettings());
-    v.staticLayer(`shop:${store.shop.name}:${classified}:${this.cleaning}`,()=>{
-      if(this.cleaning)this.renderCleanupControls(v);
+    v.staticLayer(`shop:${store.shop.name}:${classified}`,()=>{
       v.border(this.frames,leftFrame.x,leftFrame.y,leftFrame.width,leftFrame.height,v.staticRoot);
       drawBagRail(v,this.frames,bagFrame.x,v.staticRoot);
       v.image(catalog.assets['merchant-title'],title.x,title.y,title.width,title.height,v.staticRoot);
@@ -526,7 +549,7 @@ export class ShopPanel {
       store.shop.categories.forEach((name,index)=>{
         const button=v.button('',0,index*category.button.stride,category.button.width,category.button.height,
           ()=>this.selectCategory(name),
-          {image:catalog.assets[`${name}${store.category===name?'-selected':''}`],parent:this.categoryScroll!.content,guard:this.categoryScroll!.guard})
+          {image:catalog.assets[`${name}${store.category===name?'-selected':''}`],parent:this.categoryScroll!.content,guard:this.categoryScroll!.guard,disabled:this.cleaning})
           .setData('label',catalog.categories[name].name);
         this.categoryButtons.set(name,button);
       });
@@ -550,8 +573,8 @@ export class ShopPanel {
     // 说明面板与它盖住的那一栏同宽，所以这一列（在框外）不会被整列压住：照常画出来，
     // 玩家买进时仍然看得到、点得到分类。
     const side=layout.sideButtons;
-    if(!this.cleaning)INVENTORY_SIDE_FILTERS.forEach((filter,index)=>{
-        if(this.filter===filter)this.filterHighlight=v.rect(side.x,side.y+side.offsets[index],side.width,side.height,0xe2c88d,.10);
+    INVENTORY_SIDE_FILTERS.forEach((filter,index)=>{
+        if(this.filter===filter)this.filterHighlight=v.rect(side.x,side.y+side.offsets[index],side.width,side.height,0xe2c88d,.10).setVisible(!this.cleaning);
         const button=v.button('',side.x,side.y+side.offsets[index],side.width,side.height,
           ()=>{if(this.filter===filter)return;this.filter=filter;this.bagOffset=0;if(this.bagScroll)this.bagScroll.scrollTop=0;
             this.batchSelection.clear();this.batchError=undefined;
@@ -561,24 +584,24 @@ export class ShopPanel {
         this.addPage(`shop-filter-${filter}`,INVENTORY_LABELS[filter],side.x+side.width/2,
           side.y+side.offsets[index]+side.height/2,SIDE_FILTER_TEXT_SIZE,undefined,.5,.5,
           {width:side.width-6,align:'center',wrap:'word'});
-      button.setData('label',INVENTORY_LABELS[filter]);
+      button.setData('label',INVENTORY_LABELS[filter]).setVisible(!this.cleaning);this.filterButtons.set(filter,button);
     });
     // 批量出售的入口与动作放在背包框上方那一条空带里（和标题框同一高度），不占格子。
     // 说明面板打开时先收起，避免和“出售”那一步抢同一块区域。
-    if(this.cleaning)this.renderCleanupText(v);
-    if(!this.selection&&!this.cleaning){
+    if(this.cleaning){const before=new Set(v.root.list);this.renderCleanupControls(v);this.renderCleanupText(v);this.cleanupNodes=v.root.list.filter(node=>!before.has(node));}
+    {
       const batchBar=this.layout.bagFrame,batchLabel=this.batch?'退出批量':'批量出售';
       this.batchToggleButton=v.button('',batchBar.x,batchBar.y-42,150,40,()=>this.toggleBatch(),
-        {fontSize:16,selected:this.batch}).setData('label',batchLabel);this.batchControls.push(this.batchToggleButton);
+        {fontSize:16,selected:this.batch}).setData('label',batchLabel).setVisible(!this.selection&&!this.cleaning);this.batchControls.push(this.batchToggleButton);
       this.buttonText('shop-batch-toggle',batchLabel,batchBar.x,batchBar.y-42,150,40,false,16);
       if(!this.batch){
-        this.cleanupEntryButton=v.button('',batchBar.x+158,batchBar.y-42,200,40,()=>this.enterCleanup(),{}).setData('label','清理装备');this.batchControls.push(this.cleanupEntryButton);
+        this.cleanupEntryButton=v.button('',batchBar.x+158,batchBar.y-42,200,40,()=>this.enterCleanup(),{}).setData('label','清理装备').setVisible(!this.selection&&!this.cleaning);this.batchControls.push(this.cleanupEntryButton);
         this.buttonText('cleanup-entry','清理装备',batchBar.x+158,batchBar.y-42,200,40);
       }
       if(this.batch){
         const pickLabel=`出售选中（${batchItems.length}）`,width=batchBar.width-158;
         this.batchSellButton=v.button('',batchBar.x+158,batchBar.y-42,width,40,
-          ()=>this.sellBatch(),{fontSize:16,disabled:!batchItems.length}).setData('label','出售选中');
+          ()=>this.sellBatch(),{fontSize:16,disabled:!batchItems.length}).setData('label','出售选中').setVisible(!this.selection&&!this.cleaning);
         this.buttonText('shop-batch-sell',pickLabel,batchBar.x+158,batchBar.y-42,width,40,false,16);
       }
     }
