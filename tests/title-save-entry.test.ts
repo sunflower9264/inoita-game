@@ -34,7 +34,7 @@ class FakeDomLabel {
   text='';x=0;y=0;visible=true;removed=false;
   anchor=[0,0];
   readonly style:Record<string,unknown>={};
-  element={remove:()=>{}};
+  element:{remove:()=>void;parentElement?:unknown}={remove:()=>{}};
   setText(value:string){this.text=value;return this;}
   setPosition(x:number,y:number){this.x=x;this.y=y;return this;}
   setAnchor(x:number,y:number){this.anchor=[x,y];return this;}
@@ -50,6 +50,7 @@ function fakeView(width:number,height:number){
   const zones:{handlers:Map<string,()=>void>}[]=[];
   return {
     width,height,
+    mount:{appendChild(element:{parentElement?:unknown}){element.parentElement=this;}},
     root:{width,height,visible:true,shown:true,bringToTop:()=>{},setSize:function(width:number,height:number){this.width=width;this.height=height;return this;},setPosition:function(){return this;},setScale:function(){return this;},add:()=>{},getWorldTransformMatrix:()=>({scaleX:1,scaleY:1,transformPoint:(x:number,y:number)=>({x,y})})},
     buttons:[] as Button[],texts:[] as string[],textNodes:[] as TextNode[],scrolls:[] as FakeScroll[],zones,
     sliders:[] as {label:string;value:number;setValue:(value:number)=>void}[],enabled:()=>true,focusIndex:-1,
@@ -101,7 +102,7 @@ function fixture(gmMode?:MenuContext['gmMode'],cloud?:CloudSavePort){
     cloudStatus:undefined,cloudCount:undefined,cloudRequest:undefined,confirmAction:undefined,confirmResolve:undefined,
     renameRef:undefined,slotRequest:undefined,slotPortraits:undefined,prompt:undefined,settingsScroll:0,backdrop:undefined,
     challengeClicks:0,challengeTimer:undefined,
-    domSpecs:[] as MenuTextSpec[],menuText:undefined as MenuTextLayer|undefined,modalLabels:[] as FakeDomLabel[],
+    domSpecs:[] as MenuTextSpec[],menuText:undefined as MenuTextLayer|undefined,changelogBackgroundText:undefined as MenuTextLayer|undefined,modalLabels:[] as FakeDomLabel[],
     changelogOpen:false,changelogState:'idle',changelogReleases:[] as {gameVersion:string;entries:string[]}[],changelogSelected:0,
     changelogVersionsScroll:undefined as FakeScroll|undefined,changelogVersionsScrollTop:0,changelogEntries:[] as string[],changelogHeights:[] as number[],
     changelogOffsets:[] as number[],changelogSpecs:[] as MenuTextSpec[],changelogScroll:undefined as FakeScroll|undefined,
@@ -111,17 +112,16 @@ function fixture(gmMode?:MenuContext['gmMode'],cloud?:CloudSavePort){
   const call=(name:string,...args:unknown[])=>Reflect.get(MenuScene.prototype,name).call(scene,...args);
   const menuText=new MenuTextLayer(domUi as unknown as Pick<DomUi,'label'>,(x,y)=>({x,y,scale:1}),
     (page,scroll)=>call('menuScrollTop',page,scroll) as number|undefined);
-  // 与 MenuScene.attach 的注册保持一致：确认框压暗页面文字，更新日志混用页面/弹层坐标。
+  // 与场景注册保持一致：确认框压暗页面文字，更新日志的正文使用弹层坐标。
   for(const page of ['home','slots','settings','cloud'] as const)menuText.register(page,writer=>{
     const occlude=state.confirmAction?call('confirmOcclusion') as MenuTextOcclude|undefined:undefined;
     for(const spec of state.domSpecs)writer.add(occlude?{...spec,dim:true,occlude}:spec);
   });
   menuText.register('changelog',writer=>{
-    const occlude=call('changelogOcclusion') as MenuTextOcclude|undefined;
-    for(const spec of state.domSpecs)writer.add({...spec,dim:true,occlude});
     for(const spec of state.changelogSpecs)writer.add(spec);
   });
   state.menuText=menuText;
+  call('setupChangelogBackground',domUi);
   const clickIn=(surface:ReturnType<typeof fakeView>,label:string)=>{
     const node=surface.buttons.find(button=>button.getData('label')===label);
     assert.ok(node,label);assert.equal(node.input.enabled,true);(node.getData('action') as ()=>void)();
@@ -144,8 +144,12 @@ test('title changelog loads on demand and only renders visible entries',async()=
   assert.ok(f.domTexts().includes('正在加载更新日志…'));
   await new Promise(resolve=>setImmediate(resolve));
   assert.ok(f.domTexts().includes('v1.0.6 更新说明'),'默认显示最新版本');
-  assert(f.domLabels.some(label=>label.visible&&!label.removed&&label.style.opacity==='0.35'),
-    '更新日志打开时页面文字压暗而不是消失');
+  for(const name of ['开始游戏','环境设置','挑战模式']){
+    const background=f.domLabels.find(label=>label.text===name&&label.visible&&!label.removed);
+    assert.ok(background,`${name} 仍在弹层后显示`);
+    assert.equal(background.style.zIndex,'125','主菜单文字位于遮罩和弹层后方');
+    assert.equal(background.element.parentElement,f.view.mount);
+  }
   const labels=()=>f.domTexts().filter(text=>/^\d+\. 第 /.test(text));
   assert.ok(labels().some(text=>text.includes('第 1 条')),'首条可见');
   assert.ok(labels()[0]!.startsWith('1. '),'条目前带序号');
@@ -170,6 +174,8 @@ test('title changelog loads on demand and only renders visible entries',async()=
   assert.equal(f.state.changelogVersionsScroll?.scrollTop,68,'切换版本后保留版本列表位置');
   f.clickModal('关闭更新日志');
   assert.equal(f.state.changelogOpen,false);
+  assert.ok(!f.domLabels.some(label=>label.visible&&label.style.zIndex==='125'),'关闭弹窗后隐藏背景文字层');
+  assert.ok(f.domTexts().includes('开始游戏'),'关闭后主菜单文字正常显示');
   assert.ok(!f.domTexts().some(text=>text.includes('第 1 条')),'关闭弹窗后日志文字撤掉');
 });
 

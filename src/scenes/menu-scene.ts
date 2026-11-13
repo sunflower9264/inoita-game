@@ -114,6 +114,7 @@ export class MenuScene extends Phaser.Scene {
   private settingsScroll=0;
   /** 菜单文字由独立 DOM 标签层排版，图框、按钮与滚动由 DOM 菜单表面绘制。 */
   private menuText?:MenuTextLayer;
+  private changelogBackgroundText?:MenuTextLayer;
   private modalLabels:DomLabel[]=[];
   private resizeViewport='';
   /** 本次重画收集到的文字规格；各页面的 DOM 渲染函数按它生成标签。 */
@@ -131,7 +132,7 @@ export class MenuScene extends Phaser.Scene {
     if(!this.titleAssetsBound){this.titleAssetsBound=true;this.events.once(Phaser.Scenes.Events.DESTROY,()=>this.titleAssets.releaseResident());}
     this.page='home';this.app.ui.setMode('menu');this.app.ui.loading('正在准备主菜单…');
     const controller=new AbortController();
-    this.events.once('shutdown',()=>{this.resetChallengeClicks();this.unregisterInput?.();this.unregisterInput=undefined;controller.abort();this.cancelCloudRequest();this.settleConfirm(false,false);this.slotRequest?.abort();this.changelogRequest?.abort();this.changelogRequest=undefined;this.changelogOpen=false;this.app.releaseChangelog?.();this.prompt?.close();this.passwordPrompt?.close();this.credentials?.destroy();this.credentials=undefined;this.clearModalLabels();this.menuText?.destroy();this.menuText=undefined;this.domSpecs=[];this.slotsScroll=undefined;this.settingsList=undefined;this.cloudScroll=undefined;this.surface?.destroy();this.surface=undefined;this.modal?.destroy();this.modal=undefined;this.popupMask?.destroy();this.popupMask=undefined;this.events.off(Phaser.Scenes.Events.RESUME,this.renderOnResume,this);this.events.off(Phaser.Scenes.Events.PAUSE,this.hideCredentials);this.scale.off('resize',this.resize,this);});
+    this.events.once('shutdown',()=>{this.resetChallengeClicks();this.unregisterInput?.();this.unregisterInput=undefined;controller.abort();this.cancelCloudRequest();this.settleConfirm(false,false);this.slotRequest?.abort();this.changelogRequest?.abort();this.changelogRequest=undefined;this.changelogOpen=false;this.app.releaseChangelog?.();this.prompt?.close();this.passwordPrompt?.close();this.credentials?.destroy();this.credentials=undefined;this.clearModalLabels();this.menuText?.destroy();this.menuText=undefined;this.changelogBackgroundText?.destroy();this.changelogBackgroundText=undefined;this.domSpecs=[];this.slotsScroll=undefined;this.settingsList=undefined;this.cloudScroll=undefined;this.surface?.destroy();this.surface=undefined;this.modal?.destroy();this.modal=undefined;this.popupMask?.destroy();this.popupMask=undefined;this.events.off(Phaser.Scenes.Events.RESUME,this.renderOnResume,this);this.events.off(Phaser.Scenes.Events.PAUSE,this.hideCredentials);this.scale.off('resize',this.resize,this);});
     // 标题页整屏独占键盘；原始事件由正式界面场景那一处桥接进 router。
     this.unregisterInput?.();this.unregisterInput=this.app.inputRouter.register('menu',this.routeKey,{exclusive:()=>true});
     this.events.on(Phaser.Scenes.Events.RESUME,this.renderOnResume,this);
@@ -159,10 +160,8 @@ export class MenuScene extends Phaser.Scene {
             for(const spec of this.domSpecs)writer.add(occlude?{...spec,dim:true,occlude}:spec);
           });
         }
+        this.setupChangelogBackground(domUi);
         this.menuText.register('changelog',writer=>{
-          // 更新日志盖住页面时，页面文字整体压暗，只让出日志面板；日志文字用弹层坐标。
-          const occlude=this.changelogOcclusion();
-          for(const spec of this.domSpecs)writer.add({...spec,dim:true,occlude});
           for(const spec of this.changelogSpecs)writer.add(spec);
         });
       }
@@ -349,6 +348,23 @@ export class MenuScene extends Phaser.Scene {
   private get domUi():DomUi|undefined {
     return (this.app as MenuContext&{readonly domUi?:DomUi}).domUi;
   }
+  /** 更新日志打开时，主菜单文字与按钮一样位于遮罩和弹层之下。 */
+  private setupChangelogBackground(dom:DomUi):void {
+    const mount=this.surface!.mount;
+    const labels:Pick<DomUi,'label'>={label:(layer,className,anchor)=>{
+      const label=dom.label(layer,className,anchor);
+      label.setStyle({zIndex:'125'});
+      mount.appendChild(label.element);
+      return label;
+    }};
+    const background=this.changelogBackgroundText=new MenuTextLayer(labels,
+      (x,y)=>this.menuTextPoint(x,y),(page,scroll)=>this.menuScrollTop(page,scroll));
+    background.register('changelog',writer=>{
+      for(const spec of this.domSpecs)writer.add(spec);
+    });
+    background.setVisible(false);
+  }
+
   /** 页面坐标 → 画框 CSS 坐标；和 `UiSurface` 的根变换同一口径。 */
   private menuTextPoint(x:number,y:number):MenuTextPoint {
     const root=this.surface?.root;
@@ -376,17 +392,6 @@ export class MenuScene extends Phaser.Scene {
         return{x:(world.x-origin.x)/matrix.scaleX,y:(world.y-origin.y)/matrix.scaleY};},
       edge=NATIVE_MESSAGE_EDGE,
       start=point(band.left,band.top-edge),end=point(band.left+band.width,band.top+band.height+edge);
-    return{left:start.x,top:start.y,right:end.x,bottom:end.y};
-  }
-  /** 更新日志面板在标题页画布坐标里的矩形；页面文字按它裁剪。 */
-  private changelogOcclusion():MenuTextOcclude|undefined {
-    const modal=this.modal,surface=this.surface;
-    if(!modal||!surface||!this.changelogOpen)return undefined;
-    const {panel}=CHANGELOG_LAYOUT;
-    const matrix=surface.root.getWorldTransformMatrix(),origin=matrix.transformPoint(0,0),
-      point=(x:number,y:number)=>{const world=modal.root.getWorldTransformMatrix().transformPoint(x,y);
-        return{x:(world.x-origin.x)/matrix.scaleX,y:(world.y-origin.y)/matrix.scaleY};},
-      start=point(panel.x,panel.y),end=point(panel.x+panel.width,panel.y+panel.height);
     return{left:start.x,top:start.y,right:end.x,bottom:end.y};
   }
   /** 滚动文字按当前偏移重算；每次整页重画后指向新的滚动区。 */
@@ -580,6 +585,8 @@ export class MenuScene extends Phaser.Scene {
       centerModal(this.modal,view,CHANGELOG_LAYOUT.canvas.width,CHANGELOG_LAYOUT.canvas.height);
       this.drawChangelog(this.modal);
     }
+    if(this.changelogOpen)this.changelogBackgroundText?.renderPage('changelog');
+    this.changelogBackgroundText?.setVisible(textVisible&&this.changelogOpen);
     this.menuText?.renderPage(this.changelogOpen?'changelog':this.page);
     this.menuText?.setVisible(textVisible);
     this.layout();
@@ -1021,6 +1028,7 @@ export class MenuScene extends Phaser.Scene {
     this.syncCredentials();
     // 屏幕尺寸或安全区变化后，文字和图框一起重排。
     this.menuText?.refresh();
+    this.changelogBackgroundText?.refresh();
   }
 
   /** 云页、确认框和输入弹层互斥；只有账号/密码真正可见时才让 DOM 覆盖层出现。 */
