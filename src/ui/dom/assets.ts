@@ -25,6 +25,13 @@ interface ImageEntry {
   sources:Map<string,DomImageSource>;
 }
 
+const DOM_ASSET_TIMEOUT_MS = 15_000;
+
+function withAssetTimeout<T>(work: Promise<T>, controller: AbortController, file: string): Promise<T> {
+  const timer = setTimeout(() => controller.abort(new Error(`界面资源加载超时：${file}`)), DOM_ASSET_TIMEOUT_MS);
+  return abortable(work, controller.signal).finally(() => clearTimeout(timer));
+}
+
 function missingUiAtlasPage(file: string, page: number): Error {
   return new Error(`界面图集缺页：${file} 映射到第 ${page} 页，但该页不存在`);
 }
@@ -56,7 +63,7 @@ export class DomAssets {
     let entry = this.entries.get(key);
     if (!entry) {
       const controller = new AbortController();
-      const ready = this.loader.image(versionedAsset(imageFile), controller.signal).then(loaded => ({
+      const ready = withAssetTimeout(this.loader.image(versionedAsset(imageFile), controller.signal), controller, imageFile).then(loaded => ({
         url: versionedAsset(imageFile), width: loaded.width, height: loaded.height,
         frame: { x: 0, y: 0, width: loaded.width, height: loaded.height }, image: loaded.image
       }));
@@ -80,7 +87,7 @@ export class DomAssets {
       const source = await abortable(current.ready, signal);
       let result = source;
       if (dataFile && frameName) {
-        const data = await abortable(this.atlas(dataFile, current.controller.signal), signal);
+        const data = await abortable(this.atlas(dataFile, current.controller), signal);
         const atlasFrame = data.frames[frameName]?.frame;
         if (!atlasFrame) throw new Error(`界面图集缺少图片：${file}`);
         // 图集 JSON 用 `w`／`h` 存宽高，这里转成界面使用的 `width`／`height`。
@@ -94,10 +101,11 @@ export class DomAssets {
   }
 
   private readonly atlases = new Map<string, { signal: AbortSignal; ready: Promise<AtlasData> }>();
-  private atlas(file: string, signal: AbortSignal): Promise<AtlasData> {
+  private atlas(file: string, controller: AbortController): Promise<AtlasData> {
+    const signal = controller.signal;
     const cached = this.atlases.get(file);
     if (cached && !cached.signal.aborted) return cached.ready;
-    const ready = this.loader.atlas(versionedAsset(file), signal);
+    const ready = withAssetTimeout(this.loader.atlas(versionedAsset(file), signal), controller, file);
     const record = { signal, ready };
     this.atlases.set(file, record);
     const clear = () => { if (this.atlases.get(file) === record) this.atlases.delete(file); };
@@ -138,11 +146,12 @@ const browserImageLoader: DomImageLoader = {
     if (signal.aborted) { cancel(); return; }
     signal.addEventListener('abort', cancel, { once: true });
     image.onload = () => {
-      cleanup();
+      image.onload = null; image.onerror = null;
       // 解码完成后再交给调用方；只拿到宽高不够，下一次显示仍会重新解码。
       const decoded = typeof image.decode === 'function' ? image.decode() : Promise.resolve();
       void decoded.catch(() => {}).then(() => {
         if (signal.aborted) { image.removeAttribute('src'); reject(signal.reason); return; }
+        cleanup();
         resolve({ width: image.naturalWidth, height: image.naturalHeight, image });
       });
     };
