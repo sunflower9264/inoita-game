@@ -7,7 +7,7 @@ import type { MenuContext } from '../application/ports.ts';
 import { TITLE_MESSAGE_ASSETS, titleMenuImages } from '../application/menu-images.ts';
 import { GOLD, UiSurface, type ScrollArea } from '../ui/phaser/widgets.ts';
 import { SceneUiAssets } from '../ui/phaser/ui-asset-host.ts';
-import { SAVE_BOARD, SAVE_BOARD_LAYOUT, drawSaveBoardRow, newestFirstSlots, saveBoardOrigin, saveRowTitle, setSaveBoardTextSink, type SaveBoardControl, type SaveBoardTextSpec } from '../ui/phaser/save-board.ts';
+import { SAVE_BOARD, SAVE_BOARD_LAYOUT, SaveBoardList, drawSaveBoardRow, emitSaveBoardTexts, newestFirstSlots, saveBoardOrigin, saveRowTitle, setSaveBoardTextSink, type SaveBoardControl, type SaveBoardTextSpec } from '../ui/phaser/save-board.ts';
 import { MenuTextLayer, type MenuTextClip, type MenuTextOcclude, type MenuTextPoint, type MenuTextSpec, type MenuTextWriter } from '../ui/dom/menu-text.ts';
 import type { DomLabel, DomUi } from '../ui/dom/dom-ui.ts';
 import { frameRect } from '../ui/viewport.ts';
@@ -96,7 +96,7 @@ export class MenuScene extends Phaser.Scene {
   /** 挑战模式的隐藏入口：累计点击 5 次后进入压测，离开标题页或关闭场景时清零。 */
   private challengeClicks=0;
   /** 改名输入与通用确认：标题页的存档管理与云存档覆盖确认共用。 */
-  private slotRows=new Map<SaveSlotRef,{button?:UiNode;titleKey:string}>();
+  private slotBoard?:SaveBoardList;
   private renameRef?:SaveSlotRef;
   private renameSerial=0;
   private prompt?:TextPrompt;
@@ -138,7 +138,7 @@ export class MenuScene extends Phaser.Scene {
     if(!this.titleAssetsBound){this.titleAssetsBound=true;this.events.once(Phaser.Scenes.Events.DESTROY,()=>this.titleAssets.releaseResident());}
     this.page='home';this.app.ui.setMode('menu');this.app.ui.loading('正在准备主菜单…');
     const controller=new AbortController();
-    this.events.once('shutdown',()=>{this.renameSerial++;this.renameRef=undefined;this.cloudRenderedBranch=undefined;this.cloudControls=[];this.slotRows.clear();this.resetChallengeClicks();this.unregisterInput?.();this.unregisterInput=undefined;controller.abort();this.cancelCloudRequest();this.settleConfirm(false,false);this.slotRequest?.abort();this.changelogRequest?.abort();this.changelogRequest=undefined;this.changelogOpen=false;this.app.releaseChangelog?.();this.prompt?.close();this.passwordPrompt?.close();this.credentials?.destroy();this.credentials=undefined;this.clearModalLabels();this.menuText?.destroy();this.menuText=undefined;this.changelogBackgroundText?.destroy();this.changelogBackgroundText=undefined;this.domSpecs=[];this.slotsScroll=undefined;this.settingsList=undefined;this.cloudScroll=undefined;this.surface?.destroy();this.surface=undefined;this.modal?.destroy();this.modal=undefined;this.popupMask?.destroy();this.popupMask=undefined;this.events.off(Phaser.Scenes.Events.RESUME,this.renderOnResume,this);this.events.off(Phaser.Scenes.Events.PAUSE,this.hideCredentials);this.scale.off('resize',this.resize,this);});
+    this.events.once('shutdown',()=>{this.renameSerial++;this.renameRef=undefined;this.cloudRenderedBranch=undefined;this.cloudControls=[];this.slotBoard=undefined;this.resetChallengeClicks();this.unregisterInput?.();this.unregisterInput=undefined;controller.abort();this.cancelCloudRequest();this.settleConfirm(false,false);this.slotRequest?.abort();this.changelogRequest?.abort();this.changelogRequest=undefined;this.changelogOpen=false;this.app.releaseChangelog?.();this.prompt?.close();this.passwordPrompt?.close();this.credentials?.destroy();this.credentials=undefined;this.clearModalLabels();this.menuText?.destroy();this.menuText=undefined;this.changelogBackgroundText?.destroy();this.changelogBackgroundText=undefined;this.domSpecs=[];this.slotsScroll=undefined;this.settingsList=undefined;this.cloudScroll=undefined;this.surface?.destroy();this.surface=undefined;this.modal?.destroy();this.modal=undefined;this.popupMask?.destroy();this.popupMask=undefined;this.events.off(Phaser.Scenes.Events.RESUME,this.renderOnResume,this);this.events.off(Phaser.Scenes.Events.PAUSE,this.hideCredentials);this.scale.off('resize',this.resize,this);});
     // 标题页整屏独占键盘；原始事件由正式界面场景那一处桥接进 router。
     this.unregisterInput?.();this.unregisterInput=this.app.inputRouter.register('menu',this.routeKey,{exclusive:()=>true});
     this.events.on(Phaser.Scenes.Events.RESUME,this.renderOnResume,this);
@@ -555,7 +555,7 @@ export class MenuScene extends Phaser.Scene {
     }else{
       view.button('',28,21,67,67,()=>this.showHome(),{image:CLOSE_IMAGE,pressed:CLOSE_PRESSED,guard}).setData('label','返回主菜单');
       if(this.page==='slots'){
-        this.slotRows.clear();
+        this.slotBoard=undefined;
         texts.push({key:'slots-title',text:'存档槽',x:600,y:20,style:{size:49,anchorX:.5,anchorY:0}});
         view.button('',CLOUD_PAGE.entry.x,CLOUD_PAGE.entry.y,CLOUD_PAGE.entry.width,CLOUD_PAGE.entry.height,()=>this.openCloud(),{fontSize:26,guard}).setData('label','云存档');
         buttonText('cloud-entry','云存档',CLOUD_PAGE.entry.x,CLOUD_PAGE.entry.y,CLOUD_PAGE.entry.width,CLOUD_PAGE.entry.height,26);
@@ -570,15 +570,13 @@ export class MenuScene extends Phaser.Scene {
           // 十个手动槽放进滚动区；按写入时间倒序，最新的排最前，空槽排在后面。
           const scroll=view.scroll(origin.x,SAVE_BOARD_LAYOUT.listTop,SAVE_BOARD.panelWidth,SAVE_BOARD_LAYOUT.listHeight);
           this.slotsScroll=scroll;scroll.onScroll=()=>this.menuText?.refresh();
-          newestFirstSlots(slot=>this.app.saves.peek(slot)).forEach((slot,index)=>{
+          this.slotBoard=new SaveBoardList(view,scroll,assets,slot=>{
             const ref=slot,reading=this.app.saves.peek(ref),title=saveRowTitle(ref,reading);
-            const button=drawSaveBoardRow(view,assets,{x:0,y:0},index*SAVE_BOARD.rowStep,{
-              reading,label:title,title,
+            return {reading,label:title,title,
               action:reading.kind==='ok'?()=>this.resume(ref):reading.kind==='empty'?()=>{void this.app.enterGame?.(slot);}:undefined,
-              ...this.slotControls(ref,reading),
-            },scroll.content);
-            this.slotRows.set(ref,{button,titleKey:`list-${index*SAVE_BOARD.rowStep}-title`});
+              ...this.slotControls(ref,reading)};
           });
+          emitSaveBoardTexts(view,this.slotBoard.render(newestFirstSlots(slot=>this.app.saves.peek(slot))));
           scroll.setHeight((MANUAL_SAVE_SLOT_COUNT-1)*SAVE_BOARD.rowStep+SAVE_BOARD.frameHeight);
         }finally{setSaveBoardTextSink(view,undefined);}
       }else{
@@ -736,16 +734,21 @@ export class MenuScene extends Phaser.Scene {
     this.showConfirmation();
   }
   private deleteSlot(ref:SaveSlotRef):void{
-    try{this.app.saves.erase(ref);this.app.audio?.ui('select');}
+    let deleted=false;
+    try{this.app.saves.erase(ref);this.app.audio?.ui('select');deleted=true;}
     catch(error){console.warn('删除存档失败',error);}
-    this.settleConfirm(true,false);
-    this.render();
+    if(deleted&&this.slotBoard&&typeof ref==='number'){
+      const specs=this.slotBoard.update(ref,newestFirstSlots(slot=>this.app.saves.peek(slot)));
+      this.domSpecs=this.domSpecs.filter(spec=>!spec.key.startsWith('save-slot-')).concat(specs.map(spec=>this.saveBoardSpec(spec)));
+      this.settleConfirm(true);return;
+    }
+    this.settleConfirm(true,false);this.render();
   }
   /** 改名：手机系统键盘输入，只收中文、英文、数字；确认后只改摘要里的名字。 */
   private updateSlotTitle(ref:SaveSlotRef):void{
-    const row=this.slotRows.get(ref);if(!row){this.render();return;}
-    const title=saveRowTitle(ref,this.app.saves.peek(ref)),spec=this.domSpecs.find(value=>value.key===row.titleKey);
-    row.button?.setData('label',title);if(spec)spec.text=title;
+    if(!this.slotBoard||typeof ref!=='number'){this.render();return;}
+    const title=saveRowTitle(ref,this.app.saves.peek(ref)),spec=this.domSpecs.find(value=>value.key===`save-slot-${ref}-title`);
+    this.slotBoard.updateTitle(ref,title);if(spec)spec.text=title;
     this.menuText?.renderPage('slots');this.layout();
   }
   private renameSlot(ref:SaveSlotRef):void{

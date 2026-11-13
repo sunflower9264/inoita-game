@@ -16,8 +16,10 @@ const hook=registerHooks({resolve(specifier,context,next){return specifier==='ph
 const {MenuScene}=await import('../src/scenes/menu-scene.ts');
 const {UiSurface}=await import('../src/ui/phaser/widgets.ts');hook.deregister();
 class Button {
-  readonly active=true;readonly visible=true;readonly shown=true;readonly input:{enabled:boolean};
-  x=0;y=0;width=0;height=0;
+  readonly visible=true;readonly shown=true;readonly input:{enabled:boolean};
+  x=0;y=0;width=0;height=0;active=true;parentContent?:{list:unknown[]};
+  destroy(){this.active=false;if(this.parentContent)this.parentContent.list=this.parentContent.list.filter(node=>node!==this);}
+  setY(value:number){this.y=value;return this;}
   private readonly data=new Map<string,unknown>();
   constructor(label:string,action:()=>void,disabled=false){this.input={enabled:!disabled};this.data.set('label',label);this.data.set('action',action);this.data.set('setEnabled',(value:boolean)=>{this.input.enabled=value;});}
   setData(key:string,value:unknown){this.data.set(key,value);return this;}
@@ -46,7 +48,12 @@ class FakeDomLabel {
 /** 标题页的菜单画布与删除确认画布共用这一份替身，只有尺寸与 `scene` 相同。 */
 function fakeView(width:number,height:number){
   /** 图片只被链式调用，不需要真的画出来。 */
-  const stub=()=>{const value:Record<string,()=>unknown>={};for(const name of ['setOrigin','setFlipY','setDisplaySize','setAlpha','setScale','setPosition'])value[name]=()=>value;return value;};
+  const stub=(_file?:string,_x?:number,y=0,_width?:number,_height?:number,parent?:{list:unknown[]})=>{
+    const value:{y:number;active:boolean;[key:string]:unknown}={y,active:true};
+    for(const name of ['setOrigin','setFlipY','setDisplaySize','setAlpha','setScale','setPosition'])value[name]=()=>value;
+    value.setY=(next:number)=>{value.y=next;return value;};value.destroy=()=>{value.active=false;if(parent)parent.list=parent.list.filter(node=>node!==value);};
+    parent?.list?.push(value);return value;
+  };
   const zones:{handlers:Map<string,()=>void>}[]=[];
   return {
     width,height,
@@ -67,13 +74,14 @@ function fakeView(width:number,height:number){
     },rect(){const handlers=new Map<string,()=>void>();const zone={handlers,setInteractive(){return zone;},on(event:string,handler:()=>void){handlers.set(event,handler);return zone;}};zones.push(zone);return zone;},
     border(){},frame(){},
     clear(){this.buttons=[];this.texts=[];this.scrolls=[];this.sliders=[];this.focusIndex=-1;},
+    pruneDestroyed(){this.buttons=this.buttons.filter(button=>button.active);},
     slider(label:string,_x:number,_y:number,_width:number,value:number,onChange:(value:number)=>void){
       const slider={label,value,setValue:(next:number)=>{slider.value=next;onChange(next);}};
       this.sliders.push(slider);return slider;
     },
-    button(label:string,x:number,y:number,width:number,height:number,action:()=>void,options:{disabled?:boolean}={}){
+    button(label:string,x:number,y:number,width:number,height:number,action:()=>void,options:{disabled?:boolean;parent?:{list:unknown[]}}={}){
       const button=new Button(label,action,options.disabled);
-      Object.assign(button,{x,y,width,height});this.buttons.push(button);return button;
+      Object.assign(button,{x,y,width,height});button.parentContent=options.parent;options.parent?.list?.push(button);this.buttons.push(button);return button;
     },
     key(event:KeyboardEvent){UiSurface.prototype.key.call(this as unknown as InstanceType<typeof UiSurface>,event);},
     focusables(){return UiSurface.prototype.focusables.call(this as unknown as InstanceType<typeof UiSurface>);},
@@ -100,7 +108,7 @@ function fixture(gmMode?:MenuContext['gmMode'],cloud?:CloudSavePort){
     // 场景缩放通知与屏幕布局分别提供。
     scale:{width:1200,height:640,zoom:1,on(){},off(){}},
     cloudStatus:undefined,cloudCount:undefined,cloudRequest:undefined,cloudRenderedBranch:undefined,cloudControls:[],confirmAction:undefined,confirmResolve:undefined,
-    slotRows:new Map(),renameRef:undefined,renameSerial:0,slotRequest:undefined,slotPortraits:undefined,prompt:undefined,settingsScroll:0,backdrop:undefined,
+    slotBoard:undefined,renameRef:undefined,renameSerial:0,slotRequest:undefined,slotPortraits:undefined,prompt:undefined,settingsScroll:0,backdrop:undefined,
     challengeClicks:0,challengeTimer:undefined,
     domSpecs:[] as MenuTextSpec[],menuText:undefined as MenuTextLayer|undefined,changelogBackgroundText:undefined as MenuTextLayer|undefined,modalLabels:[] as FakeDomLabel[],
     changelogVersionButtons:[] as Button[],changelogOpen:false,changelogState:'idle',changelogReleases:[] as {gameVersion:string;entries:string[]}[],changelogSelected:0,
@@ -298,6 +306,16 @@ test('title slots delete a manual save only after the native confirmation',()=>{
   f.click('存档槽 1 删除');f.clickModal('是');
   assert.equal(f.entries.has('inotia4.story.v1.slot0'),false);
   assert(!f.view.buttons.some(button=>button.getData('label')==='存档槽 1 删除'),'空槽不再给出删除');
+});
+
+test('title save deletion moves other rows without rebuilding them',()=>{
+  const f=fixture();f.entries.set('inotia4.story.v1.slot0',saved(200));f.entries.set('inotia4.story.v1.slot1',saved(100));
+  f.click('开始游戏');const kept=f.view.buttons.find(button=>button.getData('label')==='存档槽 2')!,oldY=kept.y;
+  const rename=f.view.buttons.find(button=>button.getData('label')==='存档槽 2 改名')!,scroll=f.view.scrolls.at(-1);
+  f.click('存档槽 1 删除');f.clickModal('是');
+  assert.equal(f.saves.inspect(0).kind,'empty');assert.equal(f.view.buttons.find(button=>button.getData('label')==='存档槽 2'),kept);
+  assert.equal(f.view.buttons.find(button=>button.getData('label')==='存档槽 2 改名'),rename);
+  assert.equal(f.view.scrolls.at(-1),scroll);assert.equal(kept.y,oldY-166);
 });
 
 test('title slots rename a manual save through the system keyboard',async()=>{
