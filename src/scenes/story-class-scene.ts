@@ -9,7 +9,7 @@ import { loadSceneAssets } from '../rendering/scene-assets.ts';
 import { UiSurface, loadUiImages } from '../ui/phaser/widgets.ts';
 import type { ScrollArea } from '../ui/phaser/widgets.ts';
 import type { DomLabel, DomUi } from '../ui/dom/dom-ui.ts';
-import { canvasCssScale } from '../ui/viewport.ts';
+import { screenRectToCanvas } from '../ui/viewport.ts';
 
 /** 装配时传入的 StoryApp 比场景端口多一个 DOM 文字层；缺省时这一页不显示文字。 */
 type StoryClassApp = StoryClassContext & { readonly domUi?: DomUi };
@@ -125,16 +125,19 @@ export class StoryClassScene extends Phaser.Scene {
   }
   private layout():void{
     this.surface?.layout(8);
-    if(this.surface&&this.background){const matrix=this.surface.root.getWorldTransformMatrix(),point=matrix.transformPoint(80,0);this.background.setPosition(point.x,point.y).setDisplaySize(800*matrix.scaleX,640*matrix.scaleY);}
+    if(this.surface&&this.background){
+      const matrix=this.surface.root.getWorldTransformMatrix(),point=matrix.transformPoint(80,0);
+      const box=screenRectToCanvas(this,{x:point.x,y:point.y,width:800*matrix.scaleX,height:640*matrix.scaleY});
+      this.background.setPosition(box.x,box.y).setDisplaySize(box.width,box.height);
+    }
     this.preview?.layout();
     this.layoutDomText();
   }
-  /** 页面坐标 → 画框内 CSS 坐标；矩阵是游戏单位，再乘画布像素到 CSS 像素的比例。 */
+  /** 页面坐标 → 画框内 CSS 坐标，图片与文字共用页面变换。 */
   private domMatrix():{scale:number;point:(x:number,y:number)=>{x:number;y:number}}{
     const matrix=this.surface?.root.getWorldTransformMatrix();
     if(!matrix)return{scale:1,point:(x,y)=>({x,y})};
-    const css=canvasCssScale(this);
-    return{scale:matrix.scaleX*css,point:(x,y)=>{const point=matrix.transformPoint(x,y);return{x:point.x*css,y:point.y*css};}};
+    return{scale:matrix.scaleX,point:(x,y)=>{const point=matrix.transformPoint(x,y);return{x:point.x,y:point.y};}};
   }
   private ensureDomText():ClassDomText|undefined{
     const domUi=this.app.domUi;if(!domUi)return undefined;

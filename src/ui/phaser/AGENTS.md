@@ -5,7 +5,7 @@
 ## 文件
 
 - 面板：`forge-panel.ts`（强化台）、`skill-book-panel.ts`（技能书页）、`crafting-panel.ts`（合成台）、`shop-panel.ts`（商店）、`quest-panel.ts`（任务阅读）、`party-panel.ts`（佣兵队伍）、`description-panel.ts`（说明框）、`save-board.ts`（存档槽）、`cloud-save-panel.ts`（云存档账号与同步页）、`gm-panel.ts`（GM 面板）、`popup-panel.ts`（通用弹层）、`quest-popup.ts`（任务窗）、`volume-slider.ts`（音量条）。
-- 控件与输入：`action-controls.ts`（DOM 动作按钮的场景生命周期适配）、`keyboard-actions.ts`（键盘派发）、`move-stick.ts`（DOM 移动控件的键盘与场景接线）、`key-binding-editor.ts`（键位编辑）、`control-layout-editor.ts`（布局编辑）、`control-layout-viewport.ts`（安全区换算）。
+- 控件与输入：`action-controls.ts`（DOM 动作按钮的场景生命周期适配）、`keyboard-actions.ts`（键盘派发）、`move-stick.ts`（DOM 移动控件的键盘与场景接线）、`key-binding-editor.ts`（键位编辑）、`control-layout-editor.ts`（布局编辑）、`control-layout-viewport.ts`（统一屏幕 CSS 宽高与安全区）。
 - 绘制与组件：`bag-rail.ts`（背包侧栏与选中底色）、`widgets.ts`（导出 DOM 菜单表面并预载图片）、`solid-border.ts`（实心边框）、`round-band.ts`（圆角带）、`cooldown-fan.ts`（冷却比例与秒数计算）、`native-message.ts`（原生提示）、`ui-asset-host.ts`（菜单图片预载）、`status-hud.ts`（DOM 状态栏的场景接线）、`computer-skill-hud.ts`（电脑模式技能行）、`quest-text.ts`（任务文本）、`description-text.ts`（说明文本）、`modal-placement.ts`（弹层定位）。
 
 ## 规则
@@ -17,7 +17,7 @@
 - 队友阵亡时保留该成员自己的头像并压暗，不换成通用的 down 头像；只有拿不到头像时才回退到通用图。
 - **头像槽位用 `imageCover`。** 头像来源的宽高比不统一，`UiSurface.image` 同时收到宽高会拉伸原图；头像一律用 `imageCover`，需要直接操作 Image 时用 `fitPortrait` 保持比例。
 - 队伍装备页的备用人物图用 `imageContain` 完整放进预览框，角色外观准备好后使用同一框显示合成角色。
-- `live-character-preview.ts` 在游戏画布上播放人物待机动作；菜单遮罩避开预览框，职业选择可直接显示场景背景，切换页和关闭时隐藏并释放角色。
+- `live-character-preview.ts` 接收菜单的屏幕矩形，经 `screenRectToCanvas` 换算后在游戏画布上播放待机动作；给菜单遮罩留出的预览区域保持 CSS 坐标。职业选择可直接显示场景背景，切换页和关闭时隐藏并释放角色。
 - 队伍页选人保留名册、图框和页签，只更新选中标记和成员详情；外观准备完成只更新预览。
 - 字体、字号和颜色统一取 `src/ui/text-style.ts`，不写新的硬编码值。
 - **滚动条由 `ScrollArea` 统一画。** 内容高度超过视口时自动显示半透明深色轨道与金色滑块，位置和长度跟 `scrollTop` 同步；新增可滚动面板直接使用 `UiSurface.scroll`，不要另画一套滚动条。
@@ -31,7 +31,7 @@
 - **子页面用原版图框。** 强化台、合成台画在 `body` 的左右框里，背景用原版边框/底色；只有确认框用 `modal` 的 `drawNativeMessage`，不给整页铺黑色遮罩。
 - **任务窗位于全屏输入遮挡之上。** 任务窗、遮罩和文字放在 overlay 层；遮挡层拦住底层输入，任务窗按钮和滚动区在其上方。
 - **确认框文字由 DOM 输出。** `drawNativeMessage` 的正文和按钮文字都通过 `writer` 登记；按钮用 `UiSurface.button` 的共用皮肤，不再叠带字的 `message-yes`/`message-no`/`message-ok` 素材。临时 DOM 文字只用于量横带高度，量完立刻销毁。
-- **全屏横带按画布根节点的实际屏幕原点取覆盖范围。** `screenCoverage` 从根节点世界变换反算左缘，不能假设菜单画布居中于屏幕；横屏左右安全区不相等时，菜单会偏向安全区中间，按屏幕中心算会让横带右侧越界被裁掉。
+- **全屏横带按画框宽高与弹层的屏幕原点取覆盖范围。** `centerModal` 同步弹层根节点的内容尺寸、位置与缩放；`screenCoverage` 将画框 CSS 矩形换成弹层本地范围。实际屏幕尺寸或安全区变化时重画已打开的横带，单独切换画布采样倍率保持界面几何不变。
 - **菜单弹层的内容区一律不透明。** `drawPopupPanel` 的内缩黑底、说明面板、原生确认横带和 `v.frame` 弹层都必须用 alpha 1；压暗页面只由外层的 65% 半透明遮罩负责。新增菜单弹层不要再留半透明内容底。
 - **长正文在弹层里滚动，按钮固定。** 原生确认横带高度封顶到「画面高 − 120」，正文超过可用高度时由宿主传入的 `scroll` 建滚动区，按钮留在横带底部；商店确认框正文超过 162（有金额）或 200 像素时同样滚动。`drawNativeMessage` 返回横带的实际覆盖范围（left/top/width/height），背包页和存档页用它裁剪被横带盖住的页面文字，不要在调用方另算一份。
 - **强化台右栏整列留给物品格。** 宝石和卷轴的预览文字写在左框；右框网格一直排到框底边框内沿（431 − 24），底部不再放说明段，格子和边框内沿之间不留空档。

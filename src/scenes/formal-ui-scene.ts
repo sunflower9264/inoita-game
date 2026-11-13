@@ -15,7 +15,7 @@ import { layoutChoicePanel } from '../ui/choice-layout.ts';
 import { SceneUiAssets } from '../ui/phaser/ui-asset-host.ts';
 import { QuestPopup } from '../ui/phaser/quest-popup.ts';
 import { screenCoverage } from '../ui/phaser/modal-placement.ts';
-import { canvasCssScale, frameRect, readSafeArea } from '../ui/viewport.ts';
+import { frameRect, readSafeArea } from '../ui/viewport.ts';
 import type { AssetLease } from '../application/assets.ts';
 import type { DomLabel } from '../ui/dom/dom-ui.ts';
 
@@ -152,11 +152,11 @@ export class FormalUiScene extends Phaser.Scene implements GameUiView {
     if(!this.domInstant)return;
     this.domInstant.setVisible(!hidden);
     if(hidden)return;
-    const css=canvasCssScale(this),point=instantMessagePoint(this.scale.width*css,this.scale.height*css);
-    this.domInstant.setText(message!);this.domInstant.setPosition(point.x,point.y);this.domInstant.setStyle({opacity:String(ui.instant.alpha)});
+    this.domInstant.setText(message!);this.domInstant.setStyle({opacity:String(ui.instant.alpha)});
   }
   private layoutDomText():void{
-    const scale=this.surfacePoint(0,0).scale;
+    const scale=this.surfacePoint(0,0).scale,frame=frameRect(),point=instantMessagePoint(frame.width,frame.height);
+    this.domInstant?.setPosition(point.x,point.y);
     this.domInstant?.setStyle({fontSize:`${Math.max(12,24*scale)}px`,color:GOLD,textShadow:'0 1px 2px rgba(0,0,0,.7)'});
     this.domToast?.setStyle({fontSize:`${Math.max(12,24*scale)}px`,width:`${600*scale}px`,minHeight:`${90*scale}px`,
       padding:`${14*scale}px ${20*scale}px 0`,background:'rgba(16,29,36,.95)',color:'#f5f0df',textAlign:'center',whiteSpace:'pre-wrap'});
@@ -175,8 +175,8 @@ export class FormalUiScene extends Phaser.Scene implements GameUiView {
    */
   private dialogueSafeEdges():{left:number;right:number}{
     const frame=frameRect(),safe=readSafeArea(),scale=this.surface.root.scaleX||1;
-    const perCss=this.scale.width/Math.max(1,frame.width)/scale,physicalLeft=-this.surface.root.x/scale;
-    return{left:physicalLeft+safe.left*perCss,right:physicalLeft+this.scale.width/scale-safe.right*perCss};
+    const physicalLeft=-this.surface.root.x/scale;
+    return{left:physicalLeft+safe.left/scale,right:physicalLeft+(frame.width-safe.right)/scale};
   }
   private textBox(ui:GameUI):{x:number;y:number;width:number;lines:number;size:number}{
     const edges=this.dialogueSafeEdges(),usable=edges.right-edges.left;
@@ -224,8 +224,8 @@ export class FormalUiScene extends Phaser.Scene implements GameUiView {
    * Phaser 的每个 Text 都有自己的画布纹理；翻页时销毁再新建几十个是演出卡顿的主因。
    */
   private surfacePoint(x:number,y:number):{x:number;y:number;scale:number}{
-    const m=this.surface.root.getWorldTransformMatrix(),css=canvasCssScale(this);
-    return{x:(m.tx+x*m.scaleX)*css,y:(m.ty+y*m.scaleY)*css,scale:m.scaleX*css};
+    const m=this.surface.root.getWorldTransformMatrix();
+    return{x:(m.tx+x*m.scaleX),y:(m.ty+y*m.scaleY),scale:m.scaleX};
   }
   /**
    * 选项的 DOM 文字容器：滚动区各包一层 `overflow:hidden`，里面的标签只按
@@ -335,14 +335,14 @@ export class FormalUiScene extends Phaser.Scene implements GameUiView {
     }
     this.signature=signature;this.dialogueShell=false;this.resetChoiceDom();
     const v=this.surface;v.clear();v.layout(0);this.dialogueLayout=undefined;this.progressBar=undefined;v.visible(true);
-    const modal=portrait||!!ui.loadingState||!!defeat||cover;
-    this.background.setVisible(modal).setSize(this.scale.width,this.scale.height).setFillStyle(0x000000,!!defeat&&!portrait&&!ui.loadingState&&!cover ? .65:1);
-    this.blocker.setVisible((modal||!!ui.quest||!!ui.dialogueLine||!!ui.choices)).setSize(this.scale.width,this.scale.height);if(this.blocker.input)this.blocker.input.hitArea.setSize(this.scale.width,this.scale.height);
+    const modal=portrait||!!ui.loadingState||!!defeat||cover,{width,height}=frameRect();
+    this.background.setVisible(modal).setSize(width,height).setFillStyle(0x000000,!!defeat&&!portrait&&!ui.loadingState&&!cover ? .65:1);
+    this.blocker.setVisible((modal||!!ui.quest||!!ui.dialogueLine||!!ui.choices)).setSize(width,height);if(this.blocker.input)this.blocker.input.hitArea.setSize(width,height);
     this.cover?.destroy();this.cover=undefined;
     const block=()=>{v.rect(0,0,960,640,0,0).setInteractive().on('pointerdown',(pointer:UiPointer)=>ui.pressDialogue(pointer.id)).on('pointerup',(pointer:UiPointer)=>ui.releaseDialogue(pointer.id)).on('pointerupoutside',()=>ui.resetInput());};
     if(portrait){v.rect(0,0,960,640,0x101d24,1);block();}
     else if(ui.loadingState){
-      const file='/assets/ui/loading-background.webp';this.cover=new UiImage(this,uiMount(this,'overlay'),file).setDisplaySize(this.scale.width,this.scale.height).fitting().setDepth(998).setTint(0xaaaaaa);
+      const file='/assets/ui/loading-background.webp';this.cover=new UiImage(this,uiMount(this,'overlay'),file).setDisplaySize(width,height).fitting().setDepth(998).setTint(0xaaaaaa);
       block();v.rect(200,531,560,5,0xeee2cc,.3);this.progressBar=v.rect(200,531,560*progress,5,0xe2c88d,1);
       if(ui.loadingState.retry){v.button('',380,552,200,48,ui.loadingState.retry);if(ui.canReturn)v.button('',26,20,180,48,()=>ui.onMenu?.());}
     }else if(defeat){

@@ -174,16 +174,14 @@ test('resizing projects positions without modifying or persisting saved preferen
   assert.equal(storage.writes, writes);
 });
 
-test('canvas helper converts CSS safe-area pixels using each canvas axis', () => {
+test('control viewport keeps screen dimensions and safe areas in CSS pixels', () => {
   const globals = globalThis as unknown as Record<string, unknown>;
   const original = ['document', 'getComputedStyle'].map(name => [name, Object.getOwnPropertyDescriptor(globalThis, name)] as const);
   try {
     globals.document = {getElementById: (id: string) => id === 'game-frame'
       ? {getBoundingClientRect: () => ({width: 960, height: 640})} : {}};
     globals.getComputedStyle = () => ({paddingLeft: '20px', paddingRight: '30px', paddingTop: '10px', paddingBottom: '15px'});
-    const scene = {scale: {width: 1920, height: 1280}, game: {canvas: {getBoundingClientRect: () => ({width: 960, height: 640})}}} as unknown as import('phaser').Scene;
-    assert.deepEqual(controlViewport(scene), {width: 1920, height: 1280, insets: {left: 40, right: 60, top: 20, bottom: 30}});
-    assert.deepEqual(controlViewport(scene, 960, 320), {width: 960, height: 320, insets: {left: 20, right: 30, top: 5, bottom: 7.5}});
+    assert.deepEqual(controlViewport(), {width: 960, height: 640, insets: {left: 20, right: 30, top: 10, bottom: 15}});
   } finally {
     for (const [name, descriptor] of original) {
       if (descriptor) Object.defineProperty(globalThis, name, descriptor); else delete globals[name];

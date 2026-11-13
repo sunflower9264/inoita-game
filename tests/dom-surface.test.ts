@@ -15,8 +15,8 @@ import type { ActorDefinition } from '../src/domain/content.ts';
 import { installMenuDom, domEvent, domWindow, MenuElement } from './support/menu-dom.ts';
 
 after(installMenuDom());
-function fixture() {
-  const events=new EventEmitter(), scale=Object.assign(new EventEmitter(),{width:1024,height:640});
+function fixture(density=1) {
+  const events=new EventEmitter(), scale=Object.assign(new EventEmitter(),{width:1024*density,height:640*density});
   const scene={events,scale,game:{events:new EventEmitter(),canvas:{getBoundingClientRect:()=>({left:0,top:0,width:1024,height:640})}}} as unknown as Phaser.Scene;
   const surface=new UiSurface(scene,1024,640);
   const pointer={id:1,x:30,y:30,isDown:true};
@@ -41,9 +41,9 @@ test('DOM buttons reject guarded input, cancel captures on hide and blur, and ke
   assert.equal(calls,2,'重绘正文后静态页签仍能用键盘操作');
 });
 
-test('scrolling cancels nested button holds, suppresses release clicks and accepts the next tap',t=>{
+test('scrolling at 3x sampling cancels nested button holds, suppresses release clicks and accepts the next tap',t=>{
   t.mock.timers.enable({apis:['setTimeout']});
-  const f=fixture();t.after(f.cleanup);let calls=0;
+  const f=fixture(3);t.after(f.cleanup);let calls=0;
   const scroll=f.surface.scroll(0,0,200,200);scroll.setHeight(1000);
   const group=f.surface.container(0,0,scroll.content);
   const button=f.surface.button('',10,10,80,40,()=>calls++,{bare:true,parent:group,guard:scroll.guard,hold:{delayMs:350,intervalMs:80}});
@@ -70,8 +70,8 @@ test('nested menu scrolls apply scene coordinates once to content and scrollbars
   body.destroy();
 });
 
-test('DOM drag hit guards use centered local geometry and cancellation releases capture',t=>{
-  const f=fixture();t.after(f.cleanup);let enabled=false,starts=0,ends=0;
+test('DOM drag hit guards at 3x sampling use centered local geometry and cancellation releases capture',t=>{
+  const f=fixture(3);t.after(f.cleanup);let enabled=false,starts=0,ends=0;
   const node=f.surface.container(100,100).setSize(80,60).setInteractive({x:-40,y:-30,width:80,height:60},()=>enabled).draggable();
   node.on('dragstart',()=>starts++).on('dragend',()=>ends++);
   f.send(node,'pointerdown',130,120);assert.equal(starts,0);
@@ -80,8 +80,8 @@ test('DOM drag hit guards use centered local geometry and cancellation releases 
   f.send(node,'pointerdown',145,120);assert.equal(starts,1,'矩形外侧不能开始拖动');
 });
 
-test('volume dragging updates its value and stops when cancelled or covered',t=>{
-  const f=fixture();t.after(f.cleanup);const values:number[]=[];
+test('volume dragging at 3x sampling updates its value and stops when cancelled or covered',t=>{
+  const f=fixture(3);t.after(f.cleanup);const values:number[]=[];
   const slider=f.surface.slider('music',50,50,100,.5,value=>values.push(value));
   const zone=slider.root.list.find(node=>node.input)!;
   f.send(zone,'pointerdown',75,50);f.send(zone,'pointermove',125,50);
@@ -165,6 +165,11 @@ test('live character preview reuses the visual and tracks menu layout and visibi
   assert.deepEqual(hole,{x:0,y:0,width:80,height:160});
   preview.show(f.surface,actor,{x:100,y:50,width:40,height:80});assert.equal(state.created,1);
   assert.deepEqual([state.x,state.y,state.scale],[120,130,1]);
+  for(const density of [2,2.625,3,1]){
+    Object.assign(f.scene.scale,{width:1024*density,height:640*density});preview.layout();
+    assert.deepEqual([state.x,state.y,state.scale],[120*density,130*density,density],'只有画布角色随采样倍率换算');
+    assert.deepEqual(hole,{x:100,y:50,width:40,height:80},'DOM 遮罩为角色留下的区域保持屏幕尺寸');
+  }
   preview.visible(false);assert.equal(state.visible,false);assert.equal(hole,undefined);
   preview.visible(true);assert.equal(state.visible,true);preview.destroy();assert.equal(state.destroyed,1);
   const classPreview=new LiveCharacterPreview(f.scene,()=>{},actor=>{state.created++;return {actor,container} as never;},null);

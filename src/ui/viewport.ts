@@ -16,7 +16,7 @@ export const GAME_HEIGHT = 640;
 export const UI_UNIT_WIDTH = 800;
 export const UI_UNIT_HEIGHT = 480;
 
-/** 界面单位到画布像素的倍率：侧边 HUD 按钮与电脑模式技能行等固定尺寸控件共用。 */
+/** 界面设计单位到屏幕 CSS 像素的倍率：侧边 HUD 按钮与电脑模式技能行共用。 */
 export function uiUnitScale(width: number, height: number): number {
   return Math.min(width / UI_UNIT_WIDTH, height / UI_UNIT_HEIGHT);
 }
@@ -27,20 +27,12 @@ export function frameRect(): { left: number; top: number; width: number; height:
   return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
 }
 
-/**
- * 画布像素换算到画框 CSS 像素；1× 渲染时正好是 1。
- * 和 `uiMount` 用同一份画框宽度，文字和图框才会落在同一倍率上。
- */
-let frameScaleCache: { width: number; revision: number; value: number } | undefined;
-export function canvasCssScale(scene: import('phaser').Scene): number {
-  if (typeof document === 'undefined') return 1;
-  const width = Math.max(1, scene.scale.width);
-  const cached = frameScaleCache;
-  if (cached?.width === width && cached.revision === safeAreaRevision) return cached.value;
-  const ratio = frameRect().width / width;
-  const value = ratio > 0 ? ratio : 1;
-  frameScaleCache = { width, revision: safeAreaRevision, value };
-  return value;
+/** 将画框内的 CSS 矩形交给游戏画布，用于菜单动态角色和职业选择背景。 */
+export function screenRectToCanvas(scene: import('phaser').Scene, rect: { x:number; y:number; width:number; height:number }): { x:number; y:number; width:number; height:number } {
+  const frame = frameRect(), canvas = scene.game.canvas.getBoundingClientRect();
+  const scaleX = scene.scale.width / Math.max(1, canvas.width), scaleY = scene.scale.height / Math.max(1, canvas.height);
+  return { x: (frame.left + rect.x - canvas.left) * scaleX, y: (frame.top + rect.y - canvas.top) * scaleY,
+    width: rect.width * scaleX, height: rect.height * scaleY };
 }
 
 let safeAreaRevision = 0;

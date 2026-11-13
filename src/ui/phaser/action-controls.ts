@@ -5,15 +5,15 @@ import type { Cooldown } from '../../domain/combat.ts';
 import type { ActionControlsHandlers } from '../../rendering/action-controls.ts';
 import { UI_EVENTS } from '../../application/ui-events.ts';
 import { ControlLayoutPreferences, resolveControlLayout } from '../control-layout.ts';
-import { controlViewport, controlViewportCss } from './control-layout-viewport.ts';
+import { controlViewport } from './control-layout-viewport.ts';
 import type { DomUi } from '../dom/dom-ui.ts';
 import { DomActionControls } from '../dom/action-controls.ts';
 import type { ShortcutSlot } from '../shortcut-view.ts';
 export { SLOT_ICON_SIZE, ITEM_ICON_SIZE, type ShortcutSlot } from '../shortcut-view.ts';
 
 /** 共用控件布局的参考锚点。 */
-export function controlPlacement(scene: Phaser.Scene, width: number, height: number): { scale: number; anchor: { x: number; y: number } } {
-  const { attack } = resolveControlLayout(controlViewport(scene, width, height));
+export function controlPlacement(): { scale: number; anchor: { x: number; y: number } } {
+  const { attack } = resolveControlLayout(controlViewport());
   return { scale: attack.scale, anchor: { x: attack.x / attack.scale, y: attack.y / attack.scale } };
 }
 
@@ -21,14 +21,13 @@ export function controlPlacement(scene: Phaser.Scene, width: number, height: num
 export class ActionControls {
   private readonly view: DomActionControls;
   private readonly owner: Phaser.Scene;
-  private readonly scene: Phaser.Scene;
   private readonly preferences?: ControlLayoutPreferences;
   private readonly unsubscribe: () => void;
   private requested = false;
-  constructor(owner: Phaser.Scene, hud: Hud, handlers: ActionControlsHandlers, skin: ControlSkin, preferences?: ControlLayoutPreferences, domUi?: DomUi) {
+  constructor(owner: Phaser.Scene, _hud: Hud, handlers: ActionControlsHandlers, skin: ControlSkin, preferences?: ControlLayoutPreferences, domUi?: DomUi) {
     const parent = domUi?.layer('hud');
     if (!parent) throw new Error('操作界面尚未就绪');
-    this.owner = owner; this.scene = hud.scene; this.preferences = preferences;
+    this.owner = owner; this.preferences = preferences;
     this.view = new DomActionControls(parent, skin, handlers, error => {
       globalThis.storyDiagnostics?.record('ui-image-error', { error });
     });
@@ -44,7 +43,7 @@ export class ActionControls {
   setCooldowns(cooldowns: Readonly<Record<string, Cooldown>>): void { this.view.setCooldowns(cooldowns); }
   setAttack(enabled: boolean, dimUnavailable = true): void { this.view.setAttack(enabled, dimUnavailable); }
   layout(): void {
-    this.view.layout(controlViewportCss(this.scene), this.preferences?.snapshot());
+    this.view.layout(controlViewport(), this.preferences?.snapshot());
   }
   setVisible(visible: boolean): void { this.requested = visible; this.refresh(); }
   destroy(): void {

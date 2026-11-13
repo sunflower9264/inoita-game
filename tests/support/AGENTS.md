@@ -5,7 +5,7 @@
 ## 文件
 
 - `combat-driver.ts`：战斗测试驱动器，导出 `dispatchFrame` 和 `playCombat`，用领域 CombatRuntime 与 CombatActionDispatcher 向测试桩派发动作。
-- `menu-dom.ts`：菜单测试的 DOM 环境、原生指针、捕获与冒泡；显式安装时返回恢复函数，测试文件结束时恢复全局对象。
+- `menu-dom.ts`：菜单测试的 DOM 环境、原生指针、捕获与冒泡；`menuFrame` 单独提供画框 CSS 矩形，与假场景的画布像素尺寸分别设置。显式安装时重置画框并返回恢复函数，测试文件结束时恢复全局对象。
 - `fake-sprite.ts`：假 Sprite，只实现生产代码用到的链式调用面，避免启动真实渲染。
 - `story-fixtures.ts`：剧情与文本测试夹具，导出 `compileScript`、`storyScriptActions` 和 `plainText`；这些工具只被测试使用，不进入生产导出。
 

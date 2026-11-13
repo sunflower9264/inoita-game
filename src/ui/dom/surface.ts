@@ -8,23 +8,25 @@ import { VolumeSlider } from './volume-slider.ts';
 
 export interface ScrollBarOptions {offset?:number;insetY?:number;width?:number}
 export class UiSurface {
-  readonly scene:Phaser.Scene;readonly width:number;readonly height:number;readonly depth:number;
+  readonly scene:Phaser.Scene;readonly depth:number;
   readonly root:UiNode;readonly staticRoot:UiNode;
+  get width():number{return this.root.width;}
+  get height():number{return this.root.height;}
   readonly mount:HTMLElement;
   readonly scrolls:ScrollArea[]=[];readonly sliders:VolumeSlider[]=[];
   private buttons:UiNode[]=[];private focusIndex=-1;private staticKey?:string;
   enabled=()=>true;
   private cancelInput=()=>{for(const button of this.buttons)if(button.active)button.cancelPress();for(const scroll of this.scrolls)scroll.cancelGesture();};
   constructor(scene:Phaser.Scene,width:number,height:number,depth=100,layer='screen'){
-    this.scene=scene;this.width=width;this.height=height;this.depth=depth;
+    this.scene=scene;this.depth=depth;
     this.mount=uiMount(scene,layer);this.root=new UiNode(scene,this.mount).setDepth(depth).setSize(width,height);this.staticRoot=new UiNode(scene,this.root);
     scene.game.events.on(UI_EVENTS.cancelInput,this.cancelInput);
   }
   layout(padding=12):void{
-    const frame=frameRect(),safe=readSafeArea(),unit=this.scene.scale.width/Math.max(1,frame.width);
-    const left=(safe.left+padding)*unit,right=(safe.right+padding)*unit,top=(safe.top+padding)*unit,bottom=(safe.bottom+padding)*unit;
-    const factor=Math.max(.01,Math.min((this.scene.scale.width-left-right)/this.width,(this.scene.scale.height-top-bottom)/this.height));
-    this.root.setScale(factor).setPosition(left+(this.scene.scale.width-left-right-this.width*factor)/2,top+(this.scene.scale.height-top-bottom-this.height*factor)/2);
+    const frame=frameRect(),safe=readSafeArea();
+    const left=safe.left+padding,right=safe.right+padding,top=safe.top+padding,bottom=safe.bottom+padding;
+    const factor=Math.max(.01,Math.min((frame.width-left-right)/this.width,(frame.height-top-bottom)/this.height));
+    this.root.setScale(factor).setPosition(left+(frame.width-left-right-this.width*factor)/2,top+(frame.height-top-bottom-this.height*factor)/2);
     this.scrolls.forEach(scroll=>scroll.layout());
   }
   clear():void{this.sliders.splice(0).forEach(slider=>slider.destroy());this.scrolls.splice(0).forEach(scroll=>scroll.destroy());this.focusIndex=-1;for(const child of [...this.root.list])if(child!==this.staticRoot)child.destroy();this.buttons=this.buttons.filter(button=>button.active);}

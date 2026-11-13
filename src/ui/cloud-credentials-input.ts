@@ -1,7 +1,7 @@
 import { CLOUD_ACCOUNT_MAX_LENGTH, CLOUD_PASSWORD_MAX_LENGTH, sanitizeCloudAccountInput } from '../domain/cloud-save.ts';
 import { FONT } from './text-style.ts';
 
-/** 画布坐标换算后的屏幕矩形；由场景按 UiSurface 根容器的缩放计算。 */
+/** 画框内的 CSS 矩形；由页面的 UiSurface 根变换计算。 */
 export interface CredentialInputRect {
   left: number;
   top: number;
@@ -19,10 +19,10 @@ interface CloudCredentialsInputOptions {
  * 云存档页的账号/密码输入框。它们是直接盖在面板对应行上的原生 input，
  * 不再是独立的居中弹层；手机系统键盘仍由真实 input 唤起。
  *
- * 输入框挂在 `#game-frame` 内、使用画布坐标：键盘弹出时画布跟随可视区偏移，
- * 输入框作为画布的一部分一起移动，永远贴着面板对应行，不会单独被顶走。
+ * 输入框挂在 `#game-frame` 内、使用 CSS 坐标：键盘弹出时画框跟随可视区偏移，
+ * 输入框随画框一起移动，贴着面板对应行。
  *
- * 覆盖层只负责输入和定位，值写回场景状态；登录/注册按钮仍由 Phaser 画。
+ * 覆盖层只负责输入和定位，值写回场景状态；登录/注册按钮由 DOM 菜单表面绘制。
  */
 export class CloudCredentialsInput {
   private readonly options: CloudCredentialsInputOptions;

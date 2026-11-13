@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import { DomUi } from '../src/ui/dom/dom-ui.ts';
 import { UiNode } from '../src/ui/dom/node.ts';
 import { UiSurface } from '../src/ui/dom/surface.ts';
-import { installMenuDom, MenuElement } from './support/menu-dom.ts';
+import { installMenuDom, menuFrame, MenuElement } from './support/menu-dom.ts';
 import { domAssets } from '../src/ui/dom/assets.ts';
 import { characterAtlasPageKeys } from '../src/rendering/character-atlas.ts';
 import { CHARACTER_ATLAS_BY_FILE } from '../src/generated/character-atlas.ts';
@@ -46,7 +46,7 @@ test('class selection plays live previews and retains the page when changing cla
   const app={storyClasses:catalog,ui:{ready:true,loading(){},loaded(){},error(){}},suspended:false};
   const scene=new StoryClassScene(app as never) as any;
   scene.events=new EventEmitter();scene.scale=Object.assign(new EventEmitter(),{width:1024,height:640});
-  scene.game={events:new EventEmitter(),canvas:{getBoundingClientRect:()=>({left:0,top:0,width:1024,height:640})}};
+  scene.game={events:new EventEmitter(),canvas:{getBoundingClientRect:()=>({...menuFrame})}};
   const filters:string[]=[],animations=new Map<string,any>(),played:string[]=[],containers:any[]=[];
   scene.textures=Object.assign(new EventEmitter(),{exists:()=>true,get:(key:string)=>({has:()=>true,setFilter:()=>filters.push(key)}),remove(){}});
   scene.anims={exists:(key:string)=>animations.has(key),get:(key:string)=>animations.get(key),
@@ -89,9 +89,14 @@ test('class selection plays live previews and retains the page when changing cla
   assert.equal(first.destroyed,true,'切换职业释放旧角色');
   app.suspended=true;scene.update();assert.equal(containers.at(-1).visible,false);
   app.suspended=false;scene.update();assert.equal(containers.at(-1).visible,true);
-  scene.scale.width=800;scene.scale.height=480;scene.layout();
+  Object.assign(menuFrame,{width:800,height:480});scene.scale.width=800;scene.scale.height=480;scene.layout();
   assert.equal(containers.at(-1).scale,3*scene.surface.root.scaleX,'窗口变化时角色跟随页面缩放');
   assert.equal(background.width,800*scene.surface.root.scaleX);
+  const cssScale=scene.surface.root.scaleX;
+  scene.scale.width=2400;scene.scale.height=1440;scene.layout();
+  assert.equal(scene.surface.root.scaleX,cssScale,'采样提高后 DOM 页面尺寸不变');
+  assert.ok(Math.abs(containers.at(-1).scale-9*cssScale)<1e-6,'画布里的角色按采样倍率放大');
+  assert.equal(background.width,2400*cssScale,'画布背景与角色一起换算');
   scene.preview.destroy();scene.background.destroy();scene.surface.destroy();scene.events.emit('shutdown');
   await new Promise(resolve=>setTimeout(resolve,0));
 });

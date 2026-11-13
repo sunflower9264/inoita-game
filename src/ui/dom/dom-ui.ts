@@ -29,8 +29,8 @@ interface WorldMeasurements {
 /**
  * 画布上方的 DOM 文字层。
  *
- * 画布本身按 CSS 像素渲染，所以屏幕文字的 CSS 坐标就是画布坐标；世界文字
- * 由 `worldToScreen()` 用相机 `worldView` 和 `zoom` 投影。根节点延迟到第一次
+ * 屏幕文字直接使用画框内的 CSS 坐标；世界文字由 `worldToScreen()` 用相机
+ * `worldView`、`zoom` 和画布显示尺寸投影。根节点延迟到第一次
  * `attach()` 才创建，Node 测试环境可以只导入类型和纯函数，不会碰 `document`。
  */
 export class DomUi {

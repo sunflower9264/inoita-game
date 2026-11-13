@@ -6,7 +6,7 @@ import type { Point } from '../domain/navigation.ts';
 import type { Hud } from './hud.ts';
 import type { DomUi } from '../ui/dom/dom-ui.ts';
 import { DomMinimap, type MinimapTask } from '../ui/dom/minimap.ts';
-import { controlViewportCss } from '../ui/phaser/control-layout-viewport.ts';
+import { controlViewport } from '../ui/phaser/control-layout-viewport.ts';
 export type { MinimapTask } from '../ui/dom/minimap.ts';
 
 /** 小地图的场景接线；地形、边框和标记由 DOM/SVG 绘制。 */
@@ -25,7 +25,7 @@ export class StoryMinimap {
     this.layout();
   }
   layout(): void {
-    this.view.layout(controlViewportCss(this.owner));
+    this.view.layout(controlViewport());
     // 小地图高度是设计页面尺寸；菜单侧边按钮挂在 UiSurface 上，用同一套页面单位。
     this.owner.game.events.emit(UI_EVENTS.minimapLayout, this.view.height);
   }

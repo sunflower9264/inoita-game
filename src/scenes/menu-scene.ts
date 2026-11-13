@@ -10,7 +10,8 @@ import { SceneUiAssets } from '../ui/phaser/ui-asset-host.ts';
 import { SAVE_BOARD, SAVE_BOARD_LAYOUT, drawSaveBoardRow, newestFirstSlots, saveBoardOrigin, saveRowTitle, setSaveBoardTextSink, type SaveBoardControl, type SaveBoardTextSpec } from '../ui/phaser/save-board.ts';
 import { MenuTextLayer, type MenuTextClip, type MenuTextOcclude, type MenuTextPoint, type MenuTextSpec, type MenuTextWriter } from '../ui/dom/menu-text.ts';
 import type { DomLabel, DomUi } from '../ui/dom/dom-ui.ts';
-import { canvasCssScale, frameRect } from '../ui/viewport.ts';
+import { frameRect } from '../ui/viewport.ts';
+import { controlViewport } from '../ui/phaser/control-layout-viewport.ts';
 import { drawNativeMessage, NATIVE_MESSAGE_EDGE, type NativeMessageBand } from '../ui/phaser/native-message.ts';
 import { centerModal } from '../ui/phaser/modal-placement.ts';
 import { CHANGELOG_LAYOUT, changelogMetrics, changelogVisibleRange } from '../ui/changelog-layout.ts';
@@ -101,9 +102,10 @@ export class MenuScene extends Phaser.Scene {
   private cloudCount?:number;
   /** 环境设置列表的滚动位置：开关后整页重画，位置要接着上次的来。 */
   private settingsScroll=0;
-  /** 菜单文字走 DOM；图框、按钮、滚动和命中区仍由 Phaser 画。 */
+  /** 菜单文字由独立 DOM 标签层排版，图框、按钮与滚动由 DOM 菜单表面绘制。 */
   private menuText?:MenuTextLayer;
   private modalLabels:DomLabel[]=[];
+  private resizeViewport='';
   /** 本次重画收集到的文字规格；各页面的 DOM 渲染函数按它生成标签。 */
   private domSpecs:MenuTextSpec[]=[];
   /** 滚动区文字重算位置时读当前偏移；每次整页重画指向新的滚动区。 */
@@ -119,12 +121,13 @@ export class MenuScene extends Phaser.Scene {
     if(!this.titleAssetsBound){this.titleAssetsBound=true;this.events.once(Phaser.Scenes.Events.DESTROY,()=>this.titleAssets.releaseResident());}
     this.page='home';this.app.ui.setMode('menu');this.app.ui.loading('正在准备主菜单…');
     const controller=new AbortController();
-    this.events.once('shutdown',()=>{this.resetChallengeClicks();this.unregisterInput?.();this.unregisterInput=undefined;controller.abort();this.cancelCloudRequest();this.settleConfirm(false,false);this.slotRequest?.abort();this.changelogRequest?.abort();this.changelogRequest=undefined;this.changelogOpen=false;this.app.releaseChangelog?.();this.prompt?.close();this.passwordPrompt?.close();this.credentials?.destroy();this.credentials=undefined;this.clearModalLabels();this.menuText?.destroy();this.menuText=undefined;this.domSpecs=[];this.slotsScroll=undefined;this.settingsList=undefined;this.cloudScroll=undefined;this.surface?.destroy();this.surface=undefined;this.modal?.destroy();this.modal=undefined;this.popupMask?.destroy();this.popupMask=undefined;this.events.off(Phaser.Scenes.Events.RESUME,this.renderOnResume,this);this.events.off(Phaser.Scenes.Events.PAUSE,this.hideCredentials);this.scale.off('resize',this.layout,this);});
+    this.events.once('shutdown',()=>{this.resetChallengeClicks();this.unregisterInput?.();this.unregisterInput=undefined;controller.abort();this.cancelCloudRequest();this.settleConfirm(false,false);this.slotRequest?.abort();this.changelogRequest?.abort();this.changelogRequest=undefined;this.changelogOpen=false;this.app.releaseChangelog?.();this.prompt?.close();this.passwordPrompt?.close();this.credentials?.destroy();this.credentials=undefined;this.clearModalLabels();this.menuText?.destroy();this.menuText=undefined;this.domSpecs=[];this.slotsScroll=undefined;this.settingsList=undefined;this.cloudScroll=undefined;this.surface?.destroy();this.surface=undefined;this.modal?.destroy();this.modal=undefined;this.popupMask?.destroy();this.popupMask=undefined;this.events.off(Phaser.Scenes.Events.RESUME,this.renderOnResume,this);this.events.off(Phaser.Scenes.Events.PAUSE,this.hideCredentials);this.scale.off('resize',this.resize,this);});
     // 标题页整屏独占键盘；原始事件由正式界面场景那一处桥接进 router。
     this.unregisterInput?.();this.unregisterInput=this.app.inputRouter.register('menu',this.routeKey,{exclusive:()=>true});
     this.events.on(Phaser.Scenes.Events.RESUME,this.renderOnResume,this);
     this.events.on(Phaser.Scenes.Events.PAUSE,this.hideCredentials);
-    this.scale.on('resize',this.layout,this);
+    this.resizeViewport=JSON.stringify(controlViewport());
+    this.scale.on('resize',this.resize,this);
     // 浏览器自身的退出（Esc、手势）不会走设置页的按钮，靠事件把开关状态同步回来。
     this.events.once('shutdown',onFullscreenChange(()=>{
       if(this.page==='settings'&&this.surface&&this.sys.isActive())this.render();
@@ -314,8 +317,8 @@ export class MenuScene extends Phaser.Scene {
   private menuTextPoint(x:number,y:number):MenuTextPoint {
     const root=this.surface?.root;
     if(!root)return{x,y,scale:1};
-    const matrix=root.getWorldTransformMatrix(),point=matrix.transformPoint(x,y),css=canvasCssScale(this);
-    return{x:point.x*css,y:point.y*css,scale:matrix.scaleX*css};
+    const matrix=root.getWorldTransformMatrix(),point=matrix.transformPoint(x,y);
+    return{x:point.x,y:point.y,scale:matrix.scaleX};
   }
   /**
    * 弹层本地坐标 → 画框 CSS 坐标。弹层和页面是同一屏幕层上的两个根节点，
@@ -325,10 +328,10 @@ export class MenuScene extends Phaser.Scene {
   private modalTextPoint(x:number,y:number):MenuTextPoint {
     const modal=this.modal;
     if(!modal)return this.menuTextPoint(x,y);
-    const matrix=modal.root.getWorldTransformMatrix(),point=matrix.transformPoint(x,y),css=canvasCssScale(this);
-    return{x:point.x*css,y:point.y*css,scale:matrix.scaleX*css};
+    const matrix=modal.root.getWorldTransformMatrix(),point=matrix.transformPoint(x,y);
+    return{x:point.x,y:point.y,scale:matrix.scaleX};
   }
-  /** 确认横带在标题页画布坐标里的矩形；页面文字按它裁剪。 */
+  /** 确认横带在标题页本地坐标里的矩形；页面文字按它裁剪。 */
   private confirmOcclusion():MenuTextOcclude|undefined {
     const modal=this.modal,surface=this.surface,band=this.confirmBand;
     if(!modal||!surface||!band)return undefined;
@@ -962,15 +965,21 @@ export class MenuScene extends Phaser.Scene {
     this.prompt?.close();
     this.passwordPrompt?.close();
   }
+  private resize():void {
+    const viewport=JSON.stringify(controlViewport()),changed=viewport!==this.resizeViewport;
+    this.resizeViewport=viewport;this.layout();
+    if(changed&&(this.confirmAction||this.changelogOpen))this.render();
+  }
   private layout():void {
-    if(this.backdrop){this.backdrop.setPosition(0,0).setOrigin(0).setScale(1).setDisplaySize(this.scale.width,this.scale.height).fitting();}
-    this.popupMask?.setSize(this.scale.width,this.scale.height);
+    const {width,height}=frameRect();
+    if(this.backdrop){this.backdrop.setPosition(0,0).setOrigin(0).setScale(1).setDisplaySize(width,height).fitting();}
+    this.popupMask?.setSize(width,height);
     this.surface?.layout();
     if(this.surface&&this.modal&&(this.confirmAction!==undefined||this.changelogOpen))centerModal(this.modal,this.surface,1024,640);
     // 弹层里的滚动区（更新日志、长提示）跟着弹层位置和缩放重排。
     this.modal?.scrolls.forEach(scroll=>scroll.layout());
     this.syncCredentials();
-    // 画布缩放或安全区变化后，DOM 文字的 CSS 坐标和字号要跟着重算。
+    // 屏幕尺寸或安全区变化后，文字和图框一起重排。
     this.menuText?.refresh();
   }
 
@@ -994,15 +1003,15 @@ export class MenuScene extends Phaser.Scene {
     if(!this.surface)return;
     const frame=frameRect();
     if(!frame.width||!frame.height)return;
-    const matrix=this.surface.root.getWorldTransformMatrix(),css=canvasCssScale(this);
+    const matrix=this.surface.root.getWorldTransformMatrix();
     const map=(local:{x:number;y:number;width:number;height:number;fontSize:number}):CredentialInputRect=>{
       const point=matrix.transformPoint(local.x,local.y);
       return {
-        left:point.x*css,
-        top:point.y*css,
-        width:local.width*matrix.scaleX*css,
-        height:local.height*matrix.scaleY*css,
-        fontSize:local.fontSize*matrix.scaleY*css,
+        left:point.x,
+        top:point.y,
+        width:local.width*matrix.scaleX,
+        height:local.height*matrix.scaleY,
+        fontSize:local.fontSize*matrix.scaleY,
       };
     };
     return {account:map(CLOUD_PAGE.accountInput),password:map(CLOUD_PAGE.passwordInput)};

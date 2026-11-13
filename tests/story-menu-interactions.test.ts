@@ -1,4 +1,4 @@
-import { installMenuDom, domEvent, domWindow } from './support/menu-dom.ts';
+import { installMenuDom, menuFrame, domEvent, domWindow } from './support/menu-dom.ts';
 import { domAssets } from '../src/ui/dom/assets.ts';
 import { UI_ATLAS_FRAMES } from '../src/generated/ui-atlas.ts';
 import { UI_ICON_FRAMES } from '../src/generated/icon-atlas.ts';
@@ -101,7 +101,7 @@ class MenuScene {
   button(label: string) { const buttons = this.buttons(label); assert.equal(buttons.length, 1, `唯一按钮：${label}`); return buttons[0]!; }
   texts() { return this.nodes.filter(node => node.shown && node.text).map(node => node.text!); }
   native(target:HTMLElement|typeof domWindow,name:string,pointer:typeof this.input.activePointer,deltaY=0) {
-    return domEvent(target,name,{...pointer,x:pointer.x*1024/this.scale.width,y:pointer.y*640/this.scale.height},deltaY);
+    return domEvent(target,name,{...pointer,x:pointer.x+menuFrame.left,y:pointer.y+menuFrame.top},deltaY);
   }
   pointAt(button: Display) {
     const area = button.input?.hitArea ?? new Rect(0, 0, button.width, button.height), matrix = button.getWorldTransformMatrix();
@@ -131,7 +131,8 @@ class MenuScene {
     this.router?.dispatch({ key, shiftKey, preventDefault: () => { prevented = true; } } as KeyboardEvent);
     return prevented;
   }
-  resize(width: number, height: number) { this.scale.width = width; this.scale.height = height; this.scale.emit('resize'); }
+  resize(width: number, height: number) { Object.assign(menuFrame,{width,height});this.setSampling(1); }
+  setSampling(density:number) {this.scale.width=Math.round(menuFrame.width*density);this.scale.height=Math.round(menuFrame.height*density);this.scale.emit('resize');}
 }
 
 class FakeDomLabel {
@@ -185,6 +186,7 @@ interface MenuInternals {
   surface: UiSurface;
   description: UiSurface;
   modal: UiSurface;
+  popupMask: UiNode;
   modalBox: { width: number; height: number };
   busy: boolean;
   notice?: string;
@@ -194,6 +196,7 @@ interface MenuInternals {
   confirmOperation(): void;
 }
 function fixture(classId = 'dark-knight') {
+  Object.assign(menuFrame,{left:0,top:0,width:1024,height:640});
   const hero = new BattleCharacter(classId, stats, items), session = new Session(campaign, undefined, undefined, items, hero, battle, stats, companions);
   const controls = new GameUI(); controls.mode = 'game'; controls.ready = true;
   let textFocused = false;
@@ -1330,7 +1333,7 @@ test('control editor saves only on release, allows overlap, resets in place and 
   assert(f.controls.locked);assert(f.controls.controlLayoutEditing);
   assert(f.scene.key('Tab'));assert(f.scene.key('Tab'));assert(f.scene.key('Enter'));
   assert.deepEqual(f.app.controlLayout.snapshot(),{});assert(f.controls.controlLayoutEditing);
-  const defaultLayout=resolveControlLayout(controlViewport(f.scene as unknown as Phaser.Scene));
+  const defaultLayout=resolveControlLayout(controlViewport());
   for(const id of CONTROL_IDS)assert.deepEqual([editingControl(f,id).x,editingControl(f,id).y],[defaultLayout[id].x,defaultLayout[id].y]);
   // 工具栏依次是关闭、恢复默认、移动、缩放；从“恢复默认”往后 Tab 三次到关闭钮。
   assert(f.scene.key('Tab'));assert(f.scene.key('Tab'));assert(f.scene.key('Tab'));
@@ -1338,10 +1341,10 @@ test('control editor saves only on release, allows overlap, resets in place and 
 });
 
 test('control editor switches between move and scale modes, defaulting to move',t=>{
-  const f=fixture();t.after(f.cleanup);
+  const f=fixture();t.after(f.cleanup);f.scene.setSampling(3);
   f.app.controlLayout.set('attack',{x:.5,y:.5});openControls(f);
   const pointer=f.scene.input.activePointer,object=editingControl(f,'attack');
-  const placement=()=>resolveControlLayout(controlViewport(f.scene as unknown as Phaser.Scene),f.app.controlLayout.snapshot()).attack;
+  const placement=()=>resolveControlLayout(controlViewport(),f.app.controlLayout.snapshot()).attack;
   // 默认是移动：拖动改位置，不写倍率。
   assert.equal(f.scene.button('移动').getData('selected'),true);
   assert.equal(f.scene.button('缩放').getData('selected'),false);
@@ -1420,19 +1423,19 @@ test('control editor cancels unfinished drags on input cancellation, suspension,
     object.emit('dragend',pointer);
     assert.deepEqual(f.app.controlLayout.snapshot(),{move:{x:.25,y:.65}},cancel);
     if(cancel!=='close') {
-      const expected=resolveControlLayout(controlViewport(f.scene as unknown as Phaser.Scene),f.app.controlLayout.snapshot()).move;
+      const expected=resolveControlLayout(controlViewport(),f.app.controlLayout.snapshot()).move;
       assert.deepEqual([object.x,object.y],[expected.x,expected.y],cancel);
     }
   }
 });
 
 test('shortcut registration uses the same custom positions for both pages',t=>{
-  const f=fixture();t.after(f.cleanup);
+  const f=fixture();t.after(f.cleanup);f.scene.setSampling(3);
   f.app.controlLayout.set('slot-0',{x:.2,y:.4});f.app.controlLayout.set('swap',{x:.6,y:.3});
   const source=f.entry(items.startingShortcut);f.menu.debugDescribe(source.id);
   f.scene.click(f.scene.button('取消快捷键'));f.scene.click(f.scene.button('快捷键'));
   const center=(button:Display)=>button.getWorldTransformMatrix().transformPoint(button.input!.hitArea.width/2,button.input!.hitArea.height/2);
-  const expected=resolveControlLayout(controlViewport(f.scene as unknown as Phaser.Scene),f.app.controlLayout.snapshot());
+  const expected=resolveControlLayout(controlViewport(),f.app.controlLayout.snapshot());
   for(let page=0;page<2;page++) {
     assert.deepEqual(center(f.scene.button('快捷位 1')),{x:expected['slot-0'].x,y:expected['slot-0'].y});
     assert.deepEqual(center(f.scene.button('切换技能组')),{x:expected.swap.x,y:expected.swap.y});
@@ -2482,10 +2485,12 @@ test('场景关闭后菜单作用域已注销', () => {
 
 test('long item descriptions keep the discard quantity row inside the dialog', t => {
   const f=fixture();t.after(f.cleanup);
+  f.scene.setSampling(3);
   const source=f.add('sp-weapon-enhance-scroll',3);
   f.menu.debugDescribe(source.id);
   f.scene.click(f.scene.button('丢弃'));
   const box=f.internals.modalBox,scroll=f.internals.modal.scrolls[0]!;
+  assert.deepEqual([f.internals.modal.width,f.internals.modal.height],[box.width,box.height],'根节点跟随实际弹层尺寸');
   assert.ok(box.height>350,'弹层按长说明增高，不再截断正文');
   assert.ok((scroll as unknown as {extent:number}).extent<=scroll.height+1e-6,'正文高度落在可视区内');
   const root=f.internals.modal.root,scale=root.scaleX;
@@ -2495,6 +2500,49 @@ test('long item descriptions keep the discard quantity row inside the dialog', t
     const bottom=button.getWorldTransformMatrix().transformPoint(0,button.height);
     return bottom.y<=root.y+box.height*scale+1e-6;
   }),`${label} 底边不越出弹层`);
+});
+
+test('sampling changes preserve discard and save popup coverage, text and pointer input',t=>{
+  const f=fixture();t.after(f.cleanup);
+  f.scene.resize(844,390);Object.assign(menuFrame,{left:13,top:7});
+  const source=f.add('sp-weapon-enhance-scroll',3);
+  const snapshot=()=>({
+    box:[f.internals.modal.root.x,f.internals.modal.root.y,f.internals.modal.width,f.internals.modal.height,f.internals.modal.root.scaleX],
+    labels:visibleDomLabels(f).map(label=>[label.text,label.x,label.y,label.style.fontSize,label.style.width]),
+  });
+  const covered=()=>{
+    const mask=f.internals.popupMask;
+    assert.equal(mask.shown,true);
+    assert.deepEqual([mask.x,mask.y,mask.width,mask.height],[0,0,844,390]);
+    assert.equal(f.internals.modal.mount.style.transform||'', '', '界面根容器直接使用屏幕坐标');
+    assert.equal(f.internals.modal.mount.style.zIndex,'0','图片控件在独立文字层下方');
+  };
+  let discard:ReturnType<typeof snapshot>|undefined;
+  for(const density of [1,2,2.625,3,1]){
+    f.scene.setSampling(density);f.menu.debugDescribe(source.id);f.scene.click(f.scene.button('丢弃'));
+    covered();discard??=snapshot();assert.deepEqual(snapshot(),discard,`${density}× 丢弃框和文字保持位置及大小`);
+    f.scene.click(f.scene.button('取消'));assert.equal(f.internals.modal.root.visible,false);
+  }
+  f.menu.show('save');f.scene.click(f.scene.button('存档槽 1'));f.scene.click(f.scene.button('确认'));
+  let save:ReturnType<typeof snapshot>|undefined;
+  for(const density of [1,2,2.625,3,1]){
+    f.scene.setSampling(density);f.scene.click(f.scene.button('存档槽 1'));
+    covered();save??=snapshot();assert.deepEqual(snapshot(),save,`${density}× 存档确认保持位置及大小`);
+    assert.deepEqual([f.internals.modal.width,f.internals.modal.height],[1024,640]);
+    const band=f.internals.modal.root.list.find(node=>node.element.style.background==='rgba(0,0,0,1)')!;
+    assert.ok(band,'存档确认有不透明横带');
+    const bounds=band.getBounds();assert.ok(Math.abs(bounds.x)<1e-6);assert.ok(Math.abs(bounds.width-844)<1e-6,'横带铺满屏幕');
+    assert.equal(f.scene.canHit(f.scene.button('存档槽 1')),false,'弹层阻止底层操作');
+    f.scene.click(f.scene.button('否'));assert.equal(f.internals.modal.root.visible,false);
+  }
+  f.scene.click(f.scene.button('存档槽 1'));
+  for(const [width,height] of [[390,844],[960,540],[844,390]]){
+    f.scene.resize(width,height);
+    const band=f.internals.modal.root.list.find(node=>node.element.style.background==='rgba(0,0,0,1)')!;
+    const bounds=band.getBounds();assert.ok(Math.abs(bounds.x)<1e-6);assert.ok(Math.abs(bounds.width-width)<1e-6,'屏幕尺寸变化时，已打开的横带重新铺满');
+    assert.deepEqual([f.internals.popupMask.width,f.internals.popupMask.height],[width,height]);
+  }
+  f.scene.click(f.scene.button('否'));assert.equal(f.internals.modal.root.visible,false);
 });
 
 test('the discard dialog keeps the bag text outside the popup', t => {

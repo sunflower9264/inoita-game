@@ -14,33 +14,21 @@ const mounts=new WeakMap<Phaser.Scene,Map<string,HTMLElement>>();
 const pointers=new WeakMap<Phaser.Scene,Map<number,UiPointer>>();
 const interactiveNodes=new WeakMap<Phaser.Scene,Set<UiNode>>();
 
-/**
- * 屏幕节点的逻辑坐标与场景一致，浏览器按实际 CSS 尺寸缩放原图。
- *
- * 缩放基准统一取 `#game-frame`（可视画框），不取画布矩形：直接写 CSS 的 DOM 文字
- * 也是按画框换算的，两层必须落在同一个原点和倍率上。画布被浏览器居中、留边或
- * 像素取整时，按画布矩形缩放会让图片和遮罩整体偏离文字，右侧露出空隙。
- */
+/** 屏幕节点直接使用画框内的 CSS 坐标；图片与控件在独立文字层下方排层。 */
 export function uiMount(scene:Phaser.Scene,layer='screen'):HTMLElement {
   let layers=mounts.get(scene);if(!layers){layers=new Map();mounts.set(scene,layers);}
   const old=layers.get(layer);if(old)return old;
   const parent=document.getElementById(`ui-${layer}`);if(!parent)throw new Error(`DOM UI layer missing: ${layer}`);
   const element=document.createElement('div');
-  Object.assign(element.style,{position:'absolute',pointerEvents:'none',transformOrigin:'0 0'});
+  Object.assign(element.style,{position:'absolute',inset:'0',zIndex:'0',pointerEvents:'none'});
   parent.appendChild(element);layers.set(layer,element);
-  const layout=()=>{
-    const frame=frameRect();
-    Object.assign(element.style,{left:'0px',top:'0px',width:`${scene.scale.width}px`,height:`${scene.scale.height}px`,
-      transform:`scale(${frame.width/scene.scale.width},${frame.height/scene.scale.height})`});
-  };
-  layout();scene.scale.on('resize',layout);
   const hide=()=>{element.hidden=true;for(const pointer of pointers.get(scene)?.values()??[])pointer.isDown=false;for(const node of interactiveNodes.get(scene)??[])node.cancelPress();},show=()=>{element.hidden=false;};
   scene.events.on('pause',hide);scene.events.on('sleep',hide);scene.events.on('resume',show);scene.events.on('wake',show);
   const input=new AbortController();
   for(const name of ['pointermove','pointerup','pointercancel'])window.addEventListener(name,event=>uiPointer(scene,event as PointerEvent),{capture:true,signal:input.signal});
   window.addEventListener('blur',()=>{for(const pointer of pointers.get(scene)?.values()??[])pointer.isDown=false;pointers.get(scene)?.clear();
     for(const node of interactiveNodes.get(scene)??[])node.cancelPress();},{signal:input.signal});
-  scene.events.once('shutdown',()=>{input.abort();pointers.delete(scene);scene.scale.off('resize',layout);for(const name of ['pause','sleep'])scene.events.off(name,hide);for(const name of ['resume','wake'])scene.events.off(name,show);element.remove();layers!.delete(layer);});
+  scene.events.once('shutdown',()=>{input.abort();pointers.delete(scene);for(const name of ['pause','sleep'])scene.events.off(name,hide);for(const name of ['resume','wake'])scene.events.off(name,show);element.remove();layers!.delete(layer);});
   return element;
 }
 
@@ -64,7 +52,7 @@ export function uiPointer(scene:Phaser.Scene,event:PointerEvent):UiPointer {
   const bounds=frameBounds(scene);
   let table=pointers.get(scene);if(!table){table=new Map();pointers.set(scene,table);}
   let pointer=table.get(event.pointerId);if(!pointer){pointer={id:event.pointerId,x:0,y:0,isDown:false,event};table.set(event.pointerId,pointer);}
-  Object.assign(pointer,{x:(event.clientX-bounds.left)*scene.scale.width/bounds.width,y:(event.clientY-bounds.top)*scene.scale.height/bounds.height,isDown:event.type!=='pointercancel'&&event.type!=='pointerup'&&event.buttons!==0,event});
+  Object.assign(pointer,{x:event.clientX-bounds.left,y:event.clientY-bounds.top,isDown:event.type!=='pointercancel'&&event.type!=='pointerup'&&event.buttons!==0,event});
   if(!pointer.isDown)table.delete(event.pointerId);
   return pointer;
 }

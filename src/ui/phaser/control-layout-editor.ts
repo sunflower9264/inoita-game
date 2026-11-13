@@ -12,7 +12,6 @@ import { DPAD_ARROW_OFFSET, DPAD_ARROW_SCALE_NORM, DPAD_BASE_RADIUS, DPAD_RUNE_A
 import { controlSettings } from '../../application/control-settings.ts';
 import type { DomLabel, DomUi } from '../dom/dom-ui.ts';
 import { controlViewport } from './control-layout-viewport.ts';
-import { canvasCssScale } from '../viewport.ts';
 import { GOLD, UiSurface } from './widgets.ts';
 
 /** 白色选中框离控件边缘的距离（屏幕像素）。 */
@@ -89,7 +88,7 @@ export class ControlLayoutEditor {
   }
 
   layout(): void {
-    const viewport=controlViewport(this.scene),key=JSON.stringify(viewport);
+    const viewport=controlViewport(),key=JSON.stringify(viewport);
     if(key!==this.viewportKey) {this.viewportKey=key;this.cancelDrags();}
     const positions=this.resolve(viewport);
     this.placements=positions;
@@ -141,7 +140,7 @@ export class ControlLayoutEditor {
     this.quantities=[];
   }
 
-  private resolve(viewport = controlViewport(this.scene)): Record<ControlId, ControlPlacement> {
+  private resolve(viewport = controlViewport()): Record<ControlId, ControlPlacement> {
     return resolveControlLayout(viewport,this.previewOverrides(),this.moveSize());
   }
 
@@ -157,7 +156,7 @@ export class ControlLayoutEditor {
       ()=>this.setMode('scale'),{selected:this.mode==='scale'}).setData('label','缩放');
   }
 
-  /** 工具栏按钮文字投影到画框；按钮底图和命中区仍留在 Phaser。 */
+  /** 工具栏文字、按钮底图与命中区共用画框内的 CSS 坐标。 */
   private placeToolbarText(): void {
     const dom=this.dom,shown=this.toolbar.root.visible,font=Math.min(22,TOOLBAR_HEIGHT*.42),seen=new Set<string>();
     const entries:[string,string,UiNode|undefined,number][] = [
@@ -170,9 +169,9 @@ export class ControlLayoutEditor {
       seen.add(key);
       let label=this.toolbarLabels.get(key);
       if(!label){label=dom.label('screen','dom-control-toolbar',{x:.5,y:.5});this.toolbarLabels.set(key,label);}
-      const matrix=button.getWorldTransformMatrix(),point=matrix.transformPoint(width/2,TOOLBAR_HEIGHT/2),css=canvasCssScale(this.scene);
-      label.setText(text).setPosition(point.x*css,point.y*css)
-        .setStyle({fontSize:`${Math.max(1,font*matrix.scaleX*css)}px`,color:GOLD}).setVisible(shown);
+      const matrix=button.getWorldTransformMatrix(),point=matrix.transformPoint(width/2,TOOLBAR_HEIGHT/2);
+      label.setText(text).setPosition(point.x,point.y)
+        .setStyle({fontSize:`${Math.max(1,font*matrix.scaleX)}px`,color:GOLD}).setVisible(shown);
     }
     for(const [key,label] of this.toolbarLabels){if(seen.has(key))continue;label.remove();this.toolbarLabels.delete(key);}
   }
@@ -186,9 +185,9 @@ export class ControlLayoutEditor {
       seen.add(quantity.id);
       let label=this.quantityLabels.get(quantity.id);
       if(!label){label=dom.label('screen','dom-control-quantity',{x:.5,y:.5});this.quantityLabels.set(quantity.id,label);}
-      const matrix=object.getWorldTransformMatrix(),point=matrix.transformPoint(32,23),css=canvasCssScale(this.scene);
-      label.setText(quantity.text).setAnchor(.5,.5).setPosition(point.x*css,point.y*css)
-        .setStyle({fontSize:`${Math.max(1,18*matrix.scaleX*css*quantity.fit)}px`,color:'#ffffff'}).setVisible(shown);
+      const matrix=object.getWorldTransformMatrix(),point=matrix.transformPoint(32,23);
+      label.setText(quantity.text).setAnchor(.5,.5).setPosition(point.x,point.y)
+        .setStyle({fontSize:`${Math.max(1,18*matrix.scaleX*quantity.fit)}px`,color:'#ffffff'}).setVisible(shown);
     }
     for(const [id,label] of this.quantityLabels){if(seen.has(id))continue;label.remove();this.quantityLabels.delete(id);}
   }
@@ -270,7 +269,7 @@ export class ControlLayoutEditor {
       object.on('drag',(pointer:UiPointer,x:number,y:number)=>{
         if(this.scaleDrag?.id===id){this.updateScale(pointer);return;}
         const drag=this.drags.get(id);if(!drag||drag.pointer.id!==pointer.id)return;
-        const viewport=controlViewport(this.scene),positions=this.preferences.snapshot(),moveSize=this.moveSize();
+        const viewport=controlViewport(),positions=this.preferences.snapshot(),moveSize=this.moveSize();
         drag.point=normalizeControlPosition(viewport,id,{x,y},positions,moveSize);
         const position=resolveControlLayout(viewport,{...positions,[id]:drag.point},moveSize)[id];
         object.setPosition(position.x,position.y);
@@ -329,7 +328,7 @@ export class ControlLayoutEditor {
 
   /** 记住当前中心和“1 倍时的中心到角距离”，拖动中只换算倍率。 */
   private beginScale(pointer: UiPointer, id: ControlId, placement: ControlPlacement): void {
-    const viewport=controlViewport(this.scene),overrides=this.preferences.snapshot(),moveSize=this.moveSize();
+    const viewport=controlViewport(),overrides=this.preferences.snapshot(),moveSize=this.moveSize();
     const point=normalizeControlPosition(viewport,id,{x:placement.x,y:placement.y},overrides,moveSize);
     const baseWidth=placement.width/placement.userScale,baseHeight=placement.height/placement.userScale;
     this.scaleDrag={pointer,id,point,center:{x:placement.x,y:placement.y},

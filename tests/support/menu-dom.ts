@@ -35,10 +35,14 @@ export class MenuElement {
   }
 }
 export const domWindow = Object.assign(new MenuElement(), {devicePixelRatio:1});
+/** 画框的屏幕矩形；与测试场景的画布像素宽高分别设置。 */
+export const menuFrame = {left:0,top:0,width:1024,height:640};
 const documentRoot=new MenuElement();domWindow.appendChild(documentRoot);
 const layers=new Map<string,MenuElement>();
 for(const id of ['game-frame','safe-area','ui-screen','ui-overlay','ui-hud','ui-world']){const node=new MenuElement();node.id=id;documentRoot.appendChild(node);layers.set(id,node);}
+layers.get('game-frame')!.getBoundingClientRect=()=>({...menuFrame,x:menuFrame.left,y:menuFrame.top,right:menuFrame.left+menuFrame.width,bottom:menuFrame.top+menuFrame.height});
 export function installMenuDom() {
+  Object.assign(menuFrame,{left:0,top:0,width:1024,height:640});
   const names=['window','document','getComputedStyle','Image','fetch'];
   const previous=names.map(name=>Object.getOwnPropertyDescriptor(globalThis,name));
   Object.defineProperties(globalThis,{

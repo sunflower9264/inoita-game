@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import test, {after} from 'node:test';
 import { drawNativeMessage } from '../src/ui/phaser/native-message.ts';
 import type { UiSurface } from '../src/ui/phaser/widgets.ts';
+import { installMenuDom, menuFrame } from './support/menu-dom.ts';
+
+after(installMenuDom());
+menuFrame.width=960;
 
 interface RectCall { x:number; y:number; width:number; height:number; alpha:number }
 interface ButtonCall { x:number; y:number }
@@ -13,8 +17,7 @@ function surface(originX=70.4,originY=64,textHeight=48) {
     setOrigin(){return text;},setAlign(){return text;},setPosition(){return text;},destroy(){}};
   const image={setOrigin(){return image;},setFlipY(){return image;}};
   const view={
-    // 弹层实际画布可以很小（450×350），确认层按 1024×640 的外框居中。
-    width:450,height:350,
+    width:1024,height:640,
     root:{x:originX,y:originY,scaleX:.8,scaleY:.8,bringToTop() {},
       getWorldTransformMatrix(){return {scaleX:.8,scaleY:.8,
         transformPoint(x:number,y:number){return {x:originX+x*.8,y:originY+y*.8};}};}},

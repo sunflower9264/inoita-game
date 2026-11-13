@@ -4,7 +4,7 @@
 
 ## 文件
 
-- 布局：`bag-layout.ts`（背包格位）、`skill-book-layout.ts`（技能书页的图标格与右栏）、`choice-layout.ts`（选项竖排）、`control-layout.ts`（控件键位）、`item-layout.ts`（物品格与货币）、`shop-layout.ts`（商店两栏）、`quest-popup-layout.ts`（任务窗）、`description-text-layout.ts`（说明断行）、`text-layout.ts`（通用换行）、`cloud-save-layout.ts`（云存档页状态、颜色与几何）、`changelog-layout.ts`（标题页更新日志弹窗与可视窗口）、`portrait-fit.ts`（头像等比裁剪）、`viewport.ts`（画布缩放、采样倍率、安全区与参考分辨率，`canvasCssScale` 把游戏坐标换成画框 CSS 坐标）。
+- 布局：`bag-layout.ts`（背包格位）、`skill-book-layout.ts`（技能书页的图标格与右栏）、`choice-layout.ts`（选项竖排）、`control-layout.ts`（控件键位）、`item-layout.ts`（物品格与货币）、`shop-layout.ts`（商店两栏）、`quest-popup-layout.ts`（任务窗）、`description-text-layout.ts`（说明断行）、`text-layout.ts`（通用换行）、`cloud-save-layout.ts`（云存档页状态、颜色与几何）、`changelog-layout.ts`（标题页更新日志弹窗与可视窗口）、`portrait-fit.ts`（头像等比裁剪）、`viewport.ts`（屏幕尺寸、安全区、画布采样倍率与参考分辨率；`screenRectToCanvas` 将菜单预览的屏幕矩形交给游戏画布）。
 - 文本与样式：`text-style.ts`（共用字体）、`text-prompt.ts`（系统键盘输入，用于存档改名）、`cloud-credentials-input.ts`（云存档页内嵌的账号/密码输入框）、`password-change-prompt.ts`（修改密码的当前/新/确认三项表单）、`dialogue-text.ts`（对白分页、断行与逐字显示）、`item-detail-lines.ts`（物品说明行）、`skill-detail-lines.ts`（技能说明行）、`item-result-details.ts`（操作结果说明）、`enhancement-odds-lines.ts`（强化结果句与混沌结果表）、`item-name-color.ts`（品质颜色与装备格边框）、`character-values.ts`（角色数值）。
 - 接口与交互：`game-ui.ts`（UI 能力与视图接口）、`story-ui.ts`（剧情与菜单 UI 的接口、页面枚举和提示文案）、`story-ui-signature.ts`（菜单页面 viewModel 与显式签名）、`save-page.ts`（存档/读档页 controller）、`action-press-gate.ts`（动作按钮互斥）、`common-button.ts`（通用按钮素材）、`instant-message.ts`（屏幕提示）、`quest-progress.ts`（任务完成/进度提示的纯函数）、`slot-frame.ts`（格子底图）。
 - DOM 组件：`dom/node.ts`、`dom/surface.ts` 提供菜单图片、文本、按钮、裁剪、滚动与原生指针；`dom/volume-slider.ts` 提供音量条。
@@ -17,7 +17,7 @@
 - **头像按比例裁进框。** HUD、人物页和队员栏的头像用 `portraitFit` / `UiSurface.imageCover` 等比缩放后裁剪；背包和队伍装备页的备用人物图用 `imageContain` 完整放进预览框。
 - 人物页的生命、魔法、经验三行位于立绘下方；标签、数值和百分比按对应槽位的中心线对齐，最后一行完整落在面板内。叠在彩色槽上的数值使用贴合文字宽度的深色底，保持笔画清晰。
 - **画面铺满，安全区只给 UI 避让。** Android 壳用 edge-to-edge 铺满整屏；`readSafeArea()` 只用于 HUD、侧边按钮、小地图和文字的安全边，不参与画布尺寸。画布内部像素按采样倍率放大，再由 CSS 缩回画框。
-- **两套坐标分开用，但基准统一取画框。** `UiSurface`/`UiNode` 用游戏单位，`uiMount` 负责缩到画框；直接写 CSS 的 DOM 文字用 `canvasCssScale` 换算，HUD 组件用 `controlViewportCss` 的 CSS 视口。两者都从 `#game-frame` 的矩形取宽度和位置，不取画布矩形：Phaser 的画布可能被居中、留边或像素取整，按画布换算会让图框和遮罩整体偏离文字。1× 时比例为 1。
+- **屏幕 UI 统一用画框内的 CSS 像素。** `UiSurface` 按 `#game-frame` 的宽高与安全区将设计尺寸适配一次，节点变换后的坐标直接用于文字、图片与输入；`controlViewport()` 为 HUD、编辑器和快捷键登记提供同一份屏幕视口。采样倍率只调整游戏画布，屏幕 UI 的位置、大小和命中区域保持一致。菜单动态角色通过 `screenRectToCanvas` 接入画布，世界提示通过 `DomUi.worldToScreen` 投影到屏幕。
 - 安卓手机浏览器与安装包横屏时，界面顶部以画面顶边为起点；左右和底部继续使用安全边距，竖屏及其他平台按系统提供的安全区布局。
 - 左侧存档和菜单按钮与小地图共用安全区起点及缩放，从小地图下沿开始排；静态层容器不参与按钮排序。
 - `story-ui.ts` 的长按加点与背包拖放接收窗口原生移动、松手、取消和失焦事件；正文重绘后仍能结束手势。侧边按钮按实际内容节点判断是否已创建。

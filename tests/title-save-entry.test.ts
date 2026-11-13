@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import test, {after} from 'node:test';
 import {registerHooks} from 'node:module';
 import {SaveSlots,SAVE_FORMAT,type SaveSlotRef} from '../src/domain/save-game.ts';
 import type {MenuContext} from '../src/application/ports.ts';
@@ -9,6 +9,9 @@ import {CLOUD_PAGE} from '../src/ui/cloud-save-layout.ts';
 import {InputRouter} from '../src/application/input-router.ts';
 import {MenuTextLayer,type MenuTextOcclude,type MenuTextSpec} from '../src/ui/dom/menu-text.ts';
 import type {DomUi} from '../src/ui/dom/dom-ui.ts';
+import {installMenuDom,menuFrame} from './support/menu-dom.ts';
+after(installMenuDom());
+menuFrame.width=1200;
 const hook=registerHooks({resolve(specifier,context,next){return specifier==='phaser'?{url:'data:text/javascript,export default {Scene:class{},BlendModes:{}}',shortCircuit:true}:next(specifier,context);}});
 const {MenuScene}=await import('../src/scenes/menu-scene.ts');
 const {UiSurface}=await import('../src/ui/phaser/widgets.ts');hook.deregister();
@@ -47,7 +50,7 @@ function fakeView(width:number,height:number){
   const zones:{handlers:Map<string,()=>void>}[]=[];
   return {
     width,height,
-    root:{visible:true,shown:true,bringToTop:()=>{},setPosition:function(){return this;},setScale:function(){return this;},add:()=>{},getWorldTransformMatrix:()=>({scaleX:1,scaleY:1,transformPoint:(x:number,y:number)=>({x,y})})},
+    root:{width,height,visible:true,shown:true,bringToTop:()=>{},setSize:function(width:number,height:number){this.width=width;this.height=height;return this;},setPosition:function(){return this;},setScale:function(){return this;},add:()=>{},getWorldTransformMatrix:()=>({scaleX:1,scaleY:1,transformPoint:(x:number,y:number)=>({x,y})})},
     buttons:[] as Button[],texts:[] as string[],textNodes:[] as TextNode[],scrolls:[] as FakeScroll[],zones,
     sliders:[] as {label:string;value:number;setValue:(value:number)=>void}[],enabled:()=>true,focusIndex:-1,
     scene:{game:{events:{emit:()=>{}}},scale:{width,height},add:{zone:()=>{const handlers=new Map<string,()=>void>();const zone={handlers,setOrigin(){return zone;},setInteractive(){return zone;},on(event:string,handler:()=>void){handlers.set(event,handler);return zone;}};zones.push(zone);return zone;}}},focus:()=>{},layout:()=>{},image:stub,
@@ -93,7 +96,7 @@ function fixture(gmMode?:MenuContext['gmMode'],cloud?:CloudSavePort){
   // 直接借用 MenuScene.prototype 的假场景不会跑字段初始化；这里补上新加的私有状态，
   // 尤其是 cloudSerial（`++undefined` 会变成 NaN，后续请求代次比较全部失败）。
   const state={app,surface:view,modal,page:'home',cloudSerial:0,cloudBusy:false,cloudAccountInput:'',cloudPassword:'',
-    // DOM 文字按画布倍率换算；标题页测试也补齐 Phaser ScaleManager 的 `zoom`。
+    // 场景缩放通知与屏幕布局分别提供。
     scale:{width:1200,height:640,zoom:1,on(){},off(){}},
     cloudStatus:undefined,cloudCount:undefined,cloudRequest:undefined,confirmAction:undefined,confirmResolve:undefined,
     renameRef:undefined,slotRequest:undefined,slotPortraits:undefined,prompt:undefined,settingsScroll:0,backdrop:undefined,

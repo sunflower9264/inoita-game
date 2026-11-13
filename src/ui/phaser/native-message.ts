@@ -30,7 +30,7 @@ export interface NativeMessageBand { top:number; height:number; left:number; wid
  */
 export function drawNativeMessage(v:UiSurface,assets:Record<string,string>,message:string,accept:()=>void,cancel?:()=>void,
   writer?:MenuTextWriter,scroll?:NativeMessageScroll):NativeMessageBand {
-  // 弹层常按 1024×640 的外框居中，但 surface 自身可能是 450×350；横带按根节点实际原点铺满屏幕。
+  // 确认层按 1024×640 的内容框居中；横带按根节点实际原点铺满屏幕。
   const width=1024,height=640,screen=screenCoverage(v),center=width/2;
   v.rect(screen.left,screen.top,screen.width,screen.height,0xaa966e,.13);
   const text=v.text(message,center,0,410,24,'#ffffff').setOrigin(.5,0);

@@ -3,6 +3,7 @@ import type { ActorDefinition } from '../../domain/content.ts';
 import type { CharacterVisual } from '../../rendering/characters.ts';
 import { characterFrameList } from '../../rendering/character-atlas.ts';
 import type { UiSurface } from '../dom/surface.ts';
+import { screenRectToCanvas } from '../viewport.ts';
 
 export interface PreviewRect { x:number; y:number; width:number; height:number }
 
@@ -40,13 +41,14 @@ export class LiveCharacterPreview {
   layout():void{
     if(!this.shown||!this.target||!this.visual)return;
     const {surface,rect}=this.target,matrix=surface.root.getWorldTransformMatrix(),point=matrix.transformPoint(rect.x,rect.y);
-    const box={x:point.x,y:point.y,width:rect.width*matrix.scaleX,height:rect.height*matrix.scaleY};
+    const screenBox={x:point.x,y:point.y,width:rect.width*matrix.scaleX,height:rect.height*matrix.scaleY};
+    const box=screenRectToCanvas(this.scene,screenBox);
     const clip=this.visual.actor.clips['idle-south']!,scale=Math.min(box.width/clip.frameWidth,box.height/clip.frameHeight);
     const left=box.x+(box.width-clip.frameWidth*scale)/2,top=box.y+(box.height-clip.frameHeight*scale)/2;
     const originX=clip.mirrorX?1-clip.originX:clip.originX;
     this.visual.container.setScale(scale).setPosition(left+originX*clip.frameWidth*scale,top+clip.originY*clip.frameHeight*scale);
     this.background?.setPosition(box.x,box.y).setSize(box.width,box.height);
-    this.hole(box);
+    this.hole(screenBox);
   }
   detach():void{this.target=undefined;this.visual?.container.setVisible(false);this.background?.setVisible(false);this.hole();}
   destroy():void{this.detach();this.visual?.container.destroy();this.visual=undefined;this.background?.destroy();this.background=undefined;}

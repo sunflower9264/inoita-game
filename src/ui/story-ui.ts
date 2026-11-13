@@ -31,7 +31,7 @@ import { inventoryView,INVENTORY_LABELS,INVENTORY_SIDE_FILTERS,type InventoryVie
 import { EQUIPMENT_SLOTS,SKILL_POINT_ITEM,USE_LABELS,unimplementedItemUse,type EquipmentSlot,type ItemInstance,type ItemResult } from '../domain/items.ts';
 import { GmPanel } from './phaser/gm-panel.ts';
 import type { GmActions } from '../debug/gm-actions.ts';
-import { canvasCssScale, frameRect, readSafeArea, uiUnitScale } from './viewport.ts';
+import { frameRect, readSafeArea, uiUnitScale } from './viewport.ts';
 import { ControlLayoutEditor } from './phaser/control-layout-editor.ts';
 import { KeyBindingEditor } from './phaser/key-binding-editor.ts';
 import { CONTROL_SIZES, HUD_SIDE_BUTTON_SIZE, PENDING_OFFSET, resolveControlLayout, type ControlId } from './control-layout.ts';
@@ -170,6 +170,7 @@ export class StoryUI {
   /** 当前弹层的框尺寸，由打开它的对话框声明；初值只是没有对话框时的兜底。 */
   private modalBox={width:450,height:350};
   private modalActive=false;
+  private resizeViewport='';
   private readonly placeModal=(width:number,height:number):void=>this.beginModal(width,height);
   private skill?:string;private skillSection:'directory'|'ai'|'settings'='directory';private skillReset=false;private adjusting=false;
   /** 存档/读档页：确认框、改名输入和读档请求都由它自己持有。 */
@@ -210,6 +211,7 @@ export class StoryUI {
    * 所有页共用同一个原点——商店页曾经单独上移 32 像素，那是没有依据的特例。
    */
   attach(scene:Phaser.Scene,createPreview?:(actor:ActorDefinition)=>CharacterVisual):void{
+    this.resizeViewport=JSON.stringify(controlViewport());
     this.scene=scene;this.surface=new UiSurface(scene,1024,640,100);this.body=new UiSurface(scene,960,431,200);this.surface.root.add(this.body.root);this.body.root.setPosition(CONTENT_ORIGIN.x,CONTENT_ORIGIN.y);
     // 交易弹层的画布按原版数量框的 450×350 建立，确认框在其中垂直居中。
     this.modal=new UiSurface(scene,450,350,400);this.modal.root.setPosition(287,145);
@@ -596,7 +598,12 @@ export class StoryUI {
   }
   private onMinimap(height:number):void{this.minimapHeight=height;this.layout();}
   /** 缩放时登记屏的圆槽要按新锚点重摆，所以不光是 `layout`。 */
-  private resize():void{this.layout();if(this.open&&this.shortcutEdit){this.renderShortcutScreen();this.renderBackButton();}}
+  private resize():void{
+    const viewport=JSON.stringify(controlViewport()),changed=viewport!==this.resizeViewport;
+    this.resizeViewport=viewport;this.layout();
+    if(changed&&this.open&&this.modalActive)this.render();
+    if(this.open&&this.shortcutEdit){this.renderShortcutScreen();this.renderBackButton();}
+  }
   /**
    * 弹层画布按当前对话框的尺寸在菜单里居中。对话框开局声明一次并立即生效；`layout()` 在缩放
    * 变化时按同一个尺寸重算，所以锚点始终跟得上当前打开的那一个。
@@ -604,6 +611,7 @@ export class StoryUI {
   private beginModal(width:number,height:number):void{this.modalBox={width,height};this.positionModal();}
   private positionModal():void{if(this.surface&&this.modal)centerModal(this.modal,this.surface,this.modalBox.width,this.modalBox.height);}
   private layout():void{
+    const frame=frameRect();
     this.controlEditor?.layout();this.keyBindingEditor?.layout();
     this.surface?.layout(12);this.positionModal();
     // 说明面板不在 surface 之下，位置与缩放按 surface 的世界变换同步，坐标系与内容块一致。
@@ -611,27 +619,25 @@ export class StoryUI {
     // 登记快捷键那一屏按原版的屏幕坐标摆：缩放取操作区的缩放，屏幕左上角为原点；
     // 圆形关闭钮再让开设备安全区，其余内容里的 HUD 锚点已经算过安全区。
     if(this.scene&&this.shortcutScreen&&this.backTab){
-      const {scale}=controlPlacement(this.scene,this.scene.scale.width,this.scene.scale.height),frame=frameRect(),safe=readSafeArea(),unit=this.scene.scale.width/Math.max(1,frame.width);
+      const {scale}=controlPlacement(),safe=readSafeArea();
       // 登记屏的内容按整屏坐标摆，根节点也要铺满整屏：小于内容的根节点会把右侧按钮裁掉。
       this.shortcutScreen.root.setPosition(0,0).setScale(scale)
-        .setSize(this.scene.scale.width/scale,this.scene.scale.height/scale);
-      this.backTab.root.setPosition(safe.left*unit,safe.top*unit).setScale(scale);
+        .setSize(frame.width/scale,frame.height/scale);
+      this.backTab.root.setPosition(safe.left,safe.top).setScale(scale);
     }
     this.body?.scrolls.forEach(scroll=>scroll.layout());this.description?.scrolls.forEach(scroll=>scroll.layout());this.modal?.scrolls.forEach(scroll=>scroll.layout());
     if(this.hudButtons&&this.scene){
-      const v=this.hudButtons,viewport=controlViewport(this.scene),scale=uiUnitScale(viewport.width,viewport.height);
-      // 12 是界面里的固定留白；贴安全区时也要跟着画框倍率换成游戏单位。
-      const unit=this.scene.scale.width/Math.max(1,frameRect().width);
-      v.root.setScale(scale).setPosition(viewport.insets.left+12*unit,viewport.insets.top);
+      const v=this.hudButtons,viewport=controlViewport(),scale=uiUnitScale(viewport.width,viewport.height);
+      v.root.setScale(scale).setPosition(viewport.insets.left+12,viewport.insets.top);
       let index=0;
       for(const button of v.root.list){
         if(button===v.staticRoot)continue;
         button.setPosition(0,this.minimapHeight+12+index++*(HUD_SIDE_BUTTON_SIZE+8));
       }
     }
-    this.backdrop?.setSize(this.scene!.scale.width,this.scene!.scale.height);this.bagPortrait?.layout();
-    this.popupMask?.setSize(this.scene!.scale.width,this.scene!.scale.height);
-    // 画布缩放变化后，DOM 文字的 CSS 坐标和字号要跟着重算。
+    this.backdrop?.setSize(frame.width,frame.height);this.bagPortrait?.layout();
+    this.popupMask?.setSize(frame.width,frame.height);
+    // 屏幕尺寸变化后，文字和图框按同一份页面变换重排。
     this.menuText?.refresh();
     if(this.shortcutEdit)this.placeShortcutPrompt();
   }
@@ -641,8 +647,8 @@ export class StoryUI {
     const fullPage=this.page==='system'||this.page==='save'||this.page==='load';
     const root=fullPage?this.surface?.root:this.body?.root;
     if(!root)return{x,y,scale:1};
-    const matrix=root.getWorldTransformMatrix(),point=matrix.transformPoint(x,y),css=this.scene?canvasCssScale(this.scene):1;
-    return{x:point.x*css,y:point.y*css,scale:matrix.scaleX*css};
+    const matrix=root.getWorldTransformMatrix(),point=matrix.transformPoint(x,y);
+    return{x:point.x,y:point.y,scale:matrix.scaleX};
   }
   /** 弹层本地坐标 → 内容块坐标；DOM 层统一按内容块根节点换算 CSS 位置。 */
   private modalToPagePoint(x:number,y:number):{x:number;y:number}{
@@ -1585,7 +1591,7 @@ export class StoryUI {
   private renderShortcutScreen():void{
     const edit=this.shortcutEdit,screen=this.shortcutScreen,skin=this.app.controlSkin,scene=this.scene;
     if(!edit||!screen||!scene)return;
-    screen.clear();const v=screen,{scale,anchor}=controlPlacement(scene,scene.scale.width,scene.scale.height),slots=this.shortcutBar().page(edit.page),positions=resolveControlLayout(controlViewport(scene),this.app.controlLayout.snapshot());
+    screen.clear();const v=screen,{scale,anchor}=controlPlacement(),slots=this.shortcutBar().page(edit.page),positions=resolveControlLayout(controlViewport(),this.app.controlLayout.snapshot());
     // 顶部提示：原版 `GRPX_DrawStringWithFont(TEXTDATABASE[146], 屏宽/2, 110)`，白字居中。
     this.placeShortcutPrompt();
     // 攻击按钮是轮盘的中心锚点，登记屏也要按当前布局画出来；只画槽位会让中间空一块。
@@ -1616,11 +1622,11 @@ export class StoryUI {
   private placeShortcutPrompt():void{
     const edit=this.shortcutEdit,screen=this.shortcutScreen,scene=this.scene,prompt=this.shortcutPrompt;
     if(!edit||!screen||!scene||!prompt)return;
-    const {scale}=controlPlacement(scene,scene.scale.width,scene.scale.height);
-    const matrix=screen.root.getWorldTransformMatrix(),css=canvasCssScale(scene);
-    const point=matrix.transformPoint(scene.scale.width/scale/2,110);
-    prompt.setText(SHORTCUT_PROMPT).setPosition(point.x*css,point.y*css)
-      .setStyle({fontSize:`${26*matrix.scaleX*css}px`,color:TEXT_COLORS.white});
+    const {scale}=controlPlacement();
+    const matrix=screen.root.getWorldTransformMatrix();
+    const point=matrix.transformPoint(frameRect().width/scale/2,110);
+    prompt.setText(SHORTCUT_PROMPT).setPosition(point.x,point.y)
+      .setStyle({fontSize:`${26*matrix.scaleX}px`,color:TEXT_COLORS.white});
   }
   /**
    * 登记快捷键屏左上角的关闭钮。全菜单统一用菜单页右上角那枚圆形关闭图，
@@ -2337,7 +2343,7 @@ export class StoryUI {
     if(!rect){backdrop.setFillStyle(0,.65);for(const piece of this.backdropPieces)piece.setVisible(false);return;}
     if(!this.backdropPieces.length)this.backdropPieces=Array.from({length:4},()=>new UiNode(this.scene!,backdrop).setFillStyle(0,.65));
     backdrop.setFillStyle(0,0);
-    const width=this.scene.scale.width,height=this.scene.scale.height;
+    const {width,height}=frameRect();
     const left=Math.max(0,Math.min(width,rect.x)),top=Math.max(0,Math.min(height,rect.y));
     const right=Math.max(left,Math.min(width,rect.x+rect.width)),bottom=Math.max(top,Math.min(height,rect.y+rect.height));
     const boxes=[[0,0,width,top],[0,bottom,width,height-bottom],[0,top,left,bottom-top],[right,top,width-right,bottom-top]];
