@@ -5,6 +5,7 @@ import test from 'node:test';
 import type { StoryContext } from '../src/application/ports.ts';
 import type { ActorDefinition, WorldMap } from '../src/domain/content.ts';
 import { stageSnapshot } from './helpers/story-stage.ts';
+import { toPlaybackCheckpoint } from '../src/domain/playback-checkpoint.ts';
 
 const hook = registerHooks({ resolve(specifier, context, next) {
   return specifier === 'phaser' ? { shortCircuit: true, url: `data:text/javascript,${encodeURIComponent(`
@@ -75,6 +76,7 @@ test('the stage draws a world enemy with its story appearance even when the snap
     world: { maps: [{ id: 'small', file: 'small.json' }], props: [], actors: worldActors, storyEffects: {} },
     content: { map: async () => map },
     wardrobe: { textures: [] },
+    battleCatalog: { enemies: [{ id: 'enemy-without-story', actor: battleWithoutStory }] },
     session: { evaluateCondition: () => true, storyWorld: { visit: 0, currentLocation: { map: 'small' },
       visible: () => true, actorAppearance: (id: string) => id, projectEntities: (_map: string, base: unknown[]) => base } },
     campaign: { start: { actor: 'player' }, placements: [] }
@@ -109,6 +111,11 @@ test('the stage draws a world enemy with its story appearance even when the snap
     assert.equal(scene.characters.get('cast:djinn')!.actor, storyDjinn, '敌人用 world.actors 的剧情外观');
     assert.equal(scene.characters.get('cast:no-story')!.actor, battleWithoutStory, '剧情外观缺失时回退快照外观');
     assert.equal(scene.characters.get('cast:guard')!.actor, snapshotGuard, '手写演员仍用快照外观');
+
+    const saved = toPlaybackCheckpoint({ version: 2, sequence: 1, completedEvents: [], handledOccurrences: [], occurrenceSequences: [], encounterResults: [], pendingOccurrences: [],
+      runs: [{ id: 'test', script: 'test', occurrence: 'test', cursor: { script: 'test', node: 'test' }, status: 'running', stage }] });
+    await scene.showStage(saved.runs[0]!.stage!, new AbortController().signal, playerAppearance);
+    assert.equal(scene.characters.get('cast:no-story')!.actor, battleWithoutStory, '存档去掉缓存外观后按敌人 ID 恢复');
 
     // 演出中新增的敌人走增量创建路径，同样优先剧情外观。
     const later = stageSnapshot({ type: 'stage', map: 'small', x: 16, y: 16, facing: 'south', playerVisible: true,
