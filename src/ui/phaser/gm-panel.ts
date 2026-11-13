@@ -35,6 +35,7 @@ interface GmReferences {
   itemSelected?: string;
   /** 道具详情层：装配方用背包同一套说明面板画，关闭时回调清掉状态。 */
   itemDetail?(itemId: string, close: () => void): void;
+  updateItemDetail?(itemId:string|undefined,close:()=>void):void;
   /** 大任务名：原版任务组（`questGroups`）的标题。 */
   questGroup?(id: string): string | undefined;
   /** 小任务进度：完成量/总量与当前状态，在任务详情显示一次。 */
@@ -148,6 +149,7 @@ export class GmPanel {
   private storyBody?:UiSurface;
   private storyRow?:StoryTaskRow;
   private textSerial = 0;
+  private resultTextKey?:string;
 
   private readonly gm: GmActions;
   private readonly campaign: Campaign;
@@ -199,6 +201,7 @@ export class GmPanel {
       : this.page === 'character' ? this.renderCharacter(body)
       : this.page === 'items' ? this.renderItems(body)
       : this.renderStatus(body);
+    this.resultTextKey=`gm-text-${this.textSerial}`;
     this.text(this.result || hint, 60, 452, 900, 17, this.result ? '#ffd8a0' : '#c8bda6');
     this.contentNodes=body.root.list.filter(node=>!before.has(node));
     this.contentScrolls=body.scrolls.filter(scroll=>!scrolls.has(scroll));
@@ -302,11 +305,17 @@ export class GmPanel {
   private renderItems(body: UiSurface): string {
     const entries = this.gm.items(this.itemFilter);
     const grid = body.scroll(ITEM_GRID_X, ITEM_GRID_Y, ITEM_COLUMNS * ITEM_STRIDE, ITEM_ROWS * ITEM_STRIDE);
-    const selectedId=this.itemSelected;
+    let selectedId=this.itemSelected;
+    let refreshSelection=()=>{};
     const slots = Array.from({length:Math.min(entries.length,ITEM_COLUMNS*(ITEM_ROWS+1))},()=>{
       let entry:GmItemEntry|undefined;
       const button = this.button(body, '', 0, 0, ITEM_SLOT, ITEM_SLOT,
-        () => { if(!entry)return;this.itemSelected = entry.id; this.itemDetail = entry.id; this.itemQuantity = 1; this.result = ''; this.hooks.render(); },
+        () => {
+          if(!entry)return;this.itemSelected=entry.id;this.itemDetail=entry.id;this.itemQuantity=1;this.result='';
+          if(!this.references.updateItemDetail||!this.references.setText){this.hooks.render();return;}
+          refreshSelection();if(this.resultTextKey)this.references.setText(this.resultTextKey,`共 ${entries.length} 件；不含地面拾取物品。`);
+          this.references.updateItemDetail(entry.id,()=>{this.itemDetail=undefined;this.references.updateItemDetail?.(undefined,()=>{});});
+        },
         { ...(this.references.itemSlot ? { image: this.references.itemSlot } : {}), parent: grid.content, guard: grid.guard });
       const icon=body.image('',4,4,ITEM_SLOT-8,ITEM_SLOT-8,button);
       const selected=this.references.itemSelected?body.image(this.references.itemSelected,-5,-5,ITEM_SLOT+10,ITEM_SLOT+10,button):undefined;
@@ -331,13 +340,9 @@ export class GmPanel {
     updateSlots();
 
     const selected = entries.find(entry => entry.id === this.itemSelected);
-    if (selected) {
-      this.text(clipText(selected.name, 10), 786, 92, 150, 15);
-      this.text(`${INVENTORY_LABELS[selected.category]} · Lv.${selected.level}`, 786, 136, 150, 14);
-      this.text(`持有 ${selected.owned}`, 786, 160, 150, 14);
-    } else {
-      this.text('选一件物品', 786, 96, 150, 16);
-    }
+    const nameKey=`gm-text-${this.textSerial}`;this.text(selected?clipText(selected.name,10):'选一件物品',786,92,150,15);
+    const categoryKey=`gm-text-${this.textSerial}`;this.text(selected?`${INVENTORY_LABELS[selected.category]} · Lv.${selected.level}`:'',786,136,150,14);
+    const ownedKey=`gm-text-${this.textSerial}`;this.text(selected?`持有 ${selected.owned}`:'',786,160,150,14);
     this.itemQuantityTextKey=`gm-text-${this.textSerial}`;
     this.text(`数量 ${this.itemQuantity}`, 786, 184, 150, 16);
     // 按钮上的字要短到能放进 66×34；完整含义留在 label 上，键盘与测试仍按它查找。
@@ -348,8 +353,17 @@ export class GmPanel {
     this.button(body, '+100', 786, 282, 66, 34, () => this.stepQuantity(100)).setData('label', '数量 +100');
     this.button(body, '归 1', 866, 282, 66, 34,
       () => this.setQuantity(1)).setData('label', '数量归 1');
-    this.button(body, '加入背包', 786, 324, 150, 44, () => this.onGiveItem(selected),
+    const give=this.button(body, '加入背包', 786, 324, 150, 44, () => this.onGiveItem(entries.find(entry=>entry.id===this.itemSelected)),
       { disabled: !selected }).setData('label', '加入背包');
+    refreshSelection=()=>{
+      selectedId=this.itemSelected;firstSlot=-1;updateSlots();
+      const current=entries.find(entry=>entry.id===selectedId);
+      this.references.setText?.(nameKey,current?clipText(current.name,10):'选一件物品');
+      this.references.setText?.(categoryKey,current?`${INVENTORY_LABELS[current.category]} · Lv.${current.level}`:'');
+      this.references.setText?.(ownedKey,current?`持有 ${current.owned}`:'');
+      this.references.setText?.(this.itemQuantityTextKey!,`数量 ${this.itemQuantity}`);
+      (give.getData('setEnabled') as (enabled:boolean)=>void)(!!current);
+    };
     this.text(`金币 ${this.gm.money()}`, 60, 412, 200, 16);
     const moneyBands: readonly (readonly [string, number])[] = [['+1万', 10_000], ['+10万', 100_000], ['+100万', 1_000_000]];
     moneyBands.forEach(([label, amount], index) =>
@@ -365,7 +379,7 @@ export class GmPanel {
         { selected: this.itemFilter === filter }).setData('label', `过滤 ${INVENTORY_LABELS[filter]}`));
     // 详情画在装配方提供的说明层上（与背包详情同一套面板）；关闭后重画本页。
     if (this.itemDetail && this.references.itemDetail)
-      this.references.itemDetail(this.itemDetail, () => { this.itemDetail = undefined; this.hooks.render(); });
+      this.references.itemDetail(this.itemDetail, () => { this.itemDetail = undefined; if(this.references.updateItemDetail)this.references.updateItemDetail(undefined,()=>{});else this.hooks.render(); });
     return `共 ${entries.length} 件；不含地面拾取物品。`;
   }
 

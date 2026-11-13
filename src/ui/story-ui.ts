@@ -1001,6 +1001,11 @@ export class StoryUI {
           itemSlot:this.app.menuPanels.assets['inventory-slot'],
           itemSelected:this.app.menuPanels.assets['inventory-selected'],
           itemDetail:(itemId,close)=>this.renderGmItemDetail(itemId,close),
+          updateItemDetail:(itemId,close)=>{
+            if(!this.open||this.page!=='debug'||this.gmPanelOwner!==gm)return;
+            this.description?.clear();this.removeDescriptionScrolls();this.gmDetailTextSpecs=[];this.gmDetailOpen=false;
+            if(itemId)this.renderGmItemDetail(itemId,close);this.menuText?.renderPage('debug');this.sync();
+          },
           registerScroll:(name,scroll)=>this.scrollNames.set(name,scroll),
           removeScroll:scroll=>{for(const [name,value] of this.scrollNames)if(value===scroll)this.scrollNames.delete(name);},
           active:()=>this.open&&this.page==='debug'&&this.gmPanelOwner===gm,

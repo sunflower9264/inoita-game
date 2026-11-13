@@ -2421,8 +2421,11 @@ test('the GM item page scrolls addable items, shows details and gives a chosen q
 
   const first = slots()[0]!;
   const id = String(first.getData('label')).replace(/^道具 /, '');
-  const before = f.session.bag.count(id);
+  const before = f.session.bag.count(id),quantityControl=f.scene.button('数量 +10');
+  const retainedGrid=f.internals.body.scrolls.find(scroll=>scroll.x===60&&scroll.y===100);
   f.scene.click(first);
+  assert.equal(slots()[0],first);assert.equal(f.internals.body.scrolls.find(scroll=>scroll.x===60&&scroll.y===100),retainedGrid);
+  assert.equal(f.scene.button('数量 +10'),quantityControl);
   assert.ok(f.scene.nodes.some(node => node.shown && `interface:${node.getData('file')}` === 'interface:assets/ui/menus/inventory-selected.png'),
     '选中后叠背包选中框');
   // 点物品打开与背包同一套说明面板；标题是物品名，关闭按钮独立于菜单关闭。
@@ -2434,6 +2437,7 @@ test('the GM item page scrolls addable items, shows details and gives a chosen q
   assert.ok(detailClose.x < 496, '详情层在左半边');
   assert.ok(detailClose.x + detailClose.input!.hitArea.width < 786, '详情层停在右侧交互按钮左边');
   f.scene.click(detailClose);
+  assert.equal(slots()[0],first);assert.equal(f.scene.button('数量 +10'),quantityControl);
 
   const quantityButton=f.scene.button('数量 +10');
   const itemGrid=f.internals.body.scrolls.find(scroll=>scroll.x===60&&scroll.y===100);
