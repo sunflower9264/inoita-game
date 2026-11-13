@@ -424,7 +424,7 @@ export class StoryUI {
     this.partyPanel?.close();this.partyPanel?.destroyPreview();
     this.partyPanel=new PartyPanel(session,world,this.app,()=>this.render(),(id,page)=>this.selectMember(id,page),
       (view,name,x,y,width,height)=>this.scroll(name,x,y,width,height,view),()=>this.menuText?.refresh(),this.bagPortrait,
-      ()=>this.menuText?.renderPage('party'),scroll=>{for(const [name,value] of this.scrollNames)if(value===scroll)this.scrollNames.delete(name);scroll.destroy();const index=this.body!.scrolls.indexOf(scroll);if(index>=0)this.body!.scrolls.splice(index,1);});
+      ()=>this.menuText?.renderPage('party'),scroll=>{for(const [name,value] of this.scrollNames)if(value===scroll)this.scrollNames.delete(name);scroll.destroy();const index=this.body!.scrolls.indexOf(scroll);if(index>=0)this.body!.scrolls.splice(index,1);},()=>this.updatePartyModal());
     this.unsubscribe=session.subscribe(()=>{
       // 快捷键登记、控制布局编辑与强化台/技能书页打开时由各自的界面显式重绘；
       // 子页面的动作在完成后调 changed 统一重绘一次，避免会话通知再画一遍。
@@ -1235,6 +1235,14 @@ export class StoryUI {
     for(const [name,scroll] of this.scrollNames)if(scroll.surface===this.modal)this.scrollNames.delete(name);
     this.forge.renderModal(this.modal,this.placeModal);
     this.menuText?.renderPage('forge');
+    this.sync();
+  }
+  private updatePartyModal():void{
+    if(!this.modal||!this.partyPanel||this.page!=='party')return;
+    this.modal.clear();
+    for(const [name,scroll] of this.scrollNames)if(scroll.surface===this.modal)this.scrollNames.delete(name);
+    this.partyPanel.renderModal(this.modal);
+    this.menuText?.renderPage('party');
     this.sync();
   }
   private updateCraftingModal():void{

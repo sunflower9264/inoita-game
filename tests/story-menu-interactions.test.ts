@@ -182,6 +182,7 @@ interface MenuInternals {
   itemResult?: unknown;
   keyboardFocus?: Display;
   body: UiSurface;
+  scrollNames: Map<string, ScrollArea>;
   bagPreview?:UiNode;
   surface: UiSurface;
   description: UiSurface;
@@ -2634,6 +2635,38 @@ test('switching members in the party panel retains the roster and tabs',t=>{
     assert.deepEqual(visibleDomLabels(f).map(label=>label.text).sort(),labels);
     f.scene.click(f.scene.button(world.actors[campaign.start.actor].name));
   }
+});
+
+test('opening and closing party confirmation keeps the roster and details',t=>{
+  const f=fixture();t.after(f.cleanup);const member=f.recruit('warlock');
+  f.session.party!.reserve(member.id);
+  f.menu.show('party');f.scene.click(f.scene.button(member.definition.name));
+  const roster=f.scene.button(member.definition.name),tab=f.scene.button('人物能力');
+  const dismiss=f.scene.button('放逐'),frame=f.internals.body.root.list[1];
+  f.scene.click(dismiss);
+  assert.equal(f.scene.button(member.definition.name),roster);
+  assert.equal(f.scene.button('人物能力'),tab);
+  assert.equal(f.internals.body.root.list[1],frame);
+  assert.equal(f.scene.button('放逐'),dismiss);
+  f.scene.click(f.scene.button('取消'));
+  assert.equal(f.scene.button(member.definition.name),roster);
+  assert.equal(f.scene.button('放逐'),dismiss);
+  assert.equal(f.internals.body.root.list[1],frame);
+});
+
+test('party skill details keep the skill list and scroll position',t=>{
+  const f=fixture();t.after(f.cleanup);f.menu.show('party');f.scene.click(f.scene.button('技能目录'));
+  const skill=battle.skills[battle.classes.find(value=>value.id===f.hero.classId)!.skills[0]];
+  const label=`${skill.name} ${f.session.skills.level(skill.id)} 级`;
+  const button=f.scene.button(label),tab=f.scene.button('技能目录');
+  const scroll=f.internals.scrollNames.get('party-skills')!;scroll.scrollTop=30;
+  f.scene.click(button);
+  assert.equal(f.scene.button(label),button);
+  assert.equal(f.internals.scrollNames.get('party-skills'),scroll);assert.equal(scroll.scrollTop,30);
+  f.scene.key('Escape');
+  assert.equal(f.scene.button('技能目录'),tab);
+  assert.equal(f.scene.button(label),button);
+  assert.equal(scroll.scrollTop,30);
 });
 
 test('using a mercenary emblem prepares only the new member preview', t => {

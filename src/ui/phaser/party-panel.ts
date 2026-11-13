@@ -35,6 +35,7 @@ export class PartyPanel {
   private readonly session:Session;
   private readonly world:WorldIndex;
   private readonly app:StoryUIContext;
+  private readonly modalChanged:()=>void;
   private readonly changed:()=>void;
   private readonly inspect:(id:string,page:'bag'|'skills')=>void;
   private readonly scrollArea:ScrollFactory;
@@ -64,19 +65,19 @@ export class PartyPanel {
 
   constructor(session:Session,world:WorldIndex,app:StoryUIContext,changed:()=>void,
     inspect:(id:string,page:'bag'|'skills')=>void,scrollArea?:ScrollFactory,refreshText:()=>void=()=>{},preview?:LiveCharacterPreview,
-    updateSelection:()=>void=()=>{},removeScroll:(scroll:ScrollArea)=>void=()=>{}){
+    updateSelection:()=>void=()=>{},removeScroll:(scroll:ScrollArea)=>void=()=>{},modalChanged:()=>void=changed){
     this.session=session;this.world=world;this.app=app;this.changed=changed;this.inspect=inspect;
     this.scrollArea=scrollArea??((view,_name,x,y,width,height)=>view.scroll(x,y,width,height));
     this.refreshText=refreshText;
     this.preview=preview;
-    this.updateSelection=updateSelection;this.removeScroll=removeScroll;
+    this.updateSelection=updateSelection;this.removeScroll=removeScroll;this.modalChanged=modalChanged;
   }
   get modalOpen():boolean{return !!this.modal;}
   /** 重绘前把合成立绘摘下来，避免被页面清理销毁后无法复用。 */
   detachPreview():void{this.preview?.detach();}
   destroyPreview():void{this.preview?.destroy();}
   close():void{this.modal=undefined;this.preparation?.abort();}
-  cancel():void{this.modal=undefined;this.changed();}
+  cancel():void{this.modal=undefined;this.modalChanged();}
   captureScroll():void{this.skillsOffset=this.skillsScroll?.scrollTop??this.skillsOffset;}
   select(id:string):void{
     if(this.selected===id)return;
@@ -204,7 +205,7 @@ export class PartyPanel {
         this.menuButton(v,'deployed',deployed?'移出队伍':'加入队伍',70,
           ()=>this.run(()=>deployed?party.reserve(id):party.deployFirstAvailable(id)),deployed?member.player.health<=0:snapshot.active.length>=ACTIVE_PARTY_SLOT_COUNT||member.player.health<=0);
         if((member as CompanionMember).source==='mercenary')
-          this.menuButton(v,'dismiss','放逐',272,()=>{this.modal={kind:'dismiss',id};this.changed();},deployed);
+          this.menuButton(v,'dismiss','放逐',272,()=>{this.modal={kind:'dismiss',id};this.modalChanged();},deployed);
       }
     }
     if(this.error)this.text('error',this.error,70,434,18,TEXT_COLORS.dangerSoft,0,0,{width:808,wrap:'word'});
@@ -267,7 +268,7 @@ export class PartyPanel {
       503+index*91+36,18+8.5,14,'#9a9a9a','party-skills',{top:18,bottom:360},{anchorX:.5,anchorY:.5}));
     character.skills.forEach((skillId,index)=>{
       const skill=this.app.battleCatalog.skills[skillId],position=panels.skillPositions[index],level=loadout.levels[skillId]??0,available=!companion||!!companion.skillCaps[skillId];
-      const button=v.button('',position.column*91,20+position.row*89,75,75,()=>{this.modal={kind:'skill',id,skill:skillId};this.changed();},
+      const button=v.button('',position.column*91,20+position.row*89,75,75,()=>{this.modal={kind:'skill',id,skill:skillId};this.modalChanged();},
         {image:available?skill.icon:panels.assets['party-skill-unavailable'],parent:scroll.content,guard:scroll.guard}).setData('label',`${skill.name} ${available?`${level} 级`:'未开放'}`);
       button.addAt(v.image(panels.assets['skill-slot'],-9,-9,93,93,button),0);
       if(available&&level>0){
@@ -280,7 +281,7 @@ export class PartyPanel {
       this.scrolledText('party-group-title','佣兵团',503+309,18,17,GOLD,'party-skills',{top:18,bottom:360},{anchorX:.5,anchorY:0});
       for(let index=0;index<GROUP_SKILL_SLOTS;index++){
         const group=companion.groupSkills[index],skill=group?this.session.party!.catalog.groupSkills[group]:undefined;
-        const button=v.button('',273,20+index*178,75,75,()=>{if(group){this.modal={kind:'group-skill',id,skill:group};this.changed();}},
+        const button=v.button('',273,20+index*178,75,75,()=>{if(group){this.modal={kind:'group-skill',id,skill:group};this.modalChanged();}},
           {image:skill?.icon??panels.assets['party-skill-unavailable'],parent:scroll.content,guard:scroll.guard,disabled:!skill}).setData('label',skill?.name??'空佣兵团技能');
         button.addAt(v.image(panels.assets['skill-slot'],-9,-9,93,93,button),0);
       }
@@ -289,9 +290,10 @@ export class PartyPanel {
     v.button('',537,374,305,44,()=>this.inspect(id,'skills')).setData('label','技能与自动战斗设置');
     this.buttonText('skills-settings','技能与自动战斗设置',537,374,305,44);
   }
-  private renderModal(v:UiSurface):void{
+  renderModal(v:UiSurface):void{
     this.modalText=[];
-    const modal=this.modal!,member=this.member(modal.id);if(!member){this.modal=undefined;return;}
+    const modal=this.modal;if(!modal)return;
+    const member=this.member(modal.id);if(!member){this.modal=undefined;return;}
     const panels=this.app.menuPanels;
     this.placeModal?.(MENU_FRAME_MODAL_WIDTH,MENU_FRAME_MODAL_HEIGHT);
     v.frame(panels.assets,0,0,MENU_FRAME_MODAL_WIDTH,MENU_FRAME_MODAL_HEIGHT,1);
