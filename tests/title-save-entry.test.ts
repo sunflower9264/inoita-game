@@ -103,7 +103,7 @@ function fixture(gmMode?:MenuContext['gmMode'],cloud?:CloudSavePort){
     renameRef:undefined,slotRequest:undefined,slotPortraits:undefined,prompt:undefined,settingsScroll:0,backdrop:undefined,
     challengeClicks:0,challengeTimer:undefined,
     domSpecs:[] as MenuTextSpec[],menuText:undefined as MenuTextLayer|undefined,changelogBackgroundText:undefined as MenuTextLayer|undefined,modalLabels:[] as FakeDomLabel[],
-    changelogOpen:false,changelogState:'idle',changelogReleases:[] as {gameVersion:string;entries:string[]}[],changelogSelected:0,
+    changelogVersionButtons:[] as Button[],changelogOpen:false,changelogState:'idle',changelogReleases:[] as {gameVersion:string;entries:string[]}[],changelogSelected:0,
     changelogVersionsScroll:undefined as FakeScroll|undefined,changelogVersionsScrollTop:0,changelogEntries:[] as string[],changelogHeights:[] as number[],
     changelogOffsets:[] as number[],changelogSpecs:[] as MenuTextSpec[],changelogScroll:undefined as FakeScroll|undefined,
     changelogScrollTop:0,changelogRequest:undefined as AbortController|undefined,changelogError:'',
@@ -167,7 +167,13 @@ test('title changelog loads on demand and only renders visible entries',async()=
   versions.scrollTop=68;versions.onScroll?.();
   assert.equal(versionLabel.y,versionY-68,'版本号跟随左侧列表滚动');
   assert.equal(f.state.changelogScroll?.scrollTop,scroll.extent-scroll.height,'左侧滚动不影响正文');
+  const homeButton=f.view.buttons.find(button=>button.getData('label')==='开始游戏');
+  const closeButton=f.modal.buttons.find(button=>button.getData('label')==='关闭更新日志');
   f.clickModal('v1.0.5');
+  assert.equal(f.view.buttons.find(button=>button.getData('label')==='开始游戏'),homeButton);
+  assert.equal(f.modal.buttons.find(button=>button.getData('label')==='关闭更新日志'),closeButton);
+  assert.equal(f.state.changelogVersionsScroll,versions);
+  assert.equal(f.state.changelogScroll,scroll);
   assert.ok(f.domTexts().includes('v1.0.5 更新说明'));
   assert.ok(f.domTexts().includes('1. 旧版本专属内容'));
   assert.equal(f.state.changelogScroll?.scrollTop,0,'切换版本后正文回到顶部');
@@ -209,6 +215,21 @@ test('changelog reports load errors and starts from the newest version after reo
   assert.ok(f.domTexts().includes('v1.0.6 更新说明'));
   assert.ok(f.domTexts().includes('1. 最新内容'));
   assert.equal(releases,2);
+});
+
+test('closing and reopening changelog ignores an earlier pending response',async()=>{
+  const f=fixture();
+  let resolveOld!:(value:{version:2;releases:{gameVersion:string;entries:string[]}[]})=>void;
+  const old=new Promise<{version:2;releases:{gameVersion:string;entries:string[]}[]}>(resolve=>{resolveOld=resolve;});
+  let calls=0;
+  f.app.loadChangelog=()=>++calls===1?old:Promise.resolve({version:2,releases:[{gameVersion:'v2',entries:['新内容']}]});
+  f.click('更新日志');f.clickModal('关闭更新日志');f.click('更新日志');
+  await new Promise(resolve=>setImmediate(resolve));
+  resolveOld({version:2,releases:[{gameVersion:'v1',entries:['过期内容']}]});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.ok(f.domTexts().includes('v2 更新说明'));
+  assert.ok(f.domTexts().includes('1. 新内容'));
+  assert.ok(!f.domTexts().includes('1. 过期内容'));
 });
 
 test('menu draws after assets finish while the scene is paused',()=>{

@@ -81,6 +81,7 @@ export class MenuScene extends Phaser.Scene {
   private changelogSpecs:MenuTextSpec[]=[];
   private changelogScroll?:ScrollArea;
   private changelogVersionsScroll?:ScrollArea;
+  private changelogVersionButtons:UiNode[]=[];
   private changelogVersionsScrollTop=0;
   private confirmBand?:NativeMessageBand;
   private changelogScrollTop=0;
@@ -234,20 +235,21 @@ export class MenuScene extends Phaser.Scene {
     this.changelogSpecs=[];this.changelogScrollTop=0;this.changelogVersionsScrollTop=0;
     this.changelogRequest?.abort();
     const controller=this.changelogRequest=new AbortController();
-    this.render();
-    if(!this.app.loadChangelog){this.changelogState='error';this.changelogError='当前版本没有更新日志';this.render();return;}
+    this.showChangelog();
+    if(!this.app.loadChangelog){this.changelogState='error';this.changelogError='当前版本没有更新日志';this.updateChangelog();return;}
     // 必须作为对象方法调用，避免加载器丢失 this。
     void this.app.loadChangelog(controller.signal).then(catalog=>{
       if(controller.signal.aborted||this.changelogRequest!==controller||!this.changelogOpen)return;
       this.changelogReleases=catalog.releases.slice();
       this.changelogEntries=this.changelogReleases[0]?.entries.slice()??[];
       this.changelogState=this.changelogReleases.length?'ready':'empty';
-      this.render();
+      this.populateChangelogVersions();
+      this.updateChangelog();
     },error=>{
       if(controller.signal.aborted||this.changelogRequest!==controller||!this.changelogOpen)return;
       this.changelogState='error';
       this.changelogError=error instanceof Error?error.message:'未知原因';
-      this.render();
+      this.updateChangelog();
     });
   }
   private closeChangelog():void{
@@ -256,37 +258,67 @@ export class MenuScene extends Phaser.Scene {
     this.changelogReleases=[];this.changelogSelected=0;this.changelogEntries=[];this.changelogHeights=[];this.changelogOffsets=[];
     this.changelogSpecs=[];this.changelogScroll=undefined;this.changelogVersionsScroll=undefined;
     this.changelogScrollTop=0;this.changelogVersionsScrollTop=0;
+    this.changelogVersionButtons=[];this.modal?.clear();
     this.app.releaseChangelog?.();
-    this.render();
+    this.popupMask?.setVisible(false);
+    this.changelogBackgroundText?.setVisible(false);
+    this.menuText?.renderPage(this.page);
+    this.layout();
   }
   /** 更新日志弹窗：复用标题页设置页的 slot 图框，金线就是面板外沿，右上角圆形关闭。 */
   private drawChangelog(v:UiSurface):void{
-    const {panel,scroll:area,versions,close,textSize}=CHANGELOG_LAYOUT;
+    const {panel,scroll:area,versions,close}=CHANGELOG_LAYOUT;
     v.image(art('slot'),panel.x,panel.y,panel.width,panel.height);
     const list=v.scroll(versions.x,versions.y,versions.width,versions.height);
     this.changelogVersionsScroll=list;
+    this.changelogVersionButtons=[];
     list.onScroll=()=>{this.changelogVersionsScrollTop=list.scrollTop;this.menuText?.refresh();};
-    this.changelogReleases.forEach((release,index)=>{
-      v.button('',0,index*versions.rowHeight,versions.width-12,versions.buttonHeight,()=>{
-        if(index===this.changelogSelected)return;
-        this.changelogSelected=index;
-        this.changelogEntries=release.entries.slice();
-        this.changelogScrollTop=0;
-        this.render();
-      },{parent:list.content,guard:list.guard,selected:index===this.changelogSelected}).setData('label',release.gameVersion);
-    });
-    list.setHeight(this.changelogReleases.length*versions.rowHeight);
-    list.scrollTop=this.changelogVersionsScrollTop;
     const scroll=v.scroll(area.x,area.y,area.width,area.height);
     this.changelogScroll=scroll;
     scroll.onScroll=()=>{this.changelogScrollTop=scroll.scrollTop;this.rebuildChangelogSpecs();this.menuText?.renderPage('changelog');};
     v.button('',panel.x+panel.width-close.right-close.size,panel.y+close.top,close.size,close.size,
       ()=>this.closeChangelog(),{image:CLOSE_IMAGE,pressed:CLOSE_PRESSED}).setData('label','关闭更新日志');
-    this.changelogSpecs=[];
+    this.populateChangelogVersions();
+    this.updateChangelog();
+  }
+  private showChangelog():void {
+    if(!this.surface||!this.modal)return;
+    this.modal.clear();
+    centerModal(this.modal,this.surface,CHANGELOG_LAYOUT.canvas.width,CHANGELOG_LAYOUT.canvas.height);
+    this.popupMask?.setVisible(this.app.ui.ready&&!this.app.ui.suspended);
+    this.changelogBackgroundText?.renderPage('changelog');
+    this.changelogBackgroundText?.setVisible(this.app.ui.ready&&!this.app.ui.suspended);
+    this.drawChangelog(this.modal);
+    this.layout();
+  }
+  private populateChangelogVersions():void {
+    const list=this.changelogVersionsScroll,view=this.modal;
+    if(!list||!view)return;
+    const area=CHANGELOG_LAYOUT.versions;
+    this.changelogVersionButtons=this.changelogReleases.map((release,index)=>
+      view.button('',0,index*area.rowHeight,area.width-12,area.buttonHeight,()=>{
+        if(index===this.changelogSelected)return;
+        this.changelogVersionButtons[this.changelogSelected]?.getData('setSelected')?.(false);
+        this.changelogSelected=index;
+        this.changelogVersionButtons[index]?.getData('setSelected')?.(true);
+        this.changelogEntries=release.entries.slice();
+        this.changelogScrollTop=0;
+        this.updateChangelog();
+      },{parent:list.content,guard:list.guard,selected:index===this.changelogSelected}).setData('label',release.gameVersion));
+    list.setHeight(this.changelogReleases.length*area.rowHeight);
+    list.scrollTop=this.changelogVersionsScrollTop;
+  }
+  private updateChangelog():void {
+    const view=this.modal,scroll=this.changelogScroll;
+    if(!view||!scroll)return;
     if(this.changelogState==='loading')this.changelogMessage('正在加载更新日志…');
     else if(this.changelogState==='error')this.changelogMessage(`更新日志加载失败：${this.changelogError}`);
-    else if(this.changelogState!=='ready'||!this.changelogEntries.length)this.changelogMessage('暂无更新日志。');
-    else this.renderChangelogEntries(v,scroll,textSize);
+    else if(this.changelogState!=='ready'||!this.changelogEntries.length){
+      scroll.setHeight(0);scroll.scrollTop=0;
+      this.changelogMessage('暂无更新日志。');
+    }else this.renderChangelogEntries(view,scroll,CHANGELOG_LAYOUT.textSize);
+    this.menuText?.renderPage('changelog');
+    this.menuText?.setVisible(this.app.ui.ready&&!this.app.ui.suspended);
   }
   /** 弹层顶部居中的版本号与说明；不随日志条目滚动。 */
   private changelogTitleSpec():MenuTextSpec {

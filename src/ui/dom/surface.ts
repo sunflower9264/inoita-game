@@ -51,8 +51,9 @@ export class UiSurface {
     const highlight=options.pressed?draw(options.pressed):common?this.buttonFace(COMMON_BUTTON.pressed,width,height,result):undefined;
     if(options.pressedRect){const area=options.pressedRect;highlight?.setPosition(area.x,area.y).setDisplaySize(area.width,area.height);}
     const text=label?this.text(label,width/2,height/2,width-12,options.fontSize??Math.min(22,height*.42),'#f3deb0',result).setOrigin(.5):undefined;
-    const selected=common&&!!options.selected;highlight?.setVisible(selected);
+    let selected=common&&!!options.selected;highlight?.setVisible(selected);
     result.setInteractive();result.setData('uiAction',true).setData('label',label).setData('action',action).setData('guard',options.guard).setData('face',face).setData('highlight',highlight).setData('labelText',text).setData('selected',selected);
+    result.setData('setSelected',(value:boolean)=>{selected=common&&value;result.setData('selected',selected);highlight?.setVisible(selected);});
     let press:number|undefined,held=false,timer:ReturnType<typeof setTimeout>|undefined;
     const stop=()=>{clearTimeout(timer);timer=undefined;};
     const cancel=()=>{press=undefined;held=false;stop();highlight?.setVisible(selected);};
