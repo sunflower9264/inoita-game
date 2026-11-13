@@ -713,6 +713,24 @@ test('cloud backup asks before overwriting and does not upload when cancelled',a
   assert.deepEqual(cloud.uploads.map(item=>item.slot),[0]);
 });
 
+test('resizing the title view recreates the cloud overwrite confirmation',async()=>{
+  const cloud=cloudStub({loggedIn:true,entries:[cloudEntry(0)]});
+  const f=fixture(undefined,cloud.port);
+  f.entries.set('inotia4.story.v1.slot0',saved());
+  f.click('开始游戏');f.click('云存档');await settle();
+  f.click('导入本机存档');await settle();
+  assert(f.domTexts().some(text=>text.includes('覆盖')));
+  const before=f.state.modalLabels.slice();
+  assert.ok(before.length>0,'确认框文字已创建');
+  menuFrame.width=900;
+  try{
+    f.call('resize');
+    assert.ok(before.every(label=>label.removed),'尺寸变化后重建确认框文字');
+    assert.ok(f.state.modalLabels.length>0);
+    assert.notEqual(f.state.modalLabels[0],before[0]);
+  }finally{menuFrame.width=1200;}
+});
+
 test('cloud password change uses the password form hook and keeps the player signed in',async()=>{
   const cloud=cloudStub({loggedIn:true});
   const f=fixture(undefined,cloud.port);

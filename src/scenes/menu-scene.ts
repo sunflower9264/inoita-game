@@ -516,7 +516,11 @@ export class MenuScene extends Phaser.Scene {
     if(!this.surface||!this.sys.isActive())return;
     const view=this.surface;
     const branch=this.page==='cloud'?`${!!this.app.cloud?.loggedIn}:${!!this.app.cloud}`:undefined;
-    if(branch&&branch===this.cloudRenderedBranch){this.updateCloudPage();return;}
+    if(branch&&branch===this.cloudRenderedBranch){
+      // 确认框打开时尺寸变化要重画横带和 DOM 文字，不能只更新云页正文。
+      if(this.confirmAction)this.showConfirmation();else this.updateCloudPage();
+      return;
+    }
     this.cloudRenderedBranch=branch;view.clear();this.modal?.clear();
     // DOM 标签直接写屏幕坐标；先让根节点用当前窗口尺寸完成布局，避免首帧按旧变换闪一下。
     view.layout();
