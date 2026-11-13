@@ -15,6 +15,7 @@ interface CombatActionPort {
   actor(id:string):Combatant|undefined;
   candidates():Combatant[];
   random():number;
+  /** 镜头可见范围的地图像素尺寸；与画布采样倍率无关。 */
   viewport():{width:number;height:number};
   pose(action:ActionPlayback,index:number):void;
   visualEffect?(effect:SkillVisualEffect,variant:string,actor:Combatant):void;

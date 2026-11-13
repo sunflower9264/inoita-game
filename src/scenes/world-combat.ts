@@ -997,7 +997,10 @@ captureStoryActors():SceneActorState[] {
     const cache=this.actionDispatchers??=new WeakMap();const existing=cache.get(presenter);if(existing)return existing;
     const dispatcher=new CombatActionDispatcher({runtime:this.runtime,catalog:this.app.battleCatalog,
       actor:id=>this.combatant(id),candidates:()=>this.combatants(),random:()=>Math.random(),
-      viewport:()=>this.scene.cameras.main,pose:(action,index)=>presenter.projectFrame(action,index),
+      viewport:()=>{
+        const camera=this.scene.cameras.main;
+        return {width:camera.width/camera.zoomX,height:camera.height/camera.zoomY};
+      },pose:(action,index)=>presenter.projectFrame(action,index),
       effect:(name,variant,position,placement,id)=>presenter.renderEffect(name,variant,position,placement,id),
       flight:event=>presenter.renderFlight(event),screen:value=>presenter.screenFill(value),
       notify:(name,data)=>this.scene.events.emit(name,data),

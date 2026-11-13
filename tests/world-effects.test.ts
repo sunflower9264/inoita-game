@@ -237,3 +237,38 @@ test('horizontal flight skips unchanged depth writes while vertical flight updat
   visual.y=10;update();assert.equal(visual.depth,11);assert.equal(depth.mock.callCount(),2);
   presenter.renderFlight({kind:'end',id:1});owner.release();
 });
+
+test('地狱火在不同画面精度下围绕主角或佣兵生成同样的完整特效',t=>{
+  let randomIndex=0;
+  t.mock.method(Math,'random',()=>[0,0.999999,0.1,0.9][randomIndex++%4]!);
+  for(const id of ['player','companion-1']){
+    let expected:{x:number;y:number}[]|undefined;
+    for(const density of [1,2,3]){
+      randomIndex=0;
+      const f=setup(),character=f.character(id),caster=f.actor(id);
+      caster.position={x:700,y:400};
+      Object.assign(character.container,caster.position);
+      Object.assign(f.scene,{cameras:{main:{width:960*density,height:640*density,zoomX:3*density,zoomY:3*density}}});
+      const worldEffects=new CombatEffects(f.scene);
+      const presenter=new CombatPresenter(f.scene,catalog,()=>character,()=>[],worldEffects);
+      t.mock.method(presenter,'projectFrame',()=>{});
+      const world=Object.assign(Object.create(WorldCombat.prototype),{
+        scene:f.scene,app:{battleCatalog:catalog,session:{combatTick:0}},combatants:()=>[caster],combatant:()=>caster,
+      }) as {dispatcherFor(presenter:InstanceType<typeof CombatPresenter>):import('../src/domain/combat-action-dispatcher.ts').CombatActionDispatcher};
+      const dispatcher=world.dispatcherFor(presenter);
+      const action={caster,facing:'south',skill:{id:'summon-hellfire',level:1,action:catalog.skills['summon-hellfire']!.action!}} as ActionPlayback;
+      for(let frame=0;frame<15;frame++)dispatcher.frame(action,frame);
+      const flames=f.effects('hellfire-burst'),positions=flames.map(({x,y})=>({x,y}));
+      assert.equal(flames.length,15);
+      assert.equal(randomIndex,60,'保留每帧四次随机数消耗');
+      for(const flame of flames){
+        assert.equal(flame.list.length,4,'火焰四层动画都实际创建');
+        assert.equal(flame.parent?.depth,Number.MAX_SAFE_INTEGER,'火焰在人物上方');
+        assert.ok(Math.abs(flame.x-caster.position.x)<=144);
+        assert.ok(Math.abs(flame.y-caster.position.y)<=90);
+      }
+      if(expected)assert.deepEqual(positions,expected);else expected=positions;
+      worldEffects.clear();presenter.clear();
+    }
+  }
+});
