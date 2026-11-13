@@ -279,7 +279,11 @@ test('title slots delete a manual save only after the native confirmation',()=>{
   assert(f.view.buttons.some(button=>button.getData('label')==='存档槽 1 改名'));
   assert(!f.view.buttons.some(button=>button.getData('label')==='存档槽 2 改名'));
   assert(f.view.buttons.some(button=>button.getData('label')==='存档槽 2 删除'));
+  const deleteButton=f.view.buttons.find(button=>button.getData('label')==='存档槽 1 删除');
+  const slotsScroll=f.view.scrolls.at(-1);
   f.click('存档槽 1 删除');
+  assert.equal(f.view.buttons.find(button=>button.getData('label')==='存档槽 1 删除'),deleteButton);
+  assert.equal(f.view.scrolls.at(-1),slotsScroll);
   // 确认之前不动存档，底下的存档页也不接受输入。
   assert.equal(f.entries.has('inotia4.story.v1.slot0'),true);
   assert(f.domTexts().includes('删除后无法恢复，确定删除这个存档？'));
@@ -289,6 +293,8 @@ test('title slots delete a manual save only after the native confirmation',()=>{
   f.clickModal('否');
   assert.equal(f.entries.has('inotia4.story.v1.slot0'),true);
   assert.equal(f.view.enabled(),true,'取消后恢复输入');
+  assert.equal(f.view.buttons.find(button=>button.getData('label')==='存档槽 1 删除'),deleteButton);
+  assert.equal(f.view.scrolls.at(-1),slotsScroll);
   f.click('存档槽 1 删除');f.clickModal('是');
   assert.equal(f.entries.has('inotia4.story.v1.slot0'),false);
   assert(!f.view.buttons.some(button=>button.getData('label')==='存档槽 1 删除'),'空槽不再给出删除');

@@ -697,12 +697,13 @@ export class MenuScene extends Phaser.Scene {
       accept:()=>this.deleteSlot(ref),
       cancel:()=>this.settleConfirm(false),
     };
-    this.render();
+    this.showConfirmation();
   }
   private deleteSlot(ref:SaveSlotRef):void{
     try{this.app.saves.erase(ref);this.app.audio?.ui('select');}
     catch(error){console.warn('删除存档失败',error);}
-    this.settleConfirm(true);
+    this.settleConfirm(true,false);
+    this.render();
   }
   /** 改名：手机系统键盘输入，只收中文、英文、数字；确认后只改摘要里的名字。 */
   private renameSlot(ref:SaveSlotRef):void{
@@ -722,11 +723,26 @@ export class MenuScene extends Phaser.Scene {
     this.prompt?.show({title:'存档名称',initial:reading.summary.name??'',
       onConfirm:value=>apply(value),onCancel:()=>apply(undefined)});
   }
+  private showConfirmation():void{
+    const view=this.surface,modal=this.modal,action=this.confirmAction;
+    if(!view||!modal||!action||!this.sys.isActive())return;
+    modal.clear();this.clearModalLabels();
+    centerModal(modal,view,1024,640);
+    this.confirmBand=drawNativeMessage(modal,TITLE_MESSAGE_ASSETS,action.message,()=>action.accept(),()=>action.cancel(),this.modalTextWriter());
+    this.popupMask?.setVisible(this.app.ui.ready&&!this.app.ui.suspended);
+    this.menuText?.renderPage(this.page);
+    this.layout();
+  }
   private settleConfirm(value:boolean,render=true):void{
     const resolve=this.confirmResolve;
     this.confirmResolve=undefined;
     this.confirmAction=undefined;
-    if(render&&this.surface&&this.sys.isActive())this.render();
+    if(render&&this.surface&&this.sys.isActive()){
+      this.modal?.clear();this.confirmBand=undefined;this.clearModalLabels();
+      this.popupMask?.setVisible(false);
+      this.menuText?.renderPage(this.page);
+      this.layout();
+    }
     resolve?.(value);
   }
   /** 云存档覆盖确认：返回 Promise，取消、Escape、离开云页或场景关闭时都会落地为 false。 */
@@ -739,7 +755,7 @@ export class MenuScene extends Phaser.Scene {
         accept:()=>this.settleConfirm(true),
         cancel:()=>this.settleConfirm(false),
       };
-      this.render();
+      this.showConfirmation();
     });
   }
   private cancelCloudRequest():void{
