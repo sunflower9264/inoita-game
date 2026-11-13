@@ -697,6 +697,10 @@ test('DOM common buttons use a continuous image and preserve selected feedback o
   f.scene.press(narrow);f.scene.game.events.emit(UI_EVENTS.cancelInput);f.scene.release(narrow);
   assert.equal(narrow.getData('highlight').visible,true,'取消输入后选中按钮保持亮图');
   narrow.emit('pointerout');assert.equal(narrow.getData('highlight').visible,true);
+  narrow.getData('setSelected')(false);assert.equal(narrow.getData('highlight').visible,false);
+  narrow.getData('setSelected')(true);assert.equal(narrow.getData('highlight').visible,true);
+  f.scene.press(narrow);f.scene.game.events.emit(UI_EVENTS.cancelInput);f.scene.release(narrow);
+  assert.equal(narrow.getData('highlight').visible,true,'切换选中状态后取消输入仍保留亮图');
   const plain=f.scene.button('设置');f.scene.press(plain);f.scene.game.events.emit(UI_EVENTS.cancelInput);f.scene.release(plain);
   assert.equal(plain.getData('highlight').visible,false,'普通按钮取消输入后恢复常态');
 });
@@ -2305,6 +2309,25 @@ test('bag chrome is reused across rerenders and replaced when the page changes',
   assert.equal(chrome.list.length,0,'换页后旧静态层被清掉');
   f.menu.show('bag');
   assert(chrome.list.length>0,'回到背包页重新建静态图框');
+});
+
+test('switching menu pages keeps shared navigation nodes and updates selection', t => {
+  const f=fixture();t.after(f.cleanup);
+  f.menu.show('status');
+  const navigation=f.internals.surface.staticRoot.list.filter(node=>node.getData('menuTab'));
+  const labels=['人物','背包','技能','队伍','任务','系统'].map(name=>domLabel(f,name));
+  assert.equal(navigation.length,6);
+  assert(labels.every(Boolean));
+  for(const page of ['bag','system','status'] as const){
+    f.menu.show(page);
+    assert.deepEqual(f.internals.surface.staticRoot.list.filter(node=>node.getData('menuTab')),navigation);
+    labels.forEach((label,index)=>assert.equal(domLabel(f,['人物','背包','技能','队伍','任务','系统'][index]!),label));
+    for(const button of navigation)assert.equal(button.alpha,button.getData('menuTab')===page?1:.65);
+  }
+  f.menu.show('save');
+  assert.equal(f.internals.surface.staticRoot.list.filter(node=>node.getData('menuTab')).length,0);
+  f.menu.show('bag');
+  assert.equal(f.internals.surface.staticRoot.list.filter(node=>node.getData('menuTab')).length,6);
 });
 
 test('prewarming builds the bag before it opens', t => {

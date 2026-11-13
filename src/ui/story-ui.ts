@@ -907,8 +907,6 @@ export class StoryUI {
     if((!this.open&&!this.prewarming)||!this.surface||!this.body||!this.session)return;
     this.bagPageCached=false;
     this.bagSlots=[];this.bagGrid=undefined;
-    // 换页先收掉上一页的 DOM 文字；当前页由各自的面板在绘制时重新登记。
-    this.menuText?.beginPage(this.page);
     this.forge?.captureScroll();this.skillBook?.captureScroll();this.craftingPanel?.captureScroll();this.shopPanel?.captureScroll();this.questPanel?.captureScroll();this.partyPanel?.captureScroll();this.scrollNames.forEach((scroll,name)=>this.scrollOffsets.set(`${this.page}:${name}`,scroll.scrollTop));this.scrollNames.clear();this.surface.clear(this.body.root);this.bagPortrait?.detach();this.partyPanel?.detachPreview();this.body.clear();this.description?.clear();this.modal!.clear();this.drops=[];this.keyboardFocus=undefined;
     if(!this.member()){this.discardAllocation();this.selectedMemberId='player';}const v=this.surface;
     this.body.root.setPosition(CONTENT_ORIGIN.x,CONTENT_ORIGIN.y);
@@ -917,16 +915,23 @@ export class StoryUI {
     if(this.shortcutEdit){this.surface.clearStatic();this.body.clearStatic();this.renderShortcutScreen();this.renderBackButton();this.sync();return;}
     // 静态图框只在背包/商店页保留；其它页先把上一页的静态层收掉，避免压在设置或任务列表下面。
     if(this.page!=='bag'&&this.page!=='shop')this.body.clearStatic();
-    const chromeKey=`chrome:${this.page}${this.page==='crafting'?`:${this.craftingActor}`:''}`;
+    const commonTabs=!['shop','crafting','forge','learn','save','load'].includes(this.page);
+    const chromeKey=commonTabs?'chrome:tabs':`chrome:${this.page}${this.page==='crafting'?`:${this.craftingActor}`:''}`;
     v.staticLayer(chromeKey,()=>{
       if(this.page!=='shop'&&this.page!=='crafting'&&this.page!=='forge'&&this.page!=='learn'&&this.page!=='save'&&this.page!=='load'){
         // 页签只留底图和命中区，文字统一由当前页的 DOM 渲染器输出。
-        tabs.forEach(([page,label],index)=>{const button=v.button('',35+index*149,25,102,116,()=>this.show(page),{bare:true,parent:v.staticRoot}).setData('label',label);v.image(this.content!.assets[`tab-${page}`],12,0,78,78,button);button.setAlpha(this.page===page||(['settings','debug'] as Page[]).includes(this.page)&&page==='system'?1:.65);});
+        tabs.forEach(([page,label],index)=>{const button=v.button('',35+index*149,25,102,116,()=>this.show(page),{bare:true,parent:v.staticRoot}).setData('label',label).setData('menuTab',page);v.image(this.content!.assets[`tab-${page}`],12,0,78,78,button);});
       }
       // 融合器与强化台的顶部标题由 DOM 输出，静态层只留关闭钮。
       // 技能书页标题同样由 DOM 输出。
       v.button('',947,24,51,51,()=>this.page==='forge'?this.closeForge():this.page==='learn'?this.closeSkillBook():this.close(),{image:this.content!.assets.close,pressed:this.content!.assets['close-pressed'],parent:v.staticRoot}).setData('label',this.page==='forge'?'关闭强化':this.page==='learn'?'关闭技能书':'关闭菜单');
     });
+    if(commonTabs){
+      for(const button of v.staticRoot.list){
+        const page=button.getData('menuTab') as Page|undefined;
+        if(page)button.setAlpha(this.page===page||(['settings','debug'] as Page[]).includes(this.page)&&page==='system'?1:.65);
+      }
+    }
     const textScroll=(name:string,x:number,y:number,width:number,height:number,surface?:UiSurface)=>this.scroll(name,x,y,width,height,surface??this.body!);
     const refreshText=()=>this.menuText?.refresh();
     if(this.page==='bag')this.renderBag();if(this.page==='status')this.renderStatus();if(this.page==='skills')this.renderSkills();if(this.page==='party')this.renderParty();if(this.page==='quests')this.renderQuests();
@@ -1149,7 +1154,7 @@ export class StoryUI {
   }
   /** 系统页文字：顶部标签行 + 滚动区里的操作按钮。 */
   private renderSystemText(writer:MenuTextWriter):void{
-    tabs.forEach(([,label],index)=>writer.add({key:`system-tab-${index}`,text:label,
+    tabs.forEach(([,label],index)=>writer.add({key:`tab-${index}`,text:label,
       x:35+index*149+51,y:25+85,style:{size:20,color:GOLD,anchorX:.5,anchorY:0}}));
     const labels=['保存游戏','读取存档','设置','脱离卡死',...(this.app.gm?['调试']:[]),'返回主菜单'];
     labels.forEach((label,index)=>writer.add({key:`system-action-${index}`,text:label,

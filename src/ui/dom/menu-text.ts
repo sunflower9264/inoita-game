@@ -119,12 +119,14 @@ export class MenuTextLayer {
     this.renderers.set(page, renderer);
   }
 
-  /** 切换页面时清掉上一页的标签；页面没变则什么都不做。 */
+  /** 切页时保留标签，交给新页面复用并移除不再需要的标签。 */
   beginPage(page: string): void {
     if (page === this.page) return;
     this.page = page;
-    this.clearEntries();
-    this.specs = [];
+    if (!page) {
+      this.clearEntries();
+      this.specs = [];
+    }
   }
 
   /** 按登记的函数重建当前页文字；没有登记函数的页面只保留空层。 */
