@@ -413,6 +413,21 @@ test('AI settings shows two columns and clears the description for unlearned ski
   assert(visibleDomLabels(f).some(label=>label.text.includes(`${battle.skills[learned].name} (LV`)),'已学会技能仍显示说明');
 });
 
+test('changing AI frequency keeps the skill list and cycles the same button',t=>{
+  const f=fixture();t.after(f.cleanup);
+  f.hero.addExperience(Number.MAX_SAFE_INTEGER);f.session.skills.learn('dark-strike');
+  f.menu.show('skills');f.scene.click(f.scene.button('AI 设置'));
+  const button=f.scene.nodes.find(node=>node.shown&&String(node.getData('label')).includes('自动使用频率'));
+  assert.ok(button);
+  const label=String(button.getData('label')),scrolls=f.internals.body.scrolls.slice();
+  f.scene.click(button);
+  assert.notEqual(button.getData('label'),label);
+  assert.deepEqual(f.internals.body.scrolls,scrolls);
+  assert.ok(button.active);
+  f.scene.click(button);
+  assert.deepEqual(f.internals.body.scrolls,scrolls);
+});
+
 test('story companions use their own skill label and no mercenary group',t=>{
   const f=fixture();t.after(f.cleanup);
   const story=f.session.party!.joinStory('mercenary-portia');

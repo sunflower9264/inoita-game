@@ -1554,8 +1554,18 @@ export class StoryUI {
       this.skillCells.set(id,{button:cell,level,marker});
       if(!level)return;
       const frequency=party.aiFrequency(this.selectedMemberId).get(id)??1;
-      v.button('',x+85,y+16,82,42,()=>this.action(()=>party.setAiFrequency(this.selectedMemberId,id,(frequency+1)%AI_FREQUENCY_LABELS.length)),
-        {image:panels.assets[AI_FREQUENCY_ASSETS[frequency]!],pressed:panels.assets['skill-level-pressed'],native:true,parent:list.content,guard:list.guard})
+      const frequencyButton=v.button('',x+85,y+16,82,42,()=>{
+        if(this.busy)return;
+        const current=party.aiFrequency(this.selectedMemberId).get(id)??1;
+        const next=(current+1)%AI_FREQUENCY_LABELS.length;
+        this.busy=true;
+        try{party.setAiFrequency(this.selectedMemberId,id,next);}
+        catch(error){this.notice=(error as Error).message;this.menuText?.renderPage('skills');return;}
+        finally{this.busy=false;}
+        (frequencyButton.getData('face') as UiImage|undefined)?.load(panels.assets[AI_FREQUENCY_ASSETS[next]!]);
+        frequencyButton.setData('label',`${entry.name}自动使用频率 ${AI_FREQUENCY_LABELS[next]}`);
+        this.sessionSignature=this.sessionDataSignature()??this.sessionSignature;
+      },{image:panels.assets[AI_FREQUENCY_ASSETS[frequency]!],pressed:panels.assets['skill-level-pressed'],native:true,parent:list.content,guard:list.guard})
         .setData('label',`${entry.name}自动使用频率 ${AI_FREQUENCY_LABELS[frequency]}`);
     });
     this.finishScroll('ai',list,Math.max(20+5*89+75,20+2*178+75));
