@@ -2238,6 +2238,16 @@ test('the auto row is read-only while manual slots can be deleted after a confir
   assert.equal(f.app.saveSlot,undefined,'删掉当前槽后清空 saveSlot');
 });
 
+test('saving keeps other slots and its result notice does not rebuild the page',t=>{
+  const f=fixture();t.after(f.cleanup);f.menu.show('save');
+  f.scene.click(f.scene.button('存档槽 1'));f.scene.click(f.scene.button('确认'));
+  const kept=f.scene.button('存档槽 1'),scroll=f.internals.scrollNames.get('slots');
+  f.scene.click(f.scene.button('存档槽 2'));assert.equal(kept.active,true);
+  f.scene.click(f.scene.button('确认'));
+  assert.equal(f.scene.button('存档槽 1'),kept);assert.equal(f.internals.scrollNames.get('slots'),scroll);
+  assert.equal(f.app.saves.inspect(1).kind,'ok');
+});
+
 test('deleting a save keeps the other slots and scrolling area',t=>{
   const f=fixture();t.after(f.cleanup);f.menu.show('save');
   f.scene.click(f.scene.button('存档槽 1'));f.scene.click(f.scene.button('确认'));
@@ -2303,7 +2313,8 @@ test('load preparation keeps the game menu alive under loading and reports failu
   reject(new Error('存档内容无效'));await new Promise<void>(resolve=>setImmediate(resolve));
   assert.equal(f.internals.busy,false);assert(domTexts(f).includes('存档内容无效'));
   assert.deepEqual(f.session.captureState(),before);assert.equal(f.controls.mode,'game');assert.equal(f.controls.ready,true);
-  f.scene.click(f.scene.button('确认'));assert.equal(f.scene.canHit(f.scene.button('存档槽 1')),true);
+  f.scene.click(f.scene.button('确认'));assert.equal(f.scene.button('存档槽 1'),slot);
+  f.scene.click(slot);assert(f.scene.button('是'));f.scene.click(f.scene.button('否'));
 });
 
 test('canceling save rename keeps the existing save rows',async t=>{

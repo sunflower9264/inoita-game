@@ -257,6 +257,7 @@ export class StoryUI {
       setBusy:value=>{this.busy=value;},
       activeRequest:()=>this.request,
       setItemNotice:message=>{this.itemNotice=message;},
+      updateNotice:()=>this.updateItemNotice(),
       modal:()=>this.modal!,
       modalWriter:()=>this.saveModalWriter(),
       beginModal:(width,height)=>this.beginModal(width,height),
@@ -655,7 +656,7 @@ export class StoryUI {
     // 改名输入框开着时键盘归系统输入法：Enter/Escape 由输入框自己处理。
     if(this.savePage.renaming)return true;
     if(this.app.ui.controlLayoutEditing){if(event.key==='Escape'){event.preventDefault();this.closeControlEditor();}else this.controlEditor?.key(event);return true;}
-    if(event.key==='Escape'&&this.itemNotice){event.preventDefault();this.itemNotice=undefined;this.render();return true;}
+    if(event.key==='Escape'&&this.itemNotice){event.preventDefault();this.itemNotice=undefined;this.updateItemNotice();return true;}
     if(this.savePage.handleEscape(event))return true;
     if(event.key==='Escape'&&this.allocationExit){event.preventDefault();this.finishAllocation(false);return true;}
     if(event.key==='Escape'){event.preventDefault();if(this.busy){this.close();return true;}if(this.page==='forge'){if(this.forge?.confirming)this.forge.cancelConfirmation();else this.closeForge();return true;}if(this.page==='learn'){this.closeSkillBook();return true;}if(this.shortcutEdit){this.closeShortcutScreen();return true;}if(this.skillReset){this.skillReset=false;this.updateSkillResetModal();}else if(this.craftingPanel?.modalOpen){this.craftingPanel.cancel();}else if(this.shopPanel?.active){this.shopPanel.cancel();}else if(this.partyPanel?.modalOpen){this.partyPanel.cancel();}else if(this.operation){this.closeOperation();}else if(this.page==='bag'&&this.selectedItem){this.selectedItem=undefined;this.render();}else this.close();return true;}
@@ -1040,15 +1041,7 @@ export class StoryUI {
     if(this.page==='settings')this.renderSettings();
     if(this.operation)this.renderOperation();if(this.allocationExit)this.renderAllocationConfirmation();if(this.skillReset)this.renderSkillResetConfirmation();
     this.noticeBand=undefined;
-    if(this.itemNotice){
-      this.beginModal(MENU_CANVAS_WIDTH,MENU_CANVAS_HEIGHT);this.noticeTextSpecs=[];
-      // 系统页与存档页按整块菜单画布排版，换算到整页表面；其余页换算到内容块坐标。
-      const fullPage=this.page==='system'||this.page==='save'||this.page==='load';
-      const writer:MenuTextWriter={add:spec=>this.noticeTextSpecs.push(fullPage?this.modalSurfaceTextSpec(spec):this.modalTextSpec(spec))};
-      this.noticeBand=drawNativeMessage(this.modal!,this.app.menuPanels.assets,this.itemNotice,
-        ()=>{this.itemNotice=undefined;this.render();},undefined,writer,
-        {scroll:(name,x,y,width,height)=>this.scroll(name,x,y,width,height,this.modal!)});
-    }
+    if(this.itemNotice)this.drawItemNotice();
     if(this.page==='save'||this.page==='load')this.renderSaveConfirmations();else this.savePage.renderConfirmations();
     // 页面文字在各自绘制阶段收集完，等弹层位置也确定后再统一交给 DOM 层；原生提示盖在页面之上。
     if(this.operation)this.menuText?.renderPage('operation-notice');
@@ -1261,6 +1254,20 @@ export class StoryUI {
     this.forge.renderModal(this.modal,this.placeModal);
     this.menuText?.renderPage('forge');
     this.sync();
+  }
+  private drawItemNotice():void{
+    this.beginModal(MENU_CANVAS_WIDTH,MENU_CANVAS_HEIGHT);this.noticeTextSpecs=[];
+    const fullPage=this.page==='system'||this.page==='save'||this.page==='load';
+    const writer:MenuTextWriter={add:spec=>this.noticeTextSpecs.push(fullPage?this.modalSurfaceTextSpec(spec):this.modalTextSpec(spec))};
+    this.noticeBand=drawNativeMessage(this.modal!,this.app.menuPanels.assets,this.itemNotice!,
+      ()=>{this.itemNotice=undefined;this.updateItemNotice();},undefined,writer,
+      {scroll:(name,x,y,width,height)=>this.scroll(name,x,y,width,height,this.modal!)});
+  }
+  private updateItemNotice():void{
+    if(!this.modal)return;this.modal.clear();
+    for(const [name,scroll] of this.scrollNames)if(scroll.surface===this.modal)this.scrollNames.delete(name);
+    this.noticeBand=undefined;this.noticeTextSpecs=[];if(this.itemNotice)this.drawItemNotice();
+    this.menuText?.renderPage(this.itemNotice?'native-notice':this.page);this.sync();
   }
   private updateDebugPanel():void{
     if(!this.open||this.page!=='debug'||!this.gmPanel||!this.body)return;

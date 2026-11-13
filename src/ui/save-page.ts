@@ -43,6 +43,7 @@ export interface SavePageHost {
   setBusy(value: boolean): void;
   activeRequest(): AbortController;
   setItemNotice(message: string): void;
+  updateNotice?():void;
   modal(): UiSurface;
   /** 弹层文字的 DOM 出口；确认框正文与按钮文字都从这里登记。 */
   modalWriter(): MenuTextWriter;
@@ -216,7 +217,7 @@ export class SavePage {
     const stillCurrent = () => !request.signal.aborted && this.host.activeRequest() === request && this.host.session() === session;
     try { await load(ref, request.signal); }
     catch (error) { if (stillCurrent()) this.host.setItemNotice(error instanceof Error ? error.message : String(error)); }
-    finally { if (stillCurrent()) { this.host.setBusy(false); this.host.render(); this.host.sync(); } }
+    finally { if (stillCurrent()) { this.host.setBusy(false); if(this.host.updateNotice)this.host.updateNotice();else this.host.render();this.host.sync(); } }
   }
 
   /** 点一个手动槽：空槽直接存，已有存档先问一次再覆盖（原版对不可逆操作用是／否确认）。 */
@@ -229,10 +230,10 @@ export class SavePage {
   private saveToSlot(ref: SaveSlotRef): void {
     if (ref === AUTO_SAVE_SLOT || this.saving) return;
     const captured = this.captureSaveRecord();
-    if (!captured.ok) { this.host.setItemNotice(saveUnavailableNotice(captured.reason)); this.host.render(); return; }
+    if (!captured.ok) { this.host.setItemNotice(saveUnavailableNotice(captured.reason));if(this.host.updateNotice)this.host.updateNotice();else this.host.render();return; }
     // 没有截图能力时保持同步写档；有截图能力时等下一帧截完再写，失败仍写无图存档。
     if (!this.host.app.captureSaveThumbnail) { this.writeSlot(ref, captured.record); return; }
-    this.saving = true;
+    this.saving = true;this.host.updateConfirmation();
     const serial = ++this.saveSerial;
     const screenshot = this.host.app.captureSaveThumbnail();
     void screenshot.then(url => {
@@ -254,7 +255,9 @@ export class SavePage {
     } catch (error) {
       console.warn('存档写入失败', error); this.host.setItemNotice(SAVE_FAILED);
     }
-    this.host.render();
+    if(this.board&&this.host.updateSaveRows&&this.host.updateNotice){
+      this.host.updateSaveRows(this.board.update(ref,newestFirstSlots(slot=>this.host.app.saves.peek(slot))));this.host.updateNotice();
+    }else this.host.render();
   }
 
   /** 删除手动存档；删掉的正是当前槽时清空 `saveSlot`。 */
