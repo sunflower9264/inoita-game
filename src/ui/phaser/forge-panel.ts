@@ -1,4 +1,5 @@
 import { drawBagRail, drawBagRailSelection } from './bag-rail.ts';
+import type { UiImage, UiNode } from '../dom/node.ts';
 import { equipmentPower, type CharacterPanel, type CharacterStatsCatalog, type Modifier } from '../../domain/character-stats.ts';
 import { equipmentLevel } from '../../domain/chaos-equipment.ts';
 import { ItemApplicationError } from '../../domain/item-application.ts';
@@ -19,6 +20,7 @@ import type { MenuTextSpec, MenuTextWriter } from '../dom/menu-text.ts';
 interface ForgeTextTarget {
   scroll(name:string,x:number,y:number,width:number,height:number,surface?:UiSurface):ScrollArea;
   refresh():void;
+  updatePage?():void;
 }
 export type ForgeTab='enchant'|'socket'|'purify';
 type Confirmation={kind:'unsocket';index:number}|{kind:'swap';index:number;gem:string};
@@ -41,6 +43,10 @@ export class ForgePanel {
   private confirmation?:Confirmation;private scroll?:ScrollArea;private leftScroll?:ScrollArea;
   private pageText:MenuTextSpec[]=[];private modalText:MenuTextSpec[]=[];private band?:NativeMessageBand;
   private text?:ForgeTextTarget;
+  private gridButtons=new Map<string,{button:UiNode;marker?:UiImage;chaos:boolean}>();
+  private detailNodes:UiNode[]=[];
+  private detailKeys=new Set<string>();
+  private summaryBottom=0;
   /** 左框可滚动区从 (0,0) 开始，正文坐标就是内容坐标。 */
   private static readonly LEFT_CLIP={top:0,bottom:431};
   constructor(bag:Bag,panels:MenuPanels,stats:CharacterStatsCatalog,
@@ -86,6 +92,7 @@ export class ForgePanel {
   renderModalText(writer:MenuTextWriter):void {for(const spec of this.modalText)writer.add(spec);}
   render(v:UiSurface,modal:UiSurface,placeModal:(width:number,height:number)=>void,text?:ForgeTextTarget):void {
     this.pageText=[];this.modalText=[];this.band=undefined;this.text=text;this.surface=v;
+    this.gridButtons.clear();this.detailNodes=[];this.detailKeys.clear();
     const assets=this.panels.assets;
     v.staticLayer('forge',()=>{
       v.border(assets,10,0,462,431,v.staticRoot);
@@ -101,10 +108,13 @@ export class ForgePanel {
       left.setHeight(431);return;
     }
     this.validateState(target);
-    const summaryBottom=this.renderSummary(v,target,item,left);
+    const summaryBottom=this.summaryBottom=this.renderSummary(v,target,item,left);
     this.renderTabs(v);
     this.renderGrid(v,target);
+    const before=new Set(left.content.list),textStart=this.pageText.length;
     const detailsBottom=this.renderDetails(v,target,item,left);
+    this.detailNodes=left.content.list.filter(node=>!before.has(node));
+    this.detailKeys=new Set(this.pageText.slice(textStart).map(spec=>spec.key));
     left.setHeight(Math.max(431,summaryBottom,detailsBottom));
     left.scrollTop=this.leftOffset;
     left.onScroll=()=>{this.leftOffset=left.scrollTop;this.text?.refresh();};
@@ -183,15 +193,32 @@ export class ForgePanel {
       v.image(definition.icon,SLOT.icon.x,SLOT.icon.y,SLOT.icon.size,SLOT.icon.size,button);
       if(definition.stackable)this.addGridText(`forge-grid-badge-${index}`,String(entry.quantity),
         grid.x+x+layout.badge.x,grid.y+y+layout.badge.y,20,layout.badge.color,1,0);
-      if(selected||chaos)v.image(assets['inventory-selected'],SLOT.selection.x,SLOT.selection.y,SLOT.selection.size,SLOT.selection.size,button)
-        .setData('forge-highlight',chaos?'chaos':'selected');
+      const marker=selected||chaos?v.image(assets['inventory-selected'],SLOT.selection.x,SLOT.selection.y,SLOT.selection.size,SLOT.selection.size,button)
+        .setData('forge-highlight',chaos?'chaos':'selected'):undefined;
+      this.gridButtons.set(entry.id,{button,marker,chaos});
       if(problem||broken)button.setAlpha(.45);
     });
     scroll.setHeight(Math.ceil(entries.length/grid.columns)*SLOT_STRIDE);scroll.scrollTop=this.offset;
     scroll.onScroll=()=>{this.offset=scroll.scrollTop;this.text?.refresh();};
   }
   private selectGridEntry(entry:ItemInstance):void {
-    this.selectedItem=entry.id;this.socketIndex=undefined;this.changed();
+    this.selectedItem=entry.id;this.socketIndex=undefined;
+    const v=this.surface,left=this.leftScroll,target=this.targetId?this.bag.get(this.targetId):undefined;
+    const item=target?this.bag.catalog.items[target.item]:undefined;
+    if(!v||!left||!target||!item||!this.text?.updatePage){this.changed();return;}
+    for(const [id,cell] of this.gridButtons){
+      const show=id===entry.id||cell.chaos;
+      if(show&&!cell.marker)cell.marker=v.image(this.panels.assets['inventory-selected'],SLOT.selection.x,SLOT.selection.y,SLOT.selection.size,SLOT.selection.size,cell.button).setData('forge-highlight',cell.chaos?'chaos':'selected');
+      else if(!show&&cell.marker){cell.marker.destroy();cell.marker=undefined;}
+    }
+    for(const node of this.detailNodes)node.destroy();
+    this.pageText=this.pageText.filter(spec=>!this.detailKeys.has(spec.key));
+    const before=new Set(left.content.list),textStart=this.pageText.length;
+    const bottom=this.renderDetails(v,target,item,left);
+    this.detailNodes=left.content.list.filter(node=>!before.has(node));
+    this.detailKeys=new Set(this.pageText.slice(textStart).map(spec=>spec.key));
+    left.setHeight(Math.max(431,this.summaryBottom,bottom));
+    v.pruneDestroyed();this.text.updatePage();
   }
   private problemText(source:ItemInstance,target:ItemInstance):string|undefined {
     if(!this.bag.canApply(source.id,target.id))return this.panels.itemMessages['socket-incompatible']??'该道具不适合。';

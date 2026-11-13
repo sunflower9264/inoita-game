@@ -960,7 +960,7 @@ export class StoryUI {
         draw();this.menuText?.renderPage('shop');this.sync();
       }});
     if(this.page==='crafting'&&this.craftingPanel){this.craftingPanel.render(this.body,this.modal!,this.placeModal,(pointer,entry,scroll)=>this.startDrag(pointer,entry,scroll),{scroll:textScroll,refresh:refreshText});this.drops=this.craftingPanel.drops;}
-    if(this.page==='forge'&&this.forge)this.forge.render(this.body,this.modal!,this.placeModal,{scroll:textScroll,refresh:refreshText});
+    if(this.page==='forge'&&this.forge)this.forge.render(this.body,this.modal!,this.placeModal,{scroll:textScroll,refresh:refreshText,updatePage:()=>this.menuText?.renderPage('forge')});
     if(this.page==='learn'&&this.skillBook)this.skillBook.render(this.body!);
     if(this.page==='system'){
       const actions:[string,()=>void][]=[['保存游戏',()=>this.show('save')],['读取存档',()=>this.show('load')],['设置',()=>this.show('settings')],['脱离卡死',()=>{

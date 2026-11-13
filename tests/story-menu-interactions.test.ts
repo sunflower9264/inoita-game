@@ -946,12 +946,15 @@ test('forge repaints the menu once per action', t => {
   const frame=f.internals.body.staticRoot.list.slice();
   assert.ok(frame.length);
   const render=t.mock.method(f.menu as any,'render') as any;
-  f.scene.click(f.scene.button('卷轴:低级武器强化卷轴'));
+  const source=f.scene.button('卷轴:低级武器强化卷轴'),scrolls=f.internals.body.scrolls.slice();
+  f.scene.click(source);
+  assert.equal(f.scene.button('卷轴:低级武器强化卷轴'),source);
+  assert.deepEqual(f.internals.body.scrolls,scrolls);
   assert.deepEqual(f.internals.body.staticRoot.list,frame,'强化操作保留图框');
-  assert.equal(render.mock.callCount(),1,'选择格子只重绘一次');
+  assert.equal(render.mock.callCount(),0,'选择素材只更新详情');
   t.mock.method(Math,'random',()=>0.99);
   f.scene.click(f.scene.button('确定强化'));
-  assert.equal(render.mock.callCount(),2,'结算只重绘一次，不叠加会话通知');
+  assert.equal(render.mock.callCount(),1,'结算只重绘一次，不叠加会话通知');
 });
 
 test('quest page redraws only when the quest book version changes', t => {
