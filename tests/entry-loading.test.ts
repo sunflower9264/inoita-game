@@ -20,6 +20,15 @@ function plan(overrides: Partial<EntryPlan> = {}): EntryPlan {
 
 interface PortOptions { failPortraits?: boolean }
 
+test('story world handoff loads playable assets without waiting for future presentation', async () => {
+  const log: string[] = [];
+  const adapter = ports(log);
+  adapter.preloadPortraits = adapter.prepareSounds = () => new Promise(() => {});
+  const result = await loadEntryPlan(plan(), adapter, { signal: new AbortController().signal, preparePresentation: false });
+  assert.ok(log.some(line => line.startsWith('load:')));
+  result.currentLease.release();
+});
+
 function ports(log: string[], options: PortOptions = {}): EntryLoadingPorts {
   return {
     load: async (assets, progress) => {

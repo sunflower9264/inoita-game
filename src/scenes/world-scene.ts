@@ -436,7 +436,7 @@ export class WorldScene extends Phaser.Scene {
       report: silent ? () => {} : (label, value) => ui.loading(label, value),
       preloadPortraits: (files, portraitSignal, progress) => ui.preloadPortraits(files, portraitSignal, progress),
       prepareSounds: (names, soundSignal) => { soundSignal.throwIfAborted(); return this.app.audio?.prepareStoryEffects(names, soundSignal) ?? Promise.resolve(); }
-    }, { signal, start: options.initialEntry ? 0.5 : 0, end: mapProgressEnd, onPhase: phase => this.app.director.onSkipProgress?.(phase) });
+    }, { signal, start: options.initialEntry ? 0.5 : 0, end: mapProgressEnd, preparePresentation: !silent, onPhase: phase => this.app.director.onSkipProgress?.(phase) });
     if(signal.aborted){loaded.currentLease.release();signal.throwIfAborted();}
     this.mapAssets = loaded.currentLease;
     globalThis.storyDiagnostics?.record('start-phase',{phase:'scene-assets-ready',map:map.id});

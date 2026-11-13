@@ -20,7 +20,7 @@ interface EntryLoadingResult {
  * 加载入口计划：当前图 0–0.88，立绘 0.88–0.91，音效，0.94 留给场景对象构建。
  * 失败时释放已经拿到的租约，避免残留引用。
  */
-export async function loadEntryPlan(plan: EntryPlan, ports: EntryLoadingPorts, options: { signal: AbortSignal; start?: number; end?: number; onPhase?: (phase: 'assets-ready' | 'portraits-ready' | 'sounds-ready') => void }): Promise<EntryLoadingResult> {
+export async function loadEntryPlan(plan: EntryPlan, ports: EntryLoadingPorts, options: { signal: AbortSignal; start?: number; end?: number; preparePresentation?: boolean; onPhase?: (phase: 'assets-ready' | 'portraits-ready' | 'sounds-ready') => void }): Promise<EntryLoadingResult> {
   const { signal } = options;
   const start = options.start ?? 0, end = options.end ?? 1, span = end - start;
   const report = (label: string, value: number) => ports.report(label, start + value * span);
@@ -32,13 +32,15 @@ export async function loadEntryPlan(plan: EntryPlan, ports: EntryLoadingPorts, o
     signal.throwIfAborted();
     options.onPhase?.('assets-ready');
 
-    report('正在准备剧情画面…', 0.88);
-    if (plan.portraits.length) await ports.preloadPortraits(plan.portraits, signal, value => report('正在准备剧情画面…', 0.88 + value * 0.03));
-    signal.throwIfAborted();
-    options.onPhase?.('portraits-ready');
-    await ports.prepareSounds(plan.sounds, signal);
-    signal.throwIfAborted();
-    options.onPhase?.('sounds-ready');
+    if (options.preparePresentation !== false) {
+      report('正在准备剧情画面…', 0.88);
+      if (plan.portraits.length) await ports.preloadPortraits(plan.portraits, signal, value => report('正在准备剧情画面…', 0.88 + value * 0.03));
+      signal.throwIfAborted();
+      options.onPhase?.('portraits-ready');
+      await ports.prepareSounds(plan.sounds, signal);
+      signal.throwIfAborted();
+      options.onPhase?.('sounds-ready');
+    }
 
     report('正在布置地图…', 0.94);
     return { currentLease };
