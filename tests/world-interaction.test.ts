@@ -154,16 +154,17 @@ test('a fusion machine without any offer opens the crafting panel',()=>{
   assert.deepEqual(calls,[`openCrafting:${entity.actor}`]);
 });
 
-test('a level-zero map still lets the ancient sword be pulled',()=>{
+test('an ancient sword is consumed and saved when the hero does not meet the map level gate',()=>{
   const current=session(),mapId='underground-prison-guardpost-358b2781',before=current.bag.entries.length,original=Math.random;
   const values=[0,0.01,0.1,0,0,0];let index=0;Math.random=()=>values[index++]??0.5;
   try {
     const {calls,entity}=pressAttack(mapId,current,map=>sword(map));
     assert.equal(current.legendaryWeapons.isPulled(mapId,entity.id),true);
-    assert.ok(calls.includes('effect:UI_Ground_sword'));
+    assert.ok(calls.includes('instant:能力不足，无法获得武器。'));
+    assert.ok(!calls.includes('effect:UI_Ground_sword'));
     assert.ok(calls.includes('autosave'));
     assert.ok(calls.includes('checkpoint'));
-    assert.ok(current.bag.entries.length>before);
+    assert.equal(current.bag.entries.length,before);
   } finally { Math.random=original; }
 });
 
