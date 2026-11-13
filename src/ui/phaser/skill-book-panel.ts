@@ -41,7 +41,7 @@ export class SkillBookPanel {
   /** 这一轮绘制要显示的文字；页面重绘时按 key 复用 DOM 标签。 */
   private textSpecs: MenuTextSpec[] = [];
   private surface?:UiSurface;
-  private cells=new Map<string,{button:UiNode;marker?:UiImage}>();
+  private cells=new Map<string,{button:UiNode;marker?:UiImage;rank:number;rankNodes:UiImage[]}>();
   private detailNodes:UiNode[]=[];
   private detailKeys=new Set<string>();
   private readonly updatePage?:()=>void;
@@ -89,7 +89,7 @@ export class SkillBookPanel {
       v.border(this.panels.assets,layout.rightFrame.x,layout.rightFrame.y,layout.rightFrame.width,layout.rightFrame.height,v.staticRoot);
     });
     this.scroll = undefined;
-    this.renderGrid(v);
+    this.renderGrid(v);this.updateMarkers(v);
     this.drawDetails(v);
   }
 
@@ -99,44 +99,44 @@ export class SkillBookPanel {
   }
 
   private renderGrid(v: UiSurface): void {
-    const layout = SKILL_BOOK, assets = this.panels.assets, skills = this.upgradable;
-    if (!skills.length) {
-      this.textSpecs.push({key: 'book-empty', text: '暂无可升级技能', x: layout.empty.x, y: layout.empty.y,
-        style: {size: layout.empty.size, color: GOLD, anchorX: .5, anchorY: .5}});
-      return;
-    }
-    skills.forEach((id, index) => {
-      const skill = this.catalog.skills[id];
-      if (!skill) return;
-      const cellAt = skillBookCell(index), rank = this.skills.level(id);
-      const cell = v.button('', cellAt.x, cellAt.y, layout.grid.size, layout.grid.size, () => this.select(id),
-        { image: skill.icon }).setData('label', skill.name);
-      cell.addAt(v.image(assets['skill-slot'], layout.slotFrame.x, layout.slotFrame.y,
-        layout.slotFrame.width, layout.slotFrame.height, cell), 0);
-      if (!rank) v.image(assets['skill-locked'], 0, 0, layout.grid.size, layout.grid.size, cell);
-      else {
-        v.image(assets['skill-rank'], layout.rank.x, layout.rank.y, layout.rank.width, layout.rank.height, cell);
-        v.image(assets[`skill-rank-${rank}`], layout.rankDigit.x, layout.rankDigit.y,
-          layout.rankDigit.width, layout.rankDigit.height, cell);
+    const layout=SKILL_BOOK,assets=this.panels.assets,skills=this.upgradable,old=new Map(this.cells);
+    this.textSpecs=this.textSpecs.filter(spec=>spec.key!=='book-empty');
+    if(!skills.length)this.textSpecs.push({key:'book-empty',text:'暂无可升级技能',x:layout.empty.x,y:layout.empty.y,
+      style:{size:layout.empty.size,color:GOLD,anchorX:.5,anchorY:.5}});
+    skills.forEach((id,index)=>{
+      const skill=this.catalog.skills[id];if(!skill)return;
+      const cellAt=skillBookCell(index),rank=this.skills.level(id);let cell=old.get(id);old.delete(id);
+      if(!cell){
+        const button=v.button('',cellAt.x,cellAt.y,layout.grid.size,layout.grid.size,()=>this.select(id),{image:skill.icon}).setData('label',skill.name);
+        button.addAt(v.image(assets['skill-slot'],layout.slotFrame.x,layout.slotFrame.y,layout.slotFrame.width,layout.slotFrame.height,button),0);
+        cell={button,rank:-1,rankNodes:[]};this.cells.set(id,cell);
       }
-      const marker=id === this.selected?v.image(assets[rank ? 'skill-selected' : 'skill-selected-ai'],
-        layout.selection.x, layout.selection.y, layout.selection.width, layout.selection.height, cell):undefined;
-      this.cells.set(id,{button:cell,marker});
+      cell.button.setPosition(cellAt.x,cellAt.y);
+      if(cell.rank!==rank){
+        cell.rankNodes.forEach(node=>node.destroy());cell.rankNodes=[];cell.rank=rank;
+        if(!rank)cell.rankNodes.push(v.image(assets['skill-locked'],0,0,layout.grid.size,layout.grid.size,cell.button));
+        else cell.rankNodes.push(v.image(assets['skill-rank'],layout.rank.x,layout.rank.y,layout.rank.width,layout.rank.height,cell.button),
+          v.image(assets[`skill-rank-${rank}`],layout.rankDigit.x,layout.rankDigit.y,layout.rankDigit.width,layout.rankDigit.height,cell.button));
+        if(cell.marker){cell.marker.destroy();cell.marker=undefined;}
+      }
     });
+    for(const [id,cell] of old){cell.button.destroy();this.cells.delete(id);}v.pruneDestroyed();
   }
-
   private drawDetails(v:UiSurface):void{
     const before=new Set(v.root.list),textStart=this.textSpecs.length;
     this.renderDetails(v);this.detailNodes=v.root.list.filter(node=>!before.has(node));
     this.detailKeys=new Set(this.textSpecs.slice(textStart).map(spec=>spec.key));
   }
-  private updateDetails():void{
-    const v=this.surface;if(!v||!this.updatePage){this.changed();return;}
+  private updateMarkers(v:UiSurface):void{
     const layout=SKILL_BOOK,assets=this.panels.assets;
     for(const [id,cell] of this.cells){
       if(id===this.selected&&!cell.marker){const rank=this.skills.level(id);cell.marker=v.image(assets[rank?'skill-selected':'skill-selected-ai'],layout.selection.x,layout.selection.y,layout.selection.width,layout.selection.height,cell.button);}
       else if(id!==this.selected&&cell.marker){cell.marker.destroy();cell.marker=undefined;}
     }
+  }
+  private updateDetails():void{
+    const v=this.surface;if(!v||!this.updatePage){this.changed();return;}
+    this.updateMarkers(v);
     if(this.scroll){this.removeScroll?.(this.scroll);this.scroll.destroy();const index=v.scrolls.indexOf(this.scroll);if(index>=0)v.scrolls.splice(index,1);this.scroll=undefined;}
     for(const node of this.detailNodes)node.destroy();
     this.textSpecs=this.textSpecs.filter(spec=>!this.detailKeys.has(spec.key));
@@ -240,10 +240,10 @@ export class SkillBookPanel {
 
   private use(): void {
     const id = this.selected;
-    if (!id) { this.message = '请选择技能'; this.changed(); return; }
+    if (!id) { this.message = '请选择技能'; this.updateDetails(); return; }
     const problem = this.problemFor(id);
     if (problem || !this.bag.get(this.entryId)) {
-      this.message = problem ?? '技能书已不在背包中'; this.changed(); return;
+      this.message = problem ?? '技能书已不在背包中'; this.updateDetails(); return;
     }
     try {
       const result = this.bag.use(this.entryId, undefined, id);
@@ -255,7 +255,8 @@ export class SkillBookPanel {
     if (!this.bag.get(this.entryId)) { this.close(this.message); return; }
     // 还有副本就留在本页；升到顶后自动换到下一门可升级的技能，没有就显示空状态。
     if (this.problemFor(id)) this.selected = this.nextEligible();
-    this.offset = 0; this.changed();
+    this.offset = 0;
+    if(this.surface&&this.updatePage){this.renderGrid(this.surface);this.updateDetails();}else this.changed();
   }
 
   /** 绑定具体技能的书只能提升那一门；和 `Bag.use` 取 `source.skill` 优先的规则一致。 */

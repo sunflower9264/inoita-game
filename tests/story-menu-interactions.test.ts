@@ -1061,7 +1061,9 @@ test('using a skill book opens the icon page and returns to the bag', t => {
   assert.equal(f.internals.skillBook?.entryId, book.id);
   assert.equal(f.scene.buttons(battle.skills[skillId].name).length, 1, '可升级技能进图标格');
   for (const id of skills.slice(1)) assert.equal(f.scene.buttons(battle.skills[id].name).length, 0, '未达上限的技能不显示');
+  const icon=f.scene.button(battle.skills[skillId].name),frame=f.internals.body.staticRoot.list.slice();
   f.scene.click(f.scene.button('使用技能书'));
+  assert.equal(f.scene.button(battle.skills[skillId].name),icon);assert.deepEqual(f.internals.body.staticRoot.list,frame);
   assert.equal(f.session.bag.count('skillbook'), 1, '技能书只消耗一本');
   assert.equal(f.session.skills.level(skillId), rank + 1, '技能提升一级');
   assert.equal(f.internals.page, 'learn', '还有一本时留在页面');
