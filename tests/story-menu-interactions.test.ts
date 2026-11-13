@@ -549,7 +549,11 @@ test('system exposes load alongside save while settings keeps the working displa
   assert.deepEqual(frameRateLabels,['30 帧','60 帧'],'帧率只有两个 DOM 标签');
   assert.equal(f.scene.button('30 帧').getData('selected'),false);
   assert.equal(f.scene.button('60 帧').getData('selected'),true);
-  f.scene.click(f.scene.button('30 帧'));
+  const settingsScroll=f.internals.body.scrolls.at(-1),rate30=f.scene.button('30 帧'),rate60=f.scene.button('60 帧');
+  f.scene.click(rate30);
+  assert.equal(f.internals.body.scrolls.at(-1),settingsScroll);
+  assert.equal(f.scene.button('30 帧'),rate30);
+  assert.equal(f.scene.button('60 帧'),rate60);
   assert.equal(displaySettings.frameRateLimit,30);
   assert.equal(f.scene.button('30 帧').getData('selected'),true);
   assert.equal(f.scene.button('60 帧').getData('selected'),false);
@@ -560,7 +564,10 @@ test('system exposes load alongside save while settings keeps the working displa
   const scaleButtons=['1×','2×','3×'];
   assert.deepEqual(scaleButtons.filter(label=>f.scene.button(label)).sort(),scaleButtons,'设置页并列三个画面精度按钮');
   assert.equal(f.scene.button('1×').getData('selected'),true);
-  f.scene.click(f.scene.button('2×'));
+  const scale2=f.scene.button('2×');
+  f.scene.click(scale2);
+  assert.equal(f.scene.button('2×'),scale2);
+  assert.equal(f.internals.body.scrolls.at(-1),settingsScroll);
   assert.equal(displaySettings.renderScale,2);
   assert.equal(f.scene.button('2×').getData('selected'),true);
   assert.equal(f.scene.button('1×').getData('selected'),false);

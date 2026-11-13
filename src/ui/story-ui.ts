@@ -196,6 +196,7 @@ export class StoryUI {
   private bagPreview?:UiNode;
   private bagSelection?:UiImage;
   private bagFilterHighlight?:UiNode;
+  private settingsFullscreenButton?:UiNode;
   private bagEquipment=new Map<EquipmentSlot,{button:UiNode;icon:UiImage;drop:{object:UiNode;entry?:string;slot:EquipmentSlot}}>();
   /** 背包网格的显示对象，按格子/物品身份复用；数据变化时只动变化的格子。 */
   private bagSlots:BagSlotView[]=[];
@@ -355,7 +356,11 @@ export class StoryUI {
     });
     // 浏览器自身的退出（Esc、手势）不会走设置页的按钮，靠事件把开关状态同步回来。
     this.unsubscribeFullscreen?.();
-    this.unsubscribeFullscreen=onFullscreenChange(()=>{if(this.open&&this.page==='settings')this.render();});
+    this.unsubscribeFullscreen=onFullscreenChange(()=>{
+      if(!this.open||this.page!=='settings')return;
+      this.settingsFullscreenButton?.setData('label',`全屏：${fullscreenActive()?'开启':'关闭'}`);
+      this.menuText?.renderPage('settings');
+    });
     const nativeInput=new AbortController();
     window.addEventListener('pointermove',event=>this.moveDrag(uiPointer(scene,event)),{signal:nativeInput.signal,capture:true});
     window.addEventListener('pointerup',event=>{this.stopAllocationHold();this.endDrag(uiPointer(scene,event));},{signal:nativeInput.signal,capture:true});
@@ -1048,45 +1053,53 @@ export class StoryUI {
       this.hideSliderValueText(slider);
     }
     // 帧率显示和音量一样是画面/声音偏好，放在同一个面板里；默认开启。
-    const fps=displaySettings.fps;
-    v.button('',485,260,220,66,()=>{displaySettings.setFps(!fps);this.render();},{parent:content})
-      .setData('label',fps?'开启':'关闭');
+    const fpsButton=v.button('',485,260,220,66,()=>{
+      displaySettings.setFps(!displaySettings.fps);
+      fpsButton.setData('label',displaySettings.fps?'开启':'关闭');
+      this.menuText?.renderPage('settings');
+    },{parent:content}).setData('label',displaySettings.fps?'开启':'关闭');
     const frameRateLimit=displaySettings.frameRateLimit;
+    const frameRateButtons:UiNode[]=[];
     for(const [index,limit] of ([30,60] as const).entries()){
-      v.button('',485+index*230,350,220,66,()=>{
+      frameRateButtons.push(v.button('',485+index*230,350,220,66,()=>{
         displaySettings.setFrameRateLimit(limit);
-        this.render();
-      },{parent:content,selected:frameRateLimit===limit}).setData('label',`${limit} 帧`);
+        frameRateButtons.forEach((button,i)=>button.getData('setSelected')(i===index));
+      },{parent:content,selected:frameRateLimit===limit}).setData('label',`${limit} 帧`));
     }
     // 画面精度：实际倍率不会超过本机 DPR；默认 1×，高分屏可手动开 2×/3×。
     const renderScale=displaySettings.renderScale;
+    const scaleButtons:UiNode[]=[];
     for(const scale of ([1,2,3] as const)){
-      v.button('',485+(scale-1)*140,440,120,66,()=>{
+      scaleButtons.push(v.button('',485+(scale-1)*140,440,120,66,()=>{
         displaySettings.setRenderScale(scale);
-        this.render();
-      },{parent:content,selected:renderScale===scale}).setData('label',`${scale}×`);
+        scaleButtons.forEach((button,index)=>button.getData('setSelected')(index+1===scale));
+      },{parent:content,selected:renderScale===scale}).setData('label',`${scale}×`));
     }
     // 纹理批次：自动时安卓单纹理，iOS 和桌面多纹理；单纹理更保守。
     const batching=displaySettings.textureBatching;
     const batchingLabel={auto:'自动',multi:'多纹理',single:'单纹理'}[batching];
-    v.button('',485,530,260,66,()=>{
-      displaySettings.setTextureBatching(batching==='auto'?'multi':batching==='multi'?'single':'auto');
-      this.render();
+    const batchingButton=v.button('',485,530,260,66,()=>{
+      const current=displaySettings.textureBatching;
+      displaySettings.setTextureBatching(current==='auto'?'multi':current==='multi'?'single':'auto');
+      batchingButton.setData('label',`纹理批次：${{auto:'自动',multi:'多纹理',single:'单纹理'}[displaySettings.textureBatching]}`);
+      this.menuText?.renderPage('settings');
     },{parent:content}).setData('label',`纹理批次：${batchingLabel}`);
     // 暴击光环和爆闪只影响画面，默认开启；不影响暴击冲击、数字、震屏或音效。
     const decorations=displaySettings.criticalDecorations;
-    v.button('',485,620,220,66,()=>{
-      displaySettings.setCriticalDecorations(!decorations);
-      this.render();
+    const decorationsButton=v.button('',485,620,220,66,()=>{
+      displaySettings.setCriticalDecorations(!displaySettings.criticalDecorations);
+      decorationsButton.setData('label',displaySettings.criticalDecorations?'开启':'关闭');
+      this.menuText?.renderPage('settings');
     },{parent:content}).setData('label',decorations?'开启':'关闭');
     // 全屏是浏览器能力；不支持的环境显示为不可用，APK 壳已经隐藏系统栏，显示为已全屏。
     let rowTop=710;
     const fullscreen=fullscreenStatus();
     if(fullscreen==='available'){
       const active=fullscreenActive();
-      v.button('',485,rowTop,220,66,()=>setFullscreen(!active),{parent:content})
+      this.settingsFullscreenButton=v.button('',485,rowTop,220,66,()=>setFullscreen(!fullscreenActive()),{parent:content})
         .setData('label','全屏：' + (active?'开启':'关闭'));
     }else{
+      this.settingsFullscreenButton=undefined;
       const label=fullscreen==='packaged'?'已全屏':'不支持';
       v.button('',485,rowTop,220,66,()=>{},{parent:content,disabled:true})
         .setData('label','全屏：'+label);
@@ -1094,16 +1107,17 @@ export class StoryUI {
     // 操作方式在本行点击轮换；触屏模式拖动控件位置，电脑模式改成键位映射。
     rowTop+=90;
     const modeLabel=CONTROL_MODE_LABELS[controlSettings.mode];
-    v.button('',485,rowTop,220,66,()=>{
+    const modeButton=v.button('',485,rowTop,220,66,()=>{
       controlSettings.setMode(nextControlMode(controlSettings.mode));
-      this.render();
+      modeButton.setData('label',`操作方式：${CONTROL_MODE_LABELS[controlSettings.mode]}`);
+      actionButton.setData('label',controlSettings.mode==='keyboard'?'修改键位':'拖动调整');
+      this.menuText?.renderPage('settings');
     },{parent:content}).setData('label',`操作方式：${modeLabel}`);
     rowTop+=90;
-    if(controlSettings.mode==='keyboard'){
-      v.button('',485,rowTop,220,66,()=>this.openKeyBindingEditor(),{parent:content}).setData('label','修改键位');
-    }else{
-      v.button('',485,rowTop,220,66,()=>this.openControlEditor(),{parent:content}).setData('label','拖动调整');
-    }
+    const actionButton=v.button('',485,rowTop,220,66,()=>{
+      if(controlSettings.mode==='keyboard')this.openKeyBindingEditor();
+      else this.openControlEditor();
+    },{parent:content}).setData('label',controlSettings.mode==='keyboard'?'修改键位':'拖动调整');
     this.finishScroll('settings',scroll,rowTop+80);
     // 滚动时 DOM 文字跟着内容移动，并裁掉视口外的行。
     this.menuText?.renderPage('settings');
