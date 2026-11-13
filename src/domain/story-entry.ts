@@ -73,9 +73,11 @@ export function localStoryScripts({ campaign, map, entities = [], completedEvent
     return !!(giver || delivery);
   };
 
+  const completed = new Set(completedEvents);
   for (const event of campaign.events) {
+    if (!event.repeat && completed.has(event.id)) continue;
     if (event.source === 'start') {
-      if (!completedEvents.includes(event.id)) scripts.add(event.script);
+      scripts.add(event.script);
     } else if (event.source === 'map-entry') {
       if ((event.key === undefined || event.key === map.id) && (event.map === undefined || event.map === map.id)) scripts.add(event.script);
     } else if (event.source === 'region') {

@@ -52,6 +52,17 @@ test('an opening-finished session does not preload the start script', () => {
   assert.ok(!scripts.includes('start'));
 });
 
+test('completed one-time events do not preload while repeatable events remain eligible', () => {
+  const data = campaign();
+  data.events = data.events.map(event => event.id === 'e-region' ? { ...event, repeat: true } : event);
+  const scripts = localStoryScripts({ campaign: data, map, completedEvents: ['e-start', 'e-entry', 'e-region', 'e-near', 'e-battle'], enemyIds: ['goblin'] });
+  assert.ok(!scripts.includes('start'));
+  assert.ok(!scripts.includes('entry'));
+  assert.ok(!scripts.includes('near'));
+  assert.ok(!scripts.includes('battle'));
+  assert.ok(scripts.includes('region'));
+});
+
 test('near events match the actor and character, not the placement id', () => {
   const found = localStoryScripts({ campaign: campaign(), map, completedEvents: completed(true) });
   assert.ok(found.includes('near'), 'placement.id 不能作为 near 的匹配键，必须按 actor 命中');
