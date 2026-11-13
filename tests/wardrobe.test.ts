@@ -31,6 +31,26 @@ test('lazy poses belong to one outfit pool and reload after its session is clear
   second.release(); pool.destroy(); run.wardrobe.destroy();
 });
 
+test('warming poses shares pending and completed loads with outfit preparation', async t => {
+  const run = setup(t);
+  const pose = run.catalog.poses.idle!;
+  run.catalog.poses = {};
+  let loads = 0;
+  let finish!: (poses: typeof run.catalog.poses) => void;
+  const pool = new OutfitPool(run.scene, run.catalog, { items: {} } as ItemCatalog, () => {
+    loads++;
+    return new Promise(resolve => { finish = resolve; });
+  });
+  const warm = pool.warmPoses(['idle']);
+  const pending = pool.acquire(run.actor, {}, 'hero', undefined, new AbortController().signal);
+  assert.equal(loads, 1);
+  finish({ idle: pose });
+  const [lease] = await Promise.all([pending, warm]);
+  await pool.warmPoses(['idle']);
+  assert.equal(loads, 1);
+  lease.release(); pool.destroy(); run.wardrobe.destroy();
+});
+
 function setup(_t:test.TestContext,extraPoses=false,skillPose=false){
   const events=new EventEmitter(),renderer=new EventEmitter(),textures=new Set<string>();
   const ops=new Map<string,{stamps:number;clears:number;renders:number}>();

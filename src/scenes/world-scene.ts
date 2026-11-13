@@ -342,7 +342,7 @@ export class WorldScene extends Phaser.Scene {
       const missing = [...new Set(Object.values(recipe.poses))]
         .filter((id): id is string => typeof id === 'string' && !this.app.wardrobe.poses[id]);
       if (!missing.length) return;
-      void this.app.content.wardrobePoses(missing, signal).catch(error => {
+      void this.app.outfits?.warmPoses(missing).catch(error => {
         if (!signal.aborted) globalThis.storyDiagnostics?.record('wardrobe-pose-warm-error', { error });
       });
     } catch (error) {

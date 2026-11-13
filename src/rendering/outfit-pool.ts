@@ -160,6 +160,11 @@ export class OutfitPool {
     void load.catch(() => { if (this.poseLoads.get(id) === load) this.poseLoads.delete(id); });
     return load;
   }
+
+  async warmPoses(ids: readonly string[]): Promise<void> {
+    if (!this.active) throw new DOMException('人物外观池已关闭', 'AbortError');
+    await Promise.all([...new Set(ids)].map(id => this.loadPose(id)));
+  }
   private async prepare(base: ActorDefinition, equipment: Partial<Record<EquipmentSlot, string>>, classId: string | undefined,
     options: WardrobePrepareOptions | undefined, signal: AbortSignal): Promise<Outfit> {
     const recipe = costumeRecipe(this.catalog, this.items, equipment, classId, base.id, options?.learnedSkills);
