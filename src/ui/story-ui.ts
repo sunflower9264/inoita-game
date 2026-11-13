@@ -635,7 +635,7 @@ export class StoryUI {
     if(event.key==='Escape'&&this.itemNotice){event.preventDefault();this.itemNotice=undefined;this.render();return true;}
     if(this.savePage.handleEscape(event))return true;
     if(event.key==='Escape'&&this.allocationExit){event.preventDefault();this.finishAllocation(false);return true;}
-    if(event.key==='Escape'){event.preventDefault();if(this.busy){this.close();return true;}if(this.page==='forge'){if(this.forge?.confirming)this.forge.cancelConfirmation();else this.closeForge();return true;}if(this.page==='learn'){this.closeSkillBook();return true;}if(this.shortcutEdit){this.closeShortcutScreen();return true;}if(this.skillReset){this.skillReset=false;this.render();}else if(this.craftingPanel?.modalOpen){this.craftingPanel.cancel();}else if(this.shopPanel?.active){this.shopPanel.cancel();}else if(this.partyPanel?.modalOpen){this.partyPanel.cancel();}else if(this.operation){this.operation=undefined;this.render();}else if(this.page==='bag'&&this.selectedItem){this.selectedItem=undefined;this.render();}else this.close();return true;}
+    if(event.key==='Escape'){event.preventDefault();if(this.busy){this.close();return true;}if(this.page==='forge'){if(this.forge?.confirming)this.forge.cancelConfirmation();else this.closeForge();return true;}if(this.page==='learn'){this.closeSkillBook();return true;}if(this.shortcutEdit){this.closeShortcutScreen();return true;}if(this.skillReset){this.skillReset=false;this.render();}else if(this.craftingPanel?.modalOpen){this.craftingPanel.cancel();}else if(this.shopPanel?.active){this.shopPanel.cancel();}else if(this.partyPanel?.modalOpen){this.partyPanel.cancel();}else if(this.operation){this.closeOperation();}else if(this.page==='bag'&&this.selectedItem){this.selectedItem=undefined;this.render();}else this.close();return true;}
     const surfaces=this.operation||this.itemNotice||this.allocationExit||this.skillReset||this.savePage.modalOpen||this.craftingPanel?.modalOpen||this.shopPanel?.modalOpen||this.partyPanel?.modalOpen||this.forge?.confirming
       ?[this.modal!]:this.shortcutEdit?[this.shortcutScreen!,this.backTab!]:[this.surface!,this.body!,this.description!];
     const buttons=surfaces.flatMap(surface=>surface.focusables());
@@ -2090,7 +2090,18 @@ export class StoryUI {
     // 回血药水与再生药水都走队伍结算：全队生效、共用一个时钟。
     if(kind==='use'&&(use?.kind==='recover-health'||use?.kind==='regenerate')){this.app.useRecoveryItem?.(entry,this.selectedMemberId);this.render();return;}
     if(kind==='use'&&use&&NON_MENU_USE_KINDS.has(use.kind))return;
-    this.operation={entry,kind,quantity:1};this.scrollOffsets.delete('bag:operation');this.render();
+    this.operation={entry,kind,quantity:1};this.scrollOffsets.delete('bag:operation');
+    this.modal?.clear();
+    this.renderOperation();
+    this.menuText?.renderPage('operation-notice');
+    this.sync();
+  }
+  private closeOperation():void{
+    this.operation=undefined;
+    this.modal?.clear();
+    this.scrollNames.delete('operation');
+    this.menuText?.renderPage('bag');
+    this.sync();
   }
   private renderOperation():void{
     const v=this.modal!,box=tradeLayout.quantity,op=this.operation!,bag=this.session!.bag;
@@ -2197,7 +2208,7 @@ export class StoryUI {
         style:{size:Math.min(22,box.button.height*.42),color:GOLD,anchorX:.5,anchorY:.5,
           width:box.button.width-12,align:'center',wrap:'word'}});
     };
-    modalButton('取消',box.button.right,()=>{this.operation=undefined;this.render();});
+    modalButton('取消',box.button.right,()=>this.closeOperation());
     modalButton('确定',box.button.left,()=>this.confirmOperation(),!!disabled);
   }
   private itemUseProblem(entry:ItemInstance):string|undefined{

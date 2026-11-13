@@ -2592,7 +2592,10 @@ test('discard quantity changes preserve the dialog and background controls',t=>{
   const f=fixture();t.after(f.cleanup);
   const source=f.add('sp-weapon-enhance-scroll',3);
   f.menu.debugDescribe(source.id);
+  const beforeDialog=f.internals.body.root.list.slice(),organize=f.scene.button('整理');
   f.scene.click(f.scene.button('丢弃'));
+  assert.deepEqual(f.internals.body.root.list,beforeDialog,'打开确认框保留背包');
+  assert.equal(f.scene.button('整理'),organize);
   const increase=f.scene.button('增加数量');
   const cancel=f.scene.button('取消');
   const background=f.internals.body.root.list.slice();
@@ -2608,6 +2611,9 @@ test('discard quantity changes preserve the dialog and background controls',t=>{
   assert.ok(domLabel(f,'3'),'全部按钮显示总数量');
   f.scene.click(f.scene.button('减少数量'));
   assert.ok(domLabel(f,'2'),'减少按钮更新数量');
+  f.scene.click(cancel);
+  assert.deepEqual(f.internals.body.root.list,beforeDialog,'取消确认保留背包');
+  assert.equal(f.scene.button('整理'),organize);
 });
 
 test('sampling changes preserve discard and save popup coverage, text and pointer input',t=>{
