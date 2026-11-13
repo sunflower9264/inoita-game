@@ -149,9 +149,9 @@ export class ForgePanel {
     if(this.socketIndex!==undefined&&(this.socketIndex<0||this.socketIndex>=count))this.socketIndex=undefined;
     if(this.replaceIndex!==undefined&&(this.replaceIndex<0||this.replaceIndex>=count))this.replaceIndex=undefined;
   }
-  private renderSummary(v:UiSurface,target:ItemInstance,item:ItemDefinition,left:ScrollArea):number {
+  private renderSummary(v:UiSurface,target:ItemInstance,item:ItemDefinition,left:ScrollArea,drawIcon=true):number {
     const numbers=this.stats.equipment[target.item];
-    v.image(item.icon,384,36,56,56,left.content);
+    if(drawIcon)v.image(item.icon,384,36,56,56,left.content);
     this.addText('forge-summary-name',`${item.name}${target.enhancement?` +${target.enhancement}`:''}`,40,36,22,TEXT_COLORS.primary,0,0,
       {width:320,wrap:'word'});
     let y=64,lineIndex=0;
@@ -179,7 +179,7 @@ export class ForgePanel {
   private renderGrid(v:UiSurface,target:ItemInstance):void {
     const entries=this.gridEntries(),assets=this.panels.assets,layout=bagLayout(),grid=layout.grid;
     const scroll=this.scroll??this.scrollAt('forge-grid',grid.x,grid.y,grid.width,431-24-grid.y);this.scroll=scroll;
-    scroll.content.removeAll(true);this.gridButtons.clear();
+    const old=new Map(this.gridButtons);
     this.pageText=this.pageText.filter(spec=>!spec.key.startsWith('forge-grid-'));
     this.gridClip={top:grid.y,bottom:grid.y+scroll.height};
     if(!entries.length){
@@ -193,26 +193,34 @@ export class ForgePanel {
       const broken=this.tab==='socket'&&!entry.numbers?.modifiers?.length;
       const chaos=this.tab==='enchant'&&!!definition.use?.requiresEnhanced&&(target.numbers?.enhancementUses??0)===0&&!problem;
       const selected=this.selectedItem===entry.id;
-      const button=v.button('',x,y,SLOT.size,SLOT.size,()=>this.selectGridEntry(entry),{image:assets['inventory-slot'],parent:scroll.content,guard:scroll.guard})
-        .setData('label',this.gridLabel(entry));
-      v.image(definition.icon,SLOT.icon.x,SLOT.icon.y,SLOT.icon.size,SLOT.icon.size,button);
+      let cell=old.get(entry.id);old.delete(entry.id);
+      if(!cell){
+        const button=v.button('',x,y,SLOT.size,SLOT.size,()=>{const current=this.bag.get(entry.id);if(current)this.selectGridEntry(current);},{image:assets['inventory-slot'],parent:scroll.content,guard:scroll.guard});
+        v.image(definition.icon,SLOT.icon.x,SLOT.icon.y,SLOT.icon.size,SLOT.icon.size,button);
+        cell={button,chaos};this.gridButtons.set(entry.id,cell);
+      }
+      const button=cell.button;button.setPosition(x,y).setData('label',this.gridLabel(entry)).setAlpha(problem||broken?.45:1);
       if(definition.stackable)this.addGridText(`forge-grid-badge-${index}`,String(entry.quantity),
         grid.x+x+layout.badge.x,grid.y+y+layout.badge.y,20,layout.badge.color,1,0);
-      const marker=selected||chaos?v.image(assets['inventory-selected'],SLOT.selection.x,SLOT.selection.y,SLOT.selection.size,SLOT.selection.size,button)
-        .setData('forge-highlight',chaos?'chaos':'selected'):undefined;
-      this.gridButtons.set(entry.id,{button,marker,chaos});
-      if(problem||broken)button.setAlpha(.45);
+      if(selected||chaos){
+        if(!cell.marker)cell.marker=v.image(assets['inventory-selected'],SLOT.selection.x,SLOT.selection.y,SLOT.selection.size,SLOT.selection.size,button);
+        cell.marker.setData('forge-highlight',chaos?'chaos':'selected');
+      }else if(cell.marker){cell.marker.destroy();cell.marker=undefined;}
+      cell.chaos=chaos;
     });
+    for(const [id,cell] of old){cell.button.destroy();this.gridButtons.delete(id);}v.pruneDestroyed();
     scroll.setHeight(Math.ceil(entries.length/grid.columns)*SLOT_STRIDE);scroll.scrollTop=this.offset;
     scroll.onScroll=()=>{this.offset=scroll.scrollTop;this.text?.refresh();};
   }
   private selectGridEntry(entry:ItemInstance):void {
-    this.selectedItem=entry.id;this.socketIndex=undefined;
+    this.selectedItem=entry.id;this.socketIndex=undefined;this.updateSelection();
+  }
+  private updateSelection():void {
     const v=this.surface,left=this.leftScroll,target=this.targetId?this.bag.get(this.targetId):undefined;
     const item=target?this.bag.catalog.items[target.item]:undefined;
     if(!v||!left||!target||!item||!this.text?.updatePage){this.changed();return;}
     for(const [id,cell] of this.gridButtons){
-      const show=id===entry.id||cell.chaos;
+      const show=id===this.selectedItem||cell.chaos;
       if(show&&!cell.marker)cell.marker=v.image(this.panels.assets['inventory-selected'],SLOT.selection.x,SLOT.selection.y,SLOT.selection.size,SLOT.selection.size,cell.button).setData('forge-highlight',cell.chaos?'chaos':'selected');
       else if(!show&&cell.marker){cell.marker.destroy();cell.marker=undefined;}
     }
@@ -227,6 +235,15 @@ export class ForgePanel {
     this.detailKeys=new Set(this.pageText.slice(textStart).map(spec=>spec.key));
     left.setHeight(Math.max(431,this.summaryBottom,bottom));
     v.pruneDestroyed();
+  }
+  private updateAfterAction():void{
+    const v=this.surface,left=this.leftScroll,target=this.targetId?this.bag.get(this.targetId):undefined;
+    const item=target?this.bag.catalog.items[target.item]:undefined;
+    if(!v||!left||!target||!item?.equipment||!this.text?.updatePage){this.changed();return;}
+    this.offset=this.scroll?.scrollTop??this.offset;this.leftOffset=left.scrollTop;this.validateState(target);
+    this.pageText=this.pageText.filter(spec=>!spec.key.startsWith('forge-summary-'));
+    this.summaryBottom=this.renderSummary(v,target,item,left,false);
+    this.renderGrid(v,target);this.updateDetails(v,left,target,item);this.text.updatePage();
   }
   private problemText(source:ItemInstance,target:ItemInstance):string|undefined {
     if(!this.bag.canApply(source.id,target.id))return this.panels.itemMessages['socket-incompatible']??'该道具不适合。';
@@ -279,7 +296,7 @@ export class ForgePanel {
     const activeIndex=this.socketIndex??this.replaceIndex;
     for(let index=0;index<sockets;index++){
       const x=40+index*60,y=190,filled=index<target.gems.length;
-      const button=v.button('',x,y,54,54,()=>{if(!filled)return;this.socketIndex=index;this.replaceIndex=undefined;this.selectedItem=undefined;this.changed();},
+      const button=v.button('',x,y,54,54,()=>{if(!filled)return;this.socketIndex=index;this.replaceIndex=undefined;this.selectedItem=undefined;this.updateSelection();},
         {image:this.panels.assets['inventory-slot'],disabled:!filled,parent:left.content,guard:left.guard}).setData('label',`孔位${index+1}`);
       if(filled){const gemItem=this.bag.catalog.items[target.gems[index]!];if(gemItem)v.image(gemItem.icon,5,5,44,44,button);}
       if(activeIndex===index)v.image(this.panels.assets['inventory-selected'],-5,-5,64,64,button).setData('forge-highlight','socket');
@@ -308,7 +325,7 @@ export class ForgePanel {
       if(outcome)this.socketHint(outcome,TEXT_COLORS.primary,hintY);
       v.button('',40,actionY,195,55,()=>{this.confirmation={kind:'unsocket',index};this.modalChanged();},{fontSize:20,parent:left.content,guard:left.guard}).setData('label','取出');
       this.buttonText('forge-socket-remove','取出',40,actionY,195,55,20);
-      v.button('',245,actionY,195,55,()=>{this.replaceIndex=index;this.socketIndex=undefined;this.selectedItem=undefined;this.changed();},{fontSize:20,parent:left.content,guard:left.guard}).setData('label','替换');
+      v.button('',245,actionY,195,55,()=>{this.replaceIndex=index;this.socketIndex=undefined;this.selectedItem=undefined;this.updateSelection();},{fontSize:20,parent:left.content,guard:left.guard}).setData('label','替换');
       this.buttonText('forge-socket-replace','替换',245,actionY,195,55,20);
       return actionY+55;
     }
@@ -395,7 +412,7 @@ export class ForgePanel {
     const targetId=this.targetId;if(!targetId)return;
     try {this.bag.use(sourceId,targetId);this.sound();}
     catch(error) {this.notify(this.errorText(error));}
-    this.changed();
+    this.updateAfterAction();
   }
   private confirmSocket():void {
     const targetId=this.targetId,gemId=this.selectedItem;if(!targetId||!gemId)return;
@@ -406,13 +423,13 @@ export class ForgePanel {
     try {this.bag.use(gemId,targetId);this.sound();}
     catch(error) {this.notify(this.errorText(error));}
     this.selectedItem=undefined;this.socketIndex=undefined;this.replaceIndex=undefined;
-    this.changed();
+    this.updateAfterAction();
   }
   private usePurify(sourceId:string):void {
     const targetId=this.targetId;if(!targetId)return;
     try {this.bag.use(sourceId,targetId);this.sound();}
     catch(error){this.notify(this.errorText(error));}
-    this.changed();
+    this.updateAfterAction();
   }
   renderModal(modal:UiSurface,placeModal:(width:number,height:number)=>void):void {
     this.modalText=[];this.band=undefined;
@@ -436,7 +453,7 @@ export class ForgePanel {
     } catch(error) {
       this.notify(this.errorText(error));
     }
-    this.changed();
+    this.updateAfterAction();this.modalChanged();
   }
   private errorText(error:unknown):string {
     if(error instanceof ItemApplicationError)return this.panels.itemMessages[error.notice]??error.message;

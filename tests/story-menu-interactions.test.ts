@@ -869,12 +869,14 @@ test('forge sockets, removes and replaces gems with confirmation', t => {
   openHeroForge(f);
   f.scene.click(f.scene.button('镶嵌'));
   assert.ok(visibleDomLabels(f).some(label=>label.text.includes('从右侧选择一颗宝石')),'空孔提示从右侧选宝石');
+  const unchangedGem=f.scene.button(`宝石:${second.id}`),grid=f.internals.scrollNames.get('forge-grid');
   f.scene.click(f.scene.button(`宝石:${first.id}`));
   assert.ok(visibleDomLabels(f).some(label=>label.text.includes('低级宝石')),'选中宝石后左侧显示宝石信息');
   assert.ok(!visibleDomLabels(f).some(label=>label.text.includes('待镶')),'不再显示待镶字样');
   assert.ok(!visibleDomLabels(f).some(label=>label.text.includes('角色面板无变化')),'不再显示角色面板差值');
   f.scene.click(f.scene.button('确认镶嵌'));
   assert.equal(f.hero.bag.get(weapon.id)!.gems.length,1);
+  assert.ok(f.scene.button(`宝石:${second.id}`)===unchangedGem,'未变宝石格保留');assert.ok(f.internals.scrollNames.get('forge-grid')===grid,'滚动区保留');
   assert.equal(f.hero.bag.get(weapon.id)!.numbers!.gemModifiers.length,1);
   assert.ok(visibleDomLabels(f).some(label=>label.text.includes('低级宝石')),'已镶宝石和效果常驻显示');
   f.scene.click(f.scene.button('孔位1'));
@@ -890,6 +892,7 @@ test('forge sockets, removes and replaces gems with confirmation', t => {
   f.scene.click(remove);f.scene.click(f.scene.button('是'));
   assert.equal(f.hero.bag.get(weapon.id)!.gems.length,0);
   assert.equal(f.hero.bag.count('novice-jewel'),1,'宝石回到背包');
+  assert.ok(f.scene.button(`宝石:${second.id}`)===unchangedGem,'未变宝石格保留');assert.ok(f.internals.scrollNames.get('forge-grid')===grid,'滚动区保留');
   f.scene.click(f.scene.button(`宝石:${second.id}`));
   f.scene.click(f.scene.button('确认镶嵌'));
   assert.equal(f.hero.bag.get(weapon.id)!.gems.length,1);
@@ -981,7 +984,7 @@ test('long item actions stay centered inside their button faces',t=>{
   }
 });
 
-test('forge repaints the menu once per action', t => {
+test('forge actions retain the page and unchanged material cells', t => {
   const f=fixture();t.after(f.cleanup);
   setHeroWeapon(f,3,3);f.add('novice-weapon-scroll',2);
   openHeroForge(f);
@@ -996,7 +999,9 @@ test('forge repaints the menu once per action', t => {
   assert.equal(render.mock.callCount(),0,'选择素材只更新详情');
   t.mock.method(Math,'random',()=>0.99);
   f.scene.click(f.scene.button('确定强化'));
-  assert.equal(render.mock.callCount(),1,'结算只重绘一次，不叠加会话通知');
+  assert.equal(render.mock.callCount(),0,'结算只更新变化内容');
+  assert.equal(f.scene.button('卷轴:低级武器强化卷轴'),source);
+  assert.deepEqual(f.internals.body.scrolls,scrolls);
 });
 
 test('quest page redraws only when the quest book version changes', t => {
