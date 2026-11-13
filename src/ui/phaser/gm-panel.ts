@@ -42,6 +42,8 @@ interface GmReferences {
   /** 把页面里的滚动区登记给菜单文字层，滚轮和拖动时 DOM 文字才能跟着走。 */
   registerScroll?(name: string, scroll: ScrollArea): void;
   removeScroll?(scroll: ScrollArea): void;
+  updateStoryDetail?(specs:MenuTextSpec[]):void;
+  active?():boolean;
   /** 滚动后重算 DOM 文字位置。 */
   refresh?(): void;
   setText?(key:string,text:string):void;
@@ -141,6 +143,10 @@ export class GmPanel {
   private tabText:MenuTextSpec[]=[];
   private contentNodes:UiNode[]=[];
   private contentScrolls:ScrollArea[]=[];
+  private storyDetailNodes:UiNode[]=[];
+  private storyDetailScrolls:ScrollArea[]=[];
+  private storyBody?:UiSurface;
+  private storyRow?:StoryTaskRow;
   private textSerial = 0;
 
   private readonly gm: GmActions;
@@ -188,7 +194,7 @@ export class GmPanel {
     this.textSerial=this.tabText.length;this.renderContent(body,writer);
   }
   private renderContent(body:UiSurface,writer?:MenuTextWriter):void{
-    this.writer=writer;const before=new Set(body.root.list),scrolls=new Set(body.scrolls);
+    this.writer=writer;this.storyBody=undefined;this.storyRow=undefined;const before=new Set(body.root.list),scrolls=new Set(body.scrolls);
     const hint = this.page === 'story' ? this.renderStory(body)
       : this.page === 'character' ? this.renderCharacter(body)
       : this.page === 'items' ? this.renderItems(body)
@@ -449,6 +455,7 @@ export class GmPanel {
     if (debug.focus) this.button(body, this.ending ? '正在结束调试…' : '结束本次调试',660,54,150,30,
       ()=>this.onEndDebug(),{disabled:this.ending}).setData('label','结束本次调试');
     const list=body.scroll(60,100,352,336);this.references.registerScroll?.('gm-story-list',list);
+    let refreshSelection=()=>{};
     list.setHeight(rows.length*54);
     const cells=Array.from({length:Math.min(rows.length,Math.ceil(336/54)+1)},()=>{
       let item:StoryTaskRow|undefined;
@@ -456,7 +463,7 @@ export class GmPanel {
       const button=this.button(body,'',0,0,352,52,()=>{
         if(!item)return;
         if(item.task.quest===this.selectedQuest)return;
-        this.selectedQuest=item.task.quest;this.storyIntroScroll=0;this.hooks.render();
+        this.selectedQuest=item.task.quest;this.storyIntroScroll=0;refreshSelection();this.refreshStoryDetail(body,item);
       },{bare:true,parent:list.content,guard:list.guard});
       const title=body.text('',12,5,328,18,GOLD,button);
       const subtitle=body.text('',12,29,328,15,'#b8ab92',button);
@@ -474,13 +481,32 @@ export class GmPanel {
     let firstRow=-1;
     const updateRows=()=>{const first=Math.floor(list.scrollTop/54);if(first===firstRow)return;firstRow=first;cells.forEach((cell,index)=>cell.set(rows[first+index],first+index));};
     list.onScroll=()=>{this.storyScroll=list.scrollTop;updateRows();this.references.refresh?.();};
-    updateRows();
-    if(row)this.renderTaskDetail(body,row);
+    updateRows();refreshSelection=()=>{firstRow=-1;updateRows();};
+    if(row)this.buildStoryDetail(body,row);
     else this.text('没有符合筛选条件的任务',442,112,466,19);
     return `可调任务 ${rows.length} 个${debug.focus?` · ${DEBUG_PAUSED_NOTE}`:''}`;
   }
 
   /** 选中任务的详情：进度、说明、现场表来源与开幕演出；预览完成前不开放进入。 */
+  private buildStoryDetail(body:UiSurface,row:StoryTaskRow):MenuTextSpec[]{
+    const before=new Set(body.root.list),scrolls=new Set(body.scrolls),writer=this.writer,specs:MenuTextSpec[]=[];
+    this.writer={add:spec=>{const mapped={...spec,key:`gm-story-detail-${specs.length}`};specs.push(mapped);writer?.add(mapped);}};
+    this.storyBody=body;this.storyRow=row;this.renderTaskDetail(body,row);this.writer=writer;
+    this.storyDetailNodes=body.root.list.filter(node=>!before.has(node));
+    this.storyDetailScrolls=body.scrolls.filter(scroll=>!scrolls.has(scroll));
+    return specs;
+  }
+  private refreshStoryDetail(body:UiSurface,row:StoryTaskRow):void{
+    if(!this.references.updateStoryDetail){this.hooks.render();return;}
+    const oldNodes=new Set(this.storyDetailNodes),oldScrolls=new Set(this.storyDetailScrolls);
+    for(const scroll of oldScrolls){this.references.removeScroll?.(scroll);scroll.destroy();const index=body.scrolls.indexOf(scroll);if(index>=0)body.scrolls.splice(index,1);}
+    for(const node of oldNodes)node.destroy();body.pruneDestroyed();
+    this.contentNodes=this.contentNodes.filter(node=>!oldNodes.has(node));
+    this.contentScrolls=this.contentScrolls.filter(scroll=>!oldScrolls.has(scroll));
+    const specs=this.buildStoryDetail(body,row);
+    this.contentNodes.push(...this.storyDetailNodes);this.contentScrolls.push(...this.storyDetailScrolls);
+    this.references.updateStoryDetail(specs);
+  }
   private renderTaskDetail(body: UiSurface, row: StoryTaskRow): void {
     const progress=this.references.questProgress?.(row.quest.id);
     const progressLabel=progress
@@ -530,7 +556,10 @@ export class GmPanel {
       const settle=(result:PreviewResult)=>{
         if(this.previewToken!==token||this.previewQuest!==quest)return;
         this.previewResult=result;
-        if(this.page==='story')this.hooks.render();
+        if(this.page==='story'){
+          if(this.storyBody&&this.storyRow&&this.references.updateStoryDetail&&this.references.active?.())this.refreshStoryDetail(this.storyBody,this.storyRow);
+          else if(!this.references.updateStoryDetail)this.hooks.render();
+        }
       };
       void this.gm.previewStory({quest}).then(result=>{
         const preview=readTaskPreview(result.preview);

@@ -1003,6 +1003,11 @@ export class StoryUI {
           itemDetail:(itemId,close)=>this.renderGmItemDetail(itemId,close),
           registerScroll:(name,scroll)=>this.scrollNames.set(name,scroll),
           removeScroll:scroll=>{for(const [name,value] of this.scrollNames)if(value===scroll)this.scrollNames.delete(name);},
+          active:()=>this.open&&this.page==='debug'&&this.gmPanelOwner===gm,
+          updateStoryDetail:specs=>{
+            this.gmTextSpecs=this.gmTextSpecs.filter(spec=>!spec.key.startsWith('gm-story-detail-'));this.gmTextSpecs.push(...specs);
+            this.menuText?.renderPage('debug');
+          },
           refresh:()=>this.menuText?.refresh(),
           setText:(key,text)=>{
             const spec=this.gmTextSpecs.find(spec=>spec.key===key);if(spec)spec.text=text;

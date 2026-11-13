@@ -2223,6 +2223,13 @@ test('the GM story page lists tasks and enters the selected one without exposing
   assert(!/event-\d|scene-\d|quest-\d|shadow-camp/.test(texts()));
   assert.equal(f.scene.buttons('任务 向卓拉德报告').length,0);
   await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(f.internals.body.scrolls.find(scroll=>scroll.x===60&&scroll.y===100),list,'预览返回保留任务列表');
+  const second=taskButtons()[1]!;const secondName=String(second.getData('label')).slice(3);
+  f.scene.click(second);
+  assert.equal(f.internals.body.scrolls.find(scroll=>scroll.x===60&&scroll.y===100),list,'选任务保留列表');
+  assert.equal(taskButtons()[1],second);assert(texts().includes(secondName));
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(f.internals.body.scrolls.find(scroll=>scroll.x===60&&scroll.y===100),list);
   assert(f.scene.button('进入任务').input?.enabled);
   assert(texts().includes('调试现场：'));
   assert(texts().includes('默认起点：'));
