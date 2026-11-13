@@ -210,6 +210,20 @@ test('resident menu images are acquired again after the original request is canc
   host.releaseResident();
 });
 
+test('cancelled resident batches release their retained records',async t=>{
+  const f=fixture();t.after(f.cleanup);let releases=0;
+  t.mock.method(domAssets,'preloadFiles',async()=>({release:()=>releases++}));
+  const host=new SceneUiAssets(f.scene);
+  for(let i=0;i<10;i++){
+    const request=new AbortController();
+    await host.preloadResident(['menu-frame.png'],request.signal,()=>{});
+    request.abort();
+  }
+  assert.equal(releases,10);
+  host.releaseResident();
+  assert.equal(releases,10);
+});
+
 
 test('quest confirmation stays above the input blocker and accepts one tap',t=>{
   const f=fixture();t.after(f.cleanup);

@@ -45,7 +45,16 @@ export class SceneUiAssets implements UiAssetHost {
     const lease = await domAssets.preloadFiles(missing, signal, value => { if (!signal.aborted) progress(value); });
     if (signal.aborted) { lease.release(); signal.throwIfAborted(); }
     for (const name of missing) this.residentFiles.set(key(name), signal);
-    this.resident.push(lease);
+    const retained: AssetLease = { release: () => {
+      signal.removeEventListener('abort', retained.release);
+      const index = this.resident.indexOf(retained);
+      if (index < 0) return;
+      this.resident.splice(index, 1);
+      for (const name of missing) if (this.residentFiles.get(key(name)) === signal) this.residentFiles.delete(key(name));
+      lease.release();
+    } };
+    this.resident.push(retained);
+    signal.addEventListener('abort', retained.release, { once: true });
   }
 
   /** 单张图（立绘）也走同一本账，和本局内容一起释放。 */
@@ -55,7 +64,7 @@ export class SceneUiAssets implements UiAssetHost {
 
   /** 页面销毁时释放常驻图；场景正常重启不调用。 */
   releaseResident(): void {
-    this.resident.splice(0).forEach(lease => lease.release());
+    while (this.resident.length) this.resident[0]!.release();
     this.residentFiles.clear();
   }
 }
