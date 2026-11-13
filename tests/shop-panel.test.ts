@@ -22,7 +22,7 @@ const item=(name:string)=>Object.values(items.items).find(value=>value.name===na
 
 class Node {
   height=24;label='';origin:{x:number;y:number}={x:0,y:0};children:Node[]=[];text='';color='';
-  data:Record<string,unknown>={};alpha=1;interactive=true;
+  data:Record<string,unknown>={};alpha=1;interactive=true;visible=true;
   context={measureText:(text:string)=>({width:Array.from(text).length*12})};
   destroy(){}
   setOrigin(x:number,y?:number){this.origin={x,y:y??x};return this;}
@@ -33,7 +33,7 @@ class Node {
   disableInteractive(){this.interactive=false;return this;}
   setPosition(){return this;}setScale(){return this;}setColor(color:string){this.color=color;return this;}
   setFlipX(){return this;}setFlipY(){return this;}
-  setFontSize(){return this;}setVisible(){return this;}setText(value:string){this.text=value;return this;}
+  setFontSize(){return this;}setVisible(value=true){this.visible=value;return this;}setText(value:string){this.text=value;return this;}
   add(child:Node){this.children.push(child);return this;}
   addAt(child:Node,index:number){this.children.splice(index,0,child);return this;}
 }
@@ -418,6 +418,22 @@ test('batch sale hides unsellable items, toggles picks and sells the whole stack
   (action.action as ()=>void)();draw();
   assert.equal(session.money,before+price);assert.equal(session.bag.count('healing-potion-s'),0,'整组一次卖完');
   assert.ok(surface.buttons.some(call=>String(call.node?.label)==='出售选中'),'卖完仍留在批量模式');
+});
+
+test('cancel from a batch purchase description keeps the batch selection and hides batch actions',()=>{
+  const {surface,panel,draw,texts}=open('merchandise-dealer-b09d9585');
+  press(surface,'批量出售');draw();
+  press(surface,'选择 恢复药水（小）');draw();
+  assert.equal(textSpecs(texts,'出售选中（1）').length,1,'批量选中已显示');
+  press(surface,'购买 恢复药水（小）');draw();
+  assert.ok(!surface.buttons.some(call=>String(call.node?.label)==='出售选中'&&call.node?.visible),'说明打开时隐藏出售选中按钮');
+  assert.equal(textSpecs(texts,'出售选中（1）').length,0,'说明打开时隐藏出售选中文字');
+  panel.cancel();draw();
+  assert.ok(surface.buttons.some(call=>String(call.node?.label)==='退出批量'),'取消说明后仍在批量模式');
+  assert.ok(surface.buttons.some(call=>String(call.node?.label)==='出售选中'),'取消说明后恢复批量按钮');
+  assert.equal(textSpecs(texts,'出售选中（1）').length,1,'勾选保持');
+  press(surface,'退出批量');draw();
+  assert.ok(surface.buttons.some(call=>String(call.node?.label)==='批量出售'),'再按一次才退出批量');
 });
 
 test('trade follows the native steps: description, quantity box, then confirmation',()=>{

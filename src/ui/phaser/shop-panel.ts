@@ -131,7 +131,9 @@ export class ShopPanel {
     const selection=this.selection;
     const incremental=this.incrementalDescription;
     this.selection=undefined;
-    this.batch=false;this.batchSelection.clear();this.batchError=undefined;
+    // 批量模式里打开说明再取消，只关说明，勾选和批量入口继续保留。
+    if(!this.batch)this.batchSelection.clear();
+    this.batchError=undefined;
     if(incremental&&selection){
       this.refreshDescription();
       if(selection.step!=='description')this.text?.updateModal?.(()=>{});
@@ -185,6 +187,7 @@ export class ShopPanel {
         this.selectionMarker=view.image(this.catalog.assets.selection,slot.x,slot.y,slot.size,slot.size,button);}
     }
     for(const control of this.batchControls)control.setVisible(!selection&&!this.cleaning);
+    this.batchSellButton?.setVisible(!selection&&!this.cleaning);
     target.updateDescription(()=>{
       this.detailText=[];
       if(selection?.step==='description')this.renderDescription(description,selection);
@@ -373,6 +376,7 @@ export class ShopPanel {
   }
   /** 一次结算：金额先算完再整批扣物品；成功后由金币通知重画，失败保留勾选并显示原因。 */
   private sellBatch():void{
+    if(this.selection)return;
     const entries=this.batchEntries();
     if(!entries.length)return;
     const selected=[...this.batchSelection];
@@ -446,7 +450,7 @@ export class ShopPanel {
     const covered=this.descriptionCovered();
     for(const spec of this.pageText)
       if(!(this.cleaning&&(spec.key.startsWith('shop-filter-')||spec.key==='shop-batch-toggle'||spec.key==='cleanup-entry'))
-        &&!(this.selection&&(spec.key==='shop-batch-toggle'||spec.key==='cleanup-entry'))&&(!covered||spec.x<covered.x||spec.x>covered.x+covered.width||spec.y<covered.y||spec.y>covered.y+covered.height))writer.add(spec);
+        &&!(this.selection&&(spec.key==='shop-batch-toggle'||spec.key==='shop-batch-sell'||spec.key==='cleanup-entry'))&&(!covered||spec.x<covered.x||spec.x>covered.x+covered.width||spec.y<covered.y||spec.y>covered.y+covered.height))writer.add(spec);
     for(const spec of this.detailText)writer.add(spec);
   }
   renderModalText(writer:MenuTextWriter):void{for(const spec of this.modalText)writer.add(spec);}
