@@ -370,3 +370,19 @@ test('format 46 repairs a hidden player only in the affected same-map event',()=
     assert.equal(stage.scene.actors[0]!.visible,event===352);
   }
 });
+
+
+test('format 51 mercenaries gain empty skill book progress on upgrade',()=>{
+  const saved=record();
+  const character=content.storyClasses.classes[0],session=newStorySession(content.campaign,content.world.actors[content.campaign.start.actor],character,
+    content.items,content.characterStats,content.battleCatalog,content.companions);
+  session.bag.add('mercenary-emblem-assassin');
+  const member=session.party!.recruit(session.bag.entries.find(entry=>entry.item==='mercenary-emblem-assassin')!.id,()=>0).member;
+  saved.session.party=session.party!.captureState();
+  const previous=saved.session.party.members[0]!;
+  delete previous.skillBookLevels;saved.format=51;
+  const restored=prepareSavedGame(saved,content).session.party!.get(member.id)!;
+  assert.deepEqual(restored.skills.bookState(),{});
+  assert.deepEqual(restored.generated.skillCaps,member.generated.skillCaps);
+  assert.deepEqual(restored.skills.skillLevels(),member.skills.skillLevels());
+});

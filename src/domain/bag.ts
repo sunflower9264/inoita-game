@@ -15,7 +15,7 @@ export interface BagRules {
   initialize(entry:ItemInstance,drop?:{grade?:import('./character-stats.ts').EquipmentGradeSeed;sockets?:boolean}):void;
   equipProblem(entry:ItemInstance):string|undefined;
   targetProblem(source:ItemInstance,target:ItemInstance):ItemNotice|undefined;
-  applyUse(source:ItemInstance,target:ItemInstance|undefined,skill?:string):string|void;
+  applyUse(source:ItemInstance,target:ItemInstance|undefined,skill?:string,memberId?:string):string|void;
   /**
    * 强化结算。原版有成败与概率，随机源由调用方给，界面只读结果。
    * 缺省时按「必定 +1」处理，方便不需要概率的场景。
@@ -527,7 +527,7 @@ export class Bag {
     if(entry.numbers.sockets>0)throw new Error('装备已有宝石孔');
     entry.numbers.sockets=sockets;this.notify();
   }
-  use(id: string, target?: string, skill?: string, random: () => number = Math.random): ItemResult {
+  use(id: string, target?: string, skill?: string, random: () => number = Math.random, memberId?:string): ItemResult {
     const source=this.instances.get(id);
     if(!source||this.cellOf(id)<0)throw new Error('物品已不在背包中');
     const definition=this.catalog.items[source.item], use=definition.use;
@@ -549,10 +549,10 @@ export class Bag {
       return choices[Math.floor(value*choices.length)];
     };
     const learnedSkill=source.skill||skill;
-    if(use.kind==='learn'&&(!learnedSkill||!this.catalog.classSkills[this.classId]?.includes(learnedSkill)))throw new Error('请选择本职业的技能');
+    if(use.kind==='learn'&&(!learnedSkill||(!memberId&&!this.catalog.classSkills[this.classId]?.includes(learnedSkill))))throw new Error('请选择本职业的技能');
     const result:ItemResult={kind:use.kind,title:USE_LABELS[use.kind],message:`已使用${definition.name}`,rewards:[],target,item:source.item};
     const enchantOutcome=use.kind==='enchant'?this.rules?.enchant?.(source,this.instances.get(target!)!,random):undefined;
-    const useMessage=this.rules?.applyUse(source,target?this.instances.get(target):undefined,learnedSkill);
+    const useMessage=this.rules?.applyUse(source,target?this.instances.get(target):undefined,learnedSkill,memberId);
     if(useMessage)result.message=useMessage;
     // 每种用途都要有一个 case：新增 ItemUseKind 时，`default` 的 `never` 兜底会在这里编译失败。
     switch(use.kind) {

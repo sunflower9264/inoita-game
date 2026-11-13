@@ -1641,7 +1641,8 @@ export class StoryUI {
     const detail=this.scroll('description',565,71,353,detailHeight);
     const clip={top:71,bottom:71+detailHeight};
     // 说明正文按现有断行结果落字；滚动时 DOM 层按 `description` 的偏移重算位置。
-    const description=this.descriptionLayout(v,skillDescriptionParts(skill,level,companion?maximum:undefined),353,22);
+    const description=this.descriptionLayout(v,skillDescriptionParts(skill,level,companion?.source==='mercenary'&&maximum?skill.ranks.length:companion?maximum:undefined,
+      companion?.source==='mercenary'&&maximum?companion.snapshot().skillCaps[skill.id]:undefined),353,22);
     this.addDescriptionText('skill-desc',description,565,71,353,22,'description',clip);
     let y=description.height;
     if(this.skillSection==='ai'){this.finishScroll('description',detail,y);return;}

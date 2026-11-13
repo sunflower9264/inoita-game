@@ -81,6 +81,7 @@ interface CompanionState {
   combatResourceLimits:{maxHealth:number;maxMana:number}|null;
   aiFrequency:[string,number][];
   allocationBaseLevel?:number; allocation?:PrimaryAttributes;
+  skillBookLevels?:Record<string,number>;
 }
 interface PartyState {
   members:CompanionState[];rosterSlots:(string|null)[];slots:(string|null)[];selected:string;serial:number;
@@ -192,11 +193,11 @@ export class CompanionMember {
     name:this.definition.name,classId:this.definition.classId,source:this.source,elite:this.definition.elite,...player};}
   captureState():CompanionState{return structuredClone({id:this.id,definitionId:this.definition.id,source:this.source,
     generated:this.generated,level:this.currentLevel,health:this.currentHealth,mana:this.currentMana,experience:this.currentExperience,
-    combatResourceLimits:this.combatResourceLimits,skills:this.skills.captureState(),aiFrequency:[...this.aiFrequency],allocationBaseLevel:this.allocationBaseLevel,allocation:this.allocation});}
+    combatResourceLimits:this.combatResourceLimits,skills:this.skills.captureState(),aiFrequency:[...this.aiFrequency],allocationBaseLevel:this.allocationBaseLevel,allocation:this.allocation,skillBookLevels:this.skills.bookState()});}
   restoreState(state:CompanionState):void{
     this.allocationBaseLevel=state.allocationBaseLevel??state.level;this.allocation=state.allocation??primaryAttributesFrom({strength:0,dexterity:0,vitality:0,intelligence:0,mentality:0});this.panelCache=undefined;
     this.currentLevel=state.level;this.currentHealth=state.health;this.currentMana=state.mana;this.currentExperience=state.experience;
-    this.combatResourceLimits=state.combatResourceLimits?{...state.combatResourceLimits}:null;this.skills.updateLevel(this.currentLevel);this.skills.restoreState(state.skills);
+    this.combatResourceLimits=state.combatResourceLimits?{...state.combatResourceLimits}:null;this.skills.restoreBooks(state.skillBookLevels??{},this.currentLevel);this.skills.restoreState(state.skills);
     this.aiFrequency.clear();for(const [id,value] of state.aiFrequency)this.aiFrequency.set(id,value);
   }
 

@@ -1,8 +1,9 @@
-import type { BattleCatalog } from '../../domain/battle.ts';
+import { skillForGrowth, type BattleCatalog } from '../../domain/battle.ts';
 import type { Bag } from '../../domain/bag.ts';
 import type { DescriptionTextPart } from '../../domain/description-text.ts';
 import type { MenuPanels } from '../../domain/menu-panels.ts';
 import type { StorySkillProgression } from '../../domain/story-skills.ts';
+import type { CompanionMember } from '../../domain/party.ts';
 import { layoutDescriptionText } from '../description-text-layout.ts';
 import type { MenuTextSpec, MenuTextWriter } from '../dom/menu-text.ts';
 import type { UiImage, UiNode } from '../dom/node.ts';
@@ -46,18 +47,19 @@ export class SkillBookPanel {
   private detailKeys=new Set<string>();
   private readonly updatePage?:()=>void;
   private readonly removeScroll?:(scroll:ScrollArea)=>void;
+  private readonly companion?:CompanionMember;
 
   constructor(bag: Bag, skills: StorySkillProgression, catalog: BattleCatalog, panels: MenuPanels,
     entryId: string, changed: () => void, sound: () => void, close: (message?: string) => void,
-    scrollArea?: ScrollFactory, refreshText: () => void = () => {}, updatePage?:()=>void, removeScroll?:(scroll:ScrollArea)=>void) {
+    scrollArea?: ScrollFactory, refreshText: () => void = () => {}, updatePage?:()=>void, removeScroll?:(scroll:ScrollArea)=>void, companion?:CompanionMember) {
     this.bag = bag; this.skills = skills; this.catalog = catalog; this.panels = panels;
     this.entryId = entryId; this.changed = changed; this.sound = sound; this.close = close;
     this.scrollArea = scrollArea ?? ((view, _name, x, y, width, height) => view.scroll(x, y, width, height));
-    this.refreshText = refreshText;this.updatePage=updatePage;this.removeScroll=removeScroll;
+    this.refreshText = refreshText;this.updatePage=updatePage;this.removeScroll=removeScroll;this.companion=companion;
   }
 
   get skillIds(): string[] {
-    return this.catalog.classes.find(entry => entry.id === this.bag.classId)?.skills ?? [];
+    return this.catalog.classes.find(entry => entry.id === (this.companion?.classId??this.bag.classId))?.skills ?? [];
   }
 
   /** 技能书页自己的显式状态，供页面签名使用。 */
@@ -84,6 +86,8 @@ export class SkillBookPanel {
   render(v: UiSurface): void {
     const layout = SKILL_BOOK;
     this.textSpecs = [];this.surface=v;this.cells.clear();
+    if(this.companion)this.textSpecs.push({key:'book-member',text:this.companion.definition.name,x:241,y:17,
+      style:{size:18,color:GOLD,anchorX:.5,anchorY:.5,width:400,align:'center'}});
     v.staticLayer('skill-book',()=>{
       v.border(this.panels.assets,layout.leftFrame.x,layout.leftFrame.y,layout.leftFrame.width,layout.leftFrame.height,v.staticRoot);
       v.border(this.panels.assets,layout.rightFrame.x,layout.rightFrame.y,layout.rightFrame.width,layout.rightFrame.height,v.staticRoot);
@@ -105,7 +109,7 @@ export class SkillBookPanel {
       style:{size:layout.empty.size,color:GOLD,anchorX:.5,anchorY:.5}});
     skills.forEach((id,index)=>{
       const skill=this.catalog.skills[id];if(!skill)return;
-      const cellAt=skillBookCell(index),rank=this.skills.level(id);let cell=old.get(id);old.delete(id);
+      const cellAt=skillBookCell(index),rank=this.level(id);let cell=old.get(id);old.delete(id);
       if(!cell){
         const button=v.button('',cellAt.x,cellAt.y,layout.grid.size,layout.grid.size,()=>this.select(id),{image:skill.icon}).setData('label',skill.name);
         button.addAt(v.image(assets['skill-slot'],layout.slotFrame.x,layout.slotFrame.y,layout.slotFrame.width,layout.slotFrame.height,button),0);
@@ -130,7 +134,7 @@ export class SkillBookPanel {
   private updateMarkers(v:UiSurface):void{
     const layout=SKILL_BOOK,assets=this.panels.assets;
     for(const [id,cell] of this.cells){
-      if(id===this.selected&&!cell.marker){const rank=this.skills.level(id);cell.marker=v.image(assets[rank?'skill-selected':'skill-selected-ai'],layout.selection.x,layout.selection.y,layout.selection.width,layout.selection.height,cell.button);}
+      if(id===this.selected&&!cell.marker){const rank=this.level(id);cell.marker=v.image(assets[rank?'skill-selected':'skill-selected-ai'],layout.selection.x,layout.selection.y,layout.selection.width,layout.selection.height,cell.button);}
       else if(id!==this.selected&&cell.marker){cell.marker.destroy();cell.marker=undefined;}
     }
   }
@@ -143,7 +147,8 @@ export class SkillBookPanel {
     v.pruneDestroyed();this.drawDetails(v);this.updatePage();
   }
   private renderDetails(v: UiSurface): void {
-    const layout = SKILL_BOOK, skill = this.selected ? this.catalog.skills[this.selected] : undefined;
+    const layout = SKILL_BOOK, base = this.selected ? this.catalog.skills[this.selected] : undefined,
+      skill=base&&this.companion?skillForGrowth(base,'companion'):base;
     if (!skill) {
       if (this.message) this.textSpecs.push({key: 'book-message', text: this.message,
         x: layout.title.x, y: layout.title.y,
@@ -151,7 +156,7 @@ export class SkillBookPanel {
       this.renderButtons(v, false);
       return;
     }
-    const rank = this.skills.level(skill.id), problem = this.problemFor(skill.id), entry = this.bag.get(this.entryId);
+    const rank = this.level(skill.id), problem = this.problemFor(skill.id), entry = this.bag.get(this.entryId);
     this.textSpecs.push({key: 'book-title', text: skill.name, x: layout.title.x, y: layout.title.y,
       style: {size: layout.title.size, color: GOLD}});
     this.textSpecs.push({key: 'book-level', text: `当前等级 LV ${rank}　持有技能书 ${entry?.quantity ?? 0} 本`,
@@ -246,7 +251,7 @@ export class SkillBookPanel {
       this.message = problem ?? '技能书已不在背包中'; this.updateDetails(); return;
     }
     try {
-      const result = this.bag.use(this.entryId, undefined, id);
+      const result = this.bag.use(this.entryId, undefined, id, Math.random, this.companion?.id);
       this.message = result.message;
       this.sound();
     } catch (error) {
@@ -263,7 +268,11 @@ export class SkillBookPanel {
   private problemFor(id: string): string | undefined {
     const bound = this.bag.get(this.entryId)?.skill;
     if (bound && bound !== id) return '这本书只能提升指定的技能';
-    return this.skills.bookProblem(id);
+    return this.companion?this.companion.skills.bookProblem(id,this.catalog):this.skills.bookProblem(id);
+  }
+
+  private level(id:string):number {
+    return this.companion?this.companion.skills.skillLevels()[id]??0:this.skills.level(id);
   }
 
   private nextEligible(): string | undefined {

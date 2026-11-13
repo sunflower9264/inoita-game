@@ -79,18 +79,33 @@ export function generateCompanion(rules:CompanionGenerationRules,definition:{cla
 /** Mercenaries acquire generated skills through character levels, without spending hero skill points. */
 export class CompanionSkillProgression extends SkillConfiguration {
   private levels:Record<string,number>={};
+  private bookLevels:Record<string,number>={};
   readonly caps:Record<string,number>;
   private readonly training:Record<string,CompanionTraining>;
   constructor(caps:Record<string,number>,training:Record<string,CompanionTraining>){super();this.caps={...caps};this.training=training;}
   updateLevel(level:number):void{
     this.levels=Object.fromEntries(Object.entries(this.caps).map(([id,cap])=>[id,
-      this.training[id]?.requiredLevels.slice(0,cap).filter(required=>level>=required).length??0]));
+      (this.training[id]?.requiredLevels.slice(0,cap).filter(required=>level>=required).length??0)+(this.bookLevels[id]??0)]));
     this.markChanged();
   }
   skillLevels():Record<string,number>{return {...this.levels};}
+  bookState():Record<string,number>{return {...this.bookLevels};}
+  restoreBooks(books:Record<string,number>,level:number):void{
+    this.bookLevels={...books};this.updateLevel(level);
+  }
+  bookProblem(id:string,catalog:BattleCatalog):string|undefined{
+    const cap=this.caps[id],skill=catalog.skills[id],rank=this.levels[id]??0;
+    if(!cap||!skill)return '该佣兵未开放此技能';
+    if(rank<cap)return `技能达到 ${cap} 级后才能使用技能书`;
+    if(rank>=skill.companion!.ranks.length)return '技能已达到最高等级';
+  }
+  book(id:string,catalog:BattleCatalog):number{
+    const problem=this.bookProblem(id,catalog);if(problem)throw new Error(problem);
+    this.bookLevels[id]=(this.bookLevels[id]??0)+1;
+    this.levels[id]++;this.markChanged();return this.levels[id];
+  }
   /**
    * GM 调试：把佣兵自己这套技能直接拉到各自上限，不改变角色等级。
-   * 佣兵技能本来只随等级成长，普通玩法不会调用这里。
    */
   maxAll(): { learned: number; maxed: number } {
     let learned=0,maxed=0;

@@ -322,3 +322,30 @@ test('legacy mercenary keeps automatic growth until reset and earns points on la
   assert.deepEqual(restored.panel.attributes,oldAttributes);assert.equal(restored.statPoints,5);
   restored.resetAttributes();assert.equal(restored.statPoints,(restored.level-1)*5);
 });
+
+
+test('mercenary skill books affect only the selected member and survive level recalculation and restore',()=>{
+  const campaign=read<Campaign>('campaign'),battle=read<BattleCatalog>('battle');
+  const hero=new BattleCharacter('dark-knight',stats,items);
+  const session=new Session(campaign,undefined,undefined,items,hero,battle,stats,catalog),party=session.party!;
+  const member=recruit(party,'mercenary-emblem-assassin'),other=recruit(party,'mercenary-emblem-assassin');
+  const skill=Object.keys(member.generated.skillCaps)[0]!,cap=member.generated.skillCaps[skill];
+  hero.bag.add('skillbook',9);
+  const book=hero.bag.entries.find(entry=>entry.item==='skillbook')!;
+  assert.throws(()=>hero.bag.use(book.id,undefined,skill,Math.random,member.id),/技能达到/);
+  assert.equal(hero.bag.count('skillbook'),9);
+  member.addExperience(Number.MAX_SAFE_INTEGER);
+  assert.equal(member.skills.skillLevels()[skill],cap);
+  const otherBefore=other.skills.skillLevels()[skill]??0,heroBefore=session.skills.draft(battle,hero.classId);
+  for(let rank=cap;rank<8;rank++){
+    hero.bag.use(book.id,undefined,skill,Math.random,member.id);
+    assert.equal(member.skills.skillLevels()[skill],rank+1);
+  }
+  assert.throws(()=>hero.bag.use(book.id,undefined,skill,Math.random,member.id),/最高等级/);
+  assert.equal(other.skills.skillLevels()[skill]??0,otherBefore);
+  assert.deepEqual(session.skills.draft(battle,hero.classId),heroBefore);
+  member.skills.updateLevel(member.level);
+  assert.equal(member.skills.skillLevels()[skill],8);
+  const saved=party.captureState();party.restoreState(saved);
+  assert.equal(party.get(member.id)!.skills.skillLevels()[skill],8);
+});

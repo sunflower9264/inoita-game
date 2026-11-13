@@ -423,7 +423,13 @@ export class Session {
     this.battle=battle;this.stats=stats;this.companions=companions;
     this.hero = hero;
     this.skills = new StorySkillProgression(hero,battle);
-    hero?.setSkillUseHandler((item,skill)=>this.skills.applyItem(item,skill));
+    hero?.setSkillUseHandler((item,skill,memberId)=>{
+      if(!memberId||memberId==='player')return this.skills.applyItem(item,skill);
+      const member=this.party?.get(memberId),definition=items?.items[item];
+      if(!member||member.source!=='mercenary'||definition?.use?.kind!=='learn'||!skill||!battle)throw new Error('无法为该成员使用技能书');
+      const rank=member.skills.book(skill,battle);
+      return `${battle.skills[skill].name}提升至 ${rank} 级`;
+    });
     this.party=hero&&items&&stats&&companions?new PartyRoster(hero,stats,items,companions,()=>{this.recordPerformance(['party','bag']);this.emit();},id=>{this.cooldowns.removeActor(id);this.frenzyAnimations.removeActor(id);this.lootPity.removeMember(id);},
       sourceItem=>this.recordQuestFact('recruit',sourceItem,'recruit'),operation=>this.atomic(operation,['bag','party','questBook'])):undefined;
     this.bag = hero?.bag ?? new Bag(()=>{this.recordPerformance(['bag']);this.emit();},items,character?.classId,items?'game':'none');

@@ -21,9 +21,10 @@ function skillDetailLabel(detail: Pick<SkillDetailEntry, 'label' | 'valueSpacing
   return `${detail.label}${kind === 'active' && index < ACTIVE_LEADING_DETAIL_ROWS ? ': ' : detail.valueSpacing ? ' ' : ''}`;
 }
 
-export function skillDescriptionParts(skill: SkillDefinition, level: number, companionMaximum?: number): DescriptionTextPart[] {
+export function skillDescriptionParts(skill: SkillDefinition, level: number, companionMaximum?: number, naturalMaximum?:number): DescriptionTextPart[] {
   const rank=skill.ranks[Math.max(0,level-1)],parts:DescriptionTextPart[]=[{text:`${skill.name} (LV ${Math.max(1,level)})\n`}];
   if(companionMaximum!==undefined)parts.push({text:`最高等级： LV ${companionMaximum}\n`});
+  if(naturalMaximum!==undefined)parts.push({text:`自然成长上限： LV ${naturalMaximum}\n`});
   parts.push(...(skill.descriptionParts??[{text:skill.description}]),{text:'\n'});
   skillDetailEntries(skill,rank!).forEach((entry,index)=>{
     parts.push({text:skillDetailLabel(entry,index,skill.kind)},...entry.parts,{text:'\n'});

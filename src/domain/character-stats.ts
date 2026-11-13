@@ -266,7 +266,7 @@ export class BattleCharacter {
   private experience=0;
   private bonusSkillPoints=0;
   private spentSkillPoints=0;
-  private skillUseHandler?: (item:string,skill?:string)=>string|undefined;
+  private skillUseHandler?: (item:string,skill?:string,memberId?:string)=>string|undefined;
   private listeners=new Set<()=>void>();
   /** 面板缓存：数值、装备或等级没变时，`hero.player` 不该每次都重算全套属性。 */
   private panelCache?:{bagRevision:number;level:number;panelRevision:number;panel:CharacterPanel};
@@ -298,7 +298,7 @@ export class BattleCharacter {
         const rule=catalog.enchantments[source.item]?.[items.items[target.item].kind];
         return enhancementOdds(target.enhancement,!!use.requiresEnhanced,rule?.bonusChance??0);
       },
-      applyUse:(source,target,skill)=>{
+      applyUse:(source,target,skill,memberId)=>{
         const use=items.items[source.item].use!;
         if(use.kind==='enchant'&&target?.numbers){
           const rule=catalog.enchantments[source.item]?.[items.items[target.item].kind];
@@ -310,7 +310,7 @@ export class BattleCharacter {
             ||!source.numbers?.modifiers?.length)throw new Error('宝石数据不完整，无法镶嵌');
           target.numbers.gemModifiers.push(...source.numbers.modifiers.map(m=>({...m})));
         }
-        return this.skillUseHandler?.(source.item,skill);
+        return this.skillUseHandler?.(source.item,skill,memberId);
       }
     };
     this.bag=new Bag(()=>this.changed(),items,classId,'game',rules);
@@ -331,7 +331,7 @@ export class BattleCharacter {
   get allocated():PrimaryAttributes{return {...this.allocation};}
   get statPoints(){return (this.level-1)*this.catalog.statPointsPerLevel-Object.values(this.allocation).reduce((a,b)=>a+b,0);}
   get skillPoints(){return (this.level-1)*this.catalog.skillPointsPerLevel+this.bonusSkillPoints-this.spentSkillPoints;}
-  setSkillUseHandler(handler:(item:string,skill?:string)=>string|undefined):void {this.skillUseHandler=handler;}
+  setSkillUseHandler(handler:(item:string,skill?:string,memberId?:string)=>string|undefined):void {this.skillUseHandler=handler;}
   spendSkillPoints(amount:number):void {
     if(!Number.isSafeInteger(amount)||amount<=0||amount>this.skillPoints)throw new Error('技能点不足');
     this.spentSkillPoints+=amount;this.changed();
