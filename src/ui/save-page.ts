@@ -75,7 +75,7 @@ export class SavePage {
 
   /** 页面自身有确认框或改名输入时，底层按钮不再接收输入。 */
   get blocksPage(): boolean {
-    return this.saveConfirm !== undefined || this.loadConfirm !== undefined
+    return this.saving || this.saveConfirm !== undefined || this.loadConfirm !== undefined
       || this.deleteConfirm !== undefined || this.renameRef !== undefined;
   }
 
@@ -205,7 +205,7 @@ export class SavePage {
   }
 
   private requestLoad(ref: SaveSlotRef): void {
-    if (this.host.busy() || this.host.app.saves.peek(ref).kind !== 'ok') return;
+    if (this.saving || this.host.busy() || this.host.app.saves.peek(ref).kind !== 'ok') return;
     this.loadConfirm = ref; this.host.updateConfirmation();
   }
 
@@ -262,7 +262,7 @@ export class SavePage {
 
   /** 删除手动存档；删掉的正是当前槽时清空 `saveSlot`。 */
   private requestDelete(ref: SaveSlotRef): void {
-    if (ref === AUTO_SAVE_SLOT) return;
+    if (this.saving || ref === AUTO_SAVE_SLOT) return;
     if (this.host.app.saves.peek(ref).kind === 'empty') return;
     this.deleteConfirm = ref; this.host.updateConfirmation();
   }

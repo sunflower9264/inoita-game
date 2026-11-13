@@ -68,6 +68,9 @@ interface SavePageInternals {
   loadConfirm?: number;
   deleteConfirm?: number;
   renameRef?: number;
+  saving: boolean;
+  requestLoad(ref: number): void;
+  requestDelete(ref: number): void;
 }
 
 test('存档页的 Escape 只关最上层确认，并逐层退回', () => {
@@ -116,6 +119,25 @@ test('改名输入和确认框共同决定页面是否让出输入', () => {
   f.page.cancelPending();
   assert.equal(f.page.blocksPage, false);
   assert.equal(f.page.modalOpen, false);
+});
+
+test('保存截图等待期间存档页不接受删除或读取确认', () => {
+  const f = fixture();
+  const internals = f.page as unknown as SavePageInternals;
+  (f.app.saves as unknown as { peek: () => { kind: string } }).peek = () => ({ kind: 'ok' });
+  internals.requestDelete(1);
+  assert.equal(internals.deleteConfirm, 1, '普通状态下可以打开删除确认');
+  f.page.cancelPending();
+
+  internals.saving = true;
+  assert.equal(f.page.blocksPage, true, '保存等待期间页面让出输入');
+  internals.requestDelete(1);
+  internals.requestLoad(1);
+  assert.equal(internals.deleteConfirm, undefined, '保存等待期间不打开删除确认');
+  assert.equal(internals.loadConfirm, undefined, '保存等待期间不打开读取确认');
+
+  internals.saving = false;
+  assert.equal(f.page.blocksPage, false);
 });
 
 test('存档快照与摘要仍由同一入口生成', () => {
