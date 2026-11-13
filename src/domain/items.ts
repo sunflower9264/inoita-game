@@ -170,6 +170,8 @@ export function blockedNormalAcquisitionIds(catalog: ItemCatalog): ReadonlySet<s
 }
 
 export interface ItemInstance {
+  /** 玩家手动保护：只阻止出售与丢弃。 */
+  locked?: boolean;
   numbers?: ItemNumbers;
   id: string;
   item: string;

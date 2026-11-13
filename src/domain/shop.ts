@@ -20,6 +20,8 @@ export interface ShopCatalog {
   grades: {name: string; armorName?: string; rarity: number; weight: number}[];
   rarityWeights: {ordinary: number[]; rare: number[]};
 }
+export interface EquipmentCleanupSettings { maximumLevel:number; rarities:readonly number[] }
+export interface EquipmentSaleQuote { entries:{entry:ItemInstance;price:number}[];total:number }
 interface ShopOffer { id: string; instance: ItemInstance; limited: boolean; concealed: boolean; sold: boolean }
 export interface ShopVisitsState { mapId?:string; stock:[string,ShopOffer[]][]; serial:number }
 const whole = (value: number) => Math.max(0, Math.trunc(value));
@@ -221,9 +223,25 @@ export class Storefront {
     },['bag','coins']);
     return total;
   }
+  previewCleanup(settings:EquipmentCleanupSettings):EquipmentSaleQuote {
+    const entries=this.session.bag.entries.filter(entry=>{
+      const item=this.session.bag.catalog.items[entry.item];
+      const grade=entry.numbers?.grade??this.characterStats.equipment[entry.item]?.defaultGrade??2;
+      const rarity=this.catalog.grades[grade]?.rarity;
+      return item.equipment&&!entry.locked&&entry.enhancement===0&&!entry.gems.length&&!entry.numbers?.chaos
+        &&item.level<=settings.maximumLevel&&rarity!==undefined&&settings.rarities.includes(rarity)&&this.sellPrice(entry)>0;
+    }).map(entry=>({entry:structuredClone(entry),price:this.sellPrice(entry)}));
+    return {entries,total:entries.reduce((sum,{entry,price})=>sum+entry.quantity*price,0)};
+  }
+  sellCleanup(quote:EquipmentSaleQuote,settings:EquipmentCleanupSettings):number {
+    const current=this.previewCleanup(settings);
+    if(JSON.stringify(current)!==JSON.stringify(quote))throw new Error('装备或价格已变化，请重新检查清单');
+    return this.sellMany(quote.entries.map(({entry})=>({id:entry.id,quantity:entry.quantity})));
+  }
   sell(entryId: string, quantity: number): number {
     const entry = this.session.bag.get(entryId);
     if (!entry || !this.session.bag.entries.some(item => item.id === entryId)) throw new Error('请先卸下装备，或重新选择物品');
+    if(entry.locked)throw new Error('装备已锁定，不能出售');
     if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > entry.quantity) throw new Error('出售数量无效');
     const total = this.sellPrice(entry) * quantity;
     if (!Number.isSafeInteger(total) || total < 1 || this.session.money + total > Number.MAX_SAFE_INTEGER) throw new Error('此物品无法出售');
@@ -243,6 +261,7 @@ export class Storefront {
       ids.add(id);
       const entry = this.session.bag.get(id);
       if (!entry || !this.session.bag.entries.some(item => item.id === id)) throw new Error('请先卸下装备，或重新选择物品');
+      if(entry.locked)throw new Error('装备已锁定，不能出售');
       if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > entry.quantity) throw new Error('出售数量无效');
       const price = this.sellPrice(entry) * quantity;
       if (!Number.isSafeInteger(price) || price < 1) throw new Error('此物品无法出售');

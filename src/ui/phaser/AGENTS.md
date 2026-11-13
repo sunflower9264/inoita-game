@@ -45,3 +45,5 @@
 npm run typecheck
 npm test -- tests/control-layout.test.ts tests/native-message-layout.test.ts
 ```
+
+- 商店清理只预览装备，点击格子在左侧查看详情；上锁立即移出预览。顶部等级按钮保留在静态层，重绘清单时保留长按，退出后恢复原背包滚动位置。整批出售以当前报价校验并一次提交，空清单禁用出售。

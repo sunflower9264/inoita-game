@@ -79,6 +79,7 @@ export function itemDescriptionBody(options: {
   const title = `${prefix ? prefix + ' ' : ''}${item.name}${equipment && entry.enhancement ? '+' + entry.enhancement : ''}`;
   const color = equipment ? equipmentColor(entry.numbers, numbers, grades, options.chaosTier) : undefined;
   const parts: DescriptionTextPart[] = [];
+  if(entry.locked)parts.push({text:'已锁定\n',color:TEXT_COLORS.primary});
   if (equipment) {
     parts.push({text:item.typeName, color:member && !equipment.classes.includes(member.classId) ? TEXT_COLORS.requirementUnmet : TEXT_COLORS.white},
       {text:'\n等级 '}, {text:String(equipmentLevel(item,entry)), color:member && member.level < equipmentLevel(item,entry) ? TEXT_COLORS.requirementUnmet : TEXT_COLORS.white});

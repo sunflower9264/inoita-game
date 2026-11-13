@@ -543,3 +543,18 @@ test('quantity arrows repaint only the box, never the whole menu',()=>{
   assert.equal(repaints,before,'点减号同样不重画');
   assert.deepEqual([count().text,(minus.node as Node).interactive],['1',false]);
 });
+
+test('cleanup controls sit above the grid, preview details and lock without selling',()=>{
+  const {surface,description,session,panel,draw,texts}=open('merchandise-dealer-b09d9585');
+  const id=Object.keys(items.items).find(id=>items.items[id].equipment&&!items.items[id].equipment!.locked&&items.items[id].level<=1&&stats.equipment[id])!;
+  session.bag.add(id);const state=session.bag.captureState(),entry=state.instances.find(e=>e.item===id)!;entry.numbers={modifiers:[],gemModifiers:[],magicPercent:0,sockets:0,enhancementUses:0,...entry.numbers,grade:2};session.bag.restoreState(state);draw();
+  press(surface,'清理装备');draw();
+  assert.ok(textSpecs(texts,String(session.hero?.level??1)).length);
+  for(const label of ['返回商店','全部出售','提高等级上限','白装','紫装'])assert.ok(Number(boxButton(surface,label).y)<0);
+  assert.deepEqual((boxButton(surface,'提高等级上限').options as {hold:unknown}).hold,{delayMs:350,intervalMs:80});
+  press(surface,'提高等级上限');draw();assert.ok(textSpecs(texts,String((session.hero?.level??1)+1)).length);
+  press(surface,`出售 ${items.items[id].name}`);draw();
+  assert.ok(boxButton(description,'上锁'));press(description,'上锁');draw();
+  assert.equal(session.bag.get(entry.id)!.locked,true);assert.ok(boxButton(surface,'返回商店'));
+  panel.cancel();draw();assert.ok(boxButton(surface,'清理装备'));
+});

@@ -60,7 +60,7 @@ test('description actions use two rows when there are four buttons', () => {
   assert.deepEqual([three.columns, three.rows, three.scrollHeight], [3, 1, 258]);
   assert.deepEqual(three.buttons.map(button => button.x), [15, 141, 267]);
   const five = descriptionActionLayout(384, 5);
-  assert.deepEqual([five.columns, five.rows], [3, 2]);
+  assert.deepEqual([five.columns, five.rows], [2, 3]);
   assert.ok(five.buttons.every(button => button.x + button.width <= 384 && button.y + button.height <= 431));
 });
 

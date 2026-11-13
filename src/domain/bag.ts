@@ -60,6 +60,8 @@ export function verifyBagState(state: BagState, catalog: ItemCatalog): void {
   const ids = new Set<string>();
   for (const entry of state.instances) {
     if (!entry.id || ids.has(entry.id) || !entry.item || knownItems && !catalog.items[entry.item] || !Number.isSafeInteger(entry.quantity) || entry.quantity <= 0) throw new Error('背包物品引用或数量无效');
+    if(entry.locked!==undefined&&typeof entry.locked!=='boolean')throw new Error('装备锁定状态无效');
+    if(entry.locked&&knownItems&&!catalog.items[entry.item]?.equipment)throw new Error('只有装备可以上锁');
     ids.add(entry.id);
     for (const gem of entry.gems) if (knownItems && !catalog.items[gem]) throw new Error('背包宝石引用无效');
   }
@@ -81,7 +83,7 @@ export function verifyBagState(state: BagState, catalog: ItemCatalog): void {
 
 /** 实例是否带有只属于单件物品的状态；带状态就不能把多件并成一条。 */
 function holdsInstanceState(entry: ItemInstance): boolean {
-  return !!entry.skill || entry.numbers !== undefined || entry.enhancement > 0 || entry.gems.length > 0;
+  return !!entry.locked || !!entry.skill || entry.numbers !== undefined || entry.enhancement > 0 || entry.gems.length > 0;
 }
 /** 这件实例能否参与同 id 合并：目录允许叠加，且没有独立状态。 */
 function isStackableInstance(entry: ItemInstance, catalog: ItemCatalog): boolean {
@@ -641,9 +643,16 @@ export class Bag {
     return {removedId:restored.id,name:this.catalog.items[oldGem].name};
   }
   private rollbackRestored(id:string):void {this.clearCells(id);this.instances.delete(id);}
+  setLocked(id:string,locked:boolean):void {
+    const entry=this.instances.get(id);
+    if(!entry||!this.catalog.items[entry.item]?.equipment)throw new Error('请选择装备');
+    if(!!entry.locked===locked)return;
+    entry.locked=locked;this.notify();
+  }
   discard(id: string, quantity: number): void {
     const entry=this.instances.get(id);
     if(!entry||this.cellOf(id)<0||!this.catalog.items[entry.item].discardable)throw new Error('此物品不能丢弃');
+    if(entry.locked)throw new Error('装备已锁定，不能丢弃');
     if(!Number.isSafeInteger(quantity)||quantity<=0||quantity>entry.quantity)throw new Error('丢弃数量无效');
     this.consume(id,quantity);this.notify();
   }

@@ -172,3 +172,40 @@ test('a failed purchase or sale restores the bag and money without notifying',()
   assert.deepEqual(s.captureState(),sellBefore,'卖出失败后背包和金币回滚');
   assert.equal(updates,0,'失败的事务不通知界面');
 });
+
+function cleanupEquipment(s:Session,grade=2){
+  const id=Object.keys(items.items).find(id=>items.items[id].equipment&&!items.items[id].equipment!.locked&&items.items[id].discardable&&stats.equipment[id]&&items.items[id].level>0)!;
+  const before=new Set(s.bag.entries.map(e=>e.id));s.bag.add(id);
+  const state=s.bag.captureState(),entry=state.instances.find(e=>!before.has(e.id))!;entry.numbers={modifiers:[],gemModifiers:[],magicPercent:0,sockets:0,enhancementUses:0,...entry.numbers,grade};s.bag.restoreState(state);return entry;
+}
+test('cleanup selects independent qualities and level bounds, protecting invested and worn equipment',()=>{
+  const s=session(),store=open(s),entries=[2,4,7,10,11].map(grade=>cleanupEquipment(s,grade));
+  const level=items.items[entries[0].item].level;
+  const ids=(maximumLevel:number,rarities:number[])=>store.previewCleanup({maximumLevel,rarities}).entries.map(v=>v.entry.id);
+  assert.deepEqual(ids(level-1,[0,1,2,3,4]),[]);
+  assert.deepEqual(ids(level,[0,2]),[entries[0].id,entries[2].id]);
+  assert.deepEqual(ids(level,[]),[]);
+  assert.equal(ids(level,[0,1,2,3,4]).length,5);
+  entries[0].enhancement=1;entries[1].gems=['healing-potion-s'];entries[2].numbers!.chaos={} as never;
+  const state=s.bag.captureState();state.instances=state.instances.map(e=>entries.find(value=>value.id===e.id)??e);s.bag.restoreState(state);s.bag.setLocked(entries[3].id,true);
+  assert.deepEqual(ids(level,[0,1,2,3,4]),[entries[4].id]);
+});
+test('manual equipment lock blocks sale and discard and survives bag restore',()=>{
+  const s=session(),store=open(s),entry=cleanupEquipment(s),before=s.money;
+  s.bag.setLocked(entry.id,true);const state=s.bag.captureState();s.bag.restoreState(state);
+  assert.equal(s.bag.get(entry.id)!.locked,true);
+  assert.throws(()=>store.sell(entry.id,1),/锁定/);
+  assert.throws(()=>store.sellMany([{id:entry.id,quantity:1}]),/锁定/);
+  assert.throws(()=>s.bag.discard(entry.id,1),/锁定/);assert.equal(s.money,before);
+  assert.throws(()=>s.bag.setLocked(s.bag.entries.find(e=>!items.items[e.item].equipment)!.id,true),/装备/);
+  const invalid=s.bag.captureState();invalid.instances.find(e=>e.id===entry.id)!.locked='yes' as never;
+  assert.throws(()=>s.bag.restoreState(invalid),/锁定/);
+  s.bag.setLocked(entry.id,false);assert.ok(store.sell(entry.id,1)>0);
+});
+test('cleanup revalidates preview before committing the entire sale',()=>{
+  const s=session(),store=open(s),a=cleanupEquipment(s),b=cleanupEquipment(s),settings={maximumLevel:10000,rarities:[0]};
+  const quote=store.previewCleanup(settings),money=s.money;s.bag.setLocked(b.id,true);
+  assert.throws(()=>store.sellCleanup(quote,settings),/变化/);assert.ok(s.bag.get(a.id));assert.equal(s.money,money);
+  const fresh=store.previewCleanup(settings);assert.equal(store.sellCleanup(fresh,settings),fresh.total);
+  assert.equal(s.bag.get(a.id),undefined);assert.ok(s.bag.get(b.id));
+});

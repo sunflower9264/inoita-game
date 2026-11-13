@@ -53,7 +53,7 @@ import { drawSolidBorder } from './phaser/solid-border.ts';
 import { centerModal } from './phaser/modal-placement.ts';
 import { itemResultDetails } from './item-result-details.ts';
 import { itemDescriptionBody } from './item-detail-lines.ts';
-import { slotFrameImage } from './slot-frame.ts';
+import { slotFrameImage, updateEquipmentLock } from './slot-frame.ts';
 import { bagLayout, BAG_DESCRIPTION_WIDTH, DESCRIPTION_PANEL, descriptionActionLayout, descriptionActionLabelSize, descriptionPanel, SIDE_FILTER_TEXT_SIZE } from './bag-layout.ts';
 import { skillDescriptionParts, skillLearningParts, skillNextLevelPreview } from './skill-detail-lines.ts';
 import { layoutDescriptionText } from './description-text-layout.ts';
@@ -492,7 +492,7 @@ export class StoryUI {
     });
   }
   private showShop(shopId:string,mapId:string):void{
-    this.close();const store=new Storefront(this.app.shops,this.session!.bag.catalog,this.app.characterStats,this.session!,shopId,mapId);this.shopPanel=new ShopPanel(store,this.session!,this.app.shops,this.app.menuPanels.assets,()=>this.render(),()=>this.member(),this.classNames());this.show('shop');
+    this.close();const store=new Storefront(this.app.shops,this.session!.bag.catalog,this.app.characterStats,this.session!,shopId,mapId);this.shopPanel=new ShopPanel(store,this.session!,this.app.shops,this.app.menuPanels.assets,()=>this.render(),()=>this.member(),this.classNames(),message=>this.app.ui.showInstant(message));this.show('shop');
   }
   /** 生产内容包把 shops.equipment 拆到独立文件；第一次开商店时合并。 */
   private async ensureShopEquipment():Promise<void>{
@@ -536,7 +536,7 @@ export class StoryUI {
     this.scrollNames.forEach((scroll,name)=>this.scrollOffsets.set(`${this.page}:${name}`,scroll.scrollTop));if(!keepBag)this.scrollNames.clear();
     if(!keepBag){
       this.body?.clear();this.description?.clear();
-      if(this.surface&&this.body){this.surface.root.remove(this.body.root);this.surface.clear();this.surface.root.add(this.body.root);}
+      if(this.surface&&this.body){this.surface.clear(this.body.root);}
     }
     this.bagPageCached=keepBag;this.keyboardFocus=undefined;this.surface?.visible(false);this.body?.visible(false);this.description?.visible(false);this.modal?.visible(false);this.shortcutScreen?.visible(false);this.backTab?.visible(false);this.backdrop?.setVisible(false);this.app.ui.resetInput();this.app.ui.lock(false,'story-menu');
     if(this.loadReturnToDefeat){this.loadReturnToDefeat=false;if(this.app.ui.defeated)this.app.ui.revealDefeat();}
@@ -565,7 +565,7 @@ export class StoryUI {
     if(!this.bagPageCached)return;
     this.bagPageCached=false;this.scrollNames.clear();this.bagPortrait?.detach();
     this.body?.clear();this.description?.clear();
-    if(this.surface&&this.body){this.surface.root.remove(this.body.root);this.surface.clear();this.surface.root.add(this.body.root);}
+    if(this.surface&&this.body){this.surface.clear(this.body.root);}
   }
   private cancelOperation():void{this.cancelDrag();this.request.abort();this.request=new AbortController();this.busy=false;this.operation=undefined;this.itemNotice=undefined;this.skillReset=false;this.savePage?.cancelPending();this.partyPanel?.close();this.craftingPanel?.close();this.forge=undefined;this.skillBook=undefined;this.modal?.clear();this.modal?.visible(false);}
   /** 返回是否消费这次按键；菜单关闭时把未消费的按键让给剧情层和世界。 */
@@ -866,7 +866,7 @@ export class StoryUI {
     this.bagSlots=[];this.bagGrid=undefined;
     // 换页先收掉上一页的 DOM 文字；当前页由各自的面板在绘制时重新登记。
     this.menuText?.beginPage(this.page);
-    this.forge?.captureScroll();this.skillBook?.captureScroll();this.craftingPanel?.captureScroll();this.shopPanel?.captureScroll();this.questPanel?.captureScroll();this.partyPanel?.captureScroll();this.scrollNames.forEach((scroll,name)=>this.scrollOffsets.set(`${this.page}:${name}`,scroll.scrollTop));this.scrollNames.clear();this.surface.root.remove(this.body.root);this.surface.clear();this.bagPortrait?.detach();this.partyPanel?.detachPreview();this.body.clear();this.description?.clear();this.modal!.clear();this.surface.root.add(this.body.root);this.drops=[];this.keyboardFocus=undefined;
+    this.forge?.captureScroll();this.skillBook?.captureScroll();this.craftingPanel?.captureScroll();this.shopPanel?.captureScroll();this.questPanel?.captureScroll();this.partyPanel?.captureScroll();this.scrollNames.forEach((scroll,name)=>this.scrollOffsets.set(`${this.page}:${name}`,scroll.scrollTop));this.scrollNames.clear();this.surface.clear(this.body.root);this.bagPortrait?.detach();this.partyPanel?.detachPreview();this.body.clear();this.description?.clear();this.modal!.clear();this.drops=[];this.keyboardFocus=undefined;
     if(!this.member()){this.discardAllocation();this.selectedMemberId='player';}const v=this.surface;
     this.body.root.setPosition(CONTENT_ORIGIN.x,CONTENT_ORIGIN.y);
     // 登记快捷键时菜单本体不画：只重画那一屏（它自己在 `sync` 里显示、菜单整块隐藏）。
@@ -1720,6 +1720,7 @@ export class StoryUI {
     const icon=v.image(item.icon,layout.slot.icon.x,layout.slot.icon.y,layout.slot.icon.size,layout.slot.icon.size,button);
     const drop={object:button,entry:entry.id,view:slot.view,cell:slot.cell};this.drops.push(drop);
     button.on('pointerdown',(pointer:UiPointer)=>{if(!this.bagDetailOpen||this.descSide!=='right')this.startDrag(pointer,entry.id,grid);});
+    updateEquipmentLock(v,button,!!entry.locked);
     this.addBagSlotText(slot,x,y,panelCoversBag);
     return {kind:'item',button,icon,entryId:entry.id,view:slot.view,cell:slot.cell,drop};
   }
@@ -1730,11 +1731,12 @@ export class StoryUI {
     if(view.kind==='cell'){view.object.setPosition(x,y);return;}
     if(slot.kind!=='item')return;
     const entry=slot.entry,item=bag.catalog.items[entry.item],frame=slotFrameImage(this.app,this.session!,entry);
-    const signature=JSON.stringify([index,slot.view,slot.cell,entry.id,entry.item,frame,entry.quantity,entry.enhancement,entry.gems.length,panelCoversBag]);
+    const signature=JSON.stringify([index,slot.view,slot.cell,entry.id,entry.item,frame,entry.quantity,entry.enhancement,entry.gems.length,entry.locked,panelCoversBag]);
     if(view.button.getData('bag-state')===signature){
       this.bagTextSpecs.push(...(view.button.getData('bag-texts') as MenuTextSpec[]));return;
     }
     view.button.setData('bag-state',signature);
+    updateEquipmentLock(this.body!,view.button,!!entry.locked);
     view.button.setPosition(x,y).setData('label',item.name);
     const face=view.button.getData('face') as UiImage|undefined;
     if(face&&face.getData('file')!==frame)face.load(frame);
@@ -1952,7 +1954,10 @@ export class StoryUI {
       actions.push({label:assigned?'取消快捷键':'快捷键',
         run:()=>assigned?this.clearShortcut('item',entry.item):this.openShortcutScreen('item',entry.item)});
     }
-    if(item.discardable&&!worn)actions.push({label:'丢弃',run:()=>this.beginOperation(entry.id,'discard')});
+    if(item.equipment)actions.push({label:entry.locked?'解锁':'上锁',run:()=>{
+      bag.setLocked(entry.id,!entry.locked);this.app.ui.showInstant(entry.locked?'装备已解锁':'装备已上锁');
+    }});
+    if(item.discardable&&!worn)actions.push({label:'丢弃',disabled:!!entry.locked,run:()=>this.beginOperation(entry.id,'discard')});
     return actions;
   }
   /** 装备说明底部的入口文案：能力组合决定是强化、镶嵌还是净化。 */
@@ -2288,6 +2293,7 @@ export class StoryUI {
       const id=slot.id as EquipmentSlot,entry=equipment[id],instance=entry?bag.get(entry):undefined,item=instance?bag.catalog.items[instance.item]:undefined;
       const button=v.button('',85+slot.x,slot.y,74,74,()=>{const current=bag.equipmentFor(this.selectedMemberId)[id];if(current)this.selectItem(current,'right');},{image:slotFrameImage(this.app,this.session!,instance)});
       const icon=v.image(item?.icon??slot.emptyIcon,item?5:13,item?5:13,item?64:48,item?64:48,button);button.setData('label',slot.name);
+      updateEquipmentLock(v,button,!!instance?.locked);
       const drop={object:button,entry,slot:id};this.drops.push(drop);this.bagEquipment.set(id,{button,icon,drop});
     }
     this.bagTextSpecs.push({key:'bag-level',text:`Lv. ${member.level}　${this.app.storyClasses.classes.find(c=>c.id===member.classId)!.name}`,
@@ -2325,6 +2331,7 @@ export class StoryUI {
       const offset=item?5:13,size=item?64:48;
       if(view.icon.x!==offset)view.icon.setPosition(offset,offset);
       if(view.icon.width!==size||view.icon.height!==size)view.icon.resize(size,size);
+      updateEquipmentLock(this.body!,view.button,!!instance?.locked);
       view.drop.entry=entry;
     }
     const level=this.bagTextSpecs.find(spec=>spec.key==='bag-level');

@@ -42,3 +42,5 @@
 - 局部更新销毁按钮后调用 `UiSurface.pruneDestroyed`，避免键盘焦点名单持有失效按钮。
 - 图片通过 `domAssets` 预载与持有，准备状态取 `peek`。`loadUiImages` 将图集文件映射到对应图片并向加载器传递调用方的取消信号。
 - 场景图片挂在铺满画框的容器，页面按可用空间缩放，独立文字位于同层图片之上；全屏遮挡遵循 `DomUi.setOccluded`。
+
+- `UiSurface.clear(preserve)` 可保留指定子节点。菜单重绘保留正文根节点的 DOM 挂载，使静态层长按按钮不会因为父节点移除而丢失指针捕获。

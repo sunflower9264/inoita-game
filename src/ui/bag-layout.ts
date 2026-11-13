@@ -120,7 +120,7 @@ interface DescriptionActionLayout {
 }
 
 /**
- * 说明面板底部动作按钮。1–3 个保持原版一横排；4 个改 2×2，5–6 个改 3×2，
+ * 说明面板底部动作按钮。1–3 个保持原版一横排；4 个改 2×2，5–6 个改 2×3，
  * 避免为了塞进一行把按钮压到 92 宽。坐标相对面板左上角。
  */
 export function descriptionActionLayout(panelWidth:number, count:number): DescriptionActionLayout {
@@ -133,7 +133,7 @@ export function descriptionActionLayout(panelWidth:number, count:number): Descri
       width: menu.button.width, height: menu.button.height, fontSize: 18,
     })),
   };
-  const columns = count === 4 ? 2 : 3, gap = 8, rowGap = 7;
+  const columns = 2, gap = 8, rowGap = 7;
   const width = Math.floor((menu.width - gap * (columns - 1)) / columns);
   const rows = Math.ceil(count / columns), bottom = panel.height - 14;
   const rowHeight = Math.min(menu.button.height,

@@ -184,3 +184,13 @@ export function shopLayout(classified:boolean):ShopLayout {
     },
   };
 }
+
+/** 商店内容原点上方的独立操作区，不占背包格子。 */
+export const cleanupLayout={
+  back:{x:85,y:-150,width:150,height:48},sell:{x:700,y:-150,width:179,height:48},
+  summary:{x:460,y:-126,width:440},
+  level:{x:484,y:-92,width:395,height:44},
+  minus:{x:670,y:-92,width:55,height:44},plus:{x:824,y:-92,width:55,height:44},
+  levelValue:{x:774,y:-70},
+  qualities:{x:484,y:-42,width:73,height:38,gap:7},
+};

@@ -900,7 +900,7 @@ test('quest page redraws only when the quest book version changes', t => {
   assert.equal(render.mock.callCount(),2,'调试焦点变化也重绘任务页');
 });
 
-test('four actions use two rows including the forge entry', async t => {
+test('equipment actions wrap without shrinking after adding manual lock', async t => {
   const f=fixture();t.after(f.cleanup);f.hero.addExperience(Number.MAX_SAFE_INTEGER);
   const first=f.add('ferrule'),second=f.add('copper-ring'),third=f.add('crystal-ring');
   const equip=async(id:string)=>{f.menu.debugDescribe(id);f.scene.click(f.scene.button('装备'));await Promise.resolve();};
@@ -908,11 +908,11 @@ test('four actions use two rows including the forge entry', async t => {
   const state=f.session.bag.captureState(),target=state.instances.find(entry=>entry.id===third.id)!;
   target.numbers!.sockets=1;f.session.bag.restoreState(state);
   f.menu.debugDescribe(third.id);
-  const buttons=['替换戒指','替换饰品','镶嵌','丢弃'].map(label=>f.scene.button(label));
-  assert.ok(buttons.every(button=>button.input!.hitArea.width===168),'4 个动作改两行大按钮');
+  const buttons=['替换戒指','替换饰品','镶嵌','上锁','丢弃'].map(label=>f.scene.button(label));
+  assert.ok(buttons.every(button=>button.input!.hitArea.width===168),'动作换行并保持大按钮');
   assert.ok(buttons.every(button=>button.getData('labelText')===undefined&&button.getData('label')),'4 个动作都有文字');
   assert.ok(['替换戒指','替换饰品','镶嵌','丢弃'].every(label=>visibleDomLabels(f).some(value=>value.text===label)),'4 个动作文字由 DOM 绘制');
-  assert.deepEqual(buttons.map(button=>[button.x,button.y]),[[100,300],[276,300],[100,362],[276,362]],'两行两列');
+  assert.deepEqual(buttons.map(button=>[button.x,button.y]),[[100,238],[276,238],[100,300],[276,300],[100,362]],'三行两列');
 });
 
 test('hero bag still applies skill reset and supreme elixir', t => {
@@ -2594,4 +2594,31 @@ test('equipment preparation retains the page and refreshes once after completion
   finish();await pending;
   assert.equal(render.mock.callCount(),1);
   assert.equal(f.scene.button('整理'),button);
+});
+
+test('cleanup level hold preserves its node and stops on release and cancel',t=>{
+  const f=fixture();t.after(f.cleanup);t.mock.timers.enable({apis:['setTimeout']});
+  f.menu.openShop(f.app.shops.lampShop,'');f.scene.click(f.scene.button('清理装备'));
+  const plus=f.scene.button('提高等级上限');
+  const panel=f.internals.shopPanel as unknown as {cleanupLevel:number};
+  const level=panel.cleanupLevel;f.scene.press(plus);t.mock.timers.tick(350);
+  assert.equal(panel.cleanupLevel,level+1);assert.equal(f.scene.button('提高等级上限'),plus);
+  t.mock.timers.tick(80);assert.equal(panel.cleanupLevel,level+2);
+  f.scene.release(plus);t.mock.timers.tick(800);assert.equal(panel.cleanupLevel,level+2);
+  f.scene.press(plus);t.mock.timers.tick(350);f.scene.native((plus as unknown as UiNode).element,'pointercancel',f.scene.input.activePointer);
+  t.mock.timers.tick(800);assert.equal(panel.cleanupLevel,level+3);
+  for(let i=0;i<level+3;i++)f.scene.click(f.scene.button('降低等级上限'));
+  assert.equal(panel.cleanupLevel,0);assert.equal(f.scene.button('降低等级上限').input!.enabled,false);
+  f.scene.click(f.scene.button('返回商店'));f.scene.click(f.scene.button('清理装备'));
+  assert.equal(panel.cleanupLevel,level);
+});
+
+test('bag equipment lock updates marker and actions without closing details',t=>{
+  const f=fixture();t.after(f.cleanup);const notices=t.mock.method(f.controls,'showInstant');
+  const entry=f.add(items.startingEquipment['dark-knight']['main-hand']!);
+  f.menu.debugDescribe(entry.id,'left');f.scene.click(f.scene.button('上锁'));
+  assert.equal(f.session.bag.get(entry.id)!.locked,true);assert.ok(f.scene.button('解锁'));
+  assert.ok(visibleDomLabels(f).some(label=>label.text.includes('已锁定')));
+  f.scene.click(f.scene.button('解锁'));assert.equal(f.session.bag.get(entry.id)!.locked,false);
+  assert.deepEqual(notices.mock.calls.map(call=>call.arguments[0]),['装备已上锁','装备已解锁']);
 });

@@ -11,7 +11,7 @@ import { LiveCharacterPreview } from './live-character-preview.ts';
 import type { PlaceModal } from './modal-placement.ts';
 import { drawRoundBand } from './round-band.ts';
 import { GOLD, UiSurface, type ScrollArea } from './widgets.ts';
-import { slotFrameImage } from '../slot-frame.ts';
+import { slotFrameImage, updateEquipmentLock } from '../slot-frame.ts';
 import { TEXT_COLORS } from '../text-style.ts';
 import { wrapText } from '../text-layout.ts';
 import type { MenuTextSpec, MenuTextWriter } from '../dom/menu-text.ts';
@@ -234,6 +234,7 @@ export class PartyPanel {
       const entry=equipment[slot.id as EquipmentSlot],instance=entry?bag.get(entry):undefined,item=instance?bag.catalog.items[instance.item]:undefined;
       const button=v.button('',482+slot.x,slot.y,74,74,()=>this.inspect(id,'bag'),{image:slotFrameImage(this.app,this.session,instance)}).setData('label',`${slot.name}：${item?.name??'空'}`);
       v.image(item?.icon??slot.emptyIcon,item?5:13,item?5:13,item?64:48,item?64:48,button);
+      updateEquipmentLock(v,button,!!instance?.locked);
     }
     v.button('',568,374,230,44,()=>this.inspect(id,'bag')).setData('label','更换装备');
     this.buttonText('equipment-change','更换装备',568,374,230,44);

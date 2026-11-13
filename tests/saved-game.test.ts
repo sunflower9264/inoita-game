@@ -286,3 +286,14 @@ test('format 39 saves that never started event-115 restore the hall ghosts witho
   const roster=new WorldEnemyRoster(candidate.session,hallMap,[],1,undefined,()=>0.9);
   assert.deepEqual(roster.spawns.map(spawn=>spawn.id).sort(),[...ghostSpawns].sort());
 });
+
+test('format 44 equipment defaults unlocked and current equipment locks round trip',()=>{
+  const legacy=record();legacy.format=44;
+  for(const entry of legacy.session.bag.instances)delete entry.locked;
+  const candidate=prepareSavedGame(legacy,content);
+  assert.ok(candidate.session.bag.captureState().instances.every(entry=>!entry.locked));
+  const saved=record(),equipment=saved.session.bag.instances.find(entry=>content.items.items[entry.item].equipment)!;
+  equipment.locked=true;
+  const loaded=prepareSavedGame(saved,content);
+  assert.equal(loaded.session.bag.get(equipment.id)!.locked,true);
+});

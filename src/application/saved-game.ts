@@ -154,6 +154,10 @@ const SAVE_UPGRADES:Record<number,SaveUpgrade>={
     game.format=43;
   },
   /** 43 → 44：删除 9 条日志外废案；旧档的任务簿、运行池、回执与追踪一并清理。 */
+  44:game=>{
+    for(const entry of game.session.bag.instances)entry.locked=false;
+    game.format=45;
+  },
   43:game=>{
     const session=game.session;
     session.questBook.quests=session.questBook.quests.filter(([id])=>!REMOVED_QUESTS.has(id));
