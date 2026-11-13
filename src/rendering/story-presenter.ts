@@ -584,7 +584,22 @@ export class StoryPresenter implements StoryPresentationPort {
         case 'fade': this.opacity = action.opacity; this.color = action.color; return;
         case 'map-effect': if (this.scene()?.sys?.isActive()) this.applyMapEffect(action.enabled); return;
         case 'pose': await this.poseAction(action, playback); return;
-        case 'world-object': case 'appear': case 'show': case 'leave': case 'face': case 'walk':
+        case 'camera': {
+          const target = this.state?.bindings.find(([alias]) => alias === action.target)?.[1];
+          const actor = this.state?.scene.actors.find(actor => actor.id === target);
+          if (actor && !actor.unpositioned && this.state) this.state.camera = { x: actor.x, y: actor.y };
+          return;
+        }
+        case 'camera-point': if (this.state) this.state.camera = { x: action.x, y: action.y }; return;
+        case 'walk':
+          this.applyLogicalAction(action);
+          if (action.followCamera && this.state) {
+            const target = this.state.bindings.find(([alias]) => alias === action.target)?.[1];
+            const actor = this.state.scene.actors.find(actor => actor.id === target);
+            if (actor && !actor.unpositioned) this.state.camera = { x: actor.x, y: actor.y };
+          }
+          return;
+        case 'world-object': case 'appear': case 'show': case 'leave': case 'face':
           this.applyLogicalAction(action); return;
         default: return;
       }

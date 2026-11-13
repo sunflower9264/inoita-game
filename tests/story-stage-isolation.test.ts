@@ -766,6 +766,19 @@ test('skipping keeps logical positions without rebuilding the stage and flush pa
   assert.deepEqual([shown.x,shown.y],[100,120],'补画沿用逻辑坐标');
 });
 
+test('skipped camera actions and camera-following walks update the restored view', async () => {
+  const run=harness(), signal=new AbortController().signal, skip=new AbortController();
+  await run.presenter.begin(signal);
+  const playback={signal,skipSignal:skip.signal};
+  skip.abort();
+  await run.presenter.execute({type:'camera-point',x:100,y:120,motion:'cut'},playback);
+  assert.deepEqual(run.presenter.captureStage()!.camera,{x:100,y:120});
+  await run.presenter.execute({type:'walk',target:'player',x:150,y:160,speedPxPerSecond:100,followCamera:true},playback);
+  assert.deepEqual(run.presenter.captureStage()!.camera,{x:150,y:160});
+  await run.presenter.flushStage(signal);
+  assert.deepEqual(run.presenter.captureStage()!.camera,{x:150,y:160});
+});
+
 test('a run skipped before its first frame never launches the stage scene', async () => {
   const run=harness(),signal=new AbortController().signal,skip=new AbortController();skip.abort();
   await run.presenter.begin(signal,undefined,undefined,false,skip.signal);
