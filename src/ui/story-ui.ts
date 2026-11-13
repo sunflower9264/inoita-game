@@ -1563,7 +1563,7 @@ export class StoryUI {
   /** 设置：只剩主角的技能点初始化；佣兵没有独立设置项。 */
   private renderSkillSettings():void{
     const v=this.body!,labels=this.app.menuPanels.skillPanel.labels;
-    v.button('',161,290,257,63,()=>{this.skillReset=true;this.render();}).setData('label',labels.resetButton);
+    v.button('',161,290,257,63,()=>{this.skillReset=true;this.updateSkillResetModal();}).setData('label',labels.resetButton);
     this.addSkillText('skills-reset',labels.resetButton,161+257/2,290+63/2,22,GOLD,.5,.5);
   }
   /** 说明区由技能目录与 AI 设置共享；设置页与原版一样留空。 */
@@ -1634,6 +1634,13 @@ export class StoryUI {
     });
   }
   /** 初始化技能点是不可逆操作，沿用体验版对不可逆操作的模态确认，结果由面板更新呈现。 */
+  private updateSkillResetModal():void{
+    if(!this.modal||this.page!=='skills')return;
+    this.modal.clear();
+    if(this.skillReset)this.renderSkillResetConfirmation();
+    this.menuText?.renderPage('skills');
+    this.sync();
+  }
   private renderSkillResetConfirmation():void{
     const v=this.modal!,panels=this.app.menuPanels;
     this.skillResetTextSpecs=[];
@@ -1647,7 +1654,7 @@ export class StoryUI {
     this.beginModal(MENU_FRAME_MODAL_WIDTH,MENU_FRAME_MODAL_HEIGHT);v.visible(true);v.frame(panels.assets,0,0,MENU_FRAME_MODAL_WIDTH,MENU_FRAME_MODAL_HEIGHT,1);
     add('skill-reset-title',`确定为${this.actor().name}初始化技能点？`,35,30,26,648);
     add('skill-reset-description','清空已学技能与快捷栏，返还正常加点的技能点。',35,91,22,648);
-    v.button('',270,350,170,48,()=>{this.skillReset=false;this.render();}).setData('label','取消');
+    v.button('',270,350,170,48,()=>{this.skillReset=false;this.updateSkillResetModal();}).setData('label','取消');
     button('skill-reset-cancel','取消',270,350,170,48);
     v.button('',480,350,190,48,()=>{
       if(this.busy)return;this.busy=true;

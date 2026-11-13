@@ -383,6 +383,20 @@ test('switching skill sections keeps the frame, party column and section tabs',t
   assert.equal(f.scene.button('设置'),settings);
 });
 
+test('opening and cancelling skill reset confirmation keeps the skill page',t=>{
+  const f=fixture();t.after(f.cleanup);f.menu.show('skills');
+  f.scene.click(f.scene.button('设置'));
+  const reset=f.scene.button(panels.skillPanel.labels.resetButton),tabs=f.scene.button('技能目录');
+  const body=f.internals.body.root.list.slice();
+  f.scene.click(reset);
+  assert.equal(f.scene.button(panels.skillPanel.labels.resetButton),reset);
+  assert.deepEqual(f.internals.body.root.list,body);
+  f.scene.click(f.scene.button('取消'));
+  assert.equal(f.scene.button(panels.skillPanel.labels.resetButton),reset);
+  assert.equal(f.scene.button('技能目录'),tabs);
+  assert.deepEqual(f.internals.body.root.list,body);
+});
+
 test('AI settings shows two columns and clears the description for unlearned skills',t=>{
   const f=fixture();t.after(f.cleanup);
   f.menu.show('skills');f.scene.click(f.scene.button('AI 设置'));
