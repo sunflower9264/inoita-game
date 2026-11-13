@@ -121,6 +121,22 @@ test('跳过不等卡住的立绘预取，剧情仍会结束并解锁', async ()
   assert.deepEqual(h.locks, [true, false]);
 });
 
+test('跳过后同一脚本复用仍在加载的立绘准备', async () => {
+  const script: StoryScript = {entry:'one',nodes:[
+    {id:'one',presentation:[],commands:[],exit:{type:'next',target:{script:'demo',node:'two'}}},
+    {id:'two',presentation:[],commands:[],exit:{type:'end'}}
+  ]};
+  let calls=0;
+  const h=harness({...campaign,scripts:{...campaign.scripts,demo:script}}, {}, {
+    capture:()=>undefined,restore:async()=>{},project:async()=>{},checkpoint:()=>{},
+    prefetch:()=>{calls++;return new Promise<void>(()=>{});}
+  });
+  const playing=h.director.trigger({id:'skip-prefetch-once',script:'demo'});
+  await tick();h.director.skip();
+  assert.equal(await playing,true);
+  assert.equal(calls,1);
+});
+
 test('skip progress marks the final commit and actual input unlock in order', async () => {
   const h = harness({ ...campaign, scripts: { ...campaign.scripts, demo: compileScript('demo', [
     { type: 'dialogue', speaker: '', actor: null, text: '先等玩家点击跳过' }

@@ -327,9 +327,13 @@ export class StoryDirector {
     const script = this.runtime.runScript(context.runId);
     // 立绘和音效仍按正常流程预取：跳过只结束等待，后台加载继续，后面的选项或对白不会缺资源。
     if (script && !this.prefetchedScripts.has(script)) {
-      const completed = await this.waitSkippable(this.world?.prefetch?.([script], context.signal) ?? Promise.resolve(), context.signal);
+      this.prefetchedScripts.add(script);
+      const work = (this.world?.prefetch?.([script], context.signal) ?? Promise.resolve()).catch(error => {
+        if (this.prefetchedRun === context.runId) this.prefetchedScripts.delete(script);
+        throw error;
+      });
+      await this.waitSkippable(work, context.signal);
       context.signal.throwIfAborted();
-      if (completed) this.prefetchedScripts.add(script);
     }
     await this.recover(context.signal);
     await this.world?.normalize?.(context.signal);
