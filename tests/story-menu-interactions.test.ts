@@ -3214,6 +3214,19 @@ test('cleanup sale errors preserve the controls and show the error',t=>{
   assert.ok(visibleDomLabels(f).some(label=>label.text==='出售失败'));
 });
 
+test('unsellable item notice opens and closes without rebuilding the shop',t=>{
+  const f=fixture();t.after(f.cleanup);const entry=f.add('ferrule');
+  f.menu.openShop(f.app.shops.lampShop,'');const store=f.internals.shopPanel!.store;
+  t.mock.method(store,'sellPrice',()=>0);
+  const slot=f.scene.button(`出售 ${items.items[entry.item].name}`),scroll=f.internals.shopPanel!.bagScroll;
+  f.scene.click(slot);
+  assert.ok(visibleDomLabels(f).some(label=>label.text.includes('此物品无法出售')));
+  assert.ok(f.scene.button(`出售 ${items.items[entry.item].name}`)===slot);
+  f.scene.key('Escape');
+  assert.ok(f.scene.button(`出售 ${items.items[entry.item].name}`)===slot);
+  assert.ok(f.internals.shopPanel!.bagScroll===scroll);
+});
+
 test('cleanup level hold preserves its node and stops on release and cancel',t=>{
   const f=fixture();t.after(f.cleanup);t.mock.timers.enable({apis:['setTimeout']});
   f.menu.openShop(f.app.shops.lampShop,'');f.scene.click(f.scene.button('清理装备'));

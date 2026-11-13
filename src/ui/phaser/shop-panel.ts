@@ -169,7 +169,9 @@ export class ShopPanel {
     this.selection={kind,id,step:'description',quantity:1};
     const entry=kind==='sell'?this.session.bag.get(id):undefined;
     if(kind==='sell'&&(!entry||this.store.sellPrice(entry)===0))this.selection.step='notice';
-    if(this.selection.step==='description'&&this.refreshDescription()){this.incrementalDescription=true;return;}
+    if(this.refreshDescription()){
+      if(this.selection.step==='description'||this.refreshModal()){this.incrementalDescription=true;return;}
+    }
     this.changed();
   }
   private refreshDescription():boolean{
@@ -185,7 +187,7 @@ export class ShopPanel {
     for(const control of this.batchControls)control.setVisible(!selection&&!this.cleaning);
     target.updateDescription(()=>{
       this.detailText=[];
-      if(selection)this.renderDescription(description,selection);
+      if(selection?.step==='description')this.renderDescription(description,selection);
     });
     return true;
   }
