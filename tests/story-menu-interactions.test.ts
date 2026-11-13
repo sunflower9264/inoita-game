@@ -1518,7 +1518,9 @@ test('control editor switches between move and scale modes, defaulting to move',
   assert.equal(f.app.controlLayout.snapshot().attack?.scale,undefined,'默认移动不写倍率');
   // 切到缩放后，从任何位置拖动都以中心缩放，位置保持不变。
   f.app.controlLayout.set('attack',{x:.5,y:.5});
-  f.scene.click(f.scene.button('缩放'));
+  const move=f.scene.button('移动'),scale=f.scene.button('缩放'),reset=f.scene.button('恢复默认');
+  f.scene.click(scale);
+  assert.equal(f.scene.button('移动'),move);assert.equal(f.scene.button('缩放'),scale);assert.equal(f.scene.button('恢复默认'),reset);
   assert.equal(f.scene.button('缩放').getData('selected'),true);
   assert.equal(f.scene.button('移动').getData('selected'),false);
   const before=placement(),startX=before.x,startY=before.y;

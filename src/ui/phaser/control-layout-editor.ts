@@ -194,7 +194,9 @@ export class ControlLayoutEditor {
 
   private setMode(mode: EditMode): void {
     if(this.mode===mode)return;
-    this.mode=mode;this.cancelDrags();this.paintToolbar();this.layout();
+    this.mode=mode;this.cancelDrags();
+    this.moveButton?.getData('setSelected')?.(mode==='move');
+    this.scaleButton?.getData('setSelected')?.(mode==='scale');this.layout();
   }
 
   /** 缩放拖动期间用预览倍率参与解析，松手前不写存储。 */
