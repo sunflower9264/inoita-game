@@ -206,6 +206,8 @@ export class StoryPresenter implements StoryPresentationPort {
     this.skipping = true;
     this.state = snapshot;
     this.scenes.set(snapshot.map, structuredClone(snapshot.scene));
+    // 跳过的舞台不经过 showStage，地图音乐和环境音要在这里跟着逻辑场景切换。
+    this.app.audio?.enterMap?.(snapshot.map);
 
   }
   /** 选择或任务弹窗前把逻辑舞台真正画一次；素材走正常加载，缺什么补什么。 */

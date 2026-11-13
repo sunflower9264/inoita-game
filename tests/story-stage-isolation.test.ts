@@ -256,6 +256,7 @@ function harness() {
       }
       this.player=this.characters.get('player')!;
       audioMaps.push(value.map);
+      audio.enterMap(value.map);
     },
     ensureActors(this:{characters:Map<string,ReturnType<typeof visual>>},value:StoryStageSnapshot){
       for(const actor of value.scene.actors)if(!this.characters.has(actor.id)){
@@ -270,12 +271,15 @@ function harness() {
     clearEarlyCurtain() {},
     scene: { stop() { events.emit('shutdown'); } }
   } as unknown as StageSceneType;
-  const app = { session:{storyWorld:{actorAppearance:(id:string)=>id}}, world: { actors: { hero: appearance, guard: { ...appearance, id: 'guard' }, saint: { ...appearance, id: 'saint' } } }, campaign: { start: { actor: 'hero' } } } as unknown as StoryContext;
+  let currentMusic:string|null=null;
+  const audio={enterMap:(map:string)=>{currentMusic=map;},captureStoryAudio:()=>({music:currentMusic,ambience:null}),
+    restoreStoryAudio:(state:{music:string|null})=>{currentMusic=state.music;}};
+  const app = { session:{storyWorld:{actorAppearance:(id:string)=>id}}, audio, world: { actors: { hero: appearance, guard: { ...appearance, id: 'guard' }, saint: { ...appearance, id: 'saint' } } }, campaign: { start: { actor: 'hero' } } } as unknown as StoryContext;
   const presenter = new StoryPresenter(app, () => world, () => stage);
   const prepared=(presenter as unknown as {scenes:Map<string,unknown>}).scenes;
   for(const map of ['hall','remote'])prepared.set(map,{map,actors:[{id:'player',actor:'hero',x:10,y:20,facing:'south',visible:true}]});
   return { presenter, stage, world, released: () => released, rendered: () => rendered,
-    placeAllGroups: () => placeAllGroups, audioMaps: () => audioMaps };
+    placeAllGroups: () => placeAllGroups, audioMaps: () => audioMaps, music: () => currentMusic };
 }
 
 test('cinematic travel retains formal world and only explicit bindings become world changes', async () => {
@@ -752,6 +756,7 @@ test('skipping keeps logical positions without rebuilding the stage and flush pa
     cast:[{...guard,x:70,y:80,facing:'south' as const}]},playback);
   assert.equal(run.rendered(),painted,'跳过后不再重建舞台');
   assert.equal(run.presenter.captureStage()!.map,'remote');
+  assert.equal(run.music(),'remote','跳过切换地图时同步切换地图音乐');
   const staged=run.presenter.captureStage()!.cast.find(member=>member.id==='guard')!;
   assert.deepEqual([staged.x,staged.y,staged.facing],[70,80,'south'],'舞台切换仍更新逻辑坐标');
   await run.presenter.execute({type:'walk',target:'guard',x:100,y:120,speedPxPerSecond:100},playback);
@@ -764,6 +769,7 @@ test('skipping keeps logical positions without rebuilding the stage and flush pa
   assert.equal(run.rendered(),painted+1,'选择或任务弹窗前补画一次');
   const shown=run.presenter.captureStage()!.cast.find(member=>member.id==='guard')!;
   assert.deepEqual([shown.x,shown.y],[100,120],'补画沿用逻辑坐标');
+  assert.equal(run.music(),'remote','补画后保持目标地图音乐');
 });
 
 test('skipped camera actions and camera-following walks update the restored view', async () => {
