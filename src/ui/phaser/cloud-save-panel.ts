@@ -24,9 +24,9 @@ function drawStatus(
   width: number,
   parent: UiNode,
 ): void {
-  const text = cloudStatusText(state);
-  if (!text) return;
-  view.text(text, left, y, width, 22, cloudStatusColor(cloudStatusKind(state)), parent);
+  const text=cloudStatusText(state)??(!state.available?'云存档暂不可用，本机存档不受影响。':'');
+  const color=!state.available&&!cloudStatusText(state)?TEXT_COLORS.dangerSoft:cloudStatusColor(cloudStatusKind(state));
+  view.text(text,left,y,width,22,color,parent);
 }
 
 /**
@@ -65,9 +65,6 @@ export function drawCloudSavePage(
       0, 0, width, 18, TEXT_COLORS.secondary, note.content,
     );
     drawStatus(view, state, 0, 72, width, note.content);
-    if (!state.available && !cloudStatusText(state)) {
-      view.text('云存档暂不可用，本机存档不受影响。', 0, 72, width, 20, TEXT_COLORS.dangerSoft, note.content);
-    }
     note.setHeight(260);
   } else {
     view.text(`已登录：${state.account}`, left, CLOUD_PAGE.content.top, width - 180, 30);
@@ -91,9 +88,6 @@ export function drawCloudSavePage(
     view.text('下载：把云端存档写回本机同号槽位；覆盖后本机原内容无法恢复。',
       0, 30, width, 20, TEXT_COLORS.secondary, note.content);
     drawStatus(view, state, 0, 72, width, note.content);
-    if (!state.available && !cloudStatusText(state)) {
-      view.text('云存档暂不可用，本机存档不受影响。', 0, 72, width, 20, TEXT_COLORS.dangerSoft, note.content);
-    }
     note.setHeight(260);
   }
 }

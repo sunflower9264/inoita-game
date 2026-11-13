@@ -19,7 +19,7 @@ class Button {
   readonly active=true;readonly visible=true;readonly shown=true;readonly input:{enabled:boolean};
   x=0;y=0;width=0;height=0;
   private readonly data=new Map<string,unknown>();
-  constructor(label:string,action:()=>void,disabled=false){this.input={enabled:!disabled};this.data.set('label',label);this.data.set('action',action);}
+  constructor(label:string,action:()=>void,disabled=false){this.input={enabled:!disabled};this.data.set('label',label);this.data.set('action',action);this.data.set('setEnabled',(value:boolean)=>{this.input.enabled=value;});}
   setData(key:string,value:unknown){this.data.set(key,value);return this;}
   getData(key:string){return this.data.get(key);}
 }
@@ -99,7 +99,7 @@ function fixture(gmMode?:MenuContext['gmMode'],cloud?:CloudSavePort){
   const state={app,surface:view,modal,page:'home',cloudSerial:0,cloudBusy:false,cloudAccountInput:'',cloudPassword:'',
     // 场景缩放通知与屏幕布局分别提供。
     scale:{width:1200,height:640,zoom:1,on(){},off(){}},
-    cloudStatus:undefined,cloudCount:undefined,cloudRequest:undefined,confirmAction:undefined,confirmResolve:undefined,
+    cloudStatus:undefined,cloudCount:undefined,cloudRequest:undefined,cloudRenderedBranch:undefined,cloudControls:[],confirmAction:undefined,confirmResolve:undefined,
     renameRef:undefined,renameSerial:0,slotRequest:undefined,slotPortraits:undefined,prompt:undefined,settingsScroll:0,backdrop:undefined,
     challengeClicks:0,challengeTimer:undefined,
     domSpecs:[] as MenuTextSpec[],menuText:undefined as MenuTextLayer|undefined,changelogBackgroundText:undefined as MenuTextLayer|undefined,modalLabels:[] as FakeDomLabel[],
@@ -638,7 +638,9 @@ test('a locked cloud login shows the lock message without entering the signed-in
   f.click('开始游戏');f.click('云存档');await settle();
   f.state.cloudAccountInput='hero';
   f.state.cloudPassword='secret1';
+  const login=f.view.buttons.find(button=>button.getData('label')==='登录')!,scroll=f.view.scrolls.at(-1);
   f.click('登录');await settle();
+  assert.equal(f.view.buttons.find(button=>button.getData('label')==='登录'),login);assert.equal(f.view.scrolls.at(-1),scroll);
   assert(f.domTexts().some(text=>text.includes('15 分钟')));
   assert(f.view.buttons.some(button=>button.getData('label')==='登录'));
 });

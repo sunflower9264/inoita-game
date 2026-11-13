@@ -19,7 +19,7 @@ import { TextPrompt } from '../ui/text-prompt.ts';
 import { PasswordChangePrompt } from '../ui/password-change-prompt.ts';
 import { CloudCredentialsInput, type CredentialInputRect } from '../ui/cloud-credentials-input.ts';
 import { AUTO_SAVE_SLOT, MANUAL_SAVE_SLOT_COUNT, saveSlotLabel, type SaveSlotRef, type SlotSummaryReading } from '../domain/save-game.ts';
-import { CLOUD_PAGE, type CloudPageActions, type CloudPageState, type CloudPageStatus } from '../ui/cloud-save-layout.ts';
+import { CLOUD_PAGE, cloudStatusColor, cloudStatusKind, cloudStatusText, type CloudPageActions, type CloudPageState, type CloudPageStatus } from '../ui/cloud-save-layout.ts';
 import { drawCloudSavePage } from '../ui/phaser/cloud-save-panel.ts';
 import {
   CLOUD_NEW_PASSWORD_SAME_MESSAGE,
@@ -126,6 +126,8 @@ export class MenuScene extends Phaser.Scene {
   private settingsList?:ScrollArea;
   private settingsFullscreenButton?:UiNode;
   private cloudScroll?:ScrollArea;
+  private cloudRenderedBranch?:string;
+  private cloudControls:UiNode[]=[];
   private renderOnResume():void {
     if(this.surface&&this.sys.isActive())this.render();
   }
@@ -135,7 +137,7 @@ export class MenuScene extends Phaser.Scene {
     if(!this.titleAssetsBound){this.titleAssetsBound=true;this.events.once(Phaser.Scenes.Events.DESTROY,()=>this.titleAssets.releaseResident());}
     this.page='home';this.app.ui.setMode('menu');this.app.ui.loading('正在准备主菜单…');
     const controller=new AbortController();
-    this.events.once('shutdown',()=>{this.renameSerial++;this.renameRef=undefined;this.resetChallengeClicks();this.unregisterInput?.();this.unregisterInput=undefined;controller.abort();this.cancelCloudRequest();this.settleConfirm(false,false);this.slotRequest?.abort();this.changelogRequest?.abort();this.changelogRequest=undefined;this.changelogOpen=false;this.app.releaseChangelog?.();this.prompt?.close();this.passwordPrompt?.close();this.credentials?.destroy();this.credentials=undefined;this.clearModalLabels();this.menuText?.destroy();this.menuText=undefined;this.changelogBackgroundText?.destroy();this.changelogBackgroundText=undefined;this.domSpecs=[];this.slotsScroll=undefined;this.settingsList=undefined;this.cloudScroll=undefined;this.surface?.destroy();this.surface=undefined;this.modal?.destroy();this.modal=undefined;this.popupMask?.destroy();this.popupMask=undefined;this.events.off(Phaser.Scenes.Events.RESUME,this.renderOnResume,this);this.events.off(Phaser.Scenes.Events.PAUSE,this.hideCredentials);this.scale.off('resize',this.resize,this);});
+    this.events.once('shutdown',()=>{this.renameSerial++;this.renameRef=undefined;this.cloudRenderedBranch=undefined;this.cloudControls=[];this.resetChallengeClicks();this.unregisterInput?.();this.unregisterInput=undefined;controller.abort();this.cancelCloudRequest();this.settleConfirm(false,false);this.slotRequest?.abort();this.changelogRequest?.abort();this.changelogRequest=undefined;this.changelogOpen=false;this.app.releaseChangelog?.();this.prompt?.close();this.passwordPrompt?.close();this.credentials?.destroy();this.credentials=undefined;this.clearModalLabels();this.menuText?.destroy();this.menuText=undefined;this.changelogBackgroundText?.destroy();this.changelogBackgroundText=undefined;this.domSpecs=[];this.slotsScroll=undefined;this.settingsList=undefined;this.cloudScroll=undefined;this.surface?.destroy();this.surface=undefined;this.modal?.destroy();this.modal=undefined;this.popupMask?.destroy();this.popupMask=undefined;this.events.off(Phaser.Scenes.Events.RESUME,this.renderOnResume,this);this.events.off(Phaser.Scenes.Events.PAUSE,this.hideCredentials);this.scale.off('resize',this.resize,this);});
     // 标题页整屏独占键盘；原始事件由正式界面场景那一处桥接进 router。
     this.unregisterInput?.();this.unregisterInput=this.app.inputRouter.register('menu',this.routeKey,{exclusive:()=>true});
     this.events.on(Phaser.Scenes.Events.RESUME,this.renderOnResume,this);
@@ -458,8 +460,9 @@ export class MenuScene extends Phaser.Scene {
    */
   private drawCloudPage(view:UiSurface):MenuTextSpec[] {
     const made:{spec:MenuTextSpec;parent:UiNode}[]=[];
-    const target=view as unknown as {text:UiSurface['text']};
-    const original=target.text;
+    const target=view as unknown as {text:UiSurface['text'];button:UiSurface['button']};
+    const original=target.text,originalButton=target.button;this.cloudControls=[];
+    target.button=((...args:Parameters<UiSurface['button']>)=>{const button=originalButton.apply(view,args);this.cloudControls.push(button);return button;}) as UiSurface['button'];
     target.text=((value:string,x:number,y:number,width=0,size=22,color=GOLD,parent=view.root)=>{
       const spec:MenuTextSpec={key:`cloud-${made.length}`,text:value,x,y,
         style:{size,color,anchorX:0,anchorY:0,width:width||undefined,wrap:width?'word':undefined}};
@@ -482,7 +485,7 @@ export class MenuScene extends Phaser.Scene {
     try{
       drawCloudSavePage(view,this.cloudState(),this.cloudActions(),{frame:art('slot'),close:CLOSE_IMAGE,closePressed:CLOSE_PRESSED});
     }finally{
-      target.text=original;
+      target.text=original;target.button=originalButton;
     }
     // 云页只有说明和状态在一个滚动区里；按钮文字直接挂在画布根节点上。
     const note=view.scrolls.at(-1);
@@ -490,6 +493,10 @@ export class MenuScene extends Phaser.Scene {
     if(note)note.onScroll=()=>this.menuText?.refresh();
     const specs:MenuTextSpec[]=[];
     for(const {spec,parent} of made){
+      if(note&&parent===note.content&&spec.y===72)spec.key='cloud-status';
+      else if(spec.text.startsWith('已登录：'))spec.key='cloud-account';
+      else if(spec.text.startsWith('云端存档：'))spec.key='cloud-count';
+      else if(['登录','注册','修改密码','导入本机存档','下载云存档','退出登录'].includes(spec.text))spec.key=`cloud-button-${spec.text}`;
       if(note&&parent===note.content){
         spec.x+=note.x;spec.y+=note.y;spec.scroll='cloud-note';
         spec.clip={top:note.y,bottom:note.y+note.height};
@@ -506,7 +513,10 @@ export class MenuScene extends Phaser.Scene {
   private render():void {
     // 异步目录加载和指针回调可能在场景关闭后才回来；surface 此时已经销毁。
     if(!this.surface||!this.sys.isActive())return;
-    const view=this.surface;view.clear();this.modal?.clear();
+    const view=this.surface;
+    const branch=this.page==='cloud'?`${!!this.app.cloud?.loggedIn}:${!!this.app.cloud}`:undefined;
+    if(branch&&branch===this.cloudRenderedBranch){this.updateCloudPage();return;}
+    this.cloudRenderedBranch=branch;view.clear();this.modal?.clear();
     // DOM 标签直接写屏幕坐标；先让根节点用当前窗口尺寸完成布局，避免首帧按旧变换闪一下。
     view.layout();
     const guard=()=>this.app.ui.ready&&!this.app.ui.suspended&&this.sys.isActive()&&this.confirmAction===undefined&&this.renameRef===undefined&&!this.changelogOpen;
@@ -658,6 +668,28 @@ export class MenuScene extends Phaser.Scene {
       this.modalLabels.push(label);
     }};
   }
+  private updateCloudPage():void{
+    const view=this.surface;if(!view||this.page!=='cloud')return;
+    const state=this.cloudState(),disabled=state.busy||!state.available;
+    const labels=state.loggedIn?['修改密码','导入本机存档','下载云存档','退出登录']:['登录','注册'];
+    for(const button of this.cloudControls){
+      if(!labels.includes(String(button.getData('label'))))continue;
+      const setEnabled=button.getData('setEnabled') as ((enabled:boolean)=>void)|undefined;setEnabled?.(!disabled);
+    }
+    const specs=this.domSpecs,replace=(key:string,value:string,color?:string)=>{
+      const spec=specs.find(item=>item.key===key);if(spec){spec.text=value;if(color)spec.style.color=color;}
+    };
+    if(state.loggedIn){
+      replace('cloud-account',`已登录：${state.account}`);
+      replace('cloud-count',state.cloudCount===undefined?'云端存档：正在读取…':`云端存档：${state.cloudCount} 个`);
+    }
+    const keys=labels.map(label=>`cloud-button-${label}`);
+    for(const key of keys){const spec=specs.find(item=>item.key===key);if(spec)spec.style.color=disabled?fadeColor(GOLD,.4):GOLD;}
+    const status=cloudStatusText(state),color=!state.available&&!status?'#e9a08a':cloudStatusColor(cloudStatusKind(state));
+    replace('cloud-status',status??(!state.available?'云存档暂不可用，本机存档不受影响。':''),color);
+    this.menuText?.renderPage('cloud');this.layout();
+  }
+
   private cloudState():CloudPageState {
     return {
       available:!!this.app.cloud,
