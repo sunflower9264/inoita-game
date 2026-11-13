@@ -60,6 +60,8 @@ export class PartyPanel {
   private readonly removeScroll:(scroll:ScrollArea)=>void;
   private surface?:UiSurface;
   private selectionMarks=new Map<string,UiNode>();
+  private deployedMarkers=new Map<string,UiNode>();
+  private readonly runAction?:(action:()=>void)=>void;
   private detailNodes:UiNode[]=[];
   private tabs=new Map<DetailTab,UiNode>();
   private bands:{plain:UiNode[];equipment:UiNode[]}={plain:[],equipment:[]};
@@ -67,12 +69,12 @@ export class PartyPanel {
 
   constructor(session:Session,world:WorldIndex,app:StoryUIContext,changed:()=>void,
     inspect:(id:string,page:'bag'|'skills')=>void,scrollArea?:ScrollFactory,refreshText:()=>void=()=>{},preview?:LiveCharacterPreview,
-    updateSelection:()=>void=()=>{},removeScroll:(scroll:ScrollArea)=>void=()=>{},modalChanged:()=>void=changed){
+    updateSelection:()=>void=()=>{},removeScroll:(scroll:ScrollArea)=>void=()=>{},modalChanged:()=>void=changed,runAction?:(action:()=>void)=>void){
     this.session=session;this.world=world;this.app=app;this.changed=changed;this.inspect=inspect;
     this.scrollArea=scrollArea??((view,_name,x,y,width,height)=>view.scroll(x,y,width,height));
     this.refreshText=refreshText;
     this.preview=preview;
-    this.updateSelection=updateSelection;this.removeScroll=removeScroll;this.modalChanged=modalChanged;
+    this.updateSelection=updateSelection;this.removeScroll=removeScroll;this.modalChanged=modalChanged;this.runAction=runAction;
   }
   get modalOpen():boolean{return !!this.modal;}
   /** 重绘前把合成立绘摘下来，避免被页面清理销毁后无法复用。 */
@@ -112,10 +114,10 @@ export class PartyPanel {
     return memberArt(this.app.menuPanels,actor,member.classId,source).partyIcon;
   }
   private run(action:()=>void):void{
-    this.error='';let failed=true;
-    try{action();failed=false;}catch(error){this.error=(error as Error).message;}
-    // 成功时队伍变更已经通过 session 通知重画过；只有失败要本地重画显示错误。
-    if(failed)this.changed();
+    this.error='';
+    if(!this.runAction){try{action();}catch(error){this.error=(error as Error).message;this.changed();}return;}
+    try{this.runAction(action);}catch(error){this.error=(error as Error).message;}
+    this.updatePartyState();
   }
   /** 页面文字交给菜单 DOM 层；弹层打开时页面文字仍输出，由宿主统一压暗和裁剪。 */
   renderText(writer:MenuTextWriter):void{
@@ -153,7 +155,7 @@ export class PartyPanel {
     return{lineHeight,height:Math.max(0,lines.length*lineHeight-5)};
   }
   render(v:UiSurface,modal:UiSurface,placeModal?:PlaceModal):void{
-    this.placeModal=placeModal;this.pageText=[];this.surface=v;this.selectionMarks.clear();this.tabs.clear();
+    this.placeModal=placeModal;this.pageText=[];this.surface=v;this.selectionMarks.clear();this.deployedMarkers.clear();this.tabs.clear();
     const party=this.session.party;if(!party)return;
     const snapshot=party.snapshot(),assets=this.app.menuPanels.assets;
     // The protagonist and story members do not consume mercenary roster slots.
@@ -180,7 +182,7 @@ export class PartyPanel {
       }
       v.image(assets['party-frame'],-7,-7,141,128,button);
       if(id){const selected=v.image(assets['party-selected'],-7,-7,141,128,button).setVisible(id===this.selected);this.selectionMarks.set(id,selected);}
-      if(id&&snapshot.active.includes(id))v.image(assets['party-deployed'],68,54,78,64,button);
+      if(id)this.deployedMarkers.set(id,v.image(assets['party-deployed'],68,54,78,64,button).setVisible(snapshot.active.includes(id)));
     }
     const id=this.selected,member=id?this.member(id):undefined;
     // 原版佣兵页只调 `UI_DrawBorderRect`（`UIMercenary_Draw @0x151ae4`），不铺底：
@@ -202,6 +204,18 @@ export class PartyPanel {
     });
     this.rosterTextCount=this.pageText.length;this.renderSelected(v);
     if(this.modal)this.renderModal(modal);
+  }
+  private updatePartyState():void{
+    const surface=this.surface,party=this.session.party;if(!surface||!party){this.changed();return;}
+    const snapshot=party.snapshot();
+    for(const [id,marker] of this.deployedMarkers)marker.setVisible(snapshot.active.includes(id));
+    for(const spec of this.pageText)if(spec.key.startsWith('story-role-')){
+      const id=spec.key.slice('story-role-'.length);spec.text=id==='player'?'主角':snapshot.active.includes(id)?'上阵':'候补';
+    }
+    for(const node of this.detailNodes)node.destroy();this.detailNodes=[];
+    if(this.skillsScroll){this.removeScroll(this.skillsScroll);this.skillsScroll=undefined;}
+    this.preview?.detach();this.previewSlot=undefined;surface.pruneDestroyed();
+    this.pageText.length=this.rosterTextCount;this.renderSelected(surface);this.updateSelection();
   }
   private switchTab(tab:DetailTab):void{
     if(this.tab===tab)return;
@@ -354,7 +368,7 @@ export class PartyPanel {
     }
     const skill=skillForGrowth(this.app.battleCatalog.skills[modal.skill],memberSkillGrowth(modal.id)),configuration=modal.id==='player'?this.session.skills:(member as CompanionMember).skills;
     const level=configuration.draft(this.app.battleCatalog,member.classId).levels[skill.id]??0;
-    const cap=modal.id==='player'?skill.normalMaxLevel:(member as CompanionMember).snapshot().skillCaps[skill.id]??0;
+    const cap=modal.id==='player'?skill.normalMaxLevel:Math.max((member as CompanionMember).snapshot().skillCaps[skill.id]??0,level);
     v.image(skill.icon,35,25,75,75);
     this.modalEntry('skill-name',skill.name,135,30,26,GOLD,0,0,{width:550,wrap:'word'});
     this.modalEntry('skill-level',level?`等级 ${level} / ${cap}`:cap?'尚未习得':'该佣兵未开放此技能',135,70,21,GOLD,0,0,{width:550,wrap:'word'});

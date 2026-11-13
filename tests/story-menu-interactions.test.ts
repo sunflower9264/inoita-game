@@ -1080,6 +1080,21 @@ test('using a skill book opens the icon page and returns to the bag', t => {
   assert.equal(f.scene.buttons('使用').length, 1, '下一次点一次技能书就能重新打开说明');
 });
 
+test('mercenary skill book keeps the selected skill icon and applies companion growth',t=>{
+  const f=fixture();t.after(f.cleanup);
+  const member=f.recruit('warlock');member.addExperience(Number.MAX_SAFE_INTEGER);
+  const id=Object.keys(member.generated.skillCaps)[0]!,rank=member.skills.skillLevels()[id];
+  const book=f.add('skillbook',2);f.select(member.id);f.menu.debugDescribe(book.id);
+  f.scene.click(f.scene.button('使用'));
+  const icon=f.scene.button(battle.skills[id].name),frame=f.internals.body.staticRoot.list.slice();
+  assert(visibleDomLabels(f).some(label=>label.text===member.definition.name));
+  f.scene.click(icon);f.scene.click(f.scene.button('使用技能书'));
+  assert.equal(member.skills.skillLevels()[id],rank+1);
+  assert.equal(f.scene.button(battle.skills[id].name),icon);
+  assert.deepEqual(f.internals.body.staticRoot.list,frame);
+  assert.equal(f.session.bag.count('skillbook'),1);
+});
+
 test('selecting a skill book entry keeps skill icons and frames',t=>{
   const f=fixture();t.after(f.cleanup);f.hero.addExperience(Number.MAX_SAFE_INTEGER);
   const skills=battle.classes.find(value=>value.id===f.hero.classId)!.skills.slice(0,2);
@@ -2843,6 +2858,15 @@ test('switching party detail tabs keeps the roster and tab controls',t=>{
     assert.equal(f.scene.button('装备'),equipment);
     assert.equal(f.scene.button('技能目录'),skills);
   }
+});
+
+test('moving a party member between active and reserve keeps the roster',t=>{
+  const f=fixture();t.after(f.cleanup);const member=f.recruit('warlock');f.menu.show('party');
+  const roster=f.scene.button(member.definition.name),tab=f.scene.button('人物能力');f.scene.click(roster);
+  f.scene.click(f.scene.button('移出队伍'));assert(!f.session.party!.snapshot().active.includes(member.id));
+  assert.equal(f.scene.button(member.definition.name),roster);assert.equal(f.scene.button('人物能力'),tab);
+  f.scene.click(f.scene.button('加入队伍'));assert(f.session.party!.snapshot().active.includes(member.id));
+  assert.equal(f.scene.button(member.definition.name),roster);assert.equal(f.scene.button('人物能力'),tab);
 });
 
 test('opening and closing party confirmation keeps the roster and details',t=>{

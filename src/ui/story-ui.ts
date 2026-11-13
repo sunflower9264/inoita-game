@@ -427,7 +427,7 @@ export class StoryUI {
     this.partyPanel?.close();this.partyPanel?.destroyPreview();
     this.partyPanel=new PartyPanel(session,world,this.app,()=>this.render(),(id,page)=>this.selectMember(id,page),
       (view,name,x,y,width,height)=>this.scroll(name,x,y,width,height,view),()=>this.menuText?.refresh(),this.bagPortrait,
-      ()=>this.menuText?.renderPage('party'),scroll=>{for(const [name,value] of this.scrollNames)if(value===scroll)this.scrollNames.delete(name);scroll.destroy();const index=this.body!.scrolls.indexOf(scroll);if(index>=0)this.body!.scrolls.splice(index,1);},()=>this.updatePartyModal());
+      ()=>this.menuText?.renderPage('party'),scroll=>{for(const [name,value] of this.scrollNames)if(value===scroll)this.scrollNames.delete(name);scroll.destroy();const index=this.body!.scrolls.indexOf(scroll);if(index>=0)this.body!.scrolls.splice(index,1);},()=>this.updatePartyModal(),action=>{this.busy=true;try{action();}finally{this.busy=false;this.sessionSignature=this.sessionDataSignature()??this.sessionSignature;}});
     this.unsubscribe=session.subscribe(()=>{
       // 快捷键登记、控制布局编辑与强化台/技能书页打开时由各自的界面显式重绘；
       // 子页面的动作在完成后调 changed 统一重绘一次，避免会话通知再画一遍。
@@ -1634,7 +1634,7 @@ export class StoryUI {
       skill=skillForGrowth(this.app.battleCatalog.skills[this.skill!]!,memberSkillGrowth(this.selectedMemberId)),
       level=draft.levels[skill.id]??0,
       companion=this.selectedMemberId==='player'?undefined:this.session!.party?.get(this.selectedMemberId),
-      maximum=companion?(companion.snapshot().skillCaps[skill.id]??0):skill.normalMaxLevel;
+      maximum=companion?Math.max(companion.snapshot().skillCaps[skill.id]??0,level):skill.normalMaxLevel;
     // AI 页未掌握的格子只保留选中状态，右侧说明区清空（原版 UISkill_AIMainExe 调 UIDesc_SetOff）。
     if(this.skillSection==='ai'&&level===0)return;
     const detailHeight=this.skillSection==='ai'?342:279;
@@ -2172,7 +2172,8 @@ export class StoryUI {
     this.skillBook=new SkillBookPanel(bag,this.session!.skills,this.app.battleCatalog,this.app.menuPanels,entry,
       ()=>this.render(),()=>this.app.audio?.ui('select'),(message)=>this.closeSkillBook(message),
       (view,name,x,y,width,height)=>this.scroll(name,x,y,width,height,view),()=>this.menuText?.refresh(),()=>this.menuText?.renderPage('learn'),
-      scroll=>{for(const [name,value] of this.scrollNames)if(value===scroll)this.scrollNames.delete(name);});
+      scroll=>{for(const [name,value] of this.scrollNames)if(value===scroll)this.scrollNames.delete(name);},
+      this.selectedMemberId==='player'?undefined:this.session!.party?.get(this.selectedMemberId));
     this.skillBook.open();this.page='learn';this.render();
   }
   private closeSkillBook(message?:string):void {
@@ -2324,7 +2325,8 @@ export class StoryUI {
     const unimplemented=unimplementedItemUse(entry.item,definition);
     if(unimplemented)return unimplemented;
     const kind=definition.use?.kind;
-    if(this.selectedMemberId!=='player'&&(kind==='reset-skills'||kind==='learn'||entry.item===SKILL_POINT_ITEM))return '该道具仅能用于主角';
+    if(this.selectedMemberId!=='player'&&(kind==='reset-skills'||entry.item===SKILL_POINT_ITEM||
+      kind==='learn'&&this.session!.party?.get(this.selectedMemberId)?.source!=='mercenary'))return '该道具仅能用于主角';
   }
   private renderItemResult():void {
     // 与说明面板同一套矩形，免得看结果时又跳回旧位置。
