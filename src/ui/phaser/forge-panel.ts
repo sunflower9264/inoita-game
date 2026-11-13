@@ -86,7 +86,10 @@ export class ForgePanel {
   render(v:UiSurface,modal:UiSurface,placeModal:(width:number,height:number)=>void,text?:ForgeTextTarget):void {
     this.pageText=[];this.modalText=[];this.band=undefined;this.text=text;this.surface=v;
     const assets=this.panels.assets;
-    v.border(assets,10,0,462,431);drawBagRail(v,assets);
+    v.staticLayer('forge',()=>{
+      v.border(assets,10,0,462,431,v.staticRoot);
+      drawBagRail(v,assets,496,v.staticRoot);
+    });
     this.scroll=undefined;this.leftScroll=undefined;
     // 左框内容可能随强化概率、宝石孔和属性条数变长，统一放进可滚动区。
     const left=this.scrollAt('forge-left',0,0,458,431);this.leftScroll=left;

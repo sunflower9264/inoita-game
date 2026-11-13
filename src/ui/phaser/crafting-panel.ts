@@ -110,7 +110,10 @@ export class CraftingPanel {
     this.pageText=[];this.modalText=[];this.band=undefined;this.text=text;this.surface=v;
     const assets=this.panels.assets;
     this.drops=[];
-    v.border(assets,10,0,462,431);drawBagRail(v,assets);
+    v.staticLayer('crafting',()=>{
+      v.border(assets,10,0,462,431,v.staticRoot);
+      drawBagRail(v,assets,496,v.staticRoot);
+    });
     this.renderModeStrip(v);
     if(this.mode==='recipes')this.renderRecipes(v);
     else if(this.mode==='socket')this.renderSocket(v);

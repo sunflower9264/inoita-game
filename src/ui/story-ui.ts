@@ -929,8 +929,8 @@ export class StoryUI {
     // 登记快捷键时菜单本体不画：只重画那一屏（它自己在 `sync` 里显示、菜单整块隐藏）。
     if(this.app.ui.controlLayoutEditing){this.surface.clearStatic();this.body.clearStatic();this.sync();return;}
     if(this.shortcutEdit){this.surface.clearStatic();this.body.clearStatic();this.renderShortcutScreen();this.renderBackButton();this.sync();return;}
-    // 静态图框只在背包/商店页保留；其它页先把上一页的静态层收掉，避免压在设置或任务列表下面。
-    if(this.page!=='bag'&&this.page!=='shop')this.body.clearStatic();
+    // 各面板的固定图框交给静态层，切换到其他页面时清除。
+    if(!['bag','shop','crafting','forge'].includes(this.page))this.body.clearStatic();
     const commonTabs=!['shop','crafting','forge','learn','save','load'].includes(this.page);
     const chromeKey=commonTabs?'chrome:tabs':`chrome:${this.page}${this.page==='crafting'?`:${this.craftingActor}`:''}`;
     v.staticLayer(chromeKey,()=>{

@@ -937,8 +937,11 @@ test('forge repaints the menu once per action', t => {
   const f=fixture();t.after(f.cleanup);
   setHeroWeapon(f,3,3);f.add('novice-weapon-scroll',2);
   openHeroForge(f);
+  const frame=f.internals.body.staticRoot.list.slice();
+  assert.ok(frame.length);
   const render=t.mock.method(f.menu as any,'render') as any;
   f.scene.click(f.scene.button('卷轴:低级武器强化卷轴'));
+  assert.deepEqual(f.internals.body.staticRoot.list,frame,'强化操作保留图框');
   assert.equal(render.mock.callCount(),1,'选择格子只重绘一次');
   t.mock.method(Math,'random',()=>0.99);
   f.scene.click(f.scene.button('确定强化'));
@@ -1761,7 +1764,10 @@ test('fusion menu selects or drags equipment, confirms once and blocks underlyin
   f.session.gainMoney(100000);
   for(const op of Object.values(f.app.crafting!.operations))for(const m of op.materials)f.add(m.item,m.quantity*4);
   const machine=Object.keys(world.actors).find(id=>world.actors[id].service==='fusion-machine')!;
-  f.menu.openCrafting(machine);f.scene.click(f.scene.button('切换融合模式'));f.scene.click(f.scene.button('深渊混沌合成'));
+  f.menu.openCrafting(machine);
+  const frame=f.internals.body.staticRoot.list.slice();assert.ok(frame.length);
+  f.scene.click(f.scene.button('切换融合模式'));f.scene.click(f.scene.button('深渊混沌合成'));
+  assert.deepEqual(f.internals.body.staticRoot.list,frame,'切换合成模式保留图框');
   f.scene.click(f.scene.button(item.name));
   assert(visibleDomLabels(f).some(label=>label.text.replace(/\n/g,'')==='深渊混沌道具只适用于混沌道具。'));
   f.scene.key('Escape');f.scene.click(f.scene.button('混沌合成'));
