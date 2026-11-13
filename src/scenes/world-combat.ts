@@ -799,7 +799,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
   }
   private clearEnemies(preserveCooldown=false,keepSummonStates=false): void {
     for (const enemy of this.arena) this.destroyEnemy(enemy,preserveCooldown,keepSummonStates);
-    this.arena = [];this.threat?.clear();
+    this.arena = [];this.threat?.clear();this.combatantsCache=undefined;
   }
   /**
    * 技能强制位移的整盒落点。位移是瞬时的，不能像走路那样只检查脚点：
@@ -2071,7 +2071,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
     if(this.pendingDefeats.has(key)){this.pendingDefeats.complete(key,false);return false;}
     const index = this.arena.findIndex(enemy => enemy.key === key);
     if (index < 0) return false;
-    const [enemy] = this.arena.splice(index, 1);refreshCombatActors(this.arena);
+    const [enemy] = this.arena.splice(index, 1);refreshCombatActors(this.arena);this.combatantsCache=undefined;
     this.summonAwareness?.forget(key);
     this.destroyEnemy(enemy);
     this.conditions.remove(key);
@@ -2328,6 +2328,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
       }catch(error){lease?.release();this.allyLoadFailure=error;this.partySignature='';this.nextPartySyncAt=this.scene.time.now+1000;if(!this.closed)throw error;}
       finally{this.pendingAllies.delete(id);if(!this.pendingAllies.size)for(const notify of [...this.allyWaiters])notify();}
     }
+    this.combatantsCache=undefined;
     this.syncControlled();
     this.prepareCombatSounds();
   }
@@ -2573,7 +2574,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
     this.pausedValue=undefined;
     const definition=this.app.battleCatalog.enemies.find(enemy=>enemy.id===placed.enemyId);
     if(!definition?.actor.collision)throw new Error(`敌人外观缺少碰撞范围：${placed.enemyId}`);
-    this.arena.push(this.buildEnemy(placed,definition));refreshCombatActors(this.arena);
+    this.arena.push(this.buildEnemy(placed,definition));refreshCombatActors(this.arena);this.combatantsCache=undefined;
   }
   syncChestEnemies():void {
     this.consumeRosterChanges(this.roster.refresh());

@@ -47,6 +47,22 @@ test('combat candidates reflect stealth applied during the same frame',()=>{
   assert.deepEqual(host.combatants()[0].states,['stealthed']);
 });
 
+test('removing an enemy invalidates the same-frame combatant snapshot',()=>{
+  let removed=false;
+  const enemy={key:'enemy'};
+  const host:any=Object.assign(Object.create(WorldCombat.prototype),{
+    app:{session:{combatTick:1,party:{activeIds:[]}}},
+    conditions:{revision:0,remove(){removed=true;}},
+    arena:[enemy],pendingDefeats:new Set(),partyControllers:new Map(),
+    summonAwareness:{forget(){}},summons:{remove(){}},scene:{refreshCombatTarget(){}},
+    destroyEnemy(){},
+    combatant:(id:string)=>!removed&&id==='enemy'?{id,team:'hostile',position:{x:0,y:0},bounds:{x:0,y:0,width:8,height:8},states:[]}:undefined
+  });
+  assert.deepEqual(host.combatants().map((actor:any)=>actor.id),['enemy']);
+  assert.equal(host.removeEnemyVisual('enemy'),true);
+  assert.deepEqual(host.combatants(),[]);
+});
+
 test('a restored enemy returns to its spawn rather than its saved combat position',()=>{
   const host:any=Object.assign(Object.create(WorldCombat.prototype),{
     roster:{source:(id:string)=>id==='map-enemy'?{x:16,y:32}:undefined},
