@@ -3010,6 +3010,13 @@ test('key binding editor keeps its text inside the framed page', t => {
   assert.equal(visibleDomLabels(f).find(value=>value.text.startsWith('Ctrl/Alt/Command'))!.style.textAlign,'center','底部说明居中');
   assert.ok(editor.canvas.root.list.some(node=>node.width>=editor.canvas.width&&node.height>=editor.canvas.height),
     '整页有底板，文字不再浮在游戏画面上');
+  const binding=f.scene.button('向上移动：W'),reset=f.scene.button('恢复默认'),nodes=editor.canvas.root.list.slice();
+  f.scene.click(binding);assert.equal(f.scene.button('向上移动：按下按键…'),binding);
+  f.scene.key('KeyZ');assert.equal(f.scene.button('向上移动：Z'),binding);
+  assert.equal(f.scene.button('恢复默认'),reset);assert.deepEqual(editor.canvas.root.list,nodes);
+  f.scene.click(reset);assert.equal(f.scene.button('向上移动：W'),binding);
+  f.scene.click(binding);f.scene.key('Escape');assert.equal(f.scene.button('向上移动：W'),binding);
+  assert.deepEqual(editor.canvas.root.list,nodes);
 });
 
 

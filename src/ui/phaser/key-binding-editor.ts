@@ -3,6 +3,7 @@ import { UI_EVENTS } from '../../application/ui-events.ts';
 import type { KeyBindingPreferences } from '../../application/key-bindings.ts';
 import { KEY_ACTION_LABELS, bindingFromEvent, formatBinding, type KeyBindingAction } from '../../domain/key-bindings.ts';
 import type { DomLabel, DomUi } from '../dom/dom-ui.ts';
+import type { UiNode } from '../dom/node.ts';
 import { GOLD, UiSurface } from './widgets.ts';
 
 /** 左列：移动、切人、切组、菜单；右列：六个快捷位。 */
@@ -37,6 +38,7 @@ export class KeyBindingEditor {
   private readonly dom?: Pick<DomUi, 'label'>;
   private readonly domLabels = new Map<string, DomLabel>();
   private domSpecs: DomTextSpec[] = [];
+  private bindingButtons=new Map<KeyBindingAction,UiNode>();
   private active = false;
   private capture?: KeyBindingAction;
   private notice = '';
@@ -73,7 +75,7 @@ export class KeyBindingEditor {
     const capture = this.capture;
     if (capture) {
       if (event.key === 'Escape') {
-        event.preventDefault(); this.capture = undefined; this.notice = ''; this.render(); return;
+        event.preventDefault(); this.capture = undefined; this.notice = ''; this.refreshBindings(); return;
       }
       const binding = bindingFromEvent(event);
       // 单独的修饰键和输入法合成中的按键不当作一次输入。
@@ -81,8 +83,8 @@ export class KeyBindingEditor {
       // 捕获期间拦掉浏览器默认动作，Tab、F5 这类键不会在改键途中有副作用。
       event.preventDefault();
       const error = this.preferences.set(capture, binding);
-      if (error) { this.notice = `${formatBinding(binding)}：${error}`; this.render(); return; }
-      this.capture = undefined; this.notice = `已绑定：${formatBinding(binding)}`; this.render(); return;
+      if (error) { this.notice = `${formatBinding(binding)}：${error}`; this.refreshBindings(); return; }
+      this.capture = undefined; this.notice = `已绑定：${formatBinding(binding)}`; this.refreshBindings(); return;
     }
     if (event.key === 'Escape') { event.preventDefault(); this.onClose(); return; }
     this.canvas.key(event);
@@ -100,17 +102,17 @@ export class KeyBindingEditor {
 
   private readonly cancelCapture = (): void => {
     if (this.capture === undefined) return;
-    this.capture = undefined; this.notice = ''; this.render();
+    this.capture = undefined; this.notice = ''; this.refreshBindings();
   };
 
   private beginCapture(action: KeyBindingAction): void {
-    this.capture = action; this.notice = ''; this.render();
+    this.capture = action; this.notice = ''; this.refreshBindings();
   }
 
   private render(): void {
     const v = this.canvas;
     v.clear();
-    this.domSpecs = [];
+    this.domSpecs = [];this.bindingButtons.clear();
     // 桌面键位页是独立整页，铺深色底板；透明底会让文字和按钮跟游戏画面混在一起。
     v.frame(this.assets, 0, 0, 960, 640);
     this.pushText('title', '键位设置', 480, 24, 34, GOLD, .5, 0);
@@ -119,9 +121,9 @@ export class KeyBindingEditor {
     this.pushText('column-right', '技能与快捷位', 500, 116, 24);
     this.paintColumn(LEFT_ACTIONS, 60);
     this.paintColumn(RIGHT_ACTIONS, 500);
-    if (this.notice) this.pushText('notice', this.notice, 480, 490, 20, '#eb9587', .5, 0, 880, 'center');
+    this.pushText('notice', this.notice, 480, 490, 20, '#eb9587', .5, 0, 880, 'center');
     v.button('', 260, 528, 200, FOOTER_BUTTON_HEIGHT, () => {
-      this.capture = undefined; this.preferences.reset(); this.notice = '已恢复默认键位'; this.render();
+      this.capture = undefined; this.preferences.reset(); this.notice = '已恢复默认键位'; this.refreshBindings();
     }).setData('label', '恢复默认');
     this.pushText('restore', '恢复默认', 360, 528 + FOOTER_BUTTON_HEIGHT / 2, FOOTER_BUTTON_FONT, GOLD, .5, .5);
     v.button('', 510, 528, 160, FOOTER_BUTTON_HEIGHT, () => this.onClose()).setData('label', '返回');
@@ -132,15 +134,26 @@ export class KeyBindingEditor {
     this.applyDom();
   }
 
+  private refreshBindings():void {
+    for(const [action,button] of this.bindingButtons){
+      const capturing=this.capture===action,text=capturing?'按下按键…':formatBinding(this.preferences.get(action));
+      button.setData('label',`${KEY_ACTION_LABELS[action]}：${text}`);
+      (button.getData('setSelected') as (value:boolean)=>void)(capturing);
+      const spec=this.domSpecs.find(value=>value.key===`binding-${action}`);if(spec)spec.text=text;
+    }
+    const notice=this.domSpecs.find(value=>value.key==='notice');if(notice)notice.text=this.notice;
+    this.applyDom();
+  }
+
   private paintColumn(actions: readonly KeyBindingAction[], left: number): void {
     actions.forEach((action, index) => {
       const top = ROW_TOP + index * ROW_HEIGHT;
       const capturing = this.capture === action;
       const text = capturing ? '按下按键…' : formatBinding(this.preferences.get(action));
       this.pushText(`action-${action}`, KEY_ACTION_LABELS[action], left, top + 8, 20);
-      this.canvas.button('', left + 260, top, BUTTON_WIDTH, BUTTON_HEIGHT, () => this.beginCapture(action), {
+      const button=this.canvas.button('', left + 260, top, BUTTON_WIDTH, BUTTON_HEIGHT, () => this.beginCapture(action), {
         fontSize: ACTION_BUTTON_FONT, selected: capturing
-      }).setData('label', `${KEY_ACTION_LABELS[action]}：${text}`);
+      }).setData('label', `${KEY_ACTION_LABELS[action]}：${text}`);this.bindingButtons.set(action,button);
       this.pushText(`binding-${action}`, text, left + 260 + BUTTON_WIDTH / 2, top + BUTTON_HEIGHT / 2,
         ACTION_BUTTON_FONT, GOLD, .5, .5, BUTTON_WIDTH - 12, 'center');
     });
