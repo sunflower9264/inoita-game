@@ -962,7 +962,7 @@ export class StoryUI {
         for(const [name,scroll] of this.scrollNames)if(scroll.surface===this.modal)this.scrollNames.delete(name);
         draw();this.menuText?.renderPage('shop');this.sync();
       }});
-    if(this.page==='crafting'&&this.craftingPanel){this.craftingPanel.render(this.body,this.modal!,this.placeModal,(pointer,entry,scroll)=>this.startDrag(pointer,entry,scroll),{scroll:textScroll,refresh:refreshText,updatePage:()=>this.menuText?.renderPage('crafting'),removeScroll:scroll=>{for(const [name,value] of this.scrollNames)if(value===scroll)this.scrollNames.delete(name);}});this.drops=this.craftingPanel.drops;}
+    if(this.page==='crafting'&&this.craftingPanel){this.craftingPanel.render(this.body,this.modal!,this.placeModal,(pointer,entry,scroll)=>this.startDrag(pointer,entry,scroll),{scroll:textScroll,refresh:refreshText,updatePage:()=>this.menuText?.renderPage('crafting'),runCommit:action=>{this.busy=true;try{action();}finally{this.busy=false;this.sessionSignature=this.sessionDataSignature()??this.sessionSignature;}},removeScroll:scroll=>{for(const [name,value] of this.scrollNames)if(value===scroll)this.scrollNames.delete(name);}});this.drops=this.craftingPanel.drops;}
     if(this.page==='forge'&&this.forge)this.forge.render(this.body,this.modal!,this.placeModal,{scroll:textScroll,refresh:refreshText,updatePage:()=>this.menuText?.renderPage('forge')});
     if(this.page==='learn'&&this.skillBook)this.skillBook.render(this.body!);
     if(this.page==='system'){

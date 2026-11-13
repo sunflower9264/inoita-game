@@ -1925,11 +1925,13 @@ test('fusion menu selects or drags equipment, confirms once and blocks underlyin
 
 test('fusion recipe detail stays open and crafts again on the next 组合', t => {
   const f=fixture();t.after(f.cleanup);
-  f.session.gainMoney(10);f.add('leaf-of-life',6);
+  f.session.gainMoney(10);f.add('leaf-of-life',6);const other=f.add('healing-potion-xl');
   const machine=Object.keys(world.actors).find(id=>world.actors[id].service==='fusion-machine')!;
   f.menu.openCrafting(machine);
   const recipe=f.session.bag.catalog.recipes['mix-healing-potion-s']!;
   f.scene.click(f.scene.buttons(recipe.name).find(button=>button.input?.hitArea.width===390)!);
+  const bagScroll=f.internals.scrollNames.get('craft-bag')!,tab=f.scene.button('混沌合成');
+  const kept=f.scene.buttons(items.items[other.item].name).find(button=>button.parentContainer===bagScroll.content)!;
   const potions=()=>f.session.bag.count('healing-potion-s'),before=potions();
   for(const round of [1,2]){
     f.scene.click(f.scene.button('组合'));
@@ -1937,6 +1939,8 @@ test('fusion recipe detail stays open and crafts again on the next 组合', t =>
     f.scene.click(f.scene.button('是'));
     assert.equal(potions(),before+round,`第 ${round} 次合成产出`);
     assert.equal(f.scene.buttons('组合').length,1,'成功后仍停在配方详情页');
+    assert.equal(f.internals.scrollNames.get('craft-bag'),bagScroll);assert.equal(f.scene.button('混沌合成'),tab);
+    assert.ok(f.scene.buttons(items.items[other.item].name).includes(kept),'未变物品格保留');
   }
   assert.equal(f.session.bag.count('leaf-of-life'),0,'两次合成各扣 3 个材料');
 });

@@ -24,6 +24,7 @@ interface CraftingTextTarget {
   refresh():void;
   updatePage?():void;
   removeScroll?(scroll:ScrollArea):void;
+  runCommit?(action:()=>void):void;
 }
 
 interface CraftingDrop {object:UiNode|UiImage;entry?:string;view?:InventoryView;cell?:number;craft?:boolean}
@@ -44,6 +45,7 @@ export class CraftingPanel {
   private bagButtons=new Map<string,UiNode>();
   private targetMarker?:UiImage;
   private bagHighlight?:UiNode;
+  private startDrag?:(pointer:UiPointer,entry:string,scroll:ScrollArea)=>void;
   private modeTabs=new Map<'recipes'|ChaosTier|'socket',UiNode>();
   private readonly changed:()=>void;private readonly sound:()=>void;private readonly modalChanged:()=>void;
   constructor(crafting:EquipmentCrafting,panels:MenuPanels,changed:()=>void,sound:()=>void,grades:ShopCatalog['grades']=[],modalChanged:()=>void=changed){this.grades=grades;this.crafting=crafting;this.panels=panels;this.changed=changed;this.sound=sound;this.modalChanged=modalChanged;}
@@ -92,15 +94,19 @@ export class CraftingPanel {
     const target=this.target;this.target=undefined;
     let committed=false;
     try {
-      if(confirmation.kind==='chaos')this.crafting.commit(confirmation.quote);
-      else if(confirmation.kind==='socket')this.crafting.socketCommit(confirmation.quote);
-      else this.crafting.recipeCommit(confirmation.quote);
+      const commit=()=>{
+        if(confirmation.kind==='chaos')this.crafting.commit(confirmation.quote);
+        else if(confirmation.kind==='socket')this.crafting.socketCommit(confirmation.quote);
+        else this.crafting.recipeCommit(confirmation.quote);
+      };
+      if(this.text?.runCommit)this.text.runCommit(commit);else commit();
       this.sound();committed=true;
     }
     catch(error){if(confirmation.kind!=='recipe')this.target=target;if(error instanceof CraftingError)this.message=this.panels.itemMessages[error.notice];else throw error;}
     finally {this.committing=false;}
-    // 成功时 session 通知已经重画过；配方保持不变，可以留在详情页连续合成。失败才本地重画显示错误。
-    if(!committed)this.modalChanged();
+    if(committed&&this.text?.runCommit){
+      if(!this.updateAfterCommit())this.changed();else this.modalChanged();
+    }else if(!committed)this.modalChanged();
   }
   private addText(key:string,text:string,x:number,y:number,size:number,color?:string,anchorX=0,anchorY=0,
     style:Partial<MenuTextSpec['style']>={},extras:Pick<MenuTextSpec,'scroll'|'clip'>={}):void {
@@ -116,7 +122,7 @@ export class CraftingPanel {
   renderText(writer:MenuTextWriter):void {for(const spec of this.pageText)writer.add(spec);}
   renderModalText(writer:MenuTextWriter):void {for(const spec of this.modalText)writer.add(spec);}
   render(v:UiSurface,modal:UiSurface,placeModal:(width:number,height:number)=>void,startDrag:(pointer:UiPointer,entry:string,scroll:ScrollArea)=>void,text?:CraftingTextTarget):void {
-    this.pageText=[];this.modalText=[];this.band=undefined;this.text=text;this.surface=v;
+    this.pageText=[];this.modalText=[];this.band=undefined;this.text=text;this.surface=v;this.startDrag=startDrag;
     const assets=this.panels.assets;
     this.drops=[];this.bagButtons.clear();this.modeTabs.clear();this.targetMarker=undefined;this.recipeScroll=undefined;
     v.staticLayer('crafting',()=>{
@@ -132,6 +138,16 @@ export class CraftingPanel {
     this.workKeys=new Set(this.pageText.slice(textStart).map(spec=>spec.key));
     this.renderBag(v,startDrag);
     this.renderModal(modal,placeModal);
+  }
+  private updateAfterCommit():boolean{
+    const v=this.surface,scroll=this.bagScroll,startDrag=this.startDrag;
+    if(!v||!scroll||!startDrag||!this.text?.updatePage)return false;
+    this.renderBagCells(v,scroll,startDrag);
+    const wallet=splitMoney(this.crafting.session.money);
+    for(const unit of ['gold','silver','copper'] as const){
+      const spec=this.pageText.find(value=>value.key===`craft-bag-money-${unit}`);if(spec)spec.text=String(wallet[unit]);
+    }
+    return this.updateWork();
   }
   private updateWork():boolean{
     const v=this.surface;
