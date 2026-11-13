@@ -301,7 +301,7 @@ test('exit prefetch switches direction and retries a failed target after a delay
   });
   host.prefetchVisibleExit({x:0,y:0},{x:-1,y:0});
   host.prefetchVisibleExit({x:0,y:0},{x:1,y:0});
-  assert.deepEqual(requests,['a']);
+  assert.deepEqual(requests,['a','b'],'新方向立即开始预取，不等待旧目标');
   resolveFirst({id:'a',ground:'a-ground',canopy:'a-canopy'});
   await host.prefetchTask;
   assert.deepEqual(requests,['a','b']);

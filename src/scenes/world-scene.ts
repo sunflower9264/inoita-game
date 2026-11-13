@@ -203,6 +203,7 @@ export class WorldScene extends Phaser.Scene {
   private prefetchFailedTarget?: string;
   private prefetchRetryAt = 0;
   private prefetchTask?: Promise<void>;
+  private prefetchRequest?: AbortController;
   map?: WorldMap;
   entities: EntityPlacement[] = [];
   exitTrigger?: ExitTrigger<MapExit>;
@@ -724,8 +725,13 @@ export class WorldScene extends Phaser.Scene {
     if (this.prefetchTarget === destination) return;
     if (this.prefetchFailedTarget === destination && this.time.now < this.prefetchRetryAt) return;
     this.prefetchTarget = destination;
-    if (this.prefetchTask) return;
-    const signal = this.request.signal;
+    this.prefetchRequest?.abort();
+    const controller = this.prefetchRequest = new AbortController();
+    const parent = this.request.signal;
+    const cancel = () => controller.abort(parent.reason);
+    parent.addEventListener('abort', cancel, { once: true });
+    if (parent.aborted) cancel();
+    const signal = controller.signal;
     const run = async () => {
       while (!signal.aborted && this.prefetchTarget) {
         const target = this.prefetchTarget;
@@ -754,7 +760,11 @@ export class WorldScene extends Phaser.Scene {
     };
     const task = run();
     this.prefetchTask = task;
-    void task.finally(() => { if (this.prefetchTask === task) this.prefetchTask = undefined; });
+    void task.finally(() => {
+      parent.removeEventListener('abort', cancel);
+      if (this.prefetchTask === task) this.prefetchTask = undefined;
+      if (this.prefetchRequest === controller) this.prefetchRequest = undefined;
+    });
   }
   private prefetchVisibleExit(position: { x: number; y: number }, previous: { x: number; y: number }): void {
     if (!this.map) return;
