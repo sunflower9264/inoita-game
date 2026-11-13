@@ -61,3 +61,5 @@ npm run test:standalone
 - 装备清理由 shop、shop-panel、story-menu-interactions 用例覆盖等级与独立品质筛选、保护条件、报价变化、上锁入口和长按释放；saved-game 覆盖 44 → 45 迁移及锁定状态读回。
 
 - `party.test.ts` 与 `story-menu-interactions.test.ts` 验证佣兵能力点、旧成长保留和人物页加点。
+
+- `status-color-renderer.test.ts` 使用幽灵黑底源图验证发光层闪白模式，以及换动作后混合方式切换、新旧图层的颜色恢复。
