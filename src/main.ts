@@ -359,7 +359,7 @@ async function preloadCommon(signal: AbortSignal): Promise<void> {
     });
     while (commonPreloadIndex < commonPreloadBatches.length) {
       signal.throwIfAborted();
-      const lease = await loadSceneAssets(scene, commonPreloadBatches[commonPreloadIndex]!, () => {}, true);
+      const lease = await loadSceneAssets(scene, commonPreloadBatches[commonPreloadIndex]!, () => {}, true, signal);
       if (signal.aborted) { lease.release(); signal.throwIfAborted(); }
       app.commonAssetLeases.push(lease);
       commonPreloadIndex += 1;

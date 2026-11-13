@@ -162,6 +162,20 @@ test('an explicit prefetch cancellation releases late textures without stopping 
   assert.equal(run.frames.has(asset.key), false);
 });
 
+test('cancelling a queued request does not wait for another download', async () => {
+  const run = setup(); run.outcome('pending');
+  const firstController = new AbortController();
+  const first = loadSceneAssets(run.scene, [asset], () => {}, true, firstController.signal);
+  await new Promise(resolve => setImmediate(resolve));
+  const secondController = new AbortController();
+  const second = loadSceneAssets(run.scene, [{ kind: 'image', key: 'other', file: 'other.png' }], () => {}, true, secondController.signal);
+  secondController.abort();
+  await assert.rejects(second, { name: 'AbortError' });
+  assert.equal(run.starts(), 1);
+  firstController.abort();
+  await assert.rejects(first, { name: 'AbortError' });
+});
+
 test('cancelled loading removes a texture that arrives after the lease is released', async () => {
   const run = setup(); run.outcome('pending');
   const pending = loadSceneAssets(run.scene, [asset], () => {});

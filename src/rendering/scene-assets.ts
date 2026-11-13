@@ -89,15 +89,22 @@ export function retainLoadedSceneAssets(scene: Phaser.Scene,
   return poolFor(scene).acquire(keys);
 }
 
-async function inTextureQueue<T>(scene: Phaser.Scene, work: () => Promise<T>): Promise<T> {
+async function inTextureQueue<T>(scene: Phaser.Scene, signal: AbortSignal, work: () => Promise<T>): Promise<T> {
   const textures = scene.textures;
   const previous = textureQueues.get(textures) ?? Promise.resolve();
   let release!: () => void;
   const turn = new Promise<void>(resolve => { release = resolve; });
   textureQueues.set(textures, previous.then(() => turn));
-  await previous;
-  try { return await work(); }
-  finally { release(); }
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const abort = () => { signal.removeEventListener('abort', abort); reject(signal.reason); };
+      signal.addEventListener('abort', abort, { once: true });
+      if (signal.aborted) { abort(); return; }
+      void previous.then(() => { signal.removeEventListener('abort', abort); resolve(); });
+    });
+    signal.throwIfAborted();
+    return await work();
+  } finally { release(); }
 }
 
 type AssetGap = 'texture' | `frame:${string}`;
@@ -178,7 +185,7 @@ export async function loadSceneAssets(scene: Phaser.Scene, assets: PendingAsset[
   const cancel = () => controller.abort(signal?.reason);
   signal?.addEventListener('abort', cancel, { once: true });
   try {
-    await inTextureQueue(scene, async () => {
+    await inTextureQueue(scene, controller.signal, async () => {
       controller.signal.throwIfAborted();
       const needed = unique.filter(asset => assetGap(scene, asset) !== undefined);
       // 纹理键已存在但帧不全：先确认没有别的租约在用它，再删掉重建。

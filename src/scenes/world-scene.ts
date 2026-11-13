@@ -447,7 +447,7 @@ export class WorldScene extends Phaser.Scene {
     if (silent) await this.app.storyAssetPreparation?.wait(map.id);
     signal.throwIfAborted();
     const loaded = await loadEntryPlan(plan, {
-      load: (assets, progress) => loadSceneAssets(this, assets, progress, true),
+      load: (assets, progress) => loadSceneAssets(this, assets, progress, true, signal),
       report: silent ? () => {} : (label, value) => ui.loading(label, value),
       preloadPortraits: (files, portraitSignal, progress) => ui.preloadPortraits(files, portraitSignal, progress),
       prepareSounds: (names, soundSignal) => { soundSignal.throwIfAborted(); return this.app.audio?.prepareStoryEffects(names, soundSignal) ?? Promise.resolve(); }
