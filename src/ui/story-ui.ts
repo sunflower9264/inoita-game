@@ -1439,7 +1439,7 @@ export class StoryUI {
     // 内容区各是一块图框；面板里露出的是黑色 65% 遮罩下的世界画面。
     v.border(panels.assets,85,0,409,431);drawSolidBorder(v,panels.assets,537,0,409,53);v.border(panels.assets,537,53,409,378);
     this.drawPartyColumn(v);
-    (['directory','ai','settings'] as const).forEach((section,index)=>{const button=v.button('',486,38+index*118,46,118,()=>{this.skillSection=section;this.scrollOffsets.delete('skills:description');this.render();},{image:panels.assets[`skill-tab-${section}`],disabled:section!=='directory'&&(!this.session!.party||(section==='settings'&&this.selectedMemberId!=='player'))}).setData('label',{directory:'技能目录',ai:'AI 设置',settings:'设置'}[section]);this.skillTabs.set(section,button);});
+    (['directory','ai','settings'] as const).forEach((section,index)=>{const button=v.button('',486,38+index*118,46,118,()=>{if(this.skillSection===section)return;this.skillSection=section;const detail=this.scrollNames.get('description');if(detail)detail.scrollTop=0;this.scrollOffsets.delete('skills:description');this.updateSkillsMember();},{image:panels.assets[`skill-tab-${section}`],disabled:section!=='directory'&&(!this.session!.party||(section==='settings'&&this.selectedMemberId!=='player'))}).setData('label',{directory:'技能目录',ai:'AI 设置',settings:'设置'}[section]);this.skillTabs.set(section,button);});
     this.renderSkillContent();
   }
   private renderSkillContent():void{

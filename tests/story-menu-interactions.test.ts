@@ -369,6 +369,20 @@ test('skill settings page drops the initial-point label and keeps the reset butt
   assert(f.scene.canHit(f.scene.button(panels.skillPanel.labels.resetButton)),'初始化按钮仍在');
 });
 
+test('switching skill sections keeps the frame, party column and section tabs',t=>{
+  const f=fixture();t.after(f.cleanup);
+  f.menu.show('skills');
+  const directory=f.scene.button('技能目录'),settings=f.scene.button('设置');
+  const body=f.internals.body,frame=body.root.list.slice(0,8);
+  f.scene.click(settings);
+  assert.equal(f.scene.button('技能目录'),directory);
+  assert.equal(f.scene.button('设置'),settings);
+  assert.deepEqual(body.root.list.slice(0,8),frame);
+  f.scene.click(directory);
+  assert.equal(f.scene.button('技能目录'),directory);
+  assert.equal(f.scene.button('设置'),settings);
+});
+
 test('AI settings shows two columns and clears the description for unlearned skills',t=>{
   const f=fixture();t.after(f.cleanup);
   f.menu.show('skills');f.scene.click(f.scene.button('AI 设置'));
