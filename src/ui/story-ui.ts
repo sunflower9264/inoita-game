@@ -996,6 +996,10 @@ export class StoryUI {
           itemDetail:(itemId,close)=>this.renderGmItemDetail(itemId,close),
           registerScroll:(name,scroll)=>this.scrollNames.set(name,scroll),
           refresh:()=>this.menuText?.refresh(),
+          setText:(key,text)=>{
+            const spec=this.gmTextSpecs.find(spec=>spec.key===key);if(spec)spec.text=text;
+            this.menuText?.setText('debug',key,text);
+          },
         });
         this.gmPanelOwner=gm;
       }

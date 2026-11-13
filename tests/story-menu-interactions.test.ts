@@ -2299,8 +2299,13 @@ test('the GM item page scrolls addable items, shows details and gives a chosen q
   assert.ok(detailClose.x + detailClose.input!.hitArea.width < 786, '详情层停在右侧交互按钮左边');
   f.scene.click(detailClose);
 
-  f.scene.click(f.scene.button('数量 +10'));
-  f.scene.click(f.scene.button('数量 +10'));
+  const quantityButton=f.scene.button('数量 +10');
+  const itemGrid=f.internals.body.scrolls.find(scroll=>scroll.x===60&&scroll.y===100);
+  f.scene.click(quantityButton);
+  assert.equal(f.scene.button('数量 +10'),quantityButton);
+  assert.equal(f.internals.body.scrolls.find(scroll=>scroll.x===60&&scroll.y===100),itemGrid);
+  assert.ok(visibleDomLabels(f).some(label=>label.text==='数量 11'));
+  f.scene.click(quantityButton);
   f.scene.click(f.scene.button('加入背包'));
   assert.equal(f.session.bag.count(id), before + 21);
   assert.equal(gm.actions().at(-1)?.call, 'giveItem');

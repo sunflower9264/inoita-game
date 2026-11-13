@@ -42,6 +42,7 @@ interface GmReferences {
   registerScroll?(name: string, scroll: ScrollArea): void;
   /** 滚动后重算 DOM 文字位置。 */
   refresh?(): void;
+  setText?(key:string,text:string):void;
 }
 
 type GmPage = 'status' | 'character' | 'items' | 'story';
@@ -124,6 +125,7 @@ export class GmPanel {
   private characterId = 'player';
   private itemFilter: GmItemFilter = 'all';
   private itemQuantity = 1;
+  private itemQuantityTextKey?:string;
   private itemSelected?: string;
   private itemDetail?: string;
   /** 道具网格的滚动位置：选物品、发放和重画都不应该把列表跳回顶部。 */
@@ -305,6 +307,7 @@ export class GmPanel {
     } else {
       this.text('选一件物品', 786, 96, 150, 16);
     }
+    this.itemQuantityTextKey=`gm-text-${this.textSerial}`;
     this.text(`数量 ${this.itemQuantity}`, 786, 184, 150, 16);
     // 按钮上的字要短到能放进 66×34；完整含义留在 label 上，键盘与测试仍按它查找。
     this.button(body, '-10', 786, 210, 66, 34, () => this.stepQuantity(-10)).setData('label', '数量 -10');
@@ -313,7 +316,7 @@ export class GmPanel {
     this.button(body, '+1', 866, 246, 66, 34, () => this.stepQuantity(1)).setData('label', '数量 +1');
     this.button(body, '+100', 786, 282, 66, 34, () => this.stepQuantity(100)).setData('label', '数量 +100');
     this.button(body, '归 1', 866, 282, 66, 34,
-      () => { this.itemQuantity = 1; this.hooks.render(); }).setData('label', '数量归 1');
+      () => this.setQuantity(1)).setData('label', '数量归 1');
     this.button(body, '加入背包', 786, 324, 150, 44, () => this.onGiveItem(selected),
       { disabled: !selected }).setData('label', '加入背包');
     this.text(`金币 ${this.gm.money()}`, 60, 412, 200, 16);
@@ -336,8 +339,14 @@ export class GmPanel {
   }
 
   private stepQuantity(delta: number): void {
-    this.itemQuantity = Math.max(1, Math.min(ITEM_MAX, this.itemQuantity + delta));
-    this.hooks.render();
+    this.setQuantity(this.itemQuantity+delta);
+  }
+
+  private setQuantity(value:number):void {
+    this.itemQuantity=Math.max(1,Math.min(ITEM_MAX,value));
+    if(this.itemQuantityTextKey&&this.references.setText)
+      this.references.setText(this.itemQuantityTextKey,`数量 ${this.itemQuantity}`);
+    else this.hooks.render();
   }
 
   private onLevelUp(): void {
