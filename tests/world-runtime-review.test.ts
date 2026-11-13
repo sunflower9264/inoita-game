@@ -21,6 +21,19 @@ const { WorldScene } = await import('../src/scenes/world-scene.ts');
 phaser.deregister();
 const battle=JSON.parse(readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')) as BattleCatalog;
 
+test('redeploying a removed ally while paused requests a fresh party sync',()=>{
+  const ids=['player','ally'],controllers=new Map([['ally',{cancel(){}}]]);
+  const host:any=Object.assign(Object.create(WorldCombat.prototype),{
+    app:{session:{party:{activeIds:ids},skills:{resetVersion:0}}},partySignature:'player|ally',
+    partyControllers:controllers,combatRuntime:{removeActor(){}},conditions:{remove(){}},
+    threat:{removeActor(){}},allySkillSignatures:new Map(),forgetMemberCaches(){},
+    summons:{removeOwner:()=>[]},visualOf:()=>undefined,scheduleSkillAssetRefresh(){}
+  });
+  ids.pop();host.onPartyChanged();ids.push('ally');host.onPartyChanged();
+  assert.equal(controllers.has('ally'),false);
+  assert.notEqual(host.partySignature,ids.join('|'));
+});
+
 test('combat entry creates enemies once when loading a checkpoint',async()=>{
   const wardrobe=JSON.parse(readFileSync(new URL('../public/content/wardrobe.json',import.meta.url),'utf8'));
   for(const restore of [false,true]){

@@ -2765,6 +2765,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
     this.lastSkillReset=revision;
     const active=new Set(this.activeParty);
     for(const [id,controller] of this.partyControllers)if(!active.has(id)){
+      this.partySignature='';
       controller.cancel(true);this.runtime.removeActor(id);this.partyControllers.delete(id);this.conditions.remove(id);this.threat?.removeActor(id);
       this.allySkillSignatures.delete(id);this.forgetMemberCaches(id);
       for(const key of this.summons.removeOwner(id))this.removeEnemy(key);
