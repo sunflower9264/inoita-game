@@ -11,6 +11,21 @@ import { wardrobePoseFile, type CostumePose, type WardrobeCatalog } from '../dom
 import { contentVersionNow, versionedContent } from './asset-version.ts';
 import { storyDevMode } from '../domain/dev-mode.ts';
 
+const CONTENT_TIMEOUT_MS = 15_000;
+
+async function withContentTimeout<T>(file: string, controller: AbortController, work: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      const error = new Error(`资源加载超时：${file}`);
+      controller.abort(error);
+      reject(error);
+    }, CONTENT_TIMEOUT_MS);
+  });
+  try { return await Promise.race([work, timeout]); }
+  finally { if (timer) clearTimeout(timer); }
+}
+
 interface ContentManifest {
   schema: 1;
   contentVersion: string;
@@ -129,9 +144,10 @@ export class ContentLoader {
   }
   private trustedManifest():Promise<ContentManifest>{
     if(!this.manifestRequest){
+      const controller = new AbortController();
       const request=(async():Promise<ContentManifest>=>{
         // 清单很小，和单个内容请求解耦；调用方取消只在读完后由 signal 检查。
-        const response=await fetch('content-manifest.json');
+        const response=await fetch('content-manifest.json', { signal: controller.signal });
         if(!response.ok)throw new Error('生产内容清单缺失，请刷新页面或更新客户端');
         const manifest=await response.json() as ContentManifest;
         if(manifest?.schema!==1||typeof manifest.contentVersion!=='string'||!manifest.required||typeof manifest.required!=='object'||Array.isArray(manifest.required))
@@ -139,7 +155,8 @@ export class ContentLoader {
         return manifest;
       })();
       // 失败后允许重试，与单个内容文件的行为一致。
-      this.manifestRequest=request.catch(error=>{this.manifestRequest=undefined;throw error;});
+      this.manifestRequest=withContentTimeout('content-manifest.json', controller, request)
+        .catch(error=>{this.manifestRequest=undefined;throw error;});
     }
     return this.manifestRequest;
   }
@@ -148,7 +165,7 @@ export class ContentLoader {
     let request = this.requests.get(file) as ContentRequest<T> | undefined;
     if (!request) {
       const controller = new AbortController();
-      const promise = (async () => {
+      const promise = withContentTimeout(file, controller, (async () => {
         const response = await fetch(versionedContent(file), { signal: controller.signal });
         if (!response.ok) throw new Error(`资源暂时无法加载：${file}`);
         const value = await response.json();
@@ -159,7 +176,7 @@ export class ContentLoader {
           return value as T;
         }
         return parse(value);
-      })();
+      })());
       request = { promise, controller, waiters: 0, finished: false, scope };
       this.requests.set(file, request);
       const current = request;
@@ -169,7 +186,8 @@ export class ContentLoader {
           if (current.scope === 'pose' && this.requests.get(file) === current) this.requests.delete(file);
         },
         error => {
-          if(!controller.signal.aborted)globalThis.storyDiagnostics?.record('content-load-error',{file,error});
+          if(!controller.signal.aborted || controller.signal.reason === error && error instanceof Error && error.message.startsWith('资源加载超时'))
+            globalThis.storyDiagnostics?.record('content-load-error',{file,error});
           current.finished = true;
           if (this.requests.get(file) === current) this.requests.delete(file);
         }

@@ -5,6 +5,29 @@ import { ContentLoader } from '../src/application/content-loader.ts';
 
 const fixture = JSON.parse(readFileSync(new URL('../public/content/status-hud.json', import.meta.url), 'utf8'));
 
+test('a stalled content request times out for all callers and can be retried', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const original = globalThis.fetch;
+  let calls = 0;
+  let requestSignal: AbortSignal | undefined;
+  globalThis.fetch = ((_url, options) => {
+    calls++;
+    requestSignal = options?.signal as AbortSignal;
+    return calls === 1 ? new Promise<Response>(() => {}) : Promise.resolve({ ok: true, json: async () => fixture } as Response);
+  }) as typeof fetch;
+  try {
+    const loader = new ContentLoader();
+    const first = loader.statusHud();
+    const second = loader.statusHud();
+    const failures = Promise.all([assert.rejects(first, /资源加载超时/), assert.rejects(second, /资源加载超时/)]);
+    t.mock.timers.tick(15_000);
+    await failures;
+    assert.equal(requestSignal?.aborted, true);
+    await loader.statusHud();
+    assert.equal(calls, 2);
+  } finally { globalThis.fetch = original; }
+});
+
 test('releasing the debug catalog makes the next request reload it',async()=>{
   const original=globalThis.fetch;let calls=0;
   globalThis.fetch=(async()=>{calls++;return {ok:true,json:async()=>({tasks:[]})} as Response;}) as typeof fetch;
