@@ -78,10 +78,10 @@ export interface StoryContext {
   readonly ui: SceneUI & Pick<GameUI,'drawPortrait'|'portrait'|'canSkip'|'loadingState'|'failed'>;
   readonly locked: boolean;
   readonly suspended: boolean;
+  readonly storyAssetPreparation?: import('./story-asset-preparation.ts').StoryAssetPreparation;
   retainMapAssets(lease:AssetLease):void;
   retainMapPrefetch(lease:AssetLease):void;
   clearMapPrefetch():void;
-  retainStoryPrefetch(id:string,lease:AssetLease):void;
   releaseStoryPrefetch(id:string):void;
   clearStoryPrefetch():void;
   syncLifecycle?:()=>void;

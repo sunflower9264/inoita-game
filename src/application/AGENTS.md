@@ -19,7 +19,7 @@
 - 新能力先在 `ports.ts` 定义接口，由 `src/app.ts` 在启动阶段注入实现。
 - 场景通过 ports 取素材、音频和浏览器能力，加载与 API 调用留在本目录。
 - **标题页后台预载公共素材。** `commonAssetBatches` 把 HUD、掉落/任务图标、衣柜图集、全部职业与伙伴的基础动作和通用战斗反馈分成小批；标题页加载完成后由正式界面场景逐个加载。开始游戏或读档时停掉剩余批次，已载入的纹理留在全局纹理库，进图计划直接复用；技能动作、已学技能特效和召唤物仍按本次会话补齐。内容目录与会话无关，预载任务不随入口切换取消，调用方等完后各自检查自己的取消信号。
-- 4003 开发页把 `StoryDirector.onSkipProgress` 接到 `installStorySkipDiagnostics`，每次跳过只写一条 `story-skip-summary`，记录逻辑完成、世界就绪与实际解锁的耗时；选择和任务确认单独标明终点。
+- 游戏入口把 `StoryDirector.onSkipProgress` 接到 `installStorySkipDiagnostics`，每次跳过只写一条 `story-skip-summary`，记录逻辑完成、世界就绪与实际解锁的耗时；选择和任务确认单独标明终点。
 - 云存档是旁路能力：客户端构造不联网，只有打开云页/点击上传下载才请求；网络、token 或存储失败都结果化返回，不能抛到菜单或游戏循环。
 - 云存档和诊断的服务地址只从 `endpoints.ts` 解析。环境根地址在 `config/endpoints.json`：网页固定同源（空值）；Android 调试指向 `adb reverse` 的 `127.0.0.1:4003`，发布和网页生产共用 `https://catgo.online:4002`。Android 壳由 `bootstrap.js` 在页面脚本前注入本地代理地址；页面里不再另写域名或读取别的地址变量。
 - 只有 `game-audio.ts`、`game-timing.ts` import Phaser，其余文件保持纯 TypeScript。
@@ -52,3 +52,5 @@
 - `debug-world.ts` 在恢复持久现场前校验地图、位置、角色和战斗，队伍外观按当前装备重建；运行时剧情检查点仍走原有恢复路径。
 
 - `debug-mark-preparation.ts` 使用独立候选会话完整校验持久标记及任务返回点；失败发生在取消当前剧情、暂停保存和修改当前会话之前。
+
+- `story-asset-preparation.ts` 持有一个剧情目标的在途任务与完整素材使用权。世界关闭不取消，目标变化、剧情取消、会话退出或新世界接管时释放；失败允许正式入口补载。

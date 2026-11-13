@@ -150,7 +150,8 @@ function verifyAssets(scene: Phaser.Scene, assets: PendingAsset[]): void {
   if (failures.length) throw new Error('部分画面未能加载，请重试', { cause: new Error(failures.join('\n')) });
 }
 
-export async function loadSceneAssets(scene: Phaser.Scene, assets: PendingAsset[], progress: (value: number) => void, retain=false): Promise<AssetLease> {
+export async function loadSceneAssets(scene: Phaser.Scene, assets: PendingAsset[], progress: (value: number) => void, retain=false, signal?: AbortSignal): Promise<AssetLease> {
+  signal?.throwIfAborted();
   const pool = poolFor(scene);
   const byKey = new Map<string, PendingAsset>();
   for (const asset of assets) {
@@ -174,6 +175,8 @@ export async function loadSceneAssets(scene: Phaser.Scene, assets: PendingAsset[
   const controller = new AbortController();
   const shutdown = () => controller.abort(new DOMException('场景已关闭','AbortError'));
   scene.events.once('shutdown',shutdown);
+  const cancel = () => controller.abort(signal?.reason);
+  signal?.addEventListener('abort', cancel, { once: true });
   try {
     await inTextureQueue(scene, async () => {
       controller.signal.throwIfAborted();
@@ -219,6 +222,7 @@ export async function loadSceneAssets(scene: Phaser.Scene, assets: PendingAsset[
       {error,files:unique.map(asset=>({key:asset.key,file:asset.file}))});
     scene.events.off('shutdown',shutdown);lease.release();throw error;
   }finally{
+    signal?.removeEventListener('abort', cancel);
     changeLoaders(scene, keys, -1);
   }
 }

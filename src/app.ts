@@ -32,6 +32,7 @@ import type { OutfitPool } from './rendering/outfit-pool.ts';
 import type { GameMode } from './application/control-state.ts';
 import { ContentLoader } from './application/content-loader.ts';
 import type { AssetLease } from './application/assets.ts';
+import { StoryAssetPreparation } from './application/story-asset-preparation.ts';
 import { ControlLayoutPreferences } from './ui/control-layout.ts';
 import { keyBindings as defaultKeyBindings } from './application/key-bindings.ts';
 import { InputRouter } from './application/input-router.ts';
@@ -205,8 +206,8 @@ export class StoryApp {
   /** 最近几张地图用到的纹理键，用来释放旧地图占的显存。 */
   private mapAssetHistory: AssetLease[] = [];
   private mapPrefetch?: AssetLease;
-  /** 内容声明过的跨地图演出预先备好的地图；进图释放落脚图，返回菜单/读档时整体清空。 */
-  private readonly storyPrefetches = new Map<string, AssetLease>();
+  /** 当前剧情预取的目标资源，交接或退出时释放。 */
+  readonly storyAssetPreparation = new StoryAssetPreparation();
   retainMapAssets(lease: AssetLease): void {
     this.mapAssetHistory.push(lease);
     // 只留最近两张历史地图；预取额度另算。
@@ -226,24 +227,8 @@ export class StoryApp {
     this.mapPrefetch?.release();
     this.mapPrefetch=undefined;
   }
-  retainStoryPrefetch(id: string, lease: AssetLease): void {
-    this.storyPrefetches.get(id)?.release();
-    this.storyPrefetches.set(id, lease);
-    // 只有声明过的跨地图演出会进这个池：一场演出备一张图，留两张就够，多的是白占显存。
-    while (this.storyPrefetches.size > 2) {
-      const oldest = this.storyPrefetches.keys().next().value!;
-      this.storyPrefetches.get(oldest)!.release();
-      this.storyPrefetches.delete(oldest);
-    }
-  }
-  releaseStoryPrefetch(id: string): void {
-    const lease = this.storyPrefetches.get(id);
-    if (lease) { this.storyPrefetches.delete(id); lease.release(); }
-  }
-  clearStoryPrefetch(): void {
-    for (const lease of this.storyPrefetches.values()) lease.release();
-    this.storyPrefetches.clear();
-  }
+  releaseStoryPrefetch(id: string): void { this.storyAssetPreparation.release(id); }
+  clearStoryPrefetch(): void { this.storyAssetPreparation.clear(); }
   /** 场景退出后才解除旧局；迟到的退出回调不能清掉新会话。 */
   releaseSession(expected: Session | undefined): boolean {
     if (this.session !== expected) return false;

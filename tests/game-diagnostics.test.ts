@@ -197,6 +197,20 @@ test('server acknowledges only stored records, rejects invalid payloads and pres
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test('resource phases stay in the skip summary until actual input release', () => {
+  const director: Pick<import('../src/domain/story-director.ts').StoryDirector, 'onSkipProgress'> = {};
+  const records: object[] = []; let now = 0;
+  installStorySkipDiagnostics(director, (_kind, details) => records.push(details), () => now);
+  director.onSkipProgress!('requested');
+  now = 10; director.onSkipProgress!('assets-start');
+  now = 20; director.onSkipProgress!('assets-ready');
+  now = 25; director.onSkipProgress!('outfit-ready');
+  assert.equal(records.length, 0);
+  now = 30; director.onSkipProgress!('released');
+  assert.deepEqual(records, [{ outcome: 'released', logicMs: null, worldReadyMs: null, unlockedMs: 30, elapsedMs: 30,
+    stages: { 'assets-start': 10, 'assets-ready': 20, 'outfit-ready': 25 } }]);
+});
+
 test('skip diagnostics report logical completion, world readiness and actual unlock once', () => {
   const director: Pick<import('../src/domain/story-director.ts').StoryDirector, 'onSkipProgress'> = {};
   const records: { kind: string; details: object }[] = []; let now = 100;

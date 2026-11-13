@@ -14,6 +14,7 @@ import { storyReferenceMaps, validateStoryReferences } from './application/story
 import { ControlsScene } from './scenes/controls-scene.ts';
 import Phaser from 'phaser';
 import { StoryApp } from './app.ts';
+import { nextStoryMap } from './domain/story-preparation.ts';
 import { commonAssetBatches } from './application/entry-plan.ts';
 import { loadSceneAssets } from './rendering/scene-assets.ts';
 import { trustedContentNow } from './application/content-trust.ts';
@@ -44,7 +45,6 @@ import { displaySettings, parallelTextureUnits } from './application/display-set
 import { currentRefreshRate, detectRefreshRate, refreshRateKnown, resolveFrameLimit, setRefreshRate } from './application/frame-pacing.ts';
 import { requestNativeFrameRate } from './application/native-frame-rate.ts';
 import { installDiagnosticSnapshot, installStorySkipDiagnostics } from './application/game-diagnostics.ts';
-import { storyDevMode } from './domain/dev-mode.ts';
 import { createGmActions, consoleGmActions, type ConsoleGmActions } from './debug/gm-actions.ts';
 import { IndexedDbDebugMarkStore } from './application/debug-mark-store.ts';
 import { prepareDebugMark } from './application/debug-mark-preparation.ts';
@@ -528,6 +528,7 @@ function installSession(session: Session): void {
   // 会话可能换了职业；旧常驻包、历史地图纹理和会话级内容解析结果都不再复用。
   app.releaseResidentCombat();
   app.clearMapHistory();
+  app.clearStoryPrefetch();
   app.content.clearSessionCaches();
   app.outfits?.destroy();
   app.outfits = new OutfitPool({ textures: app.game!.textures, anims: app.game!.anims, game: app.game! },
@@ -551,6 +552,7 @@ function installSession(session: Session): void {
   const director = new StoryDirector(campaign, session, ui, locked => {
     if (app.director !== director) return;
     ui.lock(locked,'game');
+    if (!locked) app.storyAssetPreparation.clear();
     const scene = worldScene();
     if (locked && scene?.player) scene.setClip(scene.player, `idle-${scene.facing}`);
   }, presenter, {
@@ -560,20 +562,19 @@ function installSession(session: Session): void {
     project: async (stage, signal) => { await worldScene()?.projectStoryWorld(stage, signal); },
     checkpoint: () => worldScene()?.checkpointStoryWorld(),
     settle: () => worldScene()?.settleStoryPlayback(),
-    prepare: async (_commands, signal, stage, script) => {
+    prepare: async (_commands, signal, stage, script, cursor) => {
       const scene = worldScene();
-      // 只预取内容里明确声明的跨地图演出：舞台自带地图、且不是当前世界地图。
-      // 常规换图（travel）不预取，由目标图自己的入口加载。
-      if (stage && !stage.mapFromWorld && stage.map !== scene?.map?.id) {
-        presenter.prefetchMap(stage.map);
-        void scene?.prefetchStoryEntry(stage.map, script, signal);
+      if (scene?.map) {
+        const target = cursor ? nextStoryMap(campaign, cursor, scene.map.id)
+          : stage && !stage.mapFromWorld ? stage.map : undefined;
+        void scene.prefetchStoryEntry(target ?? scene.map.id, script, signal);
       }
       signal.throwIfAborted();
     },
     prefetch: async (scripts, signal) => { await worldScene()?.ensureStoryAssets(scripts, signal); },
   });
   app.director = director;
-  if (storyDevMode() && location.port === '4003' && globalThis.storyDiagnostics) installStorySkipDiagnostics(director,
+  if (globalThis.storyDiagnostics) installStorySkipDiagnostics(director,
     (kind, details) => globalThis.storyDiagnostics?.record(kind, details, false));
   // 事件播完（世界投影已经结束）写入自动存档；节点中途不写。
   director.onEventCompleted = () => autoSaver?.request();

@@ -11,17 +11,21 @@ declare global { var storyDiagnostics: DiagnosticCollector | undefined; }
 /** 每次跳过只写一条轻量摘要；阶段时间都从点击时刻开始算。 */
 export function installStorySkipDiagnostics(director: Pick<StoryDirector, 'onSkipProgress'>,
   record: (kind: string, details: object) => void, now: () => number = () => performance.now()): void {
-  let timing: { started: number; logicMs?: number; worldReadyMs?: number; cancelled?: boolean } | undefined;
+  let timing: { started: number; logicMs?: number; worldReadyMs?: number; cancelled?: boolean; stages?: Record<string, number> } | undefined;
   director.onSkipProgress = phase => {
     if (phase === 'requested') { timing ??= { started: now() }; return; }
     if (!timing) return;
     const elapsed = Math.max(0, Math.round((now() - timing.started) * 10) / 10);
+    if (['assets-start', 'assets-ready', 'portraits-ready', 'sounds-ready', 'outfit-ready', 'objects-ready'].includes(phase)) {
+      (timing.stages ??= {})[phase] = elapsed; return;
+    }
     if (phase === 'logic-complete') { timing.logicMs = elapsed; return; }
     if (phase === 'world-ready') { timing.worldReadyMs = elapsed; return; }
     if (phase === 'cancelled') { timing.cancelled = true; return; }
     const details = { outcome: timing.cancelled ? 'cancelled' : phase,
       logicMs: timing.logicMs ?? null, worldReadyMs: timing.worldReadyMs ?? null,
-      unlockedMs: phase === 'released' ? elapsed : null, elapsedMs: elapsed };
+      unlockedMs: phase === 'released' ? elapsed : null, elapsedMs: elapsed,
+      ...(timing.stages ? { stages: timing.stages } : {}) };
     timing = undefined; record('story-skip-summary', details);
   };
 }

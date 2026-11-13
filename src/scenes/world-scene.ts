@@ -143,8 +143,6 @@ export class WorldScene extends Phaser.Scene {
   /** 演出舞台已经铺满画面；正式世界这帧不更新、不渲染、物理也不步进。 */
   private stageOccluded = false;
   private readonly storyEntityAssets:AssetLease[]=[];
-  /** 内容里声明了自带地图的演出：prepare 时发起，避免开幕时再等地图。 */
-  private entryPrefetches?:Map<string,Promise<void>>;
   private readonly projectedActorIds=new Set<string>();
   private lastProjectedLocation?:string;
   /** 进图加载页还在等这条剧情的第一幕；等待期间的素材补载不另开加载页。 */
@@ -243,7 +241,6 @@ export class WorldScene extends Phaser.Scene {
     this.questStatuses.clear();this.questStatusVersion=undefined;this.questNoticesReady=false;
     this.prefetchTarget = undefined; this.prefetchTask = undefined;
     this.baseEntities=[];this.occupiedRegions.clear();this.encounterResults.clear();this.triggerIndex=undefined;this.refreshStateSignatureValue=undefined;this.lastInteractionScan=undefined;this.interactionRevision=0;this.charactersRevision=0;
-    this.entryPrefetches?.clear();
     this.projectedActorIds.clear();
   }
   create(): void {
@@ -291,7 +288,7 @@ export class WorldScene extends Phaser.Scene {
       this.companionPinned.clear(); this.companionLearned.clear();
       for(const lease of this.companionAssets.values())lease.release();
       this.companionAssets.clear();
-      this.projectedMemberEquipment.clear(); this.projectedActorIds.clear(); this.entryPrefetches?.clear(); this.entryPrefetches = undefined;
+      this.projectedMemberEquipment.clear(); this.projectedActorIds.clear();
       this.characters = []; this.entities = []; this.baseEntities = []; this.player = undefined; this.map = undefined;
       this.near = null; this.noclipVisual = undefined; this.equippedActor = undefined; this.triggerIndex = undefined;
       this.targetStatusCache = undefined; this.shortcutPageCache = undefined; this.unsubscribe = undefined;
@@ -431,12 +428,15 @@ export class WorldScene extends Phaser.Scene {
     const silent = silentRequested;
     if(silentRequested)globalThis.storyDiagnostics?.record('story-silent-entry-missing', { map: map.id, missing });
     if (silent) ui.resetInput();
+    this.app.director.onSkipProgress?.('assets-start');
+    if (silent) await this.app.storyAssetPreparation?.wait(map.id);
+    signal.throwIfAborted();
     const loaded = await loadEntryPlan(plan, {
       load: (assets, progress) => loadSceneAssets(this, assets, progress, true),
       report: silent ? () => {} : (label, value) => ui.loading(label, value),
       preloadPortraits: (files, portraitSignal, progress) => ui.preloadPortraits(files, portraitSignal, progress),
       prepareSounds: (names, soundSignal) => { soundSignal.throwIfAborted(); return this.app.audio?.prepareStoryEffects(names, soundSignal) ?? Promise.resolve(); }
-    }, { signal, start: options.initialEntry ? 0.5 : 0, end: mapProgressEnd });
+    }, { signal, start: options.initialEntry ? 0.5 : 0, end: mapProgressEnd, onPhase: phase => this.app.director.onSkipProgress?.(phase) });
     if(signal.aborted){loaded.currentLease.release();signal.throwIfAborted();}
     this.mapAssets = loaded.currentLease;
     globalThis.storyDiagnostics?.record('start-phase',{phase:'scene-assets-ready',map:map.id});
@@ -455,6 +455,7 @@ export class WorldScene extends Phaser.Scene {
     const outfit=await this.wardrobe.prepare(this.app.session.character!.appearance,this.app.session.bag.equipmentItems(),this.app.session.character!.classId);
     signal.throwIfAborted();this.wardrobe.activate(outfit);this.equippedActor=outfit.actor;
     globalThis.storyDiagnostics?.record('start-phase',{phase:'wardrobe-ready',map:map.id});
+    this.app.director.onSkipProgress?.('outfit-ready');
     this.projectedPlayerEquipment=JSON.stringify(this.app.session.bag.equipmentItems());
     this.statusHud=new StatusHud(this.hud!,this.app.statusHud,()=>this.combat?.controlledState??this.app.session.player,listener=>this.app.session.subscribe(listener),
       ()=>this.app.session.party?.activeSnapshot(),id=>{this.switchControlled(id);},id=>{
@@ -551,6 +552,7 @@ export class WorldScene extends Phaser.Scene {
     };
     this.loadingWorld = false;
     globalThis.storyDiagnostics?.record('start-phase',{phase:'world-ready',map:map.id});
+    this.app.director.onSkipProgress?.('objects-ready');
     // 剧情内换图会重建本场景；新实例的相机和物理都是新的，必须按舞台当前状态重新遮挡。
     this.syncStageOcclusion();
     this.app.audio?.enterMap(map.id);
@@ -667,51 +669,36 @@ export class WorldScene extends Phaser.Scene {
     await this.app.audio?.prepareStoryEffects(presentation.sounds, signal);
     signal.throwIfAborted();
   }
-  /**
-   * 内容里明确声明了自带地图的演出（`mapFromWorld:false`）：换场前先把那张图备好，
-   * 开幕时不用再等地图。常规换图不走这里。
-   */
+  /** 提前准备当前剧情的世界资源，由会话持有到正式世界接管。 */
   prefetchStoryEntry(mapId: string, script: string | undefined, signal: AbortSignal): Promise<void> {
-    if (this.loadingWorld || this.destroyed || !this.map || mapId === this.map.id) return Promise.resolve();
-    const prefetches = this.entryPrefetches ??= new Map();
-    const existing = prefetches.get(mapId);
-    if (existing) return existing;
-    const task = this.loadStoryEntry(mapId, script, signal).catch(error => {
-      if (!signal.aborted) globalThis.storyDiagnostics?.record('story-entry-prefetch-failed', { map: mapId, error });
-      prefetches.delete(mapId);
-    });
-    prefetches.set(mapId, task);
-    return task;
+    if (this.loadingWorld || this.destroyed || !this.map || !this.app.storyAssetPreparation) return Promise.resolve();
+    return this.app.storyAssetPreparation.prepare(mapId, JSON.stringify([mapId, script]), signal,
+      request => this.loadStoryEntry(mapId, script, request)).catch(error => {
+        if (!signal.aborted && !(error instanceof DOMException && error.name === 'AbortError'))
+          globalThis.storyDiagnostics?.record('story-entry-prefetch-failed', { map: mapId, error });
+      });
   }
-  private async loadStoryEntry(mapId: string, script: string | undefined, signal: AbortSignal): Promise<void> {
+  private async loadStoryEntry(mapId: string, script: string | undefined, signal: AbortSignal): Promise<AssetLease> {
     const reference = this.app.world.maps.find(entry => entry.id === mapId);
-    if (!reference) {
-      globalThis.storyDiagnostics?.record('story-entry-prefetch-missing-map', { map: mapId });
-      return;
-    }
+    if (!reference) throw new Error('剧情预取地图不存在：' + mapId);
+    // 在任何等待之前捕获本局输入，换图后不再读取旧场景。
+    const inputs = this.assetInputs(), session = this.app.session;
+    const active = [...new Set([...this.activeStoryScripts(), ...(script ? [script] : [])])];
+    const loader = this.scene.get(SCENE_KEYS.formalUi);
     const map = await this.app.content.map(reference.file, signal);
     signal.throwIfAborted();
-    const active = [...new Set([...this.activeStoryScripts(), ...(script ? [script] : [])])];
     const plan = buildEntryPlan({
-      currentMap: map,
-      inputs: this.assetInputs(),
-      completedEvents: this.app.session.runtimeState.completedEvents,
-      questStatus: questId => this.app.session.status(questId),
-      activeScripts: active,
-      includeResidentCombat: !this.app.residentCombatReady,
+      currentMap: map, inputs,
+      completedEvents: session.runtimeState.completedEvents,
+      questStatus: questId => session.status(questId),
+      activeScripts: active, includeResidentCombat: !this.app.residentCombatReady,
     });
     const assets = entryPlanAssets(plan);
-    const missing = missingSceneAssets(this, assets);
-    if (missing.length) {
-      const lease = await loadSceneAssets(this, assets, () => {}, true);
-      if (signal.aborted || this.destroyed) { lease.release(); signal.throwIfAborted(); throw new Error('正式地图已经关闭'); }
-      this.app.retainStoryPrefetch(mapId, lease);
-    }
-    const portraits = plan.portraits.filter(file => !domAssets.peek(file));
-    if (portraits.length) await this.app.ui.preloadPortraits(portraits, signal, () => {});
-    await this.app.audio?.prepareStoryEffects(plan.sounds, signal);
-    signal.throwIfAborted();
-    globalThis.storyDiagnostics?.record('story-entry-prefetch', { map: mapId, missing: missing.length });
+    const missing = missingSceneAssets(loader, assets).length;
+    const lease = await loadSceneAssets(loader, assets, () => {}, true, signal);
+    if (signal.aborted) { lease.release(); signal.throwIfAborted(); }
+    globalThis.storyDiagnostics?.record('story-entry-prefetch', { map: mapId, missing });
+    return lease;
   }
   /** 仅提前准备目标地图两层大图；人物和物件由正式进图按需装配。 */
   prefetchMap(destination: string): void {
@@ -1869,6 +1856,7 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
       return;
     }
     if(!this.map||!this.player||!this.movement)throw new Error('正式地图尚未就绪');
+    this.app.director.onSkipProgress?.('assets-start');
     const projected=this.app.session.storyWorld.projectEntities(this.map.id,
       resolveMapActors({base:this.baseEntities,map:this.map,campaign:this.app.campaign,active:entity=>this.app.session.visible(entity)}),
       this.app.campaign.placements);
@@ -1905,7 +1893,9 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
     if(playerLocation){this.facing=playerLocation.facing;this.setClip(this.player,`idle-${this.facing}`);this.lastProjectedLocation=signature;}
     this.entities=projected;
     await this.combat?.projectStoryEnemies(signal);
+    this.app.director.onSkipProgress?.('assets-ready');
     await this.projectEquipment(signal);
+    this.app.director.onSkipProgress?.('outfit-ready');
     signal.throwIfAborted();
     // 新队员生成与换装（碰撞盒可能刷新）之后再收拢队伍；回滚路径由 restoreState 逐名恢复。
     if(playerLocation){if(!restoredLocation)this.combat?.regroupPartyAroundHero();this.syncControlledCharacter(true);}

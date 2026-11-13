@@ -59,3 +59,5 @@
 - `npm test -- tests/story-skip.test.ts tests/story-stage-isolation.test.ts`：跳过剧情不重建舞台，选择与任务弹窗前按逻辑快照补画。
 
 - 特效容器持有当前动画贴图到销毁；转向飞弹另持有全部方向。循环效果缺图时保留逻辑状态，素材到齐后重建，按当前帧龄显示。
+
+- `loadSceneAssets` 支持独立取消信号；取消预取只释放该请求，常驻加载场景继续运行，迟到纹理沿用无主资源清理规则。

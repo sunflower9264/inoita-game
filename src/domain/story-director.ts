@@ -1,3 +1,4 @@
+import type { StoryPreparationCursor } from './story-preparation.ts';
 import { storyCommitCommands } from './story-commit.ts';
 import type { ActorDefinition, ChoiceOption, DialogueLine, EntityPlacement, QuestRewardReceipt, StoryTrigger, TravelDestination } from './content.ts';
 import type { Campaign, CampaignQuest } from './campaign.ts';
@@ -23,8 +24,8 @@ export interface StoryUI {
 /** 世界负责把已经提交的游戏状态投影到 Phaser 场景。 */
 export interface StoryWorldPort {
   normalize?(signal: AbortSignal): void | Promise<void>;
-  prepare?(commands: readonly StoryCommand[], signal: AbortSignal, stage?: StoryStage, script?: string): Promise<void>;
-  /** 演出前确认脚本可能经过的地图素材；缺则显示加载页等齐，保证演出结束后不再加载。 */
+  prepare?(commands: readonly StoryCommand[], signal: AbortSignal, stage?: StoryStage, script?: string, cursor?: StoryPreparationCursor): Promise<void>;
+  /** 演出前准备脚本立绘与音效；跳过时只取消等待。 */
   prefetch?(scripts: readonly string[], signal: AbortSignal): void | Promise<void>;
   capture(): unknown;
   restore(snapshot: unknown, signal: AbortSignal): Promise<void>;
@@ -33,7 +34,7 @@ export interface StoryWorldPort {
   /** 一次剧情播放正常交还操作权后的收尾；取消/报错不调用。 */
   settle?(): void | Promise<void>;
 }
-export type StorySkipPhase = 'requested' | 'logic-complete' | 'world-ready' | 'released' | 'choice' | 'quest-popup' | 'cancelled';
+export type StorySkipPhase = 'requested' | 'logic-complete' | 'world-ready' | 'released' | 'choice' | 'quest-popup' | 'cancelled' | 'assets-start' | 'assets-ready' | 'portraits-ready' | 'sounds-ready' | 'outfit-ready' | 'objects-ready';
 interface PlaybackBaseline { world?: unknown; stage?: StoryStageSnapshot }
 
 /** 节点先完成表现，再一次提交状态；场景重建失败可以从已提交节点继续。 */
@@ -331,8 +332,10 @@ export class StoryDirector {
     await this.recover(context.signal);
     await this.world?.normalize?.(context.signal);
     // 跨图预取在跳过时也要发起：逻辑跳过后马上要投影到目标图，提前加载能缩短解锁前的等待。
-    // 跳过只结束等待，已经发起的预取继续在后台完成；同图舞台由 world.prepare 自己跳过。
-    const preparation = this.world?.prepare?.(node.commands, context.signal, context.stage, script);
+    // 跳过只结束等待，已经发起的预取继续在后台完成；同图也能补齐后续人物素材。
+    const run = this.runtime.snapshot().runs.find(run => run.id === context.runId);
+    const preparation = this.world?.prepare?.(node.commands, context.signal, context.stage, script,
+      run ? { node: run.cursor, stack: run.stack ?? [] } : undefined);
     if (preparation) {
       if (this.skipping) void preparation.catch(() => {});
       else await preparation;

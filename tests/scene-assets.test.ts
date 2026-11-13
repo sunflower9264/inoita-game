@@ -152,6 +152,16 @@ test('network failure and shutdown clean up loading listeners and ownership', as
   assert.equal(cancelled.events.listenerCount('shutdown'), 0);
 });
 
+test('an explicit prefetch cancellation releases late textures without stopping the host scene', async () => {
+  const run = setup(); run.outcome('pending');
+  const controller = new AbortController();
+  const pending = loadSceneAssets(run.scene, [asset], () => {}, true, controller.signal);
+  controller.abort();
+  await assert.rejects(pending, { name: 'AbortError' });
+  run.addTexture(asset.key);
+  assert.equal(run.frames.has(asset.key), false);
+});
+
 test('cancelled loading removes a texture that arrives after the lease is released', async () => {
   const run = setup(); run.outcome('pending');
   const pending = loadSceneAssets(run.scene, [asset], () => {});
