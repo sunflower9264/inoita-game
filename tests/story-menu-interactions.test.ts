@@ -2359,6 +2359,11 @@ test('the GM story page lists tasks and enters the selected one without exposing
   assert.equal(taskButtons()[1],second);assert(texts().includes(secondName));
   await new Promise(resolve=>setImmediate(resolve));
   assert.equal(f.internals.body.scrolls.find(scroll=>scroll.x===60&&scroll.y===100),list);
+  const main=f.scene.button('分类 主线'),side=f.scene.button('分类 支线');f.scene.click(side);
+  assert.equal(f.scene.button('分类 主线'),main);assert.equal(f.scene.button('分类 支线'),side);
+  assert.equal(f.internals.body.scrolls.find(scroll=>scroll.x===60&&scroll.y===100),list);
+  f.scene.click(main);await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(f.internals.body.scrolls.find(scroll=>scroll.x===60&&scroll.y===100),list);
   assert(f.scene.button('进入任务').input?.enabled);
   assert(texts().includes('调试现场：'));
   assert(texts().includes('默认起点：'));

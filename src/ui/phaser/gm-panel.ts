@@ -464,22 +464,26 @@ export class GmPanel {
 
   private renderStory(body: UiSurface): string {
     const debug = this.gm.storyDebug();
-    const rows = this.storyTasks();
+    let rows = this.storyTasks();
     if (!rows.some(row => row.task.quest === this.selectedQuest)) {
       this.selectedQuest = rows[0]?.task.quest;
       this.storyIntroScroll = 0;
     }
     const row = rows.find(row => row.task.quest === this.selectedQuest);
     body.rect(60,100,352,336,0x120d08,.72); body.rect(430,100,490,336,0x120d08,.72);
-    STORY_FILTERS.forEach(([value,label],index)=>this.button(body, label,60+index*110,54,104,30,()=>{
-      if(this.filter===value)return;this.filter=value;this.storyScroll=0;this.storyIntroScroll=0;this.hooks.render();
-    },{selected:this.filter===value,fontSize:17}).setData('label',`分类 ${label}`));
+    let changeFilter=(_value:StoryCategory)=>{};
+    const filters=new Map<StoryCategory,UiNode>();
+    STORY_FILTERS.forEach(([value,label],index)=>{
+      const button=this.button(body,label,60+index*110,54,104,30,()=>changeFilter(value),
+        {selected:this.filter===value,fontSize:17}).setData('label',`分类 ${label}`);
+      filters.set(value,button);
+    });
     if (debug.focus) this.button(body, this.ending ? '正在结束调试…' : '结束本次调试',660,54,150,30,
       ()=>this.onEndDebug(),{disabled:this.ending}).setData('label','结束本次调试');
     const list=body.scroll(60,100,352,336);this.references.registerScroll?.('gm-story-list',list);
     let refreshSelection=()=>{};
     list.setHeight(rows.length*54);
-    const cells=Array.from({length:Math.min(rows.length,Math.ceil(336/54)+1)},()=>{
+    const cells=Array.from({length:Math.ceil(336/54)+1},()=>{
       let item:StoryTaskRow|undefined;
       const background=body.rect(0,0,352,52,0x241a10,.46,list.content);
       const button=this.button(body,'',0,0,352,52,()=>{
@@ -504,21 +508,31 @@ export class GmPanel {
     const updateRows=()=>{const first=Math.floor(list.scrollTop/54);if(first===firstRow)return;firstRow=first;cells.forEach((cell,index)=>cell.set(rows[first+index],first+index));};
     list.onScroll=()=>{this.storyScroll=list.scrollTop;updateRows();this.references.refresh?.();};
     updateRows();refreshSelection=()=>{firstRow=-1;updateRows();};
-    if(row)this.buildStoryDetail(body,row);
-    else this.text('没有符合筛选条件的任务',442,112,466,19);
+    changeFilter=value=>{
+      if(this.filter===value)return;
+      this.filter=value;this.storyScroll=0;this.storyIntroScroll=0;this.result='';
+      if(!this.references.updateStoryDetail||!this.references.setText){this.hooks.render();return;}
+      rows=this.storyTasks();this.selectedQuest=rows[0]?.task.quest;list.setHeight(rows.length*54);list.scrollTop=0;
+      for(const [key,button] of filters)(button.getData('setSelected') as (value:boolean)=>void)(key===value);
+      refreshSelection();this.refreshStoryDetail(body,rows[0]);
+      if(this.resultTextKey)this.references.setText(this.resultTextKey,`可调任务 ${rows.length} 个${debug.focus?` · ${DEBUG_PAUSED_NOTE}`:''}`);
+    };
+    this.buildStoryDetail(body,row);
     return `可调任务 ${rows.length} 个${debug.focus?` · ${DEBUG_PAUSED_NOTE}`:''}`;
   }
 
   /** 选中任务的详情：进度、说明、现场表来源与开幕演出；预览完成前不开放进入。 */
-  private buildStoryDetail(body:UiSurface,row:StoryTaskRow):MenuTextSpec[]{
+  private buildStoryDetail(body:UiSurface,row:StoryTaskRow|undefined):MenuTextSpec[]{
     const before=new Set(body.root.list),scrolls=new Set(body.scrolls),writer=this.writer,specs:MenuTextSpec[]=[];
     this.writer={add:spec=>{const mapped={...spec,key:`gm-story-detail-${specs.length}`};specs.push(mapped);writer?.add(mapped);}};
-    this.storyBody=body;this.storyRow=row;this.renderTaskDetail(body,row);this.writer=writer;
+    this.storyBody=body;this.storyRow=row;
+    if(row)this.renderTaskDetail(body,row);else{this.previewToken++;this.previewQuest=undefined;this.text('没有符合筛选条件的任务',442,112,466,19);}
+    this.writer=writer;
     this.storyDetailNodes=body.root.list.filter(node=>!before.has(node));
     this.storyDetailScrolls=body.scrolls.filter(scroll=>!scrolls.has(scroll));
     return specs;
   }
-  private refreshStoryDetail(body:UiSurface,row:StoryTaskRow):void{
+  private refreshStoryDetail(body:UiSurface,row:StoryTaskRow|undefined):void{
     if(!this.references.updateStoryDetail){this.hooks.render();return;}
     const oldNodes=new Set(this.storyDetailNodes),oldScrolls=new Set(this.storyDetailScrolls);
     for(const scroll of oldScrolls){this.references.removeScroll?.(scroll);scroll.destroy();const index=body.scrolls.indexOf(scroll);if(index>=0)body.scrolls.splice(index,1);}
