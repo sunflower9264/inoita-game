@@ -37,6 +37,9 @@ export class FormalUiScene extends Phaser.Scene implements GameUiView {
   private signature='';
   /** 当前画面是否是可增量的普通对白外壳（框、立绘、说话人不重建）。 */
   private dialogueShell=false;
+  private dialoguePortraitParent?:UiNode;
+  private dialoguePortrait?:UiImage;
+  private dialogueSpeakerSignature='';
   /** 对白正文（当前页文本）的签名；只变这里时只更新正文 Text。 */
   private dialogueBodySignature='';
   /** 对白正文按色段拆成多个 Text：原版控制码不显示，字色随 `$X` 变化。 */
@@ -314,6 +317,19 @@ export class FormalUiScene extends Phaser.Scene implements GameUiView {
     for(let index=next.length;index<this.dialogueDomRuns.length;index++)this.dialogueDomRuns[index].setVisible(false);
     this.renderText(ui);
   }
+  private syncDialogueSpeaker(ui:GameUI,signature:string):void{
+    this.dialogueSpeakerSignature=signature;
+    const parent=this.dialoguePortraitParent,v=this.surface,line=ui.dialogueLine;if(!parent||!v||!line)return;
+    const edges=this.dialogueSafeEdges(),left=line.actor===ui.playerActor;
+    if(ui.portraitFile){
+      if(!this.dialoguePortrait)this.dialoguePortrait=v.image(ui.portraitFile,left?edges.left:edges.right,606,undefined,516,parent);
+      else if(this.dialoguePortrait.getData('file')!==ui.portraitFile)this.dialoguePortrait.load(ui.portraitFile);
+      this.dialoguePortrait.setPosition(left?edges.left:edges.right,606).setOrigin(left?0:1,1).setVisible(true);
+    }else this.dialoguePortrait?.setVisible(false);
+    const point=this.surfacePoint(this.textBox(ui).x,428),speaker=line.speaker??'';
+    this.domSpeaker?.setText(speaker).setPosition(point.x,point.y).setStyle({fontSize:`${Math.max(10,25*point.scale)}px`,color:TEXT_COLORS.primary}).setVisible(!!speaker);
+  }
+
   sync(ui:GameUI):void{
     if(!this.surface)return;
     if(!ui.dialogueLine||uiOcclusion(ui)||ui.quest||ui.choices)this.hideDialogueDom();
@@ -329,15 +345,19 @@ export class FormalUiScene extends Phaser.Scene implements GameUiView {
     // 正文不进整屏签名：同一说话人的下一句只换正文，不重建框、立绘和控件。
     // 外壳只由说话人、演员、立绘和呈现方式决定；文本变化交给 bodySignature。
     const shell=ui.dialogueLine
-      ?JSON.stringify([ui.dialogueLine.speaker,ui.dialogueLine.actor,ui.dialogueLine.portrait??null,ui.dialogueLine.presentation??'box'])
+      ?JSON.stringify([ui.dialogueLine.presentation??'box'])
       :null;
-    const bodySignature=JSON.stringify([ui.dialoguePageMarkup,ui.dialogueLine?.presentation]);
-    const signature=JSON.stringify([ui.mode,ui.loadingState?.label,!!ui.loadingState?.retry,ui.failed,ui.suspended,portrait,cover,defeat,ui.toastMessage,shell,ui.portraitFile,ui.canSkip,showSkip,ui.choices?.prompt,ui.choices?.description,ui.choices?.options,ui.quest?.definition.id,ui.quest?.kind]);
+    const speakerSignature=JSON.stringify([ui.dialogueLine?.speaker,ui.dialogueLine?.actor,ui.portraitFile,ui.playerActor]);
+    const bodySignature=JSON.stringify([ui.dialoguePageMarkup,ui.dialogueLine?.presentation,speakerSignature]);
+    const signature=JSON.stringify([ui.mode,ui.loadingState?.label,!!ui.loadingState?.retry,ui.failed,ui.suspended,portrait,cover,defeat,ui.toastMessage,shell,ui.dialogueLine?null:ui.portraitFile,ui.canSkip,showSkip,ui.choices?.prompt,ui.choices?.description,ui.choices?.options,ui.quest?.definition.id,ui.quest?.kind]);
     if(signature===this.signature){
-      if(this.dialogueShell&&!uiOcclusion(ui)&&bodySignature!==this.dialogueBodySignature){this.dialogueBodySignature=bodySignature;this.renderDialogueBody(ui);}
+      if(this.dialogueShell&&!uiOcclusion(ui)&&bodySignature!==this.dialogueBodySignature){
+        if(speakerSignature!==this.dialogueSpeakerSignature)this.syncDialogueSpeaker(ui,speakerSignature);
+        this.dialogueBodySignature=bodySignature;this.renderDialogueBody(ui);
+      }
       this.progressBar?.setSize(560*progress,5);this.syncLoadingDom(ui,portrait);this.syncPortraitDom(portrait);this.syncDefeatDom(ui,portrait,cover);return;
     }
-    this.signature=signature;this.dialogueShell=false;this.resetChoiceDom();
+    this.signature=signature;this.dialogueShell=false;this.dialoguePortraitParent=undefined;this.dialoguePortrait=undefined;this.dialogueSpeakerSignature='';this.resetChoiceDom();
     const v=this.surface;v.clear();v.layout(0);this.dialogueLayout=undefined;this.progressBar=undefined;v.visible(true);
     const modal=portrait||!!ui.loadingState||!!defeat||cover,{width,height}=frameRect();
     this.background.setVisible(modal).setSize(width,height).setFillStyle(0x000000,!!defeat&&!portrait&&!ui.loadingState&&!cover ? .65:1);
@@ -433,11 +453,9 @@ export class FormalUiScene extends Phaser.Scene implements GameUiView {
       });
       if(dom)this.hideChoiceLabels(dom.list.labels,optionCursor);
     }else if(!cover&&ui.dialogueLine&&!ui.quest){
-      const edges=this.dialogueSafeEdges(),box=this.textBox(ui);if(ui.dialogueLine.presentation!=='screen'){
+      if(ui.dialogueLine.presentation!=='screen'){
         const screen=screenCoverage(v);v.rect(screen.left,399,screen.width,218,0x000000,.7);const edge=this.app.storyInterface?.assets['dialogue-edge'];if(edge){v.image(edge,screen.left,399,screen.width,17);v.image(edge,screen.left,600,screen.width,17);}
-        if(ui.portraitFile){const left=ui.dialogueLine.actor===ui.playerActor;v.image(ui.portraitFile,left?edges.left:edges.right,606,undefined,516).setOrigin(left?0:1,1);}
-        const point=this.surfacePoint(box.x,428),speaker=ui.dialogueLine.speaker??'';
-        this.domSpeaker?.setText(speaker).setPosition(point.x,point.y).setStyle({fontSize:`${Math.max(10,25*point.scale)}px`,color:TEXT_COLORS.primary}).setVisible(!!speaker);
+        this.dialoguePortraitParent=v.container(0,0);this.syncDialogueSpeaker(ui,speakerSignature);
       }else this.domSpeaker?.setVisible(false);
       this.renderDialogueBody(ui);
       this.dialogueShell=true;
