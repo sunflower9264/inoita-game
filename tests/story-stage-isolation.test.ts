@@ -779,6 +779,20 @@ test('skipped camera actions and camera-following walks update the restored view
   assert.deepEqual(run.presenter.captureStage()!.camera,{x:150,y:160});
 });
 
+test('skipping applies persistent audio commands', async () => {
+  const run=harness(), signal=new AbortController().signal, skip=new AbortController();
+  const calls:string[]=[];
+  Object.assign((run.presenter as unknown as {app: object}).app,{audio:{
+    captureStoryAudio:()=>({music:null,ambience:null}),
+    stopStoryAudio:()=>calls.push('stop'), setStoryMusic:(sound:string|null)=>calls.push(String(sound))
+  }});
+  await run.presenter.begin(signal);skip.abort();
+  const playback={signal,skipSignal:skip.signal};
+  await run.presenter.execute({type:'stop-audio'},playback);
+  await run.presenter.execute({type:'music',sound:'theme'},playback);
+  assert.deepEqual(calls,['stop','theme']);
+});
+
 test('a run skipped before its first frame never launches the stage scene', async () => {
   const run=harness(),signal=new AbortController().signal,skip=new AbortController();skip.abort();
   await run.presenter.begin(signal,undefined,undefined,false,skip.signal);

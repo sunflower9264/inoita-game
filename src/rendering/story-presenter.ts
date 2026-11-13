@@ -582,6 +582,8 @@ export class StoryPresenter implements StoryPresentationPort {
         case 'stage': await this.stage(action, playback.signal, pendingEntrances, playback.skipSignal); return;
         case 'refresh-appearance': this.refreshLogicalAppearance(); return;
         case 'fade': this.opacity = action.opacity; this.color = action.color; return;
+        case 'stop-audio': this.app.audio?.stopStoryAudio(); return;
+        case 'music': this.app.audio?.setStoryMusic(action.sound); return;
         case 'map-effect': if (this.scene()?.sys?.isActive()) this.applyMapEffect(action.enabled); return;
         case 'pose': await this.poseAction(action, playback); return;
         case 'camera': {
