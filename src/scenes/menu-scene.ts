@@ -123,6 +123,7 @@ export class MenuScene extends Phaser.Scene {
   /** 滚动区文字重算位置时读当前偏移；每次整页重画指向新的滚动区。 */
   private slotsScroll?:ScrollArea;
   private settingsList?:ScrollArea;
+  private settingsFullscreenButton?:UiNode;
   private cloudScroll?:ScrollArea;
   private renderOnResume():void {
     if(this.surface&&this.sys.isActive())this.render();
@@ -142,7 +143,7 @@ export class MenuScene extends Phaser.Scene {
     this.scale.on('resize',this.resize,this);
     // 浏览器自身的退出（Esc、手势）不会走设置页的按钮，靠事件把开关状态同步回来。
     this.events.once('shutdown',onFullscreenChange(()=>{
-      if(this.page==='settings'&&this.surface&&this.sys.isActive())this.render();
+      this.syncFullscreenSetting();
     }));
     void this.titleAssets.preloadResident(titleMenuImages,controller.signal,()=>{}).then(()=>{
       if(controller.signal.aborted)return;
@@ -426,7 +427,16 @@ export class MenuScene extends Phaser.Scene {
       start=point(band.left,band.top-edge),end=point(band.left+band.width,band.top+band.height+edge);
     return{left:start.x,top:start.y,right:end.x,bottom:end.y};
   }
-  /** 滚动文字按当前偏移重算；每次整页重画后指向新的滚动区。 */
+  /** 浏览器全屏状态变化时，只更新当前设置项。 */
+  private syncFullscreenSetting():void {
+    if(this.page!=='settings'||!this.surface||!this.sys.isActive())return;
+    const value=fullscreenActive()?'开':'关';
+    this.settingsFullscreenButton?.setData('label',`全屏：${value}`);
+    const spec=this.domSpecs.find(spec=>spec.key==='settings-value-0');
+    if(spec)spec.text=value;
+    this.menuText?.setText('settings','settings-value-0',value);
+  }
+  /** 滚动文字按当前滚动区偏移重算。 */
   private menuScrollTop(page:string,scroll:string):number|undefined {
     if(page==='slots')return this.slotsScroll?.scrollTop;
     if(page==='settings')return this.settingsList?.scrollTop;
@@ -569,7 +579,7 @@ export class MenuScene extends Phaser.Scene {
         const rowText=(key:string,value:string,x:number,y:number,size:number,color=GOLD,anchorX=0,anchorY=0):void=>{
           texts.push({key,text:value,x:list.x+x,y:list.y+y,style:{size,color,anchorX,anchorY},scroll:'settings',clip});
         };
-        // 音频用滑动条实时改音量，其余项仍是开关；整页重画，滚动位置由 settingsScroll 接续。
+        // 音频用滑动条实时改音量，全屏状态变化时只更新对应文字。
         let rowTop=20;
         for(const [channel,label]of ([['music','背景音乐'],['effects','音效']]as const)){
           rowText(`settings-label-${channel}`,label,38,rowTop+12,34);
@@ -583,15 +593,16 @@ export class MenuScene extends Phaser.Scene {
         const fullscreen=fullscreenStatus();
         if(fullscreen==='available'){
           const active=fullscreenActive();
-          rows.push({label:'全屏',value:active?'开':'关',action:()=>setFullscreen(!active)});
+          rows.push({label:'全屏',value:active?'开':'关',action:()=>setFullscreen(!fullscreenActive())});
         }else{
           rows.push({label:'全屏',value:fullscreen==='packaged'?'已全屏':'不支持',action:()=>{},disabled:true});
         }
         rows.forEach((row,index)=>{
           const top=rowTop+index*100,size=row.value.length>2?30:34;
           rowText(`settings-label-${index}`,row.label,38,top+12,34);
-          view.button('',270,top,190,67,row.action,{fontSize:size,guard,parent:content})
+          const button=view.button('',270,top,190,67,row.action,{fontSize:size,guard,parent:content})
             .setData('label',`${row.label}：${row.value}`);
+          if(row.label==='全屏')this.settingsFullscreenButton=button;
           rowText(`settings-value-${index}`,row.value,270+95,top+33.5,size,GOLD,.5,.5);
         });
         list.setHeight(20+(2+rows.length-1)*100+67+20);

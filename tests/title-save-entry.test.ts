@@ -347,6 +347,26 @@ test('title settings keeps every row inside a scrolling panel',()=>{
   assert(rows.every(row=>row.y>=0&&row.y+row.height<=scroll.extent),'每一行都在滚动内容的高度内');
 });
 
+test('title fullscreen changes keep settings controls and scroll position',()=>{
+  const root=document.documentElement as HTMLElement & {requestFullscreen?:()=>Promise<void>};
+  const previous=root.requestFullscreen;
+  root.requestFullscreen=async()=>{};
+  try{
+    const f=fixture();f.click('环境设置');
+    const button=f.view.buttons.find(button=>button.getData('label')==='全屏：关');
+    const scroll=f.view.scrolls.at(-1);
+    assert.ok(button);assert.ok(scroll);
+    Object.defineProperty(document,'fullscreenElement',{configurable:true,value:root});
+    f.call('syncFullscreenSetting');
+    assert.equal(f.view.buttons.find(item=>item.getData('label')==='全屏：开'),button);
+    assert.equal(f.view.scrolls.at(-1),scroll);
+    assert.ok(f.domTexts().includes('开'));
+  }finally{
+    if(previous)root.requestFullscreen=previous;else Reflect.deleteProperty(root,'requestFullscreen');
+    Reflect.deleteProperty(document,'fullscreenElement');
+  }
+});
+
 test('title settings leaves critical light effects to the in-game settings',()=>{
   const f=fixture();f.click('环境设置');
   assert(!f.view.buttons.some(button=>String(button.getData('label')).startsWith('暴击光效')));
