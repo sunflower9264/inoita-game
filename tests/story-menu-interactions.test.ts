@@ -1067,6 +1067,22 @@ test('companion skill descriptions use the member cap and next learning level',t
   assert(!visibleDomLabels(f).some(label=>label.text.startsWith('需要技能点数：')));
 });
 
+test('selecting a skill keeps its list and changes the description',t=>{
+  const f=fixture();t.after(f.cleanup);
+  const ids=battle.classes.find(value=>value.id===f.hero.classId)!.skills;
+  f.menu.show('skills');
+  const first=f.scene.button(battle.skills[ids[0]].name),second=f.scene.button(battle.skills[ids[1]].name);
+  const scroll=f.internals.body.scrolls.find(value=>value.x===116)!;
+  f.scene.click(second);
+  assert.equal(f.scene.button(battle.skills[ids[0]].name),first);
+  assert.equal(f.scene.button(battle.skills[ids[1]].name),second);
+  assert.equal(f.internals.body.scrolls.find(value=>value.x===116),scroll);
+  assert.ok(visibleDomLabels(f).some(label=>label.text.includes(battle.skills[ids[1]].name)),visibleDomLabels(f).map(label=>label.text).join('|'));
+  f.scene.click(first);
+  assert.equal(f.scene.button(battle.skills[ids[0]].name),first);
+  assert.equal(f.internals.body.scrolls.find(value=>value.x===116),scroll);
+});
+
 test('learning immediately redraws skill lock, rank, description and shortcut availability', t => {
   const f = fixture(); t.after(f.cleanup); f.hero.addExperience(Number.MAX_SAFE_INTEGER);
   f.session.skills.learn('dark-strike');f.session.skills.learn('dark-strike');

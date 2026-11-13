@@ -123,6 +123,9 @@ export class StoryUI {
   /** 技能页这一轮绘制收集到的文字；右侧说明区会随滚动一起换位置。 */
   private skillTextSpecs:MenuTextSpec[]=[];
   private skillContentNodes:UiNode[]=[];
+  private skillAsideNodes:UiNode[]=[];
+  private skillAsideKeys=new Set<string>();
+  private skillCells=new Map<string,{button:UiNode;level:number;marker?:UiImage}>();
   private skillTabs=new Map<string,UiNode>();
   /** 背包页与物品说明这一轮绘制收集到的文字；格子和说明正文都按滚动区跟随。 */
   private bagTextSpecs:MenuTextSpec[]=[];
@@ -1433,7 +1436,7 @@ export class StoryUI {
     return{lines,lineHeight,height:Math.max(0,lines.length*lineHeight-5)};
   }
   private renderSkills():void{
-    this.skillTextSpecs=[];this.skillTabs.clear();
+    this.skillTextSpecs=[];this.skillTabs.clear();this.skillCells.clear();
     const v=this.body!,panels=this.app.menuPanels;
     // 原版技能页也只调 `UI_DrawBorderRect`（`UISkill_Draw @0x163e6c`），左栏与右栏的标题条、
     // 内容区各是一块图框；面板里露出的是黑色 65% 遮罩下的世界画面。
@@ -1455,7 +1458,10 @@ export class StoryUI {
     this.addSkillText('skills-header',progression?`${panels.character.labels.skillPoints} ${progression.points()}`
       :(companion?.source==='story'?'伙伴技能':'佣兵技能'),561,14,19,GOLD,0,0,
       {width:350,wrap:'word',lineHeight:24});
+    const beforeAside=new Set(v.root.list),textStart=this.skillTextSpecs.length;
     this.renderSkillAside(draft,progression);
+    this.skillAsideNodes=v.root.list.filter(node=>!beforeAside.has(node));
+    this.skillAsideKeys=new Set(this.skillTextSpecs.slice(textStart).map(spec=>spec.key));
     this.skillContentNodes=v.root.list.filter(node=>!before.has(node));
   }
   /** 技能目录：原版三列技能格，左侧两列主动、第三列被动。 */
@@ -1474,7 +1480,7 @@ export class StoryUI {
     }));
     character.skills.forEach((id,index)=>{
       const entry=this.app.battleCatalog.skills[id],position=panels.skillPositions[index]!,level=draft.levels[id]??0;
-      const button=v.button('',position.column*91,20+position.row*89,75,75,()=>{this.skill=id;this.scrollOffsets.delete('skills:description');this.render();},{image:entry.icon,parent:tree.content,guard:tree.guard}).setData('label',entry.name);
+      const button=v.button('',position.column*91,20+position.row*89,75,75,()=>this.selectSkill(id),{image:entry.icon,parent:tree.content,guard:tree.guard}).setData('label',entry.name);
       button.addAt(v.image(panels.assets['skill-slot'],-9,-9,93,93,button),0);
       // 未学习：原版在图标之上叠一张 75×75 的黑色半透明椭圆（图组 17 索引 11，已导出为
       // `skill-locked`），既没有等级底图也没有数字；已学习才画 17/15 的底图与图组 15 的等级数字
@@ -1485,7 +1491,8 @@ export class StoryUI {
       // 原版 `UISkill_DrawSkillGrid @0x1628e8` 按格子状态二选一，且与 `UISkill_SkillDrawIcon
       // @0x162c0c` 画等级底图读的是同一个动作记录位，所以两张图永远与格子一致——没有等级圈的
       // 格子用带角标的那张，右下角就会凭空多出一团亮斑。
-      if(id===this.skill)v.image(panels.assets[level?'skill-selected':'skill-selected-ai'],-14,-14,106,102,button);
+      const marker=id===this.skill?v.image(panels.assets[level?'skill-selected':'skill-selected-ai'],-14,-14,106,102,button):undefined;
+      this.skillCells.set(id,{button,level,marker});
     });
     this.finishScroll('directory',tree,Math.max(...panels.skillPositions.map(p=>20+p.row*89+75)));
   }
@@ -1508,9 +1515,10 @@ export class StoryUI {
     character.skills.slice(0,9).forEach((id,index)=>{
       const position=panels.skillPositions[index]!,entry=this.app.battleCatalog.skills[id]!,level=draft.levels[id]??0;
       const x=position.column*182,y=20+position.row*89;
-      const cell=v.button('',x,y,75,75,()=>{this.skill=id;this.scrollOffsets.delete('skills:description');this.render();},{image:level?entry.icon:panels.assets['skill-locked'],parent:list.content,guard:list.guard}).setData('label',entry.name);
+      const cell=v.button('',x,y,75,75,()=>this.selectSkill(id),{image:level?entry.icon:panels.assets['skill-locked'],parent:list.content,guard:list.guard}).setData('label',entry.name);
       cell.addAt(v.image(panels.assets['skill-slot'],-9,-9,93,93,cell),0);
-      if(id===this.skill)v.image(panels.assets['skill-selected-ai'],-14,-14,106,102,cell);
+      const marker=id===this.skill?v.image(panels.assets['skill-selected-ai'],-14,-14,106,102,cell):undefined;
+      this.skillCells.set(id,{button:cell,level,marker});
       if(!level)return;
       const frequency=party.aiFrequency(this.selectedMemberId).get(id)??1;
       v.button('',x+85,y+16,82,42,()=>this.action(()=>party.setAiFrequency(this.selectedMemberId,id,(frequency+1)%AI_FREQUENCY_LABELS.length)),
@@ -2327,8 +2335,36 @@ export class StoryUI {
     })
       .catch(error=>{if(!signal.aborted&&this.open&&this.selectedMemberId===id){this.notice=(error as Error).message;this.menuText?.renderPage(this.page);}});
   }
+  private selectSkill(id:string):void{
+    if(this.skill===id)return;
+    const previous=this.skill?this.skillCells.get(this.skill):undefined;
+    previous?.marker?.destroy();
+    if(previous)previous.marker=undefined;
+    this.skill=id;
+    const current=this.skillCells.get(id),v=this.body!;
+    if(current){
+      const asset=this.skillSection==='ai'||!current.level?'skill-selected-ai':'skill-selected';
+      current.marker=v.image(this.app.menuPanels.assets[asset],-14,-14,106,102,current.button);
+    }
+    for(const node of this.skillAsideNodes)node.destroy();
+    const detail=this.scrollNames.get('description');
+    if(detail){
+      detail.destroy();this.scrollNames.delete('description');
+      const index=v.scrolls.indexOf(detail);if(index>=0)v.scrolls.splice(index,1);
+    }
+    this.scrollOffsets.delete('skills:description');
+    this.skillTextSpecs=this.skillTextSpecs.filter(spec=>!this.skillAsideKeys.has(spec.key));
+    const before=new Set(v.root.list),textStart=this.skillTextSpecs.length,member=this.member()!;
+    const draft=this.configuration().draft(this.app.battleCatalog,member.classId);
+    this.renderSkillAside(draft,this.selectedMemberId==='player'?this.session!.skills:undefined);
+    this.skillAsideNodes=v.root.list.filter(node=>!before.has(node));
+    this.skillAsideKeys=new Set(this.skillTextSpecs.slice(textStart).map(spec=>spec.key));
+    this.skillContentNodes=this.skillContentNodes.filter(node=>node.active).concat(this.skillAsideNodes);
+    v.pruneDestroyed();this.menuText?.renderPage('skills');
+  }
   private updateSkillsMember():void{
     const v=this.body!;
+    this.skillCells.clear();
     for(const node of this.skillContentNodes)node.destroy();this.skillContentNodes=[];
     for(const [name,scroll] of this.scrollNames){
       this.scrollOffsets.set(`skills:${name}`,scroll.scrollTop);scroll.destroy();
