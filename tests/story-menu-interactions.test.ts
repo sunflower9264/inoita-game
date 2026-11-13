@@ -2975,6 +2975,20 @@ test('party skill details keep the skill list and scroll position',t=>{
   assert.equal(scroll.scrollTop,30);
 });
 
+test('party preview errors update the message without rebuilding the roster',async t=>{
+  const f=fixture();t.after(f.cleanup);const first=f.recruit('warlock'),second=f.recruit('priest');
+  const requests=new Map<string,(error:Error)=>void>();
+  f.app.preparePartyMember=id=>new Promise<void>((_resolve,reject)=>requests.set(id,reject));
+  f.menu.show('party');f.scene.click(f.scene.button(first.definition.name));
+  f.scene.click(f.scene.button(second.definition.name));
+  const roster=f.scene.button(second.definition.name),tab=f.scene.button('技能目录');
+  requests.get(first.id)!(new Error('旧错误'));await Promise.resolve();await Promise.resolve();
+  assert.ok(!visibleDomLabels(f).some(label=>label.text==='旧错误'));
+  requests.get(second.id)!(new Error('预览加载失败'));await Promise.resolve();await Promise.resolve();
+  assert.ok(f.scene.button(second.definition.name)===roster);assert.ok(f.scene.button('技能目录')===tab);
+  assert.ok(visibleDomLabels(f).some(label=>label.text==='预览加载失败'));
+});
+
 test('using a mercenary emblem prepares only the new member preview', t => {
   const f=fixture();t.after(f.cleanup);
   f.menu.show('party');

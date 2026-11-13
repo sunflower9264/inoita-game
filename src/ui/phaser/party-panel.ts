@@ -105,7 +105,13 @@ export class PartyPanel {
   private prepare(id:string):void{
     this.preparation?.abort();const request=this.preparation=new AbortController();
     void this.app.preparePartyMember?.(id,request.signal).then(()=>{if(!request.signal.aborted&&this.selected===id&&this.tab==='equipment')this.updatePreview();})
-      .catch(error=>{if(!request.signal.aborted){this.error=(error as Error).message;this.changed();}});
+      .catch(error=>{
+        if(request.signal.aborted||this.selected!==id)return;
+        this.error=(error as Error).message;
+        this.pageText=this.pageText.filter(spec=>spec.key!=='error');
+        this.text('error',this.error,70,434,18,TEXT_COLORS.dangerSoft,0,0,{width:808,wrap:'word'});
+        this.updateSelection();
+      });
   }
   private member(id:string){return id==='player'?this.session.hero:this.session.party!.get(id);}
   private name(id:string):string{return id==='player'?this.world.actors[this.session.campaign.start.actor].name:this.session.party!.get(id)!.definition.name;}
