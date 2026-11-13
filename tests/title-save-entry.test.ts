@@ -110,7 +110,7 @@ function fixture(gmMode?:MenuContext['gmMode'],cloud?:CloudSavePort){
   const scene=Object.setPrototypeOf(state,MenuScene.prototype);
   const call=(name:string,...args:unknown[])=>Reflect.get(MenuScene.prototype,name).call(scene,...args);
   const menuText=new MenuTextLayer(domUi as unknown as Pick<DomUi,'label'>,(x,y)=>({x,y,scale:1}),
-    page=>page==='changelog'?state.changelogScroll?.scrollTop:page==='changelog-versions'?state.changelogVersionsScroll?.scrollTop:undefined);
+    (page,scroll)=>call('menuScrollTop',page,scroll) as number|undefined);
   // 与 MenuScene.attach 的注册保持一致：确认框压暗页面文字，更新日志混用页面/弹层坐标。
   for(const page of ['home','slots','settings','cloud'] as const)menuText.register(page,writer=>{
     const occlude=state.confirmAction?call('confirmOcclusion') as MenuTextOcclude|undefined:undefined;
@@ -150,13 +150,18 @@ test('title changelog loads on demand and only renders visible entries',async()=
   assert.ok(labels().some(text=>text.includes('第 1 条')),'首条可见');
   assert.ok(labels()[0]!.startsWith('1. '),'条目前带序号');
   assert.ok(labels().length>0&&labels().length<entries.length,`只渲染可视条目，实际 ${labels().length} 条`);
+  const versionLabel=f.domLabels.find(label=>label.text==='v1.0.5'&&label.visible)!;
+  assert.ok(versionLabel);
+  const versionY=versionLabel.y;
   const scroll=f.state.changelogScroll!;
   scroll.scrollTop=scroll.extent-scroll.height;
   scroll.onScroll?.();
   assert.ok(labels().some(text=>text.includes('第 40 条')),'滚到底显示最后一条');
   assert.ok(!labels().some(text=>text.includes('第 1 条')),'滚出视口的条目不渲染');
+  assert.equal(versionLabel.y,versionY,'正文滚动时左侧版本号保持原位');
   const versions=f.state.changelogVersionsScroll!;
   versions.scrollTop=68;versions.onScroll?.();
+  assert.equal(versionLabel.y,versionY-68,'版本号跟随左侧列表滚动');
   assert.equal(f.state.changelogScroll?.scrollTop,scroll.extent-scroll.height,'左侧滚动不影响正文');
   f.clickModal('v1.0.5');
   assert.ok(f.domTexts().includes('v1.0.5 更新说明'));

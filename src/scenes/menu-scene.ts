@@ -151,7 +151,7 @@ export class MenuScene extends Phaser.Scene {
       const domUi=this.domUi;
       if(domUi){
         // 更新日志画在弹层画布上，文字定位跟着弹层根节点；其它页面仍用标题页画布。
-        this.menuText=new MenuTextLayer(domUi,(x,y)=>this.menuTextPoint(x,y),(page)=>this.menuScrollTop(page),(x,y)=>this.modalTextPoint(x,y));
+        this.menuText=new MenuTextLayer(domUi,(x,y)=>this.menuTextPoint(x,y),(page,scroll)=>this.menuScrollTop(page,scroll),(x,y)=>this.modalTextPoint(x,y));
         for(const page of ['home','slots','settings','cloud'] as const){
           this.menuText.register(page,writer=>{
             // 确认框打开时页面文字整体压暗，只让出横带矩形；弹层文字另走 modalLabels。
@@ -390,12 +390,12 @@ export class MenuScene extends Phaser.Scene {
     return{left:start.x,top:start.y,right:end.x,bottom:end.y};
   }
   /** 滚动文字按当前偏移重算；每次整页重画后指向新的滚动区。 */
-  private menuScrollTop(page:string):number|undefined {
+  private menuScrollTop(page:string,scroll:string):number|undefined {
     if(page==='slots')return this.slotsScroll?.scrollTop;
     if(page==='settings')return this.settingsList?.scrollTop;
     if(page==='cloud')return this.cloudScroll?.scrollTop;
-    if(page==='changelog')return this.changelogScroll?.scrollTop;
-    if(page==='changelog-versions')return this.changelogVersionsScroll?.scrollTop;
+    if(page==='changelog')return scroll==='changelog-versions'
+      ?this.changelogVersionsScroll?.scrollTop:this.changelogScroll?.scrollTop;
     return undefined;
   }
   /** 存档槽绘制的文字规格转成菜单文字规格。 */
