@@ -176,10 +176,10 @@ function startAutoSave(session:Session):void {
         app.saves.write(AUTO_SAVE_SLOT,game);
     },
     // 常规自动存档先截一张当前画面；页面即将隐藏时仍走同步 write，保留上一张截图。
-    writeAsync:async game=>{
+    writeAsync:async (game,isLatest)=>{
       const screenshot=await app.captureSaveThumbnail?.();
       // 等截图期间回标题、读档或换了会话时，不能把旧快照写进新的自动槽。
-      if(generation!==autoSaveGeneration||app.session!==session||app.mode!=='game')return;
+      if(!isLatest()||generation!==autoSaveGeneration||app.session!==session||app.mode!=='game')return;
       if(screenshot)game.summary.screenshot=screenshot;
       app.saves.write(AUTO_SAVE_SLOT,game);
     },

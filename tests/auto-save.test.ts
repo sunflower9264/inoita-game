@@ -20,6 +20,27 @@ function harness(options:{enabled?:boolean;locked?:boolean;game?:SaveGame<{id:st
   return {saver,writes,state};
 }
 
+test('a pending screenshot cannot overwrite a newer background save',async()=>{
+  let current=save('before');
+  let finishScreenshot!:()=>void;
+  const screenshot=new Promise<void>(resolve=>{finishScreenshot=resolve;});
+  const writes:string[]=[];
+  let pending:Promise<void>|undefined;
+  const saver=new AutoSaver({
+    enabled:()=>true,
+    capture:()=>current,
+    write:game=>{writes.push(game.world.id);},
+    writeAsync:(game,isLatest)=>pending=screenshot.then(()=>{if(isLatest())writes.push(game.world.id);}),
+  },{minGapMs:0});
+  saver.flush();
+  current=save('after');
+  saver.flushForBackground();
+  finishScreenshot();
+  await pending;
+  assert.deepEqual(writes,['after']);
+  saver.stop();
+});
+
 test('several triggers inside the debounce window collapse into one write',async t=>{
   const f=harness();t.after(()=>f.saver.stop());
   f.saver.request();f.saver.request();f.saver.request();

@@ -31,6 +31,7 @@
 - 玩家选的帧率通过 `window.InotiaNative.setFrameRate` 告诉安卓壳（`native-frame-rate.ts`）。壳选一个刷新率是目标帧率整数倍的显示模式：30 选 60/90/120，60 选 60/120。整数倍保证每个游戏帧占整数个屏幕节拍；60 帧跑在 90Hz 上会反复在 1 个和 2 个节拍之间跳。壳选好后把屏幕**实际**刷新率写回 `window.__inoitaDisplayHz` 并派发 `inoita-display-rate`，页面用 `setRefreshRate` 直接采用，不再靠 rAF 重测。这里不能写玩家请求的 30/60：`resolveFrameLimit` 要靠实际值判断 60 档要不要用 90 的上限、30 档要不要交给 vsync；低于 20Hz 的瞬时值会被忽略。网页版没有原生桥时静默跳过。
 - 改存档结构或校验口径时，把 `src/domain/save-game.ts` 的 `SAVE_FORMAT` 加一，并在 `saved-game.ts` 的升级链补旧版到新版的迁移和旧档测试。
 - **自动存档优先走 `writeAsync`，页面隐藏时走同步 `write`。** 常规写入先等一帧截取游戏画面缩略图；`flushForBackground` 不等截图，沿用最近一张，避免页面隐藏后保存没落地。截图失败只保存无图存档，不阻断写入。
+- 自动存档的异步截图写入前检查写入序号；后台同步写入、暂停或停止后，较早的截图结果不能覆盖新进度。
 - 内容加载与构建共用 `content-validation.ts` 的校验器，新增内容字段先在这里定校验口径。
 - 生产信任路径只取构建写出的 `content-manifest.json`：比较 `contentVersion` 与页面注入的 `__STORY_CONTENT_VERSION__`，并检查本次文件的必需顶层键；不匹配时明确失败并提示刷新/更新，不静默继续。启动时不对整份内容重算哈希。dev、Node 测试和 `?gm` 继续走完整校验。
 - 热更新只做旁路：标题页加载完成后调用 `notifyBootReady()`；网页版没有原生桥时静默跳过。检查、下载、切换和回退都在 Android 壳里，网页不判断版本。

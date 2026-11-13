@@ -7,7 +7,7 @@ interface AutoSavePorts<World = unknown> {
   /** 同步写自动槽；页面即将隐藏等不能等下一帧的路径用它。 */
   write(game: SaveGame<World>): void;
   /** 常规写自动槽：允许先截存档缩略图再写；不提供时退回同步 `write`。 */
-  writeAsync?(game: SaveGame<World>): Promise<void>;
+  writeAsync?(game: SaveGame<World>, isLatest: () => boolean): Promise<void>;
   /** 只在游戏进行中启用；标题页和职业选择页没有可存的世界。 */
   enabled(): boolean;
   /** 演出或菜单锁着时不抢写，等解锁后再写。 */
@@ -36,6 +36,7 @@ export class AutoSaver<World = unknown> {
   private lastWrite=-Infinity;
   private waiting=false;
   private suspended=false;
+  private writeSequence=0;
 
   constructor(ports:AutoSavePorts<World>, options:{debounceMs?:number;minGapMs?:number;retryMs?:number}={}) {
     this.ports=ports;
@@ -47,6 +48,7 @@ export class AutoSaver<World = unknown> {
   /** 调试现场期间暂停写入：清掉待写与重试，之后的触发也不再排队。 */
   suspend():void {
     this.suspended=true;
+    this.writeSequence++;
     if(this.debounce)clearTimeout(this.debounce);
     this.debounce=undefined;
     this.waiting=false;
@@ -74,8 +76,9 @@ export class AutoSaver<World = unknown> {
     if(!game){ this.retry(); return; }
     this.waiting=false;
     this.lastWrite=now;
+    const sequence=++this.writeSequence;
     if(this.ports.writeAsync){
-      void this.ports.writeAsync(game).catch(error=>console.warn('自动存档写入失败',error));
+      void this.ports.writeAsync(game,()=>sequence===this.writeSequence).catch(error=>console.warn('自动存档写入失败',error));
       return;
     }
     try { this.ports.write(game); }
@@ -94,6 +97,7 @@ export class AutoSaver<World = unknown> {
     const game=this.ports.capture();
     if(!game)return;
     this.lastWrite=this.ports.now?.() ?? Date.now();
+    this.writeSequence++;
     try { this.ports.write(game); }
     catch(error){ console.warn('自动存档写入失败',error); }
   }
@@ -126,6 +130,7 @@ export class AutoSaver<World = unknown> {
   }
 
   stop():void {
+    this.writeSequence++;
     this.stopTimer();
     if(this.debounce)clearTimeout(this.debounce);
     this.debounce=undefined;
