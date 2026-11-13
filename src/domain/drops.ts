@@ -328,7 +328,7 @@ function pickFromPool(pool:readonly {item:string;dropLevel:number}[],cap:number,
   cap=Math.max(1,Math.min(105,cap));
   const options=pool.filter(choice=>choice.dropLevel>=Math.max(1,cap-15)&&choice.dropLevel<=cap);
   if(!options.length)return;
-  return options[weightedIndex(options.map(choice=>choice.dropLevel>=cap-5?3:1),random)]?.item;
+  return options[weightedIndex(options.map(choice=>choice.dropLevel>cap-5?3:1),random)]?.item;
 }
 
 function pickUnique(catalog:DropCatalog,cap:number,random:()=>number):string|undefined {

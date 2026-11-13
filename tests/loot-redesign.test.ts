@@ -53,6 +53,23 @@ test('all eligible rarity pools obey the equipment window at each source level',
   }
 });
 
+test('recent-five-level weighting keeps the sixth level below the cap at normal weight',()=>{
+  const catalog=structuredClone(drops);
+  const id='enemy-shadow-elite-knight-1';
+  const rule=catalog.enemies[id]!;
+  for(const kind of Object.keys(rule.chances) as (keyof typeof rule.chances)[])rule.chances[kind]=0;
+  rule.chances.equipment=10000;
+  rule.rolls=1;
+  catalog.epicDrops!.enemyChance=0;
+  catalog.equipment.weapon=[];
+  catalog.equipment.special=[];
+  catalog.equipment.armor=[{item:'soul-river',dropLevel:95},{item:'soul-ring',dropLevel:96}];
+  const result=rollEnemyLoot(catalog,stats,id,100,1,()=>0.3,{},{sourceLevel:100});
+  const reward=result.rewards.find(entry=>entry.kind==='item');
+  assert.ok(reward&&reward.kind==='item');
+  assert.equal(reward.item,'soul-ring');
+});
+
 test('shared pity guarantees yellow at 25 and purple at 40 eligible points',()=>{
   const catalog=structuredClone(drops);
   const id='enemy-evil-spirit-of-abyss-1';
