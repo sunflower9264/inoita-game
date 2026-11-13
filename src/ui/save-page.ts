@@ -11,6 +11,7 @@ import { drawNativeMessage, type NativeMessageBand } from './phaser/native-messa
 import { MENU_CANVAS_HEIGHT, MENU_CANVAS_WIDTH } from './phaser/modal-placement.ts';
 import type { ScrollArea, UiSurface } from './phaser/widgets.ts';
 import type { MenuTextWriter } from './dom/menu-text.ts';
+import type { UiNode } from './dom/node.ts';
 import { TextPrompt } from './text-prompt.ts';
 
 /** 存档结果与「不能存取」的提示文本，原版取文本表 35331／35332／35342 条。 */
@@ -36,6 +37,7 @@ export interface SavePageHost {
   contentAssets(): Record<string, string>;
   render(): void;
   updateConfirmation(): void;
+  updateSaveTitle?(key:string,title:string):void;
   sync(): void;
   busy(): boolean;
   setBusy(value: boolean): void;
@@ -63,6 +65,7 @@ export class SavePage {
   private deleteConfirm?: SaveSlotRef;
   private renameRef?: SaveSlotRef;
   private renameSerial=0;
+  private rows=new Map<SaveSlotRef,{button?:UiNode;titleKey:string}>();
   private messageBand?: NativeMessageBand;
   private readonly prompt = new TextPrompt();
   private readonly host: SavePageHost;
@@ -90,7 +93,7 @@ export class SavePage {
   }
 
   render(view: UiSurface, loading: boolean): void {
-    const app = this.host.app;
+    const app = this.host.app;this.rows.clear();
     view.text(loading ? '读取存档' : '存档槽', 512, 16, 0, 28).setOrigin(.5, 0);
     const content = this.host.contentAssets();
     const assets = { frame: content['save-slot'], empty: content['save-empty'] };
@@ -99,8 +102,10 @@ export class SavePage {
     drawSaveBoardRow(view, assets, origin, SAVE_BOARD_LAYOUT.autoTop, this.saveRow(AUTO_SAVE_SLOT, loading));
     // 十个手动槽放进滚动区；按写入时间倒序，最新的排最前，空槽排在后面。
     const scroll = this.host.scroll('slots', origin.x, SAVE_BOARD_LAYOUT.listTop, SAVE_BOARD.panelWidth, SAVE_BOARD_LAYOUT.listHeight, view);
-    newestFirstSlots(slot => app.saves.peek(slot)).forEach((slot, index) =>
-      drawSaveBoardRow(view, assets, { x: 0, y: 0 }, index * SAVE_BOARD.rowStep, this.saveRow(slot, loading), scroll.content));
+    newestFirstSlots(slot => app.saves.peek(slot)).forEach((slot, index) => {
+      const button=drawSaveBoardRow(view,assets,{x:0,y:0},index*SAVE_BOARD.rowStep,this.saveRow(slot,loading),scroll.content);
+      this.rows.set(slot,{button,titleKey:`list-${index*SAVE_BOARD.rowStep}-title`});
+    });
     this.host.finishScroll('slots', scroll, (MANUAL_SAVE_SLOT_COUNT - 1) * SAVE_BOARD.rowStep + SAVE_BOARD.frameHeight);
   }
 
@@ -284,7 +289,13 @@ export class SavePage {
         try { this.host.app.saves.rename(ref, value); }
         catch (error) { console.warn('存档改名失败', error); }
       }
-      this.renameRef = undefined;if(value!==undefined)this.host.render();this.host.sync();
+      this.renameRef = undefined;
+      if(value!==undefined){
+        const row=this.rows.get(ref),title=saveRowTitle(ref,this.host.app.saves.peek(ref));
+        if(row&&this.host.updateSaveTitle){row.button?.setData('label',title);this.host.updateSaveTitle(row.titleKey,title);}
+        else this.host.render();
+      }
+      this.host.sync();
     };
     // 测试没有 DOM 输入框，直接注入一个返回值。
     if (this.host.app.promptText) {

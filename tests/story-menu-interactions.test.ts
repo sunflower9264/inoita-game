@@ -2238,14 +2238,15 @@ test('renaming a save asks for text and only stores Chinese, English and digits'
   const before=f.app.saves.inspect(0);assert.equal(before.kind,'ok');if(before.kind!=='ok')return;
   let asked='';
   Object.defineProperty(f.app,'promptText',{configurable:true,value:async(initial:string)=>{asked=initial;return '第一章！？';}});
-  f.scene.click(f.scene.button('存档槽 1 改名'));
+  const rename=f.scene.button('存档槽 1 改名'),slot=f.scene.button('存档槽 1'),scroll=f.internals.scrollNames.get('slots');
+  f.scene.click(rename);
   await new Promise<void>(resolve=>setImmediate(resolve));
   assert.equal(asked,'','首次改名时输入框是空的');
   const after=f.app.saves.inspect(0);assert.equal(after.kind,'ok');if(after.kind!=='ok')return;
   assert.equal(after.game.summary.name,'第一章','只保留中文、英文和数字');
   assert.equal(after.game.summary.savedAt,before.game.summary.savedAt,'改名不动存档内容');
-  // 改名后的行标题用新名字；行按钮的可访问名仍是「存档槽 N」。
-  assert(domTexts(f).includes('第一章'));
+  assert(domTexts(f).includes('第一章'));assert.equal(f.scene.button('第一章'),slot);
+  assert.equal(f.scene.button('存档槽 1 改名'),rename);assert.equal(f.internals.scrollNames.get('slots'),scroll);
   f.scene.click(f.scene.button('存档槽 1 删除'));
   f.scene.click(f.scene.button('否'));
 });
