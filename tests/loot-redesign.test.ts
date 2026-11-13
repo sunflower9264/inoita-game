@@ -135,6 +135,32 @@ test('one-time story elite guarantees one of its eligible fixed items on the fir
   assert.ok(drops.enemies[id]!.fixed.some(choice=>choice.item===reward.item));
 });
 
+test('fixed drops keep the configured level-105 gear on a level-104 boss',()=>{
+  const catalog=structuredClone(drops);
+  const id='enemy-darkhoods-boss-1';
+  const rule=catalog.enemies[id]!;
+  for(const kind of Object.keys(rule.chances) as (keyof typeof rule.chances)[])rule.chances[kind]=0;
+  rule.chances.fixed=10000;
+  rule.rolls=1;
+  catalog.epicDrops!.enemyChance=0;
+  const result=rollEnemyLoot(catalog,stats,id,104,1,()=>0,{},{sourceLevel:104});
+  const itemsDropped=result.rewards.filter(reward=>reward.kind==='item');
+  assert.deepEqual(itemsDropped.map(reward=>reward.kind==='item'?reward.item:''),['victory-gauntlet']);
+});
+
+test('first defeat can guarantee configured level-105 fixed gear',()=>{
+  const id='enemy-darkhoods-boss-1';
+  const enemy=battle.enemies.find(entry=>entry.id===id)!;
+  const result=settleCombatRewards({enemy,hasSpawn:true,oneTime:true,enemyLevel:104,elite:false,heroLevel:104,map:'test',x:0,y:0,
+    partySize:1,earnsExperience:true,party:[{id:'player',level:104}],drops,stats,random:()=>0,
+    questRequirements:[],pity:new LootPity(),reserved:{misses:0,claimed:new Set(),pending:new Set()}});
+  const gear=result.owners[0]!.rewards.filter(reward=>reward.kind==='item'&&reward.roll);
+  assert.equal(gear.length,1);
+  const reward=gear[0]!;
+  assert.ok(reward.kind==='item');
+  assert.equal(reward.item,'victory-gauntlet');
+});
+
 test('dropped sealed boxes retain their level through a bag snapshot',()=>{
   const bag=new Bag(()=>{},items);
   const prepared=bag.prepareDrop('sealed-necklace-chest',{lootLevel:100});

@@ -602,11 +602,7 @@ function rollDropRule(catalog:DropCatalog,rule:EnemyDropRule,playerLevel:number,
     else if(kind==='unique')add(pickUnique(catalog,uniqueCap,random),false,true);
     else if(kind==='fixed'){
       const roll=draw(random,FIXED_DROP_WEIGHT_TOTAL);let sum=0;
-      for(const choice of rule.fixed){sum+=choice.weight;if(roll<sum){
-        const entry=[...catalog.equipment.unique,...catalog.equipment.epic,...catalog.equipment.weapon,...catalog.equipment.armor,...catalog.equipment.special].find(item=>item.item===choice.item);
-        if(!entry||(entry.dropLevel>=Math.max(1,Math.min(level,105)-15)&&entry.dropLevel<=Math.min(level,105)))add(choice.item,false,true);
-        break;
-      }}
+      for(const choice of rule.fixed){sum+=choice.weight;if(roll<sum){add(choice.item,false,true);break;}}
     }else add(pickPool(pool[kind]??[],level,random));
   }
   // 独立紫装判定：每个击杀/每次开箱最多一次，放在普通 8 槽循环之后。
@@ -665,11 +661,7 @@ export function rollEnemyLoot(catalog:DropCatalog,stats:CharacterStatsCatalog,en
       uniqueCap:catalog.pity?.unique?eligibility.cap:undefined,
       epic,epicCap:eligibility.cap,itemChance:options.itemChance});
   if(options.firstDefeat&&!options.epicGuarantee){
-    const cap=eligibility.cap;
-    const candidates=rule.fixed.filter(choice=>{
-      const item=catalog.itemCatalog?.items[choice.item];
-      return item?.equipment&&item.level>=Math.max(1,cap-15)&&item.level<=cap;
-    });
+    const candidates=rule.fixed.filter(choice=>!!catalog.itemCatalog?.items[choice.item]?.equipment);
     if(candidates.length){
       const item=candidates[weightedIndex(candidates.map(choice=>choice.weight),random)]!.item;
       const equipment=stats.equipment[item];
