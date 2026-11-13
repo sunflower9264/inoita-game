@@ -1212,8 +1212,10 @@ test('a skill moves to the last registered shortcut and clicking that slot again
   assert.ok(attack,'登记屏画出攻击按钮');
   assert.equal(attack.width,CONTROL_SIZES.attack.width,'攻击按钮按控件尺寸显示');
   assert.equal(attack.height,CONTROL_SIZES.attack.height);
+  const slot=f.scene.button('快捷位 1'),swap=f.scene.button('切换技能组'),back=f.scene.button('返回');
   const row=()=>f.session.bag.captureState().shortcuts.find(([owner])=>owner==='player')![1];
   f.scene.click(f.scene.button('快捷位 1'));
+  assert.ok(f.scene.button('快捷位 1')===slot);assert.ok(f.scene.button('切换技能组')===swap);assert.ok(f.scene.button('返回')===back);
   f.scene.click(f.scene.button('快捷位 2'));
   assert.equal(row()[0],null,'登记到新槽会清掉同一技能的旧槽');
   assert.deepEqual(row()[1],{kind:'skill',id});
@@ -1222,6 +1224,7 @@ test('a skill moves to the last registered shortcut and clicking that slot again
   assert.ok(f.internals.shortcutEdit,'取消后仍留在登记屏');
   f.scene.click(f.scene.button('快捷位 3'));
   f.scene.click(f.scene.button('切换技能组'));
+  assert.ok(f.scene.button('快捷位 1')===slot);assert.ok(f.scene.button('切换技能组')===swap);assert.ok(f.scene.button('返回')===back);
   f.scene.click(f.scene.button('快捷位 4'));
   assert.equal(row()[2],null,'换到第二组也会清掉第一组的旧槽');
   assert.deepEqual(row()[9],{kind:'skill',id});

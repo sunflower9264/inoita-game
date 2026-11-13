@@ -154,6 +154,7 @@ export class StoryUI {
   private skillResetTextSpecs:MenuTextSpec[]=[];
   /** 登记快捷键那一屏单独一层：它盖在遮罩上，菜单本体整块藏起来。 */
   private shortcutScreen?:UiSurface;
+  private shortcutSlots:{button:UiNode;scale:number;input:number;key?:string;icon?:UiImage}[]=[];
   /** 登记快捷键那一屏的顶部提示；菜单文字层此时整体让位，所以单独挂一个标签。 */
   private shortcutPrompt?:DomLabel;
   private controlEditor?:ControlLayoutEditor;
@@ -600,7 +601,7 @@ export class StoryUI {
       return;
     }
     if(this.page==='debug')this.releaseDebugPanel();this.controlEditor?.close();this.app.ui.setControlLayoutEditing(false);
-    this.keyBindingEditor?.close();this.app.ui.setKeyBindingEditing(false);this.cancelOperation();this.modalActive=false;this.shortcutEdit=undefined;this.shortcutScreen?.clear();this.backTab?.clear();
+    this.keyBindingEditor?.close();this.app.ui.setKeyBindingEditing(false);this.cancelOperation();this.modalActive=false;this.shortcutEdit=undefined;this.shortcutScreen?.clear();this.shortcutSlots=[];this.backTab?.clear();
     const keepBag=this.page==='bag'&&this.bagPageCached;
     this.shopPanel=undefined;this.partyPanel?.destroyPreview();this.app.releasePartyPreview?.();this.craftingPanel=undefined;this.craftingActor=undefined;this.forge=undefined;this.skillBook=undefined;this.open=false;
     if(keepBag)this.bagPortrait?.visible(false);else this.bagPortrait?.destroy();
@@ -1749,15 +1750,17 @@ export class StoryUI {
   private openShortcutScreen(kind:ShortcutEntry['kind'],id:string):void{
     this.cancelDrag();this.shortcutEdit={kind,id,page:0};this.render();
   }
-  private closeShortcutScreen():void{this.shortcutEdit=undefined;this.shortcutScreen?.clear();this.backTab?.clear();this.render();}
+  private closeShortcutScreen():void{this.shortcutEdit=undefined;this.shortcutScreen?.clear();this.shortcutSlots=[];this.backTab?.clear();this.render();}
   /** 点某一格就落格，已占用即覆盖；落完留在这一屏继续登记。 */
   private assignShortcut(slot:number):void{
     const edit=this.shortcutEdit;if(!edit)return;
     const current=this.shortcutBar().page(edit.page)[slot];
     // 技能槽再点一次就是取消；物品沿用原版行为，点击只重新落格。
     const same=edit.kind==='skill'&&current?.kind==='skill'&&current.id===edit.id;
-    this.shortcutBar().assign(edit.page,slot,same?null:{kind:edit.kind,id:edit.id});
-    this.render();
+    this.busy=true;
+    try{this.shortcutBar().assign(edit.page,slot,same?null:{kind:edit.kind,id:edit.id});}
+    finally{this.busy=false;this.sessionSignature=this.sessionDataSignature()??this.sessionSignature;}
+    this.updateShortcutSlots();
   }
   /** 另一处「取消快捷键」：把该对象从两组里一次清掉，对应 `PLAYER_RemoveShortcutAll`。 */
   private clearShortcut(kind:ShortcutEntry['kind'],id:string):void{this.shortcutBar().clearObject(kind,id);if(this.page==='skills')this.refreshSkillAside(false);else this.render();}
@@ -1776,7 +1779,7 @@ export class StoryUI {
   private renderShortcutScreen():void{
     const edit=this.shortcutEdit,screen=this.shortcutScreen,skin=this.app.controlSkin,scene=this.scene;
     if(!edit||!screen||!scene)return;
-    screen.clear();const v=screen,{scale,anchor}=controlPlacement(),slots=this.shortcutBar().page(edit.page),positions=resolveControlLayout(controlViewport(),this.app.controlLayout.snapshot());
+    screen.clear();this.shortcutSlots=[];const v=screen,{scale,anchor}=controlPlacement(),positions=resolveControlLayout(controlViewport(),this.app.controlLayout.snapshot());
     // 顶部提示：原版 `GRPX_DrawStringWithFont(TEXTDATABASE[146], 屏宽/2, 110)`，白字居中。
     this.placeShortcutPrompt();
     // 攻击按钮是轮盘的中心锚点，登记屏也要按当前布局画出来；只画槽位会让中间空一块。
@@ -1788,13 +1791,12 @@ export class StoryUI {
       const hit=v.button('',point.x/scale-input/2,point.y/scale-input/2,input,input,()=>this.assignShortcut(slot),
         {bare:true,pressed:skin['slot-pressed'],pressedRect:{x:-slotBleed,y:-slotBleed,width:slotFrame,height:slotFrame}}).setData('label',`快捷位 ${slot+1}`);
       hit.addAt(v.image(skin['slot-shadow'],-slotBleed,-slotBleed,slotFrame,slotFrame),0);hit.addAt(v.image(skin['slot-ring'],-slotBleed,-slotBleed,slotFrame,slotFrame),1);
-      const entry=slots[slot];if(entry){const size=this.shortcutIconSize(entry)*userScale,icon=this.shortcutIcon(entry);
-        if(icon)hit.addAt(v.image(icon,(input-size)/2,(input-size)/2,size,size),2);}
+      this.shortcutSlots.push({button:hit,scale:userScale,input});
     }
     // 换组按钮：共享交换键尺寸，动作是整组切换（`UIShortcutMenu_ButtonScrollExe @0x161368`）。
     const swapUserScale=positions.swap.userScale,swapFrame=CONTROL_SIZES.swap.width*swapUserScale;
     const swap=v.button('',positions.swap.x/scale-swapFrame/2,positions.swap.y/scale-swapFrame/2,swapFrame,swapFrame,
-      ()=>{this.shortcutEdit={...edit,page:(edit.page+1)%SHORTCUT_PAGE_COUNT};this.render();},
+      ()=>{if(this.shortcutEdit){this.shortcutEdit.page=(this.shortcutEdit.page+1)%SHORTCUT_PAGE_COUNT;this.updateShortcutSlots();}},
       {bare:true,pressed:skin['swap-pressed']}).setData('label','切换技能组');
     swap.addAt(v.image(skin.swap,0,0,swapFrame,swapFrame),0);
     // 待登记的对象：原版把它画在一个单独的圆框容器里，位置见 `PENDING_OFFSET`。
@@ -1802,6 +1804,19 @@ export class StoryUI {
     v.image(skin['slot-shadow'],pending.x-slotFrame/2,pending.y-slotFrame/2,slotFrame,slotFrame);
     v.image(skin['slot-ring'],pending.x-slotFrame/2,pending.y-slotFrame/2,slotFrame,slotFrame);
     if(icon)v.image(icon,pending.x-size/2,pending.y-size/2,size,size);
+    this.updateShortcutSlots();
+  }
+
+  private updateShortcutSlots():void{
+    const edit=this.shortcutEdit,v=this.shortcutScreen;if(!edit||!v)return;
+    const entries=this.shortcutBar().page(edit.page);
+    this.shortcutSlots.forEach((slot,index)=>{
+      const entry=entries[index],key=entry?`${entry.kind}:${entry.id}`:undefined;
+      if(slot.key===key)return;
+      slot.icon?.destroy();slot.icon=undefined;slot.key=key;
+      if(entry){const icon=this.shortcutIcon(entry),size=this.shortcutIconSize(entry)*slot.scale;
+        if(icon){slot.icon=v.image(icon,(slot.input-size)/2,(slot.input-size)/2,size,size);slot.button.addAt(slot.icon,2);}}
+    });
   }
   /** 登记快捷键那一屏的顶部提示：位置按该屏画布的缩放换算，文字交给 DOM。 */
   private placeShortcutPrompt():void{
