@@ -45,7 +45,7 @@ export function executeSkillUnits(request:Omit<SkillExecution,'cueIndex'>,port:S
         const selected=selectedTargetId?port.actor(selectedTargetId):undefined;
         return targets=cue.target==='none'?[casterId]:resolveCueTargets(cue,source,selected,port.candidates(),
           cue.target==='party'||cue.target==='party-ally'?port.partySlots?.():undefined,
-          port.rangeBonusUnits?.(casterId),id=>port.healScore?.(id),port.healCandidates?.()).slice(0,MAX_SKILL_TARGETS).map(actor=>actor.id);
+          port.rangeBonusUnits?.(casterId),id=>port.healScore?.(id),cue.target==='ally-heal'?port.healCandidates?.():undefined).slice(0,MAX_SKILL_TARGETS).map(actor=>actor.id);
       },
       prepare:cueIndex=>{preparedDamage=port.prepareUnit?.({casterId,skill,cueIndex});},
       unit:(cueIndex,targetId)=>port.actor(targetId)?port.unit?.({casterId,skill,cueIndex,targetId,preparedDamage})??'skipped':'skipped',

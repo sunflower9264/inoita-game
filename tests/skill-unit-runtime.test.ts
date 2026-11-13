@@ -8,6 +8,7 @@ import type {BattleCatalog,SkillAction,SkillEffectCue} from '../src/domain/battl
 import {CombatController} from '../src/domain/combat.ts';
 import type {ActionPlayback,Combatant,CombatPort,SkillUnitHit} from '../src/domain/combat.ts';
 import {CombatHitResolution} from '../src/domain/combat-hit-resolution.ts';
+import {executeSkillUnits} from '../src/domain/combat-unit-execution.ts';
 import type {SkillUnitOutcome} from '../src/domain/skill-unit-sequence.ts';
 import type {Point} from '../src/domain/navigation.ts';
 
@@ -24,6 +25,16 @@ function simple(cues:SkillEffectCue[]):SkillAction {
   return {requiresTarget:cues.some(cue=>cue.target==='current'),cooldownFrames:0,approachDistanceUnits:4,searchRadiusPx:100,transition:null,
     combatUnits:cues.map(()=>({effect:'visual'})),events:[{kind:'units',frame:1,cues}]};
 }
+
+test('only healing target selection builds healing candidates',()=>{
+  const caster:Combatant={id:'caster',team:'party',position:{x:0,y:0},bounds:{x:0,y:0,width:8,height:8}};
+  const enemy:Combatant={...caster,id:'enemy',team:'enemy'};
+  const cues=[cue('self'),cue('area'),cue('ally-heal')],action=simple(cues);
+  let calls=0;
+  executeSkillUnits({casterId:'caster',skill:{id:'test',action},cues,selectedTargetId:'enemy'},
+    {actor:id=>id==='caster'?caster:enemy,candidates:()=>[caster,enemy],healCandidates:()=>{calls++;return [];},unit:()=> 'success'});
+  assert.equal(calls,1);
+});
 
 function fixture(action:SkillAction){
   const caster:Combatant={id:'caster',team:'party',position:{x:0,y:0},bounds:{x:-4,y:-4,width:8,height:8}};
