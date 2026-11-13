@@ -128,7 +128,7 @@ export class StoryUI {
   private skillContentNodes:UiNode[]=[];
   private skillAsideNodes:UiNode[]=[];
   private skillAsideKeys=new Set<string>();
-  private skillCells=new Map<string,{button:UiNode;level:number;marker?:UiImage}>();
+  private skillCells=new Map<string,{button:UiNode;level:number;marker?:UiImage;levelNodes?:UiImage[]}>();
   private skillTabs=new Map<string,UiNode>();
   /** 背包页与物品说明这一轮绘制收集到的文字；格子和说明正文都按滚动区跟随。 */
   private bagTextSpecs:MenuTextSpec[]=[];
@@ -1563,14 +1563,15 @@ export class StoryUI {
       // 未学习：原版在图标之上叠一张 75×75 的黑色半透明椭圆（图组 17 索引 11，已导出为
       // `skill-locked`），既没有等级底图也没有数字；已学习才画 17/15 的底图与图组 15 的等级数字
       // （`UISkill_SkillDrawIcon @0x162a2c`：底图在格内 +(57,51)、数字在 +(63,57)）。
-      if(!level)v.image(panels.assets['skill-locked'],0,0,75,75,button);
-      else{v.image(panels.assets['skill-rank'],57,51,24,25,button);v.image(panels.assets[`skill-rank-${level}`],63,57,10,13,button);}
+      const levelNodes:UiImage[]=[];
+      if(!level)levelNodes.push(v.image(panels.assets['skill-locked'],0,0,75,75,button));
+      else levelNodes.push(v.image(panels.assets['skill-rank'],57,51,24,25,button),v.image(panels.assets[`skill-rank-${level}`],63,57,10,13,button));
       // 选中框有两张：图组 17 索引 17 在大圆环之外还包住右下角的等级圈，索引 20 只有干净的大圆环。
       // 原版 `UISkill_DrawSkillGrid @0x1628e8` 按格子状态二选一，且与 `UISkill_SkillDrawIcon
       // @0x162c0c` 画等级底图读的是同一个动作记录位，所以两张图永远与格子一致——没有等级圈的
       // 格子用带角标的那张，右下角就会凭空多出一团亮斑。
       const marker=id===this.skill?v.image(panels.assets[level?'skill-selected':'skill-selected-ai'],-14,-14,106,102,button):undefined;
-      this.skillCells.set(id,{button,level,marker});
+      this.skillCells.set(id,{button,level,marker,levelNodes});
     });
     this.finishScroll('directory',tree,Math.max(...panels.skillPositions.map(p=>20+p.row*89+75)));
   }
@@ -1669,7 +1670,7 @@ export class StoryUI {
     if(progression){
       const cost=skill.ranks[level]?.pointCost??0,problem=progression.learningProblem(skill.id);
       buttons.push({image:panels.assets['skill-learn'],label:cost?`学习 ${cost}`:'学习',disabled:!!problem,
-        run:()=>this.action(()=>{progression.learn(skill.id);})});
+        run:()=>this.learnSkill(progression,skill.id)});
     }
     // 「快捷键」进登记那一屏，「取消快捷键」直接把这门技能从两组里清掉——原版也是两枚按钮两个回调
     // （`UISkill_ButtonShortcutExe 0x164660` 与 `UISkill_ButtonRemoveShortcutExe 0x1645f8`）。
@@ -1741,7 +1742,7 @@ export class StoryUI {
     this.render();
   }
   /** 另一处「取消快捷键」：把该对象从两组里一次清掉，对应 `PLAYER_RemoveShortcutAll`。 */
-  private clearShortcut(kind:ShortcutEntry['kind'],id:string):void{this.shortcutBar().clearObject(kind,id);this.render();}
+  private clearShortcut(kind:ShortcutEntry['kind'],id:string):void{this.shortcutBar().clearObject(kind,id);if(this.page==='skills')this.refreshSkillAside(false);else this.render();}
   private shortcutIcon(entry:ShortcutEntry):string {
     return entry.kind==='skill'?this.app.battleCatalog.skills[entry.id]?.icon:this.session!.bag.catalog.items[entry.id]?.icon;
   }
@@ -2431,6 +2432,22 @@ export class StoryUI {
     })
       .catch(error=>{if(!signal.aborted&&this.open&&this.selectedMemberId===id){this.notice=(error as Error).message;this.menuText?.renderPage(this.page);}});
   }
+  private learnSkill(progression:StorySkillProgression,id:string):void{
+    if(this.busy)return;this.busy=true;
+    try{progression.learn(id);}catch(error){this.notice=(error as Error).message;}
+    finally{this.busy=false;}
+    const cell=this.skillCells.get(id),level=progression.level(id),v=this.body!;
+    if(cell&&cell.level!==level&&cell.levelNodes){
+      cell.levelNodes.forEach(node=>node.destroy());cell.levelNodes=[];cell.level=level;
+      const assets=this.app.menuPanels.assets;
+      if(!level)cell.levelNodes.push(v.image(assets['skill-locked'],0,0,75,75,cell.button));
+      else cell.levelNodes.push(v.image(assets['skill-rank'],57,51,24,25,cell.button),v.image(assets[`skill-rank-${level}`],63,57,10,13,cell.button));
+      cell.marker?.destroy();cell.marker=v.image(assets[level?'skill-selected':'skill-selected-ai'],-14,-14,106,102,cell.button);
+    }
+    const header=this.skillTextSpecs.find(spec=>spec.key==='skills-header');
+    if(header)header.text=`${this.app.menuPanels.character.labels.skillPoints} ${progression.points()}`;
+    this.sessionSignature=this.sessionDataSignature()??this.sessionSignature;this.refreshSkillAside(false);
+  }
   private selectSkill(id:string):void{
     if(this.skill===id)return;
     const previous=this.skill?this.skillCells.get(this.skill):undefined;
@@ -2442,13 +2459,18 @@ export class StoryUI {
       const asset=this.skillSection==='ai'||!current.level?'skill-selected-ai':'skill-selected';
       current.marker=v.image(this.app.menuPanels.assets[asset],-14,-14,106,102,current.button);
     }
+    this.refreshSkillAside(true);
+  }
+  private refreshSkillAside(resetScroll:boolean):void{
+    const v=this.body!;
     for(const node of this.skillAsideNodes)node.destroy();
     const detail=this.scrollNames.get('description');
     if(detail){
+      if(!resetScroll)this.scrollOffsets.set('skills:description',detail.scrollTop);
       detail.destroy();this.scrollNames.delete('description');
       const index=v.scrolls.indexOf(detail);if(index>=0)v.scrolls.splice(index,1);
     }
-    this.scrollOffsets.delete('skills:description');
+    if(resetScroll)this.scrollOffsets.delete('skills:description');
     this.skillTextSpecs=this.skillTextSpecs.filter(spec=>!this.skillAsideKeys.has(spec.key));
     const before=new Set(v.root.list),textStart=this.skillTextSpecs.length,member=this.member()!;
     const draft=this.configuration().draft(this.app.battleCatalog,member.classId);

@@ -1172,10 +1172,12 @@ test('learning immediately redraws skill lock, rank, description and shortcut av
   const icon = () => f.scene.button(skill.name);
   const hasImage = (key: string) => icon().list.some(value => `interface:${value.getData('file')}` === `interface:${panels.assets[key]}`);
   assert(hasImage('skill-locked')); assert.equal(f.scene.button('快捷键').input!.enabled, false);
+  const iconBefore=icon(),tree=f.internals.scrollNames.get('directory'),tab=f.scene.button('技能目录');
   const overlay=icon().list.find(value=>value.getData('file')===panels.assets['skill-locked'])!,face=icon().getData('face');
   assert.deepEqual([overlay.x,overlay.y,overlay.width,overlay.height],[face.x,face.y,face.width,face.height],'技能目录遮罩覆盖图标');
   const learn = () => { const button = f.scene.nodes.find(value => value.shown && value.input?.enabled && String(value.getData('label')).startsWith('学习')); assert(button); f.scene.click(button); };
   learn(); assert.equal(f.session.skills.level(id), 1); assert(!hasImage('skill-locked')); assert(hasImage('skill-rank-1'));
+  assert.equal(icon(),iconBefore);assert.equal(f.internals.scrollNames.get('directory'),tree);assert.equal(f.scene.button('技能目录'),tab);
   assert.equal(f.scene.button('快捷键').input!.enabled, true);
   learn(); assert.equal(f.session.skills.level(id), 2); assert(hasImage('skill-rank-2'));
   assert(visibleDomLabels(f).some(label=>label.text===`${skill.name} (LV 2)`), '同一技能页即时重绘当前等级说明');
