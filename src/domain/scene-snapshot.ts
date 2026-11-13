@@ -30,6 +30,8 @@ export interface SceneActorState {
   clip?: ClipName;
   animationProgress?: number;
   animationPlaying?: boolean;
+  /** 当前剧情动作播完是否保持末帧；未设置表示没有剧情动作接管。 */
+  storyPoseHold?: boolean;
   unpositioned?: boolean;
   alpha?: number;
 }
@@ -68,7 +70,7 @@ export function validateSceneSnapshot(value: unknown): asserts value is SceneSna
     for (const key of ['characterId','worldEntityId','memberId','enemyKey','enemyId','summonedBy'])
       if (actor[key] !== undefined && !nonempty(actor[key])) at(`${key} 必须是非空字符串`);
     if (actor.authority !== undefined && !['registered','npc','story','static'].includes(actor.authority as string)) at('authority 无效');
-    for (const key of ['flip','unpositioned','removed','animationPlaying','stageHidden','followsPlayer','followVisibility'])
+    for (const key of ['storyPoseHold','flip','unpositioned','removed','animationPlaying','stageHidden','followsPlayer','followVisibility'])
       if (actor[key] !== undefined && typeof actor[key] !== 'boolean') at(`${key} 必须是布尔值`);
     if (actor.alpha !== undefined && (!finite(actor.alpha) || actor.alpha < 0 || actor.alpha > 1)) at('alpha 必须在 0..1');
     if (actor.animationProgress !== undefined && (!finite(actor.animationProgress) || actor.animationProgress < 0 || actor.animationProgress > 1)) at(`animationProgress 必须在 0..1（当前 ${String(actor.animationProgress)}）`);

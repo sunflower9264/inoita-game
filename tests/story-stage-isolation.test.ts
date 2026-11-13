@@ -635,7 +635,7 @@ test('scene reconstruction restores held animation frames on every character lay
   const appearance={id:'hero',clips:{'idle-south':clip,'die-south':clip}} as ActorDefinition;
   const scene={anims:{exists:()=>true},add:{
     container(x:number,y:number){return {x,y,scene:{},setDepth(){return this;},setVisible(){return this;},setAlpha(){return this;},addAt(){},destroy(){}};},
-    sprite(){return {anims:{progress:0,isPlaying:false,timeScale:1,accumulator:0,setProgress(value:number){this.progress=value;},stop(){this.isPlaying=false;}},
+    sprite(){return {anims:{progress:0,currentAnim:{},getProgress(){return this.progress;},isPlaying:false,timeScale:1,accumulator:0,setProgress(value:number){this.progress=value;},stop(){this.isPlaying=false;}},
       setOrigin(){return this;},setBlendMode(){return this;},setScale(){return this;},play(){this.anims.isPlaying=true;},destroy(){}};}
   }};
   const characters=drawStoryCharacters(scene as never,[{id:'player',actor:'hero',x:10,y:20,facing:'south',visible:true,
@@ -679,17 +679,30 @@ test('normal and skipped poses settle on identical held or idle animation frames
   const run=async(skip:boolean,hold:boolean)=>{
     const clip={frameWidth:8,frameHeight:8,frames:4,originX:0,originY:0,frameRate:10,mirrorX:false,
       layers:[{key:'body',file:'',blend:'normal'}]};
-    const appearance={id:'guard',clips:{'idle-south':clip,'fall-down-south':clip}} as ActorDefinition;
+    const appearance={id:'guard',clips:{'idle-south':clip,'fall-down-south':clip,'fall-down-east':clip}} as ActorDefinition;
     const scene={prepareClipAssets:async()=>{},anims:{exists:()=>true},add:{
       container(x:number,y:number){return {x,y,scene:{},setDepth(){return this;},setVisible(){return this;},setAlpha(){return this;},addAt(){},destroy(){}};},
-      sprite(){return Object.assign(new EventEmitter(),{anims:{progress:0,isPlaying:false,timeScale:1,accumulator:0,setProgress(value:number){this.progress=value;},stop(){this.isPlaying=false;}},
+      sprite(){return Object.assign(new EventEmitter(),{anims:{progress:0,currentAnim:{},getProgress(){return this.progress;},isPlaying:false,timeScale:1,accumulator:0,setProgress(value:number){this.progress=value;},stop(){this.isPlaying=false;}},
         setOrigin(){return this;},setBlendMode(){return this;},setScale(){return this;},play(){this.anims.isPlaying=true;},destroy(){}});}
     }};
     const visual=drawStoryCharacters(scene as never,[{id:'entity:guard',actor:'guard',x:10,y:20,facing:'south',visible:true}],new Map([['entity:guard',appearance]])).get('entity:guard')!;
     const presenter=new StoryPresenter({} as never,()=>({} as never),()=>scene as never);
     Object.assign(presenter,{delay:async()=>{},state:{bindings:[['guard','entity:guard']]},actors:new Map([['entity:guard',{visual,facing:'south'}]])});
     const signal=new AbortController().signal,skipping=new AbortController();if(skip)skipping.abort();
-    await presenter.execute({type:'pose',target:'guard',pose:'fall-down',durationMs:100,hold},{signal,skipSignal:skipping.signal});
+    await presenter.execute({type:'pose',target:'guard',pose:'fall-down',durationMs:0,hold},{signal,skipSignal:skipping.signal});
+    if (!skip) {
+      assert.equal(visual.clipName,'fall-down-south','等待时间结束后动作继续播放');
+      assert.equal(visual.layers[0]!.anims.isPlaying,true);
+      assert.equal((visual.layers[0]!.anims as unknown as {progress:number}).progress,0,'保持动作也从首帧开始');
+      const internal = presenter as unknown as {actors:Map<string,unknown>;turn(actor:unknown,facing:string):void};
+      visual.layers[0]!.anims.setProgress(.5);
+      internal.turn(internal.actors.get('entity:guard'),'east');
+      assert.equal(visual.clipName,'fall-down-east');
+      assert.equal(visual.layers[0]!.anims.isPlaying,true);
+      assert.equal((visual.layers[0]!.anims as unknown as {progress:number}).progress,.5);
+      internal.turn(internal.actors.get('entity:guard'),'south');
+      visual.layers[0]!.emit('animationcomplete');
+    }
     return {clip:visual.clipName,frames:visual.layers.map(layer=>({progress:(layer.anims as unknown as {progress:number}).progress,playing:layer.anims.isPlaying}))};
   };
   for(const hold of [false,true]){

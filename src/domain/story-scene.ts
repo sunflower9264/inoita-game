@@ -165,6 +165,7 @@ export function resolveStoryScene(declaration: StoryStage, source: SceneSnapshot
   if (!player) throw new Error('演出接管时缺少主角');
   if (!declaration.retainPlayerPosition) {
     player.x = declaration.x; player.y = declaration.y; player.facing = declaration.facing;
+    delete player.storyPoseHold;
     player.clip=`idle-${player.facing}`;player.animationProgress=0;player.animationPlaying=true;
   }
   player.visible = declaration.playerVisible;
@@ -251,7 +252,7 @@ export function applyStorySceneAction(previous: StoryStageSnapshot, action: Perf
       const appearanceChanged=actor.actor!==entity.actor;
       Object.assign(actor, { actor: entity.actor!, worldEntityId:entity.id, characterId: entity.characterId, x: entity.x!, y: entity.y!,
         facing: entity.facing ?? actor.facing, visible: entity.visible !== false, unpositioned: false, removed:false });
-      actor.clip=`idle-${actor.facing}`;actor.animationProgress=0;actor.animationPlaying=true;
+      delete actor.storyPoseHold;actor.clip=`idle-${actor.facing}`;actor.animationProgress=0;actor.animationPlaying=true;
       if(appearanceChanged)delete actor.appearance;
       controlIndependently(actor);
       if (action.target) bind(state, action.target, actor);
@@ -285,7 +286,7 @@ export function applyStorySceneAction(previous: StoryStageSnapshot, action: Perf
     }
     if(action.worldEntityId)actor.worldEntityId=action.worldEntityId;
     Object.assign(actor, { x: action.x, y: action.y, facing: action.facing, visible: true, unpositioned: false, removed:false });
-    actor.clip=`idle-${actor.facing}`;actor.animationProgress=0;actor.animationPlaying=true;
+    delete actor.storyPoseHold;actor.clip=`idle-${actor.facing}`;actor.animationProgress=0;actor.animationPlaying=true;
     controlIndependently(actor);
     // 正式出场：撤销开场的临时隐藏，之后的位置和显隐照常写回正式世界。
     delete actor.stageHidden;
@@ -299,9 +300,12 @@ export function applyStorySceneAction(previous: StoryStageSnapshot, action: Perf
     }
   }
   else if (action.type === 'face' && !actor.removed) {
-    actor.facing = action.facing;actor.clip=`idle-${actor.facing}`;actor.animationProgress=0;actor.animationPlaying=true;
+    actor.facing = action.facing;
+    if (actor.storyPoseHold !== undefined && actor.clip) actor.clip = actor.clip.replace(/-(north|south|east|west)$/, `-${actor.facing}`) as typeof actor.clip;
+    else { actor.clip=`idle-${actor.facing}`;actor.animationProgress=0;actor.animationPlaying=true; }
   }
   else if (action.type === 'pose' && !actor.unpositioned && !actor.removed) {
+    actor.storyPoseHold = action.hold && action.pose !== 'idle' ? true : undefined;
     actor.clip=`${action.hold?action.pose:'idle'}-${actor.facing}`;
     actor.animationProgress=action.hold?1:0;
     actor.animationPlaying=!action.hold;
@@ -309,7 +313,7 @@ export function applyStorySceneAction(previous: StoryStageSnapshot, action: Perf
   else if (action.type === 'walk' && !actor.unpositioned && !actor.removed) {
     if(actor.x!==action.x||actor.y!==action.y)actor.facing=faceTarget(actor,action);
     actor.x = action.x; actor.y = action.y;
-    actor.clip=`idle-${actor.facing}`;actor.animationProgress=0;actor.animationPlaying=true;
+    delete actor.storyPoseHold;actor.clip=`idle-${actor.facing}`;actor.animationProgress=0;actor.animationPlaying=true;
   }
   return syncStoryScene(state);
 }

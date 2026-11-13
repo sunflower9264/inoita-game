@@ -191,7 +191,7 @@ test('pose reduction preserves a held last frame and resumes idle for a non-held
   assert.deepEqual([player.clip,player.animationProgress,player.animationPlaying],['attack-south',1,false]);
   const faced=applyStorySceneAction(snapshot,{type:'face',target:'player',facing:'east'});
   const turned=boundSceneActor(faced,'player')!;
-  assert.deepEqual([turned.clip,turned.animationProgress,turned.animationPlaying],['idle-east',0,true]);
+  assert.deepEqual([turned.clip,turned.animationProgress,turned.animationPlaying],['attack-east',1,false]);
   snapshot=applyStorySceneAction(snapshot,{type:'pose',target:'player',pose:'attack',durationMs:100});
   player=boundSceneActor(snapshot,'player')!;
   assert.deepEqual([player.clip,player.animationProgress,player.animationPlaying],['idle-south',0,true]);

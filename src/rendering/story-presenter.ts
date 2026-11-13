@@ -20,7 +20,7 @@ import type { StoryStageScene } from '../scenes/story-stage-scene.ts';
 import type { StoryEntityState } from '../domain/story-world.ts';
 import { freezeSnapshot, storyDevMode } from '../domain/dev-mode.ts';
 
-interface Performer { visual: CharacterVisual; facing: Facing; worldEntityId?: string; unpositioned?:boolean }
+interface Performer { visual: CharacterVisual; facing: Facing; worldEntityId?: string; unpositioned?:boolean; storyPoseHold?: boolean; clearPose?: () => void }
 type VisualAction = Exclude<PerformanceAction, { type: 'parallel' }>;
 /** 跳过时只需要改逻辑舞台状态的演员动作。 */
 type LogicalSceneAction = Extract<VisualAction, { type: 'world-object' | 'appear' | 'show' | 'leave' | 'face' | 'pose' | 'walk' }>;
@@ -148,7 +148,7 @@ export class StoryPresenter implements StoryPresentationPort {
       const appearance = storyDevMode() ? freezeSnapshot(visual.actor) : visual.actor;
       const next = { ...actor, x: position.x, y: position.y, facing: performer.facing,
         visible: visual.container.visible, unpositioned: performer.unpositioned,
-        clip: visual.clipName ?? undefined, alpha: visual.container.alpha, appearance };
+        storyPoseHold: performer.storyPoseHold, clip: visual.clipName ?? undefined, alpha: visual.container.alpha, appearance };
       const animation = visual.layers[0]?.anims;
       if (animation?.currentAnim) {
         const state = characterAnimationState(visual);
@@ -185,6 +185,11 @@ export class StoryPresenter implements StoryPresentationPort {
     return syncStoryScene(snapshot);
   }
   private applyLogicalStage(snapshot: StoryStageSnapshot): void {
+    for (const actor of snapshot.scene.actors) if (actor.storyPoseHold !== undefined) {
+      if (actor.storyPoseHold) { actor.animationProgress = 1; actor.animationPlaying = false; }
+      else { actor.clip = `idle-${actor.facing}`; actor.animationProgress = 0; actor.animationPlaying = true; delete actor.storyPoseHold; }
+    }
+    for (const actor of this.actors.values()) actor.clearPose?.();
     this.skipping = true;
     this.state = snapshot;
     this.scenes.set(snapshot.map, structuredClone(snapshot.scene));
@@ -259,6 +264,7 @@ export class StoryPresenter implements StoryPresentationPort {
     return actor?.unpositioned ? undefined : actor;
   }
   private resetActors(preserveCurtain = false): void {
+    for (const actor of this.actors.values()) actor.clearPose?.();
     this.actors.clear();
     for (const effect of this.effects) if (effect.scene) effect.destroy();
     this.effects.clear();
@@ -352,7 +358,9 @@ export class StoryPresenter implements StoryPresentationPort {
       const visual = scene.characters.get(actor.id);
       if (!visual) throw new Error('剧情场景对象未绘制：' + actor.id);
       this.actors.set(actor.id, { visual, facing: actor.facing,
-        worldEntityId: actor.worldEntityId, unpositioned: actor.unpositioned });
+        worldEntityId: actor.worldEntityId, unpositioned: actor.unpositioned, storyPoseHold: actor.storyPoseHold });
+      const performer = this.actors.get(actor.id)!;
+      if (actor.storyPoseHold !== undefined && actor.animationPlaying !== false) this.watchPose(performer);
     }
     if (snapshot.camera) scene.cameras.main.centerOn(snapshot.camera.x, snapshot.camera.y);
     if (snapshot.curtain) { this.opacity = snapshot.curtain.opacity; this.color = snapshot.curtain.color; }
@@ -363,8 +371,41 @@ export class StoryPresenter implements StoryPresentationPort {
     await this.stage({ type: 'stage', ...destination, playerVisible: true, cast: [] }, signal);
   }
   private face(actor: Performer, facing: Facing): void {
+    actor.clearPose?.(); delete actor.storyPoseHold;
     actor.facing = facing;
     setCharacterClip(this.scene(), actor.visual, `idle-${facing}`);
+  }
+  private watchPose(actor: Performer, signal?: AbortSignal): void {
+    actor.clearPose?.();
+    const layers = actor.visual.layers;
+    const hold = actor.storyPoseHold;
+    const complete = () => {
+      cleanup();
+      if (this.skipping || actor.visual.layers !== layers || !actor.visual.container.scene) return;
+      if (hold) {
+        for (const layer of layers) { layer.anims.setProgress(1); layer.anims.stop(); }
+      } else this.face(actor, actor.facing);
+    };
+    const cleanup = () => {
+      layers[0]?.off('animationcomplete', complete);
+      signal?.removeEventListener('abort', cleanup);
+      if (actor.clearPose === cleanup) delete actor.clearPose;
+    };
+    actor.clearPose = cleanup;
+    layers[0]?.once('animationcomplete', complete);
+    signal?.addEventListener('abort', cleanup, { once: true });
+  }
+  private turn(actor: Performer, facing: Facing): void {
+    if (actor.storyPoseHold === undefined || !actor.visual.clipName) { this.face(actor, facing); return; }
+    const animation = characterAnimationState(actor.visual);
+    const clip = actor.visual.clipName.replace(/-(north|south|east|west)$/, `-${facing}`) as NonNullable<CharacterVisual['clipName']>;
+    actor.clearPose?.(); actor.facing = facing;
+    setCharacterClip(this.scene(), actor.visual, clip);
+    for (const layer of actor.visual.layers) {
+      layer.anims.setProgress(animation.progress ?? 0);
+      if (animation.playing === false) layer.anims.stop();
+    }
+    if (animation.playing !== false) this.watchPose(actor);
   }
   private drawCurtain(): void {
     const scene = this.scene();
@@ -414,6 +455,7 @@ export class StoryPresenter implements StoryPresentationPort {
   }
   private async walk(action: Extract<VisualAction, {type:'walk'}>, playback: PerformancePlayback, batch = false): Promise<void> {
     const scene = this.scene(), actor = this.actor(action.target), visual = actor.visual, movement = scene.movement!;
+    actor.clearPose?.(); delete actor.storyPoseHold;
     if(actor.unpositioned)return;
     const destination = { x: action.x, y: action.y };
     const finalFacing = faceTarget(movement.position(visual), destination);
@@ -503,7 +545,10 @@ export class StoryPresenter implements StoryPresentationPort {
         placements.push({visual, position:actor, enabled:actor.visible && !actor.unpositioned});
         visual.container.setVisible(actor.visible && !actor.unpositioned);
       }
-      if (!before || actor.facing !== before.facing || actor.id === appearing) this.face(performer, actor.facing);
+      if (!before || actor.facing !== before.facing || actor.id === appearing) {
+        if (action.type === 'face') this.turn(performer, actor.facing);
+        else this.face(performer, actor.facing);
+      }
     }
     if (action.type === 'world-object') {
       for (const placement of placements) scene.movement!.placeContent(placement.visual, placement.position, placement.enabled);
@@ -576,7 +621,18 @@ export class StoryPresenter implements StoryPresentationPort {
         }
         this.applySceneAction(action); return;
       }
-      case 'face': this.applySceneAction(action); return;
+      case 'face': {
+        const actor = this.present(action.target);
+        if (actor?.storyPoseHold !== undefined && actor.visual.clipName) {
+          const clip = actor.visual.clipName.replace(/-(north|south|east|west)$/, `-${action.facing}`) as NonNullable<CharacterVisual['clipName']>;
+          if (!await this.prepareVisual(playback.signal, playback.skipSignal,
+            signal => scene.prepareClipAssets(actor.visual.actor, clip, signal))) {
+            const current = this.captureStage(); if (current) this.applyLogicalStage(current);
+            this.applyLogicalAction(action); return;
+          }
+        }
+        this.applySceneAction(action); return;
+      }
       case 'walk': {
         const actor=this.actor(action.target);
         const facing=faceTarget(scene.movement!.position(actor.visual),action);
@@ -654,18 +710,19 @@ export class StoryPresenter implements StoryPresentationPort {
       const logical = this.captureStage(); if (logical) this.applyLogicalStage(logical);
       this.applyLogicalAction(action); return;
     }
+    actor.clearPose?.();
+    actor.storyPoseHold = action.pose === 'idle' ? undefined : !!action.hold;
     setCharacterClip(scene, actor.visual, clip, true);
-    // 原版按 `ACTDATABASE +4` 决定动作播完要不要排收尾：等于 1 的动作停在末帧保持姿势
-    // （114／115／147／149），其余回待机。待机自己循环，不需要收尾事件。
-    if (action.pose !== 'idle' && !action.hold) actor.visual.layers[0]?.once('animationcomplete', () => {
-      if (actor.visual.container.scene && actor.visual.clipName === clip) this.face(actor, actor.facing);
-    });
+    if (actor.storyPoseHold !== undefined) this.watchPose(actor, playback.signal);
     await this.delay(action.durationMs, playback);
-    if (action.hold && action.pose !== 'idle') {
-      setCharacterClip(scene, actor.visual, clip);
-      for (const layer of actor.visual.layers) { layer.anims.setProgress(1); layer.anims.stop(); }
-    } else this.face(actor, actor.facing);
-    if (this.skipping && this.state?.scene) this.applyLogicalAction(action);
+    if (playback.skipSignal.aborted || this.skipping) {
+      actor.clearPose?.();
+      if (action.hold && action.pose !== 'idle') {
+        for (const layer of actor.visual.layers) { layer.anims.setProgress(1); layer.anims.stop(); }
+      } else this.face(actor, actor.facing);
+      if (this.state?.scene) this.applyLogicalAction(action);
+    }
+
   }
 
   private applyLogicalAction(action: LogicalSceneAction): void {

@@ -63,3 +63,5 @@ npm run test:standalone
 - `party.test.ts` 与 `story-menu-interactions.test.ts` 验证佣兵能力点、旧成长保留和人物页加点。
 
 - `status-color-renderer.test.ts` 使用幽灵黑底源图验证发光层闪白模式，以及换动作后混合方式切换、新旧图层的颜色恢复。
+
+- 剧情动作测试检查等待结束时仍在播放、自然完成后的保持或待机，以及跳过后的最终姿势。

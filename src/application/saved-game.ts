@@ -56,6 +56,27 @@ function stageHasDuplicateActors(stage:unknown):boolean {
  * 如果带重复演员，丢弃舞台快照，让剧情从当前节点继续而不是拒绝整份存档。
  */
 const SAVE_UPGRADES:Record<number,SaveUpgrade>={
+  46:game=>{
+    const visit = (value: unknown): void => {
+      if (!value || typeof value !== 'object') return;
+      const record = value as Record<string, unknown>;
+      if (typeof record.clip === 'string' && /^(lie-down|lie-side|cry|pick-up)-/.test(record.clip)) record.storyPoseHold = true;
+      const visibleEvents = ['event-54','event-60','event-72','event-74','event-85','event-352','event-392','event-393','event-394','event-395'];
+      if (visibleEvents.includes(String(record.eventId ?? record.script)) && record.stage && typeof record.stage === 'object') {
+        const stage = record.stage as {playerVisible?:boolean;scene?:{actors?:SceneActorState[]}};
+        stage.playerVisible = true;
+        for (const actor of stage.scene?.actors ?? []) {
+          if (actor.id === 'player') actor.visible = true;
+          else if (actor.followsPlayer && !actor.stageHidden && actor.followVisibility !== undefined) {
+            actor.visible = actor.followVisibility; delete actor.followVisibility;
+          }
+        }
+      }
+      for (const child of Object.values(record)) visit(child);
+    };
+    visit(game.session); visit(game.world);
+    game.format=47;
+  },
   45:game=>{
     const party=game.session.party;
     for(const member of party?.members??[]){

@@ -297,3 +297,27 @@ test('format 44 equipment defaults unlocked and current equipment locks round tr
   const loaded=prepareSavedGame(saved,content);
   assert.equal(loaded.session.bag.get(equipment.id)!.locked,true);
 });
+
+ test('format 46 held poses retain their finish policy and do not mutate the old save',()=>{
+  const saved=record(); saved.format=46;
+  const player=saved.world.scene!.actors[0]!;
+  Object.assign(player,{clip:'lie-side-west',animationProgress:1,animationPlaying:false});
+  const before=structuredClone(saved);
+  const restored=prepareSavedGame(saved,content);
+  assert.equal(restored.world.scene!.actors[0]!.storyPoseHold,true);
+  assert.deepEqual(saved,before);
+ });
+
+test('format 46 repairs a hidden player only in the affected same-map event',()=>{
+  for (const event of [352,4]) {
+    const saved=record();saved.format=46;
+    const script=`event-${event}`,map=saved.world.location.map;
+    const player=structuredClone(saved.world.scene!.actors[0]!);player.visible=false;
+    const runtime=saved.session.runtime as unknown as {runs:unknown[]};
+    runtime.runs=[{id:'visibility',script,eventId:script,occurrence:'visibility',cursor:{script,node:content.campaign.scripts[script]!.entry},status:'running',
+      stage:{type:'stage',map,x:player.x,y:player.y,facing:player.facing,playerVisible:false,cast:[],bindings:[['player','player']],scene:{map,actors:[player]}}}];
+    const stage=prepareSavedGame(saved,content).session.runtimeState.runs[0]!.stage!;
+    assert.equal(stage.playerVisible,event===352);
+    assert.equal(stage.scene.actors[0]!.visible,event===352);
+  }
+});
