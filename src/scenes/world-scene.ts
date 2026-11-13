@@ -200,6 +200,8 @@ export class WorldScene extends Phaser.Scene {
   private request = new AbortController();
   private mapAssets?: AssetLease;
   private prefetchTarget?: string;
+  private prefetchFailedTarget?: string;
+  private prefetchRetryAt = 0;
   private prefetchTask?: Promise<void>;
   map?: WorldMap;
   entities: EntityPlacement[] = [];
@@ -255,6 +257,7 @@ export class WorldScene extends Phaser.Scene {
     this.dropCatalog=undefined;this.springCatalog=undefined;this.groundLootView=undefined;this.pickupMessages=undefined;this.pickupRecipients.clear();
     this.questStatuses.clear();this.questStatusVersion=undefined;this.questNoticesReady=false;
     this.prefetchTarget = undefined; this.prefetchTask = undefined;
+    this.prefetchFailedTarget = undefined; this.prefetchRetryAt = 0;
     this.baseEntities=[];this.occupiedRegions.clear();this.encounterResults.clear();this.triggerIndex=undefined;this.refreshStateSignatureValue=undefined;this.lastInteractionScan=undefined;this.interactionRevision=0;this.charactersRevision=0;
     this.projectedActorIds.clear();
   }
@@ -719,6 +722,7 @@ export class WorldScene extends Phaser.Scene {
   prefetchMap(destination: string): void {
     if (!this.map || destination === this.map.id || this.loadingWorld || this.destroyed) return;
     if (this.prefetchTarget === destination) return;
+    if (this.prefetchFailedTarget === destination && this.time.now < this.prefetchRetryAt) return;
     this.prefetchTarget = destination;
     if (this.prefetchTask) return;
     const signal = this.request.signal;
@@ -727,17 +731,23 @@ export class WorldScene extends Phaser.Scene {
         const target = this.prefetchTarget;
         try {
           const reference = this.app.world.maps.find(entry => entry.id === target);
-          if (!reference) return;
+          if (!reference) throw new Error(`地图不存在：${target}`);
           const map = await this.app.content.map(reference.file, signal);
           signal.throwIfAborted();
           const lease = await loadSceneAssets(this, [
             { kind: 'image', key: map.id + '-ground', file: map.ground },
             { kind: 'image', key: map.id + '-canopy', file: map.canopy }
-          ], () => {}, true);
+          ], () => {}, true, signal);
           if (signal.aborted || this.prefetchTarget !== target) lease.release();
           else this.app.retainMapPrefetch(lease);
         } catch {
           if (signal.aborted) return;
+          if (this.prefetchTarget === target) {
+            this.prefetchFailedTarget = target;
+            this.prefetchRetryAt = this.time.now + 1000;
+            this.prefetchTarget = undefined;
+            return;
+          }
         }
         if (this.prefetchTarget === target) return;
       }
@@ -747,7 +757,7 @@ export class WorldScene extends Phaser.Scene {
     void task.finally(() => { if (this.prefetchTask === task) this.prefetchTask = undefined; });
   }
   private prefetchVisibleExit(position: { x: number; y: number }, previous: { x: number; y: number }): void {
-    if (!this.map || this.prefetchTarget) return;
+    if (!this.map) return;
     const vx = position.x - previous.x, vy = position.y - previous.y;
     let destination: string | undefined, nearest = Infinity;
     for (const exit of this.map.exits) {

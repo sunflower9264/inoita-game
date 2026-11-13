@@ -278,3 +278,39 @@ test('party death finishes on logical time even when no Tween completion arrives
   for(;frame<9;)kernel.step(++frame);assert.equal(defeats,0);kernel.step(++frame);
   assert.equal(defeats,1);assert.equal(visible,false);assert.equal(stopped,1);assert.equal(kernel.idle,true);
 });
+
+test('exit prefetch switches direction and retries a failed target after a delay', async () => {
+  const requests:string[]=[], retained:string[]=[];
+  let resolveFirst!: (value: unknown) => void;
+  let failB = true;
+  const first = new Promise(resolve => { resolveFirst = resolve; });
+  const host:any = Object.assign(Object.create(WorldScene.prototype), {
+    map:{id:'current',exits:[
+      {destination:'a',x:100,y:0,width:2,height:2},
+      {destination:'b',x:-100,y:0,width:2,height:2}
+    ]},
+    request:new AbortController(),loadingWorld:false,destroyed:false,time:{now:0},
+    cameras:{main:{worldView:{contains:()=>true}}},exitAvailable:()=>true,
+    textures:{exists:()=>true,get:()=>({has:()=>true}),on:()=>{},remove:()=>{}},
+    anims:{exists:()=>false,remove:()=>{}},events:{off:()=>{},once:()=>{}},
+    app:{world:{maps:[{id:'a',file:'a'},{id:'b',file:'b'}]},
+      content:{map:(file:string)=>{requests.push(file);if(file==='a')return first;
+        if(failB){failB=false;return Promise.reject(new Error('offline'));}
+        return Promise.resolve({id:'b',ground:'b-ground',canopy:'b-canopy'});}},
+      retainMapPrefetch:()=>retained.push('b')}
+  });
+  host.prefetchVisibleExit({x:0,y:0},{x:-1,y:0});
+  host.prefetchVisibleExit({x:0,y:0},{x:1,y:0});
+  assert.deepEqual(requests,['a']);
+  resolveFirst({id:'a',ground:'a-ground',canopy:'a-canopy'});
+  await host.prefetchTask;
+  assert.deepEqual(requests,['a','b']);
+  assert.equal(host.prefetchTarget,undefined);
+  host.prefetchVisibleExit({x:0,y:0},{x:1,y:0});
+  assert.deepEqual(requests,['a','b']);
+  host.time.now=1000;
+  host.prefetchVisibleExit({x:0,y:0},{x:1,y:0});
+  await host.prefetchTask;
+  assert.deepEqual(requests,['a','b','b']);
+  assert.deepEqual(retained,['b']);
+});
