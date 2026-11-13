@@ -2232,10 +2232,10 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
       this.occupiedRegions,
       event => {
         const candidates = event.near ? triggerIndex?.charactersByActor.get(event.near) : undefined;
-        const beside = candidates
-          ? candidates.find(character => (!event.nearCharacterId || character.entity.characterId === event.nearCharacterId) && character.container.visible)
-          : this.characters.find(character => character.entity.actor === event.near && (!event.nearCharacterId || character.entity.characterId === event.nearCharacterId) && character.container.visible);
-        return beside && nearInteractive(pos, beside.container, beside.actor.collision, !!beside.entity.flip) ? beside : null;
+        return (candidates ?? this.characters).find(character => character.entity.actor === event.near
+          && (!event.nearCharacterId || character.entity.characterId === event.nearCharacterId)
+          && character.container.visible
+          && nearInteractive(pos, character.container, character.actor.collision, !!character.entity.flip)) ?? null;
       },
       event => !event.condition || this.app.session.evaluateCondition(event.condition));
     if (near) {
