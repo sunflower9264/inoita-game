@@ -200,7 +200,7 @@ test('invalid class, map, position and actors are rejected without changing the 
 });
 
 test('scene visit actors are validated before installation for current and previous saves',()=>{
-  for(const format of [47,48,49]){
+  for(const format of [47,48,49,50]){
     const saved=record();saved.format=format;
     saved.world.scene!.visit={generatedEntities:[{id:'visitor',actor:'missing',x:0,y:0}],
       breakableRolls:[],roster:{enemies:[],sequence:0,partySize:1}};
@@ -209,6 +209,21 @@ test('scene visit actors are validated before installation for current and previ
     assert.deepEqual(saved,before);
     saved.world.scene!.visit.generatedEntities[0]!.actor=content.campaign.start.actor;
     assert.equal(prepareSavedGame(saved,content).world.scene!.visit!.generatedEntities[0]!.actor,content.campaign.start.actor);
+  }
+});
+
+test('scene visit enemy roster and breakable rolls are validated before installation',()=>{
+  const enemy=content.battleCatalog.enemies[0]!.id;
+  for(const format of [47,48,49,50])for(const invalid of ['roster','roll']){
+    const saved=record();saved.format=format;
+    const visit=saved.world.scene!.visit={generatedEntities:[],
+      breakableRolls:[['spawn',invalid==='roll'?'missing':enemy]],
+      roster:{enemies:[{key:'enemy',enemyId:invalid==='roster'?'missing':enemy,x:0,y:0}],sequence:0,partySize:1}};
+    const before=structuredClone(saved);
+    assert.throws(()=>prepareSavedGame(saved,content),/存档记录的地图敌人无效/);
+    assert.deepEqual(saved,before);
+    visit.roster.enemies[0]!.enemyId=enemy;visit.breakableRolls[0]![1]=enemy;
+    assert.deepEqual(prepareSavedGame(saved,content).world.scene!.visit,visit);
   }
 });
 
