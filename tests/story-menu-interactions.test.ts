@@ -1721,6 +1721,35 @@ test('shop category changes reset scrolling while details, transactions and sess
   assert.equal(bagScroll().scrollTop, offset, '成交及库存通知重绘保持同分类滚动位置');
 });
 
+test('completed shop trade keeps unchanged items and scrolling controls',t=>{
+  const f=fixture();t.after(f.cleanup);
+  const entry=f.add('healing-potion-xl',3),other=f.add('healing-potion-l');
+  f.menu.openShop(f.app.shops.lampShop,'');
+  const sold=f.scene.button(`出售 ${items.items[entry.item].name}`),retained=f.scene.button(`出售 ${items.items[other.item].name}`);
+  const scroll=f.internals.shopPanel!.bagScroll!,all=f.scene.button('全部'),before=f.session.bag.count(entry.item),money=f.session.money;
+  f.scene.click(sold);f.scene.click(f.scene.button('出售'));f.scene.click(f.scene.button('确定'));
+  const confirm=f.scene.button('确定'),action=confirm.getData('action');f.scene.click(confirm);action();
+  assert.equal(f.session.bag.count(entry.item),before-1);assert(f.session.money>money);
+  assert.equal(f.scene.button(`出售 ${items.items[entry.item].name}`),sold);
+  assert.equal(f.scene.button(`出售 ${items.items[other.item].name}`),retained);
+  assert.equal(f.internals.shopPanel!.bagScroll,scroll);assert.equal(f.scene.button('全部'),all);
+  assert.equal(f.scene.buttons('确定').length,0);
+});
+
+test('buying from a shop keeps the remaining shelf and bag controls',t=>{
+  const f=fixture();t.after(f.cleanup);f.session.gainMoney(1000000);const entry=f.add('healing-potion-xl');
+  const shop=Object.entries(f.app.shops.shops).find(([,value])=>value.categories.length&&value.stockRules.some(rule=>rule.kind==='level-range'))!;
+  f.menu.openShop(shop[0],'');const store=f.internals.shopPanel!.store,offer=store.offers[0],item=items.items[offer.instance.item];
+  const sell=f.scene.button(`出售 ${items.items[entry.item].name}`),all=f.scene.button('全部'),scroll=f.internals.shopPanel!.bagScroll!;
+  const buy=f.scene.buttons(`购买 ${item.name}`)[0]!,before=f.session.bag.count(offer.instance.item),money=f.session.money;
+  f.scene.click(buy);f.scene.click(f.scene.button('购买'));
+  for(let step=0;step<2&&f.internals.modal.root.visible;step++)f.scene.click(f.scene.button('确定'));
+  assert.equal(f.session.bag.count(offer.instance.item),before+1);assert(f.session.money<money);
+  assert.equal(f.scene.button(`出售 ${items.items[entry.item].name}`),sell);assert.equal(f.scene.button('全部'),all);
+  assert.equal(f.internals.shopPanel!.bagScroll,scroll);
+  if(!offer.limited)assert.equal(f.scene.buttons(`购买 ${item.name}`)[0],buy);
+});
+
 test('shop inventory quantity badges move with the scrolled grid', t => {
   const f = fixture(); t.after(f.cleanup);
   const supplies = Object.keys(items.items).filter(id => items.items[id].category === 'consumable'
