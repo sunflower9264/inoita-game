@@ -89,7 +89,7 @@ function fixture(gmMode?:MenuContext['gmMode'],cloud?:CloudSavePort){
   const domLabels:FakeDomLabel[]=[];
   const domUi={label:()=>{const label=new FakeDomLabel();domLabels.push(label);return label;}};
   const app:MenuContext={inputRouter:new InputRouter({textInputFocused:()=>false}),saves,gmMode,cloud,ui:{ready:true,suspended:false,setMode:()=>{},loading:()=>{},menuLoaded:()=>{},error:()=>{}},
-    loadChangelog:async()=>({version:1,entries:[]}),
+    loadChangelog:async()=>({version:2,releases:[]}),
     enterGame:async()=>{events.push('new');},resumeSlot:async(slot,signal)=>{events.push(`load:${slot}`);if(signal)signals.push(signal);}};
   Object.defineProperty(app,'domUi',{value:domUi});
   const view=fakeView(1200,640),modal=fakeView(1024,640);
@@ -102,14 +102,15 @@ function fixture(gmMode?:MenuContext['gmMode'],cloud?:CloudSavePort){
     renameRef:undefined,slotRequest:undefined,slotPortraits:undefined,prompt:undefined,settingsScroll:0,backdrop:undefined,
     challengeClicks:0,challengeTimer:undefined,
     domSpecs:[] as MenuTextSpec[],menuText:undefined as MenuTextLayer|undefined,modalLabels:[] as FakeDomLabel[],
-    changelogOpen:false,changelogState:'idle',changelogEntries:[] as string[],changelogHeights:[] as number[],
+    changelogOpen:false,changelogState:'idle',changelogReleases:[] as {gameVersion:string;entries:string[]}[],changelogSelected:0,
+    changelogVersionsScroll:undefined as FakeScroll|undefined,changelogVersionsScrollTop:0,changelogEntries:[] as string[],changelogHeights:[] as number[],
     changelogOffsets:[] as number[],changelogSpecs:[] as MenuTextSpec[],changelogScroll:undefined as FakeScroll|undefined,
     changelogScrollTop:0,changelogRequest:undefined as AbortController|undefined,changelogError:'',
     sys:{isActive:()=>true},textures:{exists:()=>true}};
   const scene=Object.setPrototypeOf(state,MenuScene.prototype);
   const call=(name:string,...args:unknown[])=>Reflect.get(MenuScene.prototype,name).call(scene,...args);
   const menuText=new MenuTextLayer(domUi as unknown as Pick<DomUi,'label'>,(x,y)=>({x,y,scale:1}),
-    page=>page==='changelog'?state.changelogScroll?.scrollTop:undefined);
+    page=>page==='changelog'?state.changelogScroll?.scrollTop:page==='changelog-versions'?state.changelogVersionsScroll?.scrollTop:undefined);
   // 与 MenuScene.attach 的注册保持一致：确认框压暗页面文字，更新日志混用页面/弹层坐标。
   for(const page of ['home','slots','settings','cloud'] as const)menuText.register(page,writer=>{
     const occlude=state.confirmAction?call('confirmOcclusion') as MenuTextOcclude|undefined:undefined;
@@ -137,12 +138,12 @@ test('title changelog loads on demand and only renders visible entries',async()=
   const f=fixture();
   const entries=Array.from({length:40},(_,index)=>`第 ${index+1} 条更新说明。`.repeat(6));
   let loads=0;
-  f.app.loadChangelog=async()=>{loads++;return {version:1 as const,entries};};
+  f.app.loadChangelog=async()=>{loads++;return {version:2 as const,releases:[{gameVersion:'v1.0.6',entries},{gameVersion:'v1.0.5',entries:['旧版本专属内容']},...Array.from({length:8},(_,index)=>({gameVersion:`v0.0.${index}`,entries:[]}))]};};
   f.click('更新日志');
   assert.equal(loads,1,'点按钮才加载更新日志');
   assert.ok(f.domTexts().includes('正在加载更新日志…'));
   await new Promise(resolve=>setImmediate(resolve));
-  assert.ok(f.domTexts().includes('v1.0.4 更新说明'),'顶部居中显示版本号和更新说明');
+  assert.ok(f.domTexts().includes('v1.0.6 更新说明'),'默认显示最新版本');
   assert(f.domLabels.some(label=>label.visible&&!label.removed&&label.style.opacity==='0.35'),
     '更新日志打开时页面文字压暗而不是消失');
   const labels=()=>f.domTexts().filter(text=>/^\d+\. 第 /.test(text));
@@ -154,6 +155,14 @@ test('title changelog loads on demand and only renders visible entries',async()=
   scroll.onScroll?.();
   assert.ok(labels().some(text=>text.includes('第 40 条')),'滚到底显示最后一条');
   assert.ok(!labels().some(text=>text.includes('第 1 条')),'滚出视口的条目不渲染');
+  const versions=f.state.changelogVersionsScroll!;
+  versions.scrollTop=68;versions.onScroll?.();
+  assert.equal(f.state.changelogScroll?.scrollTop,scroll.extent-scroll.height,'左侧滚动不影响正文');
+  f.clickModal('v1.0.5');
+  assert.ok(f.domTexts().includes('v1.0.5 更新说明'));
+  assert.ok(f.domTexts().includes('1. 旧版本专属内容'));
+  assert.equal(f.state.changelogScroll?.scrollTop,0,'切换版本后正文回到顶部');
+  assert.equal(f.state.changelogVersionsScroll?.scrollTop,68,'切换版本后保留版本列表位置');
   f.clickModal('关闭更新日志');
   assert.equal(f.state.changelogOpen,false);
   assert.ok(!f.domTexts().some(text=>text.includes('第 1 条')),'关闭弹窗后日志文字撤掉');
@@ -162,13 +171,33 @@ test('title changelog loads on demand and only renders visible entries',async()=
 test('changelog loader keeps its receiver and empty entries show the empty state',async()=>{
   const f=fixture();
   let receiver:unknown;
-  f.app.loadChangelog=function(this:unknown){receiver=this;return Promise.resolve({version:1 as const,entries:[]});};
+  f.app.loadChangelog=function(this:unknown){receiver=this;return Promise.resolve({version:2 as const,releases:[]});};
   f.click('更新日志');
   assert.ok(f.domTexts().includes('正在加载更新日志…'));
   await new Promise(resolve=>setImmediate(resolve));
   assert.equal(receiver,f.app,'作为对象方法调用，this 不能丢');
-  assert.ok(f.domTexts().includes('v1.0.4 更新说明'),'空日志也保留顶部版本号');
+  assert.ok(f.domTexts().includes('更新说明'),'空日志也保留标题');
   assert.ok(f.domTexts().includes('暂无更新日志。'),'空日志显示暂无数据');
+});
+
+test('changelog reports load errors and starts from the newest version after reopening',async()=>{
+  const f=fixture();let loads=0;let releases=0;
+  f.app.loadChangelog=async()=>{
+    if(++loads===1)throw new Error('网络不可用');
+    return {version:2,releases:[{gameVersion:'v1.0.6',entries:['最新内容']},{gameVersion:'v1.0.5',entries:[]}]};
+  };
+  f.app.releaseChangelog=()=>{releases++;};
+  f.click('更新日志');await new Promise(resolve=>setImmediate(resolve));
+  assert.ok(f.domTexts().includes('更新日志加载失败：网络不可用'));
+  f.clickModal('关闭更新日志');
+  f.click('更新日志');await new Promise(resolve=>setImmediate(resolve));
+  f.clickModal('v1.0.5');
+  assert.ok(f.domTexts().includes('暂无更新日志。'));
+  f.clickModal('关闭更新日志');
+  f.click('更新日志');await new Promise(resolve=>setImmediate(resolve));
+  assert.ok(f.domTexts().includes('v1.0.6 更新说明'));
+  assert.ok(f.domTexts().includes('1. 最新内容'));
+  assert.equal(releases,2);
 });
 
 test('menu draws after assets finish while the scene is paused',()=>{
@@ -326,7 +355,7 @@ test('challenge mode needs five hidden clicks before starting the pressure test'
 test('the version number sits bottom-right at menu-button size and toggles GM',()=>{
   const gm={on:false,toggles:0,toggle(){this.on=!this.on;this.toggles+=1;return this.on;}};
   const f=fixture(gm);
-  const node=f.domLabels.find(text=>text.text==='v1.0.4');assert.ok(node);
+  const node=f.domLabels.find(text=>text.text==='v1.0.6');assert.ok(node);
   assert.equal(Number.parseFloat(String(node.style.fontSize)),36,'版本号与主菜单按钮同字号');
   assert.deepEqual(node.anchor,[1,1],'以右下角为锚点');
   assert.equal(node.x,1180);assert.equal(node.y,612);

@@ -43,7 +43,7 @@ const SHOP_WEIGHT_TOTAL = 10_000;
 /** 骰面数值上限；内容里的骰子按 1–99 编码。 */
 const MAX_DICE_FACE = 99;
 /** 更新日志内容格式版本；结构变化时加一并同步迁移。 */
-const CHANGELOG_FORMAT_VERSION = 1;
+const CHANGELOG_FORMAT_VERSION = 2;
 
 type Check = (value: unknown, path: string) => void;
 function requireValue(condition: unknown, path: string, message: string): asserts condition {
@@ -466,11 +466,12 @@ const menuPanels=shape<MenuPanels>({itemMessages:record(text),assets:record(file
   character:object({portraits:record(object({image:file,partyIcon:file})),classPortraits:record(file),combatLabels:strings,
     labels:object({statPoints:text,skillPoints:text,health:text,mana:text,experience:text})}),
   skillPanel:object({labels:object({initialSkillPoints:text,resetButton:text})})});
-/** 标题页更新日志：条目只放正文，空条目视为写错。 */
+/** 标题页更新日志：按游戏版本保存正文，空条目视为写错。 */
 export function parseChangelog(value:unknown):ChangelogCatalog {
-  shape<ChangelogCatalog>({version:count,entries:array(nonEmptyText)})(value,'changelog');
+  shape<ChangelogCatalog>({version:count,releases:array(shape({gameVersion:nonEmptyText,entries:array(nonEmptyText)}))})(value,'changelog');
   const result=value as ChangelogCatalog;
   requireValue(result.version===CHANGELOG_FORMAT_VERSION,'changelog.version',`只支持版本 ${CHANGELOG_FORMAT_VERSION}`);
+  requireValue(new Set(result.releases.map(release=>release.gameVersion)).size===result.releases.length,'changelog.releases','游戏版本不能重复');
   return result;
 }
 export function parseMenuPanels(value:unknown):MenuPanels {

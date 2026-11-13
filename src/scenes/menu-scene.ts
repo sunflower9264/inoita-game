@@ -73,11 +73,15 @@ export class MenuScene extends Phaser.Scene {
   /** 更新日志弹窗：点按钮才加载，滚动时只输出可视条目。 */
   private changelogOpen=false;
   private changelogState:'idle'|'loading'|'ready'|'empty'|'error'='idle';
+  private changelogReleases:import('../domain/changelog.ts').ChangelogRelease[]=[];
+  private changelogSelected=0;
   private changelogEntries:string[]=[];
   private changelogHeights:number[]=[];
   private changelogOffsets:number[]=[];
   private changelogSpecs:MenuTextSpec[]=[];
   private changelogScroll?:ScrollArea;
+  private changelogVersionsScroll?:ScrollArea;
+  private changelogVersionsScrollTop=0;
   private confirmBand?:NativeMessageBand;
   private changelogScrollTop=0;
   private changelogRequest?:AbortController;
@@ -227,17 +231,18 @@ export class MenuScene extends Phaser.Scene {
   private openChangelog():void{
     if(this.changelogOpen||this.page!=='home'||!this.app.ui.ready||this.app.ui.suspended)return;
     this.changelogOpen=true;this.changelogState='loading';this.changelogError='';
-    this.changelogEntries=[];this.changelogHeights=[];this.changelogOffsets=[];
-    this.changelogSpecs=[];this.changelogScrollTop=0;
+    this.changelogReleases=[];this.changelogSelected=0;this.changelogEntries=[];this.changelogHeights=[];this.changelogOffsets=[];
+    this.changelogSpecs=[];this.changelogScrollTop=0;this.changelogVersionsScrollTop=0;
     this.changelogRequest?.abort();
     const controller=this.changelogRequest=new AbortController();
     this.render();
     if(!this.app.loadChangelog){this.changelogState='error';this.changelogError='当前版本没有更新日志';this.render();return;}
-    // 必须作为对象方法调用：解构出来会丢掉 this，生产环境里直接抛错并停在加载态。
+    // 必须作为对象方法调用，避免加载器丢失 this。
     void this.app.loadChangelog(controller.signal).then(catalog=>{
       if(controller.signal.aborted||this.changelogRequest!==controller||!this.changelogOpen)return;
-      this.changelogEntries=catalog.entries.slice();
-      this.changelogState=this.changelogEntries.length?'ready':'empty';
+      this.changelogReleases=catalog.releases.slice();
+      this.changelogEntries=this.changelogReleases[0]?.entries.slice()??[];
+      this.changelogState=this.changelogReleases.length?'ready':'empty';
       this.render();
     },error=>{
       if(controller.signal.aborted||this.changelogRequest!==controller||!this.changelogOpen)return;
@@ -249,16 +254,30 @@ export class MenuScene extends Phaser.Scene {
   private closeChangelog():void{
     this.changelogRequest?.abort();this.changelogRequest=undefined;
     this.changelogOpen=false;this.changelogState='idle';this.changelogError='';
-    this.changelogEntries=[];this.changelogHeights=[];this.changelogOffsets=[];
-    this.changelogSpecs=[];this.changelogScroll=undefined;this.changelogScrollTop=0;
+    this.changelogReleases=[];this.changelogSelected=0;this.changelogEntries=[];this.changelogHeights=[];this.changelogOffsets=[];
+    this.changelogSpecs=[];this.changelogScroll=undefined;this.changelogVersionsScroll=undefined;
+    this.changelogScrollTop=0;this.changelogVersionsScrollTop=0;
     this.app.releaseChangelog?.();
     this.render();
   }
   /** 更新日志弹窗：复用标题页设置页的 slot 图框，金线就是面板外沿，右上角圆形关闭。 */
   private drawChangelog(v:UiSurface):void{
-    const {panel,scroll:area,close,textSize}=CHANGELOG_LAYOUT;
-    // 标题页的面板都是 `slot` 图框：内部半透明，金线贴外沿，不会在边框和背景之间露出一圈黑色。
+    const {panel,scroll:area,versions,close,textSize}=CHANGELOG_LAYOUT;
     v.image(art('slot'),panel.x,panel.y,panel.width,panel.height);
+    const list=v.scroll(versions.x,versions.y,versions.width,versions.height);
+    this.changelogVersionsScroll=list;
+    list.onScroll=()=>{this.changelogVersionsScrollTop=list.scrollTop;this.menuText?.refresh();};
+    this.changelogReleases.forEach((release,index)=>{
+      v.button('',0,index*versions.rowHeight,versions.width-12,versions.buttonHeight,()=>{
+        if(index===this.changelogSelected)return;
+        this.changelogSelected=index;
+        this.changelogEntries=release.entries.slice();
+        this.changelogScrollTop=0;
+        this.render();
+      },{parent:list.content,guard:list.guard,selected:index===this.changelogSelected}).setData('label',release.gameVersion);
+    });
+    list.setHeight(this.changelogReleases.length*versions.rowHeight);
+    list.scrollTop=this.changelogVersionsScrollTop;
     const scroll=v.scroll(area.x,area.y,area.width,area.height);
     this.changelogScroll=scroll;
     scroll.onScroll=()=>{this.changelogScrollTop=scroll.scrollTop;this.rebuildChangelogSpecs();this.menuText?.renderPage('changelog');};
@@ -272,9 +291,20 @@ export class MenuScene extends Phaser.Scene {
   }
   /** 弹层顶部居中的版本号与说明；不随日志条目滚动。 */
   private changelogTitleSpec():MenuTextSpec {
-    const {panel,titleY}=CHANGELOG_LAYOUT;
-    return {key:'changelog-title',text:`${GAME_VERSION} 更新说明`,x:panel.x+panel.width/2,y:titleY,
+    const {scroll,titleY}=CHANGELOG_LAYOUT;
+    const version=this.changelogReleases[this.changelogSelected]?.gameVersion;
+    return {key:'changelog-title',text:version?`${version} 更新说明`:'更新说明',x:scroll.x+scroll.width/2,y:titleY,
       style:{size:28,color:GOLD,anchorX:.5,anchorY:.5,align:'center'},space:'modal'};
+  }
+
+  private changelogVersionSpecs():MenuTextSpec[] {
+    const area=CHANGELOG_LAYOUT.versions;
+    return this.changelogReleases.map((release,index)=>({
+      key:`changelog-version-${index}`,text:release.gameVersion,
+      x:area.x+(area.width-12)/2,y:area.y+index*area.rowHeight+area.buttonHeight/2,
+      style:{size:22,color:GOLD,anchorX:.5,anchorY:.5,align:'center'},
+      scroll:'changelog-versions',clip:{top:area.y,bottom:area.y+area.height},space:'modal',
+    }));
   }
   private changelogEntryText(index:number):string {
     return `${index+1}. ${this.changelogEntries[index]!}`;
@@ -282,7 +312,7 @@ export class MenuScene extends Phaser.Scene {
   /** 加载中、空列表和失败都只显示一行居中文字。 */
   private changelogMessage(text:string):void{
     const area=CHANGELOG_LAYOUT.scroll;
-    this.changelogSpecs=[this.changelogTitleSpec(),{key:'changelog-message',text,x:area.x+area.width/2,y:area.y+area.height/2,
+    this.changelogSpecs=[this.changelogTitleSpec(),...this.changelogVersionSpecs(),{key:'changelog-message',text,x:area.x+area.width/2,y:area.y+area.height/2,
       style:{size:CHANGELOG_LAYOUT.textSize,color:GOLD,anchorX:.5,anchorY:.5,
         width:area.width-40,align:'center',wrap:'word'},space:'modal'}];
   }
@@ -307,7 +337,7 @@ export class MenuScene extends Phaser.Scene {
     if(!scroll)return;
     const area=CHANGELOG_LAYOUT.scroll;
     const {first,last}=changelogVisibleRange(this.changelogOffsets,this.changelogHeights,scroll.scrollTop,area.height);
-    const specs:MenuTextSpec[]=[this.changelogTitleSpec()];
+    const specs:MenuTextSpec[]=[this.changelogTitleSpec(),...this.changelogVersionSpecs()];
     for(let index=first;index<=last;index++)specs.push({key:`changelog-${index}`,text:this.changelogEntryText(index),
       x:area.x,y:area.y+this.changelogOffsets[index]!,
       style:{size:CHANGELOG_LAYOUT.textSize,color:GOLD,width:area.width,wrap:'word'},
@@ -365,6 +395,7 @@ export class MenuScene extends Phaser.Scene {
     if(page==='settings')return this.settingsList?.scrollTop;
     if(page==='cloud')return this.cloudScroll?.scrollTop;
     if(page==='changelog')return this.changelogScroll?.scrollTop;
+    if(page==='changelog-versions')return this.changelogVersionsScroll?.scrollTop;
     return undefined;
   }
   /** 存档槽绘制的文字规格转成菜单文字规格。 */
