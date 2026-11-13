@@ -2699,3 +2699,20 @@ test('mercenary allocation commits to the selected member and can be reset',t=>{
   f.scene.click(f.scene.button('查看属性加点'));f.scene.click(f.scene.button('能力初始化'));
   assert.equal(member.allocated.strength,0);assert.equal(member.statPoints,(member.level-1)*5);
 });
+
+test('挑战换职业可取消或确认后重开', t => {
+  const f=fixture();t.after(f.cleanup);
+  const pauses:boolean[]=[];const chosen:string[]=[];
+  Object.assign(f.app,{pressureMode:true,pausePressure:(value:boolean)=>pauses.push(value),changePressureClass:async(id:string)=>{chosen.push(id);}});
+  f.controls.mode='menu';f.menu.sync();f.controls.mode='game';f.menu.sync();
+  f.scene.click(f.scene.button('换职业'));
+  assert.deepEqual(pauses,[true]);
+  f.scene.click(f.scene.button('取消'));
+  assert.deepEqual(pauses,[true,false]);
+  assert.deepEqual(chosen,[]);
+  f.scene.click(f.scene.button('换职业'));
+  f.scene.click(f.scene.button('忍者'));
+  f.scene.click(f.scene.button('以 1 级重新挑战'));
+  assert.deepEqual(chosen,['assassin']);
+  assert.deepEqual(pauses,[true,false,true]);
+});

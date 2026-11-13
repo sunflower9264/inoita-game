@@ -3013,7 +3013,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
     if(this.closed)return false;
     const definition=this.app.battleCatalog.enemies.find(enemy=>enemy.id===enemyId);
     if(!definition)return false;
-    const lease=await loadSceneAssets(this.scene,this.enemyAssets(definition),()=>{},true);
+    const lease=await loadSceneAssets(this.scene,this.enemyAssets(definition),()=>{},true,signal);
     if(this.closed||signal?.aborted){lease.release();return false;}
     this.pressureAssets?.release();this.pressureAssets=lease;
     // 音效不参与等待；缺声音不影响刷怪。
@@ -3024,7 +3024,10 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
    * 压测刷怪：在玩家周围找一个整个碰撞盒都站得下的随机点，按正式实例路径生成敌人。
    * 找不到合法点时返回 false，让下一次刷怪再试，不把敌人塞进墙里或人堆里。
    */
-  spawnPressureEnemy(enemyId=PRESSURE_ENEMY_ID):boolean {
+  canSpawnPressureEnemy():boolean {
+    return !this.closed&&!this.defeated&&!!this.movement&&this.pressureEnemyCount()<PRESSURE_MAX_ENEMIES;
+  }
+  spawnPressureEnemy(enemyId=PRESSURE_ENEMY_ID,initialPoint?:{x:number;y:number}):boolean {
     if(this.closed||this.defeated||!this.movement)return false;
     if(this.pressureEnemyCount()>=PRESSURE_MAX_ENEMIES)return false;
     const definition=this.app.battleCatalog.enemies.find(enemy=>enemy.id===enemyId);
@@ -3035,7 +3038,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
       const angle=Math.random()*Math.PI*2;
       const distance=PRESSURE_SPAWN_MIN_DISTANCE
         +Math.random()*(PRESSURE_SPAWN_MAX_DISTANCE-PRESSURE_SPAWN_MIN_DISTANCE);
-      const point={x:center.x+Math.cos(angle)*distance,y:center.y+Math.sin(angle)*distance};
+      const point=attempt===0&&initialPoint?initialPoint:{x:center.x+Math.cos(angle)*distance,y:center.y+Math.sin(angle)*distance};
       if(!this.movement.navigation.canPlaceBody({collision},point))continue;
       const placed=this.roster.placeEnemy(enemyId,point.x,point.y);
       const enemy=this.buildEnemy(placed,definition);

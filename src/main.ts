@@ -527,6 +527,26 @@ async function resumeSlot(slot:SaveSlotRef,signal?:AbortSignal):Promise<void> {
   }catch(error){if(isCurrent())ui.loaded();throw error;}
 }
 
+async function changePressureClass(classId:string):Promise<void> {
+  const selected=app.storyClasses.classes.find(entry=>entry.id===classId);
+  const scene=worldScene(), game=app.game;
+  if(!app.pressureMode||!selected||!scene||!game||scene.loadingWorld)return;
+  const oldSession=app.session;
+  ui.loading('正在进入压测战场…');
+  stopAutoSave();app.gm?.dispose();app.director?.dispose();modeRequest.abort();modeRequest=new AbortController();
+  app.clearMapPrefetch();app.clearStoryPrefetch();ui.resetInput();
+  const stopped=new Promise<void>(resolve=>scene.events.once(Phaser.Scenes.Events.SHUTDOWN,()=>resolve()));
+  game.scene.stop(SCENE_KEYS.world);await stopped;
+  app.releaseSession(oldSession);
+  if(!app.pressureMode)return;
+  installSession(newStorySession(app.campaign,app.world.actors[app.campaign.start.actor],selected,
+    app.items,app.characterStats,app.battleCatalog,app.companions));
+  app.saveSlot=undefined;
+  game.scene.start(SCENE_KEYS.world,{map:PRESSURE_MAP,x:PRESSURE_START.x,y:PRESSURE_START.y,
+    facing:'south',initialEntry:true,suppressEntry:true,
+    onReady:()=>{app.storyUI?.prewarmBag();void worldScene()?.startPressureSpawner();}});
+}
+
 /** 新开与读档共用的会话装配：世界场景、菜单、剧情播放器与界面都接到这份会话上。 */
 function installSession(session: Session, keepMapFile?: string): void {
   stopAutoSave();app.gm?.dispose();app.director?.dispose();
@@ -743,6 +763,8 @@ function boot(): void {
   document.fonts?.ready.then(() => domUi.layout()).catch(() => {});
   app.enterGame = enterGame; app.returnToMenu = returnToMenu; app.startStory = startStory;
   app.startPressureTest = startPressureTest;
+  app.changePressureClass = changePressureClass;
+  app.pausePressure = paused => { const scene=worldScene(); if(!scene)return; if(paused)scene.scene.pause(); else if(!app.suspended)scene.scene.resume(); };
   app.resumeSlot = resumeSlot;
   app.prefetchCommon = prefetchCommon;
   app.captureSaveWorld = () => app.pressureMode ? {ok:false,reason:'pressure'}
@@ -901,7 +923,7 @@ function lifecycle(): void {
     const scene = currentScene();
     // 同一帧内的 pagehide/pageshow 也按事件顺序排队，避免漏掉恢复。
     if (scene?.sys?.isActive() || scene?.sys?.isPaused()) {
-      if (suspended) scene.scene.pause(); else scene.scene.resume();
+      if (suspended) scene.scene.pause(); else if(!ui.lockOwners.includes('pressure-class')) scene.scene.resume();
     }
     const stage = app.game?.scene.getScene(SCENE_KEYS.storyStage);
     if (stage?.sys.isActive() || stage?.sys.isPaused()) {

@@ -1,3 +1,4 @@
+import { pressureEnemy } from '../domain/pressure-enemies.ts';
 import { summonLampMerchant } from '../domain/lamp-merchant.ts';
 import { domAssets } from '../ui/dom/assets.ts';
 import {prepareCombatRestore} from '../domain/combat-snapshot.ts';
@@ -227,6 +228,7 @@ export class WorldScene extends Phaser.Scene {
   private pickupMessages?:PickupMessages;
   /** 压测刷怪计时器；离开场景时停掉，避免退出后继续生成。 */
   private pressureSpawner?:Phaser.Time.TimerEvent;
+  private pressureStartPoints: {x:number;y:number}[]=[];
   private readonly pickupRecipients=new Map<string,CharacterVisual>();
   /** 任务完成/进度提示的上次状态；按任务簿版本对比，不在每次会话通知里扫全部任务。 */
   private questStatuses=new Map<string,QuestNoticeState>();
@@ -277,7 +279,7 @@ export class WorldScene extends Phaser.Scene {
       this.request.abort();
       this.destroyed = true; this.unsubscribe?.(); this.scale.off('resize', this.resizeView, this);
       this.events.off(Phaser.Scenes.Events.POST_UPDATE, this.afterMovement, this);
-      this.pressureSpawner?.remove(false);this.pressureSpawner=undefined;
+      this.pressureSpawner?.remove(false);this.pressureSpawner=undefined;this.pressureStartPoints=[];
       this.combat?.destroy();this.combat=undefined;
       for(const character of this.characters)this.removeQuestMarker(character);
       this.questMarkerCharacters?.clear();
@@ -395,7 +397,9 @@ export class WorldScene extends Phaser.Scene {
     else ui.loading('正在前往新的地方…', options.initialEntry ? 0.5 : 0);
     const reference = world.maps.find(map => map.id === options.map);
     if (!reference) throw new Error('这片区域的资源尚未准备好');
-    const [map,rawDrops,rawSprings] = await Promise.all([this.app.content.map(reference.file, signal),this.app.content.drops(signal),this.app.content.springs(signal)]);
+    const [loadedMap,rawDrops,rawSprings] = await Promise.all([this.app.content.map(reference.file, signal),this.app.content.drops(signal),this.app.content.springs(signal)]);
+    this.pressureStartPoints = this.app.pressureMode ? (loadedMap.enemySpawns??[]).map(({x,y})=>({x,y})) : [];
+    const map = this.app.pressureMode ? {...loadedMap, enemySpawns: []} : loadedMap;
     signal.throwIfAborted();
     globalThis.storyDiagnostics?.record('start-phase',{phase:'map-data-ready',map:map.id});
     this.map = map;
@@ -1759,11 +1763,21 @@ export class WorldScene extends Phaser.Scene {
   /** 压测入口：先补载刷怪用的敌人资源，再每 0.9 秒尝试生成一只。 */
   async startPressureSpawner():Promise<void> {
     if(!this.app.pressureMode||this.pressureSpawner||!this.combat)return;
-    const ready=await this.combat.preparePressureEnemy(undefined,this.request.signal);
-    if(!ready||this.destroyed||!this.app.pressureMode||this.pressureSpawner)return;
-    this.pressureSpawner=this.time.addEvent({delay:PRESSURE_SPAWN_INTERVAL_MS,loop:true,callback:()=>{
-      if(this.app.pressureMode)this.combat?.spawnPressureEnemy();
-    }});
+    const combat=this.combat, signal=this.request.signal;
+    let pending=false;
+    const spawn=async(point?:{x:number;y:number})=>{
+      if(pending||signal.aborted||this.destroyed||!this.app.pressureMode||!combat.canSpawnPressureEnemy())return;
+      const enemy=pressureEnemy(this.app.battleCatalog.enemies,this.app.session.hero?.level??1);
+      if(!enemy)return;
+      pending=true;
+      try {
+        if(await combat.preparePressureEnemy(enemy.id,signal) && !signal.aborted)combat.spawnPressureEnemy(enemy.id,point);
+      } catch(error) { if(!signal.aborted)console.error('挑战怪物加载失败',error); }
+      finally { pending=false; }
+    };
+    for(const point of this.pressureStartPoints){if(signal.aborted)break;await spawn(point);}
+    if(signal.aborted||this.destroyed||!this.app.pressureMode)return;
+    this.pressureSpawner=this.time.addEvent({delay:PRESSURE_SPAWN_INTERVAL_MS,loop:true,callback:()=>{void spawn();}});
   }
   private captureCheckpoint():boolean {
     // 调试现场和压测现场都不是玩家进度：不覆盖检查点。

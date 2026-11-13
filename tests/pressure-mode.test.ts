@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { registerHooks } from 'node:module';
 import { PendingEnemyDefeats } from '../src/domain/combat-outcomes.ts';
 import type { BattleCatalog } from '../src/domain/battle.ts';
+import { pressureEnemy } from '../src/domain/pressure-enemies.ts';
 
 const hook = registerHooks({
   resolve(specifier, context, next) {
@@ -59,4 +60,36 @@ test('压测模式拒绝手动存档和检查点', () => {
   assert.deepEqual(captureSaveWorld.call(host), { ok: false, reason: 'pressure' });
   const captureCheckpoint = Reflect.get(WorldScene.prototype, 'captureCheckpoint') as (this: unknown) => boolean;
   assert.equal(captureCheckpoint.call(host), false);
+});
+
+
+test('挑战怪物按角色等级随机选择普通战斗怪', () => {
+  const first = pressureEnemy(battle.enemies, 1, () => 0)!;
+  const last = pressureEnemy(battle.enemies, 1, () => 0.999999)!;
+  assert.notEqual(first.id, last.id);
+  assert.ok(first.level !== null && first.level <= 3);
+  assert.ok(last.level !== null && last.level <= 3);
+  assert.equal(first.specialRank, 0);
+  const higher = pressureEnemy(battle.enemies, 44, () => 0)!;
+  assert.ok(higher.level !== null && Math.abs(higher.level - 44) <= 2);
+  assert.equal(pressureEnemy([], 1), undefined);
+});
+
+test('挑战模式先按出生点刷怪，补怪达到上限时不加载素材', async () => {
+  const created: {id:string;point?:{x:number;y:number}}[]=[];
+  let callback=()=>{};
+  let allowed=true;
+  const host=Object.setPrototypeOf({
+    app:{pressureMode:true,battleCatalog:battle,session:{hero:{level:1}}},
+    request:new AbortController(),destroyed:false,pressureStartPoints:[{x:10,y:20},{x:30,y:40}],
+    combat:{canSpawnPressureEnemy:()=>allowed,preparePressureEnemy:async()=>true,
+      spawnPressureEnemy:(id:string,point?:{x:number;y:number})=>created.push({id,point})},
+    time:{addEvent:(options:{callback:()=>void})=>{callback=options.callback;return {};}}
+  },WorldScene.prototype) as InstanceType<typeof WorldScene>;
+  await host.startPressureSpawner();
+  assert.deepEqual(created.map(entry=>entry.point),[{x:10,y:20},{x:30,y:40}]);
+  allowed=false;callback();
+  assert.equal(created.length,2);
+  allowed=true;callback();await Promise.resolve();
+  assert.equal(created.length,3);
 });

@@ -89,6 +89,9 @@ export interface StoryContext {
   autoSave?: () => void;
 }
 export interface StoryUIContext {
+  readonly pressureMode?: boolean;
+  changePressureClass?: (classId:string)=>Promise<void>;
+  pausePressure?: (paused:boolean)=>void;
   readonly inputRouter: InputRouter;
   readonly domUi?: DomUi;
   /** 商店装备表按需加载（生产内容包与 shops.json 分开）。 */

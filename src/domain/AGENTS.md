@@ -5,6 +5,7 @@
 ## 文件
 
 - 会话/剧情：`session.ts`、`story-director.ts`、`story-runtime.ts`、`story-graph.ts`、`story-condition.ts`、`story-scene.ts`、`story-script.ts`、`campaign.ts`、`scene-plan.ts`，以及同前缀的 `story-*.ts`、`scene-*.ts`；开发/测试模式开关与快照冻结在 `dev-mode.ts`，存档检查点的写时复制在 `playback-checkpoint.ts`。
+- 挑战刷怪：`pressure-enemies.ts` 按主角等级筛选普通战斗怪并随机选择。
 - 战斗：`combat-*.ts`、`battle.ts`、`action-*.ts`、`attack-*.ts`、`buff-*.ts`、`skill-*.ts`、`enemy-*.ts`；击杀奖励结算在 `combat-rewards.ts`。
 - 队伍人数变化时按单位实际生命上限保持血量比例，主人派生的召唤物生命上限沿用召唤属性。
 - 敌人的一次性技能在动作开始播放时计为已使用，追近目标期间保留使用机会。
