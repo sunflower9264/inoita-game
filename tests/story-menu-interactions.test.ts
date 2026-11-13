@@ -396,6 +396,9 @@ test('opening and cancelling skill reset confirmation keeps the skill page',t=>{
   assert.equal(f.scene.button(panels.skillPanel.labels.resetButton),reset);
   assert.equal(f.scene.button('技能目录'),tabs);
   assert.deepEqual(f.internals.body.root.list,body);
+  f.scene.click(reset);f.scene.key('Escape');
+  assert.equal(f.scene.button(panels.skillPanel.labels.resetButton),reset);
+  assert.equal(f.scene.button('技能目录'),tabs);assert.deepEqual(f.internals.body.root.list,body);
 });
 
 test('AI settings shows two columns and clears the description for unlearned skills',t=>{
