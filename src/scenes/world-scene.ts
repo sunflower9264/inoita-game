@@ -1798,7 +1798,7 @@ export class WorldScene extends Phaser.Scene {
     // 演出期间玩家不能操作；先把本图地面掉落收进背包，BOSS 战后演出切图不会丢奖励。
     this.collectMapGroundLoot();
   }
-captureStoryScene():SceneSnapshot {
+captureStoryScene(includeEnemyAppearance=true):SceneSnapshot {
     if(!this.map||!this.player||!this.movement)throw new Error('正式地图尚未就绪');
     const {session}=this.app;
     const actors:SceneActorState[]=[this.player,...this.characters.filter(character=>character!==this.player)].map(character=>{
@@ -1816,13 +1816,13 @@ captureStoryScene():SceneSnapshot {
         animationPlaying:animation.playing};
     });
     const visit=this.combat?.captureStoryVisit();
-    return {map:this.map.id,actors:[...actors,...this.combat?.captureStoryActors()??[]],
+    return {map:this.map.id,actors:[...actors,...this.combat?.captureStoryActors(includeEnemyAppearance)??[]],
       ...(visit?{visit:{generatedEntities:structuredClone(this.baseEntities),...visit}}:{})};
   }
 
-  captureStoryWorld():StoryWorldViewSnapshot {
+  captureStoryWorld(includeEnemyAppearance=true):StoryWorldViewSnapshot {
     if(!this.map||!this.player||!this.movement)throw new Error('正式地图尚未就绪');
-    return {location:{map:this.map.id,...this.movement.position(this.player),facing:this.facing},world:this.combat?.captureState(),generatedEntities:structuredClone(this.baseEntities),scene:this.captureStoryScene(),audio:this.app.audio?.captureStoryAudio()};
+    return {location:{map:this.map.id,...this.movement.position(this.player),facing:this.facing},world:this.combat?.captureState(),generatedEntities:structuredClone(this.baseEntities),scene:this.captureStoryScene(includeEnemyAppearance),audio:this.app.audio?.captureStoryAudio()};
   }
   /**
    * 存档要连世界一起带走。换图途中（`loadingWorld`）与还没进图时没有完整的落点，
@@ -1839,7 +1839,7 @@ captureStoryScene():SceneSnapshot {
       return {ok:false,reason:'no-survivors'};
     }
     this.combat?.settleForSave();
-    return {ok:true,map:{id:this.map.id,name:this.map.name},world:this.captureStoryWorld()};
+    return {ok:true,map:{id:this.map.id,name:this.map.name},world:this.captureStoryWorld(false)};
   }
   private restartStoryWorld(location:TravelDestination,signal:AbortSignal,world?:WorldCombatState,generatedEntities?:EntityPlacement[],silent=false,preparedScene?:SceneSnapshot):Promise<void>{
     signal.throwIfAborted();

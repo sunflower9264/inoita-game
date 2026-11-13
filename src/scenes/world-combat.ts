@@ -516,7 +516,7 @@ captureStoryVisit():Pick<PreparedSceneVisit,'roster'|'breakableRolls'> {
     return state;
   }
 
-captureStoryActors():SceneActorState[] {
+captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
     const allies:SceneActorState[]=this.allies.map(ally=>{
       const animation=characterAnimationState(ally.visual);
       return {id:`member:${ally.id}`,actor:ally.member.definition.actor,memberId:ally.id,followsPlayer:true,
@@ -530,7 +530,7 @@ captureStoryActors():SceneActorState[] {
       return {id:`enemy:${enemy.key}`,actor:enemy.definition.actor.id,enemyKey:enemy.key,enemyId:enemy.definition.id,
         summonedBy:enemy.summonedBy,...this.movement.position(enemy.visual),facing:enemy.facing,
         visible:this.isActorAlive(enemy.key)&&!this.pendingDefeats.has(enemy.key),
-        flip:enemy.visual.entity.flip,appearance:structuredClone(enemy.visual.actor),
+        flip:enemy.visual.entity.flip,...(includeEnemyAppearance?{appearance:structuredClone(enemy.visual.actor)}:{}),
         clip:enemy.visual.clipName??undefined,alpha:enemy.visual.container.alpha,
         animationProgress:animation.progress,animationPlaying:animation.playing};
     });

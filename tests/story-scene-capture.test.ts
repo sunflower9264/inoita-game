@@ -54,13 +54,21 @@ test('live capture includes the physical scene with equipped party, props, enemy
     allies:[{id:'companion-1',member:{definition:{actor:'companion'},alive:true},visual:companion,facing:'east'},
       {id:'companion-2',member:{definition:{actor:'companion'},alive:false},visual:fallen,facing:'south'}],
     arena:[enemy('wolf-1',70),enemy('wolf-2',80),enemy('summon-1',90,'player'),enemy('dead-1',100)],
-    performanceHidden:true,isActorAlive:(id:string)=>id!=='dead-1',pendingDefeats:new Set<string>(),captureState:()=>undefined,
+    performanceHidden:true,isActorAlive:(id:string)=>id!=='dead-1',pendingDefeats:new Set<string>(),captureState:()=>undefined,settleForSave:()=>{},
     captureStoryVisit:()=>({roster:{enemies:[],sequence:0,partySize:1},breakableRolls:[['wolf-1','wolf']]})});
   const host=Object.assign(Object.create(WorldScene.prototype),{map:{id:'camp'},player,movement,combat,facing:'north',
     characters:[gate,chest,spring,hidden],baseEntities:[],chestOpened:(value:unknown)=>value===chest,
-    app:{session:{storyWorld:{actorVisible:(_map:string,actor:string)=>actor!=='npc'},visible:()=>true}}});
+    app:{session:{hasLivingMember:true,storyWorld:{actorVisible:(_map:string,actor:string)=>actor!=='npc'},visible:()=>true}}});
   const snapshot:SceneSnapshot=host.captureStoryScene();
   assert.deepEqual(host.captureStoryWorld().scene,snapshot,'rollback captures the same complete physical scene');
+  const saved=host.captureSaveWorld();assert.equal(saved.ok,true);
+  if(!saved.ok)throw new Error('无法捕获存档');
+  const savedScene:SceneSnapshot=saved.world.scene!;
+  assert.equal(savedScene.actors.find(actor=>actor.id==='enemy:wolf-1')!.appearance,undefined);
+  assert.equal(savedScene.actors.find(actor=>actor.id==='enemy:summon-1')!.appearance,undefined);
+  assert.ok(savedScene.actors.find(actor=>actor.id==='member:companion-1')!.appearance);
+  assert.ok(snapshot.actors.find(actor=>actor.id==='enemy:wolf-1')!.appearance);
+  validateSceneSnapshot(savedScene);
   assert.deepEqual(snapshot.visit?.breakableRolls,[['wolf-1','wolf']]);
   validateSceneSnapshot(snapshot);
   assert.deepEqual(snapshot.actors.map(actor=>actor.id),[

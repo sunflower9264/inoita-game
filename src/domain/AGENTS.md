@@ -48,7 +48,7 @@
 - 内容机关独立登记；注册用途变化时调用 `NavigationWorld.refreshActor`，注销时同步移除。机关位置、显隐与碰撞盒在查询时读取当前值。
 - 背包的 `remove`/`consume` 直接操作目标容器并增量维护计数，不复制全部散装实例、不重建整张计数表；可堆叠、强化、宝石、词条和绑定技能的合并规则保持不变。
 - 金额一律以铜币存储；对玩家展示时用 `money.ts` 的 `moneyText` 或 `splitMoney`，不要直接把裸数字写成「金币」。
-- `SAVE_FORMAT` 当前是 46；摘要里的 `screenshot` 是保存时的游戏画面缩略图（JPEG data URL），旧档没有时界面留空。改存档结构或校验口径时把版本加一，并在 `src/application/saved-game.ts` 补迁移和旧档测试。升级链覆盖的旧档正常读取；比升级链更早的档案显示为空槽。
+- `SAVE_FORMAT` 当前是 49；摘要里的 `screenshot` 是保存时的游戏画面缩略图（JPEG data URL），旧档没有时界面留空。改存档结构或校验口径时把版本加一，并在 `src/application/saved-game.ts` 补迁移和旧档测试。升级链覆盖的旧档正常读取；比升级链更早的档案显示为空槽。
 - 保留道具（原版付费道具）由 `items.ts` 的 `reservedItems` 标记，普通掉落和商店继续过滤；任务奖励可以发放配方书，其他保留道具仍拒绝。配方书配方在学会后可在融合器合成（结果仍是保留道具），未学会的配方和结果为保留道具的常备配方仍隐藏；原版配方表本来就常驻的三条药水配方（再生药水（特大）、元气恢复药水、卓越灵药）用 `allowReservedResult` 显式放行，可以正常合成；`drops.ts` 的 `reservedDrops` 与融合器任务奖励是配方书的两个获取来源。一次性领取记录和解锁保底在会话状态 `reservedDrops` 里；旧档只补空状态和已经拥有的一次性道具领取记录，不清理已有物品。
 - 剧情人物装备由 `items.ts` 的 `storyEquipment` 标记；普通掉落、商店、合成、任务奖励、初始物品和商人货架统一用 `blockedNormalAcquisitionIds` 过滤，保留掉落通道继续只用 `reservedAcquisitionIds`。剧情 `equip`/`item-give` 可以使用这些装备，`item-drop` 不允许。
 - 敌人的 `specialRank` 直接来自原版怪物记录分类（0 普通，1/2/3 特殊怪），只决定小地图星标和目标面板三星；掉落分层 `threat` 不是显示分类，不要拿它代替。

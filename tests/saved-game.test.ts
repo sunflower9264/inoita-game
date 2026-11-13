@@ -200,7 +200,7 @@ test('invalid class, map, position and actors are rejected without changing the 
 });
 
 test('scene visit actors are validated before installation for current and previous saves',()=>{
-  for(const format of [47,48]){
+  for(const format of [47,48,49]){
     const saved=record();saved.format=format;
     saved.world.scene!.visit={generatedEntities:[{id:'visitor',actor:'missing',x:0,y:0}],
       breakableRolls:[],roster:{enemies:[],sequence:0,partySize:1}};
@@ -210,6 +210,15 @@ test('scene visit actors are validated before installation for current and previ
     saved.world.scene!.visit.generatedEntities[0]!.actor=content.campaign.start.actor;
     assert.equal(prepareSavedGame(saved,content).world.scene!.visit!.generatedEntities[0]!.actor,content.campaign.start.actor);
   }
+});
+
+test('format 48 keeps saved enemy appearances when upgraded',()=>{
+  const saved=record();saved.format=48;
+  saved.world.scene!.actors.push({id:'enemy:wolf',actor:'wolf',enemyKey:'wolf',enemyId:'wolf',x:40,y:50,
+    facing:'south',visible:true,appearance:structuredClone(content.world.actors[content.campaign.start.actor])});
+  const before=structuredClone(saved);
+  assert.deepEqual(prepareSavedGame(saved,content).world.scene!.actors[1]!.appearance,saved.world.scene!.actors[1]!.appearance);
+  assert.deepEqual(saved,before);
 });
 
 test('format 37 pity counters migrate to unique and epic counters',()=>{

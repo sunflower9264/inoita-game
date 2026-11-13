@@ -56,6 +56,7 @@ function stageHasDuplicateActors(stage:unknown):boolean {
  * 如果带重复演员，丢弃舞台快照，让剧情从当前节点继续而不是拒绝整份存档。
  */
 const SAVE_UPGRADES:Record<number,SaveUpgrade>={
+  48:game=>{game.format=49;},
   47:game=>{game.format=48;},
   46:game=>{
     const visit = (value: unknown): void => {
