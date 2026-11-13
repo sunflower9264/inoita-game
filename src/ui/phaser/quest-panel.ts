@@ -6,6 +6,7 @@ import { QUEST_TEXT_COLORS, measureQuestText } from './quest-text.ts';
 import { TEXT_COLORS } from '../text-style.ts';
 import { UiSurface, type ScrollArea } from './widgets.ts';
 import type { MenuTextSpec, MenuTextWriter } from '../dom/menu-text.ts';
+import type { UiImage, UiNode } from '../dom/node.ts';
 
 /** 面板借宿主的滚动区登记文字位置；未注入时退回本画布自己的滚动区。 */
 type ScrollFactory = (view:UiSurface,name:string,x:number,y:number,width:number,height:number)=>ScrollArea;
@@ -16,6 +17,8 @@ export class QuestPanel {
   private detailVisible = false;
   private list?: ScrollArea;
   private detail?: ScrollArea;
+  private view?: UiSurface;
+  private rows = new Map<string,UiNode>();
   private listOffset = 0;
   private detailOffset = 0;
   private readonly session: Session;
@@ -41,7 +44,7 @@ export class QuestPanel {
   reset(): void {
     this.selectedGroup = undefined; this.detailVisible = false;
     this.list = undefined; this.detail = undefined; this.listOffset = 0; this.detailOffset = 0;
-    this.textSpecs = [];
+    this.textSpecs = []; this.view=undefined; this.rows.clear();
   }
 
   captureScroll(): void {
@@ -51,8 +54,17 @@ export class QuestPanel {
 
   private select(id: string): void {
     this.captureScroll();
-    this.selectedGroup = id; this.detailVisible = true; this.detailOffset = 0; this.detail = undefined;
-    this.changed();
+    const previous=this.selectedGroup;
+    this.selectedGroup = id; this.detailVisible = true; this.detailOffset = 0;
+    for(const key of [previous,id]){
+      if(!key)continue;
+      const face=this.rows.get(key)?.getData('face') as UiImage|undefined;
+      face?.load(this.panels.assets[key===id?'quest-row-selected':'quest-row']);
+    }
+    const group=this.groups?.value.find(group=>group.definition.id===id);
+    if(!group||!this.view){this.changed();return;}
+    this.renderDetail(this.view,group);
+    this.rerenderText();
   }
 
   /** 页面文字交给菜单 DOM 层；滚动由宿主 `refresh` 跟随。 */
@@ -72,7 +84,7 @@ export class QuestPanel {
   }
 
   render(view: UiSurface): void {
-    this.textSpecs = [];
+    this.textSpecs = []; this.view=view; this.rows.clear();
     const questVersion = this.session.questBook.version, focus = this.session.debugFocusQuest, cached = this.groups;
     const groups = cached?.questVersion === questVersion && cached.focus === focus ? cached.value
       : (this.groups = { questVersion, focus, value: questJournal(this.session.campaign, this.session.quests, focus) }).value;
@@ -97,6 +109,7 @@ export class QuestPanel {
         image: assets[selected ? 'quest-row-selected' : 'quest-row'], pressed: assets['quest-row-pressed'],
         parent: list.content, guard: list.guard,
       }).setData('label', group.definition.title);
+      this.rows.set(group.definition.id,row);
       if (main) view.image(assets['quest-main'], 5, 5, 63, 45, row);
       this.textSpecs.push({key: `quest-row-${group.definition.id}`, text: group.definition.title,
         x: 35 + (main ? 70 : 10), y: 27 + index * 64 + 13, scroll: 'quest-list', clip: {top: 27, bottom: 403},
@@ -108,7 +121,13 @@ export class QuestPanel {
 
     const selected = groups.find(group => group.definition.id === this.selectedGroup);
     if (!selected || !this.detailVisible) return;
-    const detail = this.detail = this.scrollArea(view, 'quest-detail', 594, 20, 330, 390);
+    this.renderDetail(view,selected);
+  }
+
+  private renderDetail(view:UiSurface,selected:ReturnType<typeof questJournal>[number]):void {
+    this.textSpecs=this.textSpecs.filter(spec=>!spec.key.startsWith('quest-detail-'));
+    const detail=this.detail??(this.detail=this.scrollArea(view,'quest-detail',594,20,330,390));
+    detail.visible=true;
     detail.onScroll = () => this.refreshText();
     const text = questJournalText(selected, id => this.world.actors[id].name);
     const layout = measureQuestText(view, text, 330, 20);
