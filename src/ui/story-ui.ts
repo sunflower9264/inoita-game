@@ -1224,6 +1224,14 @@ export class StoryUI {
     if(!this.savePage.modalOpen)this.menuText?.renderPage(this.page);
   }
   /** 存档确认框：横带和按钮留在 Phaser，正文与按钮文字由宿主提供的 writer 收集。 */
+  private updateForgeModal():void{
+    if(!this.modal||!this.forge||this.page!=='forge')return;
+    this.modal.clear();
+    for(const [name,scroll] of this.scrollNames)if(scroll.surface===this.modal)this.scrollNames.delete(name);
+    this.forge.renderModal(this.modal,this.placeModal);
+    this.menuText?.renderPage('forge');
+    this.sync();
+  }
   private updateCraftingModal():void{
     if(!this.modal||!this.craftingPanel||this.page!=='crafting')return;
     this.modal.clear();
@@ -2079,7 +2087,7 @@ export class StoryUI {
     const member=this.member();
     const preview=(id:string,modifiers:Modifier[])=>member?.previewGemChange(id,modifiers);
     this.forge=new ForgePanel(bag,this.app.menuPanels,this.app.characterStats,
-      ()=>this.render(),()=>this.app.audio?.ui('enchant'),(message)=>this.app.ui.showInstant(message),preview);
+      ()=>this.render(),()=>this.app.audio?.ui('enchant'),(message)=>this.app.ui.showInstant(message),preview,()=>this.updateForgeModal());
     this.forge.open(targetId,tab);this.page='forge';this.render();
   }
   private closeForge():void {

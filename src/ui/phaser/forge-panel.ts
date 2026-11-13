@@ -33,6 +33,7 @@ const OUTCOME_COLORS:Record<EnhancementOutcomeTone,string>={loss:TEXT_COLORS.dan
 export class ForgePanel {
   readonly bag:Bag;readonly panels:MenuPanels;readonly stats:CharacterStatsCatalog;
   private readonly changed:()=>void;private readonly sound:()=>void;private readonly notify:(message:string)=>void;
+  private readonly modalChanged:()=>void;
   private readonly preview:(targetId:string,gemModifiers:Modifier[])=>CharacterPanel|undefined;
   targetId?:string;tab:ForgeTab='enchant';
   private selectedItem?:string;private socketIndex?:number;private replaceIndex?:number;
@@ -44,9 +45,9 @@ export class ForgePanel {
   private static readonly LEFT_CLIP={top:0,bottom:431};
   constructor(bag:Bag,panels:MenuPanels,stats:CharacterStatsCatalog,
     changed:()=>void,sound:()=>void,notify:(message:string)=>void,
-    preview:(targetId:string,gemModifiers:Modifier[])=>CharacterPanel|undefined){
+    preview:(targetId:string,gemModifiers:Modifier[])=>CharacterPanel|undefined,modalChanged:()=>void=changed){
     this.bag=bag;this.panels=panels;this.stats=stats;
-    this.changed=changed;this.sound=sound;this.notify=notify;this.preview=preview;
+    this.changed=changed;this.sound=sound;this.notify=notify;this.preview=preview;this.modalChanged=modalChanged;
   }
   get confirming():boolean{return !!this.confirmation;}
   /** 原生提示横带在弹层本地坐标里的上下边界；页面文字按它让位。 */
@@ -62,7 +63,7 @@ export class ForgePanel {
     this.offset=this.scroll?.scrollTop??this.offset;
     this.leftOffset=this.leftScroll?.scrollTop??this.leftOffset;
   }
-  cancelConfirmation():void {this.confirmation=undefined;this.changed();}
+  cancelConfirmation():void {this.confirmation=undefined;this.modalChanged();}
   private addText(key:string,text:string,x:number,y:number,size:number,color?:string,anchorX=0,anchorY=0,
     style:Partial<MenuTextSpec['style']>={},extras:Pick<MenuTextSpec,'scroll'|'clip'>=ForgePanel.LEFT_EXTRAS):void {
     this.pageText.push({key,text,x,y,style:{size,color,anchorX,anchorY,...style},...extras});
@@ -107,7 +108,7 @@ export class ForgePanel {
     left.setHeight(Math.max(431,summaryBottom,detailsBottom));
     left.scrollTop=this.leftOffset;
     left.onScroll=()=>{this.leftOffset=left.scrollTop;this.text?.refresh();};
-    if(this.confirmation)this.renderConfirmation(modal,placeModal);
+    this.renderModal(modal,placeModal);
   }
   private renderTabs(v:UiSurface):void {
     const side=bagLayout().sideButtons;
@@ -270,7 +271,7 @@ export class ForgePanel {
       if(!gemItem||!modifier){this.addText('forge-socket-invalid-hint','宝石数据不完整，无法修改宝石。',40,hintY,14,TEXT_COLORS.danger,0,0,{width:400,wrap:'word'});return hintY+18;}
       const outcome=this.socketOutcome(target.id,modifiers,modifiers.filter((_value,slot)=>slot!==index),'取出后');
       if(outcome)this.socketHint(outcome,TEXT_COLORS.primary,hintY);
-      v.button('',40,actionY,195,55,()=>{this.confirmation={kind:'unsocket',index};this.changed();},{fontSize:20,parent:left.content,guard:left.guard}).setData('label','取出');
+      v.button('',40,actionY,195,55,()=>{this.confirmation={kind:'unsocket',index};this.modalChanged();},{fontSize:20,parent:left.content,guard:left.guard}).setData('label','取出');
       this.buttonText('forge-socket-remove','取出',40,actionY,195,55,20);
       v.button('',245,actionY,195,55,()=>{this.replaceIndex=index;this.socketIndex=undefined;this.selectedItem=undefined;this.changed();},{fontSize:20,parent:left.content,guard:left.guard}).setData('label','替换');
       this.buttonText('forge-socket-replace','替换',245,actionY,195,55,20);
@@ -366,7 +367,7 @@ export class ForgePanel {
     if(!this.bag.get(gemId)?.numbers?.modifiers?.length)return;
     const replacing=this.replaceIndex,target=this.bag.get(targetId),definition=target?this.bag.catalog.items[target.item]:undefined;
     if(replacing===undefined&&target&&definition?.equipment&&target.gems.length>=(target.numbers?.sockets??definition.equipment.socketCapacity))return;
-    if(replacing!==undefined){this.confirmation={kind:'swap',index:replacing,gem:gemId};this.changed();return;}
+    if(replacing!==undefined){this.confirmation={kind:'swap',index:replacing,gem:gemId};this.modalChanged();return;}
     try {this.bag.use(gemId,targetId);this.sound();}
     catch(error) {this.notify(this.errorText(error));}
     this.selectedItem=undefined;this.socketIndex=undefined;this.replaceIndex=undefined;
@@ -378,7 +379,8 @@ export class ForgePanel {
     catch(error){this.notify(this.errorText(error));}
     this.changed();
   }
-  private renderConfirmation(modal:UiSurface,placeModal:(width:number,height:number)=>void):void {
+  renderModal(modal:UiSurface,placeModal:(width:number,height:number)=>void):void {
+    this.modalText=[];this.band=undefined;
     const confirmation=this.confirmation;if(!confirmation)return;
     const message=confirmation.kind==='unsocket'
       ?'取出后这颗宝石会回到背包，装备上的这条属性会消失。确定取出？'

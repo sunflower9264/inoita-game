@@ -837,9 +837,15 @@ test('forge sockets, removes and replaces gems with confirmation', t => {
   assert.ok(visibleDomLabels(f).some(label=>label.text.includes('低级宝石')),'已镶宝石和效果常驻显示');
   f.scene.click(f.scene.button('孔位1'));
   assert.ok(visibleDomLabels(f).some(label=>label.text.includes('取出后')),'选中已镶孔后显示取出差值');
-  f.scene.click(f.scene.button('取出'));
+  const remove=f.scene.button('取出'),scrolls=f.internals.body.scrolls.slice();
+  f.scene.click(remove);
   assert.ok(f.internals.forge!.confirming);
-  f.scene.click(f.scene.button('是'));
+  assert.equal(f.scene.button('取出'),remove);
+  assert.deepEqual(f.internals.body.scrolls,scrolls);
+  f.scene.click(f.scene.button('否'));
+  assert.equal(f.scene.button('取出'),remove);
+  assert.deepEqual(f.internals.body.scrolls,scrolls);
+  f.scene.click(remove);f.scene.click(f.scene.button('是'));
   assert.equal(f.hero.bag.get(weapon.id)!.gems.length,0);
   assert.equal(f.hero.bag.count('novice-jewel'),1,'宝石回到背包');
   f.scene.click(f.scene.button(`宝石:${second.id}`));
