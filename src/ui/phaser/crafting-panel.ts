@@ -1,4 +1,4 @@
-import { drawBagRail, drawBagRailSelection } from './bag-rail.ts';
+import { drawBagRail } from './bag-rail.ts';
 import type { UiPointer } from '../dom/node.ts';
 import type { UiNode, UiImage } from '../dom/node.ts';
 import {equipmentPower} from '../../domain/character-stats.ts';
@@ -42,6 +42,7 @@ export class CraftingPanel {
   private workKeys=new Set<string>();
   private bagButtons=new Map<string,UiNode>();
   private targetMarker?:UiImage;
+  private bagHighlight?:UiNode;
   private readonly changed:()=>void;private readonly sound:()=>void;private readonly modalChanged:()=>void;
   constructor(crafting:EquipmentCrafting,panels:MenuPanels,changed:()=>void,sound:()=>void,grades:ShopCatalog['grades']=[],modalChanged:()=>void=changed){this.grades=grades;this.crafting=crafting;this.panels=panels;this.changed=changed;this.sound=sound;this.modalChanged=modalChanged;}
   get modalOpen():boolean{return !!this.message||!!this.confirmation;}
@@ -268,28 +269,45 @@ export class CraftingPanel {
     v.button('',139,338,205,62,()=>this.begin()).setData('label','组合');
     this.buttonText('craft-socket-confirm','组合',139,338,205,62);
   }
-  private renderBag(v:UiSurface,startDrag:(pointer:UiPointer,entry:string,scroll:ScrollArea)=>void):void {
-    const {session}=this.crafting,bag=session.bag,assets=this.panels.assets;
-    const layout=bagLayout(),cells=layout.grid,view=inventoryView({all:bag.allCells,...bag.pouchCells},this.filter),
-      scroll=this.scrollAt('craft-bag',cells.x,cells.y,cells.width,cells.height);
-    this.bagScroll=scroll;
-    const clip={top:cells.y,bottom:cells.y+cells.height};
+  private renderBagCells(v:UiSurface,scroll:ScrollArea,startDrag:(pointer:UiPointer,entry:string,scroll:ScrollArea)=>void):void{
+    const bag=this.crafting.session.bag,assets=this.panels.assets,layout=bagLayout(),cells=layout.grid;
+    const view=inventoryView({all:bag.allCells,...bag.pouchCells},this.filter),clip={top:cells.y,bottom:cells.y+cells.height};
+    const old=new Map<string,CraftingDrop>();
+    for(const drop of this.drops)if(!drop.craft)old.set(drop.entry?`item:${drop.entry}`:`cell:${drop.view}:${drop.cell}`,drop);
+    this.targetMarker?.destroy();this.targetMarker=undefined;this.bagButtons.clear();
+    this.pageText=this.pageText.filter(spec=>!spec.key.startsWith('craft-bag-badge-')&&!spec.key.startsWith('craft-bag-enhancement-'));
+    const next:CraftingDrop[]=[];
     for(let index=0;index<view.slotCount;index++){
       const cell=view.slots[index]!,x=index%4*cells.stride,y=Math.floor(index/4)*cells.stride;
-      if(cell.kind==='cell'){this.drops.push({object:v.image(assets['inventory-slot'],x,y,74,74,scroll.content),view:cell.view,cell:cell.cell});continue;}
-      const entry=cell.entry,definition=bag.catalog.items[entry.item];
-      const button=v.button('',x,y,74,74,()=>this.select(entry.id),{image:assets['inventory-slot'],parent:scroll.content,guard:scroll.guard}).setData('label',definition.name);
-      v.image(definition.icon,5,5,64,64,button);
-      this.bagButtons.set(entry.id,button);
-      if(entry.id===this.target)this.targetMarker=v.image(assets['inventory-selected'],-5,-5,84,84,button);
-      if(definition.stackable)this.addText(`craft-bag-badge-${index}`,String(entry.quantity),
-        cells.x+x+layout.badge.x,cells.y+y+layout.badge.y,20,layout.badge.color,1,0,{},{scroll:'craft-bag',clip});
-      if(entry.enhancement)this.addText(`craft-bag-enhancement-${index}`,`+${entry.enhancement}`,
-        cells.x+x+2,cells.y+y+2,17,GOLD,0,0,{},{scroll:'craft-bag',clip});
-      this.drops.push({object:button,entry:entry.id,view:cell.view,cell:cell.cell});
-      button.on('pointerdown',(pointer:UiPointer)=>startDrag(pointer,entry.id,scroll));
+      const key=cell.kind==='item'?`item:${cell.entry.id}`:`cell:${cell.view}:${cell.cell}`;
+      let drop=old.get(key);old.delete(key);
+      if(!drop){
+        if(cell.kind==='cell')drop={object:v.image(assets['inventory-slot'],x,y,74,74,scroll.content)};
+        else{
+          const entry=cell.entry,definition=bag.catalog.items[entry.item];
+          const button=v.button('',x,y,74,74,()=>this.select(entry.id),{image:assets['inventory-slot'],parent:scroll.content,guard:scroll.guard}).setData('label',definition.name);
+          v.image(definition.icon,5,5,64,64,button);
+          button.on('pointerdown',(pointer:UiPointer)=>startDrag(pointer,entry.id,scroll));drop={object:button,entry:entry.id};
+        }
+      }
+      drop.object.setPosition(x,y);drop.view=cell.view;drop.cell=cell.cell;next.push(drop);
+      if(cell.kind==='item'){
+        const entry=cell.entry,definition=bag.catalog.items[entry.item];this.bagButtons.set(entry.id,drop.object);
+        if(entry.id===this.target)this.targetMarker=v.image(assets['inventory-selected'],-5,-5,84,84,drop.object);
+        if(definition.stackable)this.addText(`craft-bag-badge-${index}`,String(entry.quantity),cells.x+x+layout.badge.x,cells.y+y+layout.badge.y,20,layout.badge.color,1,0,{},{scroll:'craft-bag',clip});
+        if(entry.enhancement)this.addText(`craft-bag-enhancement-${index}`,`+${entry.enhancement}`,cells.x+x+2,cells.y+y+2,17,GOLD,0,0,{},{scroll:'craft-bag',clip});
+      }
     }
-    scroll.setHeight(Math.ceil(view.slotCount/4)*cells.stride);scroll.scrollTop=this.offset;
+    for(const drop of old.values())drop.object.destroy();
+    const craftDrops=this.drops.filter(drop=>drop.craft);this.drops.splice(0,this.drops.length,...craftDrops,...next);
+    v.pruneDestroyed();scroll.setHeight(Math.ceil(view.slotCount/4)*cells.stride);
+  }
+  private renderBag(v:UiSurface,startDrag:(pointer:UiPointer,entry:string,scroll:ScrollArea)=>void):void {
+    const {session}=this.crafting,assets=this.panels.assets;
+    const layout=bagLayout(),cells=layout.grid,
+      scroll=this.scrollAt('craft-bag',cells.x,cells.y,cells.width,cells.height);
+    this.bagScroll=scroll;
+    this.renderBagCells(v,scroll,startDrag);scroll.scrollTop=this.offset;
     scroll.onScroll=()=>{this.offset=scroll.scrollTop;this.text?.refresh();};
     const wallet=splitMoney(session.money);
     for(const [index,unit] of (['gold','silver','copper'] as const).entries()){
@@ -299,8 +317,12 @@ export class CraftingPanel {
     }
     INVENTORY_SIDE_FILTERS.forEach((filter,index)=>{
       const side=layout.sideButtons,y=side.y+side.offsets[index];
-      if(filter===this.filter)drawBagRailSelection(v,side.x,y,side.width,side.height);
-      v.button('',side.x,y,side.width,side.height,()=>{this.filter=filter;this.offset=0;this.changed();},{bare:true}).setData('label',INVENTORY_LABELS[filter]);
+      if(filter===this.filter)this.bagHighlight=v.rect(side.x,y,side.width,side.height,0xe2c88d,.10);
+      v.button('',side.x,y,side.width,side.height,()=>{
+        if(this.filter===filter)return;this.filter=filter;this.offset=0;scroll.scrollTop=0;
+        this.bagHighlight?.setPosition(side.x,y);this.renderBagCells(v,scroll,startDrag);
+        if(this.text?.updatePage)this.text.updatePage();else this.changed();
+      },{bare:true}).setData('label',INVENTORY_LABELS[filter]);
       this.addText(`craft-bag-filter-${filter}`,INVENTORY_LABELS[filter],side.x+side.width/2,y+side.height/2,19,undefined,.5,.5,
         {width:side.width-6,align:'center',wrap:'word'});
     });

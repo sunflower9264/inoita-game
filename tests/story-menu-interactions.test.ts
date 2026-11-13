@@ -1880,6 +1880,21 @@ test('fusion recipe detail stays open and crafts again on the next 组合', t =>
   assert.equal(f.session.bag.count('leaf-of-life'),0,'两次合成各扣 3 个材料');
 });
 
+test('crafting bag filters retain matching item nodes and the scrolling area',t=>{
+  const f=fixture();t.after(f.cleanup);const entry=f.add('healing-potion-xl');
+  const machine=Object.keys(world.actors).find(id=>world.actors[id].service==='fusion-machine')!;
+  f.menu.openCrafting(machine);
+  const scroll=f.internals.scrollNames.get('craft-bag')!;
+  const bagItem=()=>f.scene.buttons(items.items[entry.item].name).find(button=>button.parentContainer===scroll.content);
+  const item=bagItem(),all=f.scene.button('全部'),filter=f.scene.button('消耗');assert(item);scroll.scrollTop=40;
+  f.scene.click(filter);
+  assert.equal(bagItem(),item);
+  assert.equal(f.internals.scrollNames.get('craft-bag'),scroll);assert.equal(scroll.scrollTop,0);
+  assert.equal(f.scene.button('全部'),all);assert.equal(f.scene.button('消耗'),filter);
+  f.scene.click(all);assert.equal(bagItem(),item);
+  f.scene.click(item);assert.equal(bagItem(),item);
+});
+
 test('fusion socket creation only accepts hole-less equipment and creates the rolled sockets', t => {
   const f=fixture();t.after(f.cleanup);const bag=f.session.bag;
   const target=bag.equipment['main-hand']!;bag.unequip('main-hand');
