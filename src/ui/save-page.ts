@@ -214,7 +214,7 @@ export class SavePage {
     const load = this.host.app.resumeSlot;
     if (!load || this.host.busy()) return;
     const request = this.host.activeRequest(), session = this.host.session();
-    this.host.setBusy(true); this.host.render(); this.host.sync();
+    this.host.setBusy(true); this.host.updateConfirmation();
     const stillCurrent = () => !request.signal.aborted && this.host.activeRequest() === request && this.host.session() === session;
     try { await load(ref, request.signal); }
     catch (error) { if (stillCurrent()) this.host.setItemNotice(error instanceof Error ? error.message : String(error)); }

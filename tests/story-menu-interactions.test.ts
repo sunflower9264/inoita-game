@@ -2276,7 +2276,9 @@ test('load preparation keeps the game menu alive under loading and reports failu
     try{await new Promise<void>((_done,fail)=>reject=fail);}finally{f.controls.loaded();}
   };
   f.menu.show('save');f.scene.click(f.scene.button('存档槽 1'));f.scene.click(f.scene.button('确认'));
-  f.menu.show('load');f.scene.click(f.scene.button('存档槽 1'));f.scene.click(f.scene.button('是'));
+  f.menu.show('load');const slot=f.scene.button('存档槽 1'),scroll=f.internals.scrollNames.get('slots');
+  f.scene.click(slot);f.scene.click(f.scene.button('是'));
+  assert.equal(slot.active,true);assert.equal(f.internals.scrollNames.get('slots'),scroll);
   assert.equal(signal?.aborted,false);assert.equal(f.internals.busy,true);assert.equal(f.controls.locked,true);
   reject(new Error('存档内容无效'));await new Promise<void>(resolve=>setImmediate(resolve));
   assert.equal(f.internals.busy,false);assert(domTexts(f).includes('存档内容无效'));
