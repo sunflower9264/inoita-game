@@ -274,6 +274,20 @@ function pendingAllyFixture(){
   return {host,invoke,member,activeIds};
 }
 
+test('ally new skills stay unavailable until the appearance recomposition completes',async()=>{
+  const {host,invoke,member}=pendingAllyFixture();
+  host.extraSkillLeases=new Map();
+  host.preparedSkillIds=new Map([['ally',new Set(['dark-strike'])]]);
+  (member as any).skills={draft:()=>({levels:{'dark-strike':1,'guardian-of-darkness':1}})};
+  let finish!:()=>void;
+  host.scene.preparePartyMember=()=>new Promise<void>(resolve=>{finish=resolve;});
+  const refreshing=invoke('refreshSkillAssets',undefined,'',[{id:'ally',member,signature:'original',gate:'gate'}]);
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(host.preparedSkillIds.get('ally').has('guardian-of-darkness'),false,'外观合成完成前不能使用新技能');
+  finish();await refreshing;
+  assert.equal(host.preparedSkillIds.get('ally').has('guardian-of-darkness'),true);
+});
+
 test('a failed ally request cannot revive retries after that ally leaves',async()=>{
   const {host,invoke,member,activeIds}=pendingAllyFixture();
   host.scene.textures.exists=()=>{activeIds.splice(1);throw new Error('late download failure');};

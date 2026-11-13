@@ -2941,13 +2941,16 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
         if(this.closed){lease.release();return;}
         if(this.app.session.party?.get(id)!==member||!this.app.session.party?.activeIds.includes(id)){lease.release();continue;}
         if(this.allySkillSignatureNow(member)===signature){
+          // 外观按已学技能合成；新技能要等整套外观准备完成后再标记可用，避免短暂落回基础贴图。
+          try{await this.scene.preparePartyMember(id,undefined,{full:true});}
+          catch(error){lease.release();throw error;}
+          if(this.closed){lease.release();return;}
+          if(this.app.session.party?.get(id)!==member||!this.app.session.party?.activeIds.includes(id)||this.allySkillSignatureNow(member)!==signature){
+            lease.release();this.skillAssetRefreshQueued=true;continue;
+          }
           this.addSkillLease(id,lease);this.preparedSkillIds?.set(id,learned);
           this.allySkillSignatures.set(id,signature);this.allySkillGates.set(id,gate);
           this.skillAssetFailures.delete(id);
-          // 外观按已学技能合成；学会新技能后重拼整套，避免技能动作落回未换装的基础贴图。
-          void this.scene.preparePartyMember(id,undefined,{full:true}).catch(error=>{
-            if(!this.closed)globalThis.storyDiagnostics?.record('party-appearance-refresh-error',{id,error});
-          });
         }else{lease.release();this.skillAssetRefreshQueued=true;}
       }catch(error){
         if(!this.closed&&this.app.session.party?.get(id)===member&&this.app.session.party.activeIds.includes(id)&&this.allySkillSignatureNow(member)===signature)
