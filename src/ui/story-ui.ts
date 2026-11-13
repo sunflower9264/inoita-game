@@ -430,7 +430,9 @@ export class StoryUI {
       // 子页面的动作在完成后调 changed 统一重绘一次，避免会话通知再画一遍。
       if(!this.open||this.busy||this.shortcutEdit||this.app.ui.controlLayoutEditing||this.page==='forge'||this.page==='learn')return;
       const signature=this.sessionDataSignature();
-      if(signature===undefined||signature!==this.sessionSignature)this.render();
+      if(signature===undefined||signature!==this.sessionSignature){
+        if(this.page==='debug')this.updateDebugPanel();else this.render();
+      }
     });this.sync();
   }
   sync():void{
@@ -985,7 +987,7 @@ export class StoryUI {
       if(this.gmPanelOwner!==this.app.gm){
         const gm=this.app.gm;
         const mapNames=new Map((this.world?.maps??[]).map(map=>[map.id,map.name]));
-        this.gmPanel=new GmPanel(gm,this.session.campaign,{close:()=>this.close(),render:()=>{if(this.app.gm===gm&&this.gmPanelOwner===gm)this.render();},reopen:message=>{if(this.app.gm===gm)this.openDebugStoryWithMessage(message);}},{
+        this.gmPanel=new GmPanel(gm,this.session.campaign,{close:()=>this.close(),render:()=>{if(this.app.gm===gm&&this.gmPanelOwner===gm)this.updateDebugPanel();},reopen:message=>{if(this.app.gm===gm)this.openDebugStoryWithMessage(message);}},{
           mapName:id=>mapNames.get(id),
           actorName:id=>this.world?.actors[id]?.name,
           questGroup:id=>this.session?.campaign.questGroups.find(group=>group.questIds.includes(id))?.title,
@@ -1000,6 +1002,7 @@ export class StoryUI {
           itemSelected:this.app.menuPanels.assets['inventory-selected'],
           itemDetail:(itemId,close)=>this.renderGmItemDetail(itemId,close),
           registerScroll:(name,scroll)=>this.scrollNames.set(name,scroll),
+          removeScroll:scroll=>{for(const [name,value] of this.scrollNames)if(value===scroll)this.scrollNames.delete(name);},
           refresh:()=>this.menuText?.refresh(),
           setText:(key,text)=>{
             const spec=this.gmTextSpecs.find(spec=>spec.key===key);if(spec)spec.text=text;
@@ -1236,6 +1239,12 @@ export class StoryUI {
     this.forge.renderModal(this.modal,this.placeModal);
     this.menuText?.renderPage('forge');
     this.sync();
+  }
+  private updateDebugPanel():void{
+    if(!this.open||this.page!=='debug'||!this.gmPanel||!this.body)return;
+    this.description?.clear();this.removeDescriptionScrolls();this.gmDetailOpen=false;this.gmDetailTextSpecs=[];this.gmTextSpecs=[];
+    this.gmPanel.update(this.body,{add:spec=>this.gmTextSpecs.push(spec)});
+    this.menuText?.renderPage('debug');this.sessionSignature=this.sessionDataSignature()??this.sessionSignature;this.sync();
   }
   private updatePartyModal():void{
     if(!this.modal||!this.partyPanel||this.page!=='party')return;

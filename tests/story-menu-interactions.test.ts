@@ -2330,12 +2330,14 @@ test('the GM character page levels, heals and toggles the debug switches', async
   Object.defineProperty(f.app, 'gm', { value: gm, configurable: true });
   f.menu.show('system'); f.scene.click(f.scene.button('调试'));
 
+  const debugTabs=['状态','人物','道具'].map(label=>f.scene.button(`调试页 ${label}`));
   for (const label of ['状态', '人物', '道具']) {
     const button = f.scene.button(`调试页 ${label}`);
     assert.ok(button.x >= 0 && button.x + button.input!.hitArea.width <= 960, `页签 ${label} 不越界`);
   }
 
   f.scene.click(f.scene.button('调试页 人物'));
+  ['状态','人物','道具'].forEach((label,index)=>assert.equal(f.scene.button(`调试页 ${label}`),debugTabs[index]));
   assert.ok(visibleDomLabels(f).some(label => label.text.includes('等级 Lv.')),
     visibleDomLabels(f).map(label => label.text).join(' | '));
   assert.equal(f.scene.buttons('角色 player').length, 1);
@@ -2346,6 +2348,7 @@ test('the GM character page levels, heals and toggles the debug switches', async
   const before = f.hero.level;
   f.scene.click(f.scene.button('升一级'));
   assert.equal(f.hero.level, before + 1);
+  assert.equal(f.scene.button('调试页 人物'),debugTabs[1]);
   assert.equal(gm.actions().at(-1)?.call, 'levelUp');
 
   f.scene.click(f.scene.button('技能全满'));

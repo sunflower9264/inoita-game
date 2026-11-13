@@ -4,7 +4,8 @@ import type { GmActions, GmCharacterState, GmItemEntry, GmItemFilter } from '../
 import { INVENTORY_LABELS } from '../../domain/inventory.ts';
 import { GOLD, type ScrollArea, type UiSurface } from './widgets.ts';
 import { measureQuestText, QUEST_TEXT_COLORS } from './quest-text.ts';
-import type { MenuTextClip, MenuTextWriter } from '../dom/menu-text.ts';
+import type { MenuTextClip, MenuTextSpec, MenuTextWriter } from '../dom/menu-text.ts';
+import type { UiNode } from '../dom/node.ts';
 
 /**
  * 游戏内的 GM 面板——`gm-actions` 的人类通道，只负责显示与收集点击，不做任何动作逻辑。
@@ -40,6 +41,7 @@ interface GmReferences {
   questProgress?(id: string): { status: string; done: number; total: number } | undefined;
   /** 把页面里的滚动区登记给菜单文字层，滚轮和拖动时 DOM 文字才能跟着走。 */
   registerScroll?(name: string, scroll: ScrollArea): void;
+  removeScroll?(scroll: ScrollArea): void;
   /** 滚动后重算 DOM 文字位置。 */
   refresh?(): void;
   setText?(key:string,text:string):void;
@@ -135,6 +137,10 @@ export class GmPanel {
   private storyIntroScroll = 0;
   /** 本次重画的 DOM 文字出口；GM 页的文字全部按内容块坐标登记。 */
   private writer?: MenuTextWriter;
+  private tabButtons=new Map<GmPage,UiNode>();
+  private tabText:MenuTextSpec[]=[];
+  private contentNodes:UiNode[]=[];
+  private contentScrolls:ScrollArea[]=[];
   private textSerial = 0;
 
   private readonly gm: GmActions;
@@ -160,20 +166,39 @@ export class GmPanel {
 
   /** GM 页文字统一走 DOM；`writer` 由菜单提供，图框、按钮和滚动仍由 Phaser 画。 */
   render(body: UiSurface, writer?: MenuTextWriter): void {
-    this.writer = writer;
-    this.textSerial = 0;
-    PAGES.forEach(([page, label], index) =>
-      this.button(body, label, 532 + index * 108, 8, 104, 46, () => { this.page = page; this.result = ''; this.hooks.render(); },
-        { selected: this.page === page, fontSize: 20 }, `调试页 ${label}`));
+    this.tabButtons.clear();this.tabText=[];this.textSerial=0;
+    this.writer={add:spec=>{this.tabText.push(spec);writer?.add(spec);}};
+    PAGES.forEach(([page, label], index) => {
+      const button=this.button(body, label, 532 + index * 108, 8, 104, 46, () => {
+        if(this.page===page)return;this.page=page;this.result='';this.hooks.render();
+      }, { selected: this.page === page, fontSize: 20 }, `调试页 ${label}`);
+      this.tabButtons.set(page,button);
+    });
+    this.renderContent(body,writer);
+  }
+  update(body:UiSurface,writer?:MenuTextWriter):void{
+    for(const scroll of this.contentScrolls){
+      this.references.removeScroll?.(scroll);scroll.destroy();
+      const index=body.scrolls.indexOf(scroll);if(index>=0)body.scrolls.splice(index,1);
+    }
+    for(const node of this.contentNodes)node.destroy();
+    body.pruneDestroyed();
+    for(const [page,button] of this.tabButtons)(button.getData('setSelected') as (selected:boolean)=>void)(page===this.page);
+    for(const spec of this.tabText)writer?.add(spec);
+    this.textSerial=this.tabText.length;this.renderContent(body,writer);
+  }
+  private renderContent(body:UiSurface,writer?:MenuTextWriter):void{
+    this.writer=writer;const before=new Set(body.root.list),scrolls=new Set(body.scrolls);
     const hint = this.page === 'story' ? this.renderStory(body)
       : this.page === 'character' ? this.renderCharacter(body)
       : this.page === 'items' ? this.renderItems(body)
       : this.renderStatus(body);
     this.text(this.result || hint, 60, 452, 900, 17, this.result ? '#ffd8a0' : '#c8bda6');
+    this.contentNodes=body.root.list.filter(node=>!before.has(node));
+    this.contentScrolls=body.scrolls.filter(scroll=>!scrolls.has(scroll));
     this.writer = undefined;
   }
 
-  /** 登记一段文字；key 只在本页内唯一，重画时按顺序复用同一个标签。 */
   private text(value: string, x: number, y: number, width = 0, size = 22, color = GOLD,
     scroll?: string, clip?: MenuTextClip): void {
     this.writer?.add({
