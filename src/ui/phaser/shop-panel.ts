@@ -89,6 +89,9 @@ export class ShopPanel {
   private batchControls:UiNode[]=[];
   private batchMarkers=new Map<string,UiImage>();
   private batchSellButton?:UiNode;
+  private batchToggleButton?:UiNode;
+  private cleanupEntryButton?:UiNode;
+  private moneyIcons:UiImage[]=[];
   private incrementalDescription=false;
 
   private bagOffset=0;
@@ -121,6 +124,7 @@ export class ShopPanel {
   get active():boolean{return !!this.selection||this.batch||this.cleaning;}
   captureScroll():void{this.bagOffset=this.pendingBagOffset??this.bagScroll?.scrollTop??this.bagOffset;this.pendingBagOffset=undefined;this.categoryOffset=this.categoryScroll?.scrollTop??this.categoryOffset;}
   cancel():void{
+    if(this.batch&&!this.selection){this.toggleBatch();return;}
     if(this.cleaning){if(this.selection){this.selection=undefined;this.changed();}else this.leaveCleanup();return;}
     const selection=this.selection;
     const incremental=this.incrementalDescription;
@@ -278,7 +282,34 @@ export class ShopPanel {
   private toggleBatch():void{
     this.batch=!this.batch;
     this.selection=undefined;this.batchSelection.clear();this.batchError=undefined;
-    this.changed();
+    if(!this.refreshBatchMode())this.changed();
+  }
+  private refreshBatchMode():boolean{
+    const v=this.view,target=this.text,toggle=this.batchToggleButton;
+    if(!v||!target?.updatePage||!toggle)return false;
+    for(const marker of this.batchMarkers.values())marker.destroy();this.batchMarkers.clear();
+    const label=this.batch?'退出批量':'批量出售';toggle.setData('label',label);toggle.getData('setSelected')?.(this.batch);
+    const toggleText=this.pageText.find(spec=>spec.key==='shop-batch-toggle');if(toggleText)toggleText.text=label;
+    const bar=this.layout.bagFrame,width=bar.width-158;
+    this.pageText=this.pageText.filter(spec=>!spec.key.startsWith('shop-money-')&&spec.key!=='shop-batch-label'&&spec.key!=='shop-batch-sell'&&spec.key!=='cleanup-entry');
+    if(this.batch){
+      this.cleanupEntryButton?.setVisible(false);this.moneyIcons.forEach(icon=>icon.setVisible(false));
+      if(!this.batchSellButton)this.batchSellButton=v.button('',bar.x+158,bar.y-42,width,40,()=>this.sellBatch(),{fontSize:16,disabled:true}).setData('label','出售选中');
+      this.batchSellButton.setVisible(true);
+      const plate=this.layout.money.plate;
+      this.addPage('shop-batch-label',`合计 ${moneyText(0)}`,plate.x+plate.width/2,plate.y+2,20,this.layout.money.color,.5,0,{width:plate.width,align:'center',wrap:'word'});
+      this.buttonText('shop-batch-sell','出售选中（0）',bar.x+158,bar.y-42,width,40,false,16);this.updateBatchStats();
+    }else{
+      this.batchSellButton?.setVisible(false);
+      if(!this.cleanupEntryButton){this.cleanupEntryButton=v.button('',bar.x+158,bar.y-42,200,40,()=>this.enterCleanup(),{}).setData('label','清理装备');this.batchControls.push(this.cleanupEntryButton);}
+      this.cleanupEntryButton.setVisible(true);this.buttonText('cleanup-entry','清理装备',bar.x+158,bar.y-42,200,40);
+      if(!this.moneyIcons.length)this.moneyIcons=this.money(v,this.session.money,this.layout.money.x,this.layout.money.y,'shop-money');
+      else{
+        this.moneyIcons.forEach(icon=>icon.setVisible(true));const wallet=splitMoney(this.session.money),money=this.layout.money;
+        MONEY_UNITS.forEach((unit,index)=>this.addPage(`shop-money-${unit}`,String(wallet[unit]),money.x+index*money.stride+money.digit.x,money.y+money.digit.y,21,money.color));
+      }
+    }
+    this.renderBagCells(v);target.updatePage();return true;
   }
   private toggleBatchEntry(id:string):void{
     if(this.batchSelection.has(id))this.batchSelection.delete(id);else this.batchSelection.add(id);
@@ -357,14 +388,16 @@ export class ShopPanel {
     this.addDetail(key,label,x+width/2,y+height/2,Math.min(22,height*.42),undefined,.5,.5);
   }
   /** 页面与弹层共用的金币数字；`prefix` 区分主界面、数量框和确认框三份。 */
-  private money(v:UiSurface,amount:number,x:number,y:number,prefix:string,modal=false):void{
+  private money(v:UiSurface,amount:number,x:number,y:number,prefix:string,modal=false):UiImage[]{
     const {stride,coin,digit,color}=this.layout.money,value=splitMoney(amount);
+    const icons:UiImage[]=[];
     MONEY_UNITS.forEach((unit,index)=>{
-      v.image(this.catalog.assets[unit],x+index*stride,y,coin.width,coin.height);
+      icons.push(v.image(this.catalog.assets[unit],x+index*stride,y,coin.width,coin.height));
       const key=`${prefix}-${unit}`;
       if(modal)this.addModal(key,String(value[unit]),x+index*stride+digit.x,y+digit.y,21,color);
       else this.addPage(key,String(value[unit]),x+index*stride+digit.x,y+digit.y,21,color);
     });
+    return icons;
   }
   /** 说明面板在当前这一步盖住的矩形；面板没开时返回 undefined。 */
   private descriptionCovered():{x:number;y:number;width:number;height:number}|undefined{
@@ -414,6 +447,7 @@ export class ShopPanel {
         v.image(item.icon,slot.icon.x,slot.icon.y,slot.icon.size,slot.icon.size,button);
         updateEquipmentLock(v,button,!!entry.locked);this.selectionButtons.set(key,button);
       }else button.setPosition(x,y);
+      button.setData('label',`${this.batch?'选择':'出售'} ${item.name}`);
       if(entry.quantity>1)this.addPage(`shop-badge-${index}`,String(entry.quantity),bag.x+x+this.layout.badge.x,bag.y+y+this.layout.badge.y,
         20,this.layout.badge.color,1,0,{},{scroll:'shop-bag',clip:{top:bag.y,bottom:bag.y+bag.height}});
       if(this.selection?.id===entry.id)this.selectionMarker=v.image(catalog.assets.selection,slot.selection.x,slot.selection.y,slot.selection.size,slot.selection.size,button);
@@ -461,7 +495,7 @@ export class ShopPanel {
   render(v:UiSurface,modal:UiSurface,placeModal?:PlaceModal,description?:UiSurface,text?:ShopTextTarget):void{
     this.placeModal=placeModal;this.pageText=[];this.modalText=[];this.detailText=[];this.text=text;
     this.view=v;this.description=description;this.modal=modal;this.incrementalDescription=false;
-    this.selectionButtons.clear();this.categoryButtons.clear();this.batchMarkers.clear();this.batchSellButton=undefined;this.bagSlots=[];this.filterHighlight=undefined;this.selectionMarker=undefined;this.batchControls=[];
+    this.selectionButtons.clear();this.categoryButtons.clear();this.batchMarkers.clear();this.batchSellButton=undefined;this.batchToggleButton=undefined;this.cleanupEntryButton=undefined;this.moneyIcons=[];this.bagSlots=[];this.filterHighlight=undefined;this.selectionMarker=undefined;this.batchControls=[];
     const {store,session,catalog}=this,classified=store.shop.categories.length>0;
     const layout=this.layout=shopLayout(classified),{leftFrame,bagFrame,title,shelf,bag,slot,category}=layout;
     // 两栏内容区保留透明背景，背包侧栏使用共用图框和底色。
@@ -509,7 +543,7 @@ export class ShopPanel {
       const plate=layout.money.plate,label=this.batchError??`合计 ${moneyText(batchTotal)}`;
       this.addPage('shop-batch-label',label,plate.x+plate.width/2,plate.y+2,20,
         this.batchError?'#e9a08a':layout.money.color,.5,0,{width:plate.width,align:'center',wrap:'word'});
-    }else this.money(v,session.money,layout.money.x,layout.money.y,'shop-money');
+    }else this.moneyIcons=this.money(v,session.money,layout.money.x,layout.money.y,'shop-money');
     // 背包栏右侧那 6 个按钮与背包页是同一列、同一套画法：常态外框是图组 15 索引 20，
     // 选中的那一个在按钮矩形 −(5,12) 上再叠索引 19。原版 `UIStore_DrawInvenBagGroup`
     // 用它们切换背包分类，所以卖东西时看到的就是筛出来的那一类。
@@ -521,8 +555,9 @@ export class ShopPanel {
         const button=v.button('',side.x,side.y+side.offsets[index],side.width,side.height,
           ()=>{if(this.filter===filter)return;this.filter=filter;this.bagOffset=0;if(this.bagScroll)this.bagScroll.scrollTop=0;
             this.batchSelection.clear();this.batchError=undefined;
-            if(this.batch||!this.text?.updatePage){this.changed();return;}
-            this.filterHighlight?.setPosition(side.x,side.y+side.offsets[index]);this.renderBagCells(v);this.text.updatePage();},{bare:true});
+            if(!this.text?.updatePage){this.changed();return;}
+            for(const marker of this.batchMarkers.values())marker.destroy();this.batchMarkers.clear();
+            this.filterHighlight?.setPosition(side.x,side.y+side.offsets[index]);this.renderBagCells(v);if(this.batch)this.updateBatchStats();this.text.updatePage();},{bare:true});
         this.addPage(`shop-filter-${filter}`,INVENTORY_LABELS[filter],side.x+side.width/2,
           side.y+side.offsets[index]+side.height/2,SIDE_FILTER_TEXT_SIZE,undefined,.5,.5,
           {width:side.width-6,align:'center',wrap:'word'});
@@ -533,11 +568,11 @@ export class ShopPanel {
     if(this.cleaning)this.renderCleanupText(v);
     if(!this.selection&&!this.cleaning){
       const batchBar=this.layout.bagFrame,batchLabel=this.batch?'退出批量':'批量出售';
-      this.batchControls.push(v.button('',batchBar.x,batchBar.y-42,150,40,()=>this.toggleBatch(),
-        {fontSize:16,selected:this.batch}).setData('label',batchLabel));
+      this.batchToggleButton=v.button('',batchBar.x,batchBar.y-42,150,40,()=>this.toggleBatch(),
+        {fontSize:16,selected:this.batch}).setData('label',batchLabel);this.batchControls.push(this.batchToggleButton);
       this.buttonText('shop-batch-toggle',batchLabel,batchBar.x,batchBar.y-42,150,40,false,16);
       if(!this.batch){
-        this.batchControls.push(v.button('',batchBar.x+158,batchBar.y-42,200,40,()=>this.enterCleanup(),{}).setData('label','清理装备'));
+        this.cleanupEntryButton=v.button('',batchBar.x+158,batchBar.y-42,200,40,()=>this.enterCleanup(),{}).setData('label','清理装备');this.batchControls.push(this.cleanupEntryButton);
         this.buttonText('cleanup-entry','清理装备',batchBar.x+158,batchBar.y-42,200,40);
       }
       if(this.batch){
