@@ -284,7 +284,7 @@ export class SavePage {
         try { this.host.app.saves.rename(ref, value); }
         catch (error) { console.warn('存档改名失败', error); }
       }
-      this.renameRef = undefined; this.host.render(); this.host.sync();
+      this.renameRef = undefined;if(value!==undefined)this.host.render();this.host.sync();
     };
     // 测试没有 DOM 输入框，直接注入一个返回值。
     if (this.host.app.promptText) {

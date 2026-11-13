@@ -2243,6 +2243,15 @@ test('load preparation keeps the game menu alive under loading and reports failu
   f.scene.click(f.scene.button('确认'));assert.equal(f.scene.canHit(f.scene.button('存档槽 1')),true);
 });
 
+test('canceling save rename keeps the existing save rows',async t=>{
+  const f=fixture();t.after(f.cleanup);
+  f.menu.show('save');f.scene.click(f.scene.button('存档槽 1'));f.scene.click(f.scene.button('确认'));
+  let finish!:(name:string|undefined)=>void;f.app.promptText=()=>new Promise(resolve=>{finish=resolve;});
+  const rename=f.scene.button('存档槽 1 改名'),scroll=f.internals.scrollNames.get('slots');
+  f.scene.click(rename);finish(undefined);await new Promise<void>(resolve=>setImmediate(resolve));
+  assert.equal(f.scene.button('存档槽 1 改名'),rename);assert.equal(f.internals.scrollNames.get('slots'),scroll);
+});
+
 test('closing the save page ignores a late rename result',async t=>{
   const f=fixture();t.after(f.cleanup);
   f.menu.show('save');f.scene.click(f.scene.button('存档槽 1'));f.scene.click(f.scene.button('确认'));
