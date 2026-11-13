@@ -197,9 +197,11 @@ test('physical map projection can be retried after the terminal node has already
   const travel=node('travel',[{type:'travel',destination:{map:'shadow-hall',x:216,y:360,facing:'north'}}]);
   let fail=true,projects=0,checkpoints=0;
   const h=harness([travel],undefined,{capture(){return {};},async restore(){},async project(){projects++;if(fail)throw new Error('map unavailable');},checkpoint(){checkpoints++;}});
+  let completed=0;h.director.onEventCompleted=()=>{completed++;};
   await assert.rejects(h.director.start(),/map unavailable/);
   assert.equal(h.session.storyWorld.currentLocation?.map,'shadow-hall');assert.equal(h.session.flags.has('demo-event'),true);
   fail=false;await h.director.retry();assert.equal(projects,2);assert.equal(checkpoints,1);
+  assert.equal(completed,1,'投影重试成功后补发事件完成通知');
   assert.equal(h.session.storyWorld.currentLocation?.x,216);assert.equal(h.director.busy,false);
 });
 

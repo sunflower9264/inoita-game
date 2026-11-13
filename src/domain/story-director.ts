@@ -71,6 +71,7 @@ export class StoryDirector {
   private disposed = false;
   private unsubscribe: () => void;
   private projectionPending = false;
+  private completedEventPending?: string;
   private rollbackPresentation = false;
   private projectionStage?: StoryStageSnapshot;
   private travelPending?: TravelDestination;
@@ -124,11 +125,12 @@ export class StoryDirector {
       commit: commit => this.commit(commit),
       afterCommit: async (commit, context) => {
         const run = commit.checkpoint.runs.find(candidate => candidate.id === commit.runId);
+        if (commit.eventId && run?.status === 'completed') this.completedEventPending = commit.eventId;
         const handingBack = run?.status !== 'running';
         if (handingBack) this.onSkipProgress?.('logic-complete');
         await this.project(context.signal);
         if (handingBack) this.onSkipProgress?.('world-ready');
-        if (commit.eventId && run?.status === 'completed') this.onEventCompleted?.(commit.eventId);
+        this.notifyCompletedEvent();
       },
       recover: context => this.recover(context.signal),
       checkpoint: snapshot => { this.session.adoptRuntime(snapshot); },
@@ -174,7 +176,7 @@ export class StoryDirector {
       if (this.restoring || this.restorationVersion !== session.restorationVersion) {
         if (!this.restoring) {
           this.restorationVersion = session.restorationVersion;
-          this.runtime.restore(session.runtimeState); this.recovery = undefined; this.projectionPending = true;
+          this.runtime.restore(session.runtimeState); this.recovery = undefined; this.completedEventPending = undefined; this.projectionPending = true;
         }
         this.observeChanges(false); return;
       }
@@ -280,7 +282,7 @@ export class StoryDirector {
       await this.manualSettled;
       await this.cleanup;
       this.context = undefined; this.choosing = false; this.confirming = false;
-      this.recovery=undefined;this.projectionStage=undefined;this.travelPending=undefined;this.travelApplied=false;
+      this.recovery=undefined;this.completedEventPending=undefined;this.projectionStage=undefined;this.travelPending=undefined;this.travelApplied=false;
       this.prefetchedScripts.clear();this.prefetchedRun=undefined;
       return await work();
     } finally {
@@ -374,6 +376,13 @@ export class StoryDirector {
       this.recovery = undefined;
     }
     await this.project(signal);
+    this.notifyCompletedEvent();
+  }
+  private notifyCompletedEvent(): void {
+    const event = this.completedEventPending;
+    if (!event) return;
+    this.completedEventPending = undefined;
+    this.onEventCompleted?.(event);
   }
   private async dialogue(line: DialogueLine, signal = this.context?.signal ?? this.manual.signal): Promise<void> {
     signal.throwIfAborted(); if (this.skipping) return;

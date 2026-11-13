@@ -29,6 +29,7 @@
 - 会连续修改会话的入口用 `Session.batchNotifications`：它只把多次修改的通知合并成一次，失败不回滚。需要“要么全成、要么全退”的入口用 `Session.atomic(operation, touched)`，按 `touched` 声明实际会碰到的子系统懒抓快照；嵌套调用并入外层，失败只恢复这些子系统并丢弃待发通知，不给通知批次套整份会话快照。
 - 剧情运行时快照不可变：`StoryRuntime` 的写入只替换数组和对象，`snapshot()` 直接返回引用，不做整份深拷贝。内部检查点走 `adoptTrusted`（版本、数组、ID 和重复的廉价检查；开发/测试模式再全量校验），读档、检查点恢复、GM 跳转和云存档走 `prepareRestore`。开发/测试模式用 `dev-mode.ts` 的 `freezeSnapshot` 冻结快照，生产热路径不冻结。
 - `StoryDirector.onSkipProgress` 只报告跳过请求、最终逻辑提交、世界就绪、交还操作权与必须停下的确认；计时和日志由应用层接入。
+- 剧情事件完成通知等世界投影成功后发出；投影失败重试成功时补发一次。
 - 跳过剧情只影响表现：`StoryDirector.prepare` 跳过时仍调用 `world.prepare`，为当前图和下一张确定地图发起预取，但跳过只结束等待，加载在后台继续，不阻塞剧情推进；同图舞台可补齐后续人物与战斗素材。立绘和音效同样发起预取但不阻塞推进；`choice` 和 `quest-popup` 之前调用 `presentation.flushStage`，先把逻辑舞台画出来再弹窗。任务、物品、标记、传送和检查点仍按原顺序提交。
 - 本目录保持零 Phaser 依赖，也不 import `application`、`ui`、`rendering`、`scenes`、`debug`。
 - 新规则写成纯函数或状态迁移，由 `application` 负责适配 Phaser、浏览器和磁盘。
