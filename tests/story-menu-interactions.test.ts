@@ -3191,6 +3191,29 @@ test('entering and leaving equipment cleanup keeps the shop and eligible items',
   assert.equal(f.scene.button(`出售 ${items.items[entry.item].name}`),slot);assert.equal(f.internals.shopPanel!.bagScroll,scroll);
 });
 
+test('selling cleanup equipment keeps the shop and scroll container',t=>{
+  const f=fixture();t.after(f.cleanup);const entry=f.add('ferrule');
+  const shop=Object.entries(f.app.shops.shops).find(([,value])=>value.categories.length&&value.stockRules.some(rule=>rule.kind==='level-range'))!;
+  f.menu.openShop(shop[0],'');const store=f.internals.shopPanel!.store,offer=store.offers[0];
+  const shelf=f.scene.buttons(`购买 ${items.items[offer.instance.item].name}`)[0]!,scroll=f.internals.shopPanel!.bagScroll!;
+  const money=f.session.money;f.scene.click(f.scene.button('清理装备'));
+  const sell=f.scene.button('全部出售');f.scene.click(sell);
+  assert.equal(f.session.bag.get(entry.id),undefined);assert.ok(f.session.money>money);
+  assert.ok(f.scene.buttons(`购买 ${items.items[offer.instance.item].name}`)[0]===shelf);
+  assert.ok(f.internals.shopPanel!.bagScroll===scroll);
+});
+
+test('cleanup sale errors preserve the controls and show the error',t=>{
+  const f=fixture();t.after(f.cleanup);f.add('ferrule');
+  f.menu.openShop(f.app.shops.lampShop,'');f.scene.click(f.scene.button('清理装备'));
+  const sell=f.scene.button('全部出售'),back=f.scene.button('返回商店'),scroll=f.internals.shopPanel!.bagScroll;
+  t.mock.method(f.internals.shopPanel!.store,'sellCleanup',()=>{throw new Error('出售失败');});
+  f.scene.click(sell);
+  assert.ok(f.scene.button('全部出售')===sell);assert.ok(f.scene.button('返回商店')===back);
+  assert.ok(f.internals.shopPanel!.bagScroll===scroll);
+  assert.ok(visibleDomLabels(f).some(label=>label.text==='出售失败'));
+});
+
 test('cleanup level hold preserves its node and stops on release and cancel',t=>{
   const f=fixture();t.after(f.cleanup);t.mock.timers.enable({apis:['setTimeout']});
   f.menu.openShop(f.app.shops.lampShop,'');f.scene.click(f.scene.button('清理装备'));

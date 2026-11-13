@@ -247,10 +247,17 @@ export class ShopPanel {
     if(this.sellingCleanup||!this.cleanupQuote?.entries.length)return;
     this.sellingCleanup=true;
     try{
-      const count=this.cleanupQuote.entries.length,total=this.store.sellCleanup(this.cleanupQuote,this.cleanupSettings());
+      const count=this.cleanupQuote.entries.length;let total=0;
+      const sell=()=>{total=this.store.sellCleanup(this.cleanupQuote!,this.cleanupSettings());};
+      if(this.text?.runTrade)this.text.runTrade(sell);else sell();
+      const wallet=splitMoney(this.session.money);
+      for(const unit of MONEY_UNITS){const spec=this.pageText.find(value=>value.key===`shop-money-${unit}`);if(spec)spec.text=String(wallet[unit]);}
       this.leaveCleanup();this.notify?.(`已出售 ${count} 件装备，获得 ${moneyText(total)}`);
-    }catch(error){this.cleanupError=(error as Error).message;this.changed();}
-    finally{this.sellingCleanup=false;}
+    }catch(error){
+      this.cleanupError=(error as Error).message;
+      const summary=this.pageText.find(spec=>spec.key==='cleanup-summary');
+      if(summary&&this.text?.updatePage){summary.text=this.cleanupError;summary.style.color=TEXT_COLORS.danger;this.text.updatePage();}else this.changed();
+    }finally{this.sellingCleanup=false;}
   }
   private stepCleanupLevel(step:number):void {
     const value=Math.max(0,Math.min(Number.MAX_SAFE_INTEGER,this.cleanupLevel+step));
