@@ -157,6 +157,16 @@ test('notice uses candidate order and starts an A* approach that retains its tar
   run.finish();run.ai.update(60);assert.equal(run.ai.snapshot().targetId,'second');
 });
 
+test('once-only skill remains available when its approach is interrupted',()=>{
+  const run=setup([{...skill,once:true}]);run.scores.set('first',10);
+  run.ai.update(60);
+  assert.equal(run.ai.combatController!.actionState(),'approaching');
+  assert.deepEqual(run.ai.captureState().spentOnce,[]);
+  run.ai.disable();run.actor.position={x:80,y:32};run.ai.update(60);
+  assert.equal(run.plays[0]?.skill?.id,'spell');
+  assert.deepEqual(run.ai.captureState().spentOnce,['spell']);
+});
+
 test('approach completion requires the saved ledger entry before spending mana or setting cooldown',()=>{
   const run=setup([skill]);run.scores.set('first',10);run.ai.update(60);
   run.scores.delete('first');run.scores.set('second',20);run.actor.position={x:80,y:32};run.ai.update(60);

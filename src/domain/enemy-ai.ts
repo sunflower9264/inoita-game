@@ -126,8 +126,12 @@ export class EnemyController {
   constructor(id:string,behavior:EnemyBehavior,basicAttack:ResolvedBasicAttack|null,port:EnemyPort,skills:readonly EnemyPlayableSkill[]=[],random:()=>number=Math.random,sharedCombat?:CombatController){
     this.id=id;this.behavior=behavior;this.attack=basicAttack;this.port=port;
     this.skills=skills;this.random=random;
+    const combatPort:EnemyPort={...port,play:(action,frame,complete)=>{
+      if(action.skill&&skills.some(skill=>skill.once&&skill.id===action.skill!.id))this.spentOnce.add(action.skill.id);
+      return port.play(action,frame,complete);
+    }};
     if(basicAttack||skills.length||sharedCombat)this.combat=sharedCombat??new CombatController(id,basicAttack,port.threat?{
-      ...port,
+      ...combatPort,
       approachTarget:(target,range)=>{
         const actor=port.actor(id);
         if(actor&&behavior.canMove&&behavior.moveSpeedPxPerSecond>0){
@@ -141,7 +145,7 @@ export class EnemyController {
         return false;
       },
       canFinishApproach:targetId=>port.threat!.has(targetId)&&(port.canFinishApproach?.(targetId)??true),
-    }:port);
+    }:combatPort);
   }
   snapshot():EnemySnapshot{return {state:this.state,targetId:this.targetId,cooldowns:this.combat?.snapshot().cooldowns??{}};}
   /** 只读行为阶段；不需要冷却快照时用这个。 */
@@ -348,7 +352,6 @@ export class EnemyController {
       this.path=[];this.destination=undefined;this.search=undefined;
       if(this.port.threat&&!this.mapWide)this.nextPathAt=0;
       const result=this.combat.request({...skill,level:skill.level,manaCost:skill.manaCost},target.id,this.behavior.canTurn);
-      if(result==='started'&&skill.once)this.spentOnce.add(skill.id);
       if(this.port.threat&&(result!=='started'||this.combat.actionState()==='idle')){this.returnHome();return;}
       this.state=this.combat.actionState()==='attacking'?'attacking':'chasing';return;
     }
