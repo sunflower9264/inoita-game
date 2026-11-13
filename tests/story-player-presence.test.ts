@@ -45,13 +45,12 @@ test('a scene that only walks the player in keeps him hidden until the first cam
   assert.ok(show >= 0 && show < entrance, '主角要在第一次被镜头对准或走位之前显形');
 });
 
-test('every explicit show happens on a stage that starts with the player hidden', () => {
-  for (const [name, script] of Object.entries(campaign.scripts)) for (const node of script.nodes) {
-    const stage = node.presentation.find(action => action.type === 'stage');
-    for (const action of node.presentation) if (action.type === 'show') {
-      assert.ok(stage, `${name}/${node.id} 的显形缺少舞台`);
-      assert.equal(stage.playerVisible, false, `${name}/${node.id} 的主角不该一开始就显示`);
-    }
+test('player entrances that begin on stage remain visible before show', () => {
+  for (const name of ['event-54', 'event-60', 'event-72', 'event-74', 'event-85', 'event-352',
+    'event-392', 'event-393', 'event-394', 'event-395']) {
+    const entry = stagesOf(name).find(value => value.node.id === 'scene-1')!;
+    assert.equal(entry.stage.playerVisible, true, `${name} 的主角应当开场可见`);
+    assert.ok(entry.node.presentation.some(action => action.type === 'show' && action.target === 'player'), name);
   }
 });
 

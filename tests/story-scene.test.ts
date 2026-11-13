@@ -10,6 +10,13 @@ const member=(id:string,extra:Partial<StoryCastMember>={}):StoryCastMember=>({id
 const stage=(cast:StoryCastMember[]=[]):StoryStage=>({type:'stage',map:'camp',x:1,y:2,facing:'east',playerVisible:true,retainPlayerPosition:true,cast});
 const source=(actors:SceneActorState[]=[]):SceneSnapshot=>({map:'camp',actors:[actor('player'),...actors]});
 
+test('show keeps an already visible player in place',()=>{
+  const snapshot=resolveStoryScene(stage(),source());
+  const shown=applyStorySceneAction(snapshot,{type:'show',target:'player'});
+  const player=boundSceneActor(shown,'player')!;
+  assert.deepEqual([player.visible,player.x,player.y],[true,10,20]);
+});
+
 test('scene takeover preserves every non-script object and binds aliases to the existing instance',()=>{
   const original=source([
     actor('entity:gate',{actor:'gate',worldEntityId:'gate',characterId:'gate-character'}),
