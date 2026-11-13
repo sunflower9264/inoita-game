@@ -52,30 +52,81 @@ interface AssetReportRoots {
   contentRoot?: string;
 }
 
+/** PNG 文件头：签名里的 "PNG" 三字节加 IHDR 宽高偏移。 */
+const PNG_SIGNATURE_TEXT_OFFSET = 1;
+const PNG_SIGNATURE_TEXT_END = 4;
+const PNG_SIGNATURE_TEXT = 'PNG';
+const PNG_MIN_HEADER_BYTES = 24;
+const PNG_WIDTH_OFFSET = 16;
+const PNG_HEIGHT_OFFSET = 20;
+
+/** WebP（RIFF 容器）：块类型区分 VP8X/VP8L/VP8 三种宽高编码。 */
+const WEBP_RIFF_OFFSET = 0;
+const WEBP_RIFF_END = 4;
+const WEBP_CHUNK_TYPE_OFFSET = 12;
+const WEBP_CHUNK_TYPE_END = 16;
+const WEBP_MIN_HEADER_BYTES = 30;
+const WEBP_VP8X_WIDTH_OFFSET = 24;
+const WEBP_VP8X_HEIGHT_OFFSET = 27;
+const WEBP_VP8X_DIMENSION_BYTES = 3;
+const WEBP_VP8L_BITS_OFFSET = 21;
+const WEBP_VP8L_DIMENSION_BITS = 14;
+const WEBP_VP8L_DIMENSION_MASK = 0x3fff;
+const WEBP_VP8_FRAME_WIDTH_OFFSET = 26;
+const WEBP_VP8_FRAME_HEIGHT_OFFSET = 28;
+const WEBP_VP8_DIMENSION_MASK = 0x3fff;
+
+/** JPEG：SOI 标识 0xFFD8；SOF0–SOF3 段里宽度在段内 +7、高度在 +5。 */
+const JPEG_MARKER_PREFIX = 0xff;
+const JPEG_START_OF_IMAGE = 0xd8;
+const JPEG_MIN_HEADER_BYTES = 4;
+const JPEG_SEGMENT_LENGTH_OFFSET = 2;
+const JPEG_SOF0_MARKER = 0xc0;
+const JPEG_SOF3_MARKER = 0xc3;
+const JPEG_SOF_SEGMENT_WIDTH_OFFSET = 7;
+const JPEG_SOF_SEGMENT_HEIGHT_OFFSET = 5;
+/** 读 SOF 段宽高前至少要留够 10 字节：段内偏移 7 再读 2 字节。 */
+const JPEG_SOF_SEGMENT_MIN_REMAINING = 10;
+
 interface ImageSize { width: number; height: number }
 
 /** 只读 IHDR / SOF / VP8X；读不出尺寸的格式按 0 计，不阻塞报告。 */
 function imageSize(bytes: Buffer, file: string): ImageSize | undefined {
   const ext = path.extname(file).toLowerCase();
   try {
-    if (ext === '.png' && bytes.length >= 24 && bytes.toString('ascii', 1, 4) === 'PNG') {
-      return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
+    if (ext === '.png' && bytes.length >= PNG_MIN_HEADER_BYTES
+      && bytes.toString('ascii', PNG_SIGNATURE_TEXT_OFFSET, PNG_SIGNATURE_TEXT_END) === PNG_SIGNATURE_TEXT) {
+      return { width: bytes.readUInt32BE(PNG_WIDTH_OFFSET), height: bytes.readUInt32BE(PNG_HEIGHT_OFFSET) };
     }
-    if (ext === '.webp' && bytes.length >= 30 && bytes.toString('ascii', 0, 4) === 'RIFF') {
-      const kind = bytes.toString('ascii', 12, 16);
-      if (kind === 'VP8X') return { width: 1 + bytes.readUIntLE(24, 3), height: 1 + bytes.readUIntLE(27, 3) };
+    if (ext === '.webp' && bytes.length >= WEBP_MIN_HEADER_BYTES
+      && bytes.toString('ascii', WEBP_RIFF_OFFSET, WEBP_RIFF_END) === 'RIFF') {
+      const kind = bytes.toString('ascii', WEBP_CHUNK_TYPE_OFFSET, WEBP_CHUNK_TYPE_END);
+      if (kind === 'VP8X') return {
+        width: 1 + bytes.readUIntLE(WEBP_VP8X_WIDTH_OFFSET, WEBP_VP8X_DIMENSION_BYTES),
+        height: 1 + bytes.readUIntLE(WEBP_VP8X_HEIGHT_OFFSET, WEBP_VP8X_DIMENSION_BYTES),
+      };
       if (kind === 'VP8L') {
-        const bits = bytes.readUInt32LE(21);
-        return { width: 1 + (bits & 0x3fff), height: 1 + ((bits >> 14) & 0x3fff) };
+        const bits = bytes.readUInt32LE(WEBP_VP8L_BITS_OFFSET);
+        return {
+          width: 1 + (bits & WEBP_VP8L_DIMENSION_MASK),
+          height: 1 + ((bits >> WEBP_VP8L_DIMENSION_BITS) & WEBP_VP8L_DIMENSION_MASK),
+        };
       }
-      if (kind === 'VP8 ') return { width: bytes.readUInt16LE(26) & 0x3fff, height: bytes.readUInt16LE(28) & 0x3fff };
+      if (kind === 'VP8 ') return {
+        width: bytes.readUInt16LE(WEBP_VP8_FRAME_WIDTH_OFFSET) & WEBP_VP8_DIMENSION_MASK,
+        height: bytes.readUInt16LE(WEBP_VP8_FRAME_HEIGHT_OFFSET) & WEBP_VP8_DIMENSION_MASK,
+      };
     }
-    if ((ext === '.jpg' || ext === '.jpeg') && bytes.length > 4 && bytes[0] === 0xff && bytes[1] === 0xd8) {
-      for (let at = 2; at + 9 < bytes.length;) {
-        if (bytes[at] !== 0xff) { at++; continue; }
+    if ((ext === '.jpg' || ext === '.jpeg') && bytes.length > JPEG_MIN_HEADER_BYTES
+      && bytes[0] === JPEG_MARKER_PREFIX && bytes[1] === JPEG_START_OF_IMAGE) {
+      for (let at = 2; at + JPEG_SOF_SEGMENT_MIN_REMAINING <= bytes.length;) {
+        if (bytes[at] !== JPEG_MARKER_PREFIX) { at++; continue; }
         const marker = bytes[at + 1];
-        const length = bytes.readUInt16BE(at + 2);
-        if (marker >= 0xc0 && marker <= 0xc3) return { width: bytes.readUInt16BE(at + 7), height: bytes.readUInt16BE(at + 5) };
+        const length = bytes.readUInt16BE(at + JPEG_SEGMENT_LENGTH_OFFSET);
+        if (marker >= JPEG_SOF0_MARKER && marker <= JPEG_SOF3_MARKER) return {
+          width: bytes.readUInt16BE(at + JPEG_SOF_SEGMENT_WIDTH_OFFSET),
+          height: bytes.readUInt16BE(at + JPEG_SOF_SEGMENT_HEIGHT_OFFSET),
+        };
         at += 2 + length;
       }
     }

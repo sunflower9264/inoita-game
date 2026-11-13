@@ -35,6 +35,10 @@ interface StoredBuff { id:BattleBuffKey;sourceId:string;remainingMs:number;elaps
 interface StoredState { id:BattleStateKey;sourceId:string;ownerBuff?:BattleBuffKey;remainingMs:number;
   simulationFrames?:{lastActiveFrame:number};nextFrameAge?:number }
 const MAX_STATE_NODES=128;
+/** 物理减伤率与角色面板同一公式：1000×防御 / (防御 + 20×(等级 + 3))。 */
+const PER_MILLE=1000;
+const PHYSICAL_DEFENSE_WEIGHT_PER_LEVEL=20;
+const PHYSICAL_DEFENSE_LEVEL_OFFSET=3;
 export interface CombatConditionsState {
   buffs:[string,StoredBuff[]][];
   states:[string,StoredState[]][];
@@ -466,12 +470,12 @@ export class CombatConditions {
     const defenseRate=Math.max(0,value('defenseRate',base.defenseRate??0));
     const effectiveDefense=calculateEffectiveDefense(defense,defenseRate);
     const rawPhysicalResistance=base.defense===undefined?value('physicalResistanceBonus',base.physicalResistance):
-      Math.trunc(1000*effectiveDefense/(effectiveDefense+20*(base.level+3)))+value('physicalResistanceBonus',base.physicalResistanceBonus??0);
+      Math.trunc(PER_MILLE*effectiveDefense/(effectiveDefense+PHYSICAL_DEFENSE_WEIGHT_PER_LEVEL*(base.level+PHYSICAL_DEFENSE_LEVEL_OFFSET)))+value('physicalResistanceBonus',base.physicalResistanceBonus??0);
     // 狂战士防御侧：只对非负减伤率扣自身比例，装备者因此承受更多物理伤害。
     const zealotRate=Math.max(0,value('zealotRate',base.zealotRate??0));
-    const physicalResistance=rawPhysicalResistance-Math.trunc(Math.max(0,rawPhysicalResistance)*zealotRate/1000);
+    const physicalResistance=rawPhysicalResistance-Math.trunc(Math.max(0,rawPhysicalResistance)*zealotRate/PER_MILLE);
     const magicResistance=value('magicResistance',base.magicResistance??0);
-    return {...base,defense:base.defense===undefined?undefined:defense,defenseRate,physicalAttack:Math.trunc(physicalAttack*(1000+physicalBonus+(stealthAttackEnabled?stealthDamageRate:0))/1000),physicalDamageRate:physicalBonus,
+    return {...base,defense:base.defense===undefined?undefined:defense,defenseRate,physicalAttack:Math.trunc(physicalAttack*(PER_MILLE+physicalBonus+(stealthAttackEnabled?stealthDamageRate:0))/PER_MILLE),physicalDamageRate:physicalBonus,
       zealotRate,stealthAttackEnabled,stealthDamageRate,
       magicDamageRate:value('magicDamageRate',0),conditionalMagicDamageRate:value('conditionalMagicDamageRate',0),
       magicAttack:value('magicAttack',base.magicAttack??0),criticalRate:value('criticalRate',base.criticalRate),

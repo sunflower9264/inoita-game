@@ -7,7 +7,7 @@ import type { ControlSkin } from '../../domain/control-skin.ts';
 import { CONTROL_IDS, CONTROL_SCALE_MIN, CONTROL_SIZES, maxControlScale, normalizeControlPosition,
   resolveControlLayout, type ControlId, type ControlLayoutOverrides, type ControlPlacement, type ControlPoint } from '../control-layout.ts';
 import type { ControlLayoutPreferences } from '../control-layout.ts';
-import { ITEM_ICON_SIZE, SLOT_ICON_SIZE, type ShortcutSlot } from './action-controls.ts';
+import { ITEM_ICON_SIZE, QUANTITY_BADGE, SLOT_ICON_SIZE, type ShortcutSlot } from './action-controls.ts';
 import { DPAD_ARROW_OFFSET, DPAD_ARROW_SCALE_NORM, DPAD_BASE_RADIUS, DPAD_RUNE_ALPHA, STICK_KNOB_RADIUS } from './move-stick.ts';
 import { controlSettings } from '../../application/control-settings.ts';
 import type { DomLabel, DomUi } from '../dom/dom-ui.ts';
@@ -185,9 +185,9 @@ export class ControlLayoutEditor {
       seen.add(quantity.id);
       let label=this.quantityLabels.get(quantity.id);
       if(!label){label=dom.label('screen','dom-control-quantity',{x:.5,y:.5});this.quantityLabels.set(quantity.id,label);}
-      const matrix=object.getWorldTransformMatrix(),point=matrix.transformPoint(32,23);
+      const matrix=object.getWorldTransformMatrix(),point=matrix.transformPoint(QUANTITY_BADGE.centerX,QUANTITY_BADGE.centerY);
       label.setText(quantity.text).setAnchor(.5,.5).setPosition(point.x,point.y)
-        .setStyle({fontSize:`${Math.max(1,18*matrix.scaleX*quantity.fit)}px`,color:'#ffffff'}).setVisible(shown);
+        .setStyle({fontSize:`${Math.max(1,QUANTITY_BADGE.fontSize*matrix.scaleX*quantity.fit)}px`,color:'#ffffff'}).setVisible(shown);
     }
     for(const [id,label] of this.quantityLabels){if(seen.has(id))continue;label.remove();this.quantityLabels.delete(id);}
   }
@@ -242,11 +242,12 @@ export class ControlLayoutEditor {
           const fan=new DomCooldown(object.element);fan.rect({x:-size/2,y:-size/2,width:size,height:size});fan.update(cooldown,size/2);object.once('destroy',()=>fan.destroy());
         }
         if(isItem) {
-          image(this.skin['quantity-badge'],38,40,13,3);
+          image(this.skin['quantity-badge'],QUANTITY_BADGE.width,QUANTITY_BADGE.height,
+            QUANTITY_BADGE.centerX-QUANTITY_BADGE.width/2,QUANTITY_BADGE.centerY-QUANTITY_BADGE.height/2);
           const text=String(slot!.quantity);
           // 文字交给 DOM；这里只留一个量字探针，量完立即销毁。
-          const probe=this.canvas.text(text,0,0,0,18,'#ffffff');
-          const fit=Math.min(1,30/Math.max(1,probe.width),30/Math.max(1,probe.height));
+          const probe=this.canvas.text(text,0,0,0,QUANTITY_BADGE.fontSize,'#ffffff');
+          const fit=Math.min(1,QUANTITY_BADGE.maxTextSize/Math.max(1,probe.width),QUANTITY_BADGE.maxTextSize/Math.max(1,probe.height));
           probe.destroy();
           this.quantities.push({id,text,fit});
         }

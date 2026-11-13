@@ -22,6 +22,9 @@ const MAX_SAMPLE_MS = 700;
 const FALLBACK_WAIT_MS = 1200;
 /** 少于这个数量的采样不足以判断刷新率。 */
 const MIN_SAMPLES = 6;
+/** 刷新率的合理范围；超出说明采样被加载卡顿或前后台切换污染，丢弃不用。 */
+const MIN_PLAUSIBLE_REFRESH_HZ = 20;
+const MAX_PLAUSIBLE_REFRESH_HZ = 300;
 
 /**
  * 把玩家选的帧率换算成 Phaser 的 `fps.limit`；0 表示跟随屏幕刷新率。
@@ -41,13 +44,13 @@ export function resolveFrameLimit(chosen: number, refreshHz: number): number {
 
 function median(values: number[]): number {
   const sorted = values.slice().sort((a, b) => a - b);
-  const middle = sorted.length >> 1;
+  const middle = Math.floor(sorted.length / 2);
   return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
 }
 
 function refreshFromIntervals(intervals: number[]): number {
   const hz = 1000 / median(intervals);
-  if (!Number.isFinite(hz) || hz < 20 || hz > 300) return DEFAULT_REFRESH_HZ;
+  if (!Number.isFinite(hz) || hz < MIN_PLAUSIBLE_REFRESH_HZ || hz > MAX_PLAUSIBLE_REFRESH_HZ) return DEFAULT_REFRESH_HZ;
   return Math.round(hz * 2) / 2;
 }
 
@@ -135,7 +138,7 @@ export function currentRefreshRate(): number {
  * 从 120Hz 切到 60Hz 时如果还按旧的 120 换算，60 上限会踩进限帧器临界区。
  */
 export function setRefreshRate(hz: number): void {
-  if (!Number.isFinite(hz) || hz < 20 || hz > 300) return;
+  if (!Number.isFinite(hz) || hz < MIN_PLAUSIBLE_REFRESH_HZ || hz > MAX_PLAUSIBLE_REFRESH_HZ) return;
   measuredRefreshHz = Math.round(hz * 2) / 2;
   measuredSamples = SAMPLE_COUNT;
 }

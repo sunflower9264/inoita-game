@@ -76,6 +76,11 @@ export function walkClips(value: unknown, visit: (clip: ClipLike, name: string) 
   for (const child of Object.values(record)) walkClips(child, visit);
 }
 
+/** 素材分类目录：`assets/<分类>/...` 的第二段；不同分类的同内容图片不能共用帧。 */
+function assetKindOf(file: string): string {
+  return file.split('/')[1] ?? '';
+}
+
 /**
  * 动画图层的贴图按内容寻址合并：解码像素、图片尺寸、帧尺寸与帧数都一样时，
  * 多个方向/多个角色共用同一个纹理键。运行时 Phaser 只解码、上传一份；`mirrorX`
@@ -118,7 +123,7 @@ async function dedupeClipLayers(_sourceDir: string, files: SourceFile[], assetRo
   for (const record of records) {
     const hash = await hashFile(record.layer.file);
     if (!hash) continue;
-    const kind = record.layer.file.split('/')[1] ?? '';
+    const kind = assetKindOf(record.layer.file);
     const group = [hash, record.clip.frameWidth, record.clip.frameHeight, record.clip.frames, kind].join('|');
     const entries = groups.get(group);
     if (entries) entries.push(record.layer); else groups.set(group, [record.layer]);
@@ -140,7 +145,7 @@ async function dedupeClipLayers(_sourceDir: string, files: SourceFile[], assetRo
     before.add(record.layer.key);
     const hash = hashes.get(record.layer.file);
     if (!hash) { after.add(record.layer.key); continue; }
-    const kind = record.layer.file.split('/')[1] ?? '';
+    const kind = assetKindOf(record.layer.file);
     const group = [hash, record.clip.frameWidth, record.clip.frameHeight, record.clip.frames, kind].join('|');
     const chosen = canonical.get(group);
     if (!chosen) { after.add(record.layer.key); continue; }

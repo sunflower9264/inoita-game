@@ -2,6 +2,10 @@
  * 温和保底：连续没有出装备/黄装/紫装时，下一次的概率逐步提高，达到次数后必出。
  * 计数按成员、按存档保存；宝箱只维护装备计数，黄装/紫装保底只按敌人击杀累计。
  */
+/** 稀有度档位：3 是黄装（unique），4 是紫装（epic）。 */
+export const RARITY_UNIQUE = 3;
+export const RARITY_EPIC = 4;
+
 interface PityCounters {
   equipmentMisses: number;
   /** 替代旧的 rarePlusMisses：连续没有黄装（unique）的次数。 */
@@ -97,9 +101,9 @@ export class LootPity {
     const counters = this.counters(ownerId);
     if (result.equipment) counters.equipmentMisses = 0;
     else counters.equipmentMisses += 1;
-    if ((result.bestRarity ?? 0) >= 3) counters.uniqueMisses = 0;
+    if ((result.bestRarity ?? 0) >= RARITY_UNIQUE) counters.uniqueMisses = 0;
     else if (eligibility.unique) counters.uniqueMisses += 1;
-    if ((result.bestRarity ?? 0) >= 4) counters.epicMisses = 0;
+    if ((result.bestRarity ?? 0) >= RARITY_EPIC) counters.epicMisses = 0;
     else if (eligibility.epic) counters.epicMisses += 1;
   }
 

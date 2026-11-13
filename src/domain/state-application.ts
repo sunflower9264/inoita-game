@@ -4,6 +4,9 @@ import type {StateDurationProfile} from './battle.ts';
 
 type StateDurationScale=1|0.5;
 
+/** 抗性判定按千分制掷 1..999；结果严格小于抗性阈值才算抵抗成功。 */
+const RESISTANCE_ROLL_MAX=999;
+
 /** 目标的固有状态规则；装备免疫和实时抵抗数值由调用方另行提供。 */
 export interface StateApplicationRules<State extends string=BattleStateKey> {
   immuneToAllStates?:boolean;
@@ -37,7 +40,7 @@ export function resolveStateApplication<State extends string>(request:StateAppli
   if(rules?.immuneToAllStates||rules?.immuneStates?.includes(request.state)||(request.specificImmunityValue??0)>0)
     return {allowed:false,reason:'immune'};
   const resistance=request.resistanceThreshold??0;
-  if(request.sourceRelation==='hostile'&&resistance>0&&1+Math.floor(random()*999)<resistance)
+  if(request.sourceRelation==='hostile'&&resistance>0&&1+Math.floor(random()*RESISTANCE_ROLL_MAX)<resistance)
     return {allowed:false,reason:'resisted'};
   return {allowed:true,durationScale:rules?.durationScale??1,
     buffDurationScale:request.kind==='buff'?rules?.buffDurationScaleByState?.[request.state]??1:1,

@@ -1,5 +1,12 @@
 import type { UiSurface } from './widgets.ts';
 
+/** 四角件的边长；中间四条带和中央块都从它推出。 */
+const CORNER_SIZE = 15;
+/** 原版九宫格填充色 RGB(111,111,111)。 */
+const BAND_COLOR = 0x6f6f6f;
+/** 强度按百分比给出，100 表示完全不透明。 */
+const FULL_STRENGTH = 100;
+
 /**
  * 压暗的圆角带，原版 `UI_FillRoundRect @0x1434d4`。
  *
@@ -14,17 +21,17 @@ import type { UiSurface } from './widgets.ts';
  * 人物属性行与队伍页的条带使用强度 50。
  */
 export function drawRoundBand(v: UiSurface, assets: Record<string, string>, x: number, y: number, width: number, height: number, strength: number, hole?:{x:number;y:number;width:number;height:number}): void {
-  const alpha = strength / 100, color = 0x6f6f6f;
-  v.image(assets['round-nw'], x, y, 15, 15).setAlpha(alpha);
-  v.image(assets['round-ne'], x + width - 15, y, 15, 15).setAlpha(alpha);
-  v.image(assets['round-sw'], x, y + height - 15, 15, 15).setAlpha(alpha);
-  v.image(assets['round-se'], x + width - 15, y + height - 15, 15, 15).setAlpha(alpha);
+  const alpha = strength / FULL_STRENGTH, color = BAND_COLOR, corner = CORNER_SIZE, span = CORNER_SIZE * 2;
+  v.image(assets['round-nw'], x, y, corner, corner).setAlpha(alpha);
+  v.image(assets['round-ne'], x + width - corner, y, corner, corner).setAlpha(alpha);
+  v.image(assets['round-sw'], x, y + height - corner, corner, corner).setAlpha(alpha);
+  v.image(assets['round-se'], x + width - corner, y + height - corner, corner, corner).setAlpha(alpha);
   const bands = [
-    [x + 15, y, width - 30, 15],
-    [x + 15, y + height - 15, width - 30, 15],
-    [x, y + 15, 15, height - 30],
-    [x + width - 15, y + 15, 15, height - 30],
-    [x + 15, y + 15, width - 30, height - 30],
+    [x + corner, y, width - span, corner],
+    [x + corner, y + height - corner, width - span, corner],
+    [x, y + corner, corner, height - span],
+    [x + width - corner, y + corner, corner, height - span],
+    [x + corner, y + corner, width - span, height - span],
   ];
   for (const [left, top, bandWidth, bandHeight] of bands) {
     const right=left+bandWidth,bottom=top+bandHeight;

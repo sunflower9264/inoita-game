@@ -3,6 +3,12 @@ import type { SummonPlacement } from './battle.ts';
 import type { Point } from './navigation.ts';
 import { projectileStep } from './basic-attack.ts';
 
+const DIRECTIONS: readonly Facing[] = ['south', 'west', 'north', 'east'];
+/** 落点搜索顺序：正后方 → 两侧 → 正前方。 */
+const SEARCH_TURN_ORDER = [0, 1, 3, 2] as const;
+/** 落点按 8 像素网格逐格尝试。 */
+const SEARCH_GRID_PX = 8;
+
 /** 固定落点的过渡最多前进 switchFrame + 1 次，最后一次强制抵达。 */
 export function positionTransitionStep(start:Point,target:Point,stepPx:number,completedSteps:number,switchFrame:number){
   return completedSteps>=switchFrame ? {position:{...target},arrived:true} : projectileStep(start,target,stepPx);
@@ -14,11 +20,11 @@ export function positionTransitionStep(start:Point,target:Point,stepPx:number,co
  */
 export function planSummonSpot(position:Point,box:CollisionBox,facing:Facing,placement:SummonPlacement,
   canStand:(point:Point)=>boolean):Point|undefined{
-  const start=['south','west','north','east'].indexOf(facing);
+  const start=DIRECTIONS.indexOf(facing);
   const gap=placement.searchGapPx,extent=placement.searchExtentPx;
-  for(const turn of [0,1,3,2]){
-    const direction=(start+turn)%4;
-    for(let forward=0;forward<=extent;forward+=8)for(let side=-extent;side<=extent;side+=8){
+  for(const turn of SEARCH_TURN_ORDER){
+    const direction=(start+turn)%DIRECTIONS.length;
+    for(let forward=0;forward<=extent;forward+=SEARCH_GRID_PX)for(let side=-extent;side<=extent;side+=SEARCH_GRID_PX){
       const point=direction===0?{x:position.x+side,y:position.y+box.y+box.height+gap+forward}
         :direction===1?{x:position.x+box.x-gap-forward,y:position.y+side}
         :direction===2?{x:position.x+side,y:position.y+box.y-gap-forward}

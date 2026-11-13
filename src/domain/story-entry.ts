@@ -5,6 +5,9 @@ import { storyExitTargets } from './story-graph.ts';
 import type { StoryCondition } from './story-condition.ts';
 import { storyReachableMaps } from './story-script.ts';
 
+/** 收集可达脚本时最多遍历的节点数，防止脚本出口成环时无限展开。 */
+const MAX_TRAVERSED_NODES = 4000;
+
 /** 条件里引用的任务 id（递归展开 all/any/not）。 */
 function conditionQuestIds(condition: StoryCondition | undefined): string[] {
   if (!condition) return [];
@@ -120,7 +123,7 @@ export function storyReachableScripts(campaign: Pick<Campaign, 'scripts'>, scrip
   while (queue.length) {
     const reference = queue.pop()!;
     const key = `${reference.script}:${reference.node}`;
-    if (visited.has(key) || visited.size >= 4000) continue;
+    if (visited.has(key) || visited.size >= MAX_TRAVERSED_NODES) continue;
     visited.add(key);
     result.add(reference.script);
     const node = campaign.scripts[reference.script]?.nodes.find(candidate => candidate.id === reference.node);

@@ -19,6 +19,13 @@ const CONTENT = path.join(PUBLIC, 'content');
 const ATLAS_DIR = 'assets/effect-atlas';
 const GENERATED = path.join(ROOT, 'src', 'generated', 'effect-atlas.ts');
 const PAGE_KEY_PREFIX = 'effects-atlas:';
+/** PNG 文件头 IHDR 的宽高偏移。 */
+const PNG_WIDTH_OFFSET = 16;
+const PNG_HEIGHT_OFFSET = 20;
+/** pngjs 的 colorType 6 = RGBA，图集必须保留透明通道。 */
+const PNG_COLOR_TYPE_RGBA = 6;
+/** 帧名前缀取内容哈希前 12 位，避免不同特效的帧名撞车。 */
+const FRAME_HASH_PREFIX_LENGTH = 12;
 const MAX_SIZE = 2048;
 const PADDING = 2;
 /** 装箱实现换算法时递增；同时摘要会带上 `atlas-pack.ts` 的内容哈希。 */
@@ -186,7 +193,7 @@ function collectUniqueFiles(uses: readonly FileUse[]): { unique: Map<string, Uni
     const bytes = contents.get(hash)!;
     unique.set(hash, { hash, file: use.file,
       frameWidth: use.frameWidth, frameHeight: use.frameHeight,
-      frames: use.frames, width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20),
+      frames: use.frames, width: bytes.readUInt32BE(PNG_WIDTH_OFFSET), height: bytes.readUInt32BE(PNG_HEIGHT_OFFSET),
       paths: new Set([use.file]), effects: new Set([use.effect]) });
   }
   return { unique, hashes };
@@ -214,7 +221,7 @@ function trimFrames(file: UniqueFile): TrimmedFrame[] {
         if (y > y1) y1 = y;
       }
     }
-    const name = `${file.hash.slice(0, 12)}-${index}`;
+    const name = `${file.hash.slice(0, FRAME_HASH_PREFIX_LENGTH)}-${index}`;
     const id = `${file.hash}:${index}`;
     if (x1 < 0) {
       frames.push({ id, name, index, page: -1, x: 0, y: 0,
@@ -276,7 +283,7 @@ function writePages(plans: readonly AtlasPackedPage<TrimmedFrame>[], byId: Reado
       meta: { image: `effects-${pageIndex}.png`, format: 'RGBA8888', size: { w: width, h: height }, scale: '1' }
     });
     pages.push({ key, file, data, frame: sample, width, height,
-      png: PNG.sync.write(png, { colorType: 6 }), json, frames });
+      png: PNG.sync.write(png, { colorType: PNG_COLOR_TYPE_RGBA }), json, frames });
   }
   return pages;
 }

@@ -3,6 +3,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { collectAssetKeep, type AssetAtlasKind } from './asset-keep.ts';
 
+/** 素材引用缺失报错时最多列出的路径数。 */
+const MAX_REPORTED_MISSING = 50;
+
 export interface PruneOptions {
   contentDir: string;
   assetsDir: string;
@@ -130,8 +133,9 @@ export async function pruneAssets(options: PruneOptions): Promise<PruneResult> {
   const { contentDir, assetsDir, archiveDir, dryRun = false, keepAll = false } = options;
   const report = await collectAssetKeep(contentDir, assetsDir);
   if (report.missing.length) {
-    throw new Error(`素材引用缺失，停止裁剪：\n${report.missing.slice(0, 50).join('\n')}`
-      + (report.missing.length > 50 ? `\n…另有 ${report.missing.length - 50} 个` : ''));
+    throw new Error(`素材引用缺失，停止裁剪：\n${report.missing.slice(0, MAX_REPORTED_MISSING).join('\n')}`
+      + (report.missing.length > MAX_REPORTED_MISSING
+        ? `\n…另有 ${report.missing.length - MAX_REPORTED_MISSING} 个` : ''));
   }
 
   const keep = keepAll

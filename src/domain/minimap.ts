@@ -1,12 +1,18 @@
 import type { MapExit, WorldMap } from './content.ts';
 import type { Point } from './navigation.ts';
 
+/** 小地图面板的参考像素尺寸；原版按地图格数选择每格像素。 */
+const MINIMAP_PANEL_WIDTH_PX = 200;
+const MINIMAP_PANEL_HEIGHT_PX = 150;
+/** 候选取值从大到小；都放不下时用最小的 2 像素。 */
+const MINIMAP_CELL_SIZES = [5, 4, 3] as const;
+const MINIMAP_MIN_CELL_SIZE = 2;
+
 /** Reference pixels per terrain cell, using the original map-size thresholds. */
 export function minimapCellSize(columns: number, rows: number): number {
-  if (columns * 5 < 200 && rows * 5 < 150) return 5;
-  if (columns < 50 && rows < 38) return 4;
-  if (columns * 3 < 200 && rows * 3 < 150) return 3;
-  return 2;
+  for (const cellSize of MINIMAP_CELL_SIZES)
+    if (columns * cellSize < MINIMAP_PANEL_WIDTH_PX && rows * cellSize < MINIMAP_PANEL_HEIGHT_PX) return cellSize;
+  return MINIMAP_MIN_CELL_SIZE;
 }
 /** Original markers follow the occupied tile, rather than sub-tile movement. */
 export function minimapPoint(point: Point, tileSize: number, cellSize: number): Point {

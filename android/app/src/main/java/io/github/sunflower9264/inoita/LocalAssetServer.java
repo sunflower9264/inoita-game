@@ -37,8 +37,15 @@ final class LocalAssetServer extends NanoHTTPD {
     }
 
     static final int PORT = 47653;
+    /** 页面通过原生桥只允许上报这两个游戏帧率。 */
+    static final int FRAME_RATE_30 = 30;
+    static final int FRAME_RATE_60 = 60;
     private static final String TAG = "InotiaAssets";
     private static final int MAX_BODY_BYTES = 32 * 1024 * 1024;
+    private static final int PROXY_CONNECT_TIMEOUT_MS = 15000;
+    private static final int PROXY_READ_TIMEOUT_MS = 30000;
+    private static final int HTTP_BAD_GATEWAY = 502;
+    private static final int READ_BUFFER_BYTES = 16 * 1024;
 
     private final Context context;
     private final UpdateManager manager;
@@ -111,7 +118,7 @@ final class LocalAssetServer extends NanoHTTPD {
         } catch (NumberFormatException error) {
             rate = 0;
         }
-        if (rate == 30 || rate == 60) {
+        if (rate == FRAME_RATE_30 || rate == FRAME_RATE_60) {
             final int requested = rate;
             mainHandler.post(() -> {
                 if (frameRateListener != null) frameRateListener.onFrameRateRequested(requested);
@@ -141,8 +148,8 @@ final class LocalAssetServer extends NanoHTTPD {
             if (body == null) return text(Response.Status.BAD_REQUEST, "body too large");
             connection = (HttpURLConnection) new URL(target).openConnection();
             connection.setRequestMethod(session.getMethod().toString());
-            connection.setConnectTimeout(15000);
-            connection.setReadTimeout(30000);
+            connection.setConnectTimeout(PROXY_CONNECT_TIMEOUT_MS);
+            connection.setReadTimeout(PROXY_READ_TIMEOUT_MS);
             connection.setInstanceFollowRedirects(false);
             connection.setRequestProperty("Accept-Encoding", "identity");
             String contentType = header(session, "content-type");
@@ -157,7 +164,8 @@ final class LocalAssetServer extends NanoHTTPD {
                 }
             }
             int code = connection.getResponseCode();
-            InputStream input = code >= 400 ? connection.getErrorStream() : connection.getInputStream();
+            InputStream input = code >= HttpURLConnection.HTTP_BAD_REQUEST
+                    ? connection.getErrorStream() : connection.getInputStream();
             byte[] data = input == null ? new byte[0] : readAll(input);
             Response.Status status = Response.Status.lookup(code);
             if (status == null) status = Response.Status.INTERNAL_ERROR;
@@ -168,7 +176,7 @@ final class LocalAssetServer extends NanoHTTPD {
             return response;
         } catch (Exception error) {
             Log.w(TAG, "代理请求失败: " + target, error);
-            Response.Status status = Response.Status.lookup(502);
+            Response.Status status = Response.Status.lookup(HTTP_BAD_GATEWAY);
             if (status == null) status = Response.Status.INTERNAL_ERROR;
             return text(status, "proxy error");
         } finally {
@@ -346,7 +354,7 @@ final class LocalAssetServer extends NanoHTTPD {
 
     private static byte[] readAll(InputStream input) throws IOException {
         java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream();
-        byte[] buffer = new byte[16 * 1024];
+        byte[] buffer = new byte[READ_BUFFER_BYTES];
         int read;
         while ((read = input.read(buffer)) >= 0) output.write(buffer, 0, read);
         return output.toByteArray();

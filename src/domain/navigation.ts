@@ -1,5 +1,7 @@
 /** 玩家实体半径，单位为世界像素。 */
 const PLAYER_RADIUS = 8;
+/** 贴边点只归入一侧格子：算覆盖范围时向内收一个极小值，避免浮点误差多算相邻格。 */
+const TILE_EDGE_EPSILON = 1e-7;
 
 export interface Point {
   x: number;
@@ -26,9 +28,8 @@ export interface CollisionMap {
 
 /** 矩形覆盖到的地形格子是否都存在且可站。 */
 export function canStandInRect(map: CollisionMap, rect: GameRectangle): boolean {
-  const epsilon = 1e-7;
-  const left = Math.floor((rect.x + epsilon) / map.tileSize), right = Math.floor((rect.x + rect.width - epsilon) / map.tileSize);
-  const top = Math.floor((rect.y + epsilon) / map.tileSize), bottom = Math.floor((rect.y + rect.height - epsilon) / map.tileSize);
+  const left = Math.floor((rect.x + TILE_EDGE_EPSILON) / map.tileSize), right = Math.floor((rect.x + rect.width - TILE_EDGE_EPSILON) / map.tileSize);
+  const top = Math.floor((rect.y + TILE_EDGE_EPSILON) / map.tileSize), bottom = Math.floor((rect.y + rect.height - TILE_EDGE_EPSILON) / map.tileSize);
   for (let row = top; row <= bottom; row++) for (let col = left; col <= right; col++) {
     if (col < 0 || row < 0 || col >= map.columns || row >= map.rows || map.blocked[row * map.columns + col]) return false;
   }

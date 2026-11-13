@@ -10,6 +10,8 @@ import {attackCycleFrames} from '../domain/combat-tempo.ts';
 import type {Point} from '../domain/navigation.ts';
 import {clipMirrored,isCurrentLayers,playCharacterLayerSequence,playCharacterSequence,setCharacterClip,showIdlePose,type CharacterVisual} from './characters.ts';
 import {createEffect,setEffectClip} from './effects.ts';
+import {EFFECT_DEPTH_OFFSET} from './depths.ts';
+import {currentAnimationFrame} from './effect-animations.ts';
 import {effectLayerTextureKeys} from './combat-asset-descriptors.ts';
 import {CombatEffects} from './combat-effects.ts';
 import {retainLoadedSceneAssets} from './scene-assets.ts';
@@ -97,7 +99,7 @@ export class CombatPresenter {
         flight.heading=event.heading;
         setEffectClip(this.scene,flight.visual,this.catalog.attackEffects[flight.effect].clips[`heading-${event.heading}`],true);
       }
-      this.scene.tweens.add({targets:flight.visual,x:event.position.x,y:event.position.y,duration:event.durationMs,onUpdate:()=>{const depth=flight.visual.y+1;if(flight.visual.depth!==depth)flight.visual.setDepth(depth);}});
+      this.scene.tweens.add({targets:flight.visual,x:event.position.x,y:event.position.y,duration:event.durationMs,onUpdate:()=>{const depth=flight.visual.y+EFFECT_DEPTH_OFFSET;if(flight.visual.depth!==depth)flight.visual.setDepth(depth);}});
     }
   }
   setPaused(paused:boolean):void {
@@ -114,7 +116,7 @@ export class CombatPresenter {
     for(const [index,sprite]of character.layers.entries()){
       const source=clip.layers[index];if(!source)continue;
       // 各图层由 Phaser 依次更新；替换局部动画前先保存各自进度。
-      const startFrame=Math.max(0,(sprite.anims.currentFrame?.index??1)-1);
+      const startFrame=Math.max(0,currentAnimationFrame(sprite.anims));
       const elapsed=sprite.anims.accumulator,nextTick=sprite.anims.nextTick;
       playCharacterLayerSequence(this.scene,character,sprite,source,sequence,frameDurationMs,startFrame);
       sprite.anims.accumulator=elapsed;sprite.anims.nextTick=nextTick;

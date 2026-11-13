@@ -10,6 +10,10 @@ const FIRST_SEARCH_BUDGET = 256;
 const SEARCH_DEADLINE_MS = 3000;
 /** 被挡后重试的间隔；和旧实现的 250 ms 保持一致。 */
 const REPATH_INTERVAL_MS = 250;
+/** `speed` 的单位是像素/秒，`elapsed` 是毫秒。 */
+const MILLISECONDS_PER_SECOND = 1000;
+/** 路线超时在“距离 ÷ 速度”之外多留的收尾时间。 */
+const ROUTE_TIMEOUT_MARGIN_MS = 3000;
 
 /** 走到指定脚点的路线；动态阻挡时限频重算，失败由播放流程处理。 */
 export class WalkRoute {
@@ -82,7 +86,7 @@ export class WalkRoute {
     this.path = path;
     let previous = this.actor.position(), distance = 0;
     for (const point of path) { distance += Math.hypot(point.x - previous.x, point.y - previous.y); previous = point; }
-    this.timeout = this.elapsed + distance / this.speed * 1000 + 3000;
+    this.timeout = this.elapsed + distance / this.speed * MILLISECONDS_PER_SECOND + ROUTE_TIMEOUT_MARGIN_MS;
     // 分帧搜索可能已经花掉几百毫秒；从找到路径这一刻重新计时，避免刚找到就按“久未前进”重拍。
     this.lastProgress = this.elapsed;
   }

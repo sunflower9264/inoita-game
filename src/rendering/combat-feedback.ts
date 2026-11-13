@@ -82,6 +82,10 @@ interface NumberSlot {
 }
 
 const NUMBER_SLOT_LIMIT=32;
+/** 伤害数字素材键是 0..9，另外 10 号是未命中图标。 */
+const DIGIT_CLIP_COUNT=11;
+/** 震屏取样表里每个偏移持续 60 毫秒。 */
+const SHAKE_STEP_MS=60;
 const WARM_NUMBER_SLOTS=16;
 const WARMED_SPRITES_PER_SLOT=6;
 /** 目标离镜头超过这么远时，命中特效和数字已经完全看不见，不再生成。 */
@@ -184,7 +188,7 @@ export class CombatFeedback {
     let clips=this.digitClips.get(name);
     if(!clips){
       const source=this.catalog.attackEffects[name]?.clips??{};
-      clips=Array.from({length:11},(_,index)=>source[String(index)]);
+      clips=Array.from({length:DIGIT_CLIP_COUNT},(_,index)=>source[String(index)]);
       this.digitClips.set(name,clips);
     }
     return clips[digit];
@@ -290,7 +294,7 @@ export class CombatFeedback {
     const phase={step:0},offsets=this.catalog.feedback.shakeOffsets;
     const apply=()=>{const offset=offsets[Math.min(offsets.length-1,Math.floor(phase.step))];camera.setFollowOffset(base.x-offset.x,base.y-offset.y);};
     apply();
-    this.shake=this.scene.tweens.add({targets:phase,step:offsets.length,duration:offsets.length*60,ease:'Linear',paused:this.paused,
+    this.shake=this.scene.tweens.add({targets:phase,step:offsets.length,duration:offsets.length*SHAKE_STEP_MS,ease:'Linear',paused:this.paused,
       onUpdate:apply,onComplete:()=>this.cancelShake()});
   }
   vibrate(durationMs:number):void {

@@ -20,12 +20,19 @@ import {EFFECT_ATLAS_BY_FILE,EFFECT_ATLAS_PAGES,EFFECT_ATLAS_SOURCE_DIGEST} from
 import {effectAtlasSourceDigest,effectUses} from './build-effect-atlas.ts';
 import {CHARACTER_ATLAS_BY_FILE,CHARACTER_ATLAS_PAGES,CHARACTER_ATLAS_SOURCE_DIGEST} from '../src/generated/character-atlas.ts';
 import {CHARACTER_ATLAS_ALIASES} from './character-atlas-aliases.ts';
-import {characterAtlasSourceDigest} from './build-character-atlas.ts';
+import {characterAtlasSourceDigest,frameName as characterAtlasFrameName} from './build-character-atlas.ts';
 import {PROP_ATLAS_BY_KEY,PROP_ATLAS_LAYOUT_DIGEST,PROP_ATLAS_PAGES,PROP_ATLAS_SOURCE_DIGEST} from '../src/generated/prop-atlas.ts';
 import {propSourceDigest} from './build-prop-atlas.ts';
 import {residentCombatAssets} from '../src/rendering/resident-combat-assets.ts';
 import {residentCombatCoverageGaps} from '../src/rendering/combat-visual-coverage.ts';
 import {sourceAssetPath} from './asset-source.ts';
+/** PNG 文件头：读到 IHDR 宽高需要 24 字节，宽高分别位于 +16 和 +20。 */
+const PNG_HEADER_BYTES=24;
+const PNG_WIDTH_OFFSET=16;
+const PNG_HEIGHT_OFFSET=20;
+/** 错误信息里最多列出 20 个缺口，避免刷屏。 */
+const MAX_REPORTED_GAPS=20;
+
 export function validateContent(root=fileURLToPath(new URL('../public/',import.meta.url))){
  const read=file=>JSON.parse(fs.readFileSync(path.join(root,file),'utf8'));
  const world=parseWorld(read('content/world.json')),battle=parseBattle(read('content/battle.json'));
@@ -53,7 +60,7 @@ export function validateContent(root=fileURLToPath(new URL('../public/',import.m
  const propKeys=new Set();
  const propPages=new Map(PROP_ATLAS_PAGES.map(page=>[page.key,read(page.data)]));
  const hasPropFrame=(page,frame)=>!!page?.frames?.[frame];
- const pngSize=file=>{const bytes=fs.readFileSync(sourceAssetPath(file));return {w:bytes.readUInt32BE(16),h:bytes.readUInt32BE(20)}};
+ const pngSize=file=>{const bytes=fs.readFileSync(sourceAssetPath(file));return {w:bytes.readUInt32BE(PNG_WIDTH_OFFSET),h:bytes.readUInt32BE(PNG_HEIGHT_OFFSET)}};
  const propLayout={pages:PROP_ATLAS_PAGES.map(({key,file,data,frame,width,height})=>({key,file,data,frame,width,height})),
   byKey:PROP_ATLAS_BY_KEY,frames:Object.fromEntries(PROP_ATLAS_PAGES.map(page=>[page.key,propPages.get(page.key)?.frames]))};
  if(contentDigest(propLayout)!==PROP_ATLAS_LAYOUT_DIGEST)throw new Error('地图 prop 图集映射/布局摘要不一致；运行 npm run atlas:props');
@@ -133,7 +140,7 @@ export function validateContent(root=fileURLToPath(new URL('../public/',import.m
    const page=CHARACTER_ATLAS_PAGES[entry.pages[index]];
    if(!page)throw new Error(`角色图集页索引悬空：${file} 第 ${index} 帧；运行 npm run atlas:characters`);
    const data=characterPages.get(page.key);
-   const frame=`${entry.prefix}-${String(index).padStart(3,'0')}`;
+   const frame=characterAtlasFrameName(entry.prefix,index);
    if(!data?.frames?.[frame])
     throw new Error(`角色图集缺少帧：${file} 第 ${index} 帧（${frame}）；运行 npm run atlas:characters`);
   }
@@ -192,8 +199,8 @@ export function validateContent(root=fileURLToPath(new URL('../public/',import.m
    if(value.layers&&value.frameWidth)for(const layer of value.layers){
     if(atlasCovered(layer.file))continue;
     if(!headers.has(layer.file)){
-     const fd=fs.openSync(path.join(root,layer.file),'r');const header=Buffer.alloc(24);
-     try{const length=fs.readSync(fd,header,0,24,0);headers.set(layer.file,header.subarray(0,length));}finally{fs.closeSync(fd);}
+     const fd=fs.openSync(path.join(root,layer.file),'r');const header=Buffer.alloc(PNG_HEADER_BYTES);
+     try{const length=fs.readSync(fd,header,0,PNG_HEADER_BYTES,0);headers.set(layer.file,header.subarray(0,length));}finally{fs.closeSync(fd);}
     }
     validateSpriteSheet(headers.get(layer.file),value,layer.file);
    }
@@ -212,7 +219,7 @@ export function validateContent(root=fileURLToPath(new URL('../public/',import.m
  const uncovered=[...gaps.definitions.map(name=>`特效定义缺失 ${name}`),...gaps.effects.map(name=>`常驻包缺少特效 ${name}`),
   ...gaps.layers.map(key=>`常驻包缺少特效纹理 ${key}`),...gaps.actorLayers.map(key=>`常驻包缺少角色纹理 ${key}`),
   ...gaps.companions.map(id=>`佣兵外观无法按需加载 ${id}`)];
- ensure(!uncovered.length,`战斗常驻资源不完整：\n${uncovered.slice(0,20).join('\n')}`);
+ ensure(!uncovered.length,`战斗常驻资源不完整：\n${uncovered.slice(0,MAX_REPORTED_GAPS).join('\n')}`);
  // 运行时只常驻当前职业 + 已拥有伙伴外观 + 共享特效；每个职业都必须能单独形成完整子集。
  const fullAssets=new Map(resident.assets.map(asset=>[asset.key,asset]));
  for(const character of battle.classes){
@@ -229,7 +236,7 @@ export function validateContent(root=fileURLToPath(new URL('../public/',import.m
   const missing=[...scopedGaps.definitions.map(name=>`特效定义缺失 ${name}`),...scopedGaps.effects.map(name=>`常驻包缺少特效 ${name}`),
    ...scopedGaps.layers.map(key=>`常驻包缺少特效纹理 ${key}`),...scopedGaps.actorLayers.map(key=>`常驻包缺少角色纹理 ${key}`),
    ...scopedGaps.companions.map(id=>`佣兵外观无法按需加载 ${id}`)];
-  ensure(!missing.length,`职业 ${character.id} 的常驻资源不完整：\n${missing.slice(0,20).join('\n')}`);
+  ensure(!missing.length,`职业 ${character.id} 的常驻资源不完整：\n${missing.slice(0,MAX_REPORTED_GAPS).join('\n')}`);
  }
  return {maps:world.maps.length,assets:assets.size};
 }

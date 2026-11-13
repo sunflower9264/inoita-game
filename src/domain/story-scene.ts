@@ -4,6 +4,9 @@ import {faceTarget} from './basic-attack.ts';
 import {assertUniqueActorInstances} from './actor-census.ts';
 import {placementAuthority} from './actor-authority.ts';
 
+/** 原版用 2048/2048 表示演员还没放进地图；读取时它等价于 `unpositioned`。 */
+const UNPOSITIONED_COORDINATE = 2048;
+
 /**
  * 先按实例找人，再按人物/队员/怪物身份查找。外观只能用于没有身份的手写演员。
  *
@@ -28,7 +31,7 @@ export function findSceneActor(scene: SceneSnapshot, member: StoryCastMember): S
   const registered = candidates.filter(actor => placementAuthority(actor) === 'registered');
   if (registered.length === 1) return registered[0];
   const hasDeclarationPosition = !member.unpositioned && Number.isFinite(member.x) && Number.isFinite(member.y)
-    && !(member.x === 2048 && member.y === 2048);
+    && !(member.x === UNPOSITIONED_COORDINATE && member.y === UNPOSITIONED_COORDINATE);
   if (hasDeclarationPosition) {
     const ranked = candidates.map(actor => ({actor, distance: Math.hypot(actor.x - member.x, actor.y - member.y)}))
       .sort((left, right) => left.distance - right.distance);
@@ -176,7 +179,7 @@ export function resolveStoryScene(declaration: StoryStage, source: SceneSnapshot
     if (!actor) {
       actor = actorFrom(member, newId(scene, member.id));
       if (member.binding === 'world' || member.inheritPosition) {
-        actor.x = 2048; actor.y = 2048; actor.visible = false; actor.unpositioned = true;
+        actor.x = UNPOSITIONED_COORDINATE; actor.y = UNPOSITIONED_COORDINATE; actor.visible = false; actor.unpositioned = true;
       }
       scene.actors.push(actor);
     } else if (member.binding !== 'world' && !member.inheritPosition) {

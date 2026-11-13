@@ -6,6 +6,17 @@ import { propAtlasAssets, propFrameSource, propRef } from './prop-atlas.ts';
 
 let serial = 0;
 
+/** 底图压在所有人物、物件和特效的深度之下。 */
+const MAP_GROUND_DEPTH = -10000;
+/** 树冠盖住人物和地面物件，但低于头顶任务图标（10001）。 */
+const MAP_CANOPY_DEPTH = 10000;
+/** 8 位颜色的单通道最大值。 */
+const COLOR_CHANNEL_MAX = 255;
+/** 图像数据里一个 RGBA 像素占 4 个通道。 */
+const RGBA_STRIDE = 4;
+/** 一个像素的前 3 个通道是 RGB，第 4 个是透明度。 */
+const RGB_CHANNEL_COUNT = 3;
+
 export interface MapLayerHandles {
   /** 幂等：销毁本层创建的图像和合成纹理，不碰地图资源租约里的 ground/canopy/prop。 */
   destroy(): void;
@@ -28,7 +39,8 @@ export function mapSurfaceAssets(
 
 /** 颜色减淡的单通道结果；背景为零保留零，前景满值饱和。 */
 export function dodgePixel(background: number, foreground: number): number {
-  return background === 0 ? 0 : foreground === 255 ? 255 : Math.min(255, Math.floor(background * 255 / (255 - foreground)));
+  return background === 0 ? 0 : foreground === COLOR_CHANNEL_MAX ? COLOR_CHANNEL_MAX
+    : Math.min(COLOR_CHANNEL_MAX, Math.floor(background * COLOR_CHANNEL_MAX / (COLOR_CHANNEL_MAX - foreground)));
 }
 
 /**
@@ -58,9 +70,9 @@ function composeColorDodge(
     scratchContext.drawImage(prop.image, prop.x, prop.y, prop.width, prop.height, 0, 0, prop.width, prop.height);
     const source = scratchContext.getImageData(0, 0, width, height).data;
     const pixels = backdrop.data;
-    for (let index = 0; index < pixels.length; index += 4) {
-      if (!source[index + 3]) continue;   // 物件透明处保留背景
-      for (let channel = 0; channel < 3; channel++)
+    for (let index = 0; index < pixels.length; index += RGBA_STRIDE) {
+      if (!source[index + RGB_CHANNEL_COUNT]) continue;   // 物件透明处保留背景
+      for (let channel = 0; channel < RGB_CHANNEL_COUNT; channel++)
         pixels[index + channel] = dodgePixel(pixels[index + channel], source[index + channel]);
     }
     context.putImageData(backdrop, 0, 0);
@@ -84,7 +96,7 @@ export function drawMapLayers(
     composites.length = 0;
   };
   try {
-    images.push(scene.add.image(0, 0, map.id + '-ground').setOrigin(0).setDepth(-10000));
+    images.push(scene.add.image(0, 0, map.id + '-ground').setOrigin(0).setDepth(MAP_GROUND_DEPTH));
     for (const feature of map.features) {
       const dodged = feature.blend === 'color-dodge';
       const prop = propRef(feature.texture);
@@ -101,7 +113,7 @@ export function drawMapLayers(
       if (!dodged) image.setFlipX(feature.flip).setBlendMode(blendModeOf(feature.blend));
       images.push(image);
     }
-    images.push(scene.add.image(0, 0, map.id + '-canopy').setOrigin(0).setDepth(10000));
+    images.push(scene.add.image(0, 0, map.id + '-canopy').setOrigin(0).setDepth(MAP_CANOPY_DEPTH));
     return { destroy };
   } catch (error) {
     destroy();

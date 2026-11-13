@@ -4,6 +4,8 @@ import type { SkillConfigurationState } from './skill-configuration.ts';
 import { CompanionSkillProgression, generateCompanion, MERCENARY_CLASS_ORDER, randomInteger, weightedIndex, type CompanionGenerationRules, type CompanionGroupEffect, type CompanionGroupSkill, type GeneratedCompanion } from './companion-progression.ts';
 export type { CompanionGroupEffect, CompanionGroupSkill } from './companion-progression.ts';
 const MERCENARY_SLOT_COUNT=18;
+/** 普通复活卷轴只恢复一成生命和法力。 */
+const REVIVE_RECOVERY_RATE=0.1;
 import type { ItemCatalog, ItemResult } from './items.ts';
 import type { Bag } from './bag.ts';
 import type { SpringPartyResources } from './springs.ts';
@@ -346,8 +348,8 @@ export class PartyRoster {
     const member=id==='player'?this.hero:this.owned.get(id)!;
     const full=entry.item==='improved-resurrection-scroll';
     member.clearCombatResourceLimits();
-    member.setHealth(Math.floor(member.player.maxHealth*(full?1:.1)));
-    member.setMana(Math.floor(member.player.maxMana*(full?1:.1)));
+    member.setHealth(Math.floor(member.player.maxHealth*(full?1:REVIVE_RECOVERY_RATE)));
+    member.setMana(Math.floor(member.player.maxMana*(full?1:REVIVE_RECOVERY_RATE)));
     this.bag.take(itemInstanceId,1);this.changed();
     return {kind:'revive',title:'复活成功',message:`${id==='player'?'主角':this.owned.get(id)!.definition.name}已复活`,rewards:[]};
   }

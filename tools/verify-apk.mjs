@@ -24,6 +24,15 @@ const apk = process.argv[2]
   : newestApk();
 
 const problems = [];
+/** zipalign 检查：普通条目 4 字节对齐，原生库按 16 KB 页对齐。 */
+const ZIP_ALIGNMENT_BYTES = 4;
+const PAGE_ALIGNMENT_KB = 16;
+/** AndroidManifest 里 screenOrientation=sensorLandscape、windowSoftInputMode=adjustResize 的原始值。 */
+const ANDROID_SENSOR_LANDSCAPE = 6;
+const ANDROID_ADJUST_RESIZE = 0x10;
+/** apksigner/aapt2/unzip 的输出上限。 */
+const MAX_COMMAND_OUTPUT_BYTES = 128 * 1024 * 1024;
+
 function check(name, ok, detail = '') {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? ` — ${detail}` : ''}`);
   if (!ok) problems.push(name);
@@ -39,7 +48,7 @@ function newestApk() {
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
-    cwd: root, encoding: 'utf8', maxBuffer: 128 * 1024 * 1024,
+    cwd: root, encoding: 'utf8', maxBuffer: MAX_COMMAND_OUTPUT_BYTES,
     env: { ...process.env, ...options.env },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -72,9 +81,10 @@ try {
     || /Verified using v3 scheme .*: true/.test(signed.stdout));
   check('签名为 v3', /Verified using v3 scheme \(APK Signature Scheme v3\): true/.test(signed.stdout));
 
-  const aligned = run(path.join(buildTools, 'zipalign'), ['-c', '-v', '4', apk], { allowFailure: true });
-  check('4 字节对齐', aligned.status === 0);
-  const aligned16 = run(path.join(buildTools, 'zipalign'), ['-c', '-P', '16', '-v', '4', apk], { allowFailure: true });
+  const aligned = run(path.join(buildTools, 'zipalign'), ['-c', '-v', String(ZIP_ALIGNMENT_BYTES), apk], { allowFailure: true });
+  check(`${ZIP_ALIGNMENT_BYTES} 字节对齐`, aligned.status === 0);
+  const aligned16 = run(path.join(buildTools, 'zipalign'),
+    ['-c', '-P', String(PAGE_ALIGNMENT_KB), '-v', String(ZIP_ALIGNMENT_BYTES), apk], { allowFailure: true });
   check('16 KB 页对齐', aligned16.status === 0);
 
   const integrity = run('unzip', ['-tqq', apk], { allowFailure: true });
@@ -97,8 +107,9 @@ try {
   check('申请 INTERNET 权限（诊断上报）', /android\.permission\.INTERNET/.test(permissions));
 
   const xmltree = run(path.join(buildTools, 'aapt2'), ['dump', 'xmltree', '--file', 'AndroidManifest.xml', apk]).stdout;
-  check('锁定横屏 sensorLandscape', /screenOrientation[^=]*=6\b/.test(xmltree));
-  check('软键盘 adjustResize', /windowSoftInputMode[^=]*=0x0*10\b/.test(xmltree));
+  check('锁定横屏 sensorLandscape', new RegExp(`screenOrientation[^=]*=${ANDROID_SENSOR_LANDSCAPE}\\b`).test(xmltree));
+  check('软键盘 adjustResize',
+    new RegExp(`windowSoftInputMode[^=]*=0x0*${ANDROID_ADJUST_RESIZE.toString(16)}\\b`).test(xmltree));
   check('关闭 predictive back', /enableOnBackInvokedCallback[^=]*=false/.test(xmltree));
   check('禁止明文网络', /usesCleartextTraffic[^=]*=false/.test(xmltree));
   check('配置了诊断服务器的网络安全策略', /networkSecurityConfig/.test(xmltree));

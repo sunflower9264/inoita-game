@@ -2,6 +2,7 @@ import {resolveCueTargets,type CombatPort,type SkillUnitStart,type SkillUnitHit}
 import type {SkillEffectCue} from './battle.ts';
 import type {Point} from './navigation.ts';
 import {attackSplashTargets,selectAttackSplashCenter} from './attack-splash.ts';
+import {PIXELS_PER_DISTANCE_UNIT} from './basic-attack.ts';
 import {MAX_SKILL_TARGETS,resolveSkillUnitSequence,type ResolvedSkillUnit} from './skill-unit-sequence.ts';
 import type {PreparedActionDamage} from './action-damage.ts';
 
@@ -37,9 +38,9 @@ export function executeSkillUnits(request:Omit<SkillExecution,'cueIndex'>,port:S
           const id=port.currentTargetId?.()??selectedTargetId;
           const current=id?port.actor(id):undefined;
           const candidates=port.candidates();
-          const selection=selectAttackSplashCenter(caster,current?[current]:candidates,Math.floor(cue.targetRangePx/8),{currentTargetId:current?.id});
+          const selection=selectAttackSplashCenter(caster,current?[current]:candidates,Math.floor(cue.targetRangePx/PIXELS_PER_DISTANCE_UNIT),{currentTargetId:current?.id});
           if(selection.targetId)port.selectTarget?.(selection.targetId);
-          return targets=attackSplashTargets(caster,selection.targetId?selection.center:origin,candidates,Math.floor(cue.targetRangePx/8)).map(actor=>actor.id);
+          return targets=attackSplashTargets(caster,selection.targetId?selection.center:origin,candidates,Math.floor(cue.targetRangePx/PIXELS_PER_DISTANCE_UNIT)).map(actor=>actor.id);
         }
         const selected=selectedTargetId?port.actor(selectedTargetId):undefined;
         return targets=cue.target==='none'?[casterId]:resolveCueTargets(cue,source,selected,port.candidates(),

@@ -7,16 +7,15 @@ import { splitMoney } from '../../domain/money.ts';
 import { frameRect, readSafeArea } from '../viewport.ts';
 import { layoutQuestText, questPopupContent, questPopupLayout, type QuestTextLine } from '../quest-popup-layout.ts';
 import { UiSurface, GOLD, type ScrollArea } from './widgets.ts';
-import { FONT, TEXT_COLORS } from '../text-style.ts';
+import { FONT } from '../text-style.ts';
+import { POPUP_FRAME } from '../shop-layout.ts';
+import { QUEST_LINE_SPACING, QUEST_TEXT_COLORS } from './quest-text.ts';
 import type { DomLabel, DomUi } from '../dom/dom-ui.ts';
 
 type QuestPopupState = NonNullable<GameUI['quest']>;
 interface QuestTextLayout { lines: QuestTextLine[]; lineHeight: number; height: number }
 interface DomPlacement { label: DomLabel; x: number; y: number }
 
-/** `$B` 恢复任务窗口的基础字色；与旧绘制层的语气颜色保持同一张表。 */
-const QUEST_COLORS = { base: TEXT_COLORS.white, title: '#bf0000', target: '#ff0000', person: '#00b4ff', muted: TEXT_COLORS.muted } as const;
-const QUEST_LINE_SPACING = 5;
 let measureCanvas: HTMLCanvasElement | undefined;
 
 /** 用浏览器字体量任务文本；Phaser 只负责图框、滚动和按钮。 */
@@ -77,7 +76,8 @@ export class QuestPopup {
     const content = questPopupContent(quest.kind, quest.definition, quest.reward, itemName);
     const title = measureQuestText(content.heading, 410, 24), body = measureQuestText(content.body, 410, 24);
     const box = questPopupLayout(quest.kind, title.height, body.height, content.money > 0);
-    v.rect(box.x + 35, box.y + 35, box.width - 70, box.height - 70, 0x000000, 1);
+    v.rect(box.x + POPUP_FRAME.inset, box.y + POPUP_FRAME.inset,
+      box.width - POPUP_FRAME.inset * 2, box.height - POPUP_FRAME.inset * 2, 0x000000, 1);
     v.nineSlice(assets['quest-popup-window'], box.x - 46, box.y - 46, box.width + 92, box.height + 92, 81);
     v.image(assets['quest-popup-rule'], 400, box.titleY + title.height + 7, 442, 14).setOrigin(.5);
 
@@ -172,7 +172,7 @@ export class QuestPopup {
       const offset = (bodyWidth - line.width) / 2;
       for (const run of line.runs) {
         const point = this.surfacePoint(bodyX + offset + run.x, titleY + index * title.lineHeight);
-        this.placeLabel(this.domTitle, cursor++, layer, run.text, point.x, point.y, 24 * scale, QUEST_COLORS[run.tone]);
+        this.placeLabel(this.domTitle, cursor++, layer, run.text, point.x, point.y, 24 * scale, QUEST_TEXT_COLORS[run.tone]);
       }
     });
     this.hideLabels(this.domTitle, cursor);
@@ -187,7 +187,7 @@ export class QuestPopup {
     body.lines.forEach((line, index) => line.runs.forEach(run => {
       const x = run.x * scale, y = index * body.lineHeight * scale;
       const label = this.placeLabel(this.domBody, cursor++, clip.element, run.text,
-        x, y - top * scale, 24 * scale, QUEST_COLORS[run.tone]);
+        x, y - top * scale, 24 * scale, QUEST_TEXT_COLORS[run.tone]);
       this.domPlacements.push({ label, x, y });
     }));
     this.hideLabels(this.domBody, cursor);

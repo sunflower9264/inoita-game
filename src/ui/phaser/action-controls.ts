@@ -10,6 +10,7 @@ import type { DomUi } from '../dom/dom-ui.ts';
 import { DomActionControls } from '../dom/action-controls.ts';
 import type { ShortcutSlot } from '../shortcut-view.ts';
 export { SLOT_ICON_SIZE, ITEM_ICON_SIZE, type ShortcutSlot } from '../shortcut-view.ts';
+export { QUANTITY_BADGE } from '../dom/action-controls.ts';
 
 /** 共用控件布局的参考锚点。 */
 export function controlPlacement(): { scale: number; anchor: { x: number; y: number } } {

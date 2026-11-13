@@ -6,6 +6,8 @@ import { effectAssets } from './combat-asset-descriptors.ts';
 import type { PendingAsset } from './scene-assets.ts';
 
 const MONEY_SPRITE:GroundItemSprite={file:'assets/ui/items/money-ground.png',width:16,height:12,anchorX:7,anchorY:4};
+/** 掉落物画在场地之上、地面特效（0.4）和人物（脚点 y + 0.5）之下。 */
+const GROUND_LOOT_DEPTH=0.3;
 const textureKey=(file:string):string=>`ground:${file}`;
 
 export function groundLootAssets(items:ItemCatalog):PendingAsset[] {
@@ -27,7 +29,7 @@ export class GroundLootView {
   constructor(scene:Phaser.Scene,items:ItemCatalog,createFlight:(clip:EffectClip,x:number,y:number)=>Phaser.GameObjects.Container) {
     this.createFlight=createFlight;
     this.scene=scene;this.items=items;
-    this.layer=scene.add.layer().setDepth(.3).setName('ground-loot');
+    this.layer=scene.add.layer().setDepth(GROUND_LOOT_DEPTH).setName('ground-loot');
   }
   sync(drops:readonly GroundDrop[]):void {
     const wanted=new Set(drops.map(drop=>drop.id));

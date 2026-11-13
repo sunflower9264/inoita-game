@@ -1,10 +1,13 @@
 import { equipmentLevel, type ChaosTier } from '../domain/chaos-equipment.ts';
-import { enhancementBonus, equipmentPower, type CharacterStatsCatalog, type EquipmentNumbers, type Modifier } from '../domain/character-stats.ts';
+import { DEFAULT_EQUIPMENT_GRADE, enhancementBonus, equipmentPower, type CharacterStatsCatalog, type EquipmentNumbers, type Modifier } from '../domain/character-stats.ts';
 import type { ItemDefinition, ItemInstance } from '../domain/items.ts';
 import type { ShopCatalog } from '../domain/shop.ts';
 import type { DescriptionTextPart } from '../domain/description-text.ts';
 import { equipmentColor, equipmentGrade } from './item-name-color.ts';
 import { TEXT_COLORS } from './text-style.ts';
+
+/** 原版词条比率按千分之一存：1000 表示 100.0%，显示百分比时除以 10。 */
+const THOUSANDTHS_PER_PERCENT = 10;
 
 /** 物品说明按词条来源取色，保留原版 UIDesc_AddOption 的配色。 */
 const GEM_MODIFIER_COLOR = TEXT_COLORS.gemModifier;
@@ -25,7 +28,7 @@ function equipmentAttributeLines(catalog: CharacterStatsCatalog, entry: ItemInst
   const add = (modifiers: Modifier[], color: string) => {
     for (const modifier of modifiers) {
       const descriptor = catalog.modifiers[modifier.stat];
-      const value = descriptor.percent ? `${(modifier.value / 10).toFixed(1)}%` : String(modifier.value);
+      const value = descriptor.percent ? `${(modifier.value / THOUSANDTHS_PER_PERCENT).toFixed(1)}%` : String(modifier.value);
       if (result.length) result.push({text:'\n'});
       result.push({text:`${descriptor.label}: ${value}`, color});
     }
@@ -46,7 +49,7 @@ function equipmentAttributeLines(catalog: CharacterStatsCatalog, entry: ItemInst
   result.push({text:'镶嵌效果', color:TEXT_COLORS.white});
   gems.forEach((modifier, index) => {
     const descriptor = catalog.modifiers[modifier.stat];
-    const value = descriptor.percent ? `${(modifier.value / 10).toFixed(1)}%` : String(modifier.value);
+    const value = descriptor.percent ? `${(modifier.value / THOUSANDTHS_PER_PERCENT).toFixed(1)}%` : String(modifier.value);
     const signed = modifier.value > 0 ? `+${value}` : value;
     const name = gemNames?.[index];
     result.push({text:'\n'});
@@ -75,7 +78,8 @@ export function itemDescriptionBody(options: {
   const {item, entry, numbers, catalog, grades, member, classNames, gemNames, skill} = options;
   if (options.concealed) return {title:`${item.typeName}（未鉴定）`, color:TEXT_COLORS.muted, rows:[]};
   const equipment = item.equipment, grade = equipmentGrade(entry.numbers, numbers);
-  const prefix = equipment && grade !== 2 ? item.priceKind === 'weapon' ? grades[grade]?.name : grades[grade]?.armorName ?? grades[grade]?.name : '';
+  // 默认品级不显示品级前缀；其它品级用档位名作为前缀。
+  const prefix = equipment && grade !== DEFAULT_EQUIPMENT_GRADE ? item.priceKind === 'weapon' ? grades[grade]?.name : grades[grade]?.armorName ?? grades[grade]?.name : '';
   const title = `${prefix ? prefix + ' ' : ''}${item.name}${equipment && entry.enhancement ? '+' + entry.enhancement : ''}`;
   const color = equipment ? equipmentColor(entry.numbers, numbers, grades, options.chaosTier) : undefined;
   const parts: DescriptionTextPart[] = [];

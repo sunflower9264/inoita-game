@@ -424,14 +424,14 @@ export class GmPanel {
         if(item.task.quest===this.selectedQuest)return;
         this.selectedQuest=item.task.quest;this.storyIntroScroll=0;this.hooks.render();
       },{bare:true,parent:list.content,guard:list.guard});
-      const title=body.text('',12,5,328,18,'#f3deb0',button);
+      const title=body.text('',12,5,328,18,GOLD,button);
       const subtitle=body.text('',12,29,328,15,'#b8ab92',button);
       return {set:(value:StoryTaskRow|undefined,index:number)=>{
         item=value;background.setVisible(!!value);button.setVisible(!!value);if(!value)return;
         const y=index*54,selected=value.task.quest===this.selectedQuest;
         background.setPosition(0,y).setFillStyle(selected?0x6f5232:0x241a10,selected?.74:.46);
         button.setPosition(0,y).setData('label',`任务 ${value.title}`).setData('category',value.category);
-        title.setText(clipText(value.title,17)).setColor(selected?'#fff':'#f3deb0');
+        title.setText(clipText(value.title,17)).setColor(selected?'#fff':GOLD);
         const progress=this.references.questProgress?.(value.quest.id);
         subtitle.setText([CATEGORY_LABELS[value.category],progress?QUEST_STATUS_LABELS[progress.status]??'':undefined].filter(Boolean).join(' · '));
       }};
@@ -452,7 +452,7 @@ export class GmPanel {
     const progressLabel=progress
       ?`${QUEST_STATUS_LABELS[progress.status]??progress.status}${progress.total?` · 进度 ${progress.done}/${progress.total}`:''}`
       :CATEGORY_LABELS[row.category];
-    this.text(clipText(row.title,22),442,108,466,20,'#f3deb0');
+    this.text(clipText(row.title,22),442,108,466,20,GOLD);
     this.text(progressLabel,442,136,466,16,'#b8ab92');
     this.drawStoryDescription(body,row.quest.description,68);
     const prepared=this.previewFor(row.task.quest);

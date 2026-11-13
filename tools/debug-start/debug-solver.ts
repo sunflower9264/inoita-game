@@ -11,8 +11,17 @@ import type {HeadlessContent} from '../../src/debug/headless-story.ts';
 import {createHeadlessStory, type BattleDecision, type ChoiceDecision, type HeadlessStory} from '../../src/debug/headless-story.ts';
 
 const MAX_DEPTH = 256;
-const INTERPRETER_VERSION = 3;
-const SEMANTICS_VERSION = 3;
+export const INTERPRETER_VERSION = 3;
+export const SEMANTICS_VERSION = 3;
+
+/** 候选入口的排序权重：动作类型 > 是否有事件 > 前置链长度 > 是否任务自身脚本。 */
+const ACTION_SORT_WEIGHT = 1_000_000;
+const EVENT_SORT_WEIGHT = 100_000;
+const BEFORE_CHAIN_SORT_WEIGHT = 100;
+/** 路线表里没有的脚本按 99 个前置处理，排在已知长链之后。 */
+const UNKNOWN_ROUTE_BEFORE_COUNT = 99;
+/** 调试任务依据里保留最近的步骤、选择和战斗记录条数。 */
+const TRACE_HISTORY_LIMIT = 24;
 
 class GapError extends Error {
   readonly kind: string;
@@ -217,8 +226,9 @@ export class DebugTaskBuilder {
     const root = this.resolveRoot(candidate.script);
     const event = this.eventsByScript.get(root);
     const route = this.routes.get(root);
-    return (candidate.action === 'accept' ? 0 : 1) * 1_000_000
-      + (event ? 0 : 1) * 100_000 + (route?.before.length ?? 99) * 100
+    return (candidate.action === 'accept' ? 0 : 1) * ACTION_SORT_WEIGHT
+      + (event ? 0 : 1) * EVENT_SORT_WEIGHT
+      + (route?.before.length ?? UNKNOWN_ROUTE_BEFORE_COUNT) * BEFORE_CHAIN_SORT_WEIGHT
       + (candidate.script === quest ? 0 : 1);
   }
 
@@ -874,9 +884,9 @@ export class DebugTaskBuilder {
         source, before,
         opening: play ? {script: play.script, node: play.node ?? '', cut: play.cut, ...(play.event ? {event: play.event} : {})} : null,
         openingLocation: entry,
-        steps: this.trace.slice(-24),
-        choices: this.choices.slice(-24),
-        battles: this.battles.slice(-24),
+        steps: this.trace.slice(-TRACE_HISTORY_LIMIT),
+        choices: this.choices.slice(-TRACE_HISTORY_LIMIT),
+        battles: this.battles.slice(-TRACE_HISTORY_LIMIT),
         ...(giver ? {giver} : {}),
       } as StoryDebugTask['basis'],
       sourceHash: '',

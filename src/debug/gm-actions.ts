@@ -1,5 +1,5 @@
 import { toPlaybackCheckpoint } from '../domain/playback-checkpoint.ts';
-import type { DebugMark, DebugMarkStore, DebugMarkSummary } from './debug-marks.ts';
+import { DEBUG_MARK_VERSION, type DebugMark, type DebugMarkStore, type DebugMarkSummary } from './debug-marks.ts';
 import { prepareTaskStart, storyTaskPreview, type StoryDebugPreview } from './story-jump.ts';
 import { debugGapFor, debugTask, type StoryDebugGap, type StoryDebugPlay, type StoryDebugTarget } from '../domain/story-debug.ts';
 /**
@@ -154,6 +154,13 @@ const reportEndpoint = (): string => diagnosticsReportUrl();
 const ENTRY_BUDGET = 11000;
 /** 操作日志环长度：够看清「刚才做了什么」，又不至于把上报撑爆。 */
 const LOG_LIMIT = 40;
+/** 调试现场收尾的轮询间隔；等当前动作结束后再重试。 */
+const DEBUG_FINISH_POLL_MS = 250;
+/** GM 单次发物品与加钱的上限，防止误操作把存档数值撑爆。 */
+const MAX_GM_ITEM_QUANTITY = 999;
+const MAX_GM_MONEY_GAIN = 100_000_000;
+/** 诊断上报载荷的协议版本；上报端点按它解析条目。 */
+const DIAGNOSTIC_PAYLOAD_VERSION = 1;
 
 export interface GmActions {
   previewStory(target: StoryDebugTarget): Promise<GmStoryPreview>;
@@ -326,7 +333,7 @@ export function createGmActions(ports: GmPorts): GmActions {
     if (run.finishing || debugRun !== run) return;
     if (!run.started) { run.pending = true; return; }
     if (!runIdle()) {
-      if (!run.timer) run.timer = setTimeout(() => { run.timer = undefined; scheduleDebugFinish(run); }, 250);
+      if (!run.timer) run.timer = setTimeout(() => { run.timer = undefined; scheduleDebugFinish(run); }, DEBUG_FINISH_POLL_MS);
       return;
     }
     void finishDebugRun(run, true).then(result => {
@@ -718,7 +725,7 @@ export function createGmActions(ports: GmPorts): GmActions {
       if (!definition) return { ok: false, reason: `未找到物品：${item}` };
       if (definition.pickup) return { ok: false, reason: '该物品只能在地面拾取，不能直接发放' };
       if (!Number.isSafeInteger(quantity) || quantity <= 0) return { ok: false, reason: '数量必须是正整数' };
-      if (quantity > 999) return { ok: false, reason: '单次最多发放 999 个' };
+      if (quantity > MAX_GM_ITEM_QUANTITY) return { ok: false, reason: '单次最多发放 999 个' };
       session.bag.add(item, quantity);
       // `Bag.add` 只改内部状态，不通知订阅者；任务计数和菜单要靠这一下刷新。
       session.emit();
@@ -726,7 +733,7 @@ export function createGmActions(ports: GmPorts): GmActions {
     }),
     gainMoney: amount => run('gainMoney', [amount], () => {
       if (!Number.isSafeInteger(amount) || amount <= 0) return { ok: false, reason: '金币数量必须是正整数' };
-      if (amount > 100_000_000) return { ok: false, reason: '单次最多增加 100,000,000' };
+      if (amount > MAX_GM_MONEY_GAIN) return { ok: false, reason: '单次最多增加 100,000,000' };
       session.gainMoney(amount);
       return { ok: true, money: session.money };
     }),
@@ -749,7 +756,7 @@ export function createGmActions(ports: GmPorts): GmActions {
       if (jumping || director?.busy) return { ok: false, reason: '正在切换或播放剧情，请在现场稳定后记录' };
       const state = session.captureState();
       state.runtime = toPlaybackCheckpoint(state.runtime);
-      const mark: DebugMark = { version: 1,
+      const mark: DebugMark = { version: DEBUG_MARK_VERSION,
         summary: { name: label, savedAt: Date.now(), classId: state.classId, map: state.storyWorld.location?.map },
         session: state, world: ports.debugWorld?.capturePersistent?.() ?? ports.debugWorld?.capture(),
         ...(debugRun ? { taskReturn: { quest: debugRun.quest, session: { ...debugRun.origin, runtime: toPlaybackCheckpoint(debugRun.origin.runtime) }, world: debugRun.world } } : {}),
@@ -774,7 +781,7 @@ export function createGmActions(ports: GmPorts): GmActions {
         if (!label) return { ok: false, reason: '没有可恢复的调试标记' };
         let mark = await store.get(label);
         abort.throwIfAborted();
-        if (!mark || mark.version !== 1 || mark.summary?.name !== label) return { ok: false, reason: `调试标记缺失或损坏：${label}` };
+        if (!mark || mark.version !== DEBUG_MARK_VERSION || mark.summary?.name !== label) return { ok: false, reason: `调试标记缺失或损坏：${label}` };
         if (mark.session?.classId !== (session.hero?.classId ?? session.character?.classId)) return { ok: false, reason: '请先进入与标记相同职业的游戏，再恢复现场' };
         if (ports.prepareMark) mark = await ports.prepareMark(mark, abort);
         abort.throwIfAborted();
@@ -869,7 +876,7 @@ export function createGmActions(ports: GmPorts): GmActions {
       let result: GmResult;
       try {
         const { entry, trimmed } = fitEntry(digest());
-        const payload = { version: 1, entries: [{ id: `gm:${Date.now()}`, kind: 'gm-state', time: new Date().toISOString(), digest: entry }] };
+        const payload = { version: DIAGNOSTIC_PAYLOAD_VERSION, entries: [{ id: `gm:${Date.now()}`, kind: 'gm-state', time: new Date().toISOString(), digest: entry }] };
         const sent = await (ports.report ?? defaultReport)(payload);
         result = sent ? { ok: true, ...(trimmed ? { reason: '已裁剪到上报上限' } : {}) } : { ok: false, reason: '上报端点不可用' };
       } catch (error) { result = { ok: false, reason: error instanceof Error ? error.message : String(error) }; }

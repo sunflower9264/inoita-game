@@ -24,6 +24,9 @@ interface FlightRequest {
   switchFrame?:number;directional?:boolean;aboveCharacters?:boolean;
 }
 
+/** 单帧最多执行 4096 个到期任务，防止任务互相排队造成死循环。 */
+const MAX_TASKS_PER_FRAME=4096;
+
 /** 一份世界实例的动作与在途攻击。画面只消费进度，不提交抵达或伤害。 */
 export class CombatRuntime {
   private readonly now:()=>number;
@@ -113,7 +116,7 @@ export class CombatRuntime {
     // 先移除再执行，嵌套任务及取消可安全改变这一集合。
     // 没有待办任务时直接跳过复制、过滤和排序；这是战斗和非战斗都会走到的空路径。
     if(!this.tasks.size)return;
-    let budget=4096;
+    let budget=MAX_TASKS_PER_FRAME;
     while(!this.paused&&!this.closed){
       const due=[...this.tasks.values()].filter(task=>task.dueFrame<=frame).sort((a,b)=>a.dueFrame-b.dueFrame||a.id-b.id);
       if(!due.length)break;

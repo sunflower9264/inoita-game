@@ -8,6 +8,7 @@ import type { StoryUIContext } from '../application/ports.ts';
 import type { SaveWorldReason, StoryWorldViewSnapshot } from '../scenes/world-scene.ts';
 import { SAVE_BOARD, SAVE_BOARD_LAYOUT, drawSaveBoardRow, newestFirstSlots, saveBoardOrigin, saveRowTitle, type SaveBoardRow } from './phaser/save-board.ts';
 import { drawNativeMessage, type NativeMessageBand } from './phaser/native-message.ts';
+import { MENU_CANVAS_HEIGHT, MENU_CANVAS_WIDTH } from './phaser/modal-placement.ts';
 import type { ScrollArea, UiSurface } from './phaser/widgets.ts';
 import type { MenuTextWriter } from './dom/menu-text.ts';
 import { TextPrompt } from './text-prompt.ts';
@@ -107,21 +108,21 @@ export class SavePage {
     this.messageBand = undefined;
     if (this.loadConfirm !== undefined) {
       const slot = this.loadConfirm;
-      this.host.beginModal(1024, 640);
+      this.host.beginModal(MENU_CANVAS_WIDTH, MENU_CANVAS_HEIGHT);
       this.messageBand = drawNativeMessage(this.host.modal(), app.menuPanels.assets, '读取存档将丢失当前未保存的进度，确定读取？',
         () => { this.loadConfirm = undefined; void this.loadFromSlot(slot); },
         () => { this.loadConfirm = undefined; this.host.render(); }, this.host.modalWriter(), this.messageScroll());
     }
     if (this.saveConfirm !== undefined) {
       const slot = this.saveConfirm;
-      this.host.beginModal(1024, 640);
+      this.host.beginModal(MENU_CANVAS_WIDTH, MENU_CANVAS_HEIGHT);
       this.messageBand = drawNativeMessage(this.host.modal(), app.menuPanels.assets, '这个存档槽里已经有存档，确定覆盖？',
         () => { this.saveConfirm = undefined; void this.saveToSlot(slot); },
         () => { this.saveConfirm = undefined; this.host.render(); }, this.host.modalWriter(), this.messageScroll());
     }
     if (this.deleteConfirm !== undefined) {
       const slot = this.deleteConfirm;
-      this.host.beginModal(1024, 640);
+      this.host.beginModal(MENU_CANVAS_WIDTH, MENU_CANVAS_HEIGHT);
       this.messageBand = drawNativeMessage(this.host.modal(), app.menuPanels.assets, '删除后无法恢复，确定删除这个存档？',
         () => this.deleteSlot(slot),
         () => { this.deleteConfirm = undefined; this.host.render(); }, this.host.modalWriter(), this.messageScroll());

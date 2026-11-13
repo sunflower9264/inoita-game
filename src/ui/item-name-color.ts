@@ -1,5 +1,5 @@
 import type { ChaosTier } from '../domain/chaos-equipment.ts';
-import type { EquipmentNumbers, ItemNumbers } from '../domain/character-stats.ts';
+import { DEFAULT_EQUIPMENT_GRADE, type EquipmentNumbers, type ItemNumbers } from '../domain/character-stats.ts';
 interface QualityStyle {
   /** 品级 1–4；混沌档位没有品级。 */
   rarity?: number;
@@ -22,17 +22,14 @@ const QUALITY_STYLES: readonly QualityStyle[] = [
   { chaosTier: 'chaos', color: '#0000ff', frame: 'inventory-slot-chaos' },
   { chaosTier: 'epic-chaos', color: '#ff6c00', frame: 'inventory-slot-epic-chaos' }
 ];
-/** 实例没掷品级时，原版按品级 2（蓝色）取色。 */
-const DEFAULT_GRADE = 2;
-
 export function itemNameColor(rarity: number | undefined, chaosTier?: ChaosTier): string | undefined {
   if (chaosTier) return QUALITY_STYLES.find(style => style.chaosTier === chaosTier)?.color;
   return rarity === undefined ? undefined : QUALITY_STYLES.find(style => style.rarity === rarity)?.color;
 }
 
-/** 装备品级：实例掷出的优先，其次模板默认品级，最后是原版默认的 2。 */
+/** 装备品级：实例掷出的优先，其次模板默认品级，最后是原版默认档位 2（蓝色）。 */
 export function equipmentGrade(numbers: ItemNumbers | undefined, definition: EquipmentNumbers | undefined): number {
-  return numbers?.grade ?? definition?.defaultGrade ?? DEFAULT_GRADE;
+  return numbers?.grade ?? definition?.defaultGrade ?? DEFAULT_EQUIPMENT_GRADE;
 }
 
 /** 装备品质色：格子边框与说明标题共用这一套取色口径。 */

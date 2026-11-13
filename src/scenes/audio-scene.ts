@@ -1,6 +1,6 @@
 import { SCENE_KEYS } from '../application/scene-keys.ts';
 import Phaser from 'phaser';
-import { GameAudio, type AudioCatalog } from '../application/game-audio.ts';
+import { AUDIO_CATALOG_VERSION, GameAudio, type AudioCatalog } from '../application/game-audio.ts';
 import type { StoryApp } from '../app.ts';
 import { versionedContent } from '../application/asset-version.ts';
 
@@ -11,7 +11,7 @@ export class AudioScene extends Phaser.Scene {
   preload(): void { this.load.json('game-audio-catalog', versionedContent('content/audio.json')); }
   create(): void {
     const catalog = this.cache.json.get('game-audio-catalog') as AudioCatalog | undefined;
-    if (!catalog || catalog.version !== 3) throw new Error('音频目录无法加载');
+    if (!catalog || catalog.version !== AUDIO_CATALOG_VERSION) throw new Error('音频目录无法加载');
     this.app.audio = new GameAudio(this, catalog, () => this.app.suspended);
     window.dispatchEvent(new Event('game-audio-settings'));
     if (this.app.mode === 'game') {

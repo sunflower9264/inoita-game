@@ -5,6 +5,11 @@ import type { ItemDescriptionRow } from '../item-detail-lines.ts';
 import type { MenuTextClip, MenuTextWriter } from '../dom/menu-text.ts';
 import { layoutDescriptionTextForSurface, writeDescriptionText } from './description-text.ts';
 
+/** 正文行高与行距；断行和 DOM 落字共用。 */
+const DESCRIPTION_BODY_SIZE = 22, DESCRIPTION_ROW_GAP = 5;
+/** 正文与属性块之间的点线：8 像素一步、每步 5 像素实线，浅蓝色。 */
+const DOTTED_LINE_STEP = 8, DOTTED_LINE_DASH = 5, DOTTED_LINE_COLOR = 0x8caace;
+
 /** 面板的关闭矩形；`descriptionPanel(width)` 收窄时它跟着右边缘走。 */
 type CloseRect = { close:{x:number; y:number; size:number} };
 
@@ -55,8 +60,8 @@ export function drawDescriptionTitle(name: string, x: number, y: number, width: 
  * 颜色 `#8caace`（`UIDesc_DrawTextScroll @0x145d30` 传的 `0xff8caece`）。
  */
 export function drawDescriptionSeparator(v: UiSurface, x: number, y: number, width: number, parent?: UiNode): void {
-  for (let offset = 0; offset < width; offset += 8) {
-    v.rect(x + offset, y, Math.min(5, width - offset), 1, 0x8caace, 1, parent);
+  for (let offset = 0; offset < width; offset += DOTTED_LINE_STEP) {
+    v.rect(x + offset, y, Math.min(DOTTED_LINE_DASH, width - offset), 1, DOTTED_LINE_COLOR, 1, parent);
   }
 }
 
@@ -70,10 +75,10 @@ export function drawDescriptionRows(v: UiSurface, rows: ItemDescriptionRow[], wi
   let y = 0;
   rows.forEach((row, index) => {
     // 高度仍按布局阶段的断行结果预留；DOM 只负责按这一份结果落字。
-    const layout = layoutDescriptionTextForSurface(v, row.parts, width, 22);
-    writeDescriptionText(dom.writer, `${dom.keyPrefix}-${index}`, layout, dom.x, dom.y + y, width, 22,
+    const layout = layoutDescriptionTextForSurface(v, row.parts, width, DESCRIPTION_BODY_SIZE);
+    writeDescriptionText(dom.writer, `${dom.keyPrefix}-${index}`, layout, dom.x, dom.y + y, width, DESCRIPTION_BODY_SIZE,
       dom.scroll, dom.clip);
-    y += layout.height + 5;
+    y += layout.height + DESCRIPTION_ROW_GAP;
   });
   return y;
 }

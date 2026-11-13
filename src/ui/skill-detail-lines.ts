@@ -8,8 +8,17 @@ import { TEXT_COLORS } from './text-style.ts';
 type SkillKind = SkillDefinition['kind'];
 type RankLike = Pick<SkillRank, 'manaCost' | 'details' | 'displayValues'>;
 
+/** 主动技能说明的前两条固定是魔法消耗和冷却，冒号写法与行类型都按这个顺序判断。 */
+const ACTIVE_LEADING_DETAIL_ROWS = 2;
+
+/** 下一级预览的行色：魔耗行取游戏里的魔法蓝，会变化的数值取警示红。 */
+export const SKILL_PREVIEW_COLORS = {
+  mana: '#0f7cf9',
+  changed: '#ff0000'
+} as const;
+
 function skillDetailLabel(detail: Pick<SkillDetailEntry, 'label' | 'valueSpacing'>, index: number, kind: SkillKind): string {
-  return `${detail.label}${kind === 'active' && index < 2 ? ': ' : detail.valueSpacing ? ' ' : ''}`;
+  return `${detail.label}${kind === 'active' && index < ACTIVE_LEADING_DETAIL_ROWS ? ': ' : detail.valueSpacing ? ' ' : ''}`;
 }
 
 export function skillDescriptionParts(skill: SkillDefinition, level: number, companionMaximum?: number): DescriptionTextPart[] {
@@ -43,7 +52,7 @@ export function skillNextLevelPreview(ranks: RankLike[], level: number, kind: Sk
   const key=(entry:SkillDetailEntry,index:number)=>entry.kind==='effect'?`effect-${entry.effectIndex??index}`:String(index);
   const before=new Map((current?skillDetailEntries({display},current):[]).map((entry,index)=>[key(entry,index),entry.text]));
   return skillDetailEntries({display},ranks[level]!).flatMap((entry,index)=>{
-    const rowKind=entry.kind??(kind==='active'&&index<2?(index===0?'mana':'cooldown'):'effect');
+    const rowKind=entry.kind??(kind==='active'&&index<ACTIVE_LEADING_DETAIL_ROWS?(index===0?'mana':'cooldown'):'effect');
     if(rowKind==='cooldown')return [];
     return [{label:entry.label,from:before.get(key(entry,index))??entry.zeroText,to:entry.text,kind:rowKind}];
   });

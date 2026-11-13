@@ -12,6 +12,8 @@ const ATLAS_IMAGE = 'assets/ui/menu-icons.png';
 const ATLAS_DATA = 'assets/ui/menu-icons.json';
 const ATLAS_KEY = 'interface:assets/ui/menu-icons.png';
 const GENERATED = path.join(ROOT, 'src', 'generated', 'icon-atlas.ts');
+/** pngjs 的 colorType 6 = RGBA，图集必须保留透明通道。 */
+const PNG_COLOR_TYPE_RGBA = 6;
 const MAX_SIZE = 2048;
 const PADDING = 2;
 
@@ -126,7 +128,7 @@ export function writeIconAtlas(): { width: number; height: number; icons: number
     }
   }
   fs.mkdirSync(path.dirname(path.join(PUBLIC, ATLAS_IMAGE)), { recursive: true });
-  const bytes = PNG.sync.write(atlas, { colorType: 6 });
+  const bytes = PNG.sync.write(atlas, { colorType: PNG_COLOR_TYPE_RGBA });
   fs.writeFileSync(path.join(PUBLIC, ATLAS_IMAGE), bytes);
   const frames: Record<string, unknown> = {};
   for (const [file, frame] of packed.frames) {

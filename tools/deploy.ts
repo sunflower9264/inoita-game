@@ -12,6 +12,17 @@ import { readUpdatePublicKey } from './update-key.ts';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+/** 线上入口：nginx 终止 TLS 后转发到本机 4004 的静态服务。 */
+const DEFAULT_DEPLOY_URL = 'https://catgo.online:4002';
+/** 构建刚替换 dist 时服务可能短暂不可用：最多探测 5 次，重试间隔 300 ms。 */
+const BUILD_PROBE_ATTEMPTS = 5;
+const BUILD_PROBE_RETRY_DELAY_MS = 300;
+const BUILD_PROBE_TIMEOUT_MS = 1200;
+/** 首页与入口 bundle 的验收请求超时。 */
+const VERIFY_REQUEST_TIMEOUT_MS = 2000;
+/** 拉取更新指针和清单的超时。 */
+const UPDATE_FETCH_TIMEOUT_MS = 4000;
+
 export function compareBuild(local: BuildMeta, remote: BuildMeta): { ok: boolean; reason?: string } {
   if (local.builtAt !== remote.builtAt) return { ok: false, reason: `builtAt 不一致：本地 ${local.builtAt}，服务 ${remote.builtAt}` };
   if (local.assetVersion !== remote.assetVersion)
@@ -32,9 +43,9 @@ function run(command: string, args: string[]): void {
 
 async function remoteBuild(base: string): Promise<{ meta?: BuildMeta; error?: string }> {
   let lastError = '';
-  for (let attempt = 0; attempt < 5; attempt += 1) {
+  for (let attempt = 0; attempt < BUILD_PROBE_ATTEMPTS; attempt += 1) {
     try {
-      const response = await fetch(`${base}/__build`, { signal: AbortSignal.timeout(1200) });
+      const response = await fetch(`${base}/__build`, { signal: AbortSignal.timeout(BUILD_PROBE_TIMEOUT_MS) });
       if (!response.ok) { lastError = `HTTP ${response.status}`; }
       else {
         const value = await response.json() as { meta?: BuildMeta };
@@ -44,14 +55,14 @@ async function remoteBuild(base: string): Promise<{ meta?: BuildMeta; error?: st
     } catch (error) {
       lastError = error instanceof Error ? error.message : String(error);
     }
-    if (attempt < 4) await sleep(300);
+    if (attempt + 1 < BUILD_PROBE_ATTEMPTS) await sleep(BUILD_PROBE_RETRY_DELAY_MS);
   }
   return { error: lastError };
 }
 
 function parseArgs(argv: string[]): { base: string; skipBuild: boolean } {
   // 本机 4002 现在由 nginx 终止 TLS，再转发到 127.0.0.1:4004 的静态服务。
-  let base = process.env.STORY_DEPLOY_URL ?? 'https://catgo.online:4002', skipBuild = false;
+  let base = process.env.STORY_DEPLOY_URL ?? DEFAULT_DEPLOY_URL, skipBuild = false;
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index]!;
     if (value === '--skip-build') skipBuild = true;
@@ -62,15 +73,15 @@ function parseArgs(argv: string[]): { base: string; skipBuild: boolean } {
 }
 
 async function verifyServed(base: string, meta: BuildMeta): Promise<void> {
-  const page = await fetch(`${base}/`, { signal: AbortSignal.timeout(2000) });
+  const page = await fetch(`${base}/`, { signal: AbortSignal.timeout(VERIFY_REQUEST_TIMEOUT_MS) });
   if (!page.ok) throw new Error(`首页返回 HTTP ${page.status}`);
   const html = await page.text();
   const bundle = /bundles\/[^"']+\.js/.exec(html)?.[0];
   if (!bundle) throw new Error('首页没有引用 bundles/*.js');
-  const script = await fetch(`${base}/${bundle}`, { signal: AbortSignal.timeout(2000) });
+  const script = await fetch(`${base}/${bundle}`, { signal: AbortSignal.timeout(VERIFY_REQUEST_TIMEOUT_MS) });
   if (!script.ok) throw new Error(`入口 bundle 返回 HTTP ${script.status}`);
   const asset = await fetch(`${base}/assets/ui/app-icon.png?v=${encodeURIComponent(meta.assetVersion)}`,
-    { method: 'HEAD', signal: AbortSignal.timeout(2000) });
+    { method: 'HEAD', signal: AbortSignal.timeout(VERIFY_REQUEST_TIMEOUT_MS) });
   if (!asset.ok) throw new Error(`版本化资源返回 HTTP ${asset.status}`);
   if (!(asset.headers.get('cache-control') ?? '').includes('immutable'))
     throw new Error('版本化资源的 Cache-Control 不是 immutable');
@@ -80,7 +91,7 @@ async function fetchUpdateBytes(url: string): Promise<Buffer> {
   // nginx 可能缓存指针；显式要求回源，避免刚部署就比对到上一版。
   const response = await fetch(url, {
     headers: { 'cache-control': 'no-cache', pragma: 'no-cache' },
-    signal: AbortSignal.timeout(4000),
+    signal: AbortSignal.timeout(UPDATE_FETCH_TIMEOUT_MS),
   });
   if (!response.ok) throw new Error(`${url} 返回 HTTP ${response.status}`);
   return Buffer.from(await response.arrayBuffer());

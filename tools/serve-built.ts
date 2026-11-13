@@ -15,6 +15,13 @@ const META_CACHE_MS = 250;
 const COMPRESSION_LIMIT = 32 * 1024 * 1024;
 const COMPRESSION_MIN_BYTES = 1024;
 
+/** 打包静态服务的默认端口；4002 的 HTTPS 入口转发到这里。 */
+const DEFAULT_SERVE_PORT = 4004;
+const MAX_PORT = 65535;
+/** 构建替换 dist 的瞬间会短暂读不到文件，重试前等 75 ms。 */
+const DIST_REPLACE_RETRY_DELAY_MS = 75;
+/** 带版本号的资源和更新清单可以缓存一年。 */
+const IMMUTABLE_CACHE_SECONDS = 60 * 60 * 24 * 365;
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -50,8 +57,8 @@ function acceptsGzip(header: string | undefined): boolean {
   for (const part of header.split(',')) {
     const [name, ...parameters] = part.trim().toLowerCase().split(';');
     if (name !== 'gzip' && name !== '*') continue;
-    const q = parameters.find(value => value.trim().startsWith('q='));
-    if (!q || Number.parseFloat(q.split('=')[1]?.trim() ?? '1') > 0) return true;
+    const quality = parameters.find(value => value.trim().startsWith('q='));
+    if (!quality || Number.parseFloat(quality.split('=')[1]?.trim() ?? '1') > 0) return true;
   }
   return false;
 }
@@ -61,14 +68,14 @@ function cachePolicyFor(pathname: string, search: URLSearchParams, meta: BuildMe
     // 指针带 builtAt/minShell，每次都要重新取；清单只由内容决定，可按 buildId 永久缓存。
     if (/^\/update\/(?:latest|latest-staging)\.json(?:\.sig)?$/.test(pathname)) return 'no-store';
     if (/^\/update\/[0-9a-f]{16}\.json(?:\.sig)?$/.test(pathname))
-      return 'public, max-age=31536000, immutable';
+      return `public, max-age=${IMMUTABLE_CACHE_SECONDS}, immutable`;
     return 'no-cache';
   }
-  if (pathname.startsWith('/bundles/')) return 'public, max-age=31536000, immutable';
+  if (pathname.startsWith('/bundles/')) return `public, max-age=${IMMUTABLE_CACHE_SECONDS}, immutable`;
   if (meta && pathname.startsWith('/assets/') && search.get('v') === meta.assetVersion)
-    return 'public, max-age=31536000, immutable';
+    return `public, max-age=${IMMUTABLE_CACHE_SECONDS}, immutable`;
   if (meta && pathname.startsWith('/content/') && search.get('v') === meta.contentVersion)
-    return 'public, max-age=31536000, immutable';
+    return `public, max-age=${IMMUTABLE_CACHE_SECONDS}, immutable`;
   return 'no-cache';
 }
 
@@ -244,7 +251,7 @@ export function createGameServer(options: GameServerOptions): Server {
     // 构建替换 dist 的极短窗口：先确认 dist 在，重试一次；仍不在则 503，避免缓存成 404。
     try { await stat(distDir); }
     catch {
-      await new Promise(resolve => setTimeout(resolve, 75));
+      await new Promise(resolve => setTimeout(resolve, DIST_REPLACE_RETRY_DELAY_MS));
       try { await stat(distDir); }
       catch { sendError(res, 503, 'Build is being replaced', 1); return; }
     }
@@ -252,7 +259,7 @@ export function createGameServer(options: GameServerOptions): Server {
     try { real = await realpath(resolved); }
     catch {
       if (!isIndex) { sendError(res, 404, 'Not Found'); return; }
-      await new Promise(resolve => setTimeout(resolve, 75));
+      await new Promise(resolve => setTimeout(resolve, DIST_REPLACE_RETRY_DELAY_MS));
       try { real = await realpath(resolved); }
       catch { sendError(res, 503, 'Build is being replaced', 1); return; }
     }
@@ -268,7 +275,7 @@ export function createGameServer(options: GameServerOptions): Server {
     if (!real.startsWith(distReal + path.sep) && real !== distReal) { sendError(res, 404, 'Not Found'); return; }
     let info = await fileInfo(real);
     if (!info && isIndex) {
-      await new Promise(resolve => setTimeout(resolve, 75));
+      await new Promise(resolve => setTimeout(resolve, DIST_REPLACE_RETRY_DELAY_MS));
       info = await fileInfo(real);
     }
     if (!info) {
@@ -373,7 +380,7 @@ interface StartedServer { server: Server; port: number }
 
 async function startGameServer(options: GameServerOptions & { port?: number; host?: string }): Promise<StartedServer> {
   const server = createGameServer(options);
-  const port = options.port ?? 4004;
+  const port = options.port ?? DEFAULT_SERVE_PORT;
   const host = options.host ?? '127.0.0.1';
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject);
@@ -386,7 +393,7 @@ async function startGameServer(options: GameServerOptions & { port?: number; hos
 }
 
 function cliOptions(argv: string[]): { port: number; host: string; cloudDataDir?: string } {
-  let port = 4004, host = '127.0.0.1';
+  let port = DEFAULT_SERVE_PORT, host = '127.0.0.1';
   let cloudDataDir: string | undefined;
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index]!;
@@ -397,7 +404,7 @@ function cliOptions(argv: string[]): { port: number; host: string; cloudDataDir?
     else if (value === '--cloud-data') cloudDataDir = argv[++index];
     else if (value.startsWith('--cloud-data=')) cloudDataDir = value.slice('--cloud-data='.length);
   }
-  if (!Number.isSafeInteger(port) || port < 1 || port > 65535) throw new Error(`端口无效：${port}`);
+  if (!Number.isSafeInteger(port) || port < 1 || port > MAX_PORT) throw new Error(`端口无效：${port}`);
   return { port, host, ...(cloudDataDir ? { cloudDataDir } : {}) };
 }
 

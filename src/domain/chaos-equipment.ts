@@ -4,9 +4,14 @@ export type ChaosTier='chaos'|'epic-chaos';
 export interface EquipmentChaos { tier:ChaosTier;valuePercent:number;levelOffset:number }
 export interface ChaosRule { valueDelta:[number,number];valueBounds:[number,number];levelDiceDivisor:number;levelClampDivisor:number }
 
-/** 装备等级条件受混沌偏移影响；100 级以内装备最多要求 100 级。 */
+/** 普通装备的等级需求上限；高于 100 级的混沌装备允许到 105 级。 */
+const NORMAL_EQUIPMENT_LEVEL_CEILING = 100;
+const CHAOS_EQUIPMENT_LEVEL_CEILING = 105;
+
+/** 装备等级条件受混沌偏移影响，结果夹在 0 到对应品质的上限之间。 */
 export function equipmentLevel(item:Pick<ItemDefinition,'level'>,entry:ItemInstance):number {
-  return Math.max(0,Math.min(item.level<=100?100:105,item.level+(entry.numbers?.chaos?.levelOffset??0)));
+  const ceiling=item.level<=NORMAL_EQUIPMENT_LEVEL_CEILING?NORMAL_EQUIPMENT_LEVEL_CEILING:CHAOS_EQUIPMENT_LEVEL_CEILING;
+  return Math.max(0,Math.min(ceiling,item.level+(entry.numbers?.chaos?.levelOffset??0)));
 }
 
 /** 原版两次包含端点的掷骰取平均，负数向零截断。 */

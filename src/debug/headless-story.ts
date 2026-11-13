@@ -76,6 +76,9 @@ interface ReplayResult {
   battles: BattleDecision[];
 }
 
+/** 一次无头回放最多结算多少场遭遇；遇到剧本循环时及时报错，不无限推进。 */
+const MAX_ENCOUNTER_RESOLUTIONS = 64;
+
 /**
  * 用真实 `Session` + `StoryRuntime` 在 Node 里跑剧情，不启动 Phaser。
  * 状态变更全部经过 `storyCommitCommands` / `session.applyStoryCommands`；
@@ -153,7 +156,7 @@ export class HeadlessStory {
       choices: [], battles: []};
     if (!started) return result;
     const dispatched = new Set<string>();
-    for (let guard = 0; guard < 64; guard++) {
+    for (let guard = 0; guard < MAX_ENCOUNTER_RESOLUTIONS; guard++) {
       const waiting = this.waitingRun();
       const encounter = waiting?.waiting?.encounter;
       if (!waiting || !encounter) break;

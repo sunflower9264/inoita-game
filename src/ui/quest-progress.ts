@@ -35,6 +35,13 @@ const sameGoals = (a: Readonly<Record<string, number>> | undefined, b: Readonly<
  * 只处理 `completion: 'all'` 且进任务日志的任务；日志外任务照常计数，但不在这里提示。
  * 数字减少（卖出、用掉、重置）不提示；任务进入待交付时只发完成文案，不再发进度。
  */
+/** 屏幕提示按 24px 单行估算的汉字预算：960×640 界面约放得下 32 个。 */
+const PROGRESS_LINE_BUDGET = 32;
+/** 单个目标标签最多保留的字数；后面还要接数量和省略号。 */
+const PROGRESS_LABEL_MAX = 20;
+/** 一次提示最多列出的目标数。 */
+const PROGRESS_MAX_ITEMS = 3;
+
 export function questNotices(
   previous: ReadonlyMap<string, QuestNoticeState>,
   quests: ReadonlyMap<string, QuestView>,
@@ -66,7 +73,7 @@ export function questNotices(
       const old = Math.min(goal.quantity, before.goals[goal.id] ?? 0);
       if (count <= old) continue;
       const raw = goal.label ?? quest.guidance.counterLabel ?? goal.target;
-      const label = raw.length > 20 ? `${raw.slice(0, 19)}…` : raw;
+      const label = raw.length > PROGRESS_LABEL_MAX ? `${raw.slice(0, PROGRESS_LABEL_MAX - 1)}…` : raw;
       changes.push(`${label} ${count}/${goal.quantity}`);
     }
   }
@@ -75,13 +82,12 @@ export function questNotices(
   // 屏幕提示是 24px 单行，960×640 界面约放得下 32 个汉字。标签先截到 20 字，
   // 保证首项连同数量和省略号也不超过预算；其余项放不下就少列。
   const prefix = '任务进度：';
-  const budget = 32;
   const shown: string[] = [];
   let width = prefix.length;
   for (const change of changes) {
-    if (shown.length >= 3) break;
+    if (shown.length >= PROGRESS_MAX_ITEMS) break;
     const addition = change.length + (shown.length ? 1 : 0);
-    if (shown.length && width + addition + 1 > budget) break;
+    if (shown.length && width + addition + 1 > PROGRESS_LINE_BUDGET) break;
     shown.push(change);
     width += addition;
   }

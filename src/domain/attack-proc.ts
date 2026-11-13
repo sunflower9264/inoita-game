@@ -1,3 +1,8 @@
+import {MAX_SKILL_TARGETS} from './skill-unit-sequence.ts';
+
+/** 单次攻击的附加效果链最多执行 4096 个阶段，避免配置错误造成死循环。 */
+const MAX_ATTACK_PROC_STAGES = 4096;
+
 export type AttackProcChanceKey='windStrikeChance'|'fireSplashChance'|'frostStrikeChance'|
   'divineStrikeChance'|'darknessStrikeChance'|'poisonStrikeChance';
 type AttackProcBuffKey='attack-stun'|'attack-slow'|'divine-defense-break'|'darkness-strike-impact'|'poisoned';
@@ -32,7 +37,7 @@ const stages:readonly Stage[]=[
 export class AttackProcExecutor {
   private running=false;
 
-  execute(normalDamage:number,port:AttackProcPort,budget=4096):AttackProcResult {
+  execute(normalDamage:number,port:AttackProcPort,budget=MAX_ATTACK_PROC_STAGES):AttackProcResult {
     if(this.running)return {status:'reentrant',stagesExecuted:0};
     if(!Number.isSafeInteger(budget)||budget<0)throw new RangeError('Attack proc budget must be a nonnegative integer');
     this.running=true;
@@ -47,7 +52,7 @@ export class AttackProcExecutor {
         if(chance<=0||Math.floor(random()*999)+1>=chance){index++;continue;}
         if(stage.kind==='fire'){
           const count=port.fireSplash(Math.trunc(normalDamage*stage.damageRate/1000));
-          if(!Number.isInteger(count)||count<0||count>16)throw new RangeError('Fire splash target count must be between 0 and 16');
+          if(!Number.isInteger(count)||count<0||count>MAX_SKILL_TARGETS)throw new RangeError(`Fire splash target count must be between 0 and ${MAX_SKILL_TARGETS}`);
           // The collected count determines the next stage; an empty splash retries fire.
           index=count+1;
         }else{

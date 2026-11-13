@@ -1,6 +1,10 @@
 import type { Bag } from './bag.ts';
 import { LOGIC_FRAME_MS } from './battle.ts';
 
+/** 药效减半（虚弱）与佣兵团恢复加成 +10%。 */
+const WEAKENED_RECOVERY_DIVISOR = 2;
+const RECOVERY_BONUS_DIVISOR = 10;
+
 interface RecoveryMember {
   id: string;
   player: Readonly<{health:number;maxHealth:number;mana:number;maxMana:number}>;
@@ -76,8 +80,8 @@ export class RecoveryItems {
       : 0;
     const scaled=(amount:number):number=>{
       let value=amount;
-      if(modifiers.weakened)value=Math.floor(value/2);
-      if(modifiers.recoveryBonus)value+=Math.floor(value/10);
+      if(modifiers.weakened)value=Math.floor(value/WEAKENED_RECOVERY_DIVISOR);
+      if(modifiers.recoveryBonus)value+=Math.floor(value/RECOVERY_BONUS_DIVISOR);
       return value;
     };
     const healed:string[]=[],effects:string[]=[],changes:{member:RecoveryMember;health:number;mana:number}[]=[];

@@ -151,6 +151,11 @@ final class UpdateManager {
     }
 
     private static final String TAG = "InotiaUpdate";
+    /** 没有可用热更版本时的内建版本标识；更新检查和诊断都按它识别 APK 资源。 */
+    private static final String APK_BUILD_ID = "apk";
+    private static final String POINTER_PATH = "update/latest.json";
+    private static final String STAGING_POINTER_PATH = "update/latest-staging.json";
+    private static final String SIGNATURE_SUFFIX = ".sig";
     private static final int DOWNLOAD_THREADS = 3;
     private static final long CHECK_INTERVAL_MS = 6L * 60L * 60L * 1000L;
     private static final long CHECK_RETRY_MS = 30L * 1000L;
@@ -183,7 +188,7 @@ final class UpdateManager {
     private final AtomicBoolean checkFailureNotified = new AtomicBoolean(false);
     private final AtomicBoolean applying = new AtomicBoolean(false);
 
-    private volatile Snapshot snapshot = Snapshot.apkOnly("apk");
+    private volatile Snapshot snapshot = Snapshot.apkOnly(APK_BUILD_ID);
     private volatile UpdateManifest.Pointer baselinePointer;
     private volatile UpdateManifest.Manifest baselineManifest;
     private volatile UpdateManifest.Manifest activeManifest;
@@ -322,16 +327,16 @@ final class UpdateManager {
     private void runUpdateCheck() {
         try {
             String pointerPath = "staging".equals(BuildConfig.UPDATE_CHANNEL)
-                    ? "/update/latest-staging.json"
-                    : "/update/latest.json";
+                    ? "/" + STAGING_POINTER_PATH
+                    : "/" + POINTER_PATH;
             UpdateHttp http = new UpdateHttp(BuildConfig.UPDATE_BASE_URL);
 
             // 指针本身也要验签：否则旧指针可以被重放。
             byte[] pointerBytes = http.fetchPointer(pointerPath);
-            byte[] pointerSignature = http.fetchSignature(pointerPath + ".sig");
+            byte[] pointerSignature = http.fetchSignature(pointerPath + SIGNATURE_SUFFIX);
             if (!UpdateManifest.verifySignature(
                     pointerBytes, pointerSignature, BuildConfig.UPDATE_PUBLIC_KEY)) {
-                state.setLastCheck("error", "指针签名校验失败");
+                state.setLastCheck(UpdateState.CHECK_RESULT_ERROR, "指针签名校验失败");
                 Log.w(TAG, "指针签名校验失败");
                 scheduleCheckRetry();
                 return;
@@ -339,7 +344,7 @@ final class UpdateManager {
             UpdateManifest.Pointer pointer = UpdateManifest.parsePointer(pointerBytes);
 
             if (pointer.buildId.equals(snapshot.buildId())) {
-                state.setLastCheck("none", "already-current");
+                state.setLastCheck(UpdateState.CHECK_RESULT_NONE, "already-current");
                 state.clearAvailable();
                 state.clearDownloadError();
                 checkFailures.set(0);
@@ -350,7 +355,7 @@ final class UpdateManager {
                 long failedAt = state.failedAt();
                 if (failedAt <= 0L || System.currentTimeMillis() - failedAt < FAILED_BUILD_COOLDOWN_MS) {
                     Log.i(TAG, "该版本启动失败冷却中: " + pointer.buildId);
-                    state.setLastCheck("blocked", "failed-build");
+                    state.setLastCheck(UpdateState.CHECK_RESULT_BLOCKED, "failed-build");
                     checkFailures.set(0);
                     return;
                 }
@@ -358,7 +363,7 @@ final class UpdateManager {
             }
             if (pointer.minShell > BuildConfig.SHELL_VERSION) {
                 Log.i(TAG, "新版本需要更高的壳版本: minShell=" + pointer.minShell);
-                state.setLastCheck("none", "min-shell");
+                state.setLastCheck(UpdateState.CHECK_RESULT_NONE, "min-shell");
                 state.clearAvailable();
                 state.clearDownloadError();
                 checkFailures.set(0);
@@ -367,7 +372,7 @@ final class UpdateManager {
             long installed = UpdateState.parseMillis(installedBuiltAt);
             if (installed != Long.MIN_VALUE && pointer.builtAtMillis <= installed) {
                 Log.i(TAG, "更新指针不比已安装版本新");
-                state.setLastCheck("none", "not-newer");
+                state.setLastCheck(UpdateState.CHECK_RESULT_NONE, "not-newer");
                 state.clearAvailable();
                 state.clearDownloadError();
                 checkFailures.set(0);
@@ -377,23 +382,23 @@ final class UpdateManager {
             // 清单先验原始字节的 SHA-256，再验签名和 buildId。
             byte[] manifestBytes = http.fetchManifest("/" + pointer.manifest);
             if (!pointer.manifestSha256.equals(UpdateManifest.sha256Hex(manifestBytes))) {
-                state.setLastCheck("error", "清单哈希与指针不一致");
+                state.setLastCheck(UpdateState.CHECK_RESULT_ERROR, "清单哈希与指针不一致");
                 Log.w(TAG, "清单哈希与指针不一致");
                 scheduleCheckRetry();
                 return;
             }
             UpdateManifest.Manifest manifest = UpdateManifest.parseManifest(manifestBytes);
             if (!manifest.buildId.equals(pointer.buildId)) {
-                state.setLastCheck("error", "清单 buildId 与指针不一致");
+                state.setLastCheck(UpdateState.CHECK_RESULT_ERROR, "清单 buildId 与指针不一致");
                 Log.w(TAG, "清单 buildId 与指针不一致");
                 scheduleCheckRetry();
                 return;
             }
             byte[] manifestSignature =
-                    http.fetchSignature("/" + pointer.manifest + ".sig");
+                    http.fetchSignature("/" + pointer.manifest + SIGNATURE_SUFFIX);
             if (!UpdateManifest.verifySignature(
                     manifestBytes, manifestSignature, BuildConfig.UPDATE_PUBLIC_KEY)) {
-                state.setLastCheck("error", "清单签名校验失败");
+                state.setLastCheck(UpdateState.CHECK_RESULT_ERROR, "清单签名校验失败");
                 Log.w(TAG, "清单签名校验失败");
                 scheduleCheckRetry();
                 return;
@@ -409,7 +414,7 @@ final class UpdateManager {
             deferredBuildId = "";
             int fileCount = plan.downloadCount();
             long bytes = plan.downloadBytes;
-            state.setLastCheck("available", "");
+            state.setLastCheck(UpdateState.CHECK_RESULT_AVAILABLE, "");
             state.setAvailable(pointer.buildId, fileCount, bytes);
             state.clearDownloadError();
             String buildId = pointer.buildId;
@@ -420,7 +425,7 @@ final class UpdateManager {
         } catch (Exception error) {
             String message = describe(error);
             Log.w(TAG, "检查更新失败: " + message);
-            state.setLastCheck("error", message);
+            state.setLastCheck(UpdateState.CHECK_RESULT_ERROR, message);
             int failures = checkFailures.incrementAndGet();
             if (failures <= CHECK_MAX_RETRIES) {
                 scheduleCheckRetry();
@@ -434,7 +439,7 @@ final class UpdateManager {
         } finally {
             checking.set(false);
             String result = state.lastCheckResult();
-            if (!"error".equals(result)) checkFailureNotified.set(false);
+            if (!UpdateState.CHECK_RESULT_ERROR.equals(result)) checkFailureNotified.set(false);
             String error = state.lastCheckError();
             postToMain(() -> {
                 Listener current = listener;
@@ -669,8 +674,8 @@ final class UpdateManager {
         String buildId = state.readyBuildId();
         if (buildId.isEmpty()) return false;
         File staging = state.stagingDir(buildId);
-        File manifestFile = new File(staging, ".manifest.json");
-        File builtAtFile = new File(staging, ".built-at");
+        File manifestFile = state.manifestCopy(staging);
+        File builtAtFile = state.builtAtCopy(staging);
         if (!manifestFile.isFile() || !builtAtFile.isFile()) {
             throw new IOException("已就绪版本缺少清单或构建时间");
         }
@@ -888,9 +893,9 @@ final class UpdateManager {
         UpdateManifest.Manifest baseManifest = null;
         String baselineError = "";
         try {
-            byte[] latest = readAsset("update/latest.json");
+            byte[] latest = readAsset(POINTER_PATH);
             if (latest == null) {
-                baselineError = "update/latest.json 不存在";
+                baselineError = POINTER_PATH + " 不存在";
             } else {
                 UpdateManifest.Pointer pointer = UpdateManifest.parsePointer(latest);
                 byte[] manifestBytes = readAsset(pointer.manifest);
@@ -936,7 +941,7 @@ final class UpdateManager {
         UpdateManifest.Manifest chosen = null;
         UpdateManifest.Manifest chosenActive = null;
         File root = null;
-        String buildId = "apk";
+        String buildId = APK_BUILD_ID;
         String builtAt = "";
 
         if (!activeId.isEmpty()) {
@@ -995,7 +1000,7 @@ final class UpdateManager {
     }
 
     private static String fallbackBuildId() {
-        return BuildConfig.BASELINE_BUILD_ID.isEmpty() ? "apk" : BuildConfig.BASELINE_BUILD_ID;
+        return BuildConfig.BASELINE_BUILD_ID.isEmpty() ? APK_BUILD_ID : BuildConfig.BASELINE_BUILD_ID;
     }
 
     private static String describeError(Throwable error) {

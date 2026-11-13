@@ -13,6 +13,9 @@ import java.util.Locale;
  */
 final class AssetPaths {
 
+    /** 构建产物文件名带内容哈希，可以按 immutable 缓存一年。 */
+    private static final long IMMUTABLE_CACHE_MAX_AGE_SECONDS = 365L * 24 * 60 * 60;
+
     private AssetPaths() {}
 
     /** 按段解码并拒绝 .、..、反斜杠、NUL、隐藏段和空段。 */
@@ -82,7 +85,9 @@ final class AssetPaths {
     }
 
     static String cachePolicy(String relative) {
-        if (relative.startsWith("bundles/")) return "public, max-age=31536000, immutable";
+        if (relative.startsWith("bundles/")) {
+            return "public, max-age=" + IMMUTABLE_CACHE_MAX_AGE_SECONDS + ", immutable";
+        }
         if (relative.equals("index.html") || relative.equals("diagnostics.js")) return "no-store";
         return "no-cache";
     }

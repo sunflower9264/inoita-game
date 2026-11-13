@@ -37747,4 +37747,4 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
     "prefix": "8dfa733f8d"
   }
 };
-export const CHARACTER_ATLAS_SOURCE_DIGEST = "7628c2faa2a50bd51755fcb2aaf4641f3f3c3ca4d3eb4179a00dc0cd4fc88988";
+export const CHARACTER_ATLAS_SOURCE_DIGEST = "475252da77abfdf0ea5f942c993a8fc4275e1a0635257e902c5774d25aea5e5f";

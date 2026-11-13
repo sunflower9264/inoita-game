@@ -168,6 +168,41 @@ const PRESSURE_MAX_ENEMIES=40;
 const PRESSURE_SPAWN_MIN_DISTANCE=96;
 const PRESSURE_SPAWN_MAX_DISTANCE=240;
 const PRESSURE_REVIVE_FRAME_INTERVAL=10;
+/** 压测刷怪每次最多尝试的随机落点数。 */
+const PRESSURE_SPAWN_ATTEMPTS=16;
+/** 召唤物脱战这么久后才允许收回主人身边，避免刚脱战就瞬移。 */
+const SUMMON_RECALL_QUIET_MS=3000;
+/** 收回召唤物时由近到远尝试的落点半径，单位像素。 */
+const SUMMON_RECALL_RADII_PX=[24,32,40,48] as const;
+/** 每个半径尝试 8 个方向。 */
+const SUMMON_RECALL_DIRECTIONS=8;
+/** 收回落点与地图实体至少隔开这么多像素。 */
+const SUMMON_RECALL_ENTITY_CLEARANCE_PX=16;
+/** 消散型敌人死亡后等这些逻辑帧再结算，给消失动画留时间。 */
+const VANISH_DEFEAT_SETTLE_FRAMES=11;
+/** 嘲讽状态持续 30 帧；对已锁定目标缩短到 15 帧。 */
+const TAUNT_FRAMES=30;
+const TAUNT_SHORTENED_FRAMES=15;
+/** 重力摆附加的眩晕固定 30 帧。 */
+const PENDULUM_STUN_FRAMES=30;
+/** 治愈气息每次回复最大生命的 1/50（2%）。 */
+const HEALING_ENERGY_MAX_HEALTH_DIVISOR=50;
+/** 组队被动与 AI 蓝耗缓存共用的低血量阈值：30%。 */
+const LOW_HEALTH_THRESHOLD_PERCENT=30;
+/** 必定命中的概率阈值；1000 表示不抽随机数。 */
+const CERTAIN_CHANCE_THRESHOLD=1000;
+/** 技能素材补载失败后的指数退避：1 秒起，最多 30 秒，最多 5 次。 */
+const SKILL_ASSET_MAX_ATTEMPTS=5;
+const SKILL_ASSET_RETRY_BASE_MS=1000;
+const SKILL_ASSET_RETRY_MAX_MS=30_000;
+/** 剧情收尾时，离主角超过 200px 的单位拉回身边。 */
+const FRIENDLY_SETTLE_MAX_DISTANCE_PX=200;
+/** 同一名队友两次被动归队的间隔。 */
+const REGROUP_COOLDOWN_MS=5000;
+/** 流场目标按 16px 分桶共享，身体半径至少按 16px 留余量，另加 8px 贴边缓冲。 */
+const FLOW_FIELD_BUCKET_PX=16;
+const FLOW_FIELD_MIN_BODY_RADIUS_PX=16;
+const FLOW_FIELD_BODY_PADDING_PX=8;
 
 /** 正式地图的战斗结算与角色表现装配。 */
 export class WorldCombat {
@@ -647,12 +682,12 @@ captureStoryActors():SceneActorState[] {
         flowField: (targetId, target) => {
           const body = this.movement!.actor(visual), shape = body.shape(), box = shape.collision;
           const shapeKey = box ? `${box.width}x${box.height}` : 'none';
-          const goalBucket = `${Math.floor(target.position.x / 16)},${Math.floor(target.position.y / 16)}`;
+          const goalBucket = `${Math.floor(target.position.x / FLOW_FIELD_BUCKET_PX)},${Math.floor(target.position.y / FLOW_FIELD_BUCKET_PX)}`;
           const navigation = this.movement!.navigation;
           return this.flowFields.request(`${targetId}@${goalBucket}@${shapeKey}`, target.position,
             () => ({ bounds: navigation.bounds,
               canStand: point => navigation.terrainFree(point) && !navigation.blockedByContent(shape, point, body) }),
-            Math.max(16, Math.hypot(target.bounds.width, target.bounds.height) / 2 + 8),
+            Math.max(FLOW_FIELD_MIN_BODY_RADIUS_PX, Math.hypot(target.bounds.width, target.bounds.height) / 2 + FLOW_FIELD_BODY_PADDING_PX),
             (this.app.session.combatTick ?? 0) * LOGIC_FRAME_MS);
         },
         moveToward: position => { if(!this.conditions.canAutoApproach(enemy.key)){this.movement.stop(visual);return;} this.movement!.toward(visual, position, this.movementSpeed(enemy.key,definition.behavior.moveSpeedPxPerSecond)); if (definition.behavior.canTurn) enemy.facing = faceTarget(this.movement!.position(visual), position); },
@@ -809,7 +844,7 @@ captureStoryActors():SceneActorState[] {
     if(!owner||!actor||!this.isActorAlive(owner.id)||!this.isActorAlive(actor.id)||this.runtime.paused||!this.runtime.idle||
       !this.conditions.canAct(enemy.key)||!this.conditions.canMove(enemy.key)||this.scene.performing||this.partyActionsSuspended)return false;
     const now=(this.app.session.combatTick??0)*LOGIC_FRAME_MS;
-    if(this.awareness.quietFor(now)<3000)return false;
+    if(this.awareness.quietFor(now)<SUMMON_RECALL_QUIET_MS)return false;
     // 警戒覆盖还要检查隐身敌人；旧仇恨记录本身不代表仍在追击。
     const hostile=this.arena.filter(value=>this.combatant(value.key)?.team==='hostile'&&this.isActorAlive(value.key));
     if(hostile.some(value=>{
@@ -828,12 +863,12 @@ captureStoryActors():SceneActorState[] {
     const localFree=(point:Point)=>navigation.terrainFree(point)&&navigation.canPlace(body.shape(),point,body,
       [{actor:ownerBody,position:owner.position,enabled:false}]);
     const seed=stableSeed(enemy.key);
-    for(const radius of [24,32,40,48])for(let index=0;index<8;index++){
+    for(const radius of SUMMON_RECALL_RADII_PX)for(let index=0;index<SUMMON_RECALL_DIRECTIONS;index++){
       const angle=((index+seed%8)%8)*Math.PI/4;
       const point={x:owner.position.x+Math.cos(angle)*radius,y:owner.position.y+Math.sin(angle)*radius};
       if(!this.canPlaceBodyAt(enemy.visual,point)||!safe(point)||
         this.scene.map?.exits.some(exit=>overlapsFootRect(point,exit))||
-        this.scene.map?.entities.some(entity=>Math.hypot(point.x-entity.x,point.y-entity.y)<16)||
+        this.scene.map?.entities.some(entity=>Math.hypot(point.x-entity.x,point.y-entity.y)<SUMMON_RECALL_ENTITY_CLEARANCE_PX)||
         !canTraverse(owner.position,point,localFree))continue;
       this.relocateVisual(enemy.visual,point);return true;
     }
@@ -883,7 +918,7 @@ captureStoryActors():SceneActorState[] {
   private applyTaunt(sourceId:string,targetId:string):void {
     const decision=resolveStateApplication({...this.stateApplicationRequest(sourceId,targetId,'taunted'),kind:'buff'});
     if(!decision.allowed)return;
-    const lifetime=selectStateDurationProfile({normal:{lastActiveFrame:30},targetShortened:{lastActiveFrame:15}},decision);
+    const lifetime=selectStateDurationProfile({normal:{lastActiveFrame:TAUNT_FRAMES},targetShortened:{lastActiveFrame:TAUNT_SHORTENED_FRAMES}},decision);
     this.conditions.applyStateFrames(targetId,'taunted',lifetime.lastActiveFrame,sourceId);
   }
   /** 原版角色位 +0xc 的 bit2：打出过伤害后置位、初始化时清零，治疗选人据此降低优先级。 */
@@ -1291,7 +1326,7 @@ captureStoryActors():SceneActorState[] {
           this.scene.refreshCombatTarget();
           if(targetEnemy.definition.defeatPresentation==='vanish'){
             this.outcomes.vanish(key,targetEnemy.visual,()=>{});
-            this.runtime.schedule(`defeat:${key}`,11,()=>this.pendingDefeats.complete(key));
+            this.runtime.schedule(`defeat:${key}`,VANISH_DEFEAT_SETTLE_FRAMES,()=>this.pendingDefeats.complete(key));
           }else this.pendingDefeats.complete(key);
         });
       }
@@ -1448,6 +1483,7 @@ captureStoryActors():SceneActorState[] {
     const threshold=learnedSkillReactions(this.app.battleCatalog,member.classId,
       configuration.draft(this.app.battleCatalog,member.classId),memberSkillGrowth(defenderId))
       .find(reaction=>reaction.kind==='disturbance')?.chanceThreshold??0;
+    // 未学扰乱时阈值是 0：这里连随机数都不抽，后面的反应链掷点顺序才不会偏移。
     if(!(threshold>0)||Math.floor(Math.random()*999)+1>=threshold)return;
     const self=this.combatant(defenderId);if(!self)return;
     const actors=this.combatants().flatMap(candidate=>{
@@ -1498,7 +1534,7 @@ captureStoryActors():SceneActorState[] {
       const decision=resolveStateApplication({...this.stateApplicationRequest(event.casterId,event.targetId,'stun'),
         kind:'action',chanceThreshold:caster.pendulumStunChance},random);
       if(decision.allowed){
-        const timing=selectStateDurationProfile(frameStateDurationProfile(30),decision);
+        const timing=selectStateDurationProfile(frameStateDurationProfile(PENDULUM_STUN_FRAMES),decision);
         this.conditions.applyStateFrames(event.targetId,'stun',timing.lastActiveFrame,event.casterId);
         this.recordSummonContact?.(event.casterId,event.targetId);
         this.applyStateConsequences(event.targetId,['stun']);
@@ -1509,7 +1545,7 @@ captureStoryActors():SceneActorState[] {
       if(effect)this.applyActorBuff(event.casterId,'attack-slow',0,effect,event.targetId);
     }
     if(caster.healingEnergyChance>0&&passesChanceThreshold(caster.healingEnergyChance,random))
-      this.restoreHealth(event.casterId,Math.trunc(this.readResourceCapacity(event.casterId,'maxHealth')/50));
+      this.restoreHealth(event.casterId,Math.trunc(this.readResourceCapacity(event.casterId,'maxHealth')/HEALING_ENERGY_MAX_HEALTH_DIVISOR));
   }
   /** 原版 CHAR_SuccessOnMiss：被落空者按 attr82 回复最大生命的千分比，不抽随机数。 */
   private instantRecoveryOnMiss(event:AttackContact):void {
@@ -1614,7 +1650,7 @@ captureStoryActors():SceneActorState[] {
     const duration=this.actorAttribute(command.attributeOwner,command.durationAttribute);
     if(duration<=0)return;
     const decision=resolveStateApplication({...this.stateApplicationRequest(command.attributeOwner,command.targetId,command.state),
-      kind:'action',chanceThreshold:1000});
+      kind:'action',chanceThreshold:CERTAIN_CHANCE_THRESHOLD});
     if(!decision.allowed)return;
     const timing=selectStateDurationProfile(frameStateDurationProfile(duration),decision);
     this.conditions.applyStateFrames(command.targetId,command.state,timing.lastActiveFrame,command.attributeOwner);
@@ -1737,7 +1773,7 @@ captureStoryActors():SceneActorState[] {
     const configuration=this.skillConfiguration(id,member);
     const growth=memberSkillGrowth(id);
     // 血量只在跨过 30% 阈值时影响组队被动；用布尔值做键，避免每次受击都重建。
-    const lowHealth=member.player.health<=Math.floor(member.player.maxHealth*30/100)?1:0;
+    const lowHealth=member.player.health<=Math.floor(member.player.maxHealth*LOW_HEALTH_THRESHOLD_PERCENT/100)?1:0;
     const stealthed=this.conditions.hasState(id,'stealthed')?1:0;
     const groupVersion=this.app.session.party?.groupModifierVersion??0;
     const key=`${id}|${member.classId}|${configuration.version}|${member.bag.revision}|${lowHealth}|${stealthed}|${groupVersion}|${growth}`;
@@ -2055,7 +2091,7 @@ captureStoryActors():SceneActorState[] {
   }
   private canSelectSkill(id:string,skill:NonNullable<ActionPlayback['skill']>,resolvedAction?:SkillAction|null):boolean {
     if(this.preparedSkillIds&&!this.preparedSkillIds.get(id)?.has(skill.id)){
-      if((this.skillAssetFailures.get(id)?.attempts??0)>=5)this.skillAssetFailures.delete(id);
+      if((this.skillAssetFailures.get(id)?.attempts??0)>=SKILL_ASSET_MAX_ATTEMPTS)this.skillAssetFailures.delete(id);
       this.scheduleSkillAssetRefresh();return false;
     }
     const action=resolvedAction===undefined
@@ -2193,7 +2229,7 @@ captureStoryActors():SceneActorState[] {
       ||this.conditions.cachedAttribute(id,'manaCostReductionRate')!==undefined
       ||this.conditions.hasManaCostAttributeRamp(id))return undefined;
     const configuration=this.skillConfiguration(id,member);
-    const lowHealth=member.player.health<=Math.floor(member.player.maxHealth*30/100)?1:0;
+    const lowHealth=member.player.health<=Math.floor(member.player.maxHealth*LOW_HEALTH_THRESHOLD_PERCENT/100)?1:0;
     const stealthed=this.conditions.hasState(id,'stealthed')?1:0;
     const groupVersion=this.app.session.party?.groupModifierVersion??0;
     const levels=skills.map(skill=>`${skill.id}:${skill.level}`).join(',');
@@ -2318,7 +2354,7 @@ captureStoryActors():SceneActorState[] {
   private shouldSettleFriendly(visual:CharacterVisual,actor:NavigationActor,id?:string):boolean {
     const position=this.movement!.position(visual),hero=this.movement!.position(this.player);
     // 与普通跟随的收拢阈值一致，避免剧情收尾时在玩家眼前做小幅瞬移。
-    if(Math.hypot(position.x-hero.x,position.y-hero.y)>200)return true;
+    if(Math.hypot(position.x-hero.x,position.y-hero.y)>FRIENDLY_SETTLE_MAX_DISTANCE_PX)return true;
     const navigation=this.movement!.navigation;
     if(!navigation.terrainFree(position)||!navigation.canPlaceBody(actor.shape(),position,actor))return true;
     if(!id)return false;
@@ -2380,7 +2416,7 @@ captureStoryActors():SceneActorState[] {
     if(!landing)return;
     ally.ai.cancel();
     this.movement.place(ally.visual,landing);
-    this.regroupCooldowns.set(id,now+5000);
+    this.regroupCooldowns.set(id,now+REGROUP_COOLDOWN_MS);
     setCharacterClip(this.scene,ally.visual,`idle-${ally.facing}`,true);
     this.followerCatchUps++;
   }
@@ -2485,6 +2521,7 @@ captureStoryActors():SceneActorState[] {
         {actor,basicAttack:{profileId:'dual-wield',clips:profile.clips}});
     }
     if(this.actorAttribute(id,'frenzyAttackChance')<=0)return normalStep();
+    // 先掷点再读属性：原生读取顺序被战斗测试固定，不能为了复用判定函数调换。
     const roll=Math.floor(Math.random()*999)+1;
     if(roll>=this.actorAttribute(id,'frenzyAttackChance'))return normalStep();
     const recipe=costumeRecipe(this.app.wardrobe,this.app.items,member.bag.equipmentItems(member.bag.equipmentFor(id)));
@@ -2792,16 +2829,16 @@ captureStoryActors():SceneActorState[] {
     const failure=this.skillAssetFailures.get(owner);
     if(!failure)return true;
     if(failure.signature!==signature)return true;
-    if(failure.attempts>=5)return false;
+    if(failure.attempts>=SKILL_ASSET_MAX_ATTEMPTS)return false;
     return this.scene.time.now>=failure.nextAt;
   }
   private recordSkillAssetFailure(owner:string,signature:string,error:unknown):void {
     if(this.closed)return;
     const previous=this.skillAssetFailures.get(owner);
     const attempts=(previous?.signature===signature?previous.attempts:0)+1;
-    const delay=Math.min(1000*2**(attempts-1),30000);
+    const delay=Math.min(SKILL_ASSET_RETRY_BASE_MS*2**(attempts-1),SKILL_ASSET_RETRY_MAX_MS);
     this.skillAssetFailures.set(owner,{attempts,nextAt:this.scene.time.now+delay,signature});
-    if(attempts===1||attempts===5){
+    if(attempts===1||attempts===SKILL_ASSET_MAX_ATTEMPTS){
       const member=this.memberOf(owner);
       globalThis.storyDiagnostics?.record('skill-asset-refresh-failed',{owner,classId:member?.classId,signature,attempts,
         skills:member?[...learnedSkillIds(this.app.battleCatalog,member.classId,this.skillConfiguration(owner,member))]:[],
@@ -2815,7 +2852,7 @@ captureStoryActors():SceneActorState[] {
     let next=Infinity;
     for(const [owner,failure]of this.skillAssetFailures){
       if(owner!=='player'&&!this.app.session.party?.activeIds.includes(owner)){this.skillAssetFailures.delete(owner);continue;}
-      if(failure.attempts<5)next=Math.min(next,failure.nextAt);
+      if(failure.attempts<SKILL_ASSET_MAX_ATTEMPTS)next=Math.min(next,failure.nextAt);
     }
     if(!Number.isFinite(next))return;
     const delay=Math.max(0,next-this.scene.time.now);
@@ -2978,7 +3015,7 @@ captureStoryActors():SceneActorState[] {
     const collision=definition?.actor.collision;
     if(!definition||!collision)return false;
     const center=this.movement.position(this.controlledVisual);
-    for(let attempt=0;attempt<16;attempt++){
+    for(let attempt=0;attempt<PRESSURE_SPAWN_ATTEMPTS;attempt++){
       const angle=Math.random()*Math.PI*2;
       const distance=PRESSURE_SPAWN_MIN_DISTANCE
         +Math.random()*(PRESSURE_SPAWN_MAX_DISTANCE-PRESSURE_SPAWN_MIN_DISTANCE);

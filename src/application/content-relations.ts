@@ -6,7 +6,7 @@ import { storyActions } from '../domain/story-script.ts';
 import type { StoryPlace, StorySpot } from '../domain/story-graph.ts';
 import type { WardrobeCatalog } from '../domain/wardrobe.ts';
 import type { StoryEncounter } from '../domain/story-world.ts';
-import type { AudioCatalog } from './game-audio.ts';
+import { AUDIO_CATALOG_VERSION, type AudioCatalog } from './game-audio.ts';
 import { questItemOverflows } from './quest-item-grants.ts';
 import { validateStoryPerformance } from './story-performance-validation.ts';
 import { validateStoryReferences } from './story-reference-validation.ts';
@@ -42,7 +42,7 @@ export function validateContentRelations(input: ContentRelations): void {
   // 「13 首音乐 / 170 个音效」是当前导出结果的快照而非契约，加一首 BGM 就要改这里。
   // `version` 是运行时认得的格式版本，属契约；条目数量只是「当前导出结果长这样」的快照，
   // 加一首 BGM 就要改这里，所以只要求目录非空。引用完整性由下面的对象映射数量与逐项检查保证。
-  ensure(audio.version === 3 && Object.keys(audio.music).length > 0 && Object.keys(audio.effects).length > 0, '音频目录不完整');
+  ensure(audio.version === AUDIO_CATALOG_VERSION && Object.keys(audio.music).length > 0 && Object.keys(audio.effects).length > 0, '音频目录不完整');
   ensure(audio.music[audio.menuMusic], '主菜单背景音乐缺失');
   ensure(Object.keys(audio.maps).length === world.maps.length && Object.keys(audio.enemies).length === battle.enemies.length, '音频对象映射不完整');
   for (const id of ids) {

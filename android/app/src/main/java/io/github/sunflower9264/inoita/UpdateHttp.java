@@ -67,7 +67,7 @@ final class UpdateHttp {
             }
 
             int code = connection.getResponseCode();
-            if (code >= 300 && code < 400) throw new IOException("更新源返回了重定向");
+            if (isRedirect(code)) throw new IOException("更新源返回了重定向");
             if (code != HttpURLConnection.HTTP_OK && code != HttpURLConnection.HTTP_PARTIAL) {
                 throw new IOException("下载失败 HTTP " + code);
             }
@@ -109,7 +109,7 @@ final class UpdateHttp {
         try {
             connection = open(resolve(path), allowGzip);
             int code = connection.getResponseCode();
-            if (code >= 300 && code < 400) throw new IOException("更新源返回了重定向");
+            if (isRedirect(code)) throw new IOException("更新源返回了重定向");
             if (code != HttpURLConnection.HTTP_OK) throw new IOException("请求失败 HTTP " + code);
 
             String encoding = connection.getContentEncoding();
@@ -147,6 +147,10 @@ final class UpdateHttp {
         connection.setRequestProperty("Cache-Control", "no-cache");
         connection.setRequestProperty("User-Agent", "InotiaUpdater/" + BuildConfig.SHELL_VERSION);
         return connection;
+    }
+
+    private static boolean isRedirect(int statusCode) {
+        return statusCode >= 300 && statusCode < 400;
     }
 
     /** 固定 host、协议和端口，防止清单或指针把客户端引到别的服务器。 */

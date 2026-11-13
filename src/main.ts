@@ -59,6 +59,13 @@ declare global {
   var gm: ConsoleGmActions | undefined;
 }
 
+/** 读档完成后，等音频缓存稳定再写一条诊断；不阻塞加载。 */
+const AUDIO_READY_DIAGNOSTIC_DELAY_MS = 4000;
+/** 启动后第一次补测刷新率的延迟；启动初期 rAF 可能还没按高刷回调。 */
+const REFRESH_RECHECK_AFTER_BOOT_MS = 3000;
+/** 进图/读档加载结束后补测刷新率的延迟；此时加载压力已经结束。 */
+const REFRESH_RECHECK_AFTER_START_MS = 1200;
+
 /** 场景实例，浏览器测试和流程代码都按 `world` 这个键取它。 */
 function worldScene(): WorldScene | undefined {
   return app.game?.scene.getScene(SCENE_KEYS.world) as WorldScene | undefined;
@@ -515,7 +522,7 @@ async function resumeSlot(slot:SaveSlotRef,signal?:AbortSignal):Promise<void> {
             if(lifetime.signal.aborted)return;
             remeasureRefreshAfterStart?.();
             if(world.audio)app.audio?.restoreStoryAudio(world.audio);
-            window.setTimeout(()=>{if(!lifetime.signal.aborted)globalThis.storyDiagnostics?.record('load-audio-ready',{map:location.map});},4000);
+            window.setTimeout(()=>{if(!lifetime.signal.aborted)globalThis.storyDiagnostics?.record('load-audio-ready',{map:location.map});},AUDIO_READY_DIAGNOSTIC_DELAY_MS);
           }});
       },
     },signal);
@@ -824,12 +831,12 @@ function boot(): void {
   // 刷新率要等页面跑起来才量得到；量到之前按 60Hz 处理，60 档先按 90 的上限跑。
   void detectRefreshRate().then(applyFrameLimit);
   // 启动初期浏览器可能还没按高刷回调，量到的值会偏低；3 秒后补测一次。
-  const settleRefreshTimer = window.setTimeout(remeasureNow, 3000);
+  const settleRefreshTimer = window.setTimeout(remeasureNow, REFRESH_RECHECK_AFTER_BOOT_MS);
   // 进图/读档完成时加载压力已经结束，此时再量一次，拿到的才是屏幕真实节奏。
   let startRefreshTimer = 0;
   remeasureRefreshAfterStart = () => {
     window.clearTimeout(startRefreshTimer);
-    startRefreshTimer = window.setTimeout(remeasureNow, 1200);
+    startRefreshTimer = window.setTimeout(remeasureNow, REFRESH_RECHECK_AFTER_START_MS);
   };
   // 页面在后台启动时 rAF 不跑，第一次会量不到；恢复可见后补测一次再换算限帧。
   const remeasureWhenVisible = (): void => {

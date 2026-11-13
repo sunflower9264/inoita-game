@@ -5,6 +5,13 @@ import type { StoryCondition } from './story-condition.ts';
 import { validateStoryStageSnapshot, type StoryStage, type StoryStageSnapshot } from './story-performance.ts';
 import { freezeSnapshot, storyDevMode } from './dev-mode.ts';
 
+/** 一次连续执行最多推进的剧情节点数，防止条件环让播放停不下来。 */
+const MAX_STORY_EXECUTION_STEPS = 1000;
+/** 剧情 call/end 返回栈上限；超出说明内容递归过深。 */
+const MAX_STORY_CALL_DEPTH = 32;
+/** 遭遇结果记账只保留最近这么多次，避免快照无限增长。 */
+const ENCOUNTER_RESULT_HISTORY_LIMIT = 64;
+
 export interface StoryOccurrence { id: string; sequence: number; source: StoryTriggerSource; key?: string; map?: string; mapVisit?: number; entity?: string }
 interface StoryRun {
   id: string;
@@ -222,7 +229,7 @@ export class StoryRuntime {
       if (!this.nodes.has(StoryRuntime.nodeKey(run.cursor))) throw new Error(`剧情检查点节点不存在：${run.cursor.script}/${run.cursor.node}`);
       if (run.script && !this.graph.scripts[run.script]) throw new Error(`剧情检查点入口脚本不存在：${run.script}`);
       if (run.stack) {
-        if(run.stack.length>32)throw new Error('剧情调用层级超过限制');
+        if(run.stack.length>MAX_STORY_CALL_DEPTH)throw new Error('剧情调用层级超过限制');
         for(const reference of run.stack)if(!this.nodes.has(StoryRuntime.nodeKey(reference)))throw new Error('剧情返回节点不存在');
       }
       if (run.eventId && !this.graph.events.some(event => event.id === run.eventId)) throw new Error(`剧情检查点事件不存在：${run.eventId}`);
@@ -246,7 +253,7 @@ export class StoryRuntime {
     }
     if (new Set(result.pendingOccurrences.map(value=>this.occurrenceKey(value.occurrence))).size !== result.pendingOccurrences.length) throw new Error('剧情待处理发生标识重复');
     for (const [event, occurrence] of result.handledOccurrences) if (!occurrence || !this.graph.events.some(value => value.id === event)) throw new Error('剧情触发记账引用不存在');
-    if (result.encounterResults.length > 64 || result.encounterResults.some(id => !id)) throw new Error('剧情遭遇结果记账无效');
+    if (result.encounterResults.length > ENCOUNTER_RESULT_HISTORY_LIMIT || result.encounterResults.some(id => !id)) throw new Error('剧情遭遇结果记账无效');
     if (new Set(result.occurrenceSequences.map(([key]) => key)).size !== result.occurrenceSequences.length
       || result.occurrenceSequences.some(([key, sequence]) => !key || !Number.isSafeInteger(sequence) || sequence < 0)) throw new Error('剧情触发发生序号无效');
     for (const id of result.completedEvents) if (!this.graph.events.some(event => event.id === id)) throw new Error(`已完成事件不存在：${id}`);
@@ -387,7 +394,7 @@ export class StoryRuntime {
   private async execute(id: string, signal: AbortSignal, epoch: number): Promise<boolean> {
     let committed = false;
     // 内容环仍受执行预算约束；有出口的循环也可能因条件配置永远走回原处。
-    for (let steps = 0; steps < 1000; steps++) {
+    for (let steps = 0; steps < MAX_STORY_EXECUTION_STEPS; steps++) {
       this.guard(epoch, signal);
       const run = this.state.runs.find(run => run.id === id)!;
       if (run.status !== 'running') return committed;
@@ -414,7 +421,7 @@ export class StoryRuntime {
           case 'next': nextRun.cursor = node.exit.target; break;
           case 'call': {
             const stack = [...nextRun.stack ?? [], node.exit.then];
-            if (stack.length > 32) throw new Error('剧情调用层级超过限制');
+            if (stack.length > MAX_STORY_CALL_DEPTH) throw new Error('剧情调用层级超过限制');
             nextRun.stack = stack; nextRun.cursor = node.exit.target; break;
           }
           case 'branch': nextRun.cursor = node.exit.then; break;
@@ -494,7 +501,7 @@ export class StoryRuntime {
       delete nextRun.waiting;
       const next: StoryRuntimeSnapshot = freezeSnapshot({ ...this.state,
         runs: this.state.runs.map(candidate => candidate.id === run.id ? nextRun : candidate),
-        encounterResults: [...this.state.encounterResults, resultId].slice(-64) });
+        encounterResults: [...this.state.encounterResults, resultId].slice(-ENCOUNTER_RESULT_HISTORY_LIMIT) });
       const commands: StoryCommand[] = outcome === 'won' || outcome === 'lost' ? [{ type: 'world', command: { kind: 'encounter-result', id: encounter, result: outcome } }] : [];
       this.enterPlayback();
       this.publish({ commands, checkpoint: next, eventId: run.eventId, node: run.cursor, runId: run.id });

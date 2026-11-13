@@ -7,10 +7,15 @@ import { signBytes, tryReadUpdateKey, verifyBytes, writePublicKey } from './upda
 export { signBytes, verifyBytes };
 
 const MIN_SHELL = 2;
+/** 短指纹（buildId/assetVersion/contentVersion）的十六进制长度。 */
+const SHORT_HASH_HEX_LENGTH = 16;
 const HEX16 = /^[0-9a-f]{16}$/;
 const HEX64 = /^[0-9a-f]{64}$/;
 const UPDATE_DIR = 'update';
+/** 清单校验失败时最多列出的问题数。 */
+const MAX_REPORTED_PROBLEMS = 5;
 
+/** 热更清单的逐文件记录；字段名是线上格式：p=相对路径，h=内容指纹，s=字节数。 */
 export interface UpdateFile { p: string; h: string; s: number }
 export interface UpdateManifest {
   schema: 1;
@@ -71,7 +76,7 @@ export function fileDigest(relative: string, bytes: Buffer): string {
   hash.update('\0');
   hash.update(bytes);
   hash.update('\0');
-  return hash.digest('hex').slice(0, 16);
+  return hash.digest('hex').slice(0, SHORT_HASH_HEX_LENGTH);
 }
 
 export function sha256Hex(bytes: Buffer | string): string {
@@ -103,7 +108,7 @@ export function buildIdOf(files: UpdateFile[]): string {
     hash.update(String(file.s));
     hash.update('\n');
   }
-  return hash.digest('hex').slice(0, 16);
+  return hash.digest('hex').slice(0, SHORT_HASH_HEX_LENGTH);
 }
 
 export function buildManifest(files: UpdateFile[], assetVersion: string, contentVersion: string): UpdateManifest {
@@ -231,7 +236,7 @@ export async function verifyManifestFiles(rootDir: string, manifest: UpdateManif
     else if (fileDigest(file.p, bytes) !== file.h) problems.push(`哈希不符 ${file.p}`);
   }
   if (problems.length)
-    throw new Error(`清单文件校验失败（${problems.length} 项）：${problems.slice(0, 5).join('；')}`);
+    throw new Error(`清单文件校验失败（${problems.length} 项）：${problems.slice(0, MAX_REPORTED_PROBLEMS).join('；')}`);
   return { checked: manifest.files.length };
 }
 

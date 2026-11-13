@@ -6,6 +6,9 @@ import { domAssets } from './assets.ts';
 import { UiNode,UiImage,UiText,uiMount,uiPointer,type UiPointer } from './node.ts';
 import { VolumeSlider } from './volume-slider.ts';
 
+/** 图框边框的厚度：四条边与四个角共用同一尺寸。 */
+const FRAME_BORDER_SIZE = 24;
+
 export interface ScrollBarOptions {offset?:number;insetY?:number;width?:number}
 export class UiSurface {
   readonly scene:Phaser.Scene;readonly depth:number;
@@ -99,7 +102,16 @@ export class UiSurface {
   }
   nineSlice(file:string,x:number,y:number,width:number,height:number,inset:number):void{this.sliced(file,x,y,width,height,inset,inset);}
   textPlate(left:string,right:string,x:number,y:number,width:number,parent=this.root):void{this.image(left,x,y,9,34,parent);this.image(right,x+width-9,y,9,34,parent);this.rect(x+9,y,width-18,34,0x695031,.8,parent);}
-  border(assets:Record<string,string>,x:number,y:number,width:number,height:number,parent=this.root):void{if(!assets['corner-nw'])return;this.image(assets['edge-horizontal']!,x+24,y,width-48,24,parent);this.image(assets['edge-horizontal']!,x+24,y+height-24,width-48,24,parent).setFlipY(true);this.image(assets['edge-vertical']!,x,y+24,24,height-48,parent);this.image(assets['edge-vertical']!,x+width-24,y+24,24,height-48,parent).setFlipX(true);for(const[part,dx,dy]of [['nw',0,0],['ne',width-24,0],['sw',0,height-24],['se',width-24,height-24]]as const)this.image(assets[`corner-${part}`]!,x+dx,y+dy,24,24,parent);}
+  border(assets:Record<string,string>,x:number,y:number,width:number,height:number,parent=this.root):void{
+    const border=FRAME_BORDER_SIZE;
+    if(!assets['corner-nw'])return;
+    this.image(assets['edge-horizontal']!,x+border,y,width-border*2,border,parent);
+    this.image(assets['edge-horizontal']!,x+border,y+height-border,width-border*2,border,parent).setFlipY(true);
+    this.image(assets['edge-vertical']!,x,y+border,border,height-border*2,parent);
+    this.image(assets['edge-vertical']!,x+width-border,y+border,border,height-border*2,parent).setFlipX(true);
+    for(const[part,dx,dy]of [['nw',0,0],['ne',width-border,0],['sw',0,height-border],['se',width-border,height-border]]as const)
+      this.image(assets[`corner-${part}`]!,x+dx,y+dy,border,border,parent);
+  }
   frame(assets:Record<string,string>,x:number,y:number,width:number,height:number,alpha=.96):void{this.rect(x,y,width,height,0x15100b,alpha);this.border(assets,x,y,width,height);}
   scroll(x:number,y:number,width:number,height:number,bleed=0,bar?:ScrollBarOptions):ScrollArea{const scroll=new ScrollArea(this,x,y,width,height,bleed,bar);this.scrolls.push(scroll);return scroll;}
   slider(label:string,x:number,y:number,width:number,value:number,onChange:(value:number)=>void,parent=this.root):VolumeSlider{const slider=new VolumeSlider(this.scene,parent,label,x,y,width,value,onChange,()=>this.enabled()&&this.root.shown&&parent.shown);this.sliders.push(slider);return slider;}

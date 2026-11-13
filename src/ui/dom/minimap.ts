@@ -8,6 +8,10 @@ import { DomComponent, DomImage } from './components.ts';
 
 export interface MinimapTask extends Point { id: string; status: 'available' | 'active' | 'ready' }
 interface Marker { image: DomImage; file: string; x: number; y: number }
+/** 小地图边框厚度：也是地形、出口和标记相对图框的内缩。 */
+const MINIMAP_FRAME_INSET = 3;
+/** 原版地形不透明度按 0–255 存：阻挡 180、可走 130。 */
+const BLOCKED_TERRAIN_ALPHA = 180 / 255, WALKABLE_TERRAIN_ALPHA = 130 / 255;
 
 /** 地形用合并的 SVG 路径，图标用 DOM 图片；移动只改标记位置。 */
 export class DomMinimap extends DomComponent {
@@ -31,21 +35,21 @@ export class DomMinimap extends DomComponent {
     this.rect({ x: 0, y: 0, width: this.width, height: this.height });
     const terrain = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     terrain.setAttribute('viewBox', `0 0 ${width} ${height}`);
-    Object.assign(terrain.style, { position: 'absolute', left: '3px', top: '3px', width: `${width}px`, height: `${height}px` });
+    Object.assign(terrain.style, { position: 'absolute', left: `${MINIMAP_FRAME_INSET}px`, top: `${MINIMAP_FRAME_INSET}px`, width: `${width}px`, height: `${height}px` });
     const runs = minimapRuns(map);
     for (const blocked of [false, true]) {
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       path.setAttribute('fill', blocked ? '#000' : '#808080');
-      path.setAttribute('opacity', String((blocked ? 180 : 130) / 255));
+      path.setAttribute('opacity', String(blocked ? BLOCKED_TERRAIN_ALPHA : WALKABLE_TERRAIN_ALPHA));
       path.setAttribute('d', runs.filter(run => run.blocked === blocked).map(run =>
         `M ${run.x * this.cellSize} ${run.y * this.cellSize} h ${run.width * this.cellSize} v ${this.cellSize} h ${-run.width * this.cellSize} Z`).join(' '));
       terrain.appendChild(path);
     }
     this.element.appendChild(terrain);
-    this.image('edge-horizontal', 3, 0, width, 3);
-    this.image('edge-horizontal', 3, height + 2, width, 3).element.style.transform = 'scaleY(-1)';
-    this.image('edge-vertical', 0, 3, 3, height);
-    this.image('edge-vertical', width + 3, 3, 3, height).element.style.transform = 'scaleX(-1)';
+    this.image('edge-horizontal', MINIMAP_FRAME_INSET, 0, width, MINIMAP_FRAME_INSET);
+    this.image('edge-horizontal', MINIMAP_FRAME_INSET, height + 2, width, MINIMAP_FRAME_INSET).element.style.transform = 'scaleY(-1)';
+    this.image('edge-vertical', 0, MINIMAP_FRAME_INSET, MINIMAP_FRAME_INSET, height);
+    this.image('edge-vertical', width + MINIMAP_FRAME_INSET, MINIMAP_FRAME_INSET, MINIMAP_FRAME_INSET, height).element.style.transform = 'scaleX(-1)';
     for (const [part, x, y] of [['nw', 0, 0], ['ne', width - 1, 0], ['sw', 0, height - 2], ['se', width - 1, height - 2]] as const)
       this.image(`corner-${part}`, x, y, 7, 7);
     for (const exit of minimapExits(map.exits)) {
@@ -64,7 +68,7 @@ export class DomMinimap extends DomComponent {
   }
   private project(point: Point, lift: number): Point {
     const at = minimapPoint(point, this.map.tileSize, this.cellSize);
-    return { x: at.x + 3, y: at.y + 3 - lift };
+    return { x: at.x + MINIMAP_FRAME_INSET, y: at.y + MINIMAP_FRAME_INSET - lift };
   }
   layout(viewport: ControlViewport): void {
     const scale = uiUnitScale(viewport.width, viewport.height);

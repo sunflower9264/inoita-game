@@ -23,6 +23,8 @@ final class UpdateInstaller {
 
     private static final String TAG = "InotiaUpdate";
     private static final long RESERVE_BYTES = 16L * 1024 * 1024;
+    /** 下载字节之外再按 1.25 倍估算空间，给临时文件和目录元数据留余量。 */
+    private static final double SPACE_OVERHEAD_RATIO = 1.25d;
 
     /** 一次安装计划：要下载的文件列表和字节数。 */
     static final class Plan {
@@ -121,7 +123,7 @@ final class UpdateInstaller {
 
     /** 空间按「缺失总量 × 1.25 + 16MB」预留，宁可提前拒绝也别装到一半失败。 */
     void requireSpace(Plan plan) throws IOException {
-        long needed = (long) Math.ceil(plan.downloadBytes * 1.25d) + RESERVE_BYTES;
+        long needed = (long) Math.ceil(plan.downloadBytes * SPACE_OVERHEAD_RATIO) + RESERVE_BYTES;
         StatFs stat = new StatFs(state.updateRoot().getAbsolutePath());
         long available = stat.getAvailableBytes();
         if (available < needed) {

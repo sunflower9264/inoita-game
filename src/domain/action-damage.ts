@@ -3,6 +3,9 @@ import type { ActionDamageSource } from './combat-damage-source.ts';
 import { PRIMARY_STATS } from './character-stats.ts';
 import { applyCombatOperation } from './combat-operation.ts';
 
+/** 内容里的属性权重以 0.1 为单位：权重 12 表示该属性贡献 1.2 倍。 */
+const ATTRIBUTE_WEIGHT_TENTHS_PER_UNIT = 10;
+
 export interface PreparedActionDamage {
   readonly source:NumericCombatUnit['source'];
   readonly weightedAddition:number;
@@ -17,7 +20,7 @@ export function prepareActionDamage(unit:NumericCombatUnit,rank:number,
   if(!formula)return undefined;
   return {
     source:unit.source,
-    weightedAddition:Math.trunc(PRIMARY_STATS.reduce((sum,stat)=>sum+unit.attributeWeights[stat]*primaryAttributes[stat],0)/10),
+    weightedAddition:Math.trunc(PRIMARY_STATS.reduce((sum,stat)=>sum+unit.attributeWeights[stat]*primaryAttributes[stat],0)/ATTRIBUTE_WEIGHT_TENTHS_PER_UNIT),
     fixedAddition:unit.effect==='heal'?0:formula.fixedAddition,
     operation:{...formula.operation},
   };

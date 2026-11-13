@@ -39,6 +39,16 @@ public class MainActivity extends Activity implements UpdateManager.Listener {
     private static final String TAG = "InotiaCefrium";
     private static final long DOUBLE_BACK_MS = 2000;
     private static final long BOOT_TIMEOUT_MS = 90000;
+    /** 切换显示模式后等待系统生效，再读取实际刷新率。 */
+    private static final long DISPLAY_MODE_SETTLE_MS = 800;
+    /** Surface 还没建好时，隔一小段时间重试设置目标帧率。 */
+    private static final long SURFACE_RATE_RETRY_MS = 250;
+    private static final int SURFACE_RATE_MAX_RETRIES = 20;
+    /** 给 CEF 释放旧浏览器和渲染进程留出的时间。 */
+    private static final long BROWSER_RECREATE_DELAY_MS = 300;
+    /** 先让页面跑完 pagehide，再冻结浏览器。 */
+    private static final long PAGE_HIDE_SETTLE_MS = 150;
+    private static final long BYTES_PER_MEBIBYTE = 1024L * 1024L;
     private static final String ESCAPE_SCRIPT =
             "window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',code:'Escape',keyCode:27,which:27,bubbles:true,cancelable:true}));"
             + "window.dispatchEvent(new KeyboardEvent('keyup',{key:'Escape',code:'Escape',keyCode:27,which:27,bubbles:true,cancelable:true}));";
@@ -107,7 +117,8 @@ public class MainActivity extends Activity implements UpdateManager.Listener {
                 Cefrium.initialize(this);
             } catch (Throwable error) {
                 InotiaApplication.initializeError = Log.getStackTraceString(error);
-                CrashLog.append(this, "crash.log", "cefrium-retry: " + Log.getStackTraceString(error));
+                CrashLog.append(this, CrashLog.CRASH_LOG_FILE,
+                        "cefrium-retry: " + Log.getStackTraceString(error));
             }
         }
         if (!Cefrium.isInitialized()) {
@@ -179,7 +190,8 @@ public class MainActivity extends Activity implements UpdateManager.Listener {
      * 没有整数倍模式时退到不低于目标的最低模式，再没有就保持当前模式。
      */
     private void onFrameRateRequested(int rate) {
-        if (rate != 30 && rate != 60) return;
+        if (rate != LocalAssetServer.FRAME_RATE_30
+                && rate != LocalAssetServer.FRAME_RATE_60) return;
         requestedFrameRate = rate;
         Display display = getWindowManager().getDefaultDisplay();
         Display.Mode current = display.getMode();
@@ -213,7 +225,7 @@ public class MainActivity extends Activity implements UpdateManager.Listener {
         applySurfaceFrameRate(rate);
         // 切换是异步的，而且 preferredDisplayModeId 只是建议；稍后读实际生效的值。
         mainHandler.removeCallbacks(applyDisplayRateTask);
-        mainHandler.postDelayed(applyDisplayRateTask, 800);
+        mainHandler.postDelayed(applyDisplayRateTask, DISPLAY_MODE_SETTLE_MS);
         Log.i(TAG, "frame-rate " + rate + " -> request " + best.getRefreshRate()
                 + "Hz (mode " + best.getModeId() + "), surface " + rate + "Hz");
     }
@@ -262,8 +274,8 @@ public class MainActivity extends Activity implements UpdateManager.Listener {
         if (surfaceView == null) return;
         Surface surface = surfaceView.getHolder().getSurface();
         if (surface == null || !surface.isValid()) {
-            if (surfaceRateRetries++ < 20) {
-                mainHandler.postDelayed(() -> applySurfaceFrameRate(hz), 250);
+            if (surfaceRateRetries++ < SURFACE_RATE_MAX_RETRIES) {
+                mainHandler.postDelayed(() -> applySurfaceFrameRate(hz), SURFACE_RATE_RETRY_MS);
             }
             return;
         }
@@ -294,7 +306,8 @@ public class MainActivity extends Activity implements UpdateManager.Listener {
             browser = CefriumBrowser.createWithSurface(this);
         } catch (Throwable error) {
             Log.e(TAG, "创建 CefriumBrowser 失败", error);
-            CrashLog.append(this, "crash.log", "create-browser: " + Log.getStackTraceString(error));
+            CrashLog.append(this, CrashLog.CRASH_LOG_FILE,
+                    "create-browser: " + Log.getStackTraceString(error));
             showFatal(getString(R.string.browser_init_failed_title), Log.getStackTraceString(error));
             return;
         }
@@ -343,12 +356,12 @@ public class MainActivity extends Activity implements UpdateManager.Listener {
         root.removeAllViews();
         mainHandler.removeCallbacks(createBrowserTask);
         // 给 CEF 一点时间释放旧浏览器和渲染进程，再创建新实例。
-        mainHandler.postDelayed(createBrowserTask, 300);
+        mainHandler.postDelayed(createBrowserTask, BROWSER_RECREATE_DELAY_MS);
     }
 
     private void showFatal(String title, String message) {
         if (isFinishing() || isDestroyed()) return;
-        CrashLog.append(this, "crash.log", "fatal " + title + ": " + message);
+        CrashLog.append(this, CrashLog.CRASH_LOG_FILE, "fatal " + title + ": " + message);
         new AlertDialog.Builder(this)
                 .setTitle(title)
                 .setMessage(message)
@@ -371,7 +384,8 @@ public class MainActivity extends Activity implements UpdateManager.Listener {
         dismissCheckFailedDialog();
         dismissUpdateDialog();
 
-        String megabytes = String.format(Locale.US, "%.1f", downloadBytes / 1048576.0);
+        String megabytes = String.format(Locale.US, "%.1f",
+                downloadBytes / (double) BYTES_PER_MEBIBYTE);
         updateDialog = new AlertDialog.Builder(this)
                 .setTitle(R.string.update_available_title)
                 .setMessage(getString(R.string.update_available_message, megabytes, fileCount))
@@ -581,7 +595,7 @@ public class MainActivity extends Activity implements UpdateManager.Listener {
             // 先让页面跑完 pagehide（暂停场景、音频并落一次自动存档），再冻结浏览器。
             if (pageReady) browser.evaluateJavaScript("window.dispatchEvent(new Event('pagehide'));");
             mainHandler.removeCallbacks(pauseBrowserTask);
-            mainHandler.postDelayed(pauseBrowserTask, 150);
+            mainHandler.postDelayed(pauseBrowserTask, PAGE_HIDE_SETTLE_MS);
         }
         super.onPause();
     }

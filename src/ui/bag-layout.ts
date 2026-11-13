@@ -149,10 +149,13 @@ export function descriptionActionLayout(panelWidth:number, count:number): Descri
   };
 }
 
+/** 动作按钮文字左右合计留出的宽度：按钮宽减去它才是可用文字宽。 */
+const ACTION_LABEL_MARGIN = 41;
+
 /** 动作文字按按钮中间的平直区域缩放；按每字最多一个字号估算，保留两端圆角。 */
 export function descriptionActionLabelSize(label:string, buttonWidth:number, maxSize:number):number {
   const length=Array.from(label).length;
-  return length ? Math.max(1,Math.min(maxSize,Math.floor(Math.max(1,buttonWidth-41)/length))) : maxSize;
+  return length ? Math.max(1,Math.min(maxSize,Math.floor(Math.max(1,buttonWidth-ACTION_LABEL_MARGIN)/length))) : maxSize;
 }
 
 /**

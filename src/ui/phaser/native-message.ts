@@ -1,14 +1,13 @@
-import { screenCoverage } from './modal-placement.ts';
+import { MENU_CANVAS_HEIGHT, MENU_CANVAS_WIDTH, screenCoverage } from './modal-placement.ts';
 import type { MenuTextWriter } from '../dom/menu-text.ts';
-import type { ScrollArea, UiSurface } from './widgets.ts';
-
-/** 共用按钮皮肤上的文字颜色，与 `UiSurface.button` 的默认字色一致。 */
-const BUTTON_TEXT='#f3deb0';
+import { GOLD, type ScrollArea, type UiSurface } from './widgets.ts';
 const BUTTON_SIZE=20;
 /** 横带最多占画面高度减去上下留白；超过后正文滚动，按钮仍在屏内。 */
 const MAX_BAND_MARGIN=120;
 const BODY_TOP=30;
 const BUTTON_AREA=94;
+/** 横带正文的单行宽度；测量、滚动区和 DOM 文字必须用同一个值。 */
+const TEXT_WIDTH=410;
 /** 横带上下花纹条的视觉外沿；页面文字让位时把这一圈也算进去。 */
 export const NATIVE_MESSAGE_EDGE=30;
 
@@ -31,9 +30,9 @@ export interface NativeMessageBand { top:number; height:number; left:number; wid
 export function drawNativeMessage(v:UiSurface,assets:Record<string,string>,message:string,accept:()=>void,cancel?:()=>void,
   writer?:MenuTextWriter,scroll?:NativeMessageScroll):NativeMessageBand {
   // 确认层按 1024×640 的内容框居中；横带按根节点实际原点铺满屏幕。
-  const width=1024,height=640,screen=screenCoverage(v),center=width/2;
+  const width=MENU_CANVAS_WIDTH,height=MENU_CANVAS_HEIGHT,screen=screenCoverage(v),center=width/2;
   v.rect(screen.left,screen.top,screen.width,screen.height,0xaa966e,.13);
-  const text=v.text(message,center,0,410,24,'#ffffff').setOrigin(.5,0);
+  const text=v.text(message,center,0,TEXT_WIDTH,24,'#ffffff').setOrigin(.5,0);
   text.setAlign('center');
   const textHeight=text.height;
   text.destroy();
@@ -47,16 +46,16 @@ export function drawNativeMessage(v:UiSurface,assets:Record<string,string>,messa
   }
   const bodyTop=top+BODY_TOP,bodyBottom=top+bandHeight-BUTTON_AREA-12;
   const bodyHeight=Math.max(1,bodyBottom-bodyTop),overflow=textHeight>bodyHeight+.5;
-  const body=overflow&&scroll?scroll.scroll('native-message',center-205,bodyTop,410,bodyHeight):undefined;
+  const body=overflow&&scroll?scroll.scroll('native-message',center-TEXT_WIDTH/2,bodyTop,TEXT_WIDTH,bodyHeight):undefined;
   if(body)body.setHeight(textHeight);
   writer?.add({key:'native-message',text:message,x:center,y:bodyTop,
-    style:{size:24,color:'#ffffff',anchorX:.5,anchorY:0,width:410,align:'center',wrap:'word',lineHeight:29},
+    style:{size:24,color:'#ffffff',anchorX:.5,anchorY:0,width:TEXT_WIDTH,align:'center',wrap:'word',lineHeight:29},
     scroll:body?'native-message':undefined,clip:overflow?{top:bodyTop,bottom:bodyBottom}:undefined});
   const buttonY=top+bandHeight-82;
   const button=(key:string,label:string,x:number,action:()=>void)=>{
     v.button('',x,buttonY,94,50,action).setData('label',label);
     writer?.add({key:`native-message-${key}`,text:label,x:x+47,y:buttonY+25,
-      style:{size:BUTTON_SIZE,color:BUTTON_TEXT,anchorX:.5,anchorY:.5,width:82,align:'center',wrap:'word'}});
+      style:{size:BUTTON_SIZE,color:GOLD,anchorX:.5,anchorY:.5,width:82,align:'center',wrap:'word'}});
   };
   if(cancel){button('yes','是',center-194,accept);button('no','否',center+100,cancel);}
   else button('ok','确认',center-47,accept);

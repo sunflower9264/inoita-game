@@ -3,6 +3,16 @@ import {DEFAULT_EQUIPMENT_GRADE,type CharacterStatsCatalog} from './character-st
 import {blockedNormalAcquisitionIds,type ItemCatalog,type ItemInstance,type ItemRecipe,type ItemReward} from './items.ts';
 import type {Session} from './session.ts';
 
+/** 混沌加工数值默认从 100% 起算。 */
+const DEFAULT_CHAOS_VALUE_PERCENT = 100;
+/** 普通混沌加工最高 150%，史诗混沌加工最高 200%。 */
+const CHAOS_VALUE_CAP_PERCENT = 150;
+const EPIC_CHAOS_VALUE_CAP_PERCENT = 200;
+/** 宝石孔权重用 0..99 的百分比掷点。 */
+const SOCKET_WEIGHT_PERCENT = 100;
+/** 单件装备最多 4 个宝石孔。 */
+const MAX_SOCKET_COUNT = 4;
+
 interface CraftingOperationBase {name:string;materials:ItemReward[]}
 interface ChaosCraftingOperation extends CraftingOperationBase {costPerLevel:number;rule:ChaosRule}
 /** 融合器「宝石孔生成」：原版配方 #16；只对 0 孔装备生成孔位。 */
@@ -30,14 +40,14 @@ export function parseCrafting(value:unknown):CraftingCatalog {
     const rule=op.rule;
     if(!rule||!integer(rule.levelDiceDivisor)||rule.levelDiceDivisor<=0||!integer(rule.levelClampDivisor)||rule.levelClampDivisor<=0)fail();
     for(const pair of [rule.valueDelta,rule.valueBounds])if(!Array.isArray(pair)||pair.length!==2||!pair.every(integer)||pair[0]>pair[1])fail();
-    if(rule.valueBounds[0]!==0||rule.valueBounds[1]!== (tier==='chaos'?150:200))fail();
+    if(rule.valueBounds[0]!==0||rule.valueBounds[1]!== (tier==='chaos'?CHAOS_VALUE_CAP_PERCENT:EPIC_CHAOS_VALUE_CAP_PERCENT))fail();
   }
   const socket=data.operations.socket;
   if(!socket||typeof socket.name!=='string'||!socket.name.trim()||!Array.isArray(socket.materials)||socket.materials.length!==2)fail();
   if(socket.materials.some(m=>!m||typeof m.item!=='string'||!m.item||!integer(m.quantity)||m.quantity<=0)||new Set(socket.materials.map(m=>m.item)).size!==2)fail();
   if(!integer(socket.cost)||socket.cost<=0)fail();
   if(!Array.isArray(socket.socketWeights)||!socket.socketWeights.length||!socket.socketWeights.every(n=>integer(n)&&n>0))fail();
-  if(!Array.isArray(socket.socketLimits)||socket.socketLimits.length!==5||!socket.socketLimits.every(n=>integer(n)&&n>=1&&n<=4))fail();
+  if(!Array.isArray(socket.socketLimits)||socket.socketLimits.length!==5||!socket.socketLimits.every(n=>integer(n)&&n>=1&&n<=MAX_SOCKET_COUNT))fail();
   if(socket.socketWeights.length<Math.max(...socket.socketLimits))fail();
   return data;
 }
@@ -98,7 +108,7 @@ export class EquipmentCrafting {
     const chaos=entry.numbers.chaos;
     if(tier==='chaos'){
       if(chaos?.tier==='epic-chaos')return 'craft-epic';
-      if((chaos?.valuePercent??100)>=this.catalog.operations.chaos.rule.valueBounds[1])return 'craft-max';
+      if((chaos?.valuePercent??DEFAULT_CHAOS_VALUE_PERCENT)>=this.catalog.operations.chaos.rule.valueBounds[1])return 'craft-max';
     }else{
       if(!chaos)return 'craft-needs-chaos';
       if(chaos.tier==='epic-chaos'&&chaos.valuePercent>=this.catalog.operations['epic-chaos'].rule.valueBounds[1])return 'craft-max';
@@ -184,7 +194,7 @@ function rollSocketCreation(entry:ItemInstance,stats:CharacterStatsCatalog|undef
   const limit=operation.socketLimits[rarity]??operation.socketLimits[0]??1;
   const value=random();
   if(!Number.isFinite(value)||value<0||value>=1)throw new Error('宝石孔随机值无效');
-  const roll=Math.floor(value*100);
+  const roll=Math.floor(value*SOCKET_WEIGHT_PERCENT);
   let threshold=0;
   for(let index=0;index<Math.min(limit,operation.socketWeights.length);index+=1){
     threshold+=operation.socketWeights[index]!;

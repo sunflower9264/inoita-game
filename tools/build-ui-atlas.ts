@@ -14,6 +14,14 @@ const PUBLIC = path.join(ROOT, 'public');
 const CONTENT = path.join(PUBLIC, 'content');
 const PREFIX = 'assets/ui/menu-ui';
 const GENERATED = path.join(ROOT, 'src', 'generated', 'ui-atlas.ts');
+/** PNG 文件头：签名里的 "PNG" 三字节加 IHDR 宽高偏移。 */
+const PNG_SIGNATURE_TEXT_OFFSET = 1;
+const PNG_SIGNATURE_TEXT_END = 4;
+const PNG_SIGNATURE_TEXT = 'PNG';
+const PNG_WIDTH_OFFSET = 16;
+const PNG_HEIGHT_OFFSET = 20;
+/** pngjs 的 colorType 6 = RGBA，图集必须保留透明通道。 */
+const PNG_COLOR_TYPE_RGBA = 6;
 const MAX_SIZE = 2048;
 const PADDING = 2;
 
@@ -22,8 +30,9 @@ const read = (file: string): any => JSON.parse(fs.readFileSync(path.join(CONTENT
 interface PngInfo { w: number; h: number; hash: string; bytes: Buffer }
 function pngInfo(file: string): PngInfo {
   const bytes = fs.readFileSync(sourceAssetPath(file));
-  if (bytes.toString('ascii', 1, 4) !== 'PNG') throw new Error(`UI 图集只接受 PNG：${file}`);
-  return { w: bytes.readUInt32BE(16), h: bytes.readUInt32BE(20),
+  if (bytes.toString('ascii', PNG_SIGNATURE_TEXT_OFFSET, PNG_SIGNATURE_TEXT_END) !== PNG_SIGNATURE_TEXT)
+    throw new Error(`UI 图集只接受 PNG：${file}`);
+  return { w: bytes.readUInt32BE(PNG_WIDTH_OFFSET), h: bytes.readUInt32BE(PNG_HEIGHT_OFFSET),
     hash: createHash('sha256').update(bytes).digest('hex'), bytes };
 }
 
@@ -292,7 +301,7 @@ export function writeUiAtlas(): UiAtlasWriteResult {
       }
     }
     fs.mkdirSync(path.dirname(path.join(PUBLIC, image)), { recursive: true });
-    const bytes = PNG.sync.write(atlas, { colorType: 6 });
+    const bytes = PNG.sync.write(atlas, { colorType: PNG_COLOR_TYPE_RGBA });
     fs.writeFileSync(path.join(PUBLIC, image), bytes);
     const frames: Record<string, unknown> = {};
     for (const [file, frame] of page.frames) {

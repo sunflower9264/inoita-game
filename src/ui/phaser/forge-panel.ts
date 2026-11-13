@@ -10,6 +10,7 @@ import { TEXT_COLORS } from '../text-style.ts';
 import { SLOT, SLOT_STRIDE } from '../item-layout.ts';
 import { ENHANCEMENT_ODDS_ROW_STRIDE, ENHANCEMENT_ODDS_ROW_TOP, ENHANCEMENT_ODDS_TOP, enhancementOddsView, type EnhancementOutcomeTone } from '../enhancement-odds-lines.ts';
 import { drawNativeMessage, type NativeMessageBand } from './native-message.ts';
+import { MENU_CANVAS_HEIGHT, MENU_CANVAS_WIDTH } from './modal-placement.ts';
 import type { UiSurface, ScrollArea } from './widgets.ts';
 import { GOLD } from './widgets.ts';
 import type { MenuTextSpec, MenuTextWriter } from '../dom/menu-text.ts';
@@ -168,7 +169,7 @@ export class ForgePanel {
     scroll.onScroll=()=>this.text?.refresh();
     entries.forEach((entry,index)=>{
       const definition=this.bag.catalog.items[entry.item];
-      const x=index%4*SLOT_STRIDE,y=Math.floor(index/4)*SLOT_STRIDE;
+      const x=index%grid.columns*SLOT_STRIDE,y=Math.floor(index/grid.columns)*SLOT_STRIDE;
       const problem=this.tab==='enchant'?this.problemText(entry,target):undefined;
       const broken=this.tab==='socket'&&!entry.numbers?.modifiers?.length;
       const chaos=this.tab==='enchant'&&!!definition.use?.requiresEnhanced&&(target.numbers?.enhancementUses??0)===0&&!problem;
@@ -182,7 +183,7 @@ export class ForgePanel {
         .setData('forge-highlight',chaos?'chaos':'selected');
       if(problem||broken)button.setAlpha(.45);
     });
-    scroll.setHeight(Math.ceil(entries.length/4)*SLOT_STRIDE);scroll.scrollTop=this.offset;
+    scroll.setHeight(Math.ceil(entries.length/grid.columns)*SLOT_STRIDE);scroll.scrollTop=this.offset;
     scroll.onScroll=()=>{this.offset=scroll.scrollTop;this.text?.refresh();};
   }
   private selectGridEntry(entry:ItemInstance):void {
@@ -379,7 +380,7 @@ export class ForgePanel {
     const message=confirmation.kind==='unsocket'
       ?'取出后这颗宝石会回到背包，装备上的这条属性会消失。确定取出？'
       :'替换后旧宝石会回到背包，装备上的属性会改为新宝石。确定替换？';
-    placeModal(1024,640);
+    placeModal(MENU_CANVAS_WIDTH,MENU_CANVAS_HEIGHT);
     const writer:MenuTextWriter={add:spec=>this.modalText.push(spec)};
     this.band=drawNativeMessage(modal,this.panels.assets,message,()=>this.confirm(),()=>this.cancelConfirmation(),writer,
       this.text?{scroll:(name,x,y,width,height)=>this.text!.scroll(name,x,y,width,height,modal)}:undefined);

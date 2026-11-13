@@ -15,7 +15,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {parseBattle, parseCampaign, parseCharacterStats, parseCompanions, parseItemCatalog, parseMap, parseStoryClasses, parseWorld} from '../../src/application/content-validation.ts';
-import {DebugTaskBuilder, digest} from './debug-solver.ts';
+import {DebugTaskBuilder, digest, INTERPRETER_VERSION, SEMANTICS_VERSION} from './debug-solver.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(here, '../..');
@@ -23,6 +23,8 @@ const GAME = path.join(ROOT, 'public/content');
 const PUBLIC = path.join(ROOT, 'public');
 const WORK = path.join(here, 'data');
 const OUT = path.join(GAME, 'debug/start.json');
+/** 现场表格式版本；字段结构变化时递增。 */
+const DEBUG_START_SCHEMA_VERSION = 1;
 
 const read = (file: string) => JSON.parse(fs.readFileSync(file, 'utf8'));
 const args = process.argv.slice(2);
@@ -99,9 +101,9 @@ const sources = {
 const generatedAt = new Date(Math.max(...Object.values(files).map(file => fs.statSync(file).mtimeMs),
   ...mapFiles.map(file => fs.statSync(file).mtimeMs))).toISOString();
 const document = {
-  schema: 1,
+  schema: DEBUG_START_SCHEMA_VERSION,
   meta: {
-    generator: 'story_debug_start.ts', interpreterVersion: 3, semanticsVersion: 3,
+    generator: 'story_debug_start.ts', interpreterVersion: INTERPRETER_VERSION, semanticsVersion: SEMANTICS_VERSION,
     sourceHash: digest(sources), generatedAt, sources,
     coverage: {
       eligible: tasks.length + gaps.length, verified: tasks.length, gaps: gaps.length,

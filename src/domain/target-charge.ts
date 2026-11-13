@@ -5,6 +5,9 @@ import { attackDistance } from './basic-attack.ts';
 
 const MAX_PATH_SEARCH_STEPS = 101;
 const MAX_VERIFY_ATTEMPTS = 2;
+/** 格子键的坐标偏移与步长：偏移大于地图尺寸，步长大于两倍坐标范围，保证不同格子不撞键。 */
+const CELL_KEY_OFFSET = 1_000_000;
+const CELL_KEY_STRIDE = CELL_KEY_OFFSET * 2 + 1;
 
 export interface ChargePlan { destination: Point; close: boolean }
 
@@ -21,7 +24,7 @@ export function planCharge(caster: Combatant, target: Combatant, charge: SkillCh
   const goal={x:Math.floor(target.position.x/size),y:Math.floor(target.position.y/size)};
   const distance=(node:{x:number;y:number})=>Math.abs(node.x-goal.x)+Math.abs(node.y-goal.y);
   // 格子编号用整数，避免每个节点拼字符串；偏移量远大于地图尺寸，不会撞键。
-  const key=(x:number,y:number)=>(y+1_000_000)*2_000_001+(x+1_000_000);
+  const key=(x:number,y:number)=>(y+CELL_KEY_OFFSET)*CELL_KEY_STRIDE+(x+CELL_KEY_OFFSET);
   const standable=new Map<number,boolean>();
   const reachable=new Map<number,boolean>();
   const canStandCell=(x:number,y:number)=>{

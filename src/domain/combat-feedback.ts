@@ -71,13 +71,15 @@ export function damageDigits(damage:number,miss=false) {
   return digits.map((digit,index)=>({digit,x:miss?0:-digits.length*4+index*8,y:miss?0:(index%2)*2,
     delayMs:index*60,holdFrames:digits.length-1-index}));
 }
-const digitSequences=new Map<number,readonly number[]>();
-/** 帧序列只由帧数和保持帧数决定；缓存后每次命中不再重建小数组。 */
+/** 数字素材的第 5 帧（下标 4）是保持帧，重复 holdFrames 次。 */
+const DIGIT_HOLD_FRAME = 4;
+/** 帧序列只由帧数和保持帧数决定；按「帧数:保持帧数」缓存后每次命中不再重建小数组。 */
+const digitSequences=new Map<string,readonly number[]>();
 export function digitSequence(frames:number,holdFrames:number):readonly number[] {
-  const key=frames*1024+holdFrames;
+  const key=`${frames}:${holdFrames}`;
   let sequence=digitSequences.get(key);
   if(!sequence){
-    sequence=Array.from({length:frames},(_,frame)=>Array(frame===4?holdFrames+1:1).fill(frame)).flat();
+    sequence=Array.from({length:frames},(_,frame)=>Array(frame===DIGIT_HOLD_FRAME?holdFrames+1:1).fill(frame)).flat();
     digitSequences.set(key,sequence);
   }
   return sequence;

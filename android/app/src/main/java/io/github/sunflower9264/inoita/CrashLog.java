@@ -16,14 +16,14 @@ import java.util.Locale;
 final class CrashLog {
 
     private static final String TAG = "InotiaCrash";
-    private static final String FILE = "crash.log";
-    private static final String STARTUP = "startup.log";
-    private static final long MAX_BYTES = 256 * 1024;
+    static final String CRASH_LOG_FILE = "crash.log";
+    private static final String STARTUP_LOG_FILE = "startup.log";
+    private static final long MAX_LOG_BYTES = 256 * 1024;
 
     private CrashLog() {}
 
     static void deviceInfo(Context context, String phase) {
-        append(context, STARTUP, phase
+        append(context, STARTUP_LOG_FILE, phase
                 + " model=" + Build.MANUFACTURER + " " + Build.MODEL
                 + " android=" + Build.VERSION.RELEASE + " sdk=" + Build.VERSION.SDK_INT
                 + " abis=" + Arrays.toString(Build.SUPPORTED_ABIS));
@@ -31,7 +31,7 @@ final class CrashLog {
 
     static void install(final Context context, final Thread.UncaughtExceptionHandler previous) {
         Thread.setDefaultUncaughtExceptionHandler((thread, error) -> {
-            append(context, FILE, "uncaught " + thread.getName() + ": " + Log.getStackTraceString(error));
+            append(context, CRASH_LOG_FILE, "uncaught " + thread.getName() + ": " + Log.getStackTraceString(error));
             if (previous != null) previous.uncaughtException(thread, error);
         });
     }
@@ -42,7 +42,7 @@ final class CrashLog {
             if (directory == null) directory = context.getFilesDir();
             if (directory == null) return;
             File file = new File(directory, name);
-            if (file.length() > MAX_BYTES) {
+            if (file.length() > MAX_LOG_BYTES) {
                 File rotated = new File(directory, name + ".1");
                 if (rotated.exists()) rotated.delete();
                 file.renameTo(rotated);

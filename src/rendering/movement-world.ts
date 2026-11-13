@@ -2,11 +2,16 @@ import Phaser from 'phaser';
 import { NavigationWorld, blocksActor, mirroredCollision, type NavigationFaction, type Placement } from '../domain/navigation-world.ts';
 import type { Point } from '../domain/navigation.ts';
 import type { CharacterVisual } from './characters.ts';
-import { movementBodyClass, type MovementBody } from './arcade-movement.ts';
+import { CHARACTER_FOOT_DEPTH_OFFSET } from './depths.ts';
+import { DEFAULT_FOOT_COLLISION, movementBodyClass, type MovementBody } from './arcade-movement.ts';
 import { WalkRoute } from '../domain/walk-route.ts';
 import { MovementInterpolation } from './movement-interpolation.ts';
 
 const Body = movementBodyClass(Phaser.Physics.Arcade.Body);
+/** 落位诊断只保留最近 8 次修正，避免长时间演出无限累积。 */
+const CORRECTION_HISTORY_LIMIT = 8;
+/** 落位互相压住时最多修正 4 轮；仍不成立就记录现场并保留当前位置。 */
+const SETTLE_ATTEMPTS = 4;
 interface Registration { body: MovementBody; actor: Placement['actor']; ghost:{value:boolean}; unregister(): void; destroy(): void }
 
 /** 每个场景持有一个移动世界，所有人物共享同一个持久碰撞关系。 */
@@ -70,7 +75,9 @@ export class MovementWorld {
     };
     body.initialize(this.navigation, actor, movable, terrainRecovery);
     // 构造时容器坐标已经是脚点，先同步再设置实体偏移。
-    body.setSize(8, 8, false).setOffset(-4, -4); body.updateFromGameObject();
+    body.setSize(DEFAULT_FOOT_COLLISION.width, DEFAULT_FOOT_COLLISION.height, false)
+      .setOffset(DEFAULT_FOOT_COLLISION.x, DEFAULT_FOOT_COLLISION.y);
+    body.updateFromGameObject();
     body.shape(actor.shape()); body.setImmovable(!movable);
     const unregister = this.navigation.register(actor);
     const destroy = () => this.remove(visual);
@@ -133,7 +140,7 @@ export class MovementWorld {
     visual.container.setVisible(enabled);
     this.setEnabled(visual, enabled);
     this.interpolation.reset(visual.container);
-    visual.container.setDepth(position.y + .5);
+    visual.container.setDepth(position.y + CHARACTER_FOOT_DEPTH_OFFSET);
   }
   placeAll(placements: { visual: CharacterVisual; position: Point; enabled?: boolean }[], options: { evictOccupied?: boolean; displaceable?: readonly CharacterVisual[] } = {}): void {
     this.restorePositions();
@@ -168,7 +175,7 @@ export class MovementWorld {
         return p;
       }
       this.corrections.push({ id: p.visual.entity.id, from: { ...p.position }, to: { ...landing } });
-      if (this.corrections.length > 8) this.corrections.shift();
+      if (this.corrections.length > CORRECTION_HISTORY_LIMIT) this.corrections.shift();
       return { ...p, position: landing };
     });
     if (corrected.some((p, index) => p !== settled[index])) {
@@ -176,7 +183,7 @@ export class MovementWorld {
     }
     // 落位是表现层的软约束：内容或走位给出的点可能仍互相压住。先多轮修正，
     // 仍不成立时保留当前位置并记录现场，绝不因为一个角色挡路中断剧情或战斗。
-    for (let attempt = 0; attempt < 4 && !this.navigation.canSettleAll(queries); attempt++) {
+    for (let attempt = 0; attempt < SETTLE_ATTEMPTS && !this.navigation.canSettleAll(queries); attempt++) {
       let changed = false;
       for (let index = 0; index < settled.length; index++) {
         if (this.navigation.canSettleAll([queries[index]!])) continue;
@@ -192,7 +199,7 @@ export class MovementWorld {
         settled[index] = { ...placement, position: landing };
         queries[index] = { actor, position: landing, enabled: placement.enabled };
         this.corrections.push({ id: placement.visual.entity.id, from: { ...placement.position }, to: { ...landing } });
-        if (this.corrections.length > 8) this.corrections.shift();
+        if (this.corrections.length > CORRECTION_HISTORY_LIMIT) this.corrections.shift();
         changed = true;
       }
       if (!changed) break;
@@ -208,7 +215,7 @@ export class MovementWorld {
       this.stop(p.visual); this.body(p.visual).reset(p.position.x, p.position.y); this.body(p.visual).updateFromGameObject();
       if (p.enabled !== undefined) { p.visual.container.setVisible(p.enabled); this.setEnabled(p.visual, p.enabled); }
       this.interpolation.reset(p.visual.container);
-      p.visual.container.setDepth(p.position.y + .5);
+      p.visual.container.setDepth(p.position.y + CHARACTER_FOOT_DEPTH_OFFSET);
     }
   }
   place(visual: CharacterVisual, position: Point): void { this.placeAll([{ visual, position, enabled: visual.container.visible }]); }
@@ -249,7 +256,7 @@ export class MovementWorld {
     if (this.scene.physics.world.isPaused) return;
     for (const visual of this.registrations.keys()) {
       if (!visual.container.active) continue;
-      const depth = visual.container.y + .5;
+      const depth = visual.container.y + CHARACTER_FOOT_DEPTH_OFFSET;
       // Phaser 的 setDepth 每次都会把 display list 标脏并重排；值没变就别写。
       if (visual.container.depth !== depth) visual.container.setDepth(depth);
     }

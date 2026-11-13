@@ -11,6 +11,14 @@ export const DPAD_BASE_RADIUS = CONTROL_SIZES.moveDpad.width / 2;
 export const DPAD_RUNE_ALPHA = .75;
 export const DPAD_ARROW_OFFSET = 73, DPAD_ARROW_SCALE_NORM = 1.14;
 const KNOB_LIMIT = CONTROL_SIZES.move.width / 2 * .6;
+/** 方向盘死区：触摸离中心不足 12 像素不产生方向。 */
+const DPAD_DEAD_ZONE = 12;
+/** 摇杆死区：不足 8.75 像素回中，避免手指轻碰就移动。 */
+const STICK_DEAD_ZONE = 8.75;
+/** 方向盘箭头高亮阈值：轴值超过 0.3 视为按下该方向。 */
+const AXIS_ACTIVE_THRESHOLD = .3;
+/** 方向盘箭头按下时的放大倍率。 */
+const DPAD_ARROW_SCALE_ACTIVE = 1.25;
 type Direction = 'up' | 'down' | 'left' | 'right';
 const vectors: Record<Direction, { x: number; y: number }> = {
   up: { x: 0, y: -1 }, down: { x: 0, y: 1 }, left: { x: -1, y: 0 }, right: { x: 1, y: 0 }
@@ -88,7 +96,7 @@ export class DomMoveStick extends DomComponent {
   private track(dx: number, dy: number): void {
     const distance = Math.hypot(dx, dy);
     if (this.settings.mode === 'dpad') {
-      if (distance < 12) this.assign(0, 0);
+      if (distance < DPAD_DEAD_ZONE) this.assign(0, 0);
       else {
         const angle = Math.atan2(dy, dx) * 180 / Math.PI;
         if (angle >= -45 && angle < 45) this.assign(1, 0);
@@ -98,7 +106,7 @@ export class DomMoveStick extends DomComponent {
       }
     } else {
       const ratio = Math.min(1, KNOB_LIMIT / (distance || 1));
-      this.assign(distance >= 8.75 ? dx * ratio / KNOB_LIMIT : 0, distance >= 8.75 ? dy * ratio / KNOB_LIMIT : 0);
+      this.assign(distance >= STICK_DEAD_ZONE ? dx * ratio / KNOB_LIMIT : 0, distance >= STICK_DEAD_ZONE ? dy * ratio / KNOB_LIMIT : 0);
     }
   }
   private assign(x: number, y: number): void {
@@ -109,11 +117,12 @@ export class DomMoveStick extends DomComponent {
   }
   private updateArrows(): void {
     const directions = ['up', 'down', 'left', 'right'] as const;
-    const active = [this.axis.y < -.3, this.axis.y > .3, this.axis.x < -.3, this.axis.x > .3];
+    const active = [this.axis.y < -AXIS_ACTIVE_THRESHOLD, this.axis.y > AXIS_ACTIVE_THRESHOLD,
+      this.axis.x < -AXIS_ACTIVE_THRESHOLD, this.axis.x > AXIS_ACTIVE_THRESHOLD];
     this.arrows.forEach((arrow, index) => {
       const file = this.skin[`arrow-${directions[index]}${active[index] ? '-glow' : ''}`];
       if (file !== arrow.file) { arrow.file = file; this.load(arrow.image, file); }
-      arrow.root.element.style.transform = `scale(${active[index] ? 1.25 : DPAD_ARROW_SCALE_NORM})`;
+      arrow.root.element.style.transform = `scale(${active[index] ? DPAD_ARROW_SCALE_ACTIVE : DPAD_ARROW_SCALE_NORM})`;
     });
   }
   keyDown(event: KeyboardEvent, bindings: KeyBindingPreferences): boolean {

@@ -149,11 +149,14 @@ export const mapEffectTone: number[] = [
   0, 0, 0, 1, 0,
 ];
 
+/** 相机时长按 60 逻辑帧/秒换算成帧数。 */
+const CAMERA_FRAMES_PER_SECOND = 60;
+
 /** 原版短距离每逻辑帧移动 12 像素，长距离按距离的十分之一移动。 */
 export function cameraDuration(distance: number): number {
   if (distance < .01) return 0;
   const step = distance > 120 ? Math.floor(distance / 10) : 12;
-  return Math.ceil(distance / step) * 60;
+  return Math.ceil(distance / step) * CAMERA_FRAMES_PER_SECOND;
 }
 
 

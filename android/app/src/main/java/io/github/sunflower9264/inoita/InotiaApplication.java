@@ -20,6 +20,8 @@ import org.chromium.ui.base.ResourceBundle;
 public class InotiaApplication extends Application {
 
     private static final String TAG = "InotiaCefrium";
+    /** Android 子进程名形如「包名:进程名」，冒号是系统约定的分隔符。 */
+    private static final String PRIVATE_PROCESS_SEPARATOR = ":";
     /** MainActivity 初始化失败时显示的原因；成功时为 null。 */
     static volatile String initializeError;
 
@@ -63,12 +65,13 @@ public class InotiaApplication extends Application {
         } catch (Throwable error) {
             initializeError = Log.getStackTraceString(error);
             Log.e(TAG, "Cefrium initialize crashed", error);
-            CrashLog.append(this, "crash.log", "cefrium-initialize: " + Log.getStackTraceString(error));
+            CrashLog.append(this, CrashLog.CRASH_LOG_FILE,
+                    "cefrium-initialize: " + Log.getStackTraceString(error));
         }
     }
 
     private static boolean isChildProcess() {
         String name = ContextUtils.getProcessName();
-        return name != null && name.contains(":");
+        return name != null && name.contains(PRIVATE_PROCESS_SEPARATOR);
     }
 }

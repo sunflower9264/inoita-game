@@ -31,6 +31,10 @@ interface OutfitEntry {
   retired?: boolean;
 }
 export const OUTFIT_CACHE_LIMIT = 8;
+/** 动态纹理单边最大宽度；动作帧太宽时按这个上限分列摆放。 */
+const MAX_TEXTURE_WIDTH_PX = 2048;
+/** 每次向动态纹理提交 128 个部件后让出一帧，避免合成卡住主线程。 */
+const STAMP_BATCH_SIZE = 128;
 let serial = 0;
 
 /** 本次游戏共用合成纹理；使用权由场景衣柜持有，缓存不持有具体场景。 */
@@ -198,7 +202,7 @@ export class OutfitPool {
         if(!points.length)points.push({x:0,y:0});
         const left=Math.floor(Math.min(...points.map(p=>p.x)))-1,top=Math.floor(Math.min(...points.map(p=>p.y)))-1;
         const width=Math.ceil(Math.max(...points.map(p=>p.x)))-left+1,height=Math.ceil(Math.max(...points.map(p=>p.y)))-top+1;
-        const columns=Math.min(pose.frames.length,Math.max(1,Math.floor(2048/width)));
+        const columns=Math.min(pose.frames.length,Math.max(1,Math.floor(MAX_TEXTURE_WIDTH_PX/width)));
         const key=`outfit-${++serial}`,texture=this.host.textures.addDynamicTexture(key,columns*width,Math.ceil(pose.frames.length/columns)*height);
         if(!texture)throw new Error('人物外观纹理创建失败');
         textures.push(key);
@@ -220,10 +224,10 @@ export class OutfitPool {
           texture.render();
         };
         texture.clear();
-        for(let offset=0;offset<stamps.length;offset+=128){
+        for(let offset=0;offset<stamps.length;offset+=STAMP_BATCH_SIZE){
           signal.throwIfAborted();
-          for(const stamp of stamps.slice(offset,offset+128))texture.stamp(stamp.texture,stamp.frame,stamp.x,stamp.y,stamp.config);
-          texture.render();partCount+=Math.min(128,stamps.length-offset);
+          for(const stamp of stamps.slice(offset,offset+STAMP_BATCH_SIZE))texture.stamp(stamp.texture,stamp.frame,stamp.x,stamp.y,stamp.config);
+          texture.render();partCount+=Math.min(STAMP_BATCH_SIZE,stamps.length-offset);
           if(budget.due)await budget.pause(signal);
         }
         if(!stamps.length)texture.render();

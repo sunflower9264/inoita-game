@@ -74,6 +74,12 @@ const ARRIVAL_DISTANCE_PX=.5;
 /** 原版释放条件的生命千分比上限；`always` 不设阈值，直接可放。 */
 const RELEASE_HEALTH_RATE:Record<EnemyReleaseCondition,number|undefined>=
   {'hp-below-30':30,'hp-below-50':50,'hp-below-70':70,'hp-below-95':95,'always':undefined};
+/** 原版闲逛：0..99 掷点低于 30 才迈步；原地 30% 转身，迈步前 50% 先转向。 */
+const WANDER_MOVE_PERCENT=30;
+const WANDER_IDLE_TURN_PERCENT=30;
+const WANDER_MOVE_TURN_PERCENT=50;
+/** 技能和警戒范围每格 8 像素。 */
+const RANGE_UNIT_PX=8;
 
 /** 睡着的敌人每隔几逻辑帧才想一次事，约 300 毫秒。 */
 export const ENEMY_IDLE_THINK_FRAMES=5;
@@ -234,7 +240,7 @@ export class EnemyController {
   dispose():void{this.cancel();this.disposed=true;this.combat?.dispose();}
 
   private inAwareness(actor:Combatant,target:Combatant):boolean{
-    return Math.floor(targetDistance(actor.position,target.position)/8)<=enemyAwarenessRangeUnits(this.behavior,this.mapWide?this.port.navigationBounds():undefined);
+    return Math.floor(targetDistance(actor.position,target.position)/RANGE_UNIT_PX)<=enemyAwarenessRangeUnits(this.behavior,this.mapWide?this.port.navigationBounds():undefined);
   }
   /** 全图交战只停止当前追近，保留已有仇恨及寻路重试截止时间。 */
   private awaitTarget():void {
@@ -475,7 +481,7 @@ export class EnemyController {
     if(search.witness&&attackDistance(search.witness,actor.bounds,target.position,target.bounds)<=range)return search.witness;
     search.witness=undefined;
     // 攻击距离先截断坐标，再以 8 像素量化；额外 1 像素覆盖坐标截断误差。
-    const padding=Math.max(0,Math.floor(range)-1)*8+1;
+    const padding=Math.max(0,Math.floor(range)-1)*RANGE_UNIT_PX+1;
     const left=Math.floor((target.position.x+target.bounds.x-actor.bounds.x-actor.bounds.width-padding)/REACHABLE_CELL_SIZE);
     const right=Math.floor((target.position.x+target.bounds.x+target.bounds.width-actor.bounds.x+padding)/REACHABLE_CELL_SIZE);
     const top=Math.floor((target.position.y+target.bounds.y-actor.bounds.y-actor.bounds.height-padding)/REACHABLE_CELL_SIZE);
@@ -509,7 +515,7 @@ export class EnemyController {
       ?(point:Point)=>canStand(point)&&attackDistance(point,actor.bounds,target.position,target.bounds)<=range
       :(point:Point)=>Math.hypot(point.x-destination.x,point.y-destination.y)<=Math.max(PATH_GRID_SIZE,range)&&canStand(point);
     // 松的距离下界覆盖双方实体范围和量化余量，保证 A* 不高估剩余路程。
-    const radius=target?Math.hypot(actor.bounds.width+target.bounds.width,actor.bounds.height+target.bounds.height)+range*8:PATH_GRID_SIZE;
+    const radius=target?Math.hypot(actor.bounds.width+target.bounds.width,actor.bounds.height+target.bounds.height)+range*RANGE_UNIT_PX:PATH_GRID_SIZE;
     return {bounds:snapshot?.bounds??this.port.navigationBounds(),canStand,
       canStandXY:snapshot?.canStandXY?(x:number,y:number)=>snapshot.canStandXY!(x,y):undefined,isGoal,
       heuristic:(point:Point)=>Math.max(0,Math.hypot(point.x-destination.x,point.y-destination.y)-radius)};
@@ -590,10 +596,10 @@ export class EnemyController {
     const move=Math.floor(this.random()*100),turn=Math.floor(this.random()*100);
     const directions=['south','west','north','east'] as const;
     let facing=this.port.facing();
-    if(turn<(move<30?50:30)){
+    if(turn<(move<WANDER_MOVE_PERCENT?WANDER_MOVE_TURN_PERCENT:WANDER_IDLE_TURN_PERCENT)){
       facing=directions[(directions.indexOf(facing)+1)%directions.length];this.port.face?.(facing);
     }
-    if(move>=30)return;
+    if(move>=WANDER_MOVE_PERCENT)return;
     // 闲逛步数取两次 1 至 4 抽样的平均值，向下取整。
     const distance=Math.floor((1+Math.floor(this.random()*4)+1+Math.floor(this.random()*4))/2)*PATH_GRID_SIZE;
     const destination={x:Math.trunc(actor.position.x),y:Math.trunc(actor.position.y)};

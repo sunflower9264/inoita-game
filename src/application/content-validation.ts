@@ -34,6 +34,17 @@ import { storyConditionReferences, type StoryCondition } from '../domain/story-c
 import { placementAuthority } from '../domain/actor-authority.ts';
 import type { ChangelogCatalog } from '../domain/changelog.ts';
 
+/** 装备品级档位数：0–14 共 15 档，人物属性表与商店报价表必须一致。 */
+const EQUIPMENT_GRADE_COUNT = 15;
+/** 商店隐匿报价按玩家等级 0–127 取价，共 128 档。 */
+const CONCEALED_PRICE_LEVEL_COUNT = 128;
+/** 商店随机池的权重按万分之一概率基数计算，单项总和不能超过它。 */
+const SHOP_WEIGHT_TOTAL = 10_000;
+/** 骰面数值上限；内容里的骰子按 1–99 编码。 */
+const MAX_DICE_FACE = 99;
+/** 更新日志内容格式版本；结构变化时加一并同步迁移。 */
+const CHANGELOG_FORMAT_VERSION = 1;
+
 type Check = (value: unknown, path: string) => void;
 function requireValue(condition: unknown, path: string, message: string): asserts condition {
   if(!condition)throw new Error(`内容无效 ${path}: ${message}`);
@@ -44,7 +55,7 @@ const number:Check=(v,p)=>requireValue(typeof v==='number'&&Number.isFinite(v),p
 const positive:Check=(v,p)=>{number(v,p);requireValue((v as number)>0,p,'必须大于零');};
 const integer:Check=(v,p)=>{number(v,p);requireValue(Number.isInteger(v)&&(v as number)>=0,p,'需要非负整数');};
 const count:Check=(v,p)=>{integer(v,p);requireValue((v as number)>0,p,'必须是正整数');};
-const diceFace:Check=(v,p)=>{count(v,p);requireValue((v as number)<=99,p,'骰面不能超过 99');};
+const diceFace:Check=(v,p)=>{count(v,p);requireValue((v as number)<=MAX_DICE_FACE,p,`骰面不能超过 ${MAX_DICE_FACE}`);};
 const offsetInteger:Check=(v,p)=>{number(v,p);requireValue(Number.isInteger(v),p,'需要整数');};
 const boolean:Check=(v,p)=>requireValue(typeof v==='boolean',p,'需要布尔值');
 const optional=(check:Check):Check=>(v,p)=>{if(v!==undefined)check(v,p);};
@@ -93,9 +104,9 @@ export function parseCharacterStats(value:unknown):CharacterStatsCatalog {
     for(const range of values)requireValue(result.modifiers[range.stat]&&range.min<=range.max,'characterStats','词条类型或数值范围无效');
   };
   for(const equipment of Object.values(result.equipment)){
-    requireValue(equipment.defaultGrade===undefined||(equipment.defaultGrade>=0&&equipment.defaultGrade<15),'characterStats.equipment','装备品级超出范围');
+    requireValue(equipment.defaultGrade===undefined||(equipment.defaultGrade>=0&&equipment.defaultGrade<EQUIPMENT_GRADE_COUNT),'characterStats.equipment','装备品级超出范围');
     if(equipment.gradeVariants){
-      requireValue(equipment.gradeVariants.length===15,'characterStats.equipment','装备品级档位不完整');
+      requireValue(equipment.gradeVariants.length===EQUIPMENT_GRADE_COUNT,'characterStats.equipment','装备品级档位不完整');
       for(const variant of equipment.gradeVariants)requireValue(variant.rarity>=0&&variant.rarity<=4&&variant.optionCount>=0&&variant.socketLimit<=4,'characterStats.equipment','装备品级档位数值无效');
     }
     requireValue(equipment.defaultRarity===undefined||(equipment.defaultRarity>=0&&equipment.defaultRarity<=4),'characterStats.equipment','装备稀有度超出范围');
@@ -236,7 +247,7 @@ export function parseItemCatalog(value:unknown):ItemCatalog {
     requireValue((use?.kind==='regenerate')===!!use?.regenerate,id,'持续回复需要时长与每脉冲回复量定义');
     if(use?.recovery){
       const recovery=use.recovery;
-      requireValue(recovery.cooldownMs%60===0,id,'药水冷却不是逻辑帧的整数倍');
+      requireValue(recovery.cooldownMs%LOGIC_FRAME_MS===0,id,'药水冷却不是逻辑帧的整数倍');
       if(recovery.mode==='amount')requireValue(recovery.maxHealth>=recovery.minHealth,id,'药水回复范围无效');
       else requireValue(recovery.ratePercent>0&&recovery.ratePercent<=100,id,'药水回复比例无效');
     }
@@ -323,7 +334,7 @@ export function parseShops(value:unknown):ShopCatalog {
   result.equipment ??= {};
   requireValue(Object.keys(result.shops).length===18,'shops','需要 18 个商店 NPC');
   requireValue(result.shops[result.lampShop],'shops.lampShop','缺少神灯商人');
-  requireValue(result.grades.length===15&&result.rarityWeights.ordinary.length===5&&result.rarityWeights.rare.length===5,'shops','品质规则不完整');
+  requireValue(result.grades.length===EQUIPMENT_GRADE_COUNT&&result.rarityWeights.ordinary.length===5&&result.rarityWeights.rare.length===5,'shops','品质规则不完整');
   for(const [id,shop]of Object.entries(result.shops)) {
     requireValue(shop.priceRatePercent>0&&shop.priceRatePercent<=300,id,'商人价格倍率无效');
     for(const category of shop.categories)requireValue(result.categories[category]&&result.assets[category]&&result.assets[`${category}-selected`],id,'分类或分类图片不存在');
@@ -332,11 +343,11 @@ export function parseShops(value:unknown):ShopCatalog {
       if(rule.kind==='random-stock')requireValue(result.profiles[rule.profile],id,'随机商品规则不存在');
     }
   }
-  for(const [id,equipment]of Object.entries(result.equipment))requireValue(equipment.variants.length===15&&equipment.defaultGrade<15&&equipment.concealedPrices.length===128,id,'装备品质或报价不完整');
+  for(const [id,equipment]of Object.entries(result.equipment))requireValue(equipment.variants.length===EQUIPMENT_GRADE_COUNT&&equipment.defaultGrade<EQUIPMENT_GRADE_COUNT&&equipment.concealedPrices.length===CONCEALED_PRICE_LEVEL_COUNT,id,'装备品质或报价不完整');
   for(const profile of Object.values(result.profiles)){
-    requireValue(profile.uniqueChanceByLevel.length===128,'shops.profiles','珍稀物品概率不完整');
+    requireValue(profile.uniqueChanceByLevel.length===CONCEALED_PRICE_LEVEL_COUNT,'shops.profiles','珍稀物品概率不完整');
     for(const category of ['generic','consumable','upgrade','crafting','misc'])requireValue(profile.pools[category],'shops.profiles','随机物品池缺失');
-    for(const pool of Object.values(profile.pools))requireValue(pool.reduce((total,entry)=>total+entry.weight,0)<=10000,'shops.profiles','权重超过概率基数');
+    for(const pool of Object.values(profile.pools))requireValue(pool.reduce((total,entry)=>total+entry.weight,0)<=SHOP_WEIGHT_TOTAL,'shops.profiles','权重超过概率基数');
   }
   for(const key of ['slot','selection','gold','silver','copper','merchant-title'])requireValue(result.assets[key],'shops.assets',`缺少素材 ${key}`);
   return result;
@@ -349,11 +360,11 @@ export function parseShopEquipment(value:unknown,stats?:CharacterStatsCatalog):S
   for(const [id,equipment]of Object.entries(result.equipment)){
     if(!equipment.variants){
       const variants=stats?.equipment[id]?.gradeVariants;
-      requireValue(variants?.length===15,id,'装备品级需要 character-stats 派生');
+      requireValue(variants?.length===EQUIPMENT_GRADE_COUNT,id,'装备品级需要 character-stats 派生');
       equipment.variants=variants.map(variant=>({attack:variant.attack,defense:variant.defense,
         gradeName:variant.name,optionCount:variant.optionCount,socketLimit:variant.socketLimit}));
     }
-    requireValue(equipment.variants.length===15&&equipment.defaultGrade<15&&equipment.concealedPrices.length===128,id,'装备品质或报价不完整');
+    requireValue(equipment.variants.length===EQUIPMENT_GRADE_COUNT&&equipment.defaultGrade<EQUIPMENT_GRADE_COUNT&&equipment.concealedPrices.length===CONCEALED_PRICE_LEVEL_COUNT,id,'装备品质或报价不完整');
   }
   return result.equipment as ShopCatalog['equipment'];
 }
@@ -459,7 +470,7 @@ const menuPanels=shape<MenuPanels>({itemMessages:record(text),assets:record(file
 export function parseChangelog(value:unknown):ChangelogCatalog {
   shape<ChangelogCatalog>({version:count,entries:array(nonEmptyText)})(value,'changelog');
   const result=value as ChangelogCatalog;
-  requireValue(result.version===1,'changelog.version','只支持版本 1');
+  requireValue(result.version===CHANGELOG_FORMAT_VERSION,'changelog.version',`只支持版本 ${CHANGELOG_FORMAT_VERSION}`);
   return result;
 }
 export function parseMenuPanels(value:unknown):MenuPanels {
@@ -1009,7 +1020,7 @@ export function parseCampaign(value:unknown):Campaign {
     for(const id of refs.events)requireValue(eventIds.has(id),owner,`条件事件不存在 ${id}`);
     for(const id of refs.choices)requireValue(choices.has(id),owner,`条件选择不存在 ${id}`);
     for(const id of refs.flags)requireValue(flags.has(id),owner,`条件标记没有来源 ${id}`);
-    for(const key of refs.world)requireValue(['map','near-actor','near-entity','interaction'].includes(key)||key.startsWith('region:')&&eventIds.has(key.slice(7)),owner,`世界条件没有来源 ${key}`);
+    for(const key of refs.world)requireValue(['map','near-actor','near-entity','interaction'].includes(key)||key.startsWith('region:')&&eventIds.has(key.slice('region:'.length)),owner,`世界条件没有来源 ${key}`);
   }
   const mandatory=(condition:StoryCondition|undefined):Set<string>=>{
     if(!condition)return new Set();
@@ -1176,7 +1187,7 @@ export function parseBattle(value:unknown,wardrobe?:WardrobeCatalog):BattleCatal
     }
     if(enemy.behavior.wander){
       requireValue(enemy.behavior.canMove&&enemy.behavior.canTurn&&enemy.behavior.aggression!=='none',enemy.id,'闲逛需要可移动、可转向的战斗角色');
-      requireValue(enemy.behavior.wander.idleDurationMs%60===0,enemy.id,'闲逛待机时间必须为完整逻辑帧');
+      requireValue(enemy.behavior.wander.idleDurationMs%LOGIC_FRAME_MS===0,enemy.id,'闲逛待机时间必须为完整逻辑帧');
     }
   }
   for(const character of result.classes){

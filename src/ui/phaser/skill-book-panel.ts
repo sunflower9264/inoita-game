@@ -5,7 +5,7 @@ import type { MenuPanels } from '../../domain/menu-panels.ts';
 import type { StorySkillProgression } from '../../domain/story-skills.ts';
 import { layoutDescriptionText } from '../description-text-layout.ts';
 import type { MenuTextSpec, MenuTextWriter } from '../dom/menu-text.ts';
-import { skillDescriptionParts, skillNextLevelPreview } from '../skill-detail-lines.ts';
+import { SKILL_PREVIEW_COLORS, skillDescriptionParts, skillNextLevelPreview } from '../skill-detail-lines.ts';
 import { SKILL_BOOK, skillBookCell } from '../skill-book-layout.ts';
 import { TEXT_COLORS } from '../text-style.ts';
 import { GOLD, type ScrollArea, type UiSurface } from './widgets.ts';
@@ -153,8 +153,8 @@ export class SkillBookPanel {
       const center = layout.scroll.width / 2;
       skillNextLevelPreview(skill.ranks, rank, skill.kind, skill.ranks.length, skill.display)
         .forEach((row, index) => {
-          const labelColor = row.kind === 'mana' ? '#0f7cf9' : TEXT_COLORS.white,
-            valueColor = row.kind === 'mana' ? '#0f7cf9' : '#ff0000';
+          const labelColor = row.kind === 'mana' ? SKILL_PREVIEW_COLORS.mana : TEXT_COLORS.white,
+            valueColor = row.kind === 'mana' ? SKILL_PREVIEW_COLORS.mana : SKILL_PREVIEW_COLORS.changed;
           this.textSpecs.push({key: `book-preview-${index}-label`, text: row.label,
             x: layout.scroll.x + center, y: layout.scroll.y + y,
             style: {size: 17, color: labelColor, anchorX: .5, anchorY: 0}, scroll: scrollName, clip});

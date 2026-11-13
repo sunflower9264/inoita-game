@@ -26,12 +26,22 @@ interface ShopTextTarget {
 
 type Selection = {kind:'buy'|'sell'; id:string; step:'description'|'quantity'|'confirm'|'notice'; quantity:number; error?:string};
 
-const SHELF_SLOTS=16;
+/** 货架是 4×4 格，和背包网格同列数。 */
+const SHELF_COLUMNS=4;
+const SHELF_SLOTS=SHELF_COLUMNS*4;
 /** 数量加减的长按节奏：按住 350ms 后开始，每 80ms 加减一次。 */
 const QUANTITY_HOLD={delayMs:350,intervalMs:80} as const;
 /** 金额的三个单位，顺序与金币那一行的横坐标一致。 */
 const MONEY_UNITS=['gold','silver','copper'] as const;
 const AREA_COLOR=TEXT_COLORS.primary;
+/** 清理装备的五档品质；索引就是装备的品质值，名称和颜色一一对应。 */
+const CLEANUP_RARITIES=[
+  {name:'白装',color:'#ffffff'},
+  {name:'绿装',color:'#4eff00'},
+  {name:'蓝装',color:'#00b4ff'},
+  {name:'黄装',color:'#ffe600'},
+  {name:'紫装',color:'#b977ff'},
+] as const;
 
 /** The merchant and the player's bag remain visible throughout a trade. */
 export class ShopPanel {
@@ -192,14 +202,13 @@ export class ShopPanel {
     this.addPage('cleanup-level',String(this.cleanupLevel),l.levelValue.x,l.levelValue.y,24,AREA_COLOR,.5,.5);
     this.buttonText('cleanup-minus','−',l.minus.x,l.minus.y,l.minus.width,l.minus.height);
     this.buttonText('cleanup-plus','＋',l.plus.x,l.plus.y,l.plus.width,l.plus.height);
-    const colors=['#ffffff','#4eff00','#00b4ff','#ffe600','#b977ff'];
-    ['白装','绿装','蓝装','黄装','紫装'].forEach((name,index)=>{
+    CLEANUP_RARITIES.forEach(({name,color},index)=>{
       const x=q.x+index*(q.width+q.gap);
       v.button('',x,q.y,q.width,q.height,()=>{
         if(this.cleanupRarities.has(index))this.cleanupRarities.delete(index);else this.cleanupRarities.add(index);
         this.selection=undefined;this.cleanupError=undefined;this.changed();
       },{selected:this.cleanupRarities.has(index)}).setData('label',name);
-      this.addPage(`cleanup-quality-${index}`,name,x+q.width/2,q.y+q.height/2,18,colors[index],.5,.5);
+      this.addPage(`cleanup-quality-${index}`,name,x+q.width/2,q.y+q.height/2,18,color,.5,.5);
     });
   }
   private toggleBatch():void{
@@ -323,7 +332,7 @@ export class ShopPanel {
       }
       v.textPlate(catalog.assets['text-plate-left'],catalog.assets['text-plate-right'],layout.money.plate.x,layout.money.plate.y,layout.money.plate.width,v.staticRoot);
       for(let index=0;index<SHELF_SLOTS;index++){
-        const x=shelf.x+index%4*slot.stride,y=shelf.y+Math.floor(index/4)*slot.stride;
+        const x=shelf.x+index%SHELF_COLUMNS*slot.stride,y=shelf.y+Math.floor(index/SHELF_COLUMNS)*slot.stride;
         v.image(catalog.assets.slot,x,y,slot.size,slot.size,v.staticRoot);
       }
     });
@@ -339,7 +348,7 @@ export class ShopPanel {
       this.addPage('shop-category-name',catalog.categories[store.category!].name,category.name.x,category.name.y,22,AREA_COLOR,.5,.5);
     }
     for(let index=0;index<SHELF_SLOTS;index++){
-      const x=shelf.x+index%4*slot.stride,y=shelf.y+Math.floor(index/4)*slot.stride,offer=store.offers[index];
+      const x=shelf.x+index%SHELF_COLUMNS*slot.stride,y=shelf.y+Math.floor(index/SHELF_COLUMNS)*slot.stride,offer=store.offers[index];
       if(!offer||offer.sold)continue;
       const item=session.bag.catalog.items[offer.instance.item];
       const button=v.button('',x,y,slot.size,slot.size,()=>this.select('buy',offer.id),{bare:true,disabled:this.cleaning}).setData('label',`购买 ${item.name}`);

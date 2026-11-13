@@ -75,6 +75,20 @@ import { MoveStick } from '../ui/phaser/move-stick.ts';
 import { KeyboardActions } from '../ui/phaser/keyboard-actions.ts';
 import type { PendingAsset } from '../rendering/scene-assets.ts';
 
+/** 帧率显示每秒结算一次；长时间挂起后先重新开窗，避免把停顿算成一次超低值。 */
+const FPS_WINDOW_MS = 1000;
+const FPS_RESET_AFTER_IDLE_MS = 2000;
+/** 卡顿时最多补 2 个逻辑帧；补 3 帧会把 AI、寻路和状态的尖峰叠成三倍。 */
+const MAX_FRAME_DELTA_MS = 120;
+/** GM 等场景重建的等待上限；既没报错也没就绪时不能让调用方永远等下去。 */
+const DEBUG_MAP_WAIT_TIMEOUT_MS = 20_000;
+/** 剧情世界静默重建的等待上限；超时同时中止新场景的加载。 */
+const STORY_WORLD_SWITCH_TIMEOUT_MS = 30_000;
+/** 压测模式每 0.9 秒尝试补一只怪。 */
+const PRESSURE_SPAWN_INTERVAL_MS = 900;
+/** 小地图敌人标记最多每 100 毫秒刷新一次。 */
+const MINIMAP_ENEMY_REFRESH_MS = 100;
+
 /** 进图参数：去哪张地图、落在哪里、朝哪边。 */
 export interface SceneOptions {
   initialEntry?: boolean;
@@ -1215,10 +1229,10 @@ export class WorldScene extends Phaser.Scene {
     this.fpsActualFrames++;
     const elapsed = now - this.fpsWindowStart;
     // 挂起、演出遮挡等长时间不更新后，先以当前帧重新开窗，避免把停顿算成一次超低值。
-    if (elapsed > 2000) {
+    if (elapsed > FPS_RESET_AFTER_IDLE_MS) {
       this.fpsWindowStart = now; this.fpsFrameBase = this.game.loop.frame; this.fpsActualFrames = 0; return;
     }
-    if (elapsed < 1000) return;
+    if (elapsed < FPS_WINDOW_MS) return;
     const raf = Math.round(Math.max(0, this.game.loop.frame - this.fpsFrameBase) * 1000 / elapsed);
     const actual = Math.round(this.fpsActualFrames * 1000 / elapsed);
     this.fpsFrameBase = this.game.loop.frame; this.fpsWindowStart = now; this.fpsActualFrames = 0;
@@ -1506,7 +1520,7 @@ export class WorldScene extends Phaser.Scene {
         if (finished) return;
         finished = true; clearTimeout(timer); resolve(result);
       };
-      const timer = setTimeout(() => done({ ok: false, reason: '切图等待超时' }), 20000);
+      const timer = setTimeout(() => done({ ok: false, reason: '切图等待超时' }), DEBUG_MAP_WAIT_TIMEOUT_MS);
       this.scene.restart({ map: destination, x: point.x, y: point.y, facing: 'south', suppressEntry: true,
         onReady: () => done({ ok: true }),
         onError: (error: unknown) => done({ ok: false, reason: error instanceof Error ? error.message : String(error) }) } satisfies SceneOptions);
@@ -1727,7 +1741,7 @@ export class WorldScene extends Phaser.Scene {
     if(!this.app.pressureMode||this.pressureSpawner||!this.combat)return;
     const ready=await this.combat.preparePressureEnemy(undefined,this.request.signal);
     if(!ready||this.destroyed||!this.app.pressureMode||this.pressureSpawner)return;
-    this.pressureSpawner=this.time.addEvent({delay:900,loop:true,callback:()=>{
+    this.pressureSpawner=this.time.addEvent({delay:PRESSURE_SPAWN_INTERVAL_MS,loop:true,callback:()=>{
       if(this.app.pressureMode)this.combat?.spawnPressureEnemy();
     }});
   }
@@ -1820,7 +1834,7 @@ captureStoryScene():SceneSnapshot {
       const abort=()=>done(signal.reason??new Error('剧情世界切换已取消'));
       signal.addEventListener('abort',abort,{once:true});
       // 场景重建既没报错也没就绪时（例如加载卡住），不能让调用方永远等下去。
-      timer=setTimeout(()=>{const error=new Error('剧情世界切换超时');controller.abort(error);done(error);},30000);
+      timer=setTimeout(()=>{const error=new Error('剧情世界切换超时');controller.abort(error);done(error);},STORY_WORLD_SWITCH_TIMEOUT_MS);
       this.loadingWorld=true;
       this.scene.restart({...location,checkpoint:world,generatedEntities,preparedScene,suppressEntry:true,silentEntry:silent,signal:controller.signal,onReady:()=>done(),onError:(error:unknown)=>done(error)} satisfies SceneOptions);
     });
@@ -2117,7 +2131,7 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
       if (this.stageOccluded) return;
     }
     // 卡顿时最多补 2 个逻辑帧；补 3 帧会把 AI/寻路/状态的尖峰叠成三倍。
-    const stepDelta=Math.min(delta,120);
+    const stepDelta=Math.min(delta,MAX_FRAME_DELTA_MS);
     this.updateFps();
     if (!this.canControl) this.syncHud();
     if (!this.player || !this.movement) return;
@@ -2170,7 +2184,7 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
     if(!this.combat?.playerCannotAct()&&this.combat?.attackState!=='attacking')setCharacterClip(this,controlled, `${walking ? 'walk' : 'idle'}-${this.combat?.facing??this.facing}`);
     this.combat?.afterMovement();
     if (this.minimap && this.combat && this.time.now >= this.nextMinimapEnemyUpdate) {
-      this.nextMinimapEnemyUpdate = this.time.now + 100;
+      this.nextMinimapEnemyUpdate = this.time.now + MINIMAP_ENEMY_REFRESH_MS;
       this.minimap.updateEnemies(this.combat.specialEnemyMarkers());
     }
     this.collectGroundLoot(pos);

@@ -12,6 +12,8 @@ const CONTENT = path.join(PUBLIC, 'content');
 const ATLAS_DIR = 'assets/props/atlas';
 const GENERATED = path.join(ROOT, 'src', 'generated', 'prop-atlas.ts');
 const PAGE_KEY_PREFIX = 'props-atlas:';
+/** pngjs 的 colorType 6 = RGBA，图集必须保留透明通道。 */
+const PNG_COLOR_TYPE_RGBA = 6;
 const MAX_SIZE = 2048;
 const PADDING = 2;
 const PACKER_VERSION = 1;
@@ -166,7 +168,7 @@ export function packPropAtlas(): PropAtlas {
       frames, meta: { image: `props-${pageIndex}.png`, format: 'RGBA8888', size: { w: width, h: height }, scale: '1' }
     });
     pages.push({ key, file, data, frame: sample, width, height,
-      png: PNG.sync.write(png, { colorType: 6 }), json, frames });
+      png: PNG.sync.write(png, { colorType: PNG_COLOR_TYPE_RGBA }), json, frames });
   }
   const byKey: Record<string, { key: string; frame: string }> = {};
   const canonical = new Map<string, string>();

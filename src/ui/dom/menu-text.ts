@@ -1,5 +1,12 @@
 import type { DomLabel, DomUi } from './dom-ui.ts';
 
+/** 多行文字的默认行高：字号 + 5，与 `UiSurface.text` 的 lineSpacing 一致。 */
+const DEFAULT_LINE_SPACING = 5;
+/** 弹层打开时页面文字压暗到 35%。 */
+const DIMMED_TEXT_OPACITY = '0.35';
+/** 对比底色：半透明黑，保证压在游戏画面上的文字可读。 */
+const CONTRAST_TEXT_BACKGROUND = 'rgba(0,0,0,.8)';
+
 /** 页面坐标 → 画框内 CSS 坐标与倍率；倍率用来把字号换算到屏幕。 */
 export interface MenuTextPoint { x: number; y: number; scale: number }
 
@@ -211,7 +218,7 @@ export class MenuTextLayer {
   }
 
   private lineHeightOf(style: MenuTextStyle): number {
-    return style.lineHeight ?? style.size + 5;
+    return style.lineHeight ?? style.size + DEFAULT_LINE_SPACING;
   }
 
   /**
@@ -372,7 +379,7 @@ export class MenuTextLayer {
         entry.styleKey = styleKey;
         entry.label.setAnchor(anchorX, anchorY);
         entry.label.setStyle({ fontSize: `${fontSize.toFixed(2)}px`, color, textAlign: align, pointerEvents: 'none',
-          background: contrastBackground ? 'rgba(0,0,0,.8)' : '', padding: contrastBackground ? '0 3px' : '',
+          background: contrastBackground ? CONTRAST_TEXT_BACKGROUND : '', padding: contrastBackground ? '0 3px' : '',
           borderRadius: contrastBackground ? '3px' : '' });
       }
       if (entry.wrapKey !== wrapping.key) {
@@ -384,7 +391,7 @@ export class MenuTextLayer {
       const clipKey = `${spec.dim ? 1 : 0}|${occlusion.key}`;
       if (entry.clipKey !== clipKey) {
         entry.clipKey = clipKey;
-        entry.label.setStyle({ opacity: spec.dim ? '0.35' : '', clipPath: occlusion.css });
+        entry.label.setStyle({ opacity: spec.dim ? DIMMED_TEXT_OPACITY : '', clipPath: occlusion.css });
       }
       const x = point.x, top = point.y - (box?.top ?? 0);
       if (entry.x !== x || entry.y !== top) {

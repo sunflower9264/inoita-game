@@ -9,6 +9,13 @@ import { domAssets, type DomAssets } from './assets.ts';
 import { DomButton, DomComponent, DomImage } from './components.ts';
 import { DomCooldown } from './cooldown.ts';
 
+/** 快捷位按钮的圆形热区半径；比 94 见方的外框小一圈。 */
+const SLOT_HIT_RADIUS = 40;
+/** 物品数量角标：中心在控件中心右下方 (32,23)，底图 38×40，数字 18px。 */
+export const QUANTITY_BADGE = {
+  centerX: 32, centerY: 23, width: 38, height: 40, fontSize: 18, maxTextSize: 30
+} as const;
+
 interface Control {
   button: DomButton;
   icon: DomImage;
@@ -57,7 +64,7 @@ export class DomActionControls extends DomComponent {
   }
   private control(width: number, files: string[], pressed: string, action: () => void, height = width): Control {
     let control!: Control;
-    const hitRadius = width === CONTROL_SIZES.slot.width ? 40 : width / 2;
+    const hitRadius = width === CONTROL_SIZES.slot.width ? SLOT_HIT_RADIUS : width / 2;
     const button: DomButton = new DomButton(this, { enabled: () => !this.element.hidden && control.usable,
       circleRadius: hitRadius,
       hitTest: event => {
@@ -75,10 +82,11 @@ export class DomActionControls extends DomComponent {
     const icon = new DomImage(face);
     const cooldown = new DomCooldown(icon, 'top-left');
     this.image(face, pressed, width, -width / 2, -height / 2, height).element.classList.add('dom-control-pressed');
-    const badge = new DomComponent(face).rect({ x: 32, y: 23, width: 0, height: 0 });
-    this.image(badge, this.skin['quantity-badge'], 38, -19, -20, 40);
+    const badge = new DomComponent(face).rect({ x: QUANTITY_BADGE.centerX, y: QUANTITY_BADGE.centerY, width: 0, height: 0 });
+    this.image(badge, this.skin['quantity-badge'], QUANTITY_BADGE.width,
+      -QUANTITY_BADGE.width / 2, -QUANTITY_BADGE.height / 2, QUANTITY_BADGE.height);
     const quantity = document.createElement('span');
-    Object.assign(quantity.style, { position: 'absolute', transform: 'translate(-50%,-50%)', fontSize: '18px', color: '#fff', lineHeight: '1' });
+    Object.assign(quantity.style, { position: 'absolute', transform: 'translate(-50%,-50%)', fontSize: `${QUANTITY_BADGE.fontSize}px`, color: '#fff', lineHeight: '1' });
     badge.element.appendChild(quantity); badge.visible(false);
     control = { button, icon, badge, quantity, cooldown, usable: true, size: SLOT_ICON_SIZE };
     return control;

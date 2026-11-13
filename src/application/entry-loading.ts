@@ -16,6 +16,11 @@ interface EntryLoadingResult {
   currentLease: AssetLease;
 }
 
+/** 加载进度分段：素材占 0–0.88，立绘到 0.91，0.94 之后留给场景对象构建。 */
+const ASSET_PROGRESS_END = 0.88;
+const PORTRAIT_PROGRESS_SPAN = 0.03;
+const MAP_BUILD_PROGRESS = 0.94;
+
 /**
  * 加载入口计划：当前图 0–0.88，立绘 0.88–0.91，音效，0.94 留给场景对象构建。
  * 失败时释放已经拿到的租约，避免残留引用。
@@ -28,13 +33,13 @@ export async function loadEntryPlan(plan: EntryPlan, ports: EntryLoadingPorts, o
   let currentLease: AssetLease | undefined;
   try {
     report(label, 0);
-    currentLease = await ports.load([...plan.shared, ...plan.current.assets, ...(plan.residentCombat ?? [])], value => report(label, value * 0.88));
+    currentLease = await ports.load([...plan.shared, ...plan.current.assets, ...(plan.residentCombat ?? [])], value => report(label, value * ASSET_PROGRESS_END));
     signal.throwIfAborted();
     options.onPhase?.('assets-ready');
 
     if (options.preparePresentation !== false) {
-      report('正在准备剧情画面…', 0.88);
-      if (plan.portraits.length) await ports.preloadPortraits(plan.portraits, signal, value => report('正在准备剧情画面…', 0.88 + value * 0.03));
+      report('正在准备剧情画面…', ASSET_PROGRESS_END);
+      if (plan.portraits.length) await ports.preloadPortraits(plan.portraits, signal, value => report('正在准备剧情画面…', ASSET_PROGRESS_END + value * PORTRAIT_PROGRESS_SPAN));
       signal.throwIfAborted();
       options.onPhase?.('portraits-ready');
       await ports.prepareSounds(plan.sounds, signal);
@@ -42,7 +47,7 @@ export async function loadEntryPlan(plan: EntryPlan, ports: EntryLoadingPorts, o
       options.onPhase?.('sounds-ready');
     }
 
-    report('正在布置地图…', 0.94);
+    report('正在布置地图…', MAP_BUILD_PROGRESS);
     return { currentLease };
   } catch (error) {
     currentLease?.release();

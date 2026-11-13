@@ -2,8 +2,11 @@ import type { PhysicalHit } from '../domain/physical-hit.ts';
 import { versionedAsset } from './asset-version.ts';
 import type Phaser from 'phaser';
 
+/** 音频目录结构版本；内容 JSON 与运行时必须一致，改结构时加一。 */
+export const AUDIO_CATALOG_VERSION = 3;
+
 export interface AudioCatalog {
-  version: 3;
+  version: typeof AUDIO_CATALOG_VERSION;
   music: Record<string, string>;
   effects: Record<string, string>;
   menuMusic: string;
@@ -25,6 +28,17 @@ const STORAGE_KEY = 'inotia4.audio.v1';
 const LEVEL_UP_EFFECT = 'Common_LevelUp';
 /** 预加载分批大小：批次越短，加载期间到达的冷音效排在队尾的时间越短。 */
 const PRELOAD_BATCH = 6;
+/** 音效缓存键前缀：加载器与 BGM 共用同一个音频缓存，靠它区分一次性音效。 */
+const EFFECT_KEY_PREFIX = 'se:';
+/** 通道主音量：音乐和氛围声压低，给界面与战斗音效留动态范围。 */
+const MUSIC_MASTER_VOLUME = 0.65;
+const AMBIENCE_MASTER_VOLUME = 0.45;
+/** 一次性音效的主音量。 */
+const EFFECT_MASTER_VOLUME = 0.75;
+/** 32 位无符号随机数的取值个数；用它把随机整数换算成 0–1 的比例。 */
+const UINT32_RANGE = 2 ** 32;
+/** 音效加载失败后冷却这么久再允许重试，避免每次触发都重新排队。 */
+const FAILED_SOUND_RETRY_MS = 5000;
 
 /** 兼容旧存档：布尔值 true/false 分别迁到满音量和静音。 */
 function volumeOf(value: unknown): number {
@@ -75,7 +89,7 @@ export class GameAudio {
     this.catalog = catalog;
     this.residentEffects = new Set([
       ...Object.values(catalog.ui), LEVEL_UP_EFFECT, catalog.combat.shieldBlock, catalog.combat.periodicDamage,
-    ].filter(name => !!catalog.effects[name]).map(name => `se:${name}`));
+    ].filter(name => !!catalog.effects[name]).map(name => `${EFFECT_KEY_PREFIX}${name}`));
     this.isSuspended = isSuspended;
     this.scene.load.maxParallelDownloads = 2;
   }
@@ -89,10 +103,10 @@ export class GameAudio {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(this.settings)); } catch { /* private browsing */ }
     if (channel === 'music') {
       if (previous <= 0 || next <= 0) this.applyLoop('music');
-      else this.setSoundVolume(this.music, 0.65 * next);
+      else this.setSoundVolume(this.music, MUSIC_MASTER_VOLUME * next);
     } else {
       if (previous <= 0 || next <= 0) this.applyLoop('ambience');
-      else this.setSoundVolume(this.ambience, 0.45 * next);
+      else this.setSoundVolume(this.ambience, AMBIENCE_MASTER_VOLUME * next);
     }
   }
 
@@ -151,7 +165,7 @@ export class GameAudio {
   effect(name: string | null | undefined): void {
     const volume = this.settings.effects;
     if (!name || volume <= 0 || !this.catalog.effects[name]) return;
-    const key = `se:${name}`;
+    const key = `${EFFECT_KEY_PREFIX}${name}`;
     if (this.scene.cache.audio.exists(key)) {
       if (!this.isSuspended()) this.playEffect(key, volume);
       return;
@@ -170,7 +184,7 @@ export class GameAudio {
   }
 
   private playEffect(key: string, volume: number): void {
-    const sound = this.scene.sound.add(key, { volume: 0.75 * volume });
+    const sound = this.scene.sound.add(key, { volume: EFFECT_MASTER_VOLUME * volume });
     let active = this.playingEffects.get(key);
     if (!active) this.playingEffects.set(key, active = new Set());
     active.add(sound);
@@ -203,7 +217,7 @@ export class GameAudio {
     if(kind==='critical'){this.effect(entry.critical);return;}
     if(kind!=='hit'){this.effect(entry.blocked);return;}
     const total=entry.normal.reduce((sum,cue)=>sum+cue.weight,0);
-    let roll=crypto.getRandomValues(new Uint32Array(1))[0]/4294967296*total;
+    let roll=crypto.getRandomValues(new Uint32Array(1))[0]/UINT32_RANGE*total;
     for(const cue of entry.normal){roll-=cue.weight;if(roll<0){this.effect(cue.sound);break;}}
   }
   shieldBlock():void {this.effect(this.catalog.combat.shieldBlock);}
@@ -234,7 +248,7 @@ export class GameAudio {
 
   private async prepareEffects(scope: 'combat' | 'story', names: Iterable<string | null | undefined>, signal?: AbortSignal): Promise<void> {
     signal?.throwIfAborted();
-    const wanted = new Set([...names].filter((name): name is string => !!name && !!this.catalog.effects[name]).map(name => `se:${name}`));
+    const wanted = new Set([...names].filter((name): name is string => !!name && !!this.catalog.effects[name]).map(name => `${EFFECT_KEY_PREFIX}${name}`));
     if (scope === 'combat') this.combatEffects = wanted;
     else this.storyEffects = wanted;
     const current = (): boolean => !signal?.aborted && wanted === (scope === 'combat' ? this.combatEffects : this.storyEffects);
@@ -256,7 +270,7 @@ export class GameAudio {
     const wanted = [...keys];
     for (let index = 0; index < wanted.length && current(); index += PRELOAD_BATCH)
       await Promise.all(wanted.slice(index, index + PRELOAD_BATCH).map(async key => {
-        await this.load(key, this.catalog.effects[key.slice(3)]);
+        await this.load(key, this.catalog.effects[key.slice(EFFECT_KEY_PREFIX.length)]);
         this.releaseAbandonedKey(key);
       }));
   }
@@ -303,7 +317,7 @@ export class GameAudio {
         if (loaded) this.releaseAbandonedKey(key);
         return;
       }
-      const sound = this.scene.sound.add(key, { loop: true, volume: music ? 0.65 * current : 0.45 * current });
+      const sound = this.scene.sound.add(key, { loop: true, volume: music ? MUSIC_MASTER_VOLUME * current : AMBIENCE_MASTER_VOLUME * current });
       if (music) { this.music = sound; this.playingMusicKey = key; this.dropRetainedMusic(key); }
       else { this.ambience = sound; this.playingAmbienceKey = key; }
       sound.play();
@@ -353,7 +367,7 @@ export class GameAudio {
   }
   private load(key: string, path: string): Promise<boolean> {
     if (!path) return Promise.resolve(false);
-    if (key.startsWith('se:')) this.loadedEffects.add(key);
+    if (key.startsWith(EFFECT_KEY_PREFIX)) this.loadedEffects.add(key);
     if (this.scene.cache.audio.exists(key)) return Promise.resolve(true);
     if (Date.now() < (this.failedUntil.get(key) ?? 0)) return Promise.resolve(false);
     const existing = this.pending.get(key);
@@ -387,7 +401,7 @@ export class GameAudio {
       for (const [key, request] of batch) {
         const loaded = this.scene.cache.audio.exists(key);
         if (!loaded) {
-          this.failedUntil.set(key, Date.now() + 5000);
+          this.failedUntil.set(key, Date.now() + FAILED_SOUND_RETRY_MS);
           console.warn(`音频资源加载失败：${request.path}`);
         }
         request.resolve(loaded);

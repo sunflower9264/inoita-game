@@ -10,6 +10,8 @@ import type Phaser from 'phaser';
 export const SAVE_THUMBNAIL_MAX_WIDTH = 360;
 export const SAVE_THUMBNAIL_MAX_HEIGHT = 203;
 const SAVE_THUMBNAIL_QUALITY = 0.7;
+/** 画布快照先按更高画质取原图，缩到存档尺寸后才按 `SAVE_THUMBNAIL_QUALITY` 编码。 */
+const SNAPSHOT_QUALITY = 0.9;
 const SNAPSHOT_TIMEOUT_MS = 1200;
 
 /** 等比缩到最大宽高内，不放大。 */
@@ -60,7 +62,7 @@ export function captureSaveThumbnail(game: Phaser.Game | undefined,
         } catch {
           finish(undefined);
         }
-      }, 'image/jpeg', 0.9);
+      }, 'image/jpeg', SNAPSHOT_QUALITY);
     } catch {
       finish(undefined);
     }

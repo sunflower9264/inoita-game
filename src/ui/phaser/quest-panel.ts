@@ -2,15 +2,11 @@ import type { WorldIndex } from '../../domain/content.ts';
 import type { MenuPanels } from '../../domain/menu-panels.ts';
 import { questJournal, questJournalText } from '../../domain/quest-journal.ts';
 import type { Session } from '../../domain/session.ts';
-import { measureQuestText } from './quest-text.ts';
+import { QUEST_TEXT_COLORS, measureQuestText } from './quest-text.ts';
 import { TEXT_COLORS } from '../text-style.ts';
 import { UiSurface, type ScrollArea } from './widgets.ts';
 import type { MenuTextSpec, MenuTextWriter } from '../dom/menu-text.ts';
 
-/** 任务正文的语气色；与 `quest-text.ts` 的绘制口径一致。 */
-const QUEST_TONE_COLORS = {
-  base: TEXT_COLORS.white, title: '#bf0000', target: '#ff0000', person: '#00b4ff', muted: TEXT_COLORS.muted
-} as const;
 /** 面板借宿主的滚动区登记文字位置；未注入时退回本画布自己的滚动区。 */
 type ScrollFactory = (view:UiSurface,name:string,x:number,y:number,width:number,height:number)=>ScrollArea;
 
@@ -120,7 +116,7 @@ export class QuestPanel {
       line.runs.forEach((run, runIndex) => {
         this.textSpecs.push({key: `quest-detail-${lineIndex}-${runIndex}`, text: run.text,
           x: 594 + run.x, y: 20 + lineIndex * layout.lineHeight, scroll: 'quest-detail',
-          clip: {top: 20, bottom: 410}, style: {size: 20, color: QUEST_TONE_COLORS[run.tone]}});
+          clip: {top: 20, bottom: 410}, style: {size: 20, color: QUEST_TEXT_COLORS[run.tone]}});
       });
     });
     detail.setHeight(layout.height);

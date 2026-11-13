@@ -20,6 +20,16 @@ export interface CompanionGenerationRules {
 }
 export interface GeneratedCompanion {level:number;baseAttributes:PrimaryAttributes;skillCaps:Record<string,number>;groupSkills:CompanionGroupEffect[];}
 export const MERCENARY_CLASS_ORDER=['dark-knight','assassin','warlock','priest','ranger','warrior'] as const;
+
+/** 品质 2 起算稀有佣兵：使用固定技能、稀有属性骰，并多带一个组队技能。 */
+const RARE_COMPANION_QUALITY=2;
+/** 随机技能上限：4..7 个保持满上限，接着 2..6 个降 1 级，其余降 2 级。 */
+const FULL_CAP_SKILL_MIN_COUNT=4;
+const FULL_CAP_SKILL_MAX_COUNT=7;
+const REDUCED_CAP_SKILL_MIN_COUNT=2;
+const REDUCED_CAP_SKILL_MAX_COUNT=6;
+const SKILL_CAP_REDUCTION_STEP=1;
+const MAX_SKILL_CAP_REDUCTION=2;
 export function randomInteger(random:()=>number,minimum:number,maximum:number):number{
   const value=random();
   if(!Number.isFinite(value)||value<0||value>=1)throw new Error('招募随机值无效');
@@ -39,7 +49,7 @@ export function generateCompanion(rules:CompanionGenerationRules,definition:{cla
   const level=Math.max(1,randomInteger(random,heroLevel-3,heroLevel));
   const training=Object.entries(rules.training).filter(([,skill])=>skill.classId===classId);
   const selected:string[]=[];
-  if(quality<2){
+  if(quality<RARE_COMPANION_QUALITY){
     rules.skillChoices.forEach((positions,index)=>{
       const count=weightedIndex(random,rules.skillCountWeights[quality][index])+1;
       if(count>3)return;
@@ -48,14 +58,16 @@ export function generateCompanion(rules:CompanionGenerationRules,definition:{cla
     });
   }else selected.push(...(definition.fixedSkills??[]));
   const caps=Object.fromEntries(selected.map(id=>[id,rules.training[id].maxLevel]));
-  const fullCount=randomInteger(random,4,7),reducedCount=randomInteger(random,2,6),pool=[...selected];
+  const fullCount=randomInteger(random,FULL_CAP_SKILL_MIN_COUNT,FULL_CAP_SKILL_MAX_COUNT),
+    reducedCount=randomInteger(random,REDUCED_CAP_SKILL_MIN_COUNT,REDUCED_CAP_SKILL_MAX_COUNT),pool=[...selected];
   for(let index=0;pool.length;index++){
     const id=drawWithoutReplacement(pool,random);
-    caps[id]=Math.max(1,caps[id]-(index<fullCount?0:index<fullCount+reducedCount?1:2));
+    const reduction=index<fullCount?0:index<fullCount+reducedCount?SKILL_CAP_REDUCTION_STEP:MAX_SKILL_CAP_REDUCTION;
+    caps[id]=Math.max(1,caps[id]-reduction);
   }
   const groupPool=[...rules.groupPools[classId]],groupSkills:CompanionGroupEffect[]=[];
-  for(let i=0;i<(quality<2?1:2)&&groupPool.length;i++)groupSkills.push(drawWithoutReplacement(groupPool,random));
-  const dice=rules.statDice[classId][quality<2?'ordinary':'rare'];
+  for(let i=0;i<(quality<RARE_COMPANION_QUALITY?1:2)&&groupPool.length;i++)groupSkills.push(drawWithoutReplacement(groupPool,random));
+  const dice=rules.statDice[classId][quality<RARE_COMPANION_QUALITY?'ordinary':'rare'];
   const baseAttributes=primaryAttributesFrom(Object.fromEntries(PRIMARY_STATS.map((stat,index)=>{
     const {sides,count}=dice[index];let value=0;
     for(let roll=0;roll<count;roll++)value+=randomInteger(random,1,sides);

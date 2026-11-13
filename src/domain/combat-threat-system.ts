@@ -1,4 +1,4 @@
-import {attackDistance} from './basic-attack.ts';
+import {ATTACK_DISTANCE_BASE_UNITS,attackDistance} from './basic-attack.ts';
 import type {Combatant} from './combat.ts';
 import {combatStateCapabilities} from './combat-state.ts';
 import {ThreatLedger,calculateDamageThreat,calculateHealingThreat,calculateStateThreat} from './combat-threat.ts';
@@ -11,6 +11,12 @@ const PRESENCE_WEIGHT:Record<CombatThreatRole,number>={player:10,member:6,summon
 /** 召唤物在敌人已接战后登场，抬到当前最高分的 120%，确定性抢走目标。 */
 const SUMMON_ARRIVAL_RATE=120;
 const MAX_THREAT_SCORE=2147483647;
+/** 狮子吼重分配：攻击者保留旧分并加上 3 倍本次伤害，同阵营其他来源的旧分减半。 */
+const REDISTRIBUTION_ATTACKER_DAMAGE_WEIGHT=3;
+const REDISTRIBUTION_RIVAL_SCORE_PERCENT=50;
+/** 存在仇恨 = (角色等级 + 10) × 角色权重 ÷ 10。 */
+const PRESENCE_LEVEL_OFFSET=10;
+const PRESENCE_WEIGHT_BASE=10;
 
 export interface CombatThreatActor extends Combatant {
   /** 仍处于活动角色阶段，包含同一动作链内等待死亡结算的零HP角色。 */
@@ -52,7 +58,7 @@ export class CombatThreatSystem {
     const source=this.port.actor(sourceId),target=this.port.actor(targetId);
     if(!source||!target||!combatStateCapabilities(target.states??[]).canReceiveDamage)return;
     this.add(target,source,calculateDamageThreat({damage,
-      rectangleDistanceUnits:attackDistance(source.position,source.bounds,target.position,target.bounds)-2,
+      rectangleDistanceUnits:attackDistance(source.position,source.bounds,target.position,target.bounds)-ATTACK_DISTANCE_BASE_UNITS,
       generationRate:this.port.generationRate(sourceId)}));
   }
 
@@ -64,7 +70,7 @@ export class CombatThreatSystem {
     for(const owner of this.port.actors()){
       if(!owner.active||owner.team===target.team||this.port.currentTarget(owner.id)!==targetId)continue;
       this.add(owner,source,calculateHealingThreat({actualHealing,generationRate,
-        rectangleDistanceUnits:attackDistance(source.position,source.bounds,owner.position,owner.bounds)-2}));
+        rectangleDistanceUnits:attackDistance(source.position,source.bounds,owner.position,owner.bounds)-ATTACK_DISTANCE_BASE_UNITS}));
     }
   }
 
@@ -84,8 +90,8 @@ export class CombatThreatSystem {
       const source=this.port.actor(entry.sourceId);
       if(!source||source.team!==attacker.team)continue;
       // 本人的旧分数属于新增量的一部分；所有新增量仍经过来源减率与嘲讽来源门。
-      const amount=source.id===attackerId?(entry.score+Math.imul(damage,3))|0:
-        Math.trunc(Math.imul(entry.score,-50)/100);
+      const amount=source.id===attackerId?(entry.score+Math.imul(damage,REDISTRIBUTION_ATTACKER_DAMAGE_WEIGHT))|0:
+        Math.trunc(Math.imul(entry.score,-REDISTRIBUTION_RIVAL_SCORE_PERCENT)/100);
       this.add(owner,source,amount);
     }
   }
@@ -131,7 +137,7 @@ export class CombatThreatSystem {
   }
 
   private presence(owner:CombatThreatActor,role:CombatThreatRole):number {
-    return Math.trunc(Math.imul((owner.level+10)|0,PRESENCE_WEIGHT[role])/10);
+    return Math.trunc(Math.imul((owner.level+PRESENCE_LEVEL_OFFSET)|0,PRESENCE_WEIGHT[role])/PRESENCE_WEIGHT_BASE);
   }
 
   private eligible(owner:CombatThreatActor,sourceId:string):boolean {

@@ -2,6 +2,8 @@ import type { CharacterVisual } from './characters.ts';
 
 const hidden=new WeakSet<CharacterVisual>();
 const originalAlpha=new WeakMap<CharacterVisual['layers'][number],number>();
+/** 隐身时人物图层保留一半透明度；容器上的死亡淡出和头顶状态不受影响。 */
+const STEALTH_ALPHA_SCALE=0.5;
 
 /** 隐身只影响人物图层；容器上的死亡淡出和头顶状态保持各自的透明度。 */
 export function setCharacterStealth(character:CharacterVisual,stealthed:boolean):void {
@@ -14,7 +16,7 @@ export function setCharacterStealth(character:CharacterVisual,stealthed:boolean)
 export function applyCharacterVisibility(character:CharacterVisual):void {
   for(const layer of character.layers){
     if(hidden.has(character)){
-      if(!originalAlpha.has(layer)){originalAlpha.set(layer,layer.alpha);layer.setAlpha(layer.alpha*.5);}
+      if(!originalAlpha.has(layer)){originalAlpha.set(layer,layer.alpha);layer.setAlpha(layer.alpha*STEALTH_ALPHA_SCALE);}
     }else{
       const alpha=originalAlpha.get(layer);
       if(alpha!==undefined){layer.setAlpha(alpha);originalAlpha.delete(layer);}

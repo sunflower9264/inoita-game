@@ -1,3 +1,6 @@
+/** 一次合成最多连续工作 4 毫秒，随后让出浏览器绘制。 */
+const WORK_SLICE_MS = 4;
+
 /** 只累计实际工作时间；等待浏览器绘制的时间不占下一段预算。 */
 export class CompositionBudget {
   private started: number;
@@ -6,7 +9,7 @@ export class CompositionBudget {
     this.clock = privateClock; this.started = this.clock();
   }
   private readonly clock: () => number;
-  get due(): boolean { return this.clock() - this.started >= 4; }
+  get due(): boolean { return this.clock() - this.started >= WORK_SLICE_MS; }
   finish(): void { this.longestMs = Math.max(this.longestMs, this.clock() - this.started); }
   async pause(signal: AbortSignal): Promise<void> {
     signal.throwIfAborted(); this.finish();

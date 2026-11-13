@@ -4,6 +4,13 @@ import { frameRect } from '../viewport.ts';
 /** 面板声明弹层外框的参考尺寸，由菜单统一保存并在重绘、缩放时定位。 */
 export type PlaceModal = (width:number, height:number) => void;
 
+/** 菜单画布与全屏弹层共用的参考尺寸；页面内容块 960×431 居中在它里面。 */
+export const MENU_CANVAS_WIDTH = 1024;
+export const MENU_CANVAS_HEIGHT = 640;
+/** 菜单里带整块图框的确认弹层：队伍详情、能力加点和技能重置共用。 */
+export const MENU_FRAME_MODAL_WIDTH = 718;
+export const MENU_FRAME_MODAL_HEIGHT = 415;
+
 /**
  * 弹层画布按自己的内容尺寸在父画布里居中。宽度与高度是内容实际占用的外框，由各对话框按
  * 自己画的框给出——锚点因此不再依赖写死的坐标，改某个对话框的尺寸也不会让别的对话框跑偏。

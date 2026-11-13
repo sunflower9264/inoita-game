@@ -86,6 +86,18 @@ const PARTY_RANGED_RANGE_UNITS = 6;
 const PARTY_SKILL_PRIORITY:Record<PartySkillKind,number>={
   'emergency-heal':0,heal:1,'ally-combat':2,'combat-chance':3,chance:4
 };
+/** 技能频率：0 关闭、1 普通、2 高频。 */
+const HIGH_SKILL_FREQUENCY = 2;
+/** 自动施法掷点范围 1..99。 */
+const AUTO_SKILL_ROLL_MAX = 99;
+/** 技能范围每格 8 像素。 */
+const RANGE_UNIT_PX = 8;
+/** 原版自动施法阈值：[普通频率, 高频]；1..99 掷点严格小于阈值才施放。 */
+const AUTO_SKILL_THRESHOLDS:Record<PartySkillKind,readonly [number,number]>={
+  chance:[30,100],'combat-chance':[30,50],heal:[50,70],'emergency-heal':[20,40],'ally-combat':[60,80]
+};
+/** 已经跟随目标时，战斗技能的基础阈值提高到 50。 */
+const FOLLOWING_COMBAT_CHANCE_THRESHOLDS:readonly [number,number]=[50,100];
 
 /** 搜索只能停在起点或地图网格上。侧翼附近没有合法终点时，直接走普通接敌路线。 */
 function hasFlankLanding(goal: Point, start: Point, bounds: GameRectangle, canStand: (point: Point) => boolean): boolean {
@@ -103,12 +115,9 @@ function hasFlankLanding(goal: Point, start: Point, bounds: GameRectangle, canSt
 
 /** 自动施法抽取 1 至 99 的整数，严格小于阈值时通过。 */
 export function partySkillThreshold(kind:PartySkillKind,frequency:number,following:boolean):number {
-  const high=frequency===2;
-  if(kind==='chance')return high?100:30;
-  if(kind==='combat-chance')return following?(high?100:50):(high?50:30);
-  if(kind==='heal')return high?70:50;
-  if(kind==='emergency-heal')return high?40:20;
-  return high?80:60;
+  const index=frequency===HIGH_SKILL_FREQUENCY?1:0;
+  if(kind==='combat-chance'&&following)return FOLLOWING_COMBAT_CHANCE_THRESHOLDS[index]!;
+  return AUTO_SKILL_THRESHOLDS[kind][index]!;
 }
 
 /** Party intent is independent of monster awareness and wandering. */
@@ -345,7 +354,7 @@ export class PartyController {
     const range=this.port.attackRange();
     const pointAt=(radius:number)=>({x:target.position.x+normal.x*radius*side,
       y:target.position.y+normal.y*radius*side});
-    let radius=Math.max(24,range*8+8);
+    let radius=Math.max(24,range*RANGE_UNIT_PX+8);
     while(radius>16&&attackDistance(pointAt(radius),actor.bounds,target.position,target.bounds)>range)radius-=4;
     if(attackDistance(pointAt(radius),actor.bounds,target.position,target.bounds)>range)return undefined;
     return {side,normal,point:pointAt(radius)};
@@ -499,7 +508,7 @@ export class PartyController {
     // 绕侧时搜索的是具体站位。朝敌人中心搜索并减去整个攻击半径，会白查身体另一侧的格子。
     const goal=anchor?.point??destination;
     const inRange=target&&!anchor;
-    const radius=inRange?Math.hypot(actor.bounds.width+target.bounds.width,actor.bounds.height+target.bounds.height)+range*8
+    const radius=inRange?Math.hypot(actor.bounds.width+target.bounds.width,actor.bounds.height+target.bounds.height)+range*RANGE_UNIT_PX
       :PATH_GRID_SIZE;
     this.search=createPathSearch(actor.position,{bounds,canStand,canStandXY:snapshot?.canStandXY,
       isGoal:point=>(inRange?attackDistance(point,actor.bounds,target.position,target.bounds)<=range
@@ -559,5 +568,5 @@ export class PartyController {
     this.destinationTarget=undefined;this.destinationRange=undefined;this.nextPathAt=0;
     if(stop)this.port.stop();
   }
-  private roll(threshold:number):boolean{return 1+Math.floor(this.random()*99)<threshold;}
+  private roll(threshold:number):boolean{return 1+Math.floor(this.random()*AUTO_SKILL_ROLL_MAX)<threshold;}
 }

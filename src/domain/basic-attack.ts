@@ -10,6 +10,12 @@ export const BASIC_COMBO_WINDOW_FRAMES = 2;
 /** 四种朝向的固定顺序，用于遍历四向动画。 */
 export const FACINGS: readonly Facing[] = ['north', 'south', 'east', 'west'];
 
+/** 矩形距离一格是 8 px；原版 `UTIL_GetRectDistance` 把两轴间隙之和右移 3 位。 */
+export const PIXELS_PER_DISTANCE_UNIT = 8;
+
+/** 攻击距离在矩形距离之外固定加 2 单位；要换算纯矩形距离时扣掉这份基础值。 */
+export const ATTACK_DISTANCE_BASE_UNITS = 2;
+
 /**
  * 把源动画展开成逻辑帧序列：条目是素材帧号，下标是逻辑帧序号。
  * 周期比素材短就截取，比素材长就重复引用末帧。序列要覆盖整个周期，
@@ -75,12 +81,16 @@ export function resolveBasicAttack(catalog: Pick<BattleCatalog,'basicAttacks'>, 
   return { ...merged, profileId, step, stepCount: combo.length + 1, effectiveCycleFrames, clips: resolvedClips, sequence };
 }
 
-/** 选敌使用的整数近似距离；用于选敌和投射物到达判断。 */
+/** 选敌使用的八方向整数近似距离：两轴距离相加后，再按短边的 1/4+1/2−1/8 逐项取整扣减。 */
 export function targetDistance(a: Point, b: Point): number {
   const x = Math.abs(Math.trunc(a.x) - Math.trunc(b.x)), y = Math.abs(Math.trunc(a.y) - Math.trunc(b.y));
   const small = Math.min(x, y);
   return x + y - Math.floor(small / 4) - Math.floor(small / 2) + Math.floor(small / 8);
 }
+
+/** 选范围攻击中心时，正前方目标加 8 分，斜前方加 4 分，背后不加分。 */
+const FRONT_TARGET_SCORE_BONUS = 8;
+const DIAGONAL_TARGET_SCORE_BONUS = 4;
 
 export function targetScore(from: Point, to: Point, facing: Facing, radius: number): number {
   const distance = targetDistance(from, to);
@@ -88,7 +98,7 @@ export function targetScore(from: Point, to: Point, facing: Facing, radius: numb
   const dx = to.x - from.x, dy = to.y - from.y;
   const forward = facing === 'south' ? dy : facing === 'north' ? -dy : facing === 'east' ? dx : -dx;
   const side = facing === 'south' || facing === 'north' ? dx : dy;
-  return radius - distance + (forward > 0 ? Math.abs(forward) > Math.abs(side) ? 8 : 4 : 0);
+  return radius - distance + (forward > 0 ? Math.abs(forward) > Math.abs(side) ? FRONT_TARGET_SCORE_BONUS : DIAGONAL_TARGET_SCORE_BONUS : 0);
 }
 
 export function attackDistance(a: Point, box: CollisionBox, b: Point, target: CollisionBox): number {
@@ -96,7 +106,7 @@ export function attackDistance(a: Point, box: CollisionBox, b: Point, target: Co
     Math.trunc(b.x)+target.x - Math.trunc(a.x)-box.x-box.width);
   const dy = Math.max(0, Math.trunc(a.y)+box.y - Math.trunc(b.y)-target.y-target.height,
     Math.trunc(b.y)+target.y - Math.trunc(a.y)-box.y-box.height);
-  return Math.floor(dx / 8) + Math.floor(dy / 8) + 2;
+  return Math.floor(dx / PIXELS_PER_DISTANCE_UNIT) + Math.floor(dy / PIXELS_PER_DISTANCE_UNIT) + ATTACK_DISTANCE_BASE_UNITS;
 }
 
 export function faceTarget(from: Point, to: Point): Facing {
@@ -104,11 +114,19 @@ export function faceTarget(from: Point, to: Point): Facing {
   return Math.abs(x) > Math.abs(y) ? x < 0 ? 'west' : 'east' : y < 0 ? 'north' : 'south';
 }
 
-/** 投射物使用十六个方向的素材；零度朝右。 */
+/** 投射物使用十六个方向的素材；零度朝右。朝向按 |dy/dx| 的百分比斜率分档，角度取自原版 8 方向投射素材。 */
+const SLOPE_PERCENT_BELOW_23_DEGREES = 21;
+const SLOPE_PERCENT_BELOW_45_DEGREES = 68;
+const SLOPE_PERCENT_BELOW_68_DEGREES = 151;
+const SLOPE_PERCENT_BELOW_90_DEGREES = 504;
+
 export function projectileHeading(from: Point, to: Point): number {
   const x=to.x-from.x, y=to.y-from.y;
   const slope=x ? Math.abs(Math.trunc(y*100/x)) : Infinity;
-  const angle=slope<21?0:slope<68?23:slope<151?45:slope<504?68:90;
+  const angle=slope<SLOPE_PERCENT_BELOW_23_DEGREES?0:
+    slope<SLOPE_PERCENT_BELOW_45_DEGREES?23:
+    slope<SLOPE_PERCENT_BELOW_68_DEGREES?45:
+    slope<SLOPE_PERCENT_BELOW_90_DEGREES?68:90;
   return x>=0 ? y>=0?angle:(360-angle)%360 : y>=0?180-angle:180+angle;
 }
 

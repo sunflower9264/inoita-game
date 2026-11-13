@@ -25,6 +25,18 @@ export interface EquipmentSaleQuote { entries:{entry:ItemInstance;price:number}[
 interface ShopOffer { id: string; instance: ItemInstance; limited: boolean; concealed: boolean; sold: boolean }
 export interface ShopVisitsState { mapId?:string; stock:[string,ShopOffer[]][]; serial:number }
 const whole = (value: number) => Math.max(0, Math.trunc(value));
+/** 原版货架最多 48 格，界面只显示前 16 格；售出的格子留在原位。 */
+const SHELF_CAPACITY = 48;
+const VISIBLE_SHELF_SLOTS = 16;
+/** 等级索引表（隐藏价格、唯一商品概率）的上限。 */
+const MAX_ITEM_LEVEL_INDEX = 127;
+/** 商店概率表按万分数存放（10000 = 100%）。 */
+const CHANCE_SCALE = 10000;
+/** 百分比骰面：0..99 表示 0%..99%。 */
+const PERCENT_SCALE = 100;
+/** 随机装备分组权重：20% 武器，接下来 50% 防具，其余 30% 饰品。 */
+const RANDOM_WEAPON_PERCENT = 20;
+const RANDOM_ARMOR_PERCENT = 70;
 
 export function itemValue(items: ItemCatalog, stats: CharacterStatsCatalog, id: string, instance?: ItemInstance): number {
   const item = items.items[id];
@@ -95,11 +107,11 @@ export class Storefront {
         }
         return offers;
       }));
-      this.stock = this.stock.slice(0, 48);
+      this.stock = this.stock.slice(0, SHELF_CAPACITY);
     }
   }
   /** Sold slots stay in place; the native shelf displays its first sixteen positions. */
-  get offers(): readonly ShopOffer[] { return this.stock.slice(0, 16); }
+  get offers(): readonly ShopOffer[] { return this.stock.slice(0, VISIBLE_SHELF_SLOTS); }
   /** 说明面板要按同一份装备数值算出攻击／防御，报价与详情因此不会各算一套。 */
   get characterStats(): CharacterStatsCatalog { return this.stats; }
   selectCategory(category: string): void {
@@ -110,7 +122,7 @@ export class Storefront {
       for (const [id, item] of Object.entries(this.items.items)) {
         if (!this.blocked.has(id) && item.kind === category && item.storeListed && item.level >= rule.minimumLevel && item.level <= rule.maximumLevel)
           this.stock.push(this.createOffer(id, false));
-        if (this.stock.length >= 48) break;
+        if (this.stock.length >= SHELF_CAPACITY) break;
       }
     }
   }
@@ -150,7 +162,7 @@ export class Storefront {
     return {id, instance, limited, concealed, sold: false};
   }
   private equipmentOffer(minimum: number, maximum: number, grade?: number, concealed = false): ShopOffer | undefined {
-    const draw = this.roll(0, 99), group = draw < 20 ? 'weapon' : draw < 70 ? 'armor' : 'accessory';
+    const draw = this.roll(0, PERCENT_SCALE - 1), group = draw < RANDOM_WEAPON_PERCENT ? 'weapon' : draw < RANDOM_ARMOR_PERCENT ? 'armor' : 'accessory';
     const candidates = Object.keys(this.catalog.equipment).filter(id => {
       const item = this.catalog.equipment[id];
       return !this.blocked.has(id) && item.randomListed && item.randomGroup === group && item.dropLevel >= minimum && item.dropLevel <= maximum;
@@ -178,17 +190,17 @@ export class Storefront {
     const level = rule.profile === 'lamp' ? this.session.player?.level ?? 1 : this.catalog.mapShopLevels[this.session.shops.mapId!] ?? 0;
     const minimum = Math.max(1, level - rule.levelRadius), maximum = level + rule.levelRadius;
     for (const category of ['generic', 'equipment', 'consumable', 'upgrade', 'crafting', 'misc'] as const) {
-      if (this.roll(0, 9999) >= profile.chances[category]) continue;
+      if (this.roll(0, CHANCE_SCALE - 1) >= profile.chances[category]) continue;
       for (let attempt = 0; attempt < 100; attempt++) {
         if (category === 'equipment') { const offer = this.equipmentOffer(minimum, maximum); if (offer) return offer; }
         else {
-          const pool = profile.pools[category], choice = pool[this.weighted(pool.map(entry => entry.weight), 10000)];
+          const pool = profile.pools[category], choice = pool[this.weighted(pool.map(entry => entry.weight), CHANCE_SCALE)];
           const id = choice?.tiers ? choice.tiers.find(tier => tier.level <= level)?.item : choice?.item;
           if (id && this.items.items[id] && !this.items.items[id].pickup && !this.blocked.has(id)) return this.createOffer(id, true);
         }
       }
     }
-    if (this.roll(0, 9999) < profile.uniqueChanceByLevel[Math.min(127, level)]) return this.uniqueOffer(level);
+    if (this.roll(0, CHANCE_SCALE - 1) < profile.uniqueChanceByLevel[Math.min(MAX_ITEM_LEVEL_INDEX, level)]) return this.uniqueOffer(level);
   }
   private offer(id: string): ShopOffer {
     const offer = this.offers.find(offer => offer.id === id);
@@ -197,7 +209,7 @@ export class Storefront {
   }
   buyPrice(id: string): number {
     const offer = this.offer(id);
-    const price=offer.concealed?this.catalog.equipment[offer.instance.item].concealedPrices[Math.min(127, this.session.player?.level ?? 1)]:
+    const price=offer.concealed?this.catalog.equipment[offer.instance.item].concealedPrices[Math.min(MAX_ITEM_LEVEL_INDEX, this.session.player?.level ?? 1)]:
       whole(itemValue(this.items, this.stats, offer.instance.item, offer.instance) * this.shop.priceRatePercent / 100);
     const discount=this.session.party?.groupModifiers()['buy-discount']??0;
     return price-whole(price*discount/1000);

@@ -12,7 +12,9 @@ export const CONTROL_LAYOUT_STORAGE_KEY = 'inotia-control-layout';
 /** 用户能拉到的最小和最大倍率；布局解析和编辑器共用。 */
 export const CONTROL_SCALE_MIN = 0.6;
 const CONTROL_SCALE_MAX = 2;
-const FORMAT = 2;
+const CONTROL_LAYOUT_STORAGE_FORMAT_VERSION = 2;
+/** 最早一版只存位置，没有 `scale`。 */
+const POSITION_ONLY_STORAGE_VERSION = 1;
 
 /** 各类操作控件的基准尺寸（界面单位）；布局解析与绘制层共用这一份。 */
 export const CONTROL_SIZES = {
@@ -31,6 +33,10 @@ const SHORTCUT_OFFSETS = [
 /** 左侧存档／菜单按钮的基准边长（界面单位）；电脑模式技能行的一格按它换算。 */
 export const HUD_SIDE_BUTTON_SIZE = 56;
 const SWAP_OFFSET = {x:42,y:-210} as const;
+/** 普攻按钮中心距安全区右下角的基准内缩（界面单位）。 */
+const ATTACK_ANCHOR_INSET = {x:104, y:80} as const;
+/** 移动控件中心离安全区边缘的最小留白，避免圆盘贴边被裁。 */
+const MOVE_MIN_CENTER_INSET = 129;
 /** 登记页的待登记对象相对默认普攻中心的位置。 */
 export const PENDING_OFFSET = {x:-382,y:-183} as const;
 
@@ -71,7 +77,7 @@ export class ControlLayoutPreferences {
       if (!saved || typeof saved !== 'object') return;
       const {version, positions} = saved as {version?: unknown; positions?: unknown};
       // 上一版只存位置；没有 scale 的记录按 1 倍读取，写回时统一用新版格式。
-      if ((version !== 1 && version !== FORMAT) || !positions || typeof positions !== 'object' || Array.isArray(positions)) return;
+      if ((version !== POSITION_ONLY_STORAGE_VERSION && version !== CONTROL_LAYOUT_STORAGE_FORMAT_VERSION) || !positions || typeof positions !== 'object' || Array.isArray(positions)) return;
       const entries = Object.entries(positions);
       if (entries.some(([id, point]) => !CONTROL_IDS.includes(id as ControlId) || !validOverride(point))) return;
       this.positions = clone(positions as ControlLayoutOverrides);
@@ -91,7 +97,7 @@ export class ControlLayoutPreferences {
     return () => { this.listeners.delete(listener); };
   }
   private save(): void {
-    try { this.storage?.setItem(CONTROL_LAYOUT_STORAGE_KEY, JSON.stringify({version: FORMAT, positions: this.positions})); }
+    try { this.storage?.setItem(CONTROL_LAYOUT_STORAGE_KEY, JSON.stringify({version: CONTROL_LAYOUT_STORAGE_FORMAT_VERSION, positions: this.positions})); }
     catch { /* 写入失败时当前运行仍使用内存中的键位。 */ }
     for (const listener of this.listeners) listener();
   }
@@ -132,8 +138,8 @@ export function resolveControlLayout(viewport: ControlViewport, overrides: Contr
   const safe = safeArea(viewport);
   const actionScale = Math.min(safe.width / GAME_WIDTH, safe.height / GAME_HEIGHT);
   const moveScale = Math.min(viewport.width / GAME_WIDTH, viewport.height / GAME_HEIGHT);
-  const attack = {x: viewport.width - viewport.insets.right - 104 * actionScale,
-    y: viewport.height - viewport.insets.bottom - 80 * actionScale};
+  const attack = {x: viewport.width - viewport.insets.right - ATTACK_ANCHOR_INSET.x * actionScale,
+    y: viewport.height - viewport.insets.bottom - ATTACK_ANCHOR_INSET.y * actionScale};
   const placement = (id: ControlId, point: ControlPoint, scale: number, width: number, height: number): ControlPlacement => {
     const custom = overrides[id];
     const userScale = custom?.scale ?? 1;
@@ -142,7 +148,7 @@ export function resolveControlLayout(viewport: ControlViewport, overrides: Contr
     return {...position, scale, userScale, ...size};
   };
   // 十字键圆盘比摇杆大：中心离安全区边缘至少留出半个直径，避免贴边被裁掉。
-  const moveOffset = Math.max(129, moveSize.width / 2) * moveScale;
+  const moveOffset = Math.max(MOVE_MIN_CENTER_INSET, moveSize.width / 2) * moveScale;
   const result = {
     move: placement('move', {x: safe.left + moveOffset, y: viewport.height - viewport.insets.bottom - moveOffset}, moveScale, moveSize.width, moveSize.height),
     attack: placement('attack', attack, actionScale, CONTROL_SIZES.attack.width, CONTROL_SIZES.attack.height),

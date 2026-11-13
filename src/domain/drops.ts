@@ -1,9 +1,23 @@
 import { blockedNormalAcquisitionIds, reservedAcquisitionIds, type ItemCatalog, type ItemInstance } from './items.ts';
 import type { ChestKind } from './content.ts';
 import type { CharacterStatsCatalog, EquipmentGradeSeed } from './character-stats.ts';
-import { rollGrade, staticGrade, type GradeProfile } from './equipment-grade.ts';
+import { rollGrade, staticGrade, MAX_RANDOM_EQUIPMENT_GRADE, type GradeProfile } from './equipment-grade.ts';
 import { moneyGain } from './economy.ts';
-import type { LootPityConfig } from './loot-pity.ts';
+import { RARITY_EPIC, type LootPityConfig } from './loot-pity.ts';
+
+/** 掉落概率以万分之一为单位，10000 表示必中。 */
+const DROP_CHANCE_UNIT = 10_000;
+/** 原版普通掉落掷点是 1..9999。 */
+const NATIVE_DROP_ROLL_MAX = 9_999;
+/** 固定掉落权重总和固定为 1000。 */
+const FIXED_DROP_WEIGHT_TOTAL = 1_000;
+/** 装备掉率加成按千分比缩放。 */
+const ITEM_CHANCE_PER_MILLE = 1_000;
+/** 宝箱品质词条：1..999 掷点不超过 49 时换成幸运宝箱。 */
+const NATIVE_PERCENT_ROLL_MAX = 999;
+const FORTUNATE_BOX_MAX_ROLL = 49;
+/** 「被选择的英雄」额外独特装备权重按 1000 为满值。 */
+const UNIQUE_BONUS_WEIGHT = 1_000;
 
 type DropCategory = 'consumable' | 'upgrade' | 'crafting' | 'misc';
 type DropChance = 'money' | 'equipment' | DropCategory | 'unique' | 'fixed';
@@ -267,10 +281,10 @@ function draw(random:()=>number,max:number):number {
 
 function success(base:number,monsterLevel:number,playerLevel:number,random:()=>number,bonus=0,itemChance=0):boolean {
   // 普通加成不能开启基础为 0 的槽位；保底/首杀的 10000 加值是明确的必中。
-  if(!base&&bonus<10000)return false;
-  const rate=Math.floor(Math.floor(2*base*monsterLevel/(monsterLevel+playerLevel))*(1000+itemChance)/1000);
-  if(rate+bonus>=10000)return true;
-  return rate>0&&draw(random,9999)+1<rate+bonus;
+  if(!base&&bonus<DROP_CHANCE_UNIT)return false;
+  const rate=Math.floor(Math.floor(2*base*monsterLevel/(monsterLevel+playerLevel))*(ITEM_CHANCE_PER_MILLE+itemChance)/ITEM_CHANCE_PER_MILLE);
+  if(rate+bonus>=DROP_CHANCE_UNIT)return true;
+  return rate>0&&draw(random,NATIVE_DROP_ROLL_MAX)+1<rate+bonus;
 }
 
 function pickPool(choices:readonly DropChoice[],level:number,random:()=>number):string|null|undefined {
@@ -385,9 +399,9 @@ function baseLegendaryReward(catalog:DropCatalog,stats:CharacterStatsCatalog,map
 export function rollLegendaryWeapon(catalog:DropCatalog,stats:CharacterStatsCatalog,mapLevel:number,random:()=>number,uniqueBonus=0):LegendaryReward|undefined {
   const base=baseLegendaryReward(catalog,stats,mapLevel,random);
   if(base?.unique)return base;
-  const bonus=Math.max(0,Math.min(1000,uniqueBonus));
+  const bonus=Math.max(0,Math.min(UNIQUE_BONUS_WEIGHT,uniqueBonus));
   if(bonus<=0)return base;
-  if(draw(random,1000)<bonus)return uniqueLegendaryReward(catalog,stats,mapLevel,random)??base;
+  if(draw(random,UNIQUE_BONUS_WEIGHT)<bonus)return uniqueLegendaryReward(catalog,stats,mapLevel,random)??base;
   return base;
 }
 
@@ -491,7 +505,7 @@ function containerScaleLevel(level:number,playerLevel:number):number {
 export function rollBreakableLoot(catalog:DropCatalog,stats:CharacterStatsCatalog,kind:BreakableKind,level:number,
   playerLevel:number,random:()=>number=Math.random,modifiers:DropModifiers={},options:{equipmentBonus?:number}={}):ChestOpenResult {
   if(!Number.isSafeInteger(level)||level<0||level>255)throw new Error('景物掉落等级无效');
-  const selected=kind==='box'&&modifiers['chest-quality']&&draw(random,999)+1<=49?'fortunate-box':kind;
+  const selected=kind==='box'&&modifiers['chest-quality']&&draw(random,NATIVE_PERCENT_ROLL_MAX)+1<=FORTUNATE_BOX_MAX_ROLL?'fortunate-box':kind;
   const rule=catalog.breakables?.[selected];
   if(!rule)throw new Error('景物掉落规则缺失');
   const band=chapterBand(catalog,level);
@@ -504,7 +518,7 @@ export function rollBreakableLoot(catalog:DropCatalog,stats:CharacterStatsCatalo
 /** 首杀保底只在配置显式打开时生效；关闭时仍由普通 pity 计算加成。 */
 export function firstBossGuarantee(pity:PityConfig|undefined,firstDefeat:boolean):{equipmentBonus:number;minRarity?:number} {
   if(!firstDefeat||!pity?.bossGuarantee.equipment)return {equipmentBonus:0};
-  return {equipmentBonus:10000,minRarity:pity.bossGuarantee.minRarity};
+  return {equipmentBonus:DROP_CHANCE_UNIT,minRarity:pity.bossGuarantee.minRarity};
 }
 
 interface LootContext {
@@ -554,7 +568,7 @@ function rollDropRule(catalog:DropCatalog,rule:EnemyDropRule,playerLevel:number,
     if(kind==='unique'&&uniqueOnce&&repeat>0)continue;
     const baseBonus=kind==='equipment'?modifiers['equipment-drop']:kind==='upgrade'?modifiers['scroll-drop']:kind==='crafting'?modifiers['material-drop']:0;
     const uniqueExtra=kind==='unique'
-      ?(uniqueOnce?(repeat===0?(loot?.uniqueBonus??0)+(loot?.uniqueGuarantee?10000:0):0):(loot?.uniqueBonus??0))
+      ?(uniqueOnce?(repeat===0?(loot?.uniqueBonus??0)+(loot?.uniqueGuarantee?DROP_CHANCE_UNIT:0):0):(loot?.uniqueBonus??0))
       :0;
     const bonus=(baseBonus??0)+(kind==='equipment'?loot?.equipmentBonus??0:kind==='unique'?uniqueExtra:0);
     if(!success(rule.chances[kind],level,playerLevel,random,bonus??0,loot?.itemChance??0))continue;
@@ -564,12 +578,12 @@ function rollDropRule(catalog:DropCatalog,rule:EnemyDropRule,playerLevel:number,
     }else if(kind==='equipment')add(pickEquipment(catalog,level,random,loot?.maxItemLevel),true,false);
     else if(kind==='unique')add(pickUnique(catalog,uniqueCap,random),false,true);
     else if(kind==='fixed'){
-      const roll=draw(random,1000);let sum=0;
+      const roll=draw(random,FIXED_DROP_WEIGHT_TOTAL);let sum=0;
       for(const choice of rule.fixed){sum+=choice.weight;if(roll<sum){add(choice.item,false,true);break;}}
     }else add(pickPool(pool[kind]??[],level,random));
   }
   // 独立紫装判定：每个击杀/每次开箱最多一次，放在普通 8 槽循环之后。
-  if(loot?.epic&&!result.rewards.some(reward=>reward.kind==='item'&&reward.roll?.rarity===4)){
+  if(loot?.epic&&!result.rewards.some(reward=>reward.kind==='item'&&reward.roll?.rarity===RARITY_EPIC)){
     const epic=loot.epic;
     if(epic.guaranteed||success(epic.chance,level,playerLevel,random,epic.bonus??0,loot.itemChance??0))
       add(pickEpic(catalog,epicCap,random),false,true);
@@ -585,7 +599,7 @@ export function chapterBand(catalog:DropCatalog,level:number):ChapterBand|undefi
 function profileFor(catalog:DropCatalog,band:ChapterBand|undefined,threat:'normal'|'elite'|'boss',minRarity?:number,explicit?:string):GradeProfile {
   const name=explicit??band?.profiles[threat]??'original';
   const weights=catalog.rarityProfiles?.[name]??catalog.rarityProfiles?.original??[1000,0,0,0,0];
-  return {weights,rarityScale:band?.rarityScale,minRarity,maxGrade:9,luck:band?.luck};
+  return {weights,rarityScale:band?.rarityScale,minRarity,maxGrade:MAX_RANDOM_EQUIPMENT_GRADE,luck:band?.luck};
 }
 
 /** 怪物掉落：基础槽位判定与原版一致，槽位成功后按稀有度/章节/品级生成实例快照。 */

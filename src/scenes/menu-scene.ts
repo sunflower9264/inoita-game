@@ -40,12 +40,18 @@ const GAME_VERSION='v1.0.4';
 const FAN_WORK_NOTICE='同人作品 · 仅供个人学习研究 · 请支持官方正版';
 const CLOSE_IMAGE='/assets/ui/menus/close.png';
 const CLOSE_PRESSED='/assets/ui/menus/close-pressed.png';
+/** 挑战模式隐藏入口要求连续点击的次数。 */
+const CHALLENGE_CLICKS_REQUIRED=5;
+/** 把 6 位十六进制颜色拆成 RGB 通道时用的移位与掩码。 */
+const COLOR_CHANNEL_MASK=0xff;
+const RED_CHANNEL_SHIFT=16;
+const GREEN_CHANNEL_SHIFT=8;
 /** DOM 文字不跟随 Phaser 容器的 alpha；禁用按钮的标签用同透明度的颜色变暗。 */
 function fadeColor(color:string,alpha:number):string {
   const match=/^#([0-9a-f]{6})$/i.exec(color);
   if(!match)return color;
   const value=parseInt(match[1],16);
-  return `rgba(${value>>16&255},${value>>8&255},${value&255},${Math.max(0,Math.min(1,alpha)).toFixed(2)})`;
+  return `rgba(${value>>RED_CHANNEL_SHIFT&COLOR_CHANNEL_MASK},${value>>GREEN_CHANNEL_SHIFT&COLOR_CHANNEL_MASK},${value&COLOR_CHANNEL_MASK},${Math.max(0,Math.min(1,alpha)).toFixed(2)})`;
 }
 
 interface ConfirmRequest {
@@ -186,7 +192,7 @@ export class MenuScene extends Phaser.Scene {
       ||this.prompt?.active||this.passwordPrompt?.active||this.credentials?.focused)return;
     this.challengeClicks++;
     globalThis.storyDiagnostics?.record('pressure-click',{clicks:this.challengeClicks});
-    if(this.challengeClicks>=5){
+    if(this.challengeClicks>=CHALLENGE_CLICKS_REQUIRED){
       this.challengeClicks=0;
       globalThis.storyDiagnostics?.record('pressure-enter',{});
       void this.app.startPressureTest?.();

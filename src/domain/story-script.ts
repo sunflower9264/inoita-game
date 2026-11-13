@@ -1,6 +1,9 @@
 import type { StoryEvent, StoryNode, StoryNodeRef, StoryScript } from './story-graph.ts';
 import { storyExitTargets } from './story-graph.ts';
 
+/** 收集可达地图时最多遍历的脚本节点数，防止脚本出口成环时无限展开。 */
+const MAX_TRAVERSED_NODES = 4000;
+
 /** Includes branches once; intended for resource collection and authored-action validation. */
 export function storyActions(campaign: Pick<CampaignScripts, 'scripts'>): StoryNode['presentation'] {
   return Object.values(campaign.scripts).flatMap(script => script.nodes.flatMap(node => node.presentation));
@@ -37,7 +40,7 @@ export function storyReachableMaps(
   while (queue.length) {
     const reference = queue.pop()!;
     const key = JSON.stringify(reference);
-    if (visited.has(key) || visited.size >= 4000) continue;
+    if (visited.has(key) || visited.size >= MAX_TRAVERSED_NODES) continue;
     visited.add(key);
     const node = campaign.scripts[reference.script]?.nodes.find(candidate => candidate.id === reference.node);
     if (!node) continue;

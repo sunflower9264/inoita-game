@@ -4,6 +4,15 @@ import { DEFAULT_EQUIPMENT_GRADE, type CharacterStatsCatalog, type EquipmentGrad
  * 稀有度档位与品级抽样。原版地面随机装备走 `GenerateGrade(0)`：先按稀有度权重选档，
  * 再在该档的品级里按 `ITEMGRADEBASE` 的档内权重抽；两层权重都来自原版表。
  */
+/** 稀有度权重按千分比配置，章节缩放也以 1000 为满值。 */
+export const RARITY_WEIGHT_SCALE = 1000;
+/** 地面随机装备最高只到品级 9；unique/epic 走静态品级。 */
+export const MAX_RANDOM_EQUIPMENT_GRADE = 9;
+/** 幸运上限 50 点。 */
+const MAX_LUCK = 50;
+/** 每点幸运从普通档移走的权重。 */
+const LUCK_WEIGHT_PER_POINT = 2;
+
 export interface GradeProfile {
   weights: readonly number[];
   rarityScale?: readonly number[];
@@ -42,14 +51,14 @@ function pickWeighted(weights: readonly number[], random: () => number): number 
 /** 稀有度权重经过章节缩放、品质下限和幸运修正后的结果。 */
 function rarityWeights(profile: GradeProfile): number[] {
   const scale = profile.rarityScale ?? [];
-  const weights = profile.weights.map((value, tier) => Math.floor(value * (scale[tier] ?? 1000) / 1000));
+  const weights = profile.weights.map((value, tier) => Math.floor(value * (scale[tier] ?? RARITY_WEIGHT_SCALE) / RARITY_WEIGHT_SCALE));
   if (profile.minRarity !== undefined) {
     for (let tier = 0; tier < weights.length; tier += 1)
       if (tier < profile.minRarity) weights[tier] = 0;
   }
-  const luck = clamp(profile.luck ?? 0, 0, 50);
+  const luck = clamp(profile.luck ?? 0, 0, MAX_LUCK);
   if (luck > 0 && weights.length >= 3 && weights[0]! > 0) {
-    const move = Math.min(Math.floor(weights[0]! / 2), luck * 2);
+    const move = Math.min(Math.floor(weights[0]! / 2), luck * LUCK_WEIGHT_PER_POINT);
     weights[0] = weights[0]! - move;
     weights[2] = weights[2]! + move;
   }
@@ -76,7 +85,7 @@ export function rollGrade(
     tier = weights.length - 1;
     while (tier > 0 && weights[tier] === 0) tier -= 1;
   }
-  const maxGrade = profile.maxGrade ?? 9;
+  const maxGrade = profile.maxGrade ?? MAX_RANDOM_EQUIPMENT_GRADE;
   const candidates = grades.filter(grade => grade.rarity === tier && grade.index <= maxGrade && grade.index < variants.length);
   const pool = candidates.length ? candidates : grades.filter(grade => grade.index <= maxGrade && grade.index < variants.length);
   if (!pool.length) return undefined;

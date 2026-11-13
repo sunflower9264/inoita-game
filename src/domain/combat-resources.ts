@@ -2,6 +2,14 @@ import { LOGIC_FRAME_MS } from './battle.ts';
 
 export const RESOURCE_RECOVERY_INTERVAL_MS=31*LOGIC_FRAME_MS;
 const RESOURCE_RECOVERY_INTERVAL_TICKS=RESOURCE_RECOVERY_INTERVAL_MS/LOGIC_FRAME_MS;
+/** 每次资源脉冲恢复 (960 + 36×等级) / 10 点生命，向下取整。 */
+const HEALTH_RECOVERY_TENTHS_BASE=960;
+const HEALTH_RECOVERY_TENTHS_PER_LEVEL=36;
+const TENTHS_PER_POINT=10;
+/** 每次资源脉冲恢复 8 点法力。 */
+const BASE_MANA_RECOVERY_PER_PULSE=8;
+/** 千分比满值：成员按 1000‰ 消耗法力，怪物不消耗。 */
+const FULL_MANA_COST_RATE_PER_THOUSAND=1000;
 
 interface ResourceAttributes {
   healthRecoveryPerPulse:number;
@@ -13,16 +21,17 @@ interface ResourceAttributes {
 /** 装备、技能和 Buff 修饰前的基础值；恢复量以每次共用脉冲的点数表示。 */
 export function defaultResourceAttributes(kind:'member'|'monster',level:number):ResourceAttributes {
   return {
-    healthRecoveryPerPulse:kind==='member'?Math.trunc((960+36*level)/10):0,
-    manaRecoveryPerPulse:8,
-    manaCostRate:kind==='member'?1000:0,
+    healthRecoveryPerPulse:kind==='member'
+      ?Math.trunc((HEALTH_RECOVERY_TENTHS_BASE+HEALTH_RECOVERY_TENTHS_PER_LEVEL*level)/TENTHS_PER_POINT):0,
+    manaRecoveryPerPulse:BASE_MANA_RECOVERY_PER_PULSE,
+    manaCostRate:kind==='member'?FULL_MANA_COST_RATE_PER_THOUSAND:0,
     manaCostReductionRate:0,
   };
 }
 
 /** 两个修正均为千分率；整数除法向零截断，保留原版允许的负成本。 */
 export function calculateManaCost(baseManaCost:number,manaCostRate:number,manaCostReductionRate:number):number {
-  const cost=Math.trunc(baseManaCost*(manaCostRate-manaCostReductionRate)/1000);
+  const cost=Math.trunc(baseManaCost*(manaCostRate-manaCostReductionRate)/FULL_MANA_COST_RATE_PER_THOUSAND);
   return cost===0?0:cost;
 }
 

@@ -96,7 +96,7 @@ export function validateStoryReferences(campaign:Campaign,world:WorldIndex,battl
       if(value.key==='map')ensure(world.maps.some(map=>map.id===value.value),'条件地图不存在 '+value.value);
       if(value.key==='near-actor')ensure(actors.has(String(value.value)),'条件人物不存在 '+value.value);
       if(value.key==='near-entity')ensure(entities.has(String(value.value)),'条件实体不存在 '+value.value);
-      if(value.key.startsWith('region:'))ensure(campaign.events.some(event=>event.id===value.key.slice(7)&&event.source==='region'),'条件区域不存在 '+value.key);
+      if(value.key.startsWith('region:'))ensure(campaign.events.some(event=>event.id===value.key.slice('region:'.length)&&event.source==='region'),'条件区域不存在 '+value.key);
     }
   };
   ensure(actors.has(campaign.start.actor),'主角不存在 '+campaign.start.actor);point(campaign.start.map,campaign.start.x,campaign.start.y,'start');

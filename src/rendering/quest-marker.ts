@@ -7,6 +7,8 @@ const MARKER_STATUSES = ['available', 'active', 'ready'] as const;
 
 /** 地图树冠的深度是 10000；任务图标必须画在它上面。 */
 export const QUEST_MARKER_DEPTH = 10001;
+/** 图标中心停在角色脚点上方 50 像素。 */
+const MARKER_LIFT_PX = 50;
 
 /**
  * 三张图标随共享入口一次装好：任何一张地图上的人都可能挂标记，
@@ -52,7 +54,7 @@ export class QuestMarker {
   position(x: number, y: number): void {
     if (x === this.lastX && y === this.lastY) return;
     this.lastX = x; this.lastY = y;
-    this.image.setPosition(x, y - 50);
+    this.image.setPosition(x, y - MARKER_LIFT_PX);
   }
 
   setAlpha(alpha: number): void {

@@ -4,6 +4,12 @@ import type { CombatActorAttributes } from './combat-damage-source.ts';
 import { physicalNormalDamage,magicNormalDamage,normalDamageForClass } from './combat-damage-source.ts';
 import { applyCombatOperation } from './combat-operation.ts';
 
+/** 魔法诅咒基础量 = 魔攻 + 智力 + 精神×1.2（按百分比换算后向下取整）。 */
+const MAGIC_CURSE_MENTALITY_PERCENT=120;
+const PERCENT=100;
+/** 圣光命令的周期治疗额外加 精神/10。 */
+const LIGHT_COMMAND_MENTALITY_HEAL_DIVISOR=10;
+
 export interface PeriodicSource {
   classId:string|null;
   attributes:CombatActorAttributes;
@@ -47,7 +53,7 @@ export function resolvePeriodicEffect(effect:BattleBuffEffect['periodic'][number
   if(effect.kind==='fixed-damage')return [{kind:'damage-target',amount:effect.amount*context.stackCount}];
   if(effect.kind==='magic-curse'){
     const source=requiredSource(context),attributes=source.attributes;
-    const base=attributes.magicAttack+attributes.primaryAttributes.intelligence+Math.trunc(attributes.primaryAttributes.mentality*12/10);
+    const base=attributes.magicAttack+attributes.primaryAttributes.intelligence+Math.trunc(attributes.primaryAttributes.mentality*MAGIC_CURSE_MENTALITY_PERCENT/PERCENT);
     let amount=Math.trunc(base*effect.ratePerThousand*context.stackCount/1000);
     // 血之盛宴：先取整出血咒基础量，再按倍率整体增幅；正倍率时改为固定三个活动队伍槽各恢复整份。
     if(source.lifeFeastRate>0)amount=Math.trunc(amount*(1000+source.lifeFeastRate)/1000);
@@ -71,7 +77,7 @@ export function resolvePeriodicEffect(effect:BattleBuffEffect['periodic'][number
     case 'healing':{
       const source=requiredSource(context);
       base=Math.trunc(source.attributeValue(effect.attribute)*context.targetHealingRate/1000);
-      if(context.buffId==='light-command')base+=Math.trunc(source.attributes.primaryAttributes.mentality/10);
+      if(context.buffId==='light-command')base+=Math.trunc(source.attributes.primaryAttributes.mentality/LIGHT_COMMAND_MENTALITY_HEAL_DIVISOR);
       break;
     }
   }

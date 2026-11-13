@@ -4,8 +4,9 @@ import { STORY_POSE_NAMES } from '../domain/content.ts';
 import { idlePoseFrame } from '../domain/basic-attack.ts';
 import { blendModeOf } from './blend-modes.ts';
 import { applyCharacterVisibility } from './character-visibility.ts';
-import { rememberEffectAnimation } from './effect-animations.ts';
+import { currentAnimationFrame, rememberEffectAnimation } from './effect-animations.ts';
 import { characterAtlasEntry, characterFrame, characterFrameList } from './character-atlas.ts';
+import { CHARACTER_FOOT_DEPTH_OFFSET } from './depths.ts';
 
 import type { AssetLease } from '../application/assets.ts';
 import { retainLoadedSceneAssets } from './scene-assets.ts';
@@ -127,7 +128,7 @@ export function clipMirrored(clip: AnimationClip, actor: ActorDefinition, entity
 }
 
 export function createCharacter(scene: Phaser.Scene, actor: ActorDefinition, entity: EntityPlacement): CharacterVisual {
-  const character: CharacterVisual = { entity, actor, container: scene.add.container(entity.x, entity.y).setDepth(entity.y + .5), layers: [], clipName: null, facing: null };
+  const character: CharacterVisual = { entity, actor, container: scene.add.container(entity.x, entity.y).setDepth(entity.y + CHARACTER_FOOT_DEPTH_OFFSET), layers: [], clipName: null, facing: null };
   try { setCharacterClip(scene, character, 'idle-south'); return character; }
   catch (error) { character.container.destroy(); throw error; }
 }
@@ -188,7 +189,7 @@ export function setCharacterClip(scene: Phaser.Scene, character: CharacterVisual
     // 转向时保留当前帧号和帧内已过时间，所有图层一起接上。
     const previous = character.clipName?.startsWith('walk-') && name.startsWith('walk-')
       ? character.layers[0]?.anims : null;
-    const startFrame = previous?.currentFrame ? (previous.currentFrame.index - 1) % clip.frames : 0;
+    const startFrame = previous?.currentFrame ? currentAnimationFrame(previous) % clip.frames : 0;
     const elapsed = previous?.accumulator ?? 0;
     replaceLayers(scene, character, name);
     // 动作类动画播放一次，行走与待机循环。普攻走 playCharacterSequence，不经过这里。

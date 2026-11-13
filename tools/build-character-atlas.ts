@@ -29,6 +29,16 @@ const GENERATED = path.join(ROOT, 'src', 'generated', 'character-atlas.ts');
 /** 只给工具做源路径覆盖判断；运行时不导入，避免把别名表打进游戏包。 */
 const TOOL_ALIASES = path.join(ROOT, 'tools', 'character-atlas-aliases.ts');
 const PAGE_KEY_PREFIX = 'characters-atlas:';
+/** PNG 文件头：前 4 字节签名与 IHDR 宽高偏移。 */
+const PNG_SIGNATURE = 0x89504e47;
+const PNG_MIN_HEADER_BYTES = 24;
+const PNG_WIDTH_OFFSET = 16;
+const PNG_HEIGHT_OFFSET = 20;
+/** pngjs 的 colorType 6 = RGBA，图集必须保留透明通道。 */
+const PNG_COLOR_TYPE_RGBA = 6;
+/** 帧名前缀取内容哈希前 10 位，帧号补零到 3 位；运行时按同一格式找帧。 */
+const FRAME_PREFIX_HEX_LENGTH = 10;
+const FRAME_INDEX_DIGITS = 3;
 /**
  * 角色页用 1024：2048 页会让一个小怪也拉起整页几十 MB 的解码纹理。
  * 1024 页更多，但单个角色实际加载的页面积显著变小。
@@ -121,7 +131,7 @@ interface PackedFrameItem extends FrameItem {
 }
 
 const compareText = (a: string, b: string): number => a < b ? -1 : a > b ? 1 : 0;
-const frameName = (prefix: string, index: number): string => `${prefix}-${String(index).padStart(3, '0')}`;
+export const frameName = (prefix: string, index: number): string => `${prefix}-${String(index).padStart(FRAME_INDEX_DIGITS, '0')}`;
 
 type HashFile = (file: string) => string;
 
@@ -139,6 +149,11 @@ function createHashFile(): HashFile {
     cache.set(file, hash);
     return hash;
   };
+}
+
+/** 素材分类目录：`assets/<分类>/...` 的第二段；不同分类的同内容图片不能共用帧。 */
+function assetKindOf(file: string): string {
+  return file.split('/')[1] ?? '';
 }
 
 /**
@@ -160,7 +175,7 @@ function canonicalDocuments(hashFile: HashFile): {
   for (const record of records) {
     const hash = hashFile(record.layer.file);
     if (!hash) continue;
-    const kind = record.layer.file.split('/')[1] ?? '';
+    const kind = assetKindOf(record.layer.file);
     const group = [hash, record.clip.frameWidth, record.clip.frameHeight, record.clip.frames, kind].join('|');
     const entries = groups.get(group);
     if (entries) entries.push(record.layer); else groups.set(group, [record.layer]);
@@ -179,7 +194,7 @@ function canonicalDocuments(hashFile: HashFile): {
   for (const record of records) {
     const hash = hashFile(record.layer.file);
     if (!hash) continue;
-    const kind = record.layer.file.split('/')[1] ?? '';
+    const kind = assetKindOf(record.layer.file);
     const group = [hash, record.clip.frameWidth, record.clip.frameHeight, record.clip.frames, kind].join('|');
     const chosen = canonical.get(group);
     if (!chosen) continue;
@@ -238,7 +253,7 @@ export function collectCharacterAtlasSource(): CharacterAtlasSource {
         if (known && known !== geometry)
           throw new Error(`同一内容出现不同帧尺寸，无法共用帧名：${layer.file}（${known} / ${geometry}）`);
         hashGeometries.set(hash, geometry);
-        const prefix = hash.slice(0, 10);
+        const prefix = hash.slice(0, FRAME_PREFIX_HEX_LENGTH);
         const seenPrefix = prefixGeometries.get(prefix);
         if (seenPrefix && seenPrefix !== geometry)
           throw new Error(`不同内容共用帧名前缀：${prefix}（${seenPrefix} / ${geometry}）`);
@@ -261,9 +276,9 @@ export function collectCharacterAtlasSource(): CharacterAtlasSource {
   for (const [id, group] of [...groups].sort(([a], [b]) => compareText(a, b))) {
     const file = [...group.paths].sort(compareText)[0]!;
     const bytes = fs.readFileSync(sourceAssetPath(file));
-    if (bytes.length < 24 || bytes.readUInt32BE(0) !== 0x89504e47)
+    if (bytes.length < PNG_MIN_HEADER_BYTES || bytes.readUInt32BE(0) !== PNG_SIGNATURE)
       throw new Error(`角色图集素材不是有效的 PNG：${file}`);
-    const width = bytes.readUInt32BE(16), height = bytes.readUInt32BE(20);
+    const width = bytes.readUInt32BE(PNG_WIDTH_OFFSET), height = bytes.readUInt32BE(PNG_HEIGHT_OFFSET);
     const columns = Math.floor(width / group.frameWidth);
     const rows = Math.floor(height / group.frameHeight);
     if (columns < 1 || rows < 1 || columns * rows < group.frames)
@@ -379,7 +394,7 @@ function writePages(source: CharacterAtlasSource, pages: PackedFrameItem[][]): W
         size: { w: width, h: height }, scale: '1' }
     });
     written.push({ key, file, data, frame: items[0]!.id, width, height,
-      png: PNG.sync.write(png, { colorType: 6 }), json });
+      png: PNG.sync.write(png, { colorType: PNG_COLOR_TYPE_RGBA }), json });
   }
   return written;
 }

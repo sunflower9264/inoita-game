@@ -46,6 +46,13 @@ final class UpdateState {
     private static final String MANIFEST_COPY = ".manifest.json";
     private static final String BUILT_AT_COPY = ".built-at";
     private static final String COMPLETE_MARKER = ".complete";
+    private static final int READ_BUFFER_BYTES = 4096;
+
+    /** setLastCheck 的持久化结果；更新器和页面靠这些值判断检查状态。 */
+    static final String CHECK_RESULT_ERROR = "error";
+    static final String CHECK_RESULT_NONE = "none";
+    static final String CHECK_RESULT_AVAILABLE = "available";
+    static final String CHECK_RESULT_BLOCKED = "blocked";
 
     private final SharedPreferences preferences;
     private final File updateRoot;
@@ -81,6 +88,10 @@ final class UpdateState {
 
     File manifestCopy(String buildId) {
         return new File(buildDir(buildId), MANIFEST_COPY);
+    }
+
+    File manifestCopy(File buildRoot) {
+        return new File(buildRoot, MANIFEST_COPY);
     }
 
     File builtAtCopy(String buildId) {
@@ -334,7 +345,7 @@ final class UpdateState {
     private static String readText(File file) throws IOException {
         try (InputStream input = new FileInputStream(file)) {
             ByteArrayOutputStream output = new ByteArrayOutputStream();
-            byte[] buffer = new byte[4096];
+            byte[] buffer = new byte[READ_BUFFER_BYTES];
             int read;
             while ((read = input.read(buffer)) != -1) output.write(buffer, 0, read);
             return new String(output.toByteArray(), StandardCharsets.UTF_8);

@@ -3,6 +3,13 @@ import {skillForGrowth,type SkillGrowthProfile} from './battle.ts';
 import type {BattleBuffEffect,BattleCatalog,LearnedReactionSkillId,SkillLoadout,SkillDefinition} from './battle.ts';
 import type {BattleBuffKey} from './battle-semantics.ts';
 
+/** 概率阈值按千分制存放；掷 1..999 后严格小于阈值才命中。 */
+const CHANCE_ROLL_MAX=999;
+/** 吸血、伤害转化等比率字段以千分数存放（1000 = 100%）。 */
+const PER_THOUSAND=1000;
+/** 血之渴望只在概率阈值至少 200（千分制 20%）时参与判定。 */
+const BLOOD_THIRST_MIN_CHANCE=200;
+
 export interface SkillReactionBuff {
   key:BattleBuffKey;
   rankPriority:number;
@@ -118,7 +125,7 @@ export function skillReactionEffects(skill:SkillDefinition):string[] {
 }
 
 function succeeds(threshold:number,random:()=>number):boolean {
-  return threshold>0 && Math.floor(random()*999)+1<threshold;
+  return threshold>0 && Math.floor(random()*CHANCE_ROLL_MAX)+1<threshold;
 }
 
 function successfulAttack(event:AttackReactionEvent):boolean {
@@ -127,9 +134,9 @@ function successfulAttack(event:AttackReactionEvent):boolean {
 
 /** Apply healing and its visual before reading the current mana recovery attribute. */
 export function executeBloodThirstReaction(event:Extract<SkillReactionEvent,{kind:'blood-thirst'}>,ports:BloodThirstReactionPorts):void {
-  if(event.damageKind!=='physical'||!successfulAttack(event)||event.chanceThreshold<200||!succeeds(event.chanceThreshold,ports.random))return;
+  if(event.damageKind!=='physical'||!successfulAttack(event)||event.chanceThreshold<BLOOD_THIRST_MIN_CHANCE||!succeeds(event.chanceThreshold,ports.random))return;
   const rate=Math.max(0,ports.lifeDrainPerThousand());
-  ports.apply({kind:'restore-health',targetId:event.ownerId,amount:Math.trunc(event.hitDamage*rate/1000)});
+  ports.apply({kind:'restore-health',targetId:event.ownerId,amount:Math.trunc(event.hitDamage*rate/PER_THOUSAND)});
   ports.apply({kind:'play-effect',targetId:event.ownerId,effect:'life-drain'});
   const mana=ports.manaRecovery();
   if(mana>0){
@@ -159,7 +166,7 @@ export function resolveSkillReactions(
       const rate=reactions.reduce((sum,reaction)=>sum+(reaction.kind==='blood-sword'?reaction.lifeDrainPerThousand:0),
         event.otherLifeDrainPerThousand);
       if(rate>0){
-        commands.push({kind:'restore-health',targetId:event.ownerId,amount:Math.trunc(event.hitDamage*rate/1000)});
+        commands.push({kind:'restore-health',targetId:event.ownerId,amount:Math.trunc(event.hitDamage*rate/PER_THOUSAND)});
         commands.push({kind:'play-effect',targetId:event.ownerId,effect:'life-drain'});
       }
     }
@@ -195,7 +202,7 @@ export function resolveSkillReactions(
   }else if(event.kind==='physical-flare'){
     // 副手先抽额外阈值、失败再抽一般阈值；两者为 0 也照抽，所以不经过 succeeds 的短路。
     if(event.damageKind==='physical'&&successfulAttack(event)){
-      const draw=()=>Math.floor(ports.random()*999)+1;
+      const draw=()=>Math.floor(ports.random()*CHANCE_ROLL_MAX)+1;
       const flares=reactions.filter(reaction=>reaction.kind==='flare');
       // 原版这一段无条件抽样（17c9f8 的普通概率、副手再先抽一次）：没学残影时阈值是 0，
       // 骰子照样消耗，后面的反伤扩散、痛苦火焰与黑暗之怒才会拿到同一序号。

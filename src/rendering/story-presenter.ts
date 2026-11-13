@@ -20,6 +20,15 @@ import type { StoryStageScene } from '../scenes/story-stage-scene.ts';
 import type { StoryEntityState } from '../domain/story-world.ts';
 import { freezeSnapshot, storyDevMode } from '../domain/dev-mode.ts';
 
+/** 地点特效地面层：在底图之上、人物之下。 */
+const STORY_GROUND_EFFECT_DEPTH = -9999;
+/** 地点特效顶层：在人物之上、树冠（10000）之下。 */
+const STORY_TOP_EFFECT_DEPTH = 9999;
+/** 幕布盖住全部世界层。 */
+const STORY_CURTAIN_DEPTH = 20000;
+/** 幕布按视口三倍铺开，镜头缩放时四边仍能盖住画面。 */
+const STORY_CURTAIN_COVERAGE_SCALE = 3;
+
 interface Performer { visual: CharacterVisual; facing: Facing; worldEntityId?: string; unpositioned?:boolean; storyPoseHold?: boolean; clearPose?: () => void }
 type VisualAction = Exclude<PerformanceAction, { type: 'parallel' }>;
 /** 跳过时只需要改逻辑舞台状态的演员动作。 */
@@ -274,7 +283,7 @@ export class StoryPresenter implements StoryPresentationPort {
   private effectLayer(ground: boolean): Phaser.GameObjects.Layer {
     const existing = ground ? this.groundEffects : this.topEffects;
     if (existing?.scene) return existing;
-    const layer = this.scene().add.layer().setDepth(ground ? -9999 : 9999);
+    const layer = this.scene().add.layer().setDepth(ground ? STORY_GROUND_EFFECT_DEPTH : STORY_TOP_EFFECT_DEPTH);
     if (ground) this.groundEffects = layer; else this.topEffects = layer;
     return layer;
   }
@@ -409,9 +418,10 @@ export class StoryPresenter implements StoryPresentationPort {
   }
   private drawCurtain(): void {
     const scene = this.scene();
-    if (!this.curtain?.scene) this.curtain = scene.add.rectangle(0, 0, 1, 1, this.color).setOrigin(0).setScrollFactor(0).setDepth(20000);
+    if (!this.curtain?.scene) this.curtain = scene.add.rectangle(0, 0, 1, 1, this.color).setOrigin(0).setScrollFactor(0).setDepth(STORY_CURTAIN_DEPTH);
     // 画面遮罩也会受镜头倍率影响，向四边留足覆盖范围。
-    this.curtain.setPosition(-scene.scale.width, -scene.scale.height).setSize(scene.scale.width * 3, scene.scale.height * 3)
+    this.curtain.setPosition(-scene.scale.width, -scene.scale.height)
+      .setSize(scene.scale.width * STORY_CURTAIN_COVERAGE_SCALE, scene.scale.height * STORY_CURTAIN_COVERAGE_SCALE)
       .setFillStyle(this.color).setAlpha(this.opacity).setVisible(this.opacity > 0);
     scene.clearEarlyCurtain();
   }

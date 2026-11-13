@@ -8,8 +8,11 @@
 export const CLOUD_PATH = '/__cloud';
 export const DIAGNOSTICS_REPORT_PATH = '/__diagnostics/report';
 
+/** 宿主注入的地址表协议版本；结构变更时加一，旧版本整体降级为同源默认。 */
+const RUNTIME_ENDPOINTS_VERSION = 1;
+
 interface RuntimeEndpoints {
-  version: 1;
+  version: typeof RUNTIME_ENDPOINTS_VERSION;
   /** 完整的云存档基址；空串表示同源。 */
   cloudBase: string;
   /** 完整的诊断上报地址；空串表示同源。 */
@@ -23,7 +26,7 @@ interface EndpointGlobals {
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
 
 function emptyEndpoints(): RuntimeEndpoints {
-  return { version: 1, cloudBase: '', diagnosticsReport: '' };
+  return { version: RUNTIME_ENDPOINTS_VERSION, cloudBase: '', diagnosticsReport: '' };
 }
 
 /**
@@ -63,7 +66,7 @@ export function endpointsFromBase(base: string): RuntimeEndpoints {
   const normalized = base.trim().replace(/\/+$/, '');
   if (!normalized) return emptyEndpoints();
   return {
-    version: 1,
+    version: RUNTIME_ENDPOINTS_VERSION,
     cloudBase: `${normalized}${CLOUD_PATH}`,
     diagnosticsReport: `${normalized}${DIAGNOSTICS_REPORT_PATH}`,
   };
@@ -71,14 +74,14 @@ export function endpointsFromBase(base: string): RuntimeEndpoints {
 
 /**
  * 读取宿主注入的地址。网页没有注入时就是同源默认；Android/热更新必须注入
- * version 1 的对象。非法字段单独降级为空，不把坏地址交给网络层。
+ * 当前协议版本的对象。非法字段单独降级为空，不把坏地址交给网络层。
  */
 export function resolveEndpoints(globals: EndpointGlobals = globalThis as EndpointGlobals): RuntimeEndpoints {
   const raw = globals.__inoitaEndpoints;
-  if (!raw || typeof raw !== 'object' || (raw as { version?: unknown }).version !== 1) return emptyEndpoints();
+  if (!raw || typeof raw !== 'object' || (raw as { version?: unknown }).version !== RUNTIME_ENDPOINTS_VERSION) return emptyEndpoints();
   const record = raw as { cloudBase?: unknown; diagnosticsReport?: unknown };
   return {
-    version: 1,
+    version: RUNTIME_ENDPOINTS_VERSION,
     cloudBase: normalizeEndpoint(record.cloudBase, CLOUD_PATH) ?? '',
     diagnosticsReport: normalizeEndpoint(record.diagnosticsReport, DIAGNOSTICS_REPORT_PATH) ?? '',
   };

@@ -3,7 +3,8 @@ import type { EffectClip, EffectLayer } from '../domain/content.ts';
 import { EFFECT_ATLAS_BY_FILE, EFFECT_ATLAS_PAGES } from '../generated/effect-atlas.ts';
 import { backdropApproximation, layerDraw } from './effect-colors.ts';
 import { blendModeOf } from './blend-modes.ts';
-import { rememberEffectAnimation } from './effect-animations.ts';
+import { currentAnimationFrame, rememberEffectAnimation } from './effect-animations.ts';
+import { EFFECT_DEPTH_OFFSET } from './depths.ts';
 import {retainLoadedSceneAssets} from './scene-assets.ts';
 import type {AssetLease} from '../application/assets.ts';
 
@@ -51,7 +52,7 @@ export function effectLayerBlendMode(layer: EffectLayer): Phaser.BlendModes {
 }
 
 export function createEffect(scene: Phaser.Scene, clip: EffectClip, x: number, y: number, loop = false): Phaser.GameObjects.Container {
-  const effect = scene.add.container(x, y).setDepth(y + 1);
+  const effect = scene.add.container(x, y).setDepth(y + EFFECT_DEPTH_OFFSET);
   setEffectClip(scene, effect, clip, loop);
   return effect;
 }
@@ -60,7 +61,7 @@ export function createEffect(scene: Phaser.Scene, clip: EffectClip, x: number, y
 export function setEffectClip(scene: Phaser.Scene, effect: Phaser.GameObjects.Container, clip: EffectClip, loop: boolean): void {
   leaseEffect(scene, effect, clip);
   const previous = (effect.list[0] as Phaser.GameObjects.Sprite | undefined)?.anims;
-  const startFrame = previous?.currentFrame ? (previous.currentFrame.index - 1) % clip.frames : 0;
+  const startFrame = previous?.currentFrame ? currentAnimationFrame(previous) % clip.frames : 0;
   const elapsed = previous?.accumulator ?? 0;
   buildEffectLayers(scene, effect, clip, loop, startFrame, elapsed, () => effect.destroy());
 }
@@ -197,7 +198,7 @@ export class EffectPool {
     const pooled = this.free.get(clip)?.pop();
     const effect = pooled?.scene ? pooled : undefined;
     if (!effect) {
-      const created = this.scene.add.container(x, y).setDepth(y + 1);
+      const created = this.scene.add.container(x, y).setDepth(y + EFFECT_DEPTH_OFFSET);
       leaseEffect(this.scene, created, clip);
       const animations = buildEffectLayers(this.scene, created, clip, false, 0, 0, () => this.release(created));
       pooledEffects.set(created, { clip, animations });
@@ -205,7 +206,7 @@ export class EffectPool {
     }
     pooledFree.delete(effect);
     this.idle--;
-    effect.setPosition(x, y).setDepth(y + 1).setVisible(true).setActive(true);
+    effect.setPosition(x, y).setDepth(y + EFFECT_DEPTH_OFFSET).setVisible(true).setActive(true);
     replayEffect(this.scene, effect, pooledEffects.get(effect)!.animations, () => this.release(effect));
     return effect;
   }

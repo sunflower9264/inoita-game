@@ -38,6 +38,16 @@ const GRADLE_VERSION = '9.7.1';
 const CMDLINE_TOOLS_VERSION = '15859902';
 const CMDLINE_TOOLS_URL = `https://dl.google.com/android/repository/commandlinetools-${cmdlineToolsPlatform()}-${CMDLINE_TOOLS_VERSION}_latest.zip`;
 const GRADLE_URL = `https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip`;
+/** 热更清单 buildId 是 16 位小写十六进制。 */
+const BUILD_ID_PATTERN = /^[0-9a-f]{16}$/;
+/** SDK/Gradle 下载失败时的重试次数。 */
+const DOWNLOAD_RETRY_COUNT = 3;
+/** 首次生成 release keystore 的密钥参数。 */
+const KEYSTORE_KEY_SIZE_BITS = 2048;
+const KEYSTORE_VALIDITY_DAYS = 10000;
+const KEYSTORE_PASSWORD_BYTES = 18;
+/** sdkmanager 许可交互最多预输入多少个 y。 */
+const SDK_LICENSE_PROMPT_ANSWERS = 64;
 
 /** 官方只放平台定制包，没有通用包：darwin 还分 arm64 和 x86_64。 */
 function cmdlineToolsPlatform() {
@@ -100,7 +110,7 @@ function installSdk() {
     console.log(`[apk] 安装 cmdline-tools 到 ${sdk}`);
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'inoita-sdk-'));
     const zip = path.join(tmp, 'cmdline-tools.zip');
-    run('curl', ['-fL', '--retry', '3', '-o', zip, CMDLINE_TOOLS_URL]);
+    run('curl', ['-fL', '--retry', String(DOWNLOAD_RETRY_COUNT), '-o', zip, CMDLINE_TOOLS_URL]);
     fs.rmSync(path.join(sdk, 'cmdline-tools', 'latest'), { recursive: true, force: true });
     fs.rmSync(path.join(sdk, 'cmdline-tools', 'unpack'), { recursive: true, force: true });
     fs.mkdirSync(path.join(sdk, 'cmdline-tools', 'unpack'), { recursive: true });
@@ -111,7 +121,7 @@ function installSdk() {
 
   console.log('[apk] 接受 Android SDK 许可并安装 ' + PLATFORM + ' / build-tools ' + BUILD_TOOLS);
   const licenses = spawnSync(sdkmanager, ['--sdk_root=' + sdk, '--licenses'], {
-    input: 'y\n'.repeat(64), encoding: 'utf8', maxBuffer: 16 * 1024 * 1024,
+    input: 'y\n'.repeat(SDK_LICENSE_PROMPT_ANSWERS), encoding: 'utf8', maxBuffer: 16 * 1024 * 1024,
     env: { ...process.env, JAVA_HOME: javaHome },
   });
   if (licenses.status !== 0 && !/already accepted/i.test(`${licenses.stdout}${licenses.stderr}`)) {
@@ -133,7 +143,7 @@ function ensureGradleWrapper() {
     console.log(`[apk] 下载 Gradle ${GRADLE_VERSION}`);
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'inoita-gradle-'));
     const zip = path.join(tmp, 'gradle.zip');
-    run('curl', ['-fL', '--retry', '3', '-o', zip, GRADLE_URL]);
+    run('curl', ['-fL', '--retry', String(DOWNLOAD_RETRY_COUNT), '-o', zip, GRADLE_URL]);
     run('unzip', ['-q', zip, '-d', path.join(home, '.local')]);
     fs.rmSync(tmp, { recursive: true, force: true });
   }
@@ -153,7 +163,7 @@ function ensureKeystore() {
   const keystoreDir = path.join(home, '.config', 'inoita');
   fs.mkdirSync(keystoreDir, { recursive: true });
   const keystore = path.join(keystoreDir, 'android-release.jks');
-  const password = crypto.randomBytes(18).toString('base64url');
+  const password = crypto.randomBytes(KEYSTORE_PASSWORD_BYTES).toString('base64url');
   if (!has(keystore)) {
     run('keytool', [
       '-genkeypair', '-noprompt',
@@ -162,8 +172,8 @@ function ensureKeystore() {
       '-keypass', password,
       '-alias', 'inoita',
       '-keyalg', 'RSA',
-      '-keysize', '2048',
-      '-validity', '10000',
+      '-keysize', String(KEYSTORE_KEY_SIZE_BITS),
+      '-validity', String(KEYSTORE_VALIDITY_DAYS),
       '-dname', 'CN=Inotia 4, OU=Personal, O=Personal, L=Unknown, ST=Unknown, C=CN',
     ], { env: { JAVA_HOME: javaHome } });
     fs.chmodSync(keystore, 0o600);
@@ -216,7 +226,7 @@ function checkUpdateArtifacts() {
     requireFile(`${pointer}.sig`);
   }
   const latest = JSON.parse(fs.readFileSync(requireFile('latest.json'), 'utf8'));
-  if (typeof latest.buildId !== 'string' || !/^[0-9a-f]{16}$/.test(latest.buildId))
+  if (typeof latest.buildId !== 'string' || !BUILD_ID_PATTERN.test(latest.buildId))
     throw new Error('dist/update/latest.json 的 buildId 无效');
   requireFile(`${latest.buildId}.json`);
   requireFile(`${latest.buildId}.json.sig`);

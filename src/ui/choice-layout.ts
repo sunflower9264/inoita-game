@@ -26,6 +26,8 @@ const OPTION_MIN_HEIGHT = 56, OPTION_GAP = 8, OPTION_TEXT_PADDING = 20;
 const PANEL_BOTTOM = 620, PANEL_TOP_LIMIT = 20;
 /** 面板顶部内边距、底部内边距，以及描述行与选项之间的间距、描述区最大高度。 */
 const HEADER_PADDING_TOP = 14, PANEL_PADDING_BOTTOM = 16;
+/** 标题/描述区与选项列表之间的固定留白。 */
+const LIST_HEADER_GAP = 16;
 const DESCRIPTION_GAP = 10, DESCRIPTION_VIEW_HEIGHT = 44;
 
 export function layoutChoicePanel(input: ChoiceLayoutInput): ChoiceLayout {
@@ -33,13 +35,13 @@ export function layoutChoicePanel(input: ChoiceLayoutInput): ChoiceLayout {
   const contentHeight=heights.reduce((sum,height)=>sum+height,0)+Math.max(0,heights.length-1)*OPTION_GAP;
   const descriptionVisible=input.descriptionHeight!==undefined&&input.descriptionHeight>0;
   const view=descriptionVisible?Math.min(DESCRIPTION_VIEW_HEIGHT,input.descriptionHeight!):0;
-  const header=HEADER_PADDING_TOP+input.promptHeight+(descriptionVisible?view+DESCRIPTION_GAP:0)+16;
+  const header=HEADER_PADDING_TOP+input.promptHeight+(descriptionVisible?view+DESCRIPTION_GAP:0)+LIST_HEADER_GAP;
   const panelHeight=Math.min(PANEL_BOTTOM-PANEL_TOP_LIMIT,header+contentHeight+PANEL_PADDING_BOTTOM),top=PANEL_BOTTOM-panelHeight;
   const promptY=top+HEADER_PADDING_TOP;
   let y=promptY+input.promptHeight;
   const descriptionY=descriptionVisible?y+DESCRIPTION_GAP:undefined;
   if(descriptionVisible)y+=DESCRIPTION_GAP+view;
-  y+=16;
+  y+=LIST_HEADER_GAP;
   const available=top+panelHeight-PANEL_PADDING_BOTTOM-y;
   const listViewport=Math.max(OPTION_MIN_HEIGHT,Math.min(available,contentHeight));
   let offset=0;

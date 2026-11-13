@@ -29,6 +29,16 @@ const SCRYPT_R = 8;
 const SCRYPT_P = 1;
 const SCRYPT_KEY_LENGTH = 32;
 const SCRYPT_MAXMEM = 64 * 1024 * 1024;
+/** 读取旧密码哈希时允许的 scrypt 参数范围；异常参数直接拒绝，避免拖垮登录。 */
+const SCRYPT_MIN_N = 2;
+const SCRYPT_MAX_N = 65536;
+const SCRYPT_MIN_R = 1;
+const SCRYPT_MAX_R = 32;
+const SCRYPT_MIN_P = 1;
+const SCRYPT_MAX_P = 16;
+const SCRYPT_VERIFY_MAXMEM = 128 * 1024 * 1024;
+/** 新密码哈希使用的盐长度。 */
+const SCRYPT_SALT_BYTES = 16;
 const MAX_CONCURRENT_SCRYPT = 2;
 const DUMMY_SALT = Buffer.from('inoita-cloud-dummy-salt');
 
@@ -156,7 +166,7 @@ async function withScryptSlot<T>(work: () => Promise<T>): Promise<T> {
 }
 
 async function hashPassword(password: string): Promise<string> {
-  const salt = randomBytes(16);
+  const salt = randomBytes(SCRYPT_SALT_BYTES);
   const key = await withScryptSlot(() => scryptAsync(password, salt, SCRYPT_KEY_LENGTH, {
     N: SCRYPT_N, r: SCRYPT_R, p: SCRYPT_P, maxmem: SCRYPT_MAXMEM,
   }));
@@ -169,12 +179,15 @@ async function verifyPassword(password: string, stored: string): Promise<boolean
   const N = Number(parts[1]);
   const r = Number(parts[2]);
   const p = Number(parts[3]);
-  if (![N, r, p].every(Number.isSafeInteger) || N < 2 || N > 65536 || r < 1 || r > 32 || p < 1 || p > 16) return false;
+  if (![N, r, p].every(Number.isSafeInteger)
+    || N < SCRYPT_MIN_N || N > SCRYPT_MAX_N
+    || r < SCRYPT_MIN_R || r > SCRYPT_MAX_R
+    || p < SCRYPT_MIN_P || p > SCRYPT_MAX_P) return false;
   const salt = Buffer.from(parts[4] ?? '', 'base64');
   const expected = Buffer.from(parts[5] ?? '', 'base64');
   if (!salt.length || !expected.length) return false;
   const actual = await withScryptSlot(() => scryptAsync(password, salt, expected.length, {
-    N, r, p, maxmem: 128 * 1024 * 1024,
+    N, r, p, maxmem: SCRYPT_VERIFY_MAXMEM,
   }));
   return actual.length === expected.length && timingSafeEqual(actual, expected);
 }

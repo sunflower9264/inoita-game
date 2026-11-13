@@ -1,4 +1,4 @@
-import type { DebugMark } from '../debug/debug-marks.ts';
+import { DEBUG_MARK_VERSION, type DebugMark } from '../debug/debug-marks.ts';
 import { newStorySession } from '../domain/story-class.ts';
 import type { SavedGameContent } from './saved-game.ts';
 import { prepareDebugWorld } from './debug-world.ts';
@@ -7,7 +7,7 @@ import { prepareDebugWorld } from './debug-world.ts';
 export function prepareDebugMark(value: DebugMark, content: SavedGameContent): DebugMark {
   const mark = structuredClone(value);
   const selected = content.storyClasses.classes.find(entry => entry.id === mark.session?.classId);
-  if (mark.version !== 1 || !selected || !mark.summary?.name || mark.summary.classId !== selected.id)
+  if (mark.version !== DEBUG_MARK_VERSION || !selected || !mark.summary?.name || mark.summary.classId !== selected.id)
     throw new Error('调试标记角色或摘要无效');
   const candidate = newStorySession(content.campaign, content.world.actors[content.campaign.start.actor], selected,
     content.items, content.characterStats, content.battleCatalog, content.companions);

@@ -7,6 +7,12 @@ import { BREAKABLE_ENEMY_IDS } from './drops.ts';
 
 type WorldSpawn = EnemySpawn | CampaignEnemyPlacement;
 
+/** 可破坏景物替换成特殊敌人的百分比权重：5% 出本类景物，7% 出箱子。 */
+const BREAKABLE_SPECIAL_ENEMY_PERCENT = 5;
+const BREAKABLE_BOX_PERCENT = 7;
+/** 权重骰按 0..99 的百分比抽取。 */
+const PERCENT_SCALE = 100;
+
 export interface QuestEnemySnapshot {
   revision: number;
   ids: ReadonlySet<string>;
@@ -285,14 +291,14 @@ capturePreparedState():{roster:ReturnType<EnemyRoster['captureState']>;breakable
     return enemyId===spawn.enemyId?spawn:{...spawn,enemyId};
   }
   private rollBreakableEnemy(original:string):string{
-    const roll=Math.floor(this.random()*100);
+    const roll=Math.floor(this.random()*PERCENT_SCALE);
     if(this.breakableSpawn==='bush'){
-      if(roll<5)return BREAKABLE_ENEMY_IDS.bush;
-      if(roll<7)return BREAKABLE_ENEMY_IDS.box;
+      if(roll<BREAKABLE_SPECIAL_ENEMY_PERCENT)return BREAKABLE_ENEMY_IDS.bush;
+      if(roll<BREAKABLE_BOX_PERCENT)return BREAKABLE_ENEMY_IDS.box;
     }else if(this.breakableSpawn==='jar'){
-      if(roll<5)return BREAKABLE_ENEMY_IDS.jar;
-      if(roll<7)return BREAKABLE_ENEMY_IDS.box;
-    }else if(roll<5)return BREAKABLE_ENEMY_IDS.box;
+      if(roll<BREAKABLE_SPECIAL_ENEMY_PERCENT)return BREAKABLE_ENEMY_IDS.jar;
+      if(roll<BREAKABLE_BOX_PERCENT)return BREAKABLE_ENEMY_IDS.box;
+    }else if(roll<BREAKABLE_SPECIAL_ENEMY_PERCENT)return BREAKABLE_ENEMY_IDS.box;
     return original;
   }
   private collectQuestSpawns():number{

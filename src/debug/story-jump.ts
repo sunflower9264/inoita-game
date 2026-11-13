@@ -30,6 +30,8 @@ const QUEST_STATUS_LABELS: Record<QuestStatus, string> = {
   locked: '未解锁', available: '可接取', active: '进行中', ready: '待交付', completed: '已完成',
 };
 const RUNNING_STATUSES: readonly QuestStatus[] = ['active', 'ready'];
+/** 任务簿快照的结构版本；与 `domain/quest-book.ts` 的 QUEST_BOOK_STATE_VERSION 保持一致。 */
+const QUEST_BOOK_STATE_VERSION = 5;
 const describe = (error: unknown): string => error instanceof Error ? error.message : String(error);
 
 /**
@@ -96,7 +98,7 @@ function prepareFromStartTable(source: Session, session: Session, task: StoryDeb
   const factSequences = (start.factSequences ?? base.questBook.factSequences)
     .map(([source, sequence]) => [source, sequence] as [string, number]);
   const questBook: QuestBookState = {
-    version: 5, quests: [...questStates], runningQuestIds: running, factSequences,
+    version: QUEST_BOOK_STATE_VERSION, quests: [...questStates], runningQuestIds: running, factSequences,
   };
 
   // 2. 剧情运行时：从干净快照出发，保留现场表声明的完成事件、序号与整局开场。
@@ -115,22 +117,22 @@ function prepareFromStartTable(source: Session, session: Session, task: StoryDeb
 
   // 3. 世界：套用现场落点。`cut === 'before-opening'` 时落点是开幕事件的开场图，
   //    与旧目录里的 `entry` 不一定相同，所以这里只信现场表。
-  const rawWorld = structuredClone(start.world);
-  if (!rawWorld) throw new Error('现场表缺少世界落点');
-  const flags = new Set<string>(rawWorld.flags ?? base.storyWorld.flags);
-  for (const absent of rawWorld.absentActors ?? [])
+  const worldSource = structuredClone(start.world);
+  if (!worldSource) throw new Error('现场表缺少世界落点');
+  const flags = new Set<string>(worldSource.flags ?? base.storyWorld.flags);
+  for (const absent of worldSource.absentActors ?? [])
     flags.add(JSON.stringify(['absent-actor', absent.map, absent.characterId ?? absent.actor]));
-  for (const absent of rawWorld.absentEnemies ?? [])
+  for (const absent of worldSource.absentEnemies ?? [])
     flags.add(JSON.stringify(['absent-enemy', absent.map, absent.enemyId]));
-  const snapshot = rawWorld as Record<string, unknown>;
+  const snapshot = worldSource as Record<string, unknown>;
   delete snapshot.absentActors; delete snapshot.absentEnemies;
   const world: StoryWorldSnapshot = {
     ...base.storyWorld,
     ...(snapshot as Omit<Partial<StoryWorldSnapshot>, 'location'>),
     flags: [...flags],
     location: {
-      map: rawWorld.location.map, x: rawWorld.location.x, y: rawWorld.location.y,
-      facing: rawWorld.location.facing,
+      map: worldSource.location.map, x: worldSource.location.x, y: worldSource.location.y,
+      facing: worldSource.location.facing,
     },
   };
 

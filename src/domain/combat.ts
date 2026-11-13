@@ -7,7 +7,7 @@ import { attackSplashTargets,selectAttackSplashCenter } from './attack-splash.ts
 import { needsTarget, settleSkillRepeat, skillPlaybackEvents, type SkillRepeatState } from './skill-action.ts';
 import { planCharge } from './target-charge.ts';
 import { planRearTeleport } from './rear-teleport.ts';
-import { basicSelectionFrames } from './combat-tempo.ts';
+import { basicSelectionFrames, FULL_ATTACK_SPEED_RATE } from './combat-tempo.ts';
 import type { ChargePlan } from './target-charge.ts';
 import type { BattleStateKey } from './battle-semantics.ts';
 import { combatStateCapabilities } from './combat-state.ts';
@@ -456,7 +456,7 @@ export class CombatController {
       this.state = 'idle'; this.active = undefined; this.port.stop(); this.publish();
     });
     // 节奏锁从真正开始播放时计，经过接近阶段不算；取消这个动作也不会缩短它。
-    if(!skill&&selection&&this.clock)this.setBasicReadyAt(this.clock()+basicSelectionFrames(selection,action.getAttackSpeedRate?.()??1000));
+    if(!skill&&selection&&this.clock)this.setBasicReadyAt(this.clock()+basicSelectionFrames(selection,action.getAttackSpeedRate?.()??FULL_ATTACK_SPEED_RATE));
     frame(0);
   }
   cancel(clearEffects = false, clearTarget = true): void {

@@ -13,6 +13,18 @@ import { CLOUD_PATH } from './endpoints.ts';
 
 const SESSION_KEY = 'inotia4.cloud.v1.session';
 const REQUEST_TIMEOUT_MS = 12_000;
+/** 服务端限流时没带 Retry-After 的默认等待秒数。 */
+const DEFAULT_RETRY_AFTER_SECONDS = 60;
+/** 云存档服务用 HTTP 状态码表达失败类别；这里只给协议码命名，不改界面文案。 */
+const HTTP_STATUS = {
+  unauthorized: 401,
+  forbidden: 403,
+  notFound: 404,
+  payloadTooLarge: 413,
+  rateLimited: 429,
+  serverError: 500,
+  storageFull: 507,
+} as const;
 
 type CloudSaveErrorCode =
   | 'network'
@@ -154,7 +166,7 @@ function errorFromResponse(status: number, data: unknown): CloudSaveError {
       return { code: 'locked', message: cloudLockedMessage(seconds), retryAfterSeconds: seconds };
     }
     case 'rate-limited': {
-      const seconds = retry ?? 60;
+      const seconds = retry ?? DEFAULT_RETRY_AFTER_SECONDS;
       return { code: 'rate-limited', message: cloudRateLimitedMessage(seconds), retryAfterSeconds: seconds };
     }
     case 'account-exists':
@@ -174,16 +186,16 @@ function errorFromResponse(status: number, data: unknown): CloudSaveError {
     case 'server':
       return { code: 'server', message: '云存档服务暂时不可用。' };
     default:
-      if (status === 401) return { code: 'unauthorized', message: '登录已失效，请重新登录。' };
-      if (status === 403) return { code: 'unsupported', message: '当前来源不允许访问云存档。' };
-      if (status === 404) return { code: 'not-found', message: '云端没有这个存档。' };
-      if (status === 413) return { code: 'too-large', message: '存档过大，无法上传。' };
-      if (status === 429) {
-        const seconds = retry ?? 60;
+      if (status === HTTP_STATUS.unauthorized) return { code: 'unauthorized', message: '登录已失效，请重新登录。' };
+      if (status === HTTP_STATUS.forbidden) return { code: 'unsupported', message: '当前来源不允许访问云存档。' };
+      if (status === HTTP_STATUS.notFound) return { code: 'not-found', message: '云端没有这个存档。' };
+      if (status === HTTP_STATUS.payloadTooLarge) return { code: 'too-large', message: '存档过大，无法上传。' };
+      if (status === HTTP_STATUS.rateLimited) {
+        const seconds = retry ?? DEFAULT_RETRY_AFTER_SECONDS;
         return { code: 'rate-limited', message: cloudRateLimitedMessage(seconds), retryAfterSeconds: seconds };
       }
-      if (status === 507) return { code: 'storage-full', message: '云端存档空间不足。' };
-      if (status >= 500) return { code: 'server', message: '云存档服务暂时不可用。' };
+      if (status === HTTP_STATUS.storageFull) return { code: 'storage-full', message: '云端存档空间不足。' };
+      if (status >= HTTP_STATUS.serverError) return { code: 'server', message: '云存档服务暂时不可用。' };
       return { code: 'server', message: message ?? '云存档操作失败。' };
   }
 }
@@ -298,7 +310,7 @@ export class CloudSaveClient implements CloudSavePort {
       if (!response.ok) {
         const error = errorFromResponse(response.status, data);
         // 改密时“当前密码错误”也是 401，但 token 本身有效，不能把玩家踢下线。
-        if (response.status === 401 && options.auth && serial === this.requestSerial && error.code !== 'invalid-credentials') {
+        if (response.status === HTTP_STATUS.unauthorized && options.auth && serial === this.requestSerial && error.code !== 'invalid-credentials') {
           this.forget();
         }
         return { ok: false, error };

@@ -6,6 +6,9 @@ import type {CombatConditions} from './combat-conditions.ts';
 import type {SkillReactionEvent} from './skill-reactions.ts';
 import type {BuffReactionEvent} from './buff-reactions.ts';
 
+/** 血之 thirst 的触发率按千分比记录；低于 200‰（20%）时不参与抽取。 */
+const BLOOD_THIRST_MIN_CHANCE_PER_THOUSAND=200;
+
 export interface HitReactionPort {
   conditions:CombatConditions;
   actorAttribute(id:string,key:BattleStatKey):number;
@@ -78,7 +81,7 @@ export function resolveHitReactionPipeline(event:AttackContact,hit:PhysicalHit,d
       if(armorBreakChance>0)port.react({kind:'physical-attack-effects',ownerId:event.casterId,opponentId:event.targetId,damageKind,
         outcome:hit.kind,armorBreakChance});
       const bloodThirstChance=port.actorAttribute(event.casterId,'bloodThirstChance');
-      if(bloodThirstChance>=200)port.react({kind:'blood-thirst',ownerId:event.casterId,opponentId:event.targetId,damageKind,
+      if(bloodThirstChance>=BLOOD_THIRST_MIN_CHANCE_PER_THOUSAND)port.react({kind:'blood-thirst',ownerId:event.casterId,opponentId:event.targetId,damageKind,
         outcome:hit.kind,hitDamage:hit.damage,chanceThreshold:bloodThirstChance});
       if(port.conditions.activeBuffReactions(event.casterId).some(reaction=>reaction.kind==='physical-success-party'))
         port.reactToBuff({kind:'physical-success-party',ownerId:event.casterId,damageKind,outcome:hit.kind,

@@ -8,7 +8,8 @@ import type { EquipmentSlot } from '../../domain/items.ts';
 import { PRIMARY_STATS } from '../../domain/character-stats.ts';
 import { skillDetailEntries } from '../../domain/skill-display.ts';
 import { LiveCharacterPreview } from './live-character-preview.ts';
-import type { PlaceModal } from './modal-placement.ts';
+import { MENU_FRAME_MODAL_HEIGHT, MENU_FRAME_MODAL_WIDTH, type PlaceModal } from './modal-placement.ts';
+import { ACTIVE_PARTY_SLOT_COUNT } from '../../domain/party-slots.ts';
 import { drawRoundBand } from './round-band.ts';
 import { GOLD, UiSurface, type ScrollArea } from './widgets.ts';
 import { slotFrameImage, updateEquipmentLock } from '../slot-frame.ts';
@@ -21,6 +22,13 @@ type DetailTab = 'info'|'equipment'|'skills';
 type PartyModal = {kind:'dismiss';id:string;error?:string}|{kind:'skill';id:string;skill:string}|{kind:'group-skill';id:string;skill:CompanionGroupEffect};
 /** 面板借宿主的滚动区登记文字位置；未注入时退回本画布自己的滚动区。 */
 type ScrollFactory = (view:UiSurface,name:string,x:number,y:number,width:number,height:number)=>ScrollArea;
+
+/** 名册每页排 3×3 九格；两页共 18 个佣兵槽。 */
+const ROSTER_COLUMNS = 3;
+const ROSTER_ROWS = 3;
+const ROSTER_SLOTS_PER_PAGE = ROSTER_COLUMNS * ROSTER_ROWS;
+/** 每名佣兵最多两个佣兵团技能，技能页固定留两行。 */
+const GROUP_SKILL_SLOTS = 2;
 
 /** Original two-page mercenary roster, with character details kept beside the roster. */
 export class PartyPanel {
@@ -74,7 +82,7 @@ export class PartyPanel {
     if(this.selected===id)return;
     const slot=this.session.party!.snapshot().rosterSlots.indexOf(id);
     const previousPage=this.page,previous=this.selected;
-    if(slot>=0)this.page=Math.floor(slot/9);
+    if(slot>=0)this.page=Math.floor(slot/ROSTER_SLOTS_PER_PAGE);
     this.selected=id;this.error='';this.skillsOffset=0;this.modal=undefined;
     if(this.surface&&previousPage===this.page&&this.selectionMarks.has(id)){
       if(previous)this.selectionMarks.get(previous)?.setVisible(false);
@@ -158,9 +166,9 @@ export class PartyPanel {
       this.text(`story-role-${id}`,id==='player'?'主角':snapshot.active.includes(id)?'上阵':'候补',6+26,80+index*91+63,16,GOLD,.5,0);
       const selected=v.rect(0,0,52,58,0xffda88,.12,button).setStrokeStyle(2,0xffda88).setVisible(this.selected===id);this.selectionMarks.set(id,selected);
     });
-    for(let index=0;index<9;index++){
-      const id=snapshot.rosterSlots[this.page*9+index],x=70+index%3*136,y=5+Math.floor(index/3)*123;
-      const button=v.button('',x,y,127,114,()=>{if(id)this.select(id);},{bare:true}).setData('label',id?this.name(id):`空佣兵槽 ${this.page*9+index+1}`);
+    for(let index=0;index<ROSTER_SLOTS_PER_PAGE;index++){
+      const id=snapshot.rosterSlots[this.page*ROSTER_SLOTS_PER_PAGE+index],x=70+index%ROSTER_COLUMNS*136,y=5+Math.floor(index/ROSTER_COLUMNS)*123;
+      const button=v.button('',x,y,127,114,()=>{if(id)this.select(id);},{bare:true}).setData('label',id?this.name(id):`空佣兵槽 ${this.page*ROSTER_SLOTS_PER_PAGE+index+1}`);
       v.image(assets['party-slot'],0,0,127,114,button);
       const portrait=v.imageCover(id?this.portrait(id):assets['party-empty'],0,0,127,114,button,.5,.2);
       if(id&&this.member(id)!.player.health<=0){
@@ -194,7 +202,7 @@ export class PartyPanel {
       if(id!=='player'){
         const snapshot=party.snapshot(),deployed=snapshot.active.includes(id);
         this.menuButton(v,'deployed',deployed?'移出队伍':'加入队伍',70,
-          ()=>this.run(()=>deployed?party.reserve(id):party.deployFirstAvailable(id)),deployed?member.player.health<=0:snapshot.active.length>=3||member.player.health<=0);
+          ()=>this.run(()=>deployed?party.reserve(id):party.deployFirstAvailable(id)),deployed?member.player.health<=0:snapshot.active.length>=ACTIVE_PARTY_SLOT_COUNT||member.player.health<=0);
         if((member as CompanionMember).source==='mercenary')
           this.menuButton(v,'dismiss','放逐',272,()=>{this.modal={kind:'dismiss',id};this.changed();},deployed);
       }
@@ -270,7 +278,7 @@ export class PartyPanel {
     });
     if(companion?.source==='mercenary'){
       this.scrolledText('party-group-title','佣兵团',503+309,18,17,GOLD,'party-skills',{top:18,bottom:360},{anchorX:.5,anchorY:0});
-      for(let index=0;index<2;index++){
+      for(let index=0;index<GROUP_SKILL_SLOTS;index++){
         const group=companion.groupSkills[index],skill=group?this.session.party!.catalog.groupSkills[group]:undefined;
         const button=v.button('',273,20+index*178,75,75,()=>{if(group){this.modal={kind:'group-skill',id,skill:group};this.changed();}},
           {image:skill?.icon??panels.assets['party-skill-unavailable'],parent:scroll.content,guard:scroll.guard,disabled:!skill}).setData('label',skill?.name??'空佣兵团技能');
@@ -285,8 +293,8 @@ export class PartyPanel {
     this.modalText=[];
     const modal=this.modal!,member=this.member(modal.id);if(!member){this.modal=undefined;return;}
     const panels=this.app.menuPanels;
-    this.placeModal?.(718,415);
-    v.frame(panels.assets,0,0,718,415,1);
+    this.placeModal?.(MENU_FRAME_MODAL_WIDTH,MENU_FRAME_MODAL_HEIGHT);
+    v.frame(panels.assets,0,0,MENU_FRAME_MODAL_WIDTH,MENU_FRAME_MODAL_HEIGHT,1);
     if(modal.kind==='dismiss'){
       v.imageCover(this.portrait(modal.id),38,66,127,114,v.root,.5,.2);
       this.modalEntry('dismiss-title',`确定放逐 ${this.name(modal.id)}？`,196,70,25,GOLD,0,0,{width:470,wrap:'word'});

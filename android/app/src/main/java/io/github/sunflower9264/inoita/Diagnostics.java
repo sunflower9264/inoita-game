@@ -18,6 +18,10 @@ import java.util.concurrent.Executors;
 final class Diagnostics {
 
     private static final String TAG = "InotiaDiagnostics";
+    /** 单次上报的 JSON 上限；超过直接丢弃，避免异常内容占满内存。 */
+    private static final int MAX_BODY_BYTES = 64 * 1024;
+    private static final int CONNECT_TIMEOUT_MS = 8000;
+    private static final int READ_TIMEOUT_MS = 8000;
     /** 更新流程的诊断上报走后台线程，不能让 8 秒网络超时挡在冷启动前面。 */
     private static final ExecutorService REPORTER = Executors.newSingleThreadExecutor(task -> {
         Thread thread = new Thread(task, "diagnostics-report");
@@ -28,13 +32,13 @@ final class Diagnostics {
     private Diagnostics() {}
 
     static boolean post(String body) {
-        if (body == null || body.isEmpty() || body.length() > 65536) return false;
+        if (body == null || body.isEmpty() || body.length() > MAX_BODY_BYTES) return false;
         HttpURLConnection connection = null;
         try {
             connection = (HttpURLConnection) new URL(BuildConfig.DIAGNOSTICS_URL).openConnection();
             connection.setRequestMethod("POST");
-            connection.setConnectTimeout(8000);
-            connection.setReadTimeout(8000);
+            connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+            connection.setReadTimeout(READ_TIMEOUT_MS);
             connection.setDoOutput(true);
             connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
             byte[] bytes = body.getBytes(StandardCharsets.UTF_8);

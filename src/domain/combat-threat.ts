@@ -43,8 +43,12 @@ interface DamageThreatInput extends ThreatRate {damage:number;rectangleDistanceU
 interface HealingThreatInput extends ThreatRate {actualHealing:number;rectangleDistanceUnits:number;}
 interface StateThreatInput extends ThreatRate {casterLevel:number;}
 
+/** 仇恨分数按原版 32 位有符号整数累计；越界会改变 `|0` 的截断结果。 */
+const INT32_MIN=-2_147_483_648;
+const INT32_MAX=2_147_483_647;
+
 function integer(value:number,name:string):number {
-  if(!Number.isInteger(value)||value<-2147483648||value>2147483647)
+  if(!Number.isInteger(value)||value<INT32_MIN||value>INT32_MAX)
     throw new Error(`${name}必须是32位有符号整数`);
   return value;
 }

@@ -1,5 +1,8 @@
 import type { Point } from '../domain/navigation.ts';
 
+/** 还没收到物理步时长时，按每秒 60 步估算一个逻辑步。 */
+const DEFAULT_STEP_MS = 1000 / 60;
+
 interface MovingVisual extends Point { active: boolean }
 interface MotionSample {
   position(): Point;
@@ -12,7 +15,7 @@ interface MotionSample {
 /** 保存已完成碰撞的两次位置，只在绘制期间借用人物容器的坐标。 */
 export class MovementInterpolation {
   private remainingMs = 0;
-  private stepMs = 1000 / 60;
+  private stepMs = DEFAULT_STEP_MS;
   private readonly samples = new Map<MovingVisual, MotionSample>();
   private readonly restoredPositions = new Map<MovingVisual, Point>();
   private readonly moving = new Set<MovingVisual>();

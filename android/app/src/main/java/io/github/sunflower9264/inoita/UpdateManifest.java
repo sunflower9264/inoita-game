@@ -40,6 +40,11 @@ final class UpdateManifest {
     private static final Pattern HEX_16 = Pattern.compile("[0-9a-f]{16}");
     private static final Pattern HEX_64 = Pattern.compile("[0-9a-f]{64}");
     private static final int BUFFER_BYTES = 64 * 1024;
+    private static final int FINGERPRINT_HEX_DIGITS = 16;
+    /** 清单为体积使用单字符字段名：p=路径，h=指纹，s=大小。 */
+    private static final String FIELD_PATH = "p";
+    private static final String FIELD_HASH = "h";
+    private static final String FIELD_SIZE = "s";
 
     private UpdateManifest() {
     }
@@ -180,18 +185,18 @@ final class UpdateManifest {
                 JSONObject item = array.optJSONObject(index);
                 if (item == null) throw new IOException("files[" + index + "] 不是对象");
 
-                String path = requireString(item, "p");
+                String path = requireString(item, FIELD_PATH);
                 if (!isSafeRelativePath(path)) {
                     throw new IOException("清单路径不安全: " + path);
                 }
                 if (!seen.add(path)) throw new IOException("清单路径重复: " + path);
 
-                String hash = requireString(item, "h");
+                String hash = requireString(item, FIELD_HASH);
                 if (!HEX_16.matcher(hash).matches()) {
                     throw new IOException("文件指纹格式不对: " + path);
                 }
 
-                long size = item.optLong("s", -1);
+                long size = item.optLong(FIELD_SIZE, -1);
                 if (size < 0) throw new IOException("文件大小无效: " + path);
 
                 files.add(new FileEntry(path, hash, size));
@@ -257,7 +262,7 @@ final class UpdateManifest {
             digest.update(buffer, 0, read);
         }
         digest.update((byte) 0);
-        return hex(digest.digest()).substring(0, 16);
+        return hex(digest.digest()).substring(0, FINGERPRINT_HEX_DIGITS);
     }
 
     static String sha256Hex(byte[] bytes) {

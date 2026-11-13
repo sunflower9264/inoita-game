@@ -5,6 +5,13 @@ import { FONT } from '../text-style.ts';
 import { wrapText } from '../text-layout.ts';
 import { frameRect } from '../viewport.ts';
 
+/** Phaser 的数字混合模式 `BlendModes.ADD`。 */
+const ADDITIVE_BLEND_MODE = 1;
+/** 把 0xRRGGBB 拆成 CSS 的 RGB 三个通道。 */
+function rgbChannels(color: number): [number, number, number] {
+  return [color >> 16 & 255, color >> 8 & 255, color & 255];
+}
+
 export interface UiPointer { id:number; x:number; y:number; isDown:boolean; event:PointerEvent }
 type Listener = (...args:any[])=>void;
 export interface UiMatrix { tx:number; ty:number; scaleX:number; scaleY:number; transformPoint(x:number,y:number):{x:number;y:number} }
@@ -131,11 +138,11 @@ export class UiNode {
   private cancelDescendants():void{for(const child of this.list){child.cancelPress();child.cancelDescendants();}}
   setFlipX(value:boolean):this{this.flipX=value;this.paint();return this;}
   setFlipY(value:boolean):this{this.flipY=value;this.paint();return this;}
-  setBlendMode(value:number|string):this{this.element.style.mixBlendMode=value===1||value==='add'?'plus-lighter':value==='multiply'||value==='screen'||value==='color-dodge'?value:'normal';return this;}
-  setTint(value:number):this{this.element.style.filter=`brightness(${Math.max(value>>16&255,value>>8&255,value&255)/255})`;return this;}
+  setBlendMode(value:number|string):this{this.element.style.mixBlendMode=value===ADDITIVE_BLEND_MODE||value==='add'?'plus-lighter':value==='multiply'||value==='screen'||value==='color-dodge'?value:'normal';return this;}
+  setTint(value:number):this{this.element.style.filter=`brightness(${Math.max(...rgbChannels(value))/255})`;return this;}
   clearTint():this{this.element.style.filter='';return this;}
-  setFillStyle(color:number,alpha=1):this{this.element.style.background=`rgba(${color>>16&255},${color>>8&255},${color&255},${alpha})`;return this;}
-  setStrokeStyle(width:number,color:number,alpha=1):this{this.element.style.outline=`${width}px solid rgba(${color>>16&255},${color>>8&255},${color&255},${alpha})`;return this;}
+  setFillStyle(color:number,alpha=1):this{this.element.style.background=`rgba(${rgbChannels(color).join(',')},${alpha})`;return this;}
+  setStrokeStyle(width:number,color:number,alpha=1):this{this.element.style.outline=`${width}px solid rgba(${rgbChannels(color).join(',')},${alpha})`;return this;}
   setData(key:string,value:any):this{this.data.set(key,value);return this;}
   getData(key:string):any{return this.data.get(key);}
   on(name:string,listener:Listener):this{let set=this.listeners.get(name);if(!set)this.listeners.set(name,set=new Set());set.add(listener);return this;}

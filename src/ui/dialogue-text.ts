@@ -2,6 +2,9 @@ import { textRuns, visibleIndex } from '../domain/text-markup.ts';
 import { wrapText } from './text-layout.ts';
 import { layoutKeyedText, type KeyedTextLine, type KeyedTextPart } from './quest-popup-layout.ts';
 
+/** 原文里的字面换行占 1 个字符，`&N`／`&P` 这类换行控制码占 2 个字符。 */
+const LITERAL_NEWLINE_LENGTH = 1, MARKUP_NEWLINE_LENGTH = 2;
+
 export interface DialogueTextLayout {
   /** 按显示行分组的带色片段，`x` 是这一行里相对行首的偏移。 */
   lines: KeyedTextLine<string>[];
@@ -51,7 +54,7 @@ export function dialoguePages(value: string, options: { width: number; lines: nu
   while (start < text.length || !pages.length) {
     // 页首换行由分页承担：跳过它，原文起点推到换行码之后（`&N`／`&P` 两字符，字面换行一字符）。
     while (start < text.length && text[start] === '\n') {
-      raw = offsets[start] + (value[offsets[start]] === '\n' ? 1 : 2);
+      raw = offsets[start] + (value[offsets[start]] === '\n' ? LITERAL_NEWLINE_LENGTH : MARKUP_NEWLINE_LENGTH);
       start++;
     }
     let end = start;

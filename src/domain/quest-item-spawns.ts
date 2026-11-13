@@ -1,6 +1,9 @@
 import type { QuestItemSpawn } from './content.ts';
 import type { GroundLootStore } from './ground-loot.ts';
 
+/** 原版任务生成点共用 150 帧检查间隔；生成器的剩余帧也按这个节奏递减。 */
+const GENERATOR_CHECK_INTERVAL_FRAMES = 150;
+
 interface ItemGeneratorState { id:string; remainingFrames:number; dropId?:string; exhausted:boolean }
 export interface QuestItemGenerationState {
   map?:string;
@@ -35,12 +38,12 @@ export class QuestItemGenerators {
     for(const generator of this.state.generators){
       if(generator.exhausted||generator.dropId)continue;
       const definition=this.definitions.get(generator.id);if(!definition)continue;
-      if(generator.remainingFrames>0)generator.remainingFrames-=150;
+      if(generator.remainingFrames>0)generator.remainingFrames-=GENERATOR_CHECK_INTERVAL_FRAMES;
       if(generator.remainingFrames>0||!canProduce(definition))continue;
       const [drop]=ground.add(this.state.map,definition.x,definition.y,[{kind:'item',item:definition.item,quantity:1}]);
       generator.dropId=drop.id;
     }
-    this.state.nextCheckFrame=frame+150;
+    this.state.nextCheckFrame=frame+GENERATOR_CHECK_INTERVAL_FRAMES;
   }
 
   collected(dropIds:readonly string[],frame:number):void {

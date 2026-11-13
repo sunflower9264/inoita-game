@@ -8,6 +8,16 @@ import type Phaser from 'phaser';
  */
 const registry = new WeakMap<Phaser.Animations.AnimationManager, Map<string, Set<string>>>();
 
+/**
+ * 动画状态当前播到第几帧（从 0 开始）。
+ *
+ * Phaser 的 `currentFrame.index` 从 1 开始，0 表示还没有帧；动作序列和素材帧号都从 0
+ * 开始计数，所以取用帧号时统一走这里。
+ */
+export function currentAnimationFrame(state?: Phaser.Animations.AnimationState): number {
+  return (state?.currentFrame?.index ?? 1) - 1;
+}
+
 export function rememberEffectAnimation(scene: Phaser.Scene, animationKey: string, textureKeys: Iterable<string>): void {
   let animations = registry.get(scene.anims);
   if (!animations) { animations = new Map(); registry.set(scene.anims, animations); }

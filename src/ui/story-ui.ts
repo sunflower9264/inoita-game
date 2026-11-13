@@ -50,12 +50,13 @@ import { drawPopupPanel } from './phaser/popup-panel.ts';
 import { SkillBookPanel } from './phaser/skill-book-panel.ts';
 import { drawRoundBand } from './phaser/round-band.ts';
 import { drawSolidBorder } from './phaser/solid-border.ts';
-import { centerModal } from './phaser/modal-placement.ts';
+import { MENU_CANVAS_HEIGHT, MENU_CANVAS_WIDTH, MENU_FRAME_MODAL_HEIGHT, MENU_FRAME_MODAL_WIDTH, centerModal } from './phaser/modal-placement.ts';
+import { ACTIVE_PARTY_SLOT_COUNT } from '../domain/party-slots.ts';
 import { itemResultDetails } from './item-result-details.ts';
 import { itemDescriptionBody } from './item-detail-lines.ts';
 import { slotFrameImage, updateEquipmentLock } from './slot-frame.ts';
 import { bagLayout, BAG_DESCRIPTION_WIDTH, DESCRIPTION_PANEL, descriptionActionLayout, descriptionActionLabelSize, descriptionPanel, SIDE_FILTER_TEXT_SIZE } from './bag-layout.ts';
-import { skillDescriptionParts, skillLearningParts, skillNextLevelPreview } from './skill-detail-lines.ts';
+import { SKILL_PREVIEW_COLORS, skillDescriptionParts, skillLearningParts, skillNextLevelPreview } from './skill-detail-lines.ts';
 import { layoutDescriptionText } from './description-text-layout.ts';
 import type { DescriptionTextPart } from '../domain/description-text.ts';
 import { POPUP_FRAME, tradeLayout } from './shop-layout.ts';
@@ -72,10 +73,12 @@ const tabs:[Page,string][]=[['status','人物'],['bag','背包'],['skills','技�
 const CONTROL_MODE_LABELS:Record<ControlMode,string>={stick:'虚拟摇杆',dpad:'十字按键',keyboard:'电脑模式'};
 /** 音量滑条的读数；最左边是静音。 */
 const volumeText=(value:number):string=>value<=0?'关闭':`${Math.round(value*100)}%`;
-/** 原版按档位索引取 [9,8,7] 三张按钮图，0/1/2 依次对应。 */
 /** 原版菜单里正文与数值的米色：进绘制前调 `GRPX_SetFontColorFromRGB(0xe2,0xcb,0x9e)`。 */
 const AREA_TEXT=TEXT_COLORS.primary;
-const SKILL_LEVEL_ASSETS=['skill-level-none','skill-level-normal','skill-level-high'];
+/** 佣兵技能自动使用频率的三个档位，顺序就是存档里的 0/1/2。 */
+const AI_FREQUENCY_LABELS=['不使用','一般','高'] as const;
+/** 原版按档位索引取 [9,8,7] 三张按钮图，与上面的频率标签一一对应。 */
+const AI_FREQUENCY_ASSETS=['skill-level-none','skill-level-normal','skill-level-high'] as const;
 /** 登记快捷键那一屏顶部的提示，原版取文本表第 35462 条。 */
 const SHORTCUT_PROMPT='请选择要设置的快捷键。';
 /** 菜单内容块的固定原点；说明层与内容块共用同一坐标。 */
@@ -168,7 +171,7 @@ export class StoryUI {
   /** 预热时菜单还没打开，只允许这一次在关闭状态绘制。 */
   private prewarming=false;
   /** 当前弹层的框尺寸，由打开它的对话框声明；初值只是没有对话框时的兜底。 */
-  private modalBox={width:450,height:350};
+  private modalBox={width:tradeLayout.quantity.width,height:tradeLayout.quantity.height};
   private modalActive=false;
   private resizeViewport='';
   private readonly placeModal=(width:number,height:number):void=>this.beginModal(width,height);
@@ -212,9 +215,10 @@ export class StoryUI {
    */
   attach(scene:Phaser.Scene,createPreview?:(actor:ActorDefinition)=>CharacterVisual):void{
     this.resizeViewport=JSON.stringify(controlViewport());
-    this.scene=scene;this.surface=new UiSurface(scene,1024,640,100);this.body=new UiSurface(scene,960,431,200);this.surface.root.add(this.body.root);this.body.root.setPosition(CONTENT_ORIGIN.x,CONTENT_ORIGIN.y);
+    this.scene=scene;this.surface=new UiSurface(scene,MENU_CANVAS_WIDTH,MENU_CANVAS_HEIGHT,100);this.body=new UiSurface(scene,960,431,200);this.surface.root.add(this.body.root);this.body.root.setPosition(CONTENT_ORIGIN.x,CONTENT_ORIGIN.y);
     // 交易弹层的画布按原版数量框的 450×350 建立，确认框在其中垂直居中。
-    this.modal=new UiSurface(scene,450,350,400);this.modal.root.setPosition(287,145);
+    this.modal=new UiSurface(scene,tradeLayout.quantity.width,tradeLayout.quantity.height,400);
+    this.modal.root.setPosition((MENU_CANVAS_WIDTH-tradeLayout.quantity.width)/2,(MENU_CANVAS_HEIGHT-tradeLayout.quantity.height)/2);
     // 存档页自己管确认框、改名输入和读档请求；菜单只提供重绘、弹层和滚动区位置。
     this.savePage=new SavePage({
       app:this.app,
@@ -762,7 +766,7 @@ export class StoryUI {
    */
   private drawPartyColumn(v:UiSurface,nodes?:UiNode[]):void{
     const panels=this.app.menuPanels,party=this.session!.party,ids=party?.activeIds??['player'];
-    for(let index=0;index<3;index++){
+    for(let index=0;index<ACTIVE_PARTY_SLOT_COUNT;index++){
       const id=ids[index],top=49+index*113;
       nodes?.push(v.image(panels.assets['character-party-frame'],8,top,104,114));
       if(!id)continue;
@@ -942,7 +946,7 @@ export class StoryUI {
     if(this.operation)this.renderOperation();if(this.allocationExit)this.renderAllocationConfirmation();if(this.skillReset)this.renderSkillResetConfirmation();
     this.noticeBand=undefined;
     if(this.itemNotice){
-      this.beginModal(1024,640);this.noticeTextSpecs=[];
+      this.beginModal(MENU_CANVAS_WIDTH,MENU_CANVAS_HEIGHT);this.noticeTextSpecs=[];
       // 系统页与存档页按整块菜单画布排版，换算到整页表面；其余页换算到内容块坐标。
       const fullPage=this.page==='system'||this.page==='save'||this.page==='load';
       const writer:MenuTextWriter={add:spec=>this.noticeTextSpecs.push(fullPage?this.modalSurfaceTextSpec(spec):this.modalTextSpec(spec))};
@@ -1327,7 +1331,7 @@ export class StoryUI {
       this.statusModalTextSpecs.push({key,text,x:x+width/2,y:y+height/2,
         style:{size:Math.min(22,height*.42),color:GOLD,anchorX:.5,anchorY:.5}});
     };
-    this.beginModal(718,415);v.frame(this.app.menuPanels.assets,0,0,718,415,1);
+    this.beginModal(MENU_FRAME_MODAL_WIDTH,MENU_FRAME_MODAL_HEIGHT);v.frame(this.app.menuPanels.assets,0,0,MENU_FRAME_MODAL_WIDTH,MENU_FRAME_MODAL_HEIGHT,1);
     add('alloc-title','确定按当前分配增加能力？',35,30,26,648);
     character.attributes.forEach((attribute,index)=>add(`alloc-${PRIMARY_STATS[index]}`,`${attribute.name}　＋${pending[PRIMARY_STATS[index]]}`,65,91+index*38,22,580));
     if(this.allocationError)add('alloc-error',this.allocationError,35,292,20,648);
@@ -1450,9 +1454,9 @@ export class StoryUI {
       if(id===this.skill)v.image(panels.assets['skill-selected-ai'],-14,-14,106,102,cell);
       if(!level)return;
       const frequency=party.aiFrequency(this.selectedMemberId).get(id)??1;
-      v.button('',x+85,y+16,82,42,()=>this.action(()=>party.setAiFrequency(this.selectedMemberId,id,(frequency+1)%3)),
-        {image:panels.assets[SKILL_LEVEL_ASSETS[frequency]!],pressed:panels.assets['skill-level-pressed'],native:true,parent:list.content,guard:list.guard})
-        .setData('label',`${entry.name}自动使用频率 ${['不使用','一般','高'][frequency]}`);
+      v.button('',x+85,y+16,82,42,()=>this.action(()=>party.setAiFrequency(this.selectedMemberId,id,(frequency+1)%AI_FREQUENCY_LABELS.length)),
+        {image:panels.assets[AI_FREQUENCY_ASSETS[frequency]!],pressed:panels.assets['skill-level-pressed'],native:true,parent:list.content,guard:list.guard})
+        .setData('label',`${entry.name}自动使用频率 ${AI_FREQUENCY_LABELS[frequency]}`);
     });
     this.finishScroll('ai',list,Math.max(20+5*89+75,20+2*178+75));
   }
@@ -1492,7 +1496,7 @@ export class StoryUI {
       this.addDescriptionText('skill-learn',learning,565,71,353,22,'description',clip,y);
       y+=learning.height+12;
       skillNextLevelPreview(skill.ranks,level,skill.kind,maximum,skill.display).forEach((row,index)=>{
-        const center=353/2,labelColor=row.kind==='mana'?'#0f7cf9':TEXT_COLORS.white,valueColor=row.kind==='mana'?'#0f7cf9':'#ff0000';
+        const center=353/2,labelColor=row.kind==='mana'?SKILL_PREVIEW_COLORS.mana:TEXT_COLORS.white,valueColor=row.kind==='mana'?SKILL_PREVIEW_COLORS.mana:SKILL_PREVIEW_COLORS.changed;
         this.addSkillText(`skill-preview-${index}-label`,row.label,565+center,71+y,19,labelColor,.5,0,{}, {scroll:'description',clip});
         const valuesY=71+y+26;
         this.addSkillText(`skill-preview-${index}-from`,row.from,565+center-12,valuesY,19,valueColor,1,0,{}, {scroll:'description',clip});
@@ -1540,7 +1544,7 @@ export class StoryUI {
       this.skillResetTextSpecs.push({key,text,x:x+width/2,y:y+height/2,
         style:{size:Math.min(22,height*.42),color:GOLD,anchorX:.5,anchorY:.5}});
     };
-    this.beginModal(718,415);v.visible(true);v.frame(panels.assets,0,0,718,415,1);
+    this.beginModal(MENU_FRAME_MODAL_WIDTH,MENU_FRAME_MODAL_HEIGHT);v.visible(true);v.frame(panels.assets,0,0,MENU_FRAME_MODAL_WIDTH,MENU_FRAME_MODAL_HEIGHT,1);
     add('skill-reset-title',`确定为${this.actor().name}初始化技能点？`,35,30,26,648);
     add('skill-reset-description','清空已学技能与快捷栏，返还正常加点的技能点。',35,91,22,648);
     v.button('',270,350,170,48,()=>{this.skillReset=false;this.render();}).setData('label','取消');

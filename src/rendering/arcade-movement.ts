@@ -3,9 +3,18 @@ import type { Point, GameRectangle } from '../domain/navigation.ts';
 import { NavigationWorld, type NavigationActor, type NavigationShape } from '../domain/navigation-world.ts';
 import { WalkRoute } from '../domain/walk-route.ts';
 
+/** 角色默认的脚点碰撞盒：脚点在盒子中心，8×8 像素；内容没写 collision 时使用。 */
+export const DEFAULT_FOOT_COLLISION: Readonly<GameRectangle> = Object.freeze({ x: -4, y: -4, width: 8, height: 8 });
+/** 物理结算坐标变化小于这个距离（像素）时视为站立不动。 */
+const WALKING_EPSILON_PX = 0.01;
+/** 判断物理约束是否真的截断了本步位移的浮点容差（像素）。 */
+const MOTION_EPSILON_PX = 1e-7;
+/** 卡墙后找不到落点时，隔这么久（毫秒）再试一次，避免每帧全图扫描。 */
+const WALL_RETRY_MS = 500;
+
 /** 结算位移在没有新物理步的绘制帧间保留，且包含碰撞分离。 */
 export function isBodyWalking(body: Pick<Phaser.Physics.Arcade.Body, 'deltaXFinal' | 'deltaYFinal'>): boolean {
-  return Math.hypot(body.deltaXFinal(), body.deltaYFinal()) > .01;
+  return Math.hypot(body.deltaXFinal(), body.deltaYFinal()) > WALKING_EPSILON_PX;
 }
 
 /** 注入引擎的 Body 类，浏览器与 Node 物理测试使用同一个适配器。 */
@@ -13,7 +22,7 @@ export function movementBodyClass(Base: typeof Phaser.Physics.Arcade.Body) {
   return class MovementBody extends Base {
     private navigation!: NavigationWorld;
     private actor!: NavigationActor;
-    private collision: GameRectangle = { x: -4, y: -4, width: 8, height: 8 };
+    private collision: GameRectangle = { ...DEFAULT_FOOT_COLLISION };
     private intention?: { velocity: Point } | { destination: Point; speed: number } | { route: Pick<WalkRoute, 'next'>; speed: number };
     private stepStart?: Point;
     private suspended=false;
@@ -51,7 +60,7 @@ export function movementBodyClass(Base: typeof Phaser.Physics.Arcade.Body) {
     setMovable(movable:boolean, terrainRecovery=movable):void{this.movable=movable;this.terrainRecovery=terrainRecovery;}
     shape(shape: NavigationShape): void {
       const position = this.footPosition();
-      this.collision = shape.collision ?? { x: -4, y: -4, width: 8, height: 8 };
+      this.collision = shape.collision ?? { ...DEFAULT_FOOT_COLLISION };
       const box = this.collision;
       this.setSize(box.width, box.height, false).setOffset(box.x, box.y);
       this.reset(position.x, position.y); this.updateFromGameObject();
@@ -93,8 +102,8 @@ export function movementBodyClass(Base: typeof Phaser.Physics.Arcade.Body) {
       this.resetFlags();
       this.setVelocity((allowed.x - start.x) / delta, (allowed.y - start.y) / delta);
       super.update(delta);
-      if (Math.abs(allowed.x - start.x - dx) > 1e-7) { this.blocked.none = false; this.blocked[dx < 0 ? 'left' : 'right'] = true; }
-      if (Math.abs(allowed.y - start.y - dy) > 1e-7) { this.blocked.none = false; this.blocked[dy < 0 ? 'up' : 'down'] = true; }
+      if (Math.abs(allowed.x - start.x - dx) > MOTION_EPSILON_PX) { this.blocked.none = false; this.blocked[dx < 0 ? 'left' : 'right'] = true; }
+      if (Math.abs(allowed.y - start.y - dy) > MOTION_EPSILON_PX) { this.blocked.none = false; this.blocked[dy < 0 ? 'up' : 'down'] = true; }
     }
     /** 分离人物后校验地形，防止碰撞修正把脚点挤入阻挡格。 */
     settleStep(): void {
@@ -131,7 +140,7 @@ export function movementBodyClass(Base: typeof Phaser.Physics.Arcade.Body) {
           this.lastContentRecovery = { from: pushed, to: { ...landing } };
         }
         this.wallRetryAt = 0;
-      } else this.wallRetryAt = Date.now() + 500;
+      } else this.wallRetryAt = Date.now() + WALL_RETRY_MS;
     }
     private nearestLanding(): Point | undefined {
       if (!this.stepStart) return undefined;

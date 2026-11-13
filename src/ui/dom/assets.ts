@@ -81,9 +81,11 @@ export class DomAssets {
       let result = source;
       if (dataFile && frameName) {
         const data = await abortable(this.atlas(dataFile, current.controller.signal), signal);
-        const rect = data.frames[frameName]?.frame;
-        if (!rect) throw new Error(`界面图集缺少图片：${file}`);
-        result = { ...source, frame: { x: rect.x, y: rect.y, width: rect.w, height: rect.h } };
+        const atlasFrame = data.frames[frameName]?.frame;
+        if (!atlasFrame) throw new Error(`界面图集缺少图片：${file}`);
+        // 图集 JSON 用 `w`／`h` 存宽高，这里转成界面使用的 `width`／`height`。
+        const { x: frameX, y: frameY, w: frameWidth, h: frameHeight } = atlasFrame;
+        result = { ...source, frame: { x: frameX, y: frameY, width: frameWidth, height: frameHeight } };
       }
       signal.throwIfAborted();
       current.sources.set(name,result);
