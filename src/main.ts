@@ -496,11 +496,9 @@ async function resumeSlot(slot:SaveSlotRef,signal?:AbortSignal):Promise<void> {
         await prepareStory(request);request.throwIfAborted();
         const candidate=prepareSavedGame(reading.game,app);
         await app.content.map(candidate.map.file,request);request.throwIfAborted();
-        if(sourceMode==='menu'){
-          ui.loading('正在准备游戏菜单…',0.15);
-          await prepareMenuCore(request,value=>ui.loading('正在准备游戏菜单…',0.15+0.35*value));
-          refreshMenuWhenReady(request);
-        }
+        ui.loading('正在准备游戏菜单…',0.15);
+        await prepareMenuCore(request,value=>ui.loading('正在准备游戏菜单…',0.15+0.35*value));
+        refreshMenuWhenReady(request);
         request.throwIfAborted();return candidate;
       },
       stopCurrent:async()=>{

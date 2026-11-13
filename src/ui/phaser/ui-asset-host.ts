@@ -21,7 +21,7 @@ export interface UiAssetHost {
 export class SceneUiAssets implements UiAssetHost {
   private readonly content: AssetLease[] = [];
   private readonly resident: AssetLease[] = [];
-  private readonly residentFiles = new Map<string, AbortSignal>();
+  private readonly residentFiles = new Map<string, Set<AbortSignal>>();
   private readonly scene: Phaser.Scene;
   constructor(scene: Phaser.Scene) { this.scene = scene; }
 
@@ -38,19 +38,26 @@ export class SceneUiAssets implements UiAssetHost {
     // 去重按去掉前导斜杠的路径；加载仍用原始路径，保证相对/绝对地址不被改写。
     const key = (file: string): string => file.replace(/^\//, '');
     const missing = names.filter(name => {
-      const owner = this.residentFiles.get(key(name));
-      return !owner || owner.aborted;
+      return !this.residentFiles.get(key(name))?.has(signal);
     });
     if (!missing.length) { progress(1); return; }
     const lease = await domAssets.preloadFiles(missing, signal, value => { if (!signal.aborted) progress(value); });
     if (signal.aborted) { lease.release(); signal.throwIfAborted(); }
-    for (const name of missing) this.residentFiles.set(key(name), signal);
+    for (const name of missing) {
+      const owners = this.residentFiles.get(key(name)) ?? new Set<AbortSignal>();
+      owners.add(signal);
+      this.residentFiles.set(key(name), owners);
+    }
     const retained: AssetLease = { release: () => {
       signal.removeEventListener('abort', retained.release);
       const index = this.resident.indexOf(retained);
       if (index < 0) return;
       this.resident.splice(index, 1);
-      for (const name of missing) if (this.residentFiles.get(key(name)) === signal) this.residentFiles.delete(key(name));
+      for (const name of missing) {
+        const owners = this.residentFiles.get(key(name));
+        owners?.delete(signal);
+        if (!owners?.size) this.residentFiles.delete(key(name));
+      }
       lease.release();
     } };
     this.resident.push(retained);

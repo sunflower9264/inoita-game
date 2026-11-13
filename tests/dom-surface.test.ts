@@ -224,6 +224,19 @@ test('cancelled resident batches release their retained records',async t=>{
   assert.equal(releases,10);
 });
 
+test('resident images remain owned by the new session after the old session ends',async t=>{
+  const f=fixture();t.after(f.cleanup);const active=new Set<AbortSignal>();
+  t.mock.method(domAssets,'preloadFiles',async(_files:readonly string[],signal:AbortSignal)=>{
+    active.add(signal);return {release:()=>active.delete(signal)};
+  });
+  const host=new SceneUiAssets(f.scene),oldSession=new AbortController(),newSession=new AbortController();
+  await host.preloadResident(['menu-frame.png'],oldSession.signal,()=>{});
+  await host.preloadResident(['menu-frame.png'],newSession.signal,()=>{});
+  oldSession.abort();
+  assert.deepEqual([...active],[newSession.signal]);
+  host.releaseResident();assert.equal(active.size,0);
+});
+
 
 test('quest confirmation stays above the input blocker and accepts one tap',t=>{
   const f=fixture();t.after(f.cleanup);
