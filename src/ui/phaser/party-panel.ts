@@ -226,7 +226,8 @@ export class PartyPanel {
     this.selected='player';this.modal=undefined;this.error='';
     this.pageText.length=this.rosterTextCount;this.pageText=this.pageText.filter(spec=>!spec.key.startsWith('roster-dead-'));
     this.renderRoster(v);this.rosterTextCount=this.pageText.length;this.selectionMarks.get('player')?.setVisible(true);
-    (this.pageButton?.getData('face') as UiImage|undefined)?.load(this.app.menuPanels.assets[`party-page-${this.page+1}`]);
+    const face=this.pageButton?.getData('face') as UiImage|undefined,pageImage=this.app.menuPanels.assets[`party-page-${this.page+1}`];
+    if(face&&face.getData('file')!==pageImage)face.load(pageImage);
     this.pageButton?.setData('label',`佣兵名册第 ${this.page+1} 页，切换页面`);
     this.updatePartyState();this.prepare('player');
   }
