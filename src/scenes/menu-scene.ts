@@ -96,6 +96,7 @@ export class MenuScene extends Phaser.Scene {
   /** 挑战模式的隐藏入口：累计点击 5 次后进入压测，离开标题页或关闭场景时清零。 */
   private challengeClicks=0;
   /** 改名输入与通用确认：标题页的存档管理与云存档覆盖确认共用。 */
+  private slotRows=new Map<SaveSlotRef,{button?:UiNode;titleKey:string}>();
   private renameRef?:SaveSlotRef;
   private renameSerial=0;
   private prompt?:TextPrompt;
@@ -137,7 +138,7 @@ export class MenuScene extends Phaser.Scene {
     if(!this.titleAssetsBound){this.titleAssetsBound=true;this.events.once(Phaser.Scenes.Events.DESTROY,()=>this.titleAssets.releaseResident());}
     this.page='home';this.app.ui.setMode('menu');this.app.ui.loading('正在准备主菜单…');
     const controller=new AbortController();
-    this.events.once('shutdown',()=>{this.renameSerial++;this.renameRef=undefined;this.cloudRenderedBranch=undefined;this.cloudControls=[];this.resetChallengeClicks();this.unregisterInput?.();this.unregisterInput=undefined;controller.abort();this.cancelCloudRequest();this.settleConfirm(false,false);this.slotRequest?.abort();this.changelogRequest?.abort();this.changelogRequest=undefined;this.changelogOpen=false;this.app.releaseChangelog?.();this.prompt?.close();this.passwordPrompt?.close();this.credentials?.destroy();this.credentials=undefined;this.clearModalLabels();this.menuText?.destroy();this.menuText=undefined;this.changelogBackgroundText?.destroy();this.changelogBackgroundText=undefined;this.domSpecs=[];this.slotsScroll=undefined;this.settingsList=undefined;this.cloudScroll=undefined;this.surface?.destroy();this.surface=undefined;this.modal?.destroy();this.modal=undefined;this.popupMask?.destroy();this.popupMask=undefined;this.events.off(Phaser.Scenes.Events.RESUME,this.renderOnResume,this);this.events.off(Phaser.Scenes.Events.PAUSE,this.hideCredentials);this.scale.off('resize',this.resize,this);});
+    this.events.once('shutdown',()=>{this.renameSerial++;this.renameRef=undefined;this.cloudRenderedBranch=undefined;this.cloudControls=[];this.slotRows.clear();this.resetChallengeClicks();this.unregisterInput?.();this.unregisterInput=undefined;controller.abort();this.cancelCloudRequest();this.settleConfirm(false,false);this.slotRequest?.abort();this.changelogRequest?.abort();this.changelogRequest=undefined;this.changelogOpen=false;this.app.releaseChangelog?.();this.prompt?.close();this.passwordPrompt?.close();this.credentials?.destroy();this.credentials=undefined;this.clearModalLabels();this.menuText?.destroy();this.menuText=undefined;this.changelogBackgroundText?.destroy();this.changelogBackgroundText=undefined;this.domSpecs=[];this.slotsScroll=undefined;this.settingsList=undefined;this.cloudScroll=undefined;this.surface?.destroy();this.surface=undefined;this.modal?.destroy();this.modal=undefined;this.popupMask?.destroy();this.popupMask=undefined;this.events.off(Phaser.Scenes.Events.RESUME,this.renderOnResume,this);this.events.off(Phaser.Scenes.Events.PAUSE,this.hideCredentials);this.scale.off('resize',this.resize,this);});
     // 标题页整屏独占键盘；原始事件由正式界面场景那一处桥接进 router。
     this.unregisterInput?.();this.unregisterInput=this.app.inputRouter.register('menu',this.routeKey,{exclusive:()=>true});
     this.events.on(Phaser.Scenes.Events.RESUME,this.renderOnResume,this);
@@ -554,6 +555,7 @@ export class MenuScene extends Phaser.Scene {
     }else{
       view.button('',28,21,67,67,()=>this.showHome(),{image:CLOSE_IMAGE,pressed:CLOSE_PRESSED,guard}).setData('label','返回主菜单');
       if(this.page==='slots'){
+        this.slotRows.clear();
         texts.push({key:'slots-title',text:'存档槽',x:600,y:20,style:{size:49,anchorX:.5,anchorY:0}});
         view.button('',CLOUD_PAGE.entry.x,CLOUD_PAGE.entry.y,CLOUD_PAGE.entry.width,CLOUD_PAGE.entry.height,()=>this.openCloud(),{fontSize:26,guard}).setData('label','云存档');
         buttonText('cloud-entry','云存档',CLOUD_PAGE.entry.x,CLOUD_PAGE.entry.y,CLOUD_PAGE.entry.width,CLOUD_PAGE.entry.height,26);
@@ -570,11 +572,12 @@ export class MenuScene extends Phaser.Scene {
           this.slotsScroll=scroll;scroll.onScroll=()=>this.menuText?.refresh();
           newestFirstSlots(slot=>this.app.saves.peek(slot)).forEach((slot,index)=>{
             const ref=slot,reading=this.app.saves.peek(ref),title=saveRowTitle(ref,reading);
-            drawSaveBoardRow(view,assets,{x:0,y:0},index*SAVE_BOARD.rowStep,{
+            const button=drawSaveBoardRow(view,assets,{x:0,y:0},index*SAVE_BOARD.rowStep,{
               reading,label:title,title,
               action:reading.kind==='ok'?()=>this.resume(ref):reading.kind==='empty'?()=>{void this.app.enterGame?.(slot);}:undefined,
               ...this.slotControls(ref,reading),
             },scroll.content);
+            this.slotRows.set(ref,{button,titleKey:`list-${index*SAVE_BOARD.rowStep}-title`});
           });
           scroll.setHeight((MANUAL_SAVE_SLOT_COUNT-1)*SAVE_BOARD.rowStep+SAVE_BOARD.frameHeight);
         }finally{setSaveBoardTextSink(view,undefined);}
@@ -739,6 +742,12 @@ export class MenuScene extends Phaser.Scene {
     this.render();
   }
   /** 改名：手机系统键盘输入，只收中文、英文、数字；确认后只改摘要里的名字。 */
+  private updateSlotTitle(ref:SaveSlotRef):void{
+    const row=this.slotRows.get(ref);if(!row){this.render();return;}
+    const title=saveRowTitle(ref,this.app.saves.peek(ref)),spec=this.domSpecs.find(value=>value.key===row.titleKey);
+    row.button?.setData('label',title);if(spec)spec.text=title;
+    this.menuText?.renderPage('slots');this.layout();
+  }
   private renameSlot(ref:SaveSlotRef):void{
     if(ref===AUTO_SAVE_SLOT)return;
     const reading=this.app.saves.peek(ref);
@@ -750,7 +759,7 @@ export class MenuScene extends Phaser.Scene {
         try{this.app.saves.rename(ref,value);}
         catch(error){console.warn('存档改名失败',error);}
       }
-      this.renameRef=undefined;if(value!==undefined)this.render();else this.layout();
+      this.renameRef=undefined;if(value!==undefined)this.updateSlotTitle(ref);else this.layout();
     };
     // 测试没有 DOM 输入框，直接注入一个返回值。
     if(this.app.promptText){void this.app.promptText(reading.summary.name??'').then(apply,()=>apply(undefined));return;}

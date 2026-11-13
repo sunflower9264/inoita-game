@@ -115,7 +115,7 @@ function formatSavedAt(savedAt?:number):string {
 export function drawSaveBoardRow(
   view:UiSurface, assets:SaveBoardAssets, origin:{x:number; y:number}, top:number,
   row:SaveBoardRow, parent?:UiNode
-):void {
+):UiNode|undefined {
   view.image(assets.frame,origin.x,top,SAVE_BOARD.frameWidth,SAVE_BOARD.frameHeight,parent);
   const left=origin.x+SAVE_BOARD.rowInset, bottom=top+SAVE_BOARD.rowInset;
   const sink=textSinks.get(view);
@@ -151,13 +151,14 @@ export function drawSaveBoardRow(
     // 空槽由 EMPTY 图本身表示；只有自动槽还需要名字，手动槽不再重复写「存档槽 N」。
     if(row.auto)text('title',row.title,left+170,bottom+58,340,24,SAVE_SLOT_TEXT);
   }
-  if(row.action)view.button('',left,bottom,row.controls?.length?SAVE_BOARD.rowWidth-CONTROL_COLUMN:SAVE_BOARD.rowWidth,SAVE_BOARD.rowHeight,row.action,
-    {bare:true,parent}).setData('label',row.label);
+  const rowButton=row.action?view.button('',left,bottom,row.controls?.length?SAVE_BOARD.rowWidth-CONTROL_COLUMN:SAVE_BOARD.rowWidth,SAVE_BOARD.rowHeight,row.action,
+    {bare:true,parent}).setData('label',row.label):undefined;
   row.controls?.forEach((control,index)=>{
     const x=left+SAVE_BOARD.rowWidth-CONTROL_WIDTH;
     const y=bottom+(index===0?20:76);
     view.button('',x,y,CONTROL_WIDTH,44,control.action,{parent}).setData('label',control.label);
     text(`control-${index}`,control.text,x+CONTROL_WIDTH/2,y+22,0,20,GOLD,.5,.5);
   });
+  return rowButton;
 }
 

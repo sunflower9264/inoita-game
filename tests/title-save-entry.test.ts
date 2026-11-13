@@ -100,7 +100,7 @@ function fixture(gmMode?:MenuContext['gmMode'],cloud?:CloudSavePort){
     // 场景缩放通知与屏幕布局分别提供。
     scale:{width:1200,height:640,zoom:1,on(){},off(){}},
     cloudStatus:undefined,cloudCount:undefined,cloudRequest:undefined,cloudRenderedBranch:undefined,cloudControls:[],confirmAction:undefined,confirmResolve:undefined,
-    renameRef:undefined,renameSerial:0,slotRequest:undefined,slotPortraits:undefined,prompt:undefined,settingsScroll:0,backdrop:undefined,
+    slotRows:new Map(),renameRef:undefined,renameSerial:0,slotRequest:undefined,slotPortraits:undefined,prompt:undefined,settingsScroll:0,backdrop:undefined,
     challengeClicks:0,challengeTimer:undefined,
     domSpecs:[] as MenuTextSpec[],menuText:undefined as MenuTextLayer|undefined,changelogBackgroundText:undefined as MenuTextLayer|undefined,modalLabels:[] as FakeDomLabel[],
     changelogVersionButtons:[] as Button[],changelogOpen:false,changelogState:'idle',changelogReleases:[] as {gameVersion:string;entries:string[]}[],changelogSelected:0,
@@ -304,10 +304,12 @@ test('title slots rename a manual save through the system keyboard',async()=>{
   const f=fixture();f.entries.set('inotia4.story.v1.slot0',saved());
   const initials:string[]=[];
   f.app.promptText=async(initial:string)=>{initials.push(initial);return '第一章';};
-  f.click('开始游戏');f.click('存档槽 1 改名');
+  f.click('开始游戏');const slot=f.view.buttons.find(button=>button.getData('label')==='存档槽 1')!;
+  const rename=f.view.buttons.find(button=>button.getData('label')==='存档槽 1 改名')!,scroll=f.view.scrolls.at(-1);f.click('存档槽 1 改名');
   await new Promise(resolve=>setImmediate(resolve));
   assert.deepEqual(initials,[''],'改名以存档现有名字为初值');
-  assert(f.view.buttons.some(button=>button.getData('label')==='第一章'),'行标题换成新名字');
+  assert.equal(f.view.buttons.find(button=>button.getData('label')==='第一章'),slot,'行标题更新并保留按钮');
+  assert.equal(f.view.buttons.find(button=>button.getData('label')==='存档槽 1 改名'),rename);assert.equal(f.view.scrolls.at(-1),scroll);
   assert(f.view.buttons.some(button=>button.getData('label')==='存档槽 1 删除'),'控件仍用固定的槽位名');
   const reading=f.saves.inspect(0);
   assert.equal(reading.kind==='ok'?reading.game.summary.name:undefined,'第一章');
