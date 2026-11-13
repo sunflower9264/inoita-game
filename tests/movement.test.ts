@@ -297,7 +297,8 @@ test('all authored walks complete with actual Arcade collisions, including paral
       for (const a of flatten(action)) {
         if (!('target' in a) || !a.target) continue;
         const entry = cast.get(a.target); if (!entry) continue;
-        if (a.type === 'appear') { assert.ok(f.navigation.canPlace(entry.actor.shape(), a, entry.actor), `${script}/${a.target} appear`); entry.body.reset(a.x, a.y); entry.body.updateFromGameObject(); entry.body.enable = true; }
+        if (a.type === 'appear') { assert.ok(f.navigation.canPlace(entry.actor.shape(), a, entry.actor), `${script}/${a.target} appear`); entry.body.reset(a.x, a.y); entry.body.updateFromGameObject(); entry.body.enable = true; unpositioned.delete(a.target); }
+        if (a.type === 'show' && !unpositioned.has(a.target)) entry.body.enable = true;
         if (a.type === 'leave') entry.body.enable = false;
         if (a.type === 'walk') {
           if (!entry.body.enable || unpositioned.has(a.target)) continue;
@@ -314,5 +315,5 @@ test('all authored walks complete with actual Arcade collisions, including paral
   }
   // 断言跑过的走位条数，防止脚本筛选或舞台处理改动后这段悄悄什么都不查。动态舞台与
   // 未定位/停用角色整段跳过，所以这里只统计真正会推进的静态舞台走位；内容变多时同步这个数。
-  assert.equal(walks, 813);
+  assert.equal(walks, 892);
 });
