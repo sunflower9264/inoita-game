@@ -1594,6 +1594,23 @@ test('rare shop conceals descriptions before purchase and preserves full instanc
   assert(visibleDomLabels(f).some(label => label.text.includes('防御力') || label.text.includes('物理攻击') || label.text.includes('魔法攻击')), '普通商品购买前保持正常说明');
 });
 
+test('opening and closing shop details keeps shelf and bag controls',t=>{
+  const f=fixture();t.after(f.cleanup);
+  const entry=f.add('novice-weapon-scroll');
+  f.menu.openShop('merchandise-dealer-b09d9585','');
+  const button=f.scene.button(`出售 ${items.items[entry.item].name}`);
+  const body=f.internals.body,scrolls=body.scrolls.slice(),controls=body.root.list.slice();
+  f.scene.click(button);
+  assert.equal(f.scene.button(`出售 ${items.items[entry.item].name}`),button);
+  assert.deepEqual(body.scrolls,scrolls);
+  assert.deepEqual(body.root.list,controls);
+  assert.ok(f.scene.button('出售'));
+  f.scene.click(f.scene.button('关闭'));
+  assert.equal(f.scene.button(`出售 ${items.items[entry.item].name}`),button);
+  assert.deepEqual(body.scrolls,scrolls);
+  assert.deepEqual(body.root.list,controls);
+});
+
 test('shop category changes reset scrolling while details, transactions and session updates preserve it', t => {
   const f = fixture(); t.after(f.cleanup);
   const supplies = Object.keys(items.items).filter(id => items.items[id].category === 'consumable' && !items.items[id].pickup).slice(0, 40);

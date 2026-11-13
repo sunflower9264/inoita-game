@@ -952,7 +952,8 @@ export class StoryUI {
     const refreshText=()=>this.menuText?.refresh();
     if(this.page==='bag')this.renderBag();if(this.page==='status')this.renderStatus();if(this.page==='skills')this.renderSkills();if(this.page==='party')this.renderParty();if(this.page==='quests')this.renderQuests();
     if(this.page==='shop')this.shopPanel?.render(this.body,this.modal!,this.placeModal,this.description!,{scroll:textScroll,refresh:refreshText,
-      setText:(key,text)=>this.menuText?.setText('shop',key,text)});
+      setText:(key,text)=>this.menuText?.setText('shop',key,text),
+      updateDescription:draw=>{this.description?.clear();this.removeDescriptionScrolls();draw();this.menuText?.renderPage('shop');}});
     if(this.page==='crafting'&&this.craftingPanel){this.craftingPanel.render(this.body,this.modal!,this.placeModal,(pointer,entry,scroll)=>this.startDrag(pointer,entry,scroll),{scroll:textScroll,refresh:refreshText});this.drops=this.craftingPanel.drops;}
     if(this.page==='forge'&&this.forge)this.forge.render(this.body,this.modal!,this.placeModal,{scroll:textScroll,refresh:refreshText});
     if(this.page==='learn'&&this.skillBook)this.skillBook.render(this.body!);
