@@ -818,6 +818,18 @@ test('forge opens as a menu page and enhances continuously', t => {
   assert.equal(f.hero.bag.get(weapon.id)!.numbers!.enhancementUses,1);
 });
 
+test('switching forge functions retains the tabs and scrolling areas',t=>{
+  const f=fixture();t.after(f.cleanup);setHeroWeapon(f,3,3);f.add('novice-weapon-scroll',2);openHeroForge(f);
+  const tabs=['强化','镶嵌','净化'].map(label=>f.scene.button(label));
+  const left=f.internals.scrollNames.get('forge-left'),grid=f.internals.scrollNames.get('forge-grid');
+  for(const tab of [tabs[1],tabs[2],tabs[0]]){
+    f.scene.click(tab);
+    ['强化','镶嵌','净化'].forEach((label,index)=>assert.equal(f.scene.button(label),tabs[index]));
+    assert.equal(f.internals.scrollNames.get('forge-left'),left);assert.equal(f.internals.scrollNames.get('forge-grid'),grid);
+  }
+  assert(f.scene.button('卷轴:低级武器强化卷轴'));
+});
+
 test('forge top-right close returns to the bag page without closing the menu', t => {
   const f=fixture();t.after(f.cleanup);
   setHeroWeapon(f,3,3);

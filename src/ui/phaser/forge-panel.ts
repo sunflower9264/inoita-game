@@ -1,4 +1,4 @@
-import { drawBagRail, drawBagRailSelection } from './bag-rail.ts';
+import { drawBagRail } from './bag-rail.ts';
 import type { UiImage, UiNode } from '../dom/node.ts';
 import { equipmentPower, type CharacterPanel, type CharacterStatsCatalog, type Modifier } from '../../domain/character-stats.ts';
 import { equipmentLevel } from '../../domain/chaos-equipment.ts';
@@ -45,6 +45,7 @@ export class ForgePanel {
   private text?:ForgeTextTarget;
   private gridButtons=new Map<string,{button:UiNode;marker?:UiImage;chaos:boolean}>();
   private detailNodes:UiNode[]=[];
+  private tabHighlight?:UiNode;
   private detailKeys=new Set<string>();
   private summaryBottom=0;
   /** 左框可滚动区从 (0,0) 开始，正文坐标就是内容坐标。 */
@@ -124,7 +125,7 @@ export class ForgePanel {
     const side=bagLayout().sideButtons;
     ([['enchant','强化'],['socket','镶嵌'],['purify','净化']] as const).forEach(([tab,label],index)=>{
       const y=side.y+side.offsets[index]!;
-      if(this.tab===tab)drawBagRailSelection(v,side.x,y,side.width,side.height);
+      if(this.tab===tab)this.tabHighlight=v.rect(side.x,y,side.width,side.height,0xe2c88d,.10);
       v.button('',side.x,y,side.width,side.height,()=>this.setTab(tab),{bare:true}).setData('label',label);
       this.addText(`forge-tab-${tab}`,label,side.x+side.width/2,y+side.height/2,19,GOLD,.5,.5,
         {width:side.width-6,align:'center',wrap:'word'},{});
@@ -134,7 +135,13 @@ export class ForgePanel {
   private setTab(tab:ForgeTab):void {
     if(this.tab===tab)return;
     this.tab=tab;this.selectedItem=undefined;this.socketIndex=undefined;this.replaceIndex=undefined;
-    this.offset=0;this.leftOffset=0;this.scroll=undefined;this.leftScroll=undefined;this.changed();
+    this.offset=0;this.leftOffset=0;
+    const v=this.surface,left=this.leftScroll,target=this.targetId?this.bag.get(this.targetId):undefined;
+    const item=target?this.bag.catalog.items[target.item]:undefined;
+    if(!v||!left||!target||!item||!this.text?.updatePage){this.changed();return;}
+    const side=bagLayout().sideButtons,index=(['enchant','socket','purify'] as const).indexOf(tab);
+    this.tabHighlight?.setPosition(side.x,side.y+side.offsets[index]);left.scrollTop=0;
+    this.renderGrid(v,target);this.updateDetails(v,left,target,item);this.text.updatePage();
   }
   private validateState(target:ItemInstance):void {
     if(this.selectedItem&&!this.bag.get(this.selectedItem))this.selectedItem=undefined;
@@ -170,17 +177,15 @@ export class ForgePanel {
     return `${this.tab==='purify'?'净化石':'卷轴'}:${this.bag.catalog.items[entry.item].name}`;
   }
   private renderGrid(v:UiSurface,target:ItemInstance):void {
-    const entries=this.gridEntries(),assets=this.panels.assets;
+    const entries=this.gridEntries(),assets=this.panels.assets,layout=bagLayout(),grid=layout.grid;
+    const scroll=this.scroll??this.scrollAt('forge-grid',grid.x,grid.y,grid.width,431-24-grid.y);this.scroll=scroll;
+    scroll.content.removeAll(true);this.gridButtons.clear();
+    this.pageText=this.pageText.filter(spec=>!spec.key.startsWith('forge-grid-'));
+    this.gridClip={top:grid.y,bottom:grid.y+scroll.height};
     if(!entries.length){
       const message=this.tab==='enchant'?'背包里没有强化卷轴。':this.tab==='socket'?'背包里没有宝石。':'背包里没有净化之宝石。';
       this.addText('forge-grid-empty',message,681,180,20,TEXT_COLORS.secondary,.5,0,{},{});
-      return;
     }
-    const layout=bagLayout(),grid=layout.grid;
-    // 右栏底部不再写宝石预览：网格一直排到框底边框内沿（431 − 24），多露一行格子且不被边框压住。
-    const scroll=this.scrollAt('forge-grid',grid.x,grid.y,grid.width,431-24-grid.y);this.scroll=scroll;
-    this.gridClip={top:grid.y,bottom:grid.y+scroll.height};
-    scroll.onScroll=()=>this.text?.refresh();
     entries.forEach((entry,index)=>{
       const definition=this.bag.catalog.items[entry.item];
       const x=index%grid.columns*SLOT_STRIDE,y=Math.floor(index/grid.columns)*SLOT_STRIDE;
@@ -211,6 +216,9 @@ export class ForgePanel {
       if(show&&!cell.marker)cell.marker=v.image(this.panels.assets['inventory-selected'],SLOT.selection.x,SLOT.selection.y,SLOT.selection.size,SLOT.selection.size,cell.button).setData('forge-highlight',cell.chaos?'chaos':'selected');
       else if(!show&&cell.marker){cell.marker.destroy();cell.marker=undefined;}
     }
+    this.updateDetails(v,left,target,item);this.text.updatePage();
+  }
+  private updateDetails(v:UiSurface,left:ScrollArea,target:ItemInstance,item:ItemDefinition):void {
     for(const node of this.detailNodes)node.destroy();
     this.pageText=this.pageText.filter(spec=>!this.detailKeys.has(spec.key));
     const before=new Set(left.content.list),textStart=this.pageText.length;
@@ -218,7 +226,7 @@ export class ForgePanel {
     this.detailNodes=left.content.list.filter(node=>!before.has(node));
     this.detailKeys=new Set(this.pageText.slice(textStart).map(spec=>spec.key));
     left.setHeight(Math.max(431,this.summaryBottom,bottom));
-    v.pruneDestroyed();this.text.updatePage();
+    v.pruneDestroyed();
   }
   private problemText(source:ItemInstance,target:ItemInstance):string|undefined {
     if(!this.bag.canApply(source.id,target.id))return this.panels.itemMessages['socket-incompatible']??'该道具不适合。';
