@@ -257,6 +257,27 @@ test('session cleanup drops map and pose content so the next request reloads the
   } finally { globalThis.fetch = original; }
 });
 
+test('session cleanup preserves the validated destination map while clearing other maps', async () => {
+  const original = globalThis.fetch;
+  const calls: string[] = [];
+  globalThis.fetch = (async (input: string | URL | Request) => {
+    const url = String(input);
+    if (url === 'content-manifest.json') return manifestResponse();
+    calls.push(url);
+    return { ok: true, json: async () => ({}) } as Response;
+  }) as typeof fetch;
+  try {
+    const loader = new ContentLoader();
+    loader.trusted = true;
+    const target = await loader.map('content/maps/town.json');
+    await loader.map('content/maps/other.json');
+    loader.clearSessionCaches('content/maps/town.json');
+    assert.equal(await loader.map('content/maps/town.json'), target);
+    await loader.map('content/maps/other.json');
+    assert.deepEqual(calls, ['content/maps/town.json', 'content/maps/other.json', 'content/maps/other.json']);
+  } finally { globalThis.fetch = original; }
+});
+
 test('session cleanup keeps an in-flight map request and resolves its waiter', async () => {
   const original = globalThis.fetch;
   let mapCalls = 0;

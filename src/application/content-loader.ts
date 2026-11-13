@@ -107,9 +107,10 @@ export class ContentLoader {
    * 会话边界清理：丢弃已经完成的会话级内容（地图与人物动作），核心内容表继续常驻。
    * 只删缓存条目，不 abort 进行中的请求，也不改动已经返回给调用方的对象。
    */
-  clearSessionCaches(): void {
+  clearSessionCaches(keepMapFile?: string): void {
     for (const [file, request] of this.requests) {
-      if (request.scope !== 'core' && request.finished && this.requests.get(file) === request)
+      if (request.scope !== 'core' && !(request.scope === 'map' && file === keepMapFile)
+        && request.finished && this.requests.get(file) === request)
         this.requests.delete(file);
     }
   }

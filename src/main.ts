@@ -513,7 +513,7 @@ async function resumeSlot(slot:SaveSlotRef,signal?:AbortSignal):Promise<void> {
       install:(candidate,lifetime)=>{
         modeRequest=lifetime;const {session,world}=candidate,location=world.location;
         app.mode='game';ui.setMode('game');ui.loading('正在读取存档…');
-        installSession(session);
+        installSession(session, candidate.map.file);
         // 自动槽不是玩家手动选择的槽，所以这里留空。
         app.saveSlot=slot===AUTO_SAVE_SLOT?undefined:slot;
         game.scene.start(SCENE_KEYS.world,{map:location.map,x:location.x,y:location.y,facing:location.facing,
@@ -530,13 +530,13 @@ async function resumeSlot(slot:SaveSlotRef,signal?:AbortSignal):Promise<void> {
 }
 
 /** 新开与读档共用的会话装配：世界场景、菜单、剧情播放器与界面都接到这份会话上。 */
-function installSession(session: Session): void {
+function installSession(session: Session, keepMapFile?: string): void {
   stopAutoSave();app.gm?.dispose();app.director?.dispose();
   // 会话可能换了职业；旧常驻包、历史地图纹理和会话级内容解析结果都不再复用。
   app.releaseResidentCombat();
   app.clearMapHistory();
   app.clearStoryPrefetch();
-  app.content.clearSessionCaches();
+  app.content.clearSessionCaches(keepMapFile);
   app.outfits?.destroy();
   app.outfits = new OutfitPool({ textures: app.game!.textures, anims: app.game!.anims, game: app.game! },
     app.wardrobe, app.items, (ids, signal) => app.content.wardrobePoses(ids, signal));
