@@ -150,6 +150,7 @@ export class GmPanel {
   private storyBody?:UiSurface;
   private storyRow?:StoryTaskRow;
   private refreshItemPage?:()=>void;
+  private refreshStatusPage?:()=>void;
   private characterControls?:{
     members:Map<string,{button:UiNode;key:string}>;values:string[];level:UiNode;mana:UiNode;
     toggles:{invincible:{button:UiNode;key:string};noCooldown:{button:UiNode;key:string};oneHitKill:{button:UiNode;key:string}};
@@ -202,7 +203,7 @@ export class GmPanel {
     this.textSerial=this.tabText.length;this.renderContent(body,writer);
   }
   private renderContent(body:UiSurface,writer?:MenuTextWriter):void{
-    this.writer=writer;this.storyBody=undefined;this.storyRow=undefined;this.characterControls=undefined;this.refreshItemPage=undefined;const before=new Set(body.root.list),scrolls=new Set(body.scrolls);
+    this.writer=writer;this.storyBody=undefined;this.storyRow=undefined;this.characterControls=undefined;this.refreshItemPage=undefined;this.refreshStatusPage=undefined;const before=new Set(body.root.list),scrolls=new Set(body.scrolls);
     const hint = this.page === 'story' ? this.renderStory(body)
       : this.page === 'character' ? this.renderCharacter(body)
       : this.page === 'items' ? this.renderItems(body)
@@ -237,37 +238,42 @@ export class GmPanel {
 
   /** 状态页：摘要 + 上报 + 命名标记。 */
   private renderStatus(body: UiSurface): string {
-    const digest = this.gm.digest();
-    const quests = digest.quests as { active: unknown[]; ready: unknown[] };
-    const location = digest.location as { map: string; x: number; y: number } | null;
-    const story = digest.story as { completedEvents: number; runs: unknown[] };
-    this.text(`地图 ${location ? `${location.map} (${location.x},${location.y})` : '还没进图'}`, 60, 70, 0, 20);
-    this.text(`任务 进行中 ${quests.active.length} · 待交付 ${quests.ready.length}`, 60, 102, 0, 20);
-    this.text(`剧情 已完成 ${story.completedEvents} 个事件 · 在跑 ${story.runs.length} 段`, 60, 134, 0, 20);
-    this.button(body, '上报当前状态', 60, 180, 220, 52, () => void this.onReport()).setData('label', '上报当前状态');
-    this.button(body, '记一个状态标记', 300, 180, 220, 52, () => this.onMark()).setData('label', '记一个状态标记');
-    const marks = this.gm.marks();
-    this.button(body, marks.length ? `回到「${marks.at(-1)}」` : '回到状态标记', 540, 180, 220, 52,
-      () => this.onRecall(), { disabled: !marks.length }).setData('label', '回到状态标记');
-    this.button(body, '脱困', 780, 180, 180, 52, () => this.onRescue()).setData('label', '脱困');
-    this.text(marks.length ? `已有标记：${marks.join('、')}` : '还没有状态标记。', 60, 244, 900, 16);
-    this.text(`最近操作：${this.gm.actions().slice(-3).map(entry => entry.call).join(' → ') || '（还没有）'}`, 60, 276, 900, 16);
-
-    const activeList = quests.active as { id: string; title: string }[];
-    const currentId = (digest.quests as { current?: string }).current ?? activeList[0]?.id;
-    const currentQuest = currentId ? this.campaign.quests.find(q => q.id === currentId) : undefined;
-    const questBtnLabel = currentQuest ? `完成任务：「${clipText(currentQuest.title, 8)}」` : '立刻完成当前任务';
-    this.button(body, questBtnLabel, 60, 316, 360, 48, () => this.onCompleteCurrentQuest(),
-      { disabled: !currentQuest }).setData('label', '立刻完成当前任务');
-    this.button(body, `穿墙：${this.gm.isNoclip() ? '开' : '关'}`, 440, 316, 220, 48,
-      () => this.onToggleNoclip(), { selected: this.gm.isNoclip() }).setData('label', '穿墙');
-    this.button(body, `2倍速度：${this.gm.isDoubleSpeed() ? '开' : '关'}`, 680, 316, 220, 48,
-      () => this.onToggleDoubleSpeed(), { selected: this.gm.isDoubleSpeed() }).setData('label', '2倍速度');
-
+    const text=(value:string,y:number,size:number,width=0)=>{const key=`gm-text-${this.textSerial}`;this.text(value,60,y,width,size);return key;};
+    const button=(label:string,x:number,y:number,width:number,height:number,action:()=>void,options:Parameters<UiSurface['button']>[6]={})=>{
+      const key=`gm-text-${this.textSerial}`;return {key,button:this.button(body,label,x,y,width,height,action,options)};
+    };
+    const digest=this.gm.digest(),quests=digest.quests as {active:{id:string;title:string}[];ready:unknown[];current?:string};
+    const location=digest.location as {map:string;x:number;y:number}|null,story=digest.story as {completedEvents:number;runs:unknown[]};
+    const locationKey=text(`地图 ${location?`${location.map} (${location.x},${location.y})`:'还没进图'}`,70,20);
+    const questKey=text(`任务 进行中 ${quests.active.length} · 待交付 ${quests.ready.length}`,102,20);
+    const storyKey=text(`剧情 已完成 ${story.completedEvents} 个事件 · 在跑 ${story.runs.length} 段`,134,20);
+    button('上报当前状态',60,180,220,52,()=>void this.onReport()).button.setData('label','上报当前状态');
+    button('记一个状态标记',300,180,220,52,()=>this.onMark()).button.setData('label','记一个状态标记');
+    const marks=this.gm.marks(),recall=button(marks.length?`回到「${marks.at(-1)}」`:'回到状态标记',540,180,220,52,()=>this.onRecall(),{disabled:!marks.length});recall.button.setData('label','回到状态标记');
+    button('脱困',780,180,180,52,()=>this.onRescue()).button.setData('label','脱困');
+    const marksKey=text(marks.length?`已有标记：${marks.join('、')}`:'还没有状态标记。',244,16,900);
+    const actionsKey=text(`最近操作：${this.gm.actions().slice(-3).map(entry=>entry.call).join(' → ')||'（还没有）'}`,276,16,900);
+    const currentId=quests.current??quests.active[0]?.id,current=currentId?this.campaign.quests.find(q=>q.id===currentId):undefined;
+    const quest=button(current?`完成任务：「${clipText(current.title,8)}」`:'立刻完成当前任务',60,316,360,48,()=>this.onCompleteCurrentQuest(),{disabled:!current});quest.button.setData('label','立刻完成当前任务');
+    const noclip=button(`穿墙：${this.gm.isNoclip()?'开':'关'}`,440,316,220,48,()=>this.onToggleNoclip(),{selected:this.gm.isNoclip()});noclip.button.setData('label','穿墙');
+    const speed=button(`2倍速度：${this.gm.isDoubleSpeed()?'开':'关'}`,680,316,220,48,()=>this.onToggleDoubleSpeed(),{selected:this.gm.isDoubleSpeed()});speed.button.setData('label','2倍速度');
+    this.refreshStatusPage=()=>{
+      const set=this.references.setText;if(!set){this.hooks.render();return;}
+      const data=this.gm.digest(),q=data.quests as {active:{id:string;title:string}[];ready:unknown[];current?:string};
+      const place=data.location as {map:string;x:number;y:number}|null,storyState=data.story as {completedEvents:number;runs:unknown[]},allMarks=this.gm.marks();
+      set(locationKey,`地图 ${place?`${place.map} (${place.x},${place.y})`:'还没进图'}`);
+      set(questKey,`任务 进行中 ${q.active.length} · 待交付 ${q.ready.length}`);set(storyKey,`剧情 已完成 ${storyState.completedEvents} 个事件 · 在跑 ${storyState.runs.length} 段`);
+      set(marksKey,allMarks.length?`已有标记：${allMarks.join('、')}`:'还没有状态标记。');
+      set(actionsKey,`最近操作：${this.gm.actions().slice(-3).map(entry=>entry.call).join(' → ')||'（还没有）'}`);
+      set(recall.key,allMarks.length?`回到「${allMarks.at(-1)}」`:'回到状态标记');recall.button.getData('setEnabled')?.(!!allMarks.length);
+      const id=q.current??q.active[0]?.id,task=id?this.campaign.quests.find(item=>item.id===id):undefined;
+      set(quest.key,task?`完成任务：「${clipText(task.title,8)}」`:'立刻完成当前任务');quest.button.getData('setEnabled')?.(!!task);
+      const wall=this.gm.isNoclip(),fast=this.gm.isDoubleSpeed();set(noclip.key,`穿墙：${wall?'开':'关'}`);set(speed.key,`2倍速度：${fast?'开':'关'}`);
+      noclip.button.getData('setSelected')?.(wall);speed.button.getData('setSelected')?.(fast);
+      if(this.resultTextKey)set(this.resultTextKey,this.result);
+    };
     return '提示：穿墙开启后可自由穿越障碍与NPC；2倍速度提升移动跑图效率；完成当前任务可直接结算奖励。';
   }
-
-  /** 人物页：选人、看数值、升级/回满/全队回满/无敌/无 CD。 */
   private renderCharacter(body: UiSurface): string {
     const characters=this.gm.characters();
     if(!characters.length){this.text('当前会话没有角色数据。',60,80,900,20);return '';}
@@ -668,41 +674,42 @@ export class GmPanel {
 
   private async onReport(): Promise<void> {
     const result = await this.gm.report();
+    if(this.references.active&&(!this.references.active()||this.page!=='status'))return;
     this.result = result.ok ? '已上报：服务器 .diagnostics/client-errors.jsonl 里能查到。' : `上报失败：${result.reason}`;
-    this.hooks.render();
+    if(this.refreshStatusPage)this.refreshStatusPage();else this.hooks.render();
   }
   private onMark(): void {
     const name = `标记${this.gm.marks().length + 1}`;
-    const result = this.gm.mark(name);
+    const result = this.perform(()=>this.gm.mark(name));
     this.result = result.ok ? `已记下「${name}」` : `记录失败：${result.reason}`;
-    this.hooks.render();
+    if(this.refreshStatusPage)this.refreshStatusPage();else this.hooks.render();
   }
   private onRecall(): void {
     const name = this.gm.marks().at(-1);
     if (!name) return;
-    const result = this.gm.recall(name);
+    const result = this.perform(()=>this.gm.recall(name));
     this.result = result.ok ? `已回到「${name}」` : `回退失败：${result.reason}`;
-    this.hooks.render();
+    if(this.refreshStatusPage)this.refreshStatusPage();else this.hooks.render();
   }
   private onCompleteCurrentQuest(): void {
-    const result = this.gm.completeCurrentQuest();
+    const result = this.perform(()=>this.gm.completeCurrentQuest());
     this.result = result.reason ?? (result.ok ? '任务已完成' : '完成任务失败');
-    this.hooks.render();
+    if(this.refreshStatusPage)this.refreshStatusPage();else this.hooks.render();
   }
   private onToggleNoclip(): void {
     const next = !this.gm.isNoclip();
-    this.gm.setNoclip(next);
+    this.perform(()=>this.gm.setNoclip(next));
     this.result = next ? '穿墙模式已开启' : '穿墙模式已关闭';
-    this.hooks.render();
+    if(this.refreshStatusPage)this.refreshStatusPage();else this.hooks.render();
   }
   private onToggleDoubleSpeed(): void {
     const next = !this.gm.isDoubleSpeed();
-    this.gm.setDoubleSpeed(next);
+    this.perform(()=>this.gm.setDoubleSpeed(next));
     this.result = next ? '已开启 2 倍速度' : '已恢复正常速度';
-    this.hooks.render();
+    if(this.refreshStatusPage)this.refreshStatusPage();else this.hooks.render();
   }
   private onRescue(): void {
-    const result = this.gm.rescue();
+    const result = this.perform(()=>this.gm.rescue());
     const place = (value: unknown) => {
       const point = value as { x?: number; y?: number } | undefined;
       return point && typeof point.x === 'number' ? `(${point.x},${point.y})` : '未知位置';
@@ -710,7 +717,7 @@ export class GmPanel {
     this.result = !result.ok ? `脱困失败：${result.reason}`
       : result.moved ? `已从 ${place(result.from)} 搬到 ${place(result.to)}`
       : '当前位置整个碰撞盒站得住，不需要脱困';
-    this.hooks.render();
+    if(this.refreshStatusPage)this.refreshStatusPage();else this.hooks.render();
   }
   private onPlay(target: StoryDebugTarget): void {
     this.result='';const pending=this.gm.jumpStory(target);this.hooks.close();

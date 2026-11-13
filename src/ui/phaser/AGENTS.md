@@ -63,3 +63,5 @@ npm test -- tests/control-layout.test.ts tests/native-message-layout.test.ts
 - 调试人物切换及升级、恢复和开关动作只更新角色文字与按钮状态，保留原控件。
 
 - 调试发放道具或金币时更新数量和结果文字，保留道具网格与按钮。
+
+- 调试状态操作只更新受影响的数值、标记和按钮状态；异步上报返回时只影响仍打开的状态页。

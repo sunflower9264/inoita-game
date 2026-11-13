@@ -2636,6 +2636,16 @@ test('the GM item page scrolls addable items, shows details and gives a chosen q
   assert.equal(gm.actions().at(-1)?.call, 'gainMoney');
 });
 
+test('debug status actions keep controls and ignore a late report after switching pages',async t=>{
+  const f=fixture();t.after(f.cleanup);let finish!:(value:boolean)=>void;
+  const gm=createGmActions({session:f.session,campaign,report:()=>new Promise(resolve=>{finish=resolve;})});
+  Object.defineProperty(f.app,'gm',{value:gm,configurable:true});f.menu.show('debug');
+  const wall=f.scene.button('穿墙'),report=f.scene.button('上报当前状态'),tab=f.scene.button('调试页 人物');
+  f.scene.click(wall);assert.equal(f.scene.button('穿墙'),wall);assert.equal(f.scene.button('上报当前状态'),report);
+  f.scene.click(report);f.scene.click(tab);finish(true);await new Promise<void>(resolve=>setImmediate(resolve));
+  assert.equal(f.scene.button('调试页 人物'),tab);assert(!domTexts(f).some(text=>text.includes('已上报：')));
+});
+
 test('session notifications only repaint the menu page whose data changed', t => {
   const f=fixture();t.after(f.cleanup);
   f.menu.show('bag');
