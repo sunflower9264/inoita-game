@@ -155,7 +155,7 @@ export class PartyPanel {
     story.forEach((id,index)=>{
       const button=v.button('',6,80+index*91,52,65,()=>this.select(id),{bare:true}).setData('label',this.name(id));
       v.imageCover(this.portrait(id),0,0,52,58,button,.5,.2).setAlpha(this.member(id)!.player.health>0?1:.45);
-      this.text(`story-role-${id}`,id==='player'?'主角':'伙伴',6+26,80+index*91+63,16,GOLD,.5,0);
+      this.text(`story-role-${id}`,id==='player'?'主角':snapshot.active.includes(id)?'上阵':'候补',6+26,80+index*91+63,16,GOLD,.5,0);
       const selected=v.rect(0,0,52,58,0xffda88,.12,button).setStrokeStyle(2,0xffda88).setVisible(this.selected===id);this.selectionMarks.set(id,selected);
     });
     for(let index=0;index<9;index++){
@@ -191,11 +191,12 @@ export class PartyPanel {
       if(this.tab==='info')this.renderInfo(v,id);
       else if(this.tab==='equipment')this.renderEquipment(v,id);
       else this.renderSkills(v,id);
-      if(id!=='player'&&(member as CompanionMember).source==='mercenary'){
+      if(id!=='player'){
         const snapshot=party.snapshot(),deployed=snapshot.active.includes(id);
         this.menuButton(v,'deployed',deployed?'移出队伍':'加入队伍',70,
           ()=>this.run(()=>deployed?party.reserve(id):party.deployFirstAvailable(id)),deployed?member.player.health<=0:snapshot.active.length>=3||member.player.health<=0);
-        this.menuButton(v,'dismiss','放逐',272,()=>{this.modal={kind:'dismiss',id};this.changed();},deployed);
+        if((member as CompanionMember).source==='mercenary')
+          this.menuButton(v,'dismiss','放逐',272,()=>{this.modal={kind:'dismiss',id};this.changed();},deployed);
       }
     }
     if(this.error)this.text('error',this.error,70,434,18,TEXT_COLORS.dangerSoft,0,0,{width:808,wrap:'word'});

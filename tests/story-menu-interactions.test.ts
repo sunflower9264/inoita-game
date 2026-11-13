@@ -17,7 +17,7 @@ import type { Campaign } from '../src/domain/campaign.ts';
 import type { ItemCatalog, EquipmentSlot } from '../src/domain/items.ts';
 import type { CompanionCatalog } from '../src/domain/party.ts';
 import { Session } from '../src/domain/session.ts';
-import { SaveSlots } from '../src/domain/save-game.ts';
+import { SaveSlots, captureSaveGame, restoreSaveGame, saveSummary } from '../src/domain/save-game.ts';
 import type { StoryWorldViewSnapshot } from '../src/scenes/world-scene.ts';
 import type { MenuPanels } from '../src/domain/menu-panels.ts';
 import type { ControlSkin } from '../src/domain/control-skin.ts';
@@ -397,6 +397,40 @@ test('story companions use their own skill label and no mercenary group',t=>{
   const mercenary=f.recruit('warlock');
   f.menu.show('party');f.scene.click(f.scene.button(mercenary.definition.name));f.scene.click(f.scene.button('技能目录'));
   assert(visibleDomLabels(f).some(label=>label.text==='佣兵团'),'佣兵仍显示佣兵团区');
+});
+
+test('a story companion can be deployed after a full party is saved and a mercenary leaves',t=>{
+  const f=fixture();t.after(f.cleanup);
+  const first=f.recruit('warlock'),second=f.recruit('priest'),party=f.session.party!;
+  const story=party.joinStory('mercenary-portia'),id=story.id,name=story.definition.name;
+  assert.deepEqual(party.activeIds,['player',first.id,second.id]);
+  assert.ok(party.snapshot().reserves.includes(id));
+
+  const summary=saveSummary(f.session,{id:campaign.start.map,name:'测试地图'},{name:'测试角色',portrait:''});
+  const saved=JSON.parse(JSON.stringify(captureSaveGame(f.session,{},summary)));
+  restoreSaveGame(f.session,saved);
+  assert.ok(party.snapshot().reserves.includes(id),'读档后剧情伙伴仍在候补');
+
+  f.menu.show('party');f.scene.click(f.scene.button(name));
+  assert.equal(f.scene.button('加入队伍').input!.enabled,false,'队伍满员时不可加入');
+  assert.ok(visibleDomLabels(f).some(label=>label.text==='候补'));
+  assert.equal(f.scene.buttons('放逐').length,0,'剧情伙伴不能放逐');
+
+  f.scene.click(f.scene.button(first.definition.name));f.scene.click(f.scene.button('移出队伍'));
+  f.scene.click(f.scene.button(name));
+  assert.equal(f.scene.button('加入队伍').input!.enabled,true);
+  f.scene.click(f.scene.button('加入队伍'));
+  assert.deepEqual(party.activeIds,['player',id,second.id]);
+  assert.ok(visibleDomLabels(f).some(label=>label.text==='上阵'));
+  assert.equal(f.scene.buttons('放逐').length,0);
+
+  f.scene.click(f.scene.button('移出队伍'));
+  assert.ok(party.snapshot().reserves.includes(id));
+  assert.ok(visibleDomLabels(f).some(label=>label.text==='候补'));
+  party.get(id)!.setHealth(0);
+  assert.equal(f.scene.button('加入队伍').input!.enabled,false,'阵亡伙伴不可上阵');
+  assert.equal(party.leaveStory('mercenary-portia'),true);
+  assert.equal(party.get(id),undefined,'剧情离队仍移除伙伴');
 });
 
 test('party skill cells hide the zero badge and show the locked overlay instead',t=>{
