@@ -1914,8 +1914,15 @@ test('dragging a load slot scrolls instead of asking to load, and a tap afterwar
   assert.equal(loads,0);
   assert.equal(f.internals.modal.root.visible,false);
 
-  f.scene.click(f.scene.button('存档槽 2'));
+  const row=f.scene.button('存档槽 2');
+  f.scene.click(row);
+  assert.equal(f.scene.button('存档槽 2'),row,'确认框打开时保留存档行');
+  assert.equal(slotRowScroll(f,row),scroll,'确认框打开时保留滚动区');
   assert(domTexts(f).includes('读取存档将丢失当前未保存的进度，确定读取？'));
+  f.scene.click(f.scene.button('否'));
+  assert.equal(f.scene.button('存档槽 2'),row,'取消后保留存档行');
+  assert.equal(slotRowScroll(f,row),scroll);
+  f.scene.click(row);
   f.scene.click(f.scene.button('是'));
   await Promise.resolve();
   assert.equal(loads,1);

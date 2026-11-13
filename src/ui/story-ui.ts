@@ -234,6 +234,13 @@ export class StoryUI {
       world:()=>this.world,
       contentAssets:()=>this.content?.assets??{},
       render:()=>this.render(),
+      updateConfirmation:()=>{
+        this.modal?.clear();
+        for(const [name,scroll] of this.scrollNames)if(scroll.surface===this.modal)this.scrollNames.delete(name);
+        this.renderSaveConfirmations();
+        if(!this.savePage.modalOpen)this.menuText?.renderPage(this.page);
+        this.sync();
+      },
       sync:()=>this.sync(),
       busy:()=>this.busy,
       setBusy:value=>{this.busy=value;},

@@ -35,6 +35,7 @@ export interface SavePageHost {
   /** 当前剧情界面的素材表，和菜单页共用同一份存档槽图。 */
   contentAssets(): Record<string, string>;
   render(): void;
+  updateConfirmation(): void;
   sync(): void;
   busy(): boolean;
   setBusy(value: boolean): void;
@@ -111,21 +112,21 @@ export class SavePage {
       this.host.beginModal(MENU_CANVAS_WIDTH, MENU_CANVAS_HEIGHT);
       this.messageBand = drawNativeMessage(this.host.modal(), app.menuPanels.assets, '读取存档将丢失当前未保存的进度，确定读取？',
         () => { this.loadConfirm = undefined; void this.loadFromSlot(slot); },
-        () => { this.loadConfirm = undefined; this.host.render(); }, this.host.modalWriter(), this.messageScroll());
+        () => { this.loadConfirm = undefined; this.host.updateConfirmation(); }, this.host.modalWriter(), this.messageScroll());
     }
     if (this.saveConfirm !== undefined) {
       const slot = this.saveConfirm;
       this.host.beginModal(MENU_CANVAS_WIDTH, MENU_CANVAS_HEIGHT);
       this.messageBand = drawNativeMessage(this.host.modal(), app.menuPanels.assets, '这个存档槽里已经有存档，确定覆盖？',
         () => { this.saveConfirm = undefined; void this.saveToSlot(slot); },
-        () => { this.saveConfirm = undefined; this.host.render(); }, this.host.modalWriter(), this.messageScroll());
+        () => { this.saveConfirm = undefined; this.host.updateConfirmation(); }, this.host.modalWriter(), this.messageScroll());
     }
     if (this.deleteConfirm !== undefined) {
       const slot = this.deleteConfirm;
       this.host.beginModal(MENU_CANVAS_WIDTH, MENU_CANVAS_HEIGHT);
       this.messageBand = drawNativeMessage(this.host.modal(), app.menuPanels.assets, '删除后无法恢复，确定删除这个存档？',
         () => this.deleteSlot(slot),
-        () => { this.deleteConfirm = undefined; this.host.render(); }, this.host.modalWriter(), this.messageScroll());
+        () => { this.deleteConfirm = undefined; this.host.updateConfirmation(); }, this.host.modalWriter(), this.messageScroll());
     }
   }
 
@@ -138,13 +139,13 @@ export class SavePage {
   handleEscape(event: KeyboardEvent): boolean {
     if (event.key !== 'Escape') return false;
     if (this.deleteConfirm !== undefined) {
-      event.preventDefault(); this.deleteConfirm = undefined; this.host.render(); return true;
+      event.preventDefault(); this.deleteConfirm = undefined; this.host.updateConfirmation(); return true;
     }
     if (this.loadConfirm !== undefined) {
-      event.preventDefault(); this.loadConfirm = undefined; this.host.render(); return true;
+      event.preventDefault(); this.loadConfirm = undefined; this.host.updateConfirmation(); return true;
     }
     if (this.saveConfirm !== undefined) {
-      event.preventDefault(); this.saveConfirm = undefined; this.host.render(); return true;
+      event.preventDefault(); this.saveConfirm = undefined; this.host.updateConfirmation(); return true;
     }
     return false;
   }
@@ -200,7 +201,7 @@ export class SavePage {
 
   private requestLoad(ref: SaveSlotRef): void {
     if (this.host.busy() || this.host.app.saves.peek(ref).kind !== 'ok') return;
-    this.loadConfirm = ref; this.host.render();
+    this.loadConfirm = ref; this.host.updateConfirmation();
   }
 
   private async loadFromSlot(ref: SaveSlotRef): Promise<void> {
@@ -218,7 +219,7 @@ export class SavePage {
   private requestSave(ref: SaveSlotRef): void {
     if (ref === AUTO_SAVE_SLOT || this.saving) return;
     if (this.host.app.saves.peek(ref).kind === 'empty') { void this.saveToSlot(ref); return; }
-    this.saveConfirm = ref; this.host.render();
+    this.saveConfirm = ref; this.host.updateConfirmation();
   }
 
   private saveToSlot(ref: SaveSlotRef): void {
@@ -256,7 +257,7 @@ export class SavePage {
   private requestDelete(ref: SaveSlotRef): void {
     if (ref === AUTO_SAVE_SLOT) return;
     if (this.host.app.saves.peek(ref).kind === 'empty') return;
-    this.deleteConfirm = ref; this.host.render();
+    this.deleteConfirm = ref; this.host.updateConfirmation();
   }
 
   private deleteSlot(ref: SaveSlotRef): void {

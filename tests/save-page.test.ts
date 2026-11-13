@@ -20,7 +20,7 @@ const { SavePage } = await import('../src/ui/save-page.ts');
 hook.deregister();
 
 function fixture() {
-  let renders = 0, syncs = 0, busy = false, notice = '';
+  let renders = 0, confirmations = 0, syncs = 0, busy = false, notice = '';
   const written: string[] = [];
   const app = {
     saves: {
@@ -46,6 +46,7 @@ function fixture() {
     session: () => session,
     world: () => world,
     contentAssets: () => ({ 'save-slot': 'slot.png', 'save-empty': 'empty.png' }),
+    updateConfirmation:()=>{confirmations += 1;},
     render: () => { renders += 1; },
     sync: () => { syncs += 1; },
     busy: () => busy,
@@ -59,7 +60,7 @@ function fixture() {
     finishScroll: () => {}
   };
   return { page: new SavePage(host), session, app, written,
-    renders: () => renders, syncs: () => syncs, notice: () => notice };
+    renders: () => renders, confirmations:()=>confirmations, syncs: () => syncs, notice: () => notice };
 }
 
 interface SavePageInternals {
@@ -81,19 +82,19 @@ test('存档页的 Escape 只关最上层确认，并逐层退回', () => {
   assert.equal(f.page.handleEscape(event), true);
   assert.equal(internals.deleteConfirm, undefined);
   assert.equal(internals.loadConfirm, 1, '删除确认关掉后读档确认还在');
-  assert.equal(f.renders(), 1);
+  assert.equal(f.confirmations(), 1);
 
   assert.equal(f.page.handleEscape(event), true);
   assert.equal(internals.loadConfirm, undefined);
   assert.equal(internals.saveConfirm, 3, '读档确认关掉后覆盖确认还在');
-  assert.equal(f.renders(), 2);
+  assert.equal(f.confirmations(), 2);
 
   assert.equal(f.page.handleEscape(event), true);
   assert.equal(internals.saveConfirm, undefined);
-  assert.equal(f.renders(), 3);
+  assert.equal(f.confirmations(), 3);
 
   assert.equal(f.page.handleEscape(event), false, '没有确认时把 Escape 还给菜单');
-  assert.equal(f.renders(), 3);
+  assert.equal(f.confirmations(), 3);
 });
 
 test('改名输入和确认框共同决定页面是否让出输入', () => {
