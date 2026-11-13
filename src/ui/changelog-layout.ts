@@ -1,21 +1,23 @@
 /**
  * 标题页更新日志弹窗的几何与可视窗口。
  *
- * 弹窗画在标题页的 1024×640 弹层画布上，用标题页设置页同一张 `slot` 图；
+ * 弹窗画在标题页的 1200×640 弹层画布上，用标题页设置页同一张 `slot` 图；
  * 金线在图的四周内缩约 17 像素，按面板显示比例换算后文字区整体让开这条线，
  * 按条目高度只输出屏幕内能看到的几条。
  */
 export const CHANGELOG_LAYOUT = {
-  /** 弹窗面板：在 1024×640 弹层画布里的外框。 */
-  panel: { x: 82, y: 60, width: 860, height: 520 },
-  /** 滚动文字区：让开 slot 的金线和关闭钮，底部与金线再留一点空隙。 */
-  scroll: { x: 340, y: 180, width: 546, height: 330 },
+  /** 更新日志使用标题页的完整宽度；确认框仍使用自己的尺寸。 */
+  canvas: { width: 1200, height: 640 },
+  /** 弹窗面板：在弹层画布里的外框。 */
+  panel: { x: 38, y: 40, width: 1124, height: 560 },
+  /** 正文让开图框金线与关闭钮。 */
+  scroll: { x: 296, y: 160, width: 810, height: 370 },
   /** 版本列表与正文分别滚动。 */
-  versions: { x: 138, y: 180, width: 178, height: 330, rowHeight: 68, buttonHeight: 58 },
-  /** 标题中心在面板内、金线下方的位置。 */
-  titleY: 146,
+  versions: { x: 94, y: 160, width: 178, height: 370, rowHeight: 68, buttonHeight: 58 },
+  /** 标题中心在正文上方。 */
+  titleY: 126,
   /** 右上角圆形关闭钮。 */
-  close: { size: 67, right: 44, top: 64 },
+  close: { size: 67, right: 44, top: 50 },
   textSize: 24,
   /** 相邻两条更新日志之间的空档。 */
   entryGap: 26,

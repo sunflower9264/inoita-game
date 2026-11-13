@@ -577,7 +577,7 @@ export class MenuScene extends Phaser.Scene {
       this.confirmBand=drawNativeMessage(modal,TITLE_MESSAGE_ASSETS,action.message,()=>action.accept(),()=>action.cancel(),this.modalTextWriter());
     }
     if(this.changelogOpen&&this.modal){
-      centerModal(this.modal,view,1024,640);
+      centerModal(this.modal,view,CHANGELOG_LAYOUT.canvas.width,CHANGELOG_LAYOUT.canvas.height);
       this.drawChangelog(this.modal);
     }
     this.menuText?.renderPage(this.changelogOpen?'changelog':this.page);
@@ -1012,7 +1012,10 @@ export class MenuScene extends Phaser.Scene {
     if(this.backdrop){this.backdrop.setPosition(0,0).setOrigin(0).setScale(1).setDisplaySize(width,height).fitting();}
     this.popupMask?.setSize(width,height);
     this.surface?.layout();
-    if(this.surface&&this.modal&&(this.confirmAction!==undefined||this.changelogOpen))centerModal(this.modal,this.surface,1024,640);
+    if(this.surface&&this.modal&&(this.confirmAction!==undefined||this.changelogOpen)){
+      const size=this.changelogOpen?CHANGELOG_LAYOUT.canvas:{width:1024,height:640};
+      centerModal(this.modal,this.surface,size.width,size.height);
+    }
     // 弹层里的滚动区（更新日志、长提示）跟着弹层位置和缩放重排。
     this.modal?.scrolls.forEach(scroll=>scroll.layout());
     this.syncCredentials();
