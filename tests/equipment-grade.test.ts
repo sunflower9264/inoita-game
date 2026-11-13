@@ -75,7 +75,7 @@ test('unique equipment keeps its static grade and never rolls sockets', () => {
   assert.equal(numbers.sockets, 0);
 });
 
-test('chapter bands cap the item level and enemy loot keeps the base slot chances', () => {
+test('enemy equipment follows the enemy level even in an earlier chapter', () => {
   const band = chapterBand(drops, 10);
   assert.ok(band);
   assert.equal(band!.maxItemLevel, 15);
@@ -85,12 +85,17 @@ test('chapter bands cap the item level and enemy loot keeps the base slot chance
   const levelById = new Map<string, number>();
   for (const rows of Object.values(drops.equipment)) for (const row of rows) levelById.set(row.item, row.dropLevel);
   const random = seeded(0x1234567);
+  let equipmentCount = 0;
   for (let index = 0; index < 5000; index += 1) {
     const result = rollEnemyLoot(drops, stats, 'enemy-scorpion-1', 100, 10, random);
     for (const reward of result.rewards) {
       if (reward.kind !== 'item') continue;
       const level = levelById.get(reward.item);
-      if (level !== undefined) assert.ok(level <= 15, `${reward.item} 等级 ${level} 超出章节上限`);
+      if (level !== undefined) {
+        equipmentCount++;
+        assert.ok(level >= 84 && level <= 99, `${reward.item} 等级 ${level} 超出怪物等级范围`);
+      }
     }
   }
+  assert.ok(equipmentCount > 0, '应当抽到装备');
 });
