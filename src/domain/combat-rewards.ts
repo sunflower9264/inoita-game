@@ -29,6 +29,8 @@ interface CombatRewardInput {
   enemy: EnemyDefinition;
   /** 是否有地图生成点。没有生成点时仍可给经验，但不写击杀记录、不掷掉落。 */
   hasSpawn: boolean;
+  /** 挑战模式的临时怪没有地图生成点，但仍按普通击杀结算掉落。 */
+  pressureMode?: boolean;
   oneTime?: boolean;
   enemyLevel: number;
   elite: boolean;
@@ -114,7 +116,7 @@ export function settleCombatRewards(input: CombatRewardInput): CombatRewardSettl
     reservedUnlockMisses: input.reserved.misses,
     killSound: true,
   };
-  if (!input.hasSpawn) return settlement;
+  if (!input.hasSpawn && !input.pressureMode) return settlement;
 
   const lootLevel = input.lootLevel ?? 0;
   if (breakable) {

@@ -289,6 +289,19 @@ test('a kill without a map spawn still grants experience but has no loot or defe
   assert.deepEqual(run.defeated, [], '没有生成点不写击杀记录');
 });
 
+test('challenge enemies without a map spawn still settle normal loot', t => {
+  t.mock.method(Math, 'random', () => 0);
+  const run = harness({ enemyId: 'enemy-slime-1', heroLevel: 10 });
+  (run.host as unknown as { roster: { source: () => undefined } }).roster.source = () => undefined;
+  (run.host as unknown as { app: { pressureMode?: boolean } }).app.pressureMode = true;
+  run.settle();
+
+  assert.equal(run.experience.length, 1);
+  assert.ok(run.loot.some(call => call.rewards.some(reward => reward.kind === 'item')),
+    '挑战模式的临时怪也按普通击杀结算掉落');
+  assert.deepEqual(run.defeated, [], '没有地图生成点时不写地图击杀记录');
+});
+
 test('an enemy without a drop rule skips normal loot but still records the kill', () => {
   const run = harness({ enemyId: 'enemy-slime-1', heroLevel: 10 });
   (run.host as unknown as { drops: DropCatalog }).drops = { ...drops, enemies: {} };

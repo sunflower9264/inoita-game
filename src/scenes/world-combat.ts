@@ -1288,7 +1288,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
             if(spawn)session.enemyDefeated(spawn);
             const living=session.party?.livingIds??[];
             const settlement=settleCombatRewards({
-              enemy:targetEnemy.definition,hasSpawn:!!spawn,oneTime:spawn?.respawn===false,enemyLevel:before.level,elite:before.elite,
+              enemy:targetEnemy.definition,hasSpawn:!!spawn,pressureMode:this.app.pressureMode,oneTime:spawn?.respawn===false,enemyLevel:before.level,elite:before.elite,
               heroLevel:hero.level,map,x,y,lootLevel:this.scene.map?.lootLevel,
               partySize:Math.max(1,living.length||1),earnsExperience,
               party:(living.length?living:['player']).map(id=>{
