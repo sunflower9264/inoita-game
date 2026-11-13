@@ -1162,7 +1162,8 @@ test('companion skill descriptions use the member cap and next learning level',t
   const f=fixture();t.after(f.cleanup);const member=f.recruit('warlock');f.select(member.id);
   const id=battle.classes.find(character=>character.id===member.classId)!.skills.find(id=>member.snapshot().skillCaps[id]>0)!;
   f.menu.show('skills');f.scene.click(f.scene.button(battle.skills[id].name));
-  assert(visibleDomLabels(f).some(label=>label.text===`最高等级： LV ${member.snapshot().skillCaps[id]}`));
+  assert(visibleDomLabels(f).some(label=>label.text===`最高等级： LV ${battle.skills[id].companion!.ranks.length}`));
+  assert(visibleDomLabels(f).some(label=>label.text===`自然成长上限： LV ${member.snapshot().skillCaps[id]}`));
   assert(!visibleDomLabels(f).some(label=>label.text.startsWith('需要技能点数：')));
 });
 
@@ -2858,6 +2859,16 @@ test('switching party detail tabs keeps the roster and tab controls',t=>{
     assert.equal(f.scene.button('装备'),equipment);
     assert.equal(f.scene.button('技能目录'),skills);
   }
+});
+
+test('switching roster pages keeps story members and detail tabs',t=>{
+  const f=fixture();t.after(f.cleanup);f.menu.show('party');
+  const page=f.scene.button('佣兵名册第 1 页，切换页面'),hero=f.scene.button(world.actors[campaign.start.actor].name);
+  const tab=f.scene.button('人物能力');f.scene.click(page);
+  assert.equal(f.scene.button('佣兵名册第 2 页，切换页面'),page);
+  assert.equal(f.scene.button(world.actors[campaign.start.actor].name),hero);assert.equal(f.scene.button('人物能力'),tab);
+  assert(f.scene.button('空佣兵槽 13'));f.scene.click(page);
+  assert.equal(f.scene.button('佣兵名册第 1 页，切换页面'),page);assert.equal(f.scene.button('人物能力'),tab);
 });
 
 test('moving a party member between active and reserve keeps the roster',t=>{

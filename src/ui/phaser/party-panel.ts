@@ -16,7 +16,7 @@ import { slotFrameImage, updateEquipmentLock } from '../slot-frame.ts';
 import { TEXT_COLORS } from '../text-style.ts';
 import { wrapText } from '../text-layout.ts';
 import type { MenuTextSpec, MenuTextWriter } from '../dom/menu-text.ts';
-import type { UiNode } from '../dom/node.ts';
+import type { UiImage, UiNode } from '../dom/node.ts';
 
 type DetailTab = 'info'|'equipment'|'skills';
 type PartyModal = {kind:'dismiss';id:string;error?:string}|{kind:'skill';id:string;skill:string}|{kind:'group-skill';id:string;skill:CompanionGroupEffect};
@@ -61,6 +61,9 @@ export class PartyPanel {
   private surface?:UiSurface;
   private selectionMarks=new Map<string,UiNode>();
   private deployedMarkers=new Map<string,UiNode>();
+  private rosterNodes:UiNode[]=[];
+  private rosterIds=new Set<string>();
+  private pageButton?:UiNode;
   private readonly runAction?:(action:()=>void)=>void;
   private detailNodes:UiNode[]=[];
   private tabs=new Map<DetailTab,UiNode>();
@@ -163,7 +166,7 @@ export class PartyPanel {
     if(this.selected&&!this.member(this.selected)){this.selected=undefined;this.modal=undefined;}
     // 没有选中项时落在名册第一个条目（主角）上，右侧详情才有内容。
     if(!this.selected){this.selected=story[0];this.prepare(this.selected);}
-    v.button('',9,-4,56,56,()=>{this.page=1-this.page;this.selected=undefined;this.modal=undefined;this.error='';this.changed();},
+    this.pageButton=v.button('',9,-4,56,56,()=>this.switchRosterPage(),
       {image:assets[`party-page-${this.page+1}`]}).setData('label',`佣兵名册第 ${this.page+1} 页，切换页面`);
     story.forEach((id,index)=>{
       const button=v.button('',6,80+index*91,52,65,()=>this.select(id),{bare:true}).setData('label',this.name(id));
@@ -171,19 +174,7 @@ export class PartyPanel {
       this.text(`story-role-${id}`,id==='player'?'主角':snapshot.active.includes(id)?'上阵':'候补',6+26,80+index*91+63,16,GOLD,.5,0);
       const selected=v.rect(0,0,52,58,0xffda88,.12,button).setStrokeStyle(2,0xffda88).setVisible(this.selected===id);this.selectionMarks.set(id,selected);
     });
-    for(let index=0;index<ROSTER_SLOTS_PER_PAGE;index++){
-      const id=snapshot.rosterSlots[this.page*ROSTER_SLOTS_PER_PAGE+index],x=70+index%ROSTER_COLUMNS*136,y=5+Math.floor(index/ROSTER_COLUMNS)*123;
-      const button=v.button('',x,y,127,114,()=>{if(id)this.select(id);},{bare:true}).setData('label',id?this.name(id):`空佣兵槽 ${this.page*ROSTER_SLOTS_PER_PAGE+index+1}`);
-      v.image(assets['party-slot'],0,0,127,114,button);
-      const portrait=v.imageCover(id?this.portrait(id):assets['party-empty'],0,0,127,114,button,.5,.2);
-      if(id&&this.member(id)!.player.health<=0){
-        portrait.setAlpha(.45);
-        this.text(`roster-dead-${index}`,'阵亡',x+63,y+88,18,TEXT_COLORS.dangerSoft,.5,0);
-      }
-      v.image(assets['party-frame'],-7,-7,141,128,button);
-      if(id){const selected=v.image(assets['party-selected'],-7,-7,141,128,button).setVisible(id===this.selected);this.selectionMarks.set(id,selected);}
-      if(id)this.deployedMarkers.set(id,v.image(assets['party-deployed'],68,54,78,64,button).setVisible(snapshot.active.includes(id)));
-    }
+    this.renderRoster(v);
     const id=this.selected,member=id?this.member(id):undefined;
     // 原版佣兵页只调 `UI_DrawBorderRect`（`UIMercenary_Draw @0x151ae4`），不铺底：
     // 面板里露出的是黑色 65% 遮罩下的世界画面。
@@ -204,6 +195,35 @@ export class PartyPanel {
     });
     this.rosterTextCount=this.pageText.length;this.renderSelected(v);
     if(this.modal)this.renderModal(modal);
+  }
+  private renderRoster(v:UiSurface):void{
+    const snapshot=this.session.party!.snapshot(),assets=this.app.menuPanels.assets,before=new Set(v.root.list);this.rosterIds.clear();
+    for(let index=0;index<ROSTER_SLOTS_PER_PAGE;index++){
+      const id=snapshot.rosterSlots[this.page*ROSTER_SLOTS_PER_PAGE+index],x=70+index%ROSTER_COLUMNS*136,y=5+Math.floor(index/ROSTER_COLUMNS)*123;
+      const button=v.button('',x,y,127,114,()=>{if(id)this.select(id);},{bare:true}).setData('label',id?this.name(id):`空佣兵槽 ${this.page*ROSTER_SLOTS_PER_PAGE+index+1}`);
+      v.image(assets['party-slot'],0,0,127,114,button);
+      const portrait=v.imageCover(id?this.portrait(id):assets['party-empty'],0,0,127,114,button,.5,.2);
+      if(id&&this.member(id)!.player.health<=0){
+        portrait.setAlpha(.45);
+        this.text(`roster-dead-${index}`,'阵亡',x+63,y+88,18,TEXT_COLORS.dangerSoft,.5,0);
+      }
+      v.image(assets['party-frame'],-7,-7,141,128,button);
+      if(id){this.rosterIds.add(id);const selected=v.image(assets['party-selected'],-7,-7,141,128,button).setVisible(id===this.selected);this.selectionMarks.set(id,selected);}
+      if(id)this.deployedMarkers.set(id,v.image(assets['party-deployed'],68,54,78,64,button).setVisible(snapshot.active.includes(id)));
+    }
+    this.rosterNodes=v.root.list.filter(node=>!before.has(node));
+  }
+  private switchRosterPage():void{
+    const v=this.surface;if(!v){this.page=1-this.page;this.selected=undefined;this.changed();return;}
+    if(this.selected)this.selectionMarks.get(this.selected)?.setVisible(false);
+    this.page=1-this.page;this.selected='player';this.modal=undefined;this.error='';
+    for(const node of this.rosterNodes)node.destroy();
+    for(const id of this.rosterIds){this.selectionMarks.delete(id);this.deployedMarkers.delete(id);}
+    this.pageText.length=this.rosterTextCount;this.pageText=this.pageText.filter(spec=>!spec.key.startsWith('roster-dead-'));
+    this.renderRoster(v);this.rosterTextCount=this.pageText.length;this.selectionMarks.get('player')?.setVisible(true);
+    (this.pageButton?.getData('face') as UiImage|undefined)?.load(this.app.menuPanels.assets[`party-page-${this.page+1}`]);
+    this.pageButton?.setData('label',`佣兵名册第 ${this.page+1} 页，切换页面`);
+    this.updatePartyState();this.prepare('player');
   }
   private updatePartyState():void{
     const surface=this.surface,party=this.session.party;if(!surface||!party){this.changed();return;}
@@ -371,7 +391,8 @@ export class PartyPanel {
     const cap=modal.id==='player'?skill.normalMaxLevel:Math.max((member as CompanionMember).snapshot().skillCaps[skill.id]??0,level);
     v.image(skill.icon,35,25,75,75);
     this.modalEntry('skill-name',skill.name,135,30,26,GOLD,0,0,{width:550,wrap:'word'});
-    this.modalEntry('skill-level',level?`等级 ${level} / ${cap}`:cap?'尚未习得':'该佣兵未开放此技能',135,70,21,GOLD,0,0,{width:550,wrap:'word'});
+    this.modalEntry('skill-level',level?(modal.id!=='player'&&(member as CompanionMember).source==='mercenary'?
+      `等级 ${level} / ${skill.ranks.length}（自然成长上限 ${(member as CompanionMember).snapshot().skillCaps[skill.id]}）`:`等级 ${level} / ${cap}`):cap?'尚未习得':'该佣兵未开放此技能',135,70,21,GOLD,0,0,{width:550,wrap:'word'});
     const scroll=this.scrollArea(v,'party-modal',35,124,648,197);
     scroll.onScroll=()=>this.refreshText();
     let y=0;
