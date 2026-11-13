@@ -76,3 +76,5 @@ npm test -- tests/bag-layout.test.ts tests/choice-layout.test.ts
 ```
 
 - 清理装备布局由 `shop-layout.ts` 提供：整页顶部返回、合计与出售，背包框上方等级和五档独立品质。默认白装及当前查看角色等级；等级加减支持 350ms/80ms 长按。装备上锁/解锁在详情动作行，格子与装备槽通过 `slot-frame.ts` 共用锁标记；动作多行使用 `descriptionActionLayout`。
+
+- 人物页的佣兵能力点与主角共用加点、确认和重置交互。

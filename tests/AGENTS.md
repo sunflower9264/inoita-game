@@ -59,3 +59,5 @@ npm run test:standalone
 - `story-preparation.test.ts` 覆盖确定路径与调用返回、预测边界；`story-asset-preparation.test.ts` 覆盖跨场景请求复用、目标替换、取消和失败重试；入口测试验证恢复游戏不等待后续剧情素材。
 
 - 装备清理由 shop、shop-panel、story-menu-interactions 用例覆盖等级与独立品质筛选、保护条件、报价变化、上锁入口和长按释放；saved-game 覆盖 44 → 45 迁移及锁定状态读回。
+
+- `party.test.ts` 与 `story-menu-interactions.test.ts` 验证佣兵能力点、旧成长保留和人物页加点。

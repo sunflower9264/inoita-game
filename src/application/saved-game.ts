@@ -56,6 +56,14 @@ function stageHasDuplicateActors(stage:unknown):boolean {
  * 如果带重复演员，丢弃舞台快照，让剧情从当前节点继续而不是拒绝整份存档。
  */
 const SAVE_UPGRADES:Record<number,SaveUpgrade>={
+  45:game=>{
+    const party=game.session.party;
+    for(const member of party?.members??[]){
+      member.allocationBaseLevel=member.level;
+      member.allocation={strength:0,dexterity:0,vitality:0,intelligence:0,mentality:0};
+    }
+    game.format=46;
+  },
   33:game=>{
     const runtime=game.session.runtime as unknown as {version:number;runs?:LegacyStoryRun[]}|undefined;
     if(runtime?.version===1){

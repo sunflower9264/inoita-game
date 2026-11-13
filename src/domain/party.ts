@@ -78,6 +78,7 @@ interface CompanionState {
   level:number;health:number;mana:number;experience:number;skills:SkillConfigurationState;
   combatResourceLimits:{maxHealth:number;maxMana:number}|null;
   aiFrequency:[string,number][];
+  allocationBaseLevel?:number; allocation?:PrimaryAttributes;
 }
 interface PartyState {
   members:CompanionState[];rosterSlots:(string|null)[];slots:(string|null)[];selected:string;serial:number;
@@ -100,6 +101,8 @@ export class CompanionMember {
   /** 升级后通知名册推进修订号；直接调用 `addExperience` 的调试入口也会走到这里。 */
   private readonly onLevelUp?:()=>void;
   private currentLevel:number;
+  private allocationBaseLevel=1;
+  private allocation:PrimaryAttributes=primaryAttributesFrom({strength:0,dexterity:0,vitality:0,intelligence:0,mentality:0});
   private currentHealth=0;
   private currentMana=0;
   private currentExperience=0;
@@ -116,16 +119,23 @@ export class CompanionMember {
   }
   get classId():string{return this.definition.classId;}
   get level():number{return this.currentLevel;}
-  private get allocated():PrimaryAttributes{
-    const base=this.stats.classes[this.definition.classId],total=this.growth[this.currentLevel-1]!;
-    return primaryAttributesFrom(Object.fromEntries(PRIMARY_STATS.map(stat=>[stat,total[stat]-2*base[stat]+this.generated.baseAttributes[stat]])));
+  get allocated():PrimaryAttributes{return {...this.allocation};}
+  get statPoints():number{return this.source==='mercenary'?(this.level-this.allocationBaseLevel)*this.stats.statPointsPerLevel-PRIMARY_STATS.reduce((n,k)=>n+this.allocation[k],0):0;}
+  commitAllocation(delta:PrimaryAttributes):void {
+    if(this.source!=='mercenary'||PRIMARY_STATS.some(k=>!Number.isSafeInteger(delta[k])||delta[k]<0)||PRIMARY_STATS.reduce((n,k)=>n+delta[k],0)>this.statPoints)throw new Error('能力点不足');
+    for(const k of PRIMARY_STATS)this.allocation[k]+=delta[k];this.panelCache=undefined;this.changed();
+  }
+  resetAttributes():void {if(this.source!=='mercenary')return;this.allocationBaseLevel=1;this.allocation=primaryAttributesFrom({strength:0,dexterity:0,vitality:0,intelligence:0,mentality:0});this.panelCache=undefined;this.currentHealth=boundedHealth(this.currentHealth,this.player.maxHealth);this.currentMana=boundedHealth(this.currentMana,this.player.maxMana);this.changed();}
+  private get effectiveAllocation():PrimaryAttributes{
+    const base=this.stats.classes[this.definition.classId],total=this.growth[(this.source==='mercenary'?this.allocationBaseLevel:this.currentLevel)-1]!;
+    return primaryAttributesFrom(Object.fromEntries(PRIMARY_STATS.map(stat=>[stat,total[stat]-2*base[stat]+this.generated.baseAttributes[stat]+(this.source==='mercenary'?this.allocation[stat]:0)])));
   }
   private panelCache?:{revision:number;level:number;panel:CharacterPanel};
   get panel():CharacterPanel{
     // 战斗每个逻辑帧会多次读面板（技能频率、HP/MP 上限）；只在等级或背包实例变化时重算。
     const cached=this.panelCache;
     if(cached&&cached.revision===this.bag.revision&&cached.level===this.currentLevel)return cached.panel;
-    const allocated=this.allocated;
+    const allocated=this.effectiveAllocation;
     const equipped=this.bag.equipmentFor(this.id);
     const panel=calculateCharacter(this.stats,this.items,this.definition.classId,this.currentLevel,allocated,
       Object.fromEntries(Object.entries(equipped).map(([slot,item])=>[slot,this.bag.get(item!)])));
@@ -138,7 +148,7 @@ export class CompanionMember {
     const emptySlot=worn?undefined:this.bag.emptyEquipSlot(targetId,this.id,this.definition.classId,this.currentLevel);
     if(!worn&&!emptySlot)return undefined;
     return previewGemPanel({catalog:this.stats,items:this.items,classId:this.definition.classId,level:this.currentLevel,
-      allocated:this.allocated,equipped,bag:this.bag,targetId,gemModifiers,emptySlot});
+      allocated:this.effectiveAllocation,equipped,bag:this.bag,targetId,gemModifiers,emptySlot});
   }
   get player(){const panel=this.panel,limits=this.combatResourceLimits??panel;return {level:this.level,health:this.currentHealth,maxHealth:limits.maxHealth,
     mana:this.currentMana,maxMana:limits.maxMana,experience:this.currentExperience,
@@ -180,8 +190,9 @@ export class CompanionMember {
     name:this.definition.name,classId:this.definition.classId,source:this.source,elite:this.definition.elite,...player};}
   captureState():CompanionState{return structuredClone({id:this.id,definitionId:this.definition.id,source:this.source,
     generated:this.generated,level:this.currentLevel,health:this.currentHealth,mana:this.currentMana,experience:this.currentExperience,
-    combatResourceLimits:this.combatResourceLimits,skills:this.skills.captureState(),aiFrequency:[...this.aiFrequency]});}
+    combatResourceLimits:this.combatResourceLimits,skills:this.skills.captureState(),aiFrequency:[...this.aiFrequency],allocationBaseLevel:this.allocationBaseLevel,allocation:this.allocation});}
   restoreState(state:CompanionState):void{
+    this.allocationBaseLevel=state.allocationBaseLevel??state.level;this.allocation=state.allocation??primaryAttributesFrom({strength:0,dexterity:0,vitality:0,intelligence:0,mentality:0});this.panelCache=undefined;
     this.currentLevel=state.level;this.currentHealth=state.health;this.currentMana=state.mana;this.currentExperience=state.experience;
     this.combatResourceLimits=state.combatResourceLimits?{...state.combatResourceLimits}:null;this.skills.updateLevel(this.currentLevel);this.skills.restoreState(state.skills);
     this.aiFrequency.clear();for(const [id,value] of state.aiFrequency)this.aiFrequency.set(id,value);

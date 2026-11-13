@@ -1,13 +1,13 @@
-import { PRIMARY_STATS, type BattleCharacter, type PrimaryAttributes, type PrimaryStat } from './character-stats.ts';
+import { PRIMARY_STATS, type CharacterPanel, type PrimaryAttributes, type PrimaryStat } from './character-stats.ts';
 
 const empty = (): PrimaryAttributes => ({ strength: 0, dexterity: 0, vitality: 0, intelligence: 0, mentality: 0 });
 
 /** Only this visit's additions can be undone; committed points belong to the character. */
 export class AttributeAllocation {
-  private readonly hero: BattleCharacter;
+  private readonly hero: {statPoints:number;panel:CharacterPanel;commitAllocation(delta:PrimaryAttributes):void};
   private additions = empty();
 
-  constructor(hero: BattleCharacter) { this.hero = hero; }
+  constructor(hero: {statPoints:number;panel:CharacterPanel;commitAllocation(delta:PrimaryAttributes):void}) { this.hero = hero; }
 
   get pending(): PrimaryAttributes { return { ...this.additions }; }
   get hasChanges(): boolean { return PRIMARY_STATS.some(stat => this.additions[stat] > 0); }

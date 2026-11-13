@@ -2384,7 +2384,7 @@ test('switching members on the status page updates values without rebuilding con
   assert.equal(f.internals.selectedMemberId,member.id);assert.deepEqual(f.internals.body.root.list,children);
   assert.equal(f.scene.button(member.definition.name),portrait);
   assert(visibleDomLabels(f).some(label=>label.text===member.definition.name));
-  assert.equal(f.scene.button('查看属性加点').input!.enabled,false);
+  assert.equal(f.scene.button('查看属性加点').input!.enabled,true);
   const values=visibleDomLabels(f).map(label=>label.text).sort();
   f.menu.show('status');
   assert.deepEqual(visibleDomLabels(f).map(label=>label.text).sort(),values,'原位更新与重新打开后的数值一致');
@@ -2399,7 +2399,7 @@ test('switching members from allocation preserves the page while handling pendin
     f.scene.click(portrait);
     if(pending){assert.equal(f.internals.body.root.list[1],frame);f.scene.click(f.scene.button('确定'));}
     assert.equal(f.internals.selectedMemberId,member.id);assert.equal(f.scene.button(member.definition.name),portrait);
-    assert.equal(f.internals.body.root.list[1],frame);assert.equal(f.scene.button('查看属性加点').input!.enabled,false);
+    assert.equal(f.internals.body.root.list[1],frame);assert.equal(f.scene.button('查看属性加点').input!.enabled,true);
     const labels=visibleDomLabels(f).map(label=>label.text).sort();f.menu.show('status');
     assert.deepEqual(visibleDomLabels(f).map(label=>label.text).sort(),labels);
   }
@@ -2621,4 +2621,16 @@ test('bag equipment lock updates marker and actions without closing details',t=>
   assert.ok(visibleDomLabels(f).some(label=>label.text.includes('已锁定')));
   f.scene.click(f.scene.button('解锁'));assert.equal(f.session.bag.get(entry.id)!.locked,false);
   assert.deepEqual(notices.mock.calls.map(call=>call.arguments[0]),['装备已上锁','装备已解锁']);
+});
+
+
+test('mercenary allocation commits to the selected member and can be reset',t=>{
+  const f=fixture();t.after(f.cleanup);const member=f.recruit('warlock');
+  member.addExperience(member.player.nextLevelExperience);
+  f.menu.show('status');f.scene.click(f.scene.button(member.definition.name));
+  f.scene.click(f.scene.button('查看属性加点'));f.scene.click(f.scene.button('增加力量'));
+  f.scene.click(f.scene.button('确认属性加点'));f.scene.click(f.scene.button('确定'));
+  assert.equal(member.allocated.strength,1);assert.equal(member.statPoints,(member.level-1)*5-1);
+  f.scene.click(f.scene.button('查看属性加点'));f.scene.click(f.scene.button('能力初始化'));
+  assert.equal(member.allocated.strength,0);assert.equal(member.statPoints,(member.level-1)*5);
 });

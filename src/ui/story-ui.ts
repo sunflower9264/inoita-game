@@ -1217,7 +1217,7 @@ export class StoryUI {
   }
   private renderStatusRight():void{
     const v=this.body!,member=this.member()!,panels=this.app.menuPanels,character=this.app.storyClasses.classes.find(value=>value.id===member.classId)!;
-    const hero=this.selectedMemberId==='player'?this.session!.hero:undefined,statPoints=this.allocation?.remainingPoints??hero?.statPoints??0,attributes=this.allocation?.attributes??member.panel.attributes;
+    const hero='source' in member&&member.source!=='mercenary'?undefined:member,statPoints=this.allocation?.remainingPoints??hero?.statPoints??0,attributes=this.allocation?.attributes??member.panel.attributes;
     const before=new Set(v.root.list);
     // 右侧两块同样只有图框：原版 `Scene_Draw_...` 只对它们调 `UI_DrawBorderRect`，
     // 加点时属性栏宽 409（画到 x=905），常态宽 224，战斗指标栏固定在 `+0xe2`(226) 处、224 宽。
@@ -1231,7 +1231,7 @@ export class StoryUI {
     // 里两组 `UI_CreateGroupBaseControl(134/326, 70, 51, 314)`，按钮按 64 行距排）。
     // 加点视图每行右侧那串橙色「+N」是这项能力累计投入的点数：已确认的分配加上本轮
     // 还没确认的增量。没有投入时不画。
-    const allocated=this.session!.hero?.allocated;
+    const allocated=hero?.allocated;
     character.attributes.forEach((attribute,index)=>{
       const stat=PRIMARY_STATS[index],adjusting=this.adjusting;
       // 两档的行距与落点不同：加点视图 64 行距、名字 531、数值右对齐 751、圆角带 364 宽；
@@ -1271,13 +1271,13 @@ export class StoryUI {
   }
   private toggleAllocation():void{
     if(this.adjusting){if(this.requestAllocationExit(()=>this.render()))return;}
-    else{const hero=this.session?.hero;if(this.selectedMemberId!=='player'||!hero)return;this.allocation=new AttributeAllocation(hero);this.adjusting=true;}
+    else{const hero=this.member();if(!hero||('source' in hero&&hero.source!=='mercenary'))return;this.allocation=new AttributeAllocation(hero);this.adjusting=true;}
     this.render();
   }
   /** 能力初始化免费返还全部已分配点数；本轮还没确认的增量也一起作废。 */
   private resetAttributes():void{
-    const hero=this.session?.hero;
-    if(!hero||this.selectedMemberId!=='player')return;
+    const hero=this.member();
+    if(!hero||('source' in hero&&hero.source!=='mercenary'))return;
     hero.resetAttributes();
     this.allocation=new AttributeAllocation(hero);
     this.allocationError='';
@@ -1318,7 +1318,7 @@ export class StoryUI {
     this.keyboardFocus=undefined;next();
   }
   private renderAllocationConfirmation():void{
-    const v=this.modal!,character=this.app.storyClasses.classes.find(value=>value.id===this.session!.hero!.classId)!,pending=this.allocation!.pending;
+    const v=this.modal!,character=this.app.storyClasses.classes.find(value=>value.id===this.member()!.classId)!,pending=this.allocation!.pending;
     this.statusModalTextSpecs=[];
     const add=(key:string,text:string,x:number,y:number,size:number,width:number):void=>{
       this.statusModalTextSpecs.push({key,text,x,y,style:{size,color:GOLD,width,wrap:'word'}});
@@ -2264,7 +2264,7 @@ export class StoryUI {
       if(view){view.fill.setCrop(0,0,view.fill.width*ratio,view.fill.height).setVisible(width>0);view.start.setVisible(width>0);view.end.setX(178+Math.max(0,width-7)).setVisible(width>0);}
     }
     character.attributes.forEach((attribute,index)=>{const stat=PRIMARY_STATS[index];text(`attribute-${stat}-name`,attribute.name);text(`attribute-${stat}-value`,String(member.panel.attributes[stat]));});
-    const hero=this.selectedMemberId==='player'?this.session!.hero:undefined;
+    const hero='source' in member&&member.source!=='mercenary'?undefined:member;
     text('stat-points',`${panels.character.labels.statPoints} ${hero?.statPoints??0}`);
     this.statusAdjustButton?.getData('setEnabled')?.(!!hero);
     this.statusCombatValues(member).forEach((value,index)=>text(`combat-${index}-value`,value));

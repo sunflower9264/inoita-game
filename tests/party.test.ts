@@ -294,3 +294,31 @@ test('a failed recruitment rolls the roster, emblem and quest fact back in one s
   assert.deepEqual(session.captureState(),before,'名册、徽章和任务事实全部回滚');
   assert.equal(updates,0,'中间状态不通知界面');
 });
+
+test('mercenary earns five points per level, saves allocation and resets old growth',()=>{
+  const {party}=setup(),member=recruit(party);
+  const initial=member.panel.attributes.strength;
+  member.addExperience(stats.experience[member.level-1]!);
+  assert.equal(member.statPoints,5);
+  member.commitAllocation({strength:3,dexterity:0,vitality:0,intelligence:0,mentality:0});
+  assert.equal(member.statPoints,2);
+  assert.equal(member.panel.attributes.strength,initial+3);
+  const state=party.captureState();party.restoreState(state);
+  const restored=party.get(member.id)!;
+  assert.equal(restored.statPoints,2);
+  assert.equal(restored.panel.attributes.strength,initial+3);
+  restored.resetAttributes();assert.equal(restored.statPoints,(restored.level-1)*5);
+  assert.equal(restored.panel.attributes.strength,initial);
+});
+
+test('legacy mercenary keeps automatic growth until reset and earns points on later levels',()=>{
+  const {party}=setup(),member=recruit(party);member.addExperience(stats.experience[member.level-1]!);
+  const state=party.captureState(),entry=state.members.find(value=>value.id===member.id)!;
+  delete entry.allocationBaseLevel;delete entry.allocation;
+  party.restoreState(state);const restored=party.get(member.id)!;
+  const oldLevel=restored.level,oldAttributes={...restored.panel.attributes};
+  assert.equal(restored.statPoints,0);
+  restored.addExperience(stats.experience[oldLevel-1]!);
+  assert.deepEqual(restored.panel.attributes,oldAttributes);assert.equal(restored.statPoints,5);
+  restored.resetAttributes();assert.equal(restored.statPoints,(restored.level-1)*5);
+});
