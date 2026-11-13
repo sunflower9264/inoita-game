@@ -89,6 +89,10 @@ export function setSaveBoardTextSink(view:UiSurface,sink:SaveBoardTextSink|undef
   if(sink)textSinks.set(view,sink);else textSinks.delete(view);
 }
 
+export function emitSaveBoardTexts(view:UiSurface,specs:readonly SaveBoardTextSpec[]):void {
+  const sink=textSinks.get(view);if(sink)for(const spec of specs)sink.add(spec);
+}
+
 /** 面板左上角在当前画布里的位置。菜单画布 1024 宽 → 178（= 内容区 32 + 960 空间里的 146）。 */
 export function saveBoardOrigin(width:number):{x:number; y:number} {
   return { x:Math.round((width-SAVE_BOARD.panelWidth)/2), y:SAVE_BOARD_LAYOUT.autoTop };
@@ -162,3 +166,50 @@ export function drawSaveBoardRow(
   return rowButton;
 }
 
+
+/** 按槽位身份保留手动存档行；排序变化只移动已有节点和文字。 */
+export class SaveBoardList {
+  private readonly rows=new Map<number,{top:number;nodes:UiNode[];texts:SaveBoardTextSpec[];button?:UiNode}>();
+  constructor(privateView:UiSurface,privateScroll:import('./widgets.ts').ScrollArea,privateAssets:SaveBoardAssets,
+    rowFor:(slot:number)=>SaveBoardRow){
+    this.view=privateView;this.scroll=privateScroll;this.assets=privateAssets;this.rowFor=rowFor;
+  }
+  private readonly view:UiSurface;
+  private readonly scroll:import('./widgets.ts').ScrollArea;
+  private readonly assets:SaveBoardAssets;
+  private readonly rowFor:(slot:number)=>SaveBoardRow;
+
+  render(order:readonly number[]):SaveBoardTextSpec[]{
+    this.rows.clear();order.forEach((slot,index)=>this.paint(slot,index));return this.texts(order);
+  }
+  update(changed:number,order:readonly number[]):SaveBoardTextSpec[]{
+    const previous=this.rows.get(changed);
+    if(previous){for(const node of previous.nodes)node.destroy();this.rows.delete(changed);}
+    order.forEach((slot,index)=>{
+      const row=this.rows.get(slot),top=index*SAVE_BOARD.rowStep;
+      if(!row){this.paint(slot,index);return;}
+      const delta=top-row.top;if(!delta)return;
+      row.top=top;for(const node of row.nodes)node.setY(node.y+delta);
+      for(const spec of row.texts)spec.y+=delta;
+    });
+    this.view.pruneDestroyed();return this.texts(order);
+  }
+  updateTitle(slot:number,title:string):void{
+    const row=this.rows.get(slot);if(!row)return;
+    row.button?.setData('label',title);
+    const spec=row.texts.find(value=>value.key===`save-slot-${slot}-title`);if(spec)spec.text=title;
+  }
+  private texts(order:readonly number[]):SaveBoardTextSpec[]{return order.flatMap(slot=>this.rows.get(slot)?.texts??[]);}
+  private paint(slot:number,index:number):void{
+    const top=index*SAVE_BOARD.rowStep,before=new Set(this.scroll.content.list),texts:SaveBoardTextSpec[]=[];
+    const previous=textSinks.get(this.view);
+    setSaveBoardTextSink(this.view,{add:spec=>{
+      spec.key=`save-slot-${slot}-${spec.key.replace(/^list-\d+-/,'')}`;texts.push(spec);
+    }});
+    let button:UiNode|undefined;
+    try{button=drawSaveBoardRow(this.view,this.assets,{x:0,y:0},top,this.rowFor(slot),this.scroll.content);}
+    finally{setSaveBoardTextSink(this.view,previous);}
+    const nodes=this.scroll.content.list.filter(node=>!before.has(node));
+    this.rows.set(slot,{top,nodes,texts,button});
+  }
+}

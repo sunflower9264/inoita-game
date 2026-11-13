@@ -237,6 +237,10 @@ export class StoryUI {
       world:()=>this.world,
       contentAssets:()=>this.content?.assets??{},
       render:()=>this.render(),
+      updateSaveRows:specs=>{
+        this.saveTextSpecs=this.saveTextSpecs.filter(spec=>!spec.key.startsWith('save-slot-')).concat(specs.map(spec=>this.saveBoardText(spec)));
+        this.menuText?.renderPage(this.page);
+      },
       updateSaveTitle:(key,title)=>{
         const spec=this.saveTextSpecs.find(value=>value.key===key);if(spec)spec.text=title;
         this.menuText?.renderPage(this.page);

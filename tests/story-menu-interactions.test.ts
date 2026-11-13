@@ -2238,6 +2238,20 @@ test('the auto row is read-only while manual slots can be deleted after a confir
   assert.equal(f.app.saveSlot,undefined,'删掉当前槽后清空 saveSlot');
 });
 
+test('deleting a save keeps the other slots and scrolling area',t=>{
+  const f=fixture();t.after(f.cleanup);f.menu.show('save');
+  f.scene.click(f.scene.button('存档槽 1'));f.scene.click(f.scene.button('确认'));
+  f.scene.click(f.scene.button('存档槽 2'));f.scene.click(f.scene.button('确认'));
+  const one=f.app.saves.inspect(0),two=f.app.saves.inspect(1);assert(one.kind==='ok'&&two.kind==='ok');
+  one.game.summary.savedAt=200;two.game.summary.savedAt=100;f.app.saves.write(0,one.game);f.app.saves.write(1,two.game);
+  f.menu.show('load');f.menu.show('save');
+  const retained=f.scene.button('存档槽 2'),oldY=retained.y,rename=f.scene.button('存档槽 2 改名'),scroll=f.internals.scrollNames.get('slots');
+  f.scene.click(f.scene.button('存档槽 1 删除'));f.scene.click(f.scene.button('是'));
+  assert.equal(f.app.saves.inspect(0).kind,'empty');assert.equal(f.scene.button('存档槽 2'),retained);
+  assert.equal(f.scene.button('存档槽 2 改名'),rename);assert.equal(f.internals.scrollNames.get('slots'),scroll);
+  assert.equal(retained.y,oldY-166,'排序变化只移动保留的行');
+});
+
 test('renaming a save asks for text and only stores Chinese, English and digits',async t=>{
   const f=fixture();t.after(f.cleanup);
   f.menu.show('save');f.scene.click(f.scene.button('存档槽 1'));f.scene.click(f.scene.button('确认'));

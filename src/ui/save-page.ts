@@ -6,12 +6,11 @@ import type { Session } from '../domain/session.ts';
 import type { WorldIndex } from '../domain/content.ts';
 import type { StoryUIContext } from '../application/ports.ts';
 import type { SaveWorldReason, StoryWorldViewSnapshot } from '../scenes/world-scene.ts';
-import { SAVE_BOARD, SAVE_BOARD_LAYOUT, drawSaveBoardRow, newestFirstSlots, saveBoardOrigin, saveRowTitle, type SaveBoardRow } from './phaser/save-board.ts';
+import { SAVE_BOARD, SAVE_BOARD_LAYOUT, SaveBoardList, drawSaveBoardRow, emitSaveBoardTexts, newestFirstSlots, saveBoardOrigin, saveRowTitle, type SaveBoardRow, type SaveBoardTextSpec } from './phaser/save-board.ts';
 import { drawNativeMessage, type NativeMessageBand } from './phaser/native-message.ts';
 import { MENU_CANVAS_HEIGHT, MENU_CANVAS_WIDTH } from './phaser/modal-placement.ts';
 import type { ScrollArea, UiSurface } from './phaser/widgets.ts';
 import type { MenuTextWriter } from './dom/menu-text.ts';
-import type { UiNode } from './dom/node.ts';
 import { TextPrompt } from './text-prompt.ts';
 
 /** 存档结果与「不能存取」的提示文本，原版取文本表 35331／35332／35342 条。 */
@@ -38,6 +37,7 @@ export interface SavePageHost {
   render(): void;
   updateConfirmation(): void;
   updateSaveTitle?(key:string,title:string):void;
+  updateSaveRows?(specs:readonly SaveBoardTextSpec[]):void;
   sync(): void;
   busy(): boolean;
   setBusy(value: boolean): void;
@@ -65,7 +65,7 @@ export class SavePage {
   private deleteConfirm?: SaveSlotRef;
   private renameRef?: SaveSlotRef;
   private renameSerial=0;
-  private rows=new Map<SaveSlotRef,{button?:UiNode;titleKey:string}>();
+  private board?:SaveBoardList;
   private messageBand?: NativeMessageBand;
   private readonly prompt = new TextPrompt();
   private readonly host: SavePageHost;
@@ -93,7 +93,7 @@ export class SavePage {
   }
 
   render(view: UiSurface, loading: boolean): void {
-    const app = this.host.app;this.rows.clear();
+    const app = this.host.app;
     view.text(loading ? '读取存档' : '存档槽', 512, 16, 0, 28).setOrigin(.5, 0);
     const content = this.host.contentAssets();
     const assets = { frame: content['save-slot'], empty: content['save-empty'] };
@@ -102,10 +102,8 @@ export class SavePage {
     drawSaveBoardRow(view, assets, origin, SAVE_BOARD_LAYOUT.autoTop, this.saveRow(AUTO_SAVE_SLOT, loading));
     // 十个手动槽放进滚动区；按写入时间倒序，最新的排最前，空槽排在后面。
     const scroll = this.host.scroll('slots', origin.x, SAVE_BOARD_LAYOUT.listTop, SAVE_BOARD.panelWidth, SAVE_BOARD_LAYOUT.listHeight, view);
-    newestFirstSlots(slot => app.saves.peek(slot)).forEach((slot, index) => {
-      const button=drawSaveBoardRow(view,assets,{x:0,y:0},index*SAVE_BOARD.rowStep,this.saveRow(slot,loading),scroll.content);
-      this.rows.set(slot,{button,titleKey:`list-${index*SAVE_BOARD.rowStep}-title`});
-    });
+    this.board=new SaveBoardList(view,scroll,assets,slot=>this.saveRow(slot,loading));
+    emitSaveBoardTexts(view,this.board.render(newestFirstSlots(slot=>app.saves.peek(slot))));
     this.host.finishScroll('slots', scroll, (MANUAL_SAVE_SLOT_COUNT - 1) * SAVE_BOARD.rowStep + SAVE_BOARD.frameHeight);
   }
 
@@ -267,14 +265,18 @@ export class SavePage {
   }
 
   private deleteSlot(ref: SaveSlotRef): void {
+    let deleted=false;
     try {
       this.host.app.saves.erase(ref);
       if (this.host.app.saveSlot === ref) this.host.app.saveSlot = undefined;
-      this.host.app.audio?.ui('select');
+      this.host.app.audio?.ui('select');deleted=true;
     } catch (error) {
       console.warn('删除存档失败', error); this.host.setItemNotice(SAVE_FAILED);
     }
-    this.deleteConfirm = undefined; this.host.render();
+    this.deleteConfirm = undefined;
+    if(deleted&&this.board&&this.host.updateSaveRows&&typeof ref==='number'){
+      this.host.updateSaveRows(this.board.update(ref,newestFirstSlots(slot=>this.host.app.saves.peek(slot))));this.host.updateConfirmation();
+    }else this.host.render();
   }
 
   /** 改名：手机系统键盘输入，只收中文、英文、数字；确认后只改摘要里的名字。 */
@@ -291,8 +293,8 @@ export class SavePage {
       }
       this.renameRef = undefined;
       if(value!==undefined){
-        const row=this.rows.get(ref),title=saveRowTitle(ref,this.host.app.saves.peek(ref));
-        if(row&&this.host.updateSaveTitle){row.button?.setData('label',title);this.host.updateSaveTitle(row.titleKey,title);}
+        const title=saveRowTitle(ref,this.host.app.saves.peek(ref));
+        if(this.board&&this.host.updateSaveTitle&&typeof ref==='number'){this.board.updateTitle(ref,title);this.host.updateSaveTitle(`save-slot-${ref}-title`,title);}
         else this.host.render();
       }
       this.host.sync();
