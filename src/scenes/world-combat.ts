@@ -1,3 +1,4 @@
+import { PartyTrail } from '../domain/party-follow.ts';
 import { settleCombatRewards } from '../domain/combat-rewards.ts';
 import { SummonLifecycle, advanceSummonLifetime, releasesSummonVitals, summonDurationMs, summonLifetimeExpired, summonedChildren } from '../domain/summon-lifecycle.ts';
 import { displaySettings } from '../application/display-settings.ts';
@@ -316,6 +317,7 @@ export class WorldCombat {
   private relocationFailures: { id: string; position: Point }[] = [];
   /** 跟随长时间没有进展、被传送到队长身边的次数；用于上报排查。 */
   private followerCatchUps = 0;
+  private readonly followTrail=new PartyTrail();
   private readonly regroupCooldowns = new Map<string,number>();
   constructor(scene:WorldScene,app:StoryContext,roster:WorldEnemyRoster,hero:BattleCharacter,drops:DropCatalog){
     this.scene=scene;this.app=app;this.roster=roster;this.hero=hero;this.drops=drops;
@@ -479,6 +481,7 @@ export class WorldCombat {
       })),
       relocationFailures: [...this.relocationFailures],
       followerCatchUps: this.followerCatchUps,
+      partyFollow:this.activeParty.map(id=>({id,...(id==='player'?this.heroAi:combatActor(this.allies,id,a=>a.id)?.ai)?.follower?.diagnostics})),
     };
   }
   get canCheckpoint():boolean {
@@ -2147,6 +2150,9 @@ captureStoryActors():SceneActorState[] {
       healScore:key=>this.healScoreFor(key),
       healCandidates:()=>this.healCandidates(),
       facing,
+      followTrail:this.followTrail,
+      followCanStand:point=>this.movement.navigation.bodyTerrainFree(this.movement.actor(visual).shape(),point)&&this.movement.canStand(visual,point),
+      followNavigationSnapshot:()=>this.movement.navigation.captureStandability(this.movement.actor(visual),true),
       leader:()=>this.combatant(this.controlledId),leaderFacing:()=>this.facingOfControlled(),
       followSlot:()=>this.app.session.party?.followSlotOf(this.controlledId,id),focusTarget:()=>this.focusTargetId,
       partyTarget:()=>this.currentTargetOf(this.controlledId),targetOf:actorId=>this.currentTargetOf(actorId),
@@ -2160,10 +2166,10 @@ captureStoryActors():SceneActorState[] {
       navigationBounds:()=>this.movement.navigation.bounds,pathBudget:this.pathBudget,
       navigationSnapshot:()=>this.movement.navigation.captureStandability(this.movement.actor(visual)),
       moveToward:position=>{if(!this.conditions.canAutoApproach(id)){this.movement.stop(visual);return;}setFacing(faceTarget(this.movement.position(visual),position));this.movement.toward(visual,position,this.movementSpeed(id,PLAYER_MOVE_SPEED));},
-      followPath:nextWaypoint=>this.movement.followPath(visual,()=>{
+      followPath:(nextWaypoint,speedScale=1)=>this.movement.followPath(visual,()=>{
         if(!this.conditions.canMove(id))return undefined;
         const next=nextWaypoint();if(next)setFacing(faceTarget(this.movement.position(visual),next));return next;
-      },this.movementSpeed(id,PLAYER_MOVE_SPEED)),
+      },this.movementSpeed(id,PLAYER_MOVE_SPEED)*speedScale),
       stop:()=>this.movement.stop(visual),canStand:(position,clearanceActorId)=>{
         const clearanceVisual=clearanceActorId?this.visualOf(clearanceActorId):visual;
         return !!clearanceVisual&&this.movement.canStand(clearanceVisual,position);
@@ -2402,30 +2408,29 @@ captureStoryActors():SceneActorState[] {
    * 单个佣兵跟随队长长时间没有进展时，把他收拢到队长旁边的合法落点。
    * 与剧情转场后的整队收拢共用落点规则，但只动这一名队员。
    */
-  private catchUpFollower(id:string):void {
-    if(this.closed||!this.movement||id==='player'||id===this.controlledId)return;
+  private catchUpFollower(id:string):boolean {
+    if(this.closed||!this.movement||id===this.controlledId)return false;
     const ally=combatActor(this.allies,id,actor=>actor.id);
-    if(!ally||!ally.member.player.health||this.fallen.has(id)||!ally.visual.container.active)return;
-    if(this.performanceHidden||ally.ai.actionState()!=='idle')return;
-    const leader=this.controlledVisual;
-    if(!leader)return;
+    const visual=id==='player'?this.scene.player:ally?.visual,ai=id==='player'?this.heroAi:ally?.ai;
+    if(!visual||!ai||!(id==='player'?this.hero:ally?.member)?.player.health||this.fallen.has(id)||!visual.container.active)return false;
+    if(this.performanceHidden||ai.actionState()!=='idle'||this.conditions&&!this.conditions.canMove(id))return false;
+    const leader=this.controlledVisual;if(!leader)return false;
     const now=this.app.session.nowMs??0;
-    if((this.regroupCooldowns.get(id)??0)>now)return;
-    const actor=this.movement.actor(ally.visual);
-    const landing=this.partyLanding(actor.shape(),actor,id,leader);
-    if(!landing)return;
-    ally.ai.cancel();
-    this.movement.place(ally.visual,landing);
-    this.regroupCooldowns.set(id,now+REGROUP_COOLDOWN_MS);
-    setCharacterClip(this.scene,ally.visual,`idle-${ally.facing}`,true);
-    this.followerCatchUps++;
+    if((this.regroupCooldowns.get(id)??0)>now)return false;
+    const actor=this.movement.actor(visual),landing=this.partyLanding(actor.shape(),actor,id,leader);
+    if(!landing)return false;
+    ai.cancel();this.movement.place(visual,landing);this.regroupCooldowns.set(id,now+REGROUP_COOLDOWN_MS);
+    setCharacterClip(this.scene,visual,`idle-${id==='player'?this.scene.facing:ally!.facing}`,true);
+    this.followerCatchUps++;return true;
   }
+
   /**
    * 绑定当前操控者。`cancelActions=false` 只交接触发、相机和 HUD，不碰任何人的动作；
    * 玩家主动切人走这条，正在进行的普攻或技能由原角色自己收尾。
    */
   private syncControlled(cancelActions=true):void{
     const id=this.controlledId;
+    this.followTrail.reset();
     this.feedback.cancelShake();
     this.combat=this.partyControllers.get(id);
     if(!this.combat&&id!=='player')return;
@@ -3149,6 +3154,8 @@ captureStoryActors():SceneActorState[] {
     if(this.scene.time.now>=this.nextPartySyncAt&&this.app.session.party?.activeIds.join('|')!==this.partySignature)
       void this.syncAllies().catch(error=>this.app.ui.toast((error as Error).message));
     if(this.controlledId!==this.syncedControlledId&&this.partyControllers.has(this.controlledId))this.syncControlled(false);
+    const controlled=this.controlledVisual;
+    if(controlled)this.followTrail.record(this.controlledId,this.movement.position(controlled),delta,this.facingOfControlled());
     const tickBefore=this.app.session.combatTick;
     this.app.session.advanceCombatFrames(delta,frame=>{
       this.combatantsCache=undefined;

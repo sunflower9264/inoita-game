@@ -1,10 +1,11 @@
+import { PartyFollow, type PartyTrail } from './party-follow.ts';
 import { LOGIC_FRAME_MS, type EnemyPlayableSkill } from './battle.ts';
 import { attackDistance, targetDistance } from './basic-attack.ts';
 import { CombatController, canTargetCombatant, type Combatant, type CombatPort } from './combat.ts';
 import { combatStateCapabilities } from './combat-state.ts';
 import { needsTarget } from './skill-action.ts';
 import type { Facing } from './content.ts';
-import { followOffset, type CompanionStance } from './party-placement.ts';
+import { type CompanionStance } from './party-placement.ts';
 import { canTraverse, createPathSearch, PATH_GRID_SIZE, type PathQuery } from './pathfinding.ts';
 import type { GameRectangle, Point } from './navigation.ts';
 
@@ -26,9 +27,12 @@ export interface PartyPort extends CombatPort {
   navigationSnapshot?(): Pick<PathQuery, 'bounds' | 'canStand' | 'canStandXY'>;
   /** 每渲染帧共享的寻路扩展预算；缺省时按单次上限同步搜索（测试与无场景调用）。 */
   pathBudget?:{take(owner:string,limit:number):number};
-  followPath(next: () => Point | undefined): void;
+  followPath(next: () => Point | undefined, speedScale?:number): void;
+  followTrail?:PartyTrail;
+  followCanStand?(point:Point):boolean;
+  followNavigationSnapshot?:PartyPort['navigationSnapshot'];
   /** 长时间没有位移或离得太远时，让宿主把佣兵放到队长身边；无场景调用可省略。 */
-  regroup?(): void;
+  regroup?(): boolean | void;
   skills(): readonly EnemyPlayableSkill[];
   skillKind(id:string): PartySkillKind | undefined;
   vitals(id:string): {health:number;maxHealth:number} | undefined;
@@ -45,8 +49,6 @@ interface PartyControllerState {
   destinationRange?:number;
 }
 
-/** 跟随停止距离沿用距离单位，只用于存档里的旧目标范围字段。 */
-const PARTY_FOLLOW_DISTANCE_UNITS = 4;
 /** 目标点走出 3 格才重算；贴脸 8px 会让跟随者每逻辑帧重开搜索。 */
 const PARTY_REPATH_DISTANCE_PX = PATH_GRID_SIZE * 3;
 /** 两次重算之间的最短间隔。 */
@@ -56,18 +58,10 @@ const PARTY_SEARCH_SLICE = 48;
 const STANDALONE_SEARCH_CAP = 384;
 /** 不可达后的重试间隔。 */
 const PARTY_FAILED_PATH_MS = 600;
-/** 跟随这么久没有任何位移，就当作被地形或人群卡住。 */
-const PARTY_FOLLOW_STUCK_MS = 2000;
 /** 追击目标被卡住后，先停一段时间，避免立刻重选同一目标。 */
 const PARTY_CHASE_RECOVERY_MS = 1500;
 /** 位移超过这个距离才算“还在走”；碰撞抖动不算进展。 */
 const PARTY_FOLLOW_PROGRESS_PX = 4;
-/** 站到离跟随目标这么近就不再走。 */
-const PARTY_FOLLOW_GOAL_STOP_PX = 12;
-/** 离队长这么远就直接传送，不再等寻路。 */
-const PARTY_TELEPORT_DISTANCE_PX = 240;
-/** 同一名伙伴两次传送之间的最短间隔。 */
-const PARTY_REGROUP_COOLDOWN_MS = 5000;
 /** 目标离队长超过这个距离就放弃追击。 */
 const PARTY_CHASE_LEASH_PX = 200;
 /** 同一目标至少保持这么久，避免来回跳。 */
@@ -136,16 +130,12 @@ export class PartyController {
   private flanking=false;
   /** 侧翼锚点不可达后的冷静期，期间只按普通攻击范围接敌。 */
   private flankFailedUntil=0;
-  /** 跟随队长时的最近一次真实位移，用来判断是不是一直站着。 */
-  private followProgress?:Point;
-  private followProgressAt=0;
   /** 追击敌人时的最近一次真实位移；和队长跟随分开记录。 */
   private chaseProgress?:{targetId:string;position:Point;since:number};
   private chaseRecoveryUntil=0;
   /** 当前目标；只来自软集火或正在打队友的敌人。 */
   private targetId?:string;
   private targetSince=0;
-  private nextRegroupAt=0;
   private destination?:Point;
   private destinationTarget?:string;
   private destinationRange?:number;
@@ -154,25 +144,26 @@ export class PartyController {
   /** 同一逻辑帧内候选者数组身份不变，队伍 ID 集合可以复用。 */
   private partyIdsCache?:{source:readonly Combatant[];team:string;value:ReadonlySet<string>};
   private disposed=false;
+  readonly follower:PartyFollow;
   constructor(id:string,port:PartyPort,combat:CombatController,random= Math.random){
-    this.id=id;this.port=port;this.combatController=combat;this.random=random;
+    this.id=id;this.port=port;this.combatController=combat;this.random=random;this.follower=new PartyFollow(id,port);
   }
   /** 只读动作阶段；不需要冷却快照时用这个。 */
   actionState(){return this.combatController.actionState();}
   selectedTargetId(){return this.combatController.selectedTargetId();}
   captureState():PartyControllerState {
     return {accumulator:this.accumulator,clock:this.clock,nextPathAt:this.nextPathAt,
-      path:this.path.map(point=>({...point})),destination:this.destination?{...this.destination}:undefined,
-      destinationTarget:this.destinationTarget,destinationRange:this.destinationRange};
+      path:this.path.map(point=>({...point})),destination:this.destination?{...this.destination}:this.follower.destination,
+      destinationTarget:this.destinationTarget??this.follower.leader,destinationRange:this.destinationRange};
   }
   restoreState(state:PartyControllerState):void {
     this.accumulator=state.accumulator;this.clock=state.clock;this.nextPathAt=state.nextPathAt;
     this.path=state.path.map(point=>({...point}));this.destination=state.destination?{...state.destination}:undefined;
     this.destinationTarget=state.destinationTarget;this.destinationRange=state.destinationRange;
     // 搜索持有的是旧场地的闭包，读档后必须重新开始。
-    this.search=undefined;this.followProgress=undefined;this.followProgressAt=0;
+    this.search=undefined;this.follower.reset();
     this.chaseProgress=undefined;this.chaseRecoveryUntil=0;this.targetId=undefined;this.targetSince=0;
-    this.nextRegroupAt=0;this.flankFailedUntil=0;
+    this.flankFailedUntil=0;
   }
   targetRemoved(targetId:string):void {
     this.combatController.targetRemoved(targetId);
@@ -180,8 +171,8 @@ export class PartyController {
     if(this.destinationTarget!==targetId)return;
     this.clearRoute();
   }
-  cancel():void {this.combatController.cancel(true);this.clearRoute();this.targetId=undefined;this.chaseProgress=undefined;
-    this.chaseRecoveryUntil=0;this.nextRegroupAt=0;this.flankFailedUntil=0;this.accumulator=0;this.followProgress=undefined;this.followProgressAt=0;}
+  cancel():void {this.follower.reset();this.combatController.cancel(true);this.clearRoute();this.targetId=undefined;this.chaseProgress=undefined;
+    this.chaseRecoveryUntil=0;this.flankFailedUntil=0;this.accumulator=0;}
   disable():void {this.cancel();}
   reset():void {this.cancel();this.combatController.reset();}
   dispose():void {this.cancel();this.disposed=true;this.combatController.dispose();}
@@ -198,16 +189,20 @@ export class PartyController {
   private tick():void {
     const actor=this.port.actor(this.id);
     if(!actor){this.port.stop();return;}
+    const leader=this.port.leader();
+    const returning=leader?this.follower.tick(actor,leader,LOGIC_FRAME_MS):false;
+    if(returning&&this.combatController.actionState()==='approaching')this.combatController.cancel(true);
     this.combatController.update();
     if(!combatStateCapabilities(actor.states??[]).canAct){
-      this.clearRoute();this.followProgress=undefined;this.followProgressAt=0;return;
+      this.clearRoute();this.follower.suspend();return;
     }
     const actionState=this.combatController.actionState();
     if(actionState==='approaching'){
       this.trackChaseProgress(actor,this.combatController.selectedTargetId()??'approach');
       return;
     }
-    if(actionState!=='idle')return;
+    if(actionState!=='idle'){this.follower.suspend();return;}
+    if(returning){this.targetId=undefined;this.clearRoute();this.follow(actor);return;}
     const target=this.selectTarget(actor);
     if(this.port.inCombat()&&this.trySkill(actor,target))return;
     if(target){this.chase(actor,target);return;}
@@ -378,7 +373,7 @@ export class PartyController {
     }
     if(this.clock-previous.since<PARTY_CHASE_STUCK_MS)return false;
     this.chaseProgress=undefined;this.targetId=undefined;this.clearRoute();
-    this.combatController.cancel(true);this.port.stop();this.tryRegroup();
+    this.combatController.cancel(true);this.port.stop();
     this.chaseRecoveryUntil=this.clock+PARTY_CHASE_RECOVERY_MS;
     return true;
   }
@@ -386,18 +381,9 @@ export class PartyController {
   private follow(actor:Combatant):void {
     const leader=this.port.leader();
     if(!leader||leader.id===actor.id){this.clearRoute();return;}
-    const facing=this.port.leaderFacing?.()??'south';
-    const stance=this.stance();
-    const slot=this.port.followSlot?.()??0;
-    const offset=followOffset(facing,stance,slot);
-    const goal=this.adjustFollowGoal({x:leader.position.x+offset.x,y:leader.position.y+offset.y},actor);
-    const distance=targetDistance(actor.position,goal);
-    if(distance<=PARTY_FOLLOW_GOAL_STOP_PX){
-      this.clearRoute();this.followProgress=undefined;this.followProgressAt=0;return;
-    }
-    if(distance>PARTY_TELEPORT_DISTANCE_PX&&this.tryRegroup())return;
-    if(this.trackFollowProgress(actor,leader))return;
-    this.followToPoint(actor,leader,goal);
+    if(!combatStateCapabilities(actor.states??[]).canMove){this.follower.suspend();this.port.stop();return;}
+    if(this.destinationTarget)this.clearRoute(false);
+    this.follower.move(actor,leader,this.stance(),LOGIC_FRAME_MS);
   }
   private stance():CompanionStance {
     const support=this.port.skills().some(skill=>{
@@ -406,54 +392,6 @@ export class PartyController {
     });
     if(support)return 'support';
     return this.port.attackRange()>PARTY_RANGED_RANGE_UNITS?'back':'front';
-  }
-  /** 站位点和另一名队友太近时推开；目标点站不住就找附近落点。 */
-  private adjustFollowGoal(goal:Point,actor:Combatant):Point {
-    const adjusted={...goal};
-    const leaderId=this.port.leader()?.id;
-    for(const candidate of this.port.candidates()){
-      if(candidate.id===actor.id||candidate.id===leaderId||candidate.team!==actor.team)continue;
-      const dx=adjusted.x-candidate.position.x,dy=adjusted.y-candidate.position.y;
-      const distance=Math.hypot(dx,dy);
-      if(distance<=0||distance>=24)continue;
-      const push=(24-distance)/24*6;
-      adjusted.x+=dx/distance*push;adjusted.y+=dy/distance*push;
-    }
-    if(this.port.canStand(adjusted))return adjusted;
-    for(const distance of [8,16]){
-      for(const [dx,dy] of [[0,-1],[-1,0],[1,0],[0,1],[-1,-1],[1,-1],[-1,1],[1,1]]){
-        const point={x:adjusted.x+dx*distance,y:adjusted.y+dy*distance};
-        if(this.port.canStand(point))return point;
-      }
-    }
-    return adjusted;
-  }
-  /** 跟随队长时连续一段时间一步没挪，就请求宿主收拢。 */
-  private trackFollowProgress(actor:Combatant,leader:Combatant):boolean {
-    if(!this.port.regroup)return false;
-    if(this.search)return false;
-    const previous=this.followProgress;
-    if(!previous||Math.hypot(actor.position.x-previous.x,actor.position.y-previous.y)>=PARTY_FOLLOW_PROGRESS_PX){
-      this.followProgress={...actor.position};this.followProgressAt=this.clock;return false;
-    }
-    if(this.clock-this.followProgressAt<PARTY_FOLLOW_STUCK_MS)return false;
-    if(Math.hypot(actor.position.x-leader.position.x,actor.position.y-leader.position.y)<8){
-      this.followProgressAt=this.clock;return false;
-    }
-    this.followProgress=undefined;this.clearRoute();this.port.stop();this.tryRegroup();
-    return true;
-  }
-  private tryRegroup():boolean {
-    if(!this.port.regroup||this.clock<this.nextRegroupAt)return false;
-    this.port.regroup();
-    this.nextRegroupAt=this.clock+PARTY_REGROUP_COOLDOWN_MS;
-    return true;
-  }
-  private followToPoint(actor:Combatant,leader:Combatant,goal:Point):void {
-    if(this.destinationTarget!==leader.id||this.destinationRange!==PARTY_FOLLOW_DISTANCE_UNITS-1){
-      this.clearRoute();this.destinationTarget=leader.id;this.destinationRange=PARTY_FOLLOW_DISTANCE_UNITS-1;
-    }
-    this.followDestination(actor,goal,PARTY_FOLLOW_DISTANCE_UNITS-1);
   }
   private followToTarget(actor:Combatant,target:Combatant,range:number):void {
     if(this.destinationTarget!==target.id||this.destinationRange!==range){

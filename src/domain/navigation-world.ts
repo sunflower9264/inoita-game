@@ -158,22 +158,24 @@ export class NavigationWorld {
     return this.water[row * map.columns + column] === 1;
   }
   /** 分帧搜索读取同一时刻的完整通行状态；执行路径时仍使用实时 canStand 检查。 */
-  captureStandability(actor:NavigationActor):NavigationQuerySnapshot {
+  captureStandability(actor:NavigationActor,contentOnly=false):NavigationQuerySnapshot {
     const bounds=Object.freeze({...this.bounds}),start=Object.freeze({...actor.position()});
     const source=actor.shape().collision,collision=source?{...source}:undefined;
     // 地形整图只读，直接共享；占位按 16px 广相登记，查询只对格内候选做精确相交。
     const terrain=this.terrain;
     const occupied=new Map<number,GameRectangle[]>();
-    if(collision&&!actor.ghost?.())for(const other of this.actors){
-      if(other===actor||!other.enabled()||other.ghost?.()||!blocksActor(actor,other))continue;
+    if(collision&&!actor.ghost?.())for(const other of contentOnly?this.contentActors:this.actors){
+      if(other===actor||!other.enabled()||other.ghost?.()||!blocksActor(actor,other)||contentOnly&&!other.content?.())continue;
       const box=collisionAt(other.shape(),other.position());
       if(box)addOccupancy(occupied,box);
     }
     const terrainFree=(point:Point)=>terrainFreeAt(bounds,terrain,point);
-    const canStandXY=(x:number,y:number)=>terrainFreeAtXY(bounds,terrain,x,y)&&(!collision||!blockedInOccupancyXY(occupied,collision,x,y));
+    const canStandXY=(x:number,y:number)=>terrainFreeAtXY(bounds,terrain,x,y)
+      &&(!contentOnly||!collision||bodyFreeAt(bounds,terrain,{x:x+collision.x,y:y+collision.y,width:collision.width,height:collision.height}))
+      &&(!collision||!blockedInOccupancyXY(occupied,collision,x,y));
     return {bounds,start,terrain,terrainFree,canStandXY,canStand(point){
       // 与 `canStand()` 同口径：地形和地图边界对所有角色都生效；没有碰撞盒只表示不查人物占位。
-      return terrainFree(point)&&(!collision||!blockedInOccupancy(occupied,collision,point));
+      return contentOnly?canStandXY(point.x,point.y):terrainFree(point)&&(!collision||!blockedInOccupancy(occupied,collision,point));
     }};
   }
   canPlace(shape: NavigationShape, point: Point, ignore?: NavigationActor, placements: readonly Placement[] = []): boolean {

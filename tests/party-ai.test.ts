@@ -227,7 +227,7 @@ test('a follow search yields when the shared budget is exhausted and retries lat
   run.port.canStand=()=>false;
   run.port.pathBudget={take:()=>{grants++;return 0;}};
   run.ai.update(60);
-  assert.ok(grants>0);assert.equal(run.boundsCalls(),0);
+  assert.ok(grants>0);assert.equal(run.boundsCalls(),1);
   run.port.pathBudget=undefined;run.ai.update(60);
   assert.equal(run.boundsCalls(),1);
 });
@@ -244,6 +244,7 @@ test('a follow search resumes across frames instead of restarting',()=>{
   run.port.canStand=point=>free(point)&&!(blocked&&Math.abs(point.x-blocked.x)<8&&Math.abs(point.y-blocked.y)<8);
   run.ai.update(60);
   assert.equal(run.boundsCalls(),1);assert.equal(run.waypoint(),undefined);
+  blocked=undefined;
   for(let frame=0;frame<300&&!run.waypoint();frame++)run.ai.update(60);
   blocked=run.waypoint();assert.ok(blocked);assert.equal(snapshots,1);
   assert.equal(run.waypoint(),undefined,'路线算好之后，新挡住的下一步仍然不能走');
@@ -251,30 +252,30 @@ test('a follow search resumes across frames instead of restarting',()=>{
 
 test('a stuck follower is placed beside the leader once and then waits for the cooldown',()=>{
   const run=setup();let regroups=0;
-  run.port.regroup=()=>{regroups++;run.ai.cancel();run.member.position={...run.leader.position};};
-  for(let frame=0;frame<40;frame++)run.ai.update(60);
+  run.port.regroup=()=>{regroups++;run.ai.cancel();run.member.position={...run.leader.position};return true;};
+  for(let frame=0;frame<80;frame++)run.ai.update(60);
   assert.equal(regroups,1);
   for(let frame=0;frame<20;frame++)run.ai.update(60);
   assert.equal(regroups,1);
 });
 
-test('a companion chasing an unreachable enemy is pulled beside the leader once',()=>{
+test('an unreachable combat target does not immediately teleport a companion',()=>{
   const run=setup();let regroups=0;
   run.enemy.position={x:200,y:128};run.focus('enemy');
   run.port.canStand=point=>point.x>=0&&point.x<=100&&point.y>=0&&point.y<=400;
-  run.port.regroup=()=>{regroups++;run.ai.cancel();run.member.position={...run.leader.position};};
+  run.port.regroup=()=>{regroups++;run.ai.cancel();run.member.position={...run.leader.position};return true;};
   for(let frame=0;frame<70;frame++)run.ai.update(60);
-  assert.equal(regroups,1);
+  assert.equal(regroups,0);
   for(let frame=0;frame<20;frame++)run.ai.update(60);
-  assert.equal(regroups,1);
+  assert.equal(regroups,0);
 });
 
-test('a far follower is teleported without waiting for a stuck window',()=>{
+test('a far follower starts walking instead of teleporting',()=>{
   const run=setup();let regroups=0;run.enemy.position={x:10,y:390};run.enemy2.position={x:30,y:390};
   run.member.position={x:0,y:0};run.leader.position={x:360,y:360};
-  run.port.regroup=()=>{regroups++;run.ai.cancel();run.member.position={...run.leader.position};};
+  run.port.regroup=()=>{regroups++;run.ai.cancel();run.member.position={...run.leader.position};return true;};
   run.ai.update(60);
-  assert.equal(regroups,1);
+  assert.equal(regroups,0);assert.ok(run.waypoint());
 });
 
 test('removing a focused target clears the pursuit path',()=>{
@@ -286,7 +287,7 @@ test('removing a focused target clears the pursuit path',()=>{
 });
 
 test('party checkpoints keep the pending logic frame and cached path without sharing mutable points',()=>{
-  const run=setup();run.ai.update(85);const saved=run.ai.captureState(),expected=structuredClone(saved);
+  const run=setup();run.enemy.position={x:200,y:128};run.focus('enemy');run.ai.update(85);const saved=run.ai.captureState(),expected=structuredClone(saved);
   assert.equal(saved.accumulator,25);assert.equal(saved.clock,60);assert.ok(saved.path.length);
   saved.path[0].x+=100;assert.deepEqual(run.ai.captureState(),expected);
   run.ai.cancel();run.ai.restoreState(expected);

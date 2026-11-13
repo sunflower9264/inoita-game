@@ -266,3 +266,11 @@ test('reviving two allies places them apart',()=>{
   assert.ok(Math.abs(first!.x-second!.x)>=16||Math.abs(first!.y-second!.y)>=16,'两名复活的佣兵不能重叠');
   assert.deepEqual(revived,['companion','second']);
 });
+
+test('the AI-controlled hero can recover beside a controlled mercenary',()=>{
+  const f=fixture();
+  Object.assign(f.combat,{hero:{player:{health:100}},heroAi:{actionState:()=> 'idle',cancel:()=>f.cancelled.push('player')}});
+  const recovered=Reflect.get(WorldCombat.prototype,'catchUpFollower').call(f.combat,'player');
+  assert.equal(recovered,true);assert.deepEqual(f.moved,['player']);
+  assert.notDeepEqual(f.movement.position(f.hero),f.movement.position(f.allies[0]!.visual));
+});
