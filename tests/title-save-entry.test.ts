@@ -218,6 +218,11 @@ test('changelog reports load errors and starts from the newest version after reo
   f.click('更新日志');await new Promise(resolve=>setImmediate(resolve));
   f.clickModal('v1.0.5');
   assert.ok(f.domTexts().includes('暂无更新日志。'));
+  assert.deepEqual(f.state.changelogHeights,[],'空版本不保留旧条目高度');
+  assert.deepEqual(f.state.changelogOffsets,[],'空版本不保留旧条目偏移');
+  const scroll=f.state.changelogScroll!;
+  scroll.scrollTop=10;scroll.onScroll?.();
+  assert.ok(!f.state.changelogSpecs.some(spec=>spec.text.includes('undefined')),'滚动不生成伪条目');
   f.clickModal('关闭更新日志');
   f.click('更新日志');await new Promise(resolve=>setImmediate(resolve));
   assert.ok(f.domTexts().includes('v1.0.6 更新说明'));

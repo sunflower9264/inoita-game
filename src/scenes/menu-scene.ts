@@ -320,6 +320,8 @@ export class MenuScene extends Phaser.Scene {
     else if(this.changelogState==='error')this.changelogMessage(`更新日志加载失败：${this.changelogError}`);
     else if(this.changelogState!=='ready'||!this.changelogEntries.length){
       scroll.setHeight(0);scroll.scrollTop=0;
+      // 空版本也要清掉上一条目的高度和偏移，滚动时不能按旧数据重建伪条目。
+      this.changelogHeights=[];this.changelogOffsets=[];
       this.changelogMessage('暂无更新日志。');
     }else this.renderChangelogEntries(view,scroll,CHANGELOG_LAYOUT.textSize);
     this.menuText?.renderPage('changelog');
