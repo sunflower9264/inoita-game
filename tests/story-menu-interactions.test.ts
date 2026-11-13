@@ -2563,6 +2563,28 @@ test('long item descriptions keep the discard quantity row inside the dialog', t
   }),`${label} 底边不越出弹层`);
 });
 
+test('discard quantity changes preserve the dialog and background controls',t=>{
+  const f=fixture();t.after(f.cleanup);
+  const source=f.add('sp-weapon-enhance-scroll',3);
+  f.menu.debugDescribe(source.id);
+  f.scene.click(f.scene.button('丢弃'));
+  const increase=f.scene.button('增加数量');
+  const cancel=f.scene.button('取消');
+  const background=f.internals.body.root.list.slice();
+  const scroll=f.internals.modal.scrolls[0];
+  f.scene.click(increase);
+  assert.equal(f.scene.button('增加数量'),increase);
+  assert.equal(f.scene.button('取消'),cancel);
+  assert.equal(f.internals.modal.scrolls[0],scroll);
+  assert.deepEqual(f.internals.body.root.list,background);
+  assert.ok(domLabel(f,'2'),'数量立即更新');
+  const all=f.scene.buttons('全部').find(button=>button.parentContainer===f.internals.modal.root);
+  assert.ok(all);f.scene.click(all);
+  assert.ok(domLabel(f,'3'),'全部按钮显示总数量');
+  f.scene.click(f.scene.button('减少数量'));
+  assert.ok(domLabel(f,'2'),'减少按钮更新数量');
+});
+
 test('sampling changes preserve discard and save popup coverage, text and pointer input',t=>{
   const f=fixture();t.after(f.cleanup);
   f.scene.resize(844,390);Object.assign(menuFrame,{left:13,top:7});

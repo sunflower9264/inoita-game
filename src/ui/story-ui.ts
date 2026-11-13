@@ -2145,14 +2145,21 @@ export class StoryUI {
       x:inner.x,y:inner.y+5,style:{size:26,color:GOLD,width:inner.width,wrap:'word'}});
     if(quantityRow){
       const quantityButton=(label:string,x:number,width:number,action:()=>void)=>
-        v.button('',x,quantityTop,width,48,action,{guard:scroll.guard}).setData('label',label);
-      quantityButton('减少数量',inner.x,80,()=>{op.quantity=Math.max(1,op.quantity-1);this.render();});
-      quantityButton('增加数量',inner.x+190,80,()=>{op.quantity=Math.min(entry.quantity,op.quantity+1);this.render();});
-      quantityButton('全部',inner.x+260,inner.width-260,()=>{op.quantity=entry.quantity;this.render();});
+        v.button('',x,quantityTop,width,48,action).setData('label',label);
+      const setQuantity=(quantity:number)=>{
+        op.quantity=Math.max(1,Math.min(entry.quantity,quantity));
+        const value=String(op.quantity);
+        const spec=specs.find(spec=>spec.key==='operation-quantity');
+        if(spec)spec.text=value;
+        this.menuText?.setText('operation-notice','operation-quantity',value);
+      };
+      quantityButton('减少数量',inner.x,80,()=>setQuantity(op.quantity-1));
+      quantityButton('增加数量',inner.x+190,80,()=>setQuantity(op.quantity+1));
+      quantityButton('全部',inner.x+260,inner.width-260,()=>setQuantity(entry.quantity));
       const centerY=quantityTop+24;
       specs.push({key:key(),text:'−',x:inner.x+40,y:centerY,
         style:{size:20,color:GOLD,width:68,align:'center',wrap:'word',anchorX:.5,anchorY:.5}});
-      specs.push({key:key(),text:String(op.quantity),x:inner.x+135,y:quantityTop+8,
+      specs.push({key:'operation-quantity',text:String(op.quantity),x:inner.x+135,y:quantityTop+8,
         style:{size:24,color:GOLD,anchorX:.5}});
       specs.push({key:key(),text:'＋',x:inner.x+230,y:centerY,
         style:{size:20,color:GOLD,width:68,align:'center',wrap:'word',anchorX:.5,anchorY:.5}});
