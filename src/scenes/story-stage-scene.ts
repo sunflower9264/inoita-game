@@ -22,23 +22,6 @@ import { Wardrobe } from '../rendering/wardrobe.ts';
 export const STAGE_BACKDROP_COLOR = '#000000';
 export const STAGE_TRANSPARENT_COLOR = 'rgba(0,0,0,0)';
 
-function cancellable<T>(work: Promise<T>, signal: AbortSignal, late?: (value: T) => void): Promise<T> {
-  return new Promise((resolve, reject) => {
-    let finished = false;
-    const cancel = () => { if (!finished) { finished = true; reject(signal.reason); } };
-    signal.addEventListener('abort', cancel, { once: true });
-    if (signal.aborted) cancel();
-    work.then(value => {
-      signal.removeEventListener('abort', cancel);
-      if (finished) { late?.(value); return; }
-      finished = true; resolve(value);
-    }, error => {
-      signal.removeEventListener('abort', cancel);
-      if (!finished) { finished = true; reject(error); }
-    });
-  });
-}
-
 /** 独立演出世界：正式地图的访问记录、战斗和摆放点均由 WorldScene 保留。 */
 export class StoryStageScene extends Phaser.Scene {
   readonly app: StoryContext;
@@ -146,7 +129,7 @@ export class StoryStageScene extends Phaser.Scene {
       needed.push(...characterAssets(appearance, characterSceneClips(appearance, actor.clip)));
     }
     needed.push(...this.app.wardrobe.textures.map(texture => ({ kind: 'image' as const, ...texture })));
-    const lease = await cancellable(loadSceneAssets(this, needed, () => {}, true), signal, value => value.release());
+    const lease = await loadSceneAssets(this, needed, () => {}, true, signal);
     const guard = () => {
       signal.throwIfAborted();
       if (revision !== this.revision || !this.sys.isActive()) throw new DOMException('演出舞台已更新', 'AbortError');
@@ -239,7 +222,7 @@ export class StoryStageScene extends Phaser.Scene {
     signal.throwIfAborted();
     needed = needed.filter(asset => !this.preparedAssetKeys.has(asset.key));
     if (!needed.length) return;
-    const lease = await cancellable(loadSceneAssets(this, needed, () => {}, true), signal, value => value.release());
+    const lease = await loadSceneAssets(this, needed, () => {}, true, signal);
     if (signal.aborted || revision !== this.revision || !this.sys.isActive()) {
       lease.release(); signal.throwIfAborted(); throw new DOMException('演出舞台已更新', 'AbortError');
     }

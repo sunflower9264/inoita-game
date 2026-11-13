@@ -471,7 +471,7 @@ test('failure restores cinematic baseline with caller signal and leaves formal w
 
 test('cancelled or superseded resource loading releases the late lease without rebuilding a stage', async () => {
   for (const cancellation of ['abort', 'release']) {
-    const events = new EventEmitter(), frames = new Set<string>(), pending: string[] = [];
+    const events = new EventEmitter(), textureEvents = new EventEmitter(), frames = new Set<string>(), pending: string[] = [];
     const load = Object.assign(new EventEmitter(), { image: (key: string) => pending.push(key), spritesheet() {}, start() {} });
     let mapEntries = 0;
     const app = { world: { maps: [{ id: 'map', file: 'map.json' }], props: [], actors: {} }, wardrobe: { textures: [] },
@@ -483,7 +483,7 @@ test('cancelled or superseded resource loading releases the late lease without r
     } as unknown as StoryContext;
     const scene = new StoryStageScene(app);
     Object.assign(scene, { events, load, sys: { isActive: () => true },
-      textures: { exists: (key: string) => frames.has(key), get: () => ({ has: () => true }), remove: (key: string) => frames.delete(key) },
+      textures: { on: textureEvents.on.bind(textureEvents), exists: (key: string) => frames.has(key), get: () => ({ has: () => true }), remove: (key: string) => frames.delete(key) },
       anims: { exists: () => false } });
     const abort = new AbortController();
     const running = scene.showStage(stageSnapshot({ type: 'stage', map: 'map', x: 1, y: 2, facing: 'south', playerVisible: true, cast: [] }), abort.signal, appearance);
@@ -493,10 +493,38 @@ test('cancelled or superseded resource loading releases the late lease without r
     const rejected = assert.rejects(running, { name: 'AbortError' });
     // An abort returns before a pending loader settles; superseding a stage also rejects when its old loader finally returns.
     if (cancellation === 'abort') await rejected;
-    for (const key of pending) frames.add(key);
+    for (const key of pending) { frames.add(key); textureEvents.emit('addtexture', key); }
     load.emit('complete'); await rejected; await new Promise(resolve => setImmediate(resolve));
     assert.equal(frames.size, 0); assert.equal(mapEntries, 0); assert.equal(scene.map, undefined);
   }
+});
+
+test('skipping a loading stage frees the shared texture queue for another scene', async () => {
+  const events = new EventEmitter(), textureEvents = new EventEmitter();
+  const textures = Object.assign(textureEvents, { exists: () => false, remove: () => {} });
+  const stageLoad = Object.assign(new EventEmitter(), { image() {}, spritesheet() {}, start() {} });
+  const app = { world: { maps: [{ id: 'map', file: 'map.json' }], props: [], actors: {} }, wardrobe: { textures: [] },
+    session: { storyWorld: { actorAppearance: (actor: string) => actor } },
+    content: { map: async () => ({ id: 'map', ground: 'ground.png', canopy: 'canopy.png', features: [], entities: [] }) }
+  } as unknown as StoryContext;
+  const scene = new StoryStageScene(app);
+  const anims = { exists: () => false };
+  Object.assign(scene, { events, load: stageLoad, textures, anims, sys: { isActive: () => true } });
+  const controller = new AbortController();
+  const running = scene.showStage(stageSnapshot({ type: 'stage', map: 'map', x: 1, y: 2, facing: 'south', playerVisible: true, cast: [] }), controller.signal, appearance);
+  await new Promise(resolve => setImmediate(resolve));
+  let starts = 0;
+  const nextEvents = new EventEmitter();
+  const next = { events: nextEvents, textures, anims, load: Object.assign(new EventEmitter(), { image() {}, start() { starts++; } }) };
+  const { loadSceneAssets } = await import('../src/rendering/scene-assets.ts');
+  const pending = loadSceneAssets(next as never, [{ kind: 'image', key: 'next', file: 'next.png' }], () => {});
+  const nextRejected = assert.rejects(pending, { name: 'AbortError' });
+  controller.abort();
+  await assert.rejects(running, { name: 'AbortError' });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(starts, 1);
+  nextEvents.emit('shutdown');
+  await nextRejected;
 });
 
 test('retainPlayerPosition continues from the formal world player when the stage has not shown that map yet', async () => {
@@ -607,14 +635,14 @@ test('committed scene changes are acknowledged once and restoring a stable snaps
 
 test('on-demand object assets retain the original and override textures and discard late cancelled loads',async()=>{
   for(const cancellation of ['abort','release']){
-    const events=new EventEmitter(),frames=new Set<string>(),pending:string[]=[];
+    const events=new EventEmitter(),textureEvents=new EventEmitter(),frames=new Set<string>(),pending:string[]=[];
     const load=Object.assign(new EventEmitter(),{image:(key:string)=>pending.push(key),spritesheet:(key:string)=>pending.push(key),start(){}});
     const definition=(id:string)=>({id,clips:{'idle-south':{frameWidth:8,frameHeight:8,frames:1,originX:0,originY:0,frameRate:10,mirrorX:false,
       layers:[{key:id,file:id+'.png',blend:'normal'}]}}} as ActorDefinition);
     const app={world:{actors:{gate:definition('gate'),glow:definition('glow')}},session:{storyWorld:{actorAppearance:()=> 'glow'}}} as unknown as StoryContext;
     const scene=new StoryStageScene(app);
     Object.assign(scene,{events,load,sys:{isActive:()=>true},
-      textures:{exists:(key:string)=>frames.has(key),get:()=>({has:()=>true}),remove:(key:string)=>frames.delete(key)},
+      textures:{on:textureEvents.on.bind(textureEvents),exists:(key:string)=>frames.has(key),get:()=>({has:()=>true}),remove:(key:string)=>frames.delete(key)},
       anims:{exists:()=>false}});
     const abort=new AbortController(),running=scene.prepareActorAssets('gate',abort.signal);
     await new Promise(resolve=>setImmediate(resolve));
@@ -622,7 +650,7 @@ test('on-demand object assets retain the original and override textures and disc
     if(cancellation==='abort')abort.abort();else scene.releaseStage();
     const rejected=assert.rejects(running,{name:'AbortError'});
     if(cancellation==='abort')await rejected;
-    for(const key of pending)frames.add(key);
+    for(const key of pending){frames.add(key);textureEvents.emit('addtexture',key);}
     load.emit('complete');await rejected;await new Promise(resolve=>setImmediate(resolve));
     assert.equal(frames.size,0);
   }
