@@ -4662,6 +4662,7 @@ export const CHARACTER_ATLAS_ALIASES: Readonly<Record<string, string>> = {
   "assets/characters/lamp-9e27cd7d/idle-south-normal.png": "assets/characters/lamp-9e27cd7d/idle-south-normal.png",
   "assets/characters/lamp-bcc57470/idle-south-add.png": "assets/characters/lamp-bcc57470/idle-south-add.png",
   "assets/characters/lamp-bcc57470/idle-south-normal.png": "assets/characters/lamp-bcc57470/idle-south-normal.png",
+  "assets/characters/lamp-dealer-007/idle-south-normal.png": "assets/characters/crooked-street-vendor-582a688d/idle-south-normal.png",
   "assets/characters/lamp-f6c235d6/idle-south-add.png": "assets/characters/lamp-f6c235d6/idle-south-add.png",
   "assets/characters/lamp-f6c235d6/idle-south-normal.png": "assets/characters/lamp-f6c235d6/idle-south-normal.png",
   "assets/characters/largal-8104ad1c/idle-south-normal.png": "assets/characters/innkeeper-b8f0066b/idle-south-normal.png",

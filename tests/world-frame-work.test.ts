@@ -271,3 +271,25 @@ test('nonvisual equipment changes stats without resetting the actor, collision o
   await invoke(host,'projectEquipment',new AbortController().signal);
   assert.equal(preparations,1,'会话刷新不会再次准备已完成的换装');
 });
+
+test('lamp preparation cancels or rejects a blocked landing before creating a merchant',async()=>{
+  for(const failure of ['abort','map','blocked','load'] as const){
+    const actor=JSON.parse(readFileSync(new URL('../public/content/world.json',import.meta.url),'utf8')).actors['lamp-dealer-007'];
+    const controller=new AbortController();let released=0,created=0;
+    const session={};
+    const host=Object.assign(Object.create(WorldScene.prototype),{
+      app:{session,world:{actors:{[actor.id]:actor}},shops:{lampShop:actor.id}},
+      map:{id:'map',name:'map'},player:{},destroyed:false,
+      movement:{navigation:{nearestReachableBody:()=>undefined}},controlledPosition:()=>({x:80,y:80}),
+      createActor:()=>{created++;throw new Error('must not create');},
+      loadAssets:async()=>{
+        if(failure==='load')throw new Error('load failed');
+        if(failure==='abort')controller.abort();
+        if(failure==='map')host.map={id:'other',name:'other'};
+        return {release:()=>released++};
+      }
+    });
+    await assert.rejects(()=>invoke(host,'summonLampMerchant','lamp',controller.signal));
+    assert.equal(created,0);assert.equal(released,failure==='load'?0:1);
+  }
+});

@@ -1005,9 +1005,9 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
     "key": "characters-atlas:125",
     "file": "assets/character-atlas/characters-125.png",
     "data": "assets/character-atlas/characters-125.json",
-    "frame": "b11e668a6a-000",
-    "width": 1021,
-    "height": 471
+    "frame": "ebb0e94472-000",
+    "width": 1022,
+    "height": 454
   }
 ];
 export interface CharacterAtlasEntry { pages: readonly number[]; prefix: string }
@@ -5190,18 +5190,18 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/crooked-street-vendor-582a688d/idle-south-normal.png": {
     "pages": [
-      124,
-      124,
-      124,
-      124,
-      124,
-      124,
-      124,
-      124,
-      124,
-      124,
-      124,
-      124
+      125,
+      125,
+      125,
+      125,
+      125,
+      125,
+      125,
+      125,
+      125,
+      125,
+      125,
+      125
     ],
     "prefix": "48979456ef"
   },
@@ -35023,16 +35023,16 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
   },
   "assets/characters/story-bizarre-flying-book-0a44c5d6/idle-east-normal.png": {
     "pages": [
-      125,
-      125,
-      125,
-      125,
-      125,
-      125,
-      125,
-      125,
-      125,
-      125
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
     "prefix": "b11e668a6a"
   },
@@ -37747,4 +37747,4 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
     "prefix": "8dfa733f8d"
   }
 };
-export const CHARACTER_ATLAS_SOURCE_DIGEST = "d7941e41afd0be4d030f486855bfa16da8198e359c7d14e757f3cbd73be2a676";
+export const CHARACTER_ATLAS_SOURCE_DIGEST = "7628c2faa2a50bd51755fcb2aaf4641f3f3c3ca4d3eb4179a00dc0cd4fc88988";

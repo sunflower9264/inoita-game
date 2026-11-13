@@ -554,7 +554,7 @@ export class Bag {
     if(useMessage)result.message=useMessage;
     // 每种用途都要有一个 case：新增 ItemUseKind 时，`default` 的 `never` 兜底会在这里编译失败。
     switch(use.kind) {
-      // consume 与技能点类的结算由上面的 applyUse 完成；神灯只消耗物品，开商店是界面的事。
+      // consume 与技能点类的结算由上面的 applyUse 完成；神灯在地图召唤事务中扣除物品，人物由世界场景准备。
       case 'consume': case 'reset-skills': case 'merchant': break;
       case 'enchant': {
         const entry=this.instances.get(target!)!,outcome=enchantOutcome;

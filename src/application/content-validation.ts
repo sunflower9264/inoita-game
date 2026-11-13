@@ -360,7 +360,7 @@ export function parseShopEquipment(value:unknown,stats?:CharacterStatsCatalog):S
 
 export function validateShops(shops:ShopCatalog, items:ItemCatalog, world:WorldIndex):void {
   for(const [id,shop]of Object.entries(shops.shops)) {
-    requireValue(id===shops.lampShop||world.actors[id],id,'商店人物不存在');
+    requireValue(world.actors[id],id,'商店人物不存在');
     for(const item of shop.fixedStock)requireValue(items.items[item]&&!items.items[item].pickup,id,`固定商品不存在 ${item}`);
   }
   for(const profile of Object.values(shops.profiles))for(const pool of Object.values(profile.pools))for(const choice of pool)

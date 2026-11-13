@@ -2014,7 +2014,7 @@ export class StoryUI {
     const use=this.session!.bag.catalog.items[instance.item].use;
     // 技能书不弹确认框：独立页本身就承担选择与确认。
     if(kind==='use'&&use?.kind==='learn'){this.openSkillBook(entry);return;}
-    // 神灯的动作按钮直接使用一枚并打开商店。
+    // 神灯的动作按钮直接召唤一名地图商人。
     if(kind==='use'&&use?.kind==='merchant'){
       this.operation={entry,kind,quantity:1};this.confirmOperation();return;
     }
@@ -2154,9 +2154,10 @@ export class StoryUI {
     this.finishScroll('item',detail,y);
     drawDescriptionClose(v,this.app.menuPanels.assets,panel,left,top,()=>{this.itemResult=undefined;this.render();});
   }
-  private confirmOperation():void{
+  private async confirmOperation():Promise<void>{
     const op=this.operation;if(!op||op.confirmed||this.busy)return;const bag=this.session!.bag,entry=bag.get(op.entry);if(!entry)return;
     op.confirmed=true;this.busy=true;
+    const signal=this.request.signal;
     try{
       if(op.kind==='use'){const problem=this.itemUseProblem(entry);if(problem)throw new Error(problem);}
       const kind=bag.catalog.items[entry.item].use?.kind;
@@ -2174,14 +2175,17 @@ export class StoryUI {
           party.revive(target,op.entry);
           for(const id of fallen)if(party.alive(id))session.reviveCombatActor(id);
         }
+      }else if(kind==='merchant'){
+        if(!this.app.summonLampMerchant)throw new Error('当前地图无法召唤商人');
+        await this.app.summonLampMerchant(op.entry,signal);
+        signal.throwIfAborted();this.busy=false;this.close();return;
       }else{
         this.itemResult=bag.use(op.entry);
       }
       this.selectedItem=bag.get(op.entry)?op.entry:undefined;
       this.operation=undefined;
-      if(op.kind==='use'&&kind==='merchant'){this.busy=false;this.openShop(this.app.shops.lampShop,'');return;}
     }
-    catch(error){op.error=(error as Error).message;op.confirmed=false;}finally{this.busy=false;}this.render();
+    catch(error){if(signal.aborted)return;op.error=(error as Error).message;op.confirmed=false;}finally{if(!signal.aborted)this.busy=false;}this.render();
   }
   private startDrag(pointer:UiPointer,entry:string,scroll:ScrollArea):void{
     if(this.busy||this.operation||this.itemNotice||!scroll.contains(pointer))return;this.cancelDrag();this.suppressClick=false;

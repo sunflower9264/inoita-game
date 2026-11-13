@@ -1,3 +1,4 @@
+import { summonLampMerchant } from '../domain/lamp-merchant.ts';
 import { domAssets } from '../ui/dom/assets.ts';
 import {prepareCombatRestore} from '../domain/combat-snapshot.ts';
 import type {SceneActorState,SceneSnapshot} from '../domain/scene-snapshot.ts';
@@ -897,6 +898,36 @@ export class WorldScene extends Phaser.Scene {
     }
   }
   equipmentAppearance(id:string):ActorDefinition|undefined{return id==='player'?this.player?.actor:this.companionOutfits.get(id)?.actor;}
+  async summonLampMerchant(entry:string,signal:AbortSignal):Promise<void>{
+    signal.throwIfAborted();
+    const map=this.map,movement=this.movement,session=this.app.session;
+    if(!map||!movement||!this.player||this.destroyed)throw new Error('当前地图无法召唤商人');
+    const actor=this.app.world.actors[this.app.shops.lampShop];
+    if(!actor)throw new Error('神灯商人素材缺失');
+    const lease=await this.loadAssets(characterAssets(actor,characterSceneClips(actor)),map.name,false,true);
+    let character:Character|undefined;
+    try{
+      signal.throwIfAborted();
+      if(this.destroyed||this.map!==map||this.app.session!==session)throw new Error('当前地图已变化');
+      const origin=this.controlledPosition(),navigation=movement.navigation;
+      const point=navigation.nearestReachableBody(actor,origin,undefined,undefined,[],
+        p=>navigation.terrainFree(p)&&Math.hypot(p.x-origin.x,p.y-origin.y)<=64);
+      if(!point)throw new Error('附近没有可以召唤商人的空位');
+      let serial=1;while(session.storyWorld.entity(`lamp-merchant-${serial}`))serial++;
+      const entity:EntityPlacement & {map:string}={id:`lamp-merchant-${serial}`,actor:actor.id,map:map.id,...point};
+      character=this.createActor(entity);
+      movement.place(character,point);
+      summonLampMerchant(session,entry,entity);
+    }catch(error){
+      if(character){movement.remove(character);character.container.destroy();}
+      lease.release();throw error;
+    }
+    this.storyEntityAssets.push(lease);this.projectedActorIds.add(actor.id);
+    this.characters.push(character!);this.entities.push(character!.entity);
+    this.charactersRevision++;this.interactionRevision++;
+    this.rebuildTriggerIndex();this.refreshState();this.syncHud();
+  }
+
   createActor(entity: EntityPlacement): Character {
     const actor = entity.id === 'player' ? this.equippedActor ?? this.app.session.character?.appearance ?? this.app.world.actors[this.app.session.storyWorld.actorAppearance(entity.actor)] : this.app.world.actors[this.app.session.storyWorld.actorAppearance(entity.actor)];
     const character: Character = { ...createCharacter(this, actor, entity), marker: null };

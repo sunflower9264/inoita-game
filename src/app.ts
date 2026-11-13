@@ -78,6 +78,7 @@ export class StoryApp {
   autoSave?: () => void;
   storySignal?:AbortSignal;
   revivePartyMember?: (id:string,item:string)=>ItemResult;
+  summonLampMerchant?: (entry:string,signal:AbortSignal)=>Promise<void>;
   preparePartyMember?: (id:string,signal?:AbortSignal,options?:{full?:boolean;pin?:boolean})=>Promise<void>;
   /** 菜单关闭或离开队伍页：释放非上阵成员的合成外观。 */
   releasePartyPreview?: () => void;

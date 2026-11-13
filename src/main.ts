@@ -537,6 +537,7 @@ function installSession(session: Session): void {
   app.session = session;
   app.storySignal = modeRequest.signal;
   app.checkpoint.clear();
+  app.summonLampMerchant=(entry,signal)=>requireWorldScene().summonLampMerchant(entry,signal);
   app.changeEquipment=async(entry,slot,signal,memberId)=>requireWorldScene().changeEquipment(entry,slot,signal,memberId);
   app.equipmentAppearance=memberId=>worldScene()?.equipmentAppearance(memberId);
   app.preparePartyMember=async(id,signal,options)=>{const scene=worldScene();if(scene)await scene.preparePartyMember(id,signal,options);};

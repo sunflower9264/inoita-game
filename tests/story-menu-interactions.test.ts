@@ -1158,16 +1158,20 @@ test('generic, foreign, maxed and companion-view skillbooks can all be discarded
   }
 });
 
-test('discarding a lamp only removes inventory; using a lamp opens its shop', t => {
+test('discarding a lamp keeps the bag; summoning awaits the map and closes the menu', async t => {
   const f = fixture(); t.after(f.cleanup); const lamp = f.add('lamp', 2);
   f.menu.debugUse(lamp.id, 'discard'); f.scene.click(f.scene.button('确定'));
   assert.equal(f.session.bag.count('lamp'), 1); assert.equal(f.scene.buttons('返回背包').length, 0);
   assert(f.scene.buttons('背包').length, '丢弃后留在背包页');
+  let finish!:()=>void;
+  f.app.summonLampMerchant=async entry=>{await new Promise<void>(resolve=>{finish=resolve;});f.session.bag.use(entry);};
   f.menu.debugDescribe(f.entry('lamp').id);
   f.scene.click(f.scene.button('召唤神灯商人'));
-  assert.equal(f.session.bag.count('lamp'), 0); assert.equal(f.scene.buttons('背包').length, 0, '使用后进入商店而非菜单标签页');
+  assert.equal(f.session.bag.count('lamp'),1);assert.equal(f.internals.busy,true);
+  finish();await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(f.session.bag.count('lamp'), 0); assert.equal(f.scene.buttons('背包').length, 0, '召唤后关闭菜单');
   assert.equal(f.internals.operation,undefined,'召唤直接完成，不显示使用确认框');
-  assert(visibleDomLabels(f).some(label => label.text.includes('神灯')), '真实商店面板已经绘制');
+  assert.equal(f.scene.buttons('返回背包').length,0,'召唤成功没有直接打开商店');
 });
 
 test('description buttons and scrolling reject modal, busy, suspended and closed input', t => {

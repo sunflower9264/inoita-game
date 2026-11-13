@@ -100,6 +100,7 @@ export interface StoryUIContext {
   /** 文本输入：默认弹系统键盘输入框；测试注入一个直接返回内容的实现。 */
   promptText?: (initial:string)=>Promise<string|undefined>;
   revivePartyMember?: (id:string,item:string)=>import('../domain/items.ts').ItemResult;
+  summonLampMerchant?: (entry:string,signal:AbortSignal)=>Promise<void>;
   preparePartyMember?: (id:string,signal?:AbortSignal,options?:{full?:boolean;pin?:boolean})=>Promise<void>;
   /** 菜单关闭或离开队伍页：释放非上阵成员的合成外观。 */
   releasePartyPreview?: () => void;
