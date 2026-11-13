@@ -11,6 +11,7 @@ import { PartyController, type PartyPort } from '../src/domain/party-ai.ts';
 import { resolveBasicAttack } from '../src/domain/basic-attack.ts';
 import { targetsEnemies } from '../src/domain/skill-action.ts';
 import { CombatConditions } from '../src/domain/combat-conditions.ts';
+import type { Point } from '../src/domain/navigation.ts';
 
 // These tests execute the scene adapters' coordination logic without a browser renderer.
 const phaser = registerHooks({resolve(specifier, context, next) {
@@ -44,6 +45,16 @@ test('combat candidates reflect stealth applied during the same frame',()=>{
   assert.deepEqual(host.combatants()[0].states,[]);
   conditions.applyStateFrames('player','stealthed',10);
   assert.deepEqual(host.combatants()[0].states,['stealthed']);
+});
+
+test('a restored enemy returns to its spawn rather than its saved combat position',()=>{
+  const host:any=Object.assign(Object.create(WorldCombat.prototype),{
+    roster:{source:(id:string)=>id==='map-enemy'?{x:16,y:32}:undefined},
+    scene:{movement:{navigation:{nearestBody:(_shape:unknown,point:Point)=>({...point}),nearest:()=>assert.fail()}}}
+  });
+  const saved={key:'map-enemy',x:112,y:32};
+  assert.deepEqual(host.enemyHome(saved,{x:112,y:32},{collision:{x:0,y:0,width:8,height:8}}),{x:16,y:32});
+  assert.deepEqual(host.enemyHome({...saved,key:'summon'},{x:112,y:32},{collision:{x:0,y:0,width:8,height:8}}),{x:112,y:32});
 });
 
 test('combat entry creates enemies once when loading a checkpoint',async()=>{

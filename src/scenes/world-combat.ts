@@ -640,12 +640,18 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
   }
 
   /** 外观容器就是物理对象，移动、攻击定位与拖放读取同一个脚底位置。 */
+  private enemyHome(placed:PlacedEnemy,position:Point,shape:NavigationShape,ignore?:NavigationActor):Point {
+    const origin=this.roster.source(placed.key);
+    if(!origin)return position;
+    return this.movement.navigation.nearestBody(shape,origin,ignore) ?? this.movement.navigation.nearest(shape,origin,ignore);
+  }
   private buildEnemy(placed: PlacedEnemy, definition: EnemyDefinition, lease?: AssetLease, replacing?: MapEnemy): MapEnemy {
     const actor = definition.actor, box = actor.collision!;
     const ignore = replacing ? this.movement!.actor(replacing.visual) : undefined;
     // 出生优先整盒：地图自带的生成点若只满足窄足底，身体会压进相邻阻挡格。
     const position = this.movement!.navigation.nearestBody({ collision: box }, placed, ignore)
       ?? this.movement!.navigation.nearest({ collision: box }, placed, ignore);
+    const home=this.enemyHome(placed,position,{collision:box},ignore);
     const visual = createCharacter(this.scene, actor, { id: placed.key, actor: actor.id, ...position });
     // 友方召唤物与队伍同属 party，彼此不占位；可移动的召唤物和主角、佣兵一样允许地形自愈，
     // 避免被物理分离推进墙里后只能等召回。
@@ -678,7 +684,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
         actor: id => this.combatant(id), candidates: () => this.combatants(), partySlots:()=>this.partyBuffSlots(),
         isAlive:id=>this.isActorAlive(id),health:id=>this.actorHealth(id),
       rangeBonusUnits:key=>this.actorAttribute(key,'attackRangeBonusUnits'), facing: () => enemy.facing,
-        home: () => this.roster.enemies.find(item => item.key === enemy.key) ?? placed,
+        home: () => home,
         navigationBounds: () => this.movement!.navigation.bounds,
         pathBudget: this.pathBudget,
         navigationSnapshot: () => this.movement!.navigation.captureStandability(this.movement!.actor(visual)),
@@ -1296,7 +1302,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
             });
             if(settlement.killSound)this.app.audio?.monsterDeath(targetEnemy.definition.id);
             for(const record of settlement.pityRecords)session.lootPity.recordEnemy(record.ownerId,
-              {equipment:record.equipment,bestRarity:record.bestRarity},record.eligibility);
+              {equipment:record.equipment,bestRarity:record.bestRarity},record.eligibility,record.points);
             session.reservedDropMisses=settlement.reservedUnlockMisses;
             if(settlement.breakable){
               this.scene.spawnLootOnMap(map,x,y,settlement.breakable.rewards,render&&!this.closed);
