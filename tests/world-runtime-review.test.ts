@@ -10,6 +10,7 @@ import { CombatController, type Combatant } from '../src/domain/combat.ts';
 import { PartyController, type PartyPort } from '../src/domain/party-ai.ts';
 import { resolveBasicAttack } from '../src/domain/basic-attack.ts';
 import { targetsEnemies } from '../src/domain/skill-action.ts';
+import { CombatConditions } from '../src/domain/combat-conditions.ts';
 
 // These tests execute the scene adapters' coordination logic without a browser renderer.
 const phaser = registerHooks({resolve(specifier, context, next) {
@@ -32,6 +33,17 @@ test('redeploying a removed ally while paused requests a fresh party sync',()=>{
   ids.pop();host.onPartyChanged();ids.push('ally');host.onPartyChanged();
   assert.equal(controllers.has('ally'),false);
   assert.notEqual(host.partySignature,ids.join('|'));
+});
+
+test('combat candidates reflect stealth applied during the same frame',()=>{
+  const conditions=new CombatConditions();
+  const host:any=Object.assign(Object.create(WorldCombat.prototype),{
+    app:{session:{combatTick:1,party:{activeIds:['player']}}},conditions,arena:[],
+    combatant:(id:string)=>({id,team:'party',position:{x:0,y:0},bounds:{x:0,y:0,width:8,height:8},states:conditions.activeStates(id)})
+  });
+  assert.deepEqual(host.combatants()[0].states,[]);
+  conditions.applyStateFrames('player','stealthed',10);
+  assert.deepEqual(host.combatants()[0].states,['stealthed']);
 });
 
 test('combat entry creates enemies once when loading a checkpoint',async()=>{

@@ -307,7 +307,7 @@ export class WorldCombat {
   private skillAssetRefreshRunning=false;
   private skillAssetRefreshQueued=false;
   private attackProcs=new AttackProcExecutor();
-  private combatantsCache?:{tick:number;value:Combatant[]};
+  private combatantsCache?:{tick:number;revision:number;value:Combatant[]};
   private effectExecutor?:CombatEffectExecutor;
   private readonly soundedSkills=new WeakSet<object>();
   private unsubscribeHero?:()=>void;
@@ -880,10 +880,11 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
   private combatants(): Combatant[] {
     // 同一逻辑帧内的 AI/技能查询共用一份候选快照；帧开始和结束时清空，避免跨帧读到旧位置。
     const tick=this.app.session.combatTick;
-    if(this.combatantsCache?.tick===tick)return this.combatantsCache.value;
+    const revision=this.conditions.revision;
+    if(this.combatantsCache?.tick===tick&&this.combatantsCache.revision===revision)return this.combatantsCache.value;
     const value=[...this.activeParty.map(id=>this.combatant(id)),...this.arena.map(enemy=>this.combatant(enemy.key))]
       .filter((actor):actor is Combatant=>!!actor);
-    this.combatantsCache={tick,value};
+    this.combatantsCache={tick,revision,value};
     return value;
   }
   private createThreatSystem():CombatThreatSystem {
