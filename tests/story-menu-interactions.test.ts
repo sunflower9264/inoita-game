@@ -1785,6 +1785,12 @@ test('fusion menu selects or drags equipment, confirms once and blocks underlyin
   f.scene.click(f.scene.button(item.name));
   assert(visibleDomLabels(f).some(label=>label.text.replace(/\n/g,'')==='深渊混沌道具只适用于混沌道具。'));
   f.scene.key('Escape');f.scene.click(f.scene.button('混沌合成'));
+  const bagItem=f.scene.button(item.name),bagScroll=f.internals.body.scrolls.at(-1);
+  f.scene.click(bagItem);
+  assert.equal(f.scene.button(item.name),bagItem,'选择装备保留背包格');
+  assert.equal(f.internals.body.scrolls.at(-1),bagScroll,'选择装备保留背包滚动区');
+  f.scene.click(f.scene.button('合成装备'));
+  assert.equal(f.scene.button(item.name),bagItem,'取消选择保留背包格');
   f.scene.press(f.scene.button(item.name));f.scene.hold();f.scene.pointAt(f.scene.button('合成装备'));
   f.scene.input.activePointer.isDown=false;f.scene.input.emit('pointerup',f.scene.input.activePointer);
   assert(visibleDomLabels(f).some(label=>label.text===item.name));

@@ -22,6 +22,7 @@ import type {MenuTextSpec,MenuTextWriter} from '../dom/menu-text.ts';
 interface CraftingTextTarget {
   scroll(name:string,x:number,y:number,width:number,height:number,surface?:UiSurface):ScrollArea;
   refresh():void;
+  updatePage?():void;
 }
 
 interface CraftingDrop {object:UiNode|UiImage;entry?:string;view?:InventoryView;cell?:number;craft?:boolean}
@@ -37,6 +38,10 @@ export class CraftingPanel {
   private pageText:MenuTextSpec[]=[];private modalText:MenuTextSpec[]=[];private text?:CraftingTextTarget;
   private band?:NativeMessageBand;
   private surface?:UiSurface;
+  private workNodes:UiNode[]=[];
+  private workKeys=new Set<string>();
+  private bagButtons=new Map<string,UiNode>();
+  private targetMarker?:UiImage;
   private readonly changed:()=>void;private readonly sound:()=>void;private readonly modalChanged:()=>void;
   constructor(crafting:EquipmentCrafting,panels:MenuPanels,changed:()=>void,sound:()=>void,grades:ShopCatalog['grades']=[],modalChanged:()=>void=changed){this.grades=grades;this.crafting=crafting;this.panels=panels;this.changed=changed;this.sound=sound;this.modalChanged=modalChanged;}
   get modalOpen():boolean{return !!this.message||!!this.confirmation;}
@@ -54,7 +59,7 @@ export class CraftingPanel {
     if(this.mode==='recipes'||this.modalOpen||this.committing)return;
     const problem=this.mode==='socket'?this.crafting.targetSocketProblem(target):this.crafting.targetProblem(this.tier,target);
     if(problem){this.message=this.panels.itemMessages[problem];this.modalChanged();}
-    else{this.target=target;this.changed();}
+    else{this.target=target;if(!this.updateTarget())this.changed();}
   }
   private selectRecipe(recipe:string):void {
     if(this.modalOpen||this.committing)return;
@@ -109,17 +114,36 @@ export class CraftingPanel {
   render(v:UiSurface,modal:UiSurface,placeModal:(width:number,height:number)=>void,startDrag:(pointer:UiPointer,entry:string,scroll:ScrollArea)=>void,text?:CraftingTextTarget):void {
     this.pageText=[];this.modalText=[];this.band=undefined;this.text=text;this.surface=v;
     const assets=this.panels.assets;
-    this.drops=[];
+    this.drops=[];this.bagButtons.clear();this.targetMarker=undefined;
     v.staticLayer('crafting',()=>{
       v.border(assets,10,0,462,431,v.staticRoot);
       drawBagRail(v,assets,496,v.staticRoot);
     });
     this.renderModeStrip(v);
+    const before=new Set(v.root.list),textStart=this.pageText.length;
     if(this.mode==='recipes')this.renderRecipes(v);
     else if(this.mode==='socket')this.renderSocket(v);
     else this.renderChaos(v);
+    this.workNodes=v.root.list.filter(node=>!before.has(node));
+    this.workKeys=new Set(this.pageText.slice(textStart).map(spec=>spec.key));
     this.renderBag(v,startDrag);
     this.renderModal(modal,placeModal);
+  }
+  private updateTarget():boolean{
+    const v=this.surface;
+    if(!v||!this.text?.updatePage||this.mode==='recipes')return false;
+    this.targetMarker?.destroy();this.targetMarker=undefined;
+    const button=this.target?this.bagButtons.get(this.target):undefined;
+    if(button)this.targetMarker=v.image(this.panels.assets['inventory-selected'],-5,-5,84,84,button);
+    for(const node of this.workNodes)node.destroy();
+    this.pageText=this.pageText.filter(spec=>!this.workKeys.has(spec.key));
+    for(let i=this.drops.length-1;i>=0;i--)if(this.drops[i]!.craft)this.drops.splice(i,1);
+    const before=new Set(v.root.list),textStart=this.pageText.length;
+    if(this.mode==='socket')this.renderSocket(v);else this.renderChaos(v);
+    this.workNodes=v.root.list.filter(node=>!before.has(node));
+    this.workKeys=new Set(this.pageText.slice(textStart).map(spec=>spec.key));
+    v.pruneDestroyed();this.text.updatePage();
+    return true;
   }
   renderModal(modal:UiSurface,placeModal:(width:number,height:number)=>void):void {
     this.modalText=[];this.band=undefined;
@@ -189,7 +213,7 @@ export class CraftingPanel {
     if(this.target&&!bag.entries.some(entry=>entry.id===this.target))this.target=undefined;
     const target=this.target?bag.get(this.target):undefined,item=target?bag.catalog.items[target.item]:undefined;
     const frame=item&&target&&session.hero?equipmentSlotFrame(item,target.numbers,session.hero.catalog.equipment[target.item],this.grades,this.tier):undefined;
-    const slot=v.button('',204,26,74,74,()=>{this.target=undefined;this.changed();},{image:assets[frame??'inventory-slot']}).setData('label','合成装备');
+    const slot=v.button('',204,26,74,74,()=>{this.target=undefined;if(!this.updateTarget())this.changed();},{image:assets[frame??'inventory-slot']}).setData('label','合成装备');
     if(item)v.image(item.icon,5,5,64,64,slot);
     this.drops.push({object:slot,craft:true});
     if(item&&target){
@@ -219,7 +243,7 @@ export class CraftingPanel {
     const {session,catalog}=this.crafting,bag=session.bag,assets=this.panels.assets,op=catalog.operations.socket;
     if(this.target&&!bag.entries.some(entry=>entry.id===this.target))this.target=undefined;
     const target=this.target?bag.get(this.target):undefined,item=target?bag.catalog.items[target.item]:undefined;
-    const slot=v.button('',204,26,74,74,()=>{this.target=undefined;this.changed();},{image:assets['inventory-slot']}).setData('label','合成装备');
+    const slot=v.button('',204,26,74,74,()=>{this.target=undefined;if(!this.updateTarget())this.changed();},{image:assets['inventory-slot']}).setData('label','合成装备');
     if(item)v.image(item.icon,5,5,64,64,slot);
     this.drops.push({object:slot,craft:true});
     if(item&&target){
@@ -256,7 +280,8 @@ export class CraftingPanel {
       const entry=cell.entry,definition=bag.catalog.items[entry.item];
       const button=v.button('',x,y,74,74,()=>this.select(entry.id),{image:assets['inventory-slot'],parent:scroll.content,guard:scroll.guard}).setData('label',definition.name);
       v.image(definition.icon,5,5,64,64,button);
-      if(entry.id===this.target)v.image(assets['inventory-selected'],-5,-5,84,84,button);
+      this.bagButtons.set(entry.id,button);
+      if(entry.id===this.target)this.targetMarker=v.image(assets['inventory-selected'],-5,-5,84,84,button);
       if(definition.stackable)this.addText(`craft-bag-badge-${index}`,String(entry.quantity),
         cells.x+x+layout.badge.x,cells.y+y+layout.badge.y,20,layout.badge.color,1,0,{},{scroll:'craft-bag',clip});
       if(entry.enhancement)this.addText(`craft-bag-enhancement-${index}`,`+${entry.enhancement}`,
