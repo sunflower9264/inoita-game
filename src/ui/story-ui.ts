@@ -1729,15 +1729,22 @@ export class StoryUI {
       x=index%layout.grid.columns*layout.grid.stride,y=Math.floor(index/layout.grid.columns)*layout.grid.stride;
     if(view.kind==='cell'){view.object.setPosition(x,y);return;}
     if(slot.kind!=='item')return;
-    const entry=slot.entry,item=bag.catalog.items[entry.item];
+    const entry=slot.entry,item=bag.catalog.items[entry.item],frame=slotFrameImage(this.app,this.session!,entry);
+    const signature=JSON.stringify([index,slot.view,slot.cell,entry.id,entry.item,frame,entry.quantity,entry.enhancement,entry.gems.length,panelCoversBag]);
+    if(view.button.getData('bag-state')===signature){
+      this.bagTextSpecs.push(...(view.button.getData('bag-texts') as MenuTextSpec[]));return;
+    }
+    view.button.setData('bag-state',signature);
     view.button.setPosition(x,y).setData('label',item.name);
-    const face=view.button.getData('face') as UiImage|undefined,frame=slotFrameImage(this.app,this.session!,entry);
+    const face=view.button.getData('face') as UiImage|undefined;
     if(face&&face.getData('file')!==frame)face.load(frame);
     if(view.icon.getData('file')!==item.icon)view.icon.load(item.icon);
     view.icon.setPosition(layout.slot.icon.x,layout.slot.icon.y);
     if(view.icon.width!==layout.slot.icon.size||view.icon.height!==layout.slot.icon.size)view.icon.resize(layout.slot.icon.size,layout.slot.icon.size);
     view.drop.entry=entry.id;view.drop.view=slot.view;view.drop.cell=slot.cell;
+    const textStart=this.bagTextSpecs.length;
     this.addBagSlotText(slot,x,y,panelCoversBag);
+    view.button.setData('bag-texts',this.bagTextSpecs.slice(textStart));
   }
   private destroyBagSlotView(view:BagSlotView):void{
     (view.kind==='item'?view.button:view.object).destroy();
@@ -1991,9 +1998,9 @@ export class StoryUI {
     this.skillBook=undefined;this.page='bag';this.selectedItem=undefined;this.notice=message??'';this.render();
   }
   private async changeEquipment(entry:string|undefined,slot:EquipmentSlot):Promise<void>{
-    if(this.busy)return;this.busy=true;this.cancelDrag();const signal=this.request.signal;this.render();
+    if(this.busy)return;this.busy=true;this.cancelDrag();const signal=this.request.signal;const started=performance.now();
     try{await this.app.changeEquipment!(entry,slot,signal,this.selectedMemberId);if(signal.aborted)return;this.selectedItem=undefined;this.notice='';}
-    catch(error){if(!signal.aborted)this.notice=(error as Error).message;}finally{if(!signal.aborted){this.busy=false;this.render();}}
+    catch(error){if(!signal.aborted)this.notice=(error as Error).message;}finally{if(!signal.aborted){this.busy=false;this.render();globalThis.storyDiagnostics?.record('equipment-change-summary',{slot,member:this.selectedMemberId,elapsedMs:Math.round(performance.now()-started)});}}
   }
   private beginOperation(entry:string,kind:'use'|'discard'='use'):void{
     this.cancelDrag();
@@ -2329,11 +2336,12 @@ export class StoryUI {
   private renderBagPreview():void{
     const v=this.body, parent=this.bagPreview, member=this.member();
     if(!v||!parent?.active||!member||!this.scene)return;
-    this.bagPortrait?.detach();parent.removeAll(true);
+    parent.removeAll(true);
     const preview=bagLayout().preview,appearance=this.app.equipmentAppearance?.(this.selectedMemberId);
     if(appearance&&this.bagPortrait&&LiveCharacterPreview.available(this.scene,appearance)){
       this.bagPortrait.show(v,appearance,preview);
     }else{
+      this.bagPortrait?.detach();
       const art=this.memberArt(),panels=this.app.menuPanels;
       v.imageContain(this.selectedMemberId==='player'?panels.classes[member.classId].preview:art.partyIcon,preview.x,preview.y,preview.width,preview.height,parent);
     }

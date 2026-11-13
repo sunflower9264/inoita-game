@@ -29,7 +29,7 @@ export class Wardrobe {
   }
   async prepare(base: ActorDefinition, equipment: Partial<Record<EquipmentSlot, string>>, classId?: string,
     options?: WardrobePrepareOptions): Promise<Outfit> {
-    if (!this.active) throw new DOMException('场景已关闭', 'AbortError');
+    if (!this.active || !this.pool.available) throw new DOMException('场景已关闭', 'AbortError');
     const request = this.request.signal, external = options?.signal, controller = new AbortController();
     const abort = () => controller.abort(request.aborted ? request.reason : external?.reason);
     request.addEventListener('abort', abort, { once: true }); external?.addEventListener('abort', abort, { once: true });
@@ -38,6 +38,9 @@ export class Wardrobe {
     let lease: { outfit: Outfit; release(): void } | undefined;
     try {
       const key = this.pool.key(base, equipment, classId, normalized);
+      controller.signal.throwIfAborted();
+      const ready = this.held.get(key);
+      if (ready) return ready.outfit;
       lease = await this.pool.acquire(base, equipment, classId, normalized, controller.signal);
       controller.signal.throwIfAborted();
       const existing = this.held.get(key);

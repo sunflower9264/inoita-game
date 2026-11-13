@@ -155,6 +155,11 @@ test('skill asset refresh uses cheap gates and ignores health changes',async()=>
   schedule();await settle();
   assert.equal(calls.length,1,'掉血回蓝不触发补载');
 
+  const ring=Object.entries(host.app.items.items as ItemCatalog['items']).find(([,item])=>item.equipment?.slot==='ring'&&!item.equipment.locked)![0];
+  host.hero.bag.addEquipped(ring,'ring','player');
+  schedule();await settle();
+  assert.equal(calls.length,1,'饰品属性变化不重新准备技能贴图');
+
   host.hero.bag.addEquipped('dagger','main-hand','player');
   schedule();await settle();
   assert.equal(calls.length,2,'换武器才补载');
@@ -178,7 +183,14 @@ test('learning guardian while a companion owns its textures survives companion d
   host.scene.anims={exists:()=>false,remove(){}};
   host.scene.load={start(){throw new Error('cached textures must not download again');}};
   const companion=await loadSceneAssets(host.scene,plan,()=>{});
-  await invoke('refreshSkillAssets',invoke('playerSkillSignatureNow'),invoke('playerSkillGateNow'),[]);
+  host.preparedSkillIds=new Map([['player',new Set(['dark-strike'])]]);
+  let finishAppearance!:()=>void;
+  host.scene.preparePlayerAppearance=()=>new Promise<void>(resolve=>{finishAppearance=resolve;});
+  const refreshing=invoke('refreshSkillAssets',invoke('playerSkillSignatureNow'),invoke('playerSkillGateNow'),[]);
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(host.preparedSkillIds.get('player').has('guardian-of-darkness'),false,'新动作合成完成前不能使用新技能');
+  finishAppearance();await refreshing;
+  assert.equal(host.preparedSkillIds.get('player').has('guardian-of-darkness'),true);
   companion.release();
   assert.equal(missingSceneAssets(host.scene,plan).length,0,'主角必须独立持有已由佣兵下载的完整素材');
   invoke('releaseSkillLeases','player');

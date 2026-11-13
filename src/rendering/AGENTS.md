@@ -7,7 +7,7 @@
 - 角色/移动：`characters.ts`、`arcade-movement.ts`、`movement-world.ts`、`movement-interpolation.ts`、`character-visibility.ts`、`name-banner.ts`、`control-skin.ts`。
 - 地图/资源：`map-layers.ts`、`map-assets.ts`、`prop-atlas.ts`、`scene-assets.ts`、`story-map-view.ts`、`story-minimap.ts`。
 - 战斗表现：`combat-presenter.ts`、`combat-effects.ts`、`combat-feedback.ts`、`combat-outcomes.ts`、`combat-assets.ts`、`combat-asset-descriptors.ts`、`resident-combat-assets.ts`、`combat-visual-coverage.ts`、`buff-loop-renderer.ts`、`state-markers.ts`、`status-color.ts`、`status-hud.ts`、`overhead-status.ts`、`target-focus.ts`、`target-focus-assets.ts`、`target-focus-pulse.ts`。
-- 剧情/HUD/其他：`story-presenter.ts`、`hud.ts`、`action-controls.ts`、`ground-loot.ts`、`pickup-messages.ts`、`quest-marker.ts`、`wardrobe.ts`、`outfit-pool.ts`、`wardrobe-cache.ts`、`effects.ts`、`effect-animations.ts`、`effect-colors.ts`、`blend-modes.ts`、`webgl-recovery.ts`。
+- 剧情/HUD/其他：`story-presenter.ts`、`hud.ts`、`action-controls.ts`、`ground-loot.ts`、`pickup-messages.ts`、`quest-marker.ts`、`wardrobe.ts`、`outfit-pool.ts`、`composition-budget.ts`、`wardrobe-cache.ts`、`effects.ts`、`effect-animations.ts`、`effect-colors.ts`、`blend-modes.ts`、`webgl-recovery.ts`。
 
 ## 规则
 
@@ -24,6 +24,7 @@
 - 角色图片按像素和切帧共用；全局动画另按帧数、帧率和循环方式登记，图片最后释放时清掉引用它的全部动画。
 - **角色动作按页图集加载，页是纹理与常驻的单位。** 内容里的角色图层文件经 `character-atlas.ts` 映射到图集页；`file` 为空的换装动态纹理继续按图层键取图，不进图集。同一页装多个角色/动作，常驻包只要引用其中任一帧，整页就随常驻租约保留，不按帧拆分常驻；关卡结束释放页时，按全局动画记账清掉引用该页的角色/特效动画，下次播放发现帧失效再重建。动画缓存的身份要包含规范文件，不能只用页键，否则同页不同长条图会被误复用。
 - **合成外观按游戏会话共用。** `OutfitPool` 按基础外观、配方和动作集合复用纹理与在途合成；`Wardrobe` 只持有场景使用权，关闭场景释放使用权。缓存上限 8 套，正在使用或准备中的结果受保护；换会话清理旧池。缓存持有原始部件贴图，图形上下文恢复后仍可重绘。
+- 外观配方与动作集合相同时直接复用本场景已持有的结果。合成按约 4ms 的工作段让出绘制，每次提交最多 128 个部件；等待下一帧的时间不算进下一段预算。取消最后一个请求时清理尚未交付的纹理，包括已经合成完成但调用方尚未接手的结果。
 - `OutfitPool` 独立持有已加载的动作姿势；合成期间按池生命周期保留，清理时释放，不写回跨会话共用的衣柜目录。
 - **衣柜预览只合成 `idle-south`，招募后再预拼整套。** 队伍面板选中时只准备预览需要的姿势；招募确认后用 `preparePartyMember(...,{full:true,pin:true})` 预拼整套并保留，最多 pin 两套，上阵/进战斗直接复用。伙伴外观走 `wardrobe-cache.ts` 的全局 LRU（上限 8 套），切换成员不会无上限堆积。
 - **剧情舞台快照共享演员外观引用。** `story-presenter` 只复制演员外壳，外观对象按引用共享；开发/测试模式冻结外观，任何原地改外观都会立刻报错。不要为了“保险”恢复逐角色深拷贝。

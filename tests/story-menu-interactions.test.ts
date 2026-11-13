@@ -2581,3 +2581,17 @@ test('key binding editor keeps its text inside the framed page', t => {
   assert.ok(editor.canvas.root.list.some(node=>node.width>=editor.canvas.width&&node.height>=editor.canvas.height),
     '整页有底板，文字不再浮在游戏画面上');
 });
+
+
+test('equipment preparation retains the page and refreshes once after completion',async t=>{
+  const f=fixture();t.after(f.cleanup);f.menu.show('bag');
+  let finish!:()=>void;f.app.changeEquipment=()=>new Promise<void>(resolve=>{finish=resolve;});
+  const menu=f.internals as unknown as {render():void;changeEquipment(entry:string|undefined,slot:'ring'):Promise<void>};
+  const render=t.mock.method(menu,'render');
+  const button=f.scene.button('整理'),pending=menu.changeEquipment(undefined,'ring');
+  assert.equal(render.mock.callCount(),0);
+  assert.equal(f.scene.button('整理'),button);
+  finish();await pending;
+  assert.equal(render.mock.callCount(),1);
+  assert.equal(f.scene.button('整理'),button);
+});

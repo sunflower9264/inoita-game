@@ -251,3 +251,23 @@ test('unchanged map state skips the character visibility loop',()=>{
   invoke(host,'refreshState');
   assert.equal(touched,1,'签名不变时不再执行角色显隐循环');
 });
+
+
+test('nonvisual equipment changes stats without resetting the actor, collision or attack',async()=>{
+  const read=<T>(name:string)=>JSON.parse(readFileSync(new URL(`../public/content/${name}.json`,import.meta.url),'utf8')) as T;
+  const battle=read<BattleCatalog>('battle'),items=read<ItemCatalog>('items'),stats=read<CharacterStatsCatalog>('character-stats');
+  const hero=new BattleCharacter('dark-knight',stats,items),actor=battle.classes.find(value=>value.id==='dark-knight')!.actor;
+  const session=new Session(read<Campaign>('campaign'),undefined,{classId:hero.classId,appearance:actor},items,hero,battle);
+  const ringId=Object.entries(items.items).find(([,item])=>item.equipment?.slot==='ring'&&!item.equipment.locked)![0];
+  session.bag.add(ringId);const entry=session.bag.entries.find(entry=>entry.item===ringId)!;
+  const outfit={actor};let preparations=0;
+  const host=Object.assign(Object.create(WorldScene.prototype),{app:{session,battleCatalog:battle},player:{actor},
+    syncControlledCharacter(){},outfitRequest:0,wardrobe:{prepare:async()=>{preparations++;return outfit;},activate(){}},
+    movement:{refreshShape:()=>assert.fail('饰品不改变碰撞体')},combat:{updateEquipment:()=>assert.fail('饰品不重置攻击')}});
+  const revision=session.bag.revision;
+  await invoke(host,'changeEquipment',entry.id,'ring');
+  assert.equal(session.bag.equipment.ring,entry.id);assert.ok(session.bag.revision>revision);
+  assert.equal(host.player.actor,actor);
+  await invoke(host,'projectEquipment',new AbortController().signal);
+  assert.equal(preparations,1,'会话刷新不会再次准备已完成的换装');
+});

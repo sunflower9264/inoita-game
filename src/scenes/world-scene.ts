@@ -323,7 +323,7 @@ export class WorldScene extends Phaser.Scene {
     if (!character) return;
     try {
       const recipe = costumeRecipe(this.app.wardrobe, this.app.items, this.app.session.bag.equipmentItems(),
-        character.classId, character.appearance.id);
+        character.classId, character.appearance.id, learnedSkillIds(this.app.battleCatalog,character.classId,this.app.session.skills));
       const missing = [...new Set(Object.values(recipe.poses))]
         .filter((id): id is string => typeof id === 'string' && !this.app.wardrobe.poses[id]);
       if (!missing.length) return;
@@ -452,7 +452,7 @@ export class WorldScene extends Phaser.Scene {
     for(const id of plan.current.visuals.actorIds)this.projectedActorIds.add(id);
     this.app.clearMapPrefetch();
     this.wardrobe=new Wardrobe(this,this.app.wardrobe,this.app.items,(ids,signal)=>this.app.content.wardrobePoses(ids,signal),this.app.outfits);
-    const outfit=await this.wardrobe.prepare(this.app.session.character!.appearance,this.app.session.bag.equipmentItems(),this.app.session.character!.classId);
+    const outfit=await this.wardrobe.prepare(this.app.session.character!.appearance,this.app.session.bag.equipmentItems(),this.app.session.character!.classId,{learnedSkills:learnedSkillIds(this.app.battleCatalog,this.app.session.character!.classId,this.app.session.skills),signal});
     signal.throwIfAborted();this.wardrobe.activate(outfit);this.equippedActor=outfit.actor;
     globalThis.storyDiagnostics?.record('start-phase',{phase:'wardrobe-ready',map:map.id});
     this.app.director.onSkipProgress?.('outfit-ready');
@@ -755,28 +755,34 @@ export class WorldScene extends Phaser.Scene {
       const wardrobe=this.companionWardrobe(memberId),base=this.app.world.actors[member.definition.actor];
       const learned=learnedSkillIds(this.app.battleCatalog,member.classId,member.skills);
       const learnedSignature=[...learned].sort().join('|');
-      const outfit=await wardrobe.prepare(base,bag.equipmentItems(next),member.classId,{learnedSkills:learned});
+      const outfit=await wardrobe.prepare(base,bag.equipmentItems(next),member.classId,{learnedSkills:learned,signal});
       signal?.throwIfAborted();
-      if(this.destroyed||this.app.session.party?.get(memberId)!==member||revision!==bag.revision)throw new Error('装备状态已改变，请重新选择');
+      if(this.destroyed||this.app.session.party?.get(memberId)!==member||revision!==bag.revision||learnedSignature!==[...learnedSkillIds(this.app.battleCatalog,member.classId,member.skills)].sort().join('|'))throw new Error('装备状态已改变，请重新选择');
       if(entry)this.app.session.bag.equip(entry,slot,memberId,member.classId,member.level);
       else this.app.session.bag.unequip(slot,memberId);
+      const wardrobeChanged=this.companionOutfits.get(memberId)?.actor!==outfit.actor;
       wardrobe.activate(outfit);this.companionOutfits.set(memberId,outfit);
       this.projectedMemberEquipment.set(memberId,JSON.stringify(bag.equipmentItems(bag.equipmentFor(memberId))));
       this.companionLearned.set(memberId,learnedSignature);
-      this.companionFull.add(memberId);this.combat?.updateMemberAppearance(memberId,outfit.actor);
-      this.combat?.updateEquipment(memberId);
+      this.companionFull.add(memberId);if(wardrobeChanged)this.combat?.updateMemberAppearance(memberId,outfit.actor);
+      if(wardrobeChanged||slot==='main-hand'||slot==='off-hand')this.combat?.updateEquipment(memberId);
       return;
     }
     const bag=this.app.session.bag,revision=bag.revision,request=++this.outfitRequest;
+    const skillsVersion=this.app.session.skills.version,skillsReset=this.app.session.skills.resetVersion;
     const next=entry?bag.planEquip(entry,slot):bag.planUnequip(slot);
-    const outfit=await this.wardrobe.prepare(this.app.session.character!.appearance,bag.equipmentItems(next),this.app.session.character!.classId);
+    const outfit=await this.wardrobe.prepare(this.app.session.character!.appearance,bag.equipmentItems(next),this.app.session.character!.classId,{learnedSkills:learnedSkillIds(this.app.battleCatalog,this.app.session.character!.classId,this.app.session.skills),signal});
     signal?.throwIfAborted();
-    if(this.destroyed||request!==this.outfitRequest||revision!==bag.revision)throw new Error('装备状态已改变，请重新选择');
+    if(this.destroyed||request!==this.outfitRequest||revision!==bag.revision||skillsVersion!==this.app.session.skills.version||skillsReset!==this.app.session.skills.resetVersion)throw new Error('装备状态已改变，请重新选择');
     this.wardrobe.activate(outfit);this.equippedActor=outfit.actor;
-    this.player.actor=outfit.actor;setCharacterClip(this,this.player,`idle-${this.facing}`,true);
-    this.movement?.refreshShape(this.player);
+    const wardrobeChanged=this.player.actor!==outfit.actor;
+    if(wardrobeChanged){
+      this.player.actor=outfit.actor;setCharacterClip(this,this.player,`idle-${this.facing}`,true);
+      this.movement?.refreshShape(this.player);
+    }
     if(entry)bag.equip(entry,slot);else bag.unequip(slot);
-    this.combat?.updateEquipment();
+    this.projectedPlayerEquipment=JSON.stringify(bag.equipmentItems());
+    if(wardrobeChanged||slot==='main-hand'||slot==='off-hand')this.combat?.updateEquipment();
   }
   private companionWardrobe(id:string):Wardrobe {
     return acquireCompanionWardrobe(this.companionWardrobes,id,
@@ -1903,13 +1909,24 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
     this.rebuildTriggerIndex();
     this.refreshState();this.syncHud();
   }
+  async preparePlayerAppearance(signal:AbortSignal=this.request.signal):Promise<void>{
+    const session=this.app.session,character=session.character;
+    if(!character||!this.wardrobe||!this.player)return;
+    const revision=session.bag.revision,skills=session.skills.version,reset=session.skills.resetVersion,request=++this.outfitRequest;
+    const outfit=await this.wardrobe.prepare(character.appearance,session.bag.equipmentItems(),character.classId,
+      {learnedSkills:learnedSkillIds(this.app.battleCatalog,character.classId,session.skills),signal});
+    signal.throwIfAborted();
+    if(this.destroyed||this.app.session!==session||request!==this.outfitRequest||revision!==session.bag.revision||skills!==session.skills.version||reset!==session.skills.resetVersion)throw new Error('人物状态已改变');
+    this.wardrobe.activate(outfit);this.equippedActor=outfit.actor;
+    if(this.player.actor!==outfit.actor){this.player.actor=outfit.actor;this.setClip(this.player,`idle-${this.facing}`);this.movement?.refreshShape(this.player);this.combat?.updateEquipment();}
+  }
   private async projectEquipment(signal:AbortSignal):Promise<void>{
     if(!this.wardrobe||!this.player)return;
     const session=this.app.session,character=session.character;if(!character)return;
     const equipment=session.bag.equipmentItems(),signature=JSON.stringify(equipment);
     if(signature!==this.projectedPlayerEquipment){
       const request=++this.outfitRequest;
-      const outfit=await this.wardrobe.prepare(character.appearance,equipment,character.classId);
+      const outfit=await this.wardrobe.prepare(character.appearance,equipment,character.classId,{learnedSkills:learnedSkillIds(this.app.battleCatalog,character.classId,session.skills),signal});
       signal.throwIfAborted();
       if(this.destroyed||request!==this.outfitRequest||signature!==JSON.stringify(session.bag.equipmentItems()))throw new Error('剧情装备状态已改变');
       this.wardrobe.activate(outfit);this.equippedActor=outfit.actor;

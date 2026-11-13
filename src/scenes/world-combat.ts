@@ -2738,11 +2738,12 @@ captureStoryActors():SceneActorState[] {
     const learned=[...learnedSkillIds(this.app.battleCatalog,this.hero.classId,this.app.session.skills)].sort();
     // 换武器会换普攻与技能姿态的特效；把装备也纳入签名，换装后重新补一次。
     const equipment=this.hero.bag.equipmentItems(this.hero.bag.equipmentFor('player'));
-    return `${this.hero.classId}|${this.player.actor.id}|${learned.join(',')}|${JSON.stringify(equipment)}`;
+    return `${this.hero.classId}|${this.player.actor.id}|${learned.join(',')}|${JSON.stringify([equipment['main-hand'],equipment['off-hand']])}`;
   }
   private allySkillSignatureNow(member:CompanionMember):string {
     const learned=[...learnedSkillIds(this.app.battleCatalog,member.classId,member.skills)].sort();
-    return `${member.classId}|${learned.join(',')}|${JSON.stringify(this.hero.bag.equipmentFor(member.id))}`;
+    const equipment=this.hero.bag.equipmentItems(this.hero.bag.equipmentFor(member.id));
+    return `${member.classId}|${learned.join(',')}|${JSON.stringify([equipment['main-hand'],equipment['off-hand']])}`;
   }
   /** 廉价门控：只比版本号和背包修订号，不克隆技能配置、不序列化装备。 */
   private playerSkillGateNow():string {
@@ -2861,6 +2862,7 @@ captureStoryActors():SceneActorState[] {
         const plan=playerCombatAssets({catalog,wardrobe:this.app.wardrobe,items:this.app.items,
           hero:this.hero,actor:this.player.actor,learnedSkills:learned});
         const lease=await loadSceneAssets(this.scene,plan,()=>{});
+        try { await this.scene.preparePlayerAppearance?.(); } catch(error) { lease.release(); throw error; }
         if(this.closed){lease.release();return;}
         if(this.playerSkillSignatureNow()===playerSignature){
           this.addSkillLease('player',lease);this.preparedSkillIds?.set('player',learned);

@@ -46,7 +46,7 @@ function setup(_t:test.TestContext,extraPoses=false,skillPose=false){
     stances:{'unarmed:empty':extraPoses?{'idle-south':'idle','attack-north':'attack'}:{'idle-south':'idle'}},
     skills:skillPose?{hero:{'skill-firestorm-south':'firestorm'}}:{},skillStances:{},attacks:{},
     poses:{idle:{frames:[[]],frameRate:10,mirrorX:false},...(extraPoses?{attack:{frames:[[]],frameRate:10,mirrorX:false}}:{}),...(skillPose?{firestorm:{frames:[[]],frameRate:10,mirrorX:false}}:{})}};
-  const wardrobe=new Wardrobe(scene,catalog,{items:{}} as ItemCatalog);
+  const wardrobe=new Wardrobe(scene,catalog,{items:{charm:{kind:'ring',equipment:{}}}} as unknown as ItemCatalog);
   const actor={id:'hero',clips:{}} as ActorDefinition;
   return {wardrobe,scene,catalog,actor,textures,events,renderer,ops,
     prepare:(options?:{clipNames?:Iterable<string>;learnedSkills?:ReadonlySet<string>})=>wardrobe.prepare(actor,{},'hero',options)};
@@ -228,4 +228,27 @@ test('skipping the sole outfit requester cancels composition and discards pendin
   assert.equal(run.textures.size, 0); const replacement = wardrobe.prepare(run.actor, {}, 'hero');
   assert.equal(run.ops.size, 2); await replacement;
   assert.equal(run.textures.size, 1); wardrobe.destroy();
+});
+
+
+test('nonvisual equipment reuses the current outfit without additional texture work', async t => {
+  const f=setup(t);
+  f.catalog.equipment.charm={main:{},offHand:{}};
+  const first=await f.prepare();f.wardrobe.activate(first);
+  const count=f.ops.size;
+  const second=await f.wardrobe.prepare(f.actor,{ring:'charm'},'hero');
+  assert.equal(second,first);assert.equal(f.ops.size,count);
+  f.wardrobe.destroy();assert.equal(f.textures.size,0);
+});
+
+test('large poses flush at most 128 parts per render and remain redrawable', async t => {
+  const f=setup(t);
+  f.catalog.defaults.body='body';f.catalog.variants.body=['part'];
+  f.catalog.sprites.part={texture:'source',x:0,y:0,width:8,height:8,anchorX:4,anchorY:4};
+  f.catalog.poses.idle.frames=[Array.from({length:257},()=>({part:'body',piece:0,x:0,y:0,scaleX:1,scaleY:1,angle:0,alpha:1}))];
+  const outfit=await f.prepare();
+  const op=[...f.ops.values()][0];
+  assert.equal(op.stamps,257);assert.equal(op.renders,3);
+  outfit.redraw();assert.equal(op.stamps,514);
+  f.wardrobe.destroy();
 });

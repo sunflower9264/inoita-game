@@ -1,3 +1,4 @@
+import { CompositionBudget } from './composition-budget.ts';
 import type { AssetLease } from '../application/assets.ts';
 import type Phaser from 'phaser';
 import type { ActorDefinition, AnimationClip, ClipName } from '../domain/content.ts';
@@ -51,6 +52,7 @@ export class OutfitPool {
     this.catalog = { ...catalog, poses: { ...catalog.poses } }; this.items = items; this.poseLoader = poseLoader;
     this.offRestore = onWebGLRestore(this.host, () => this.redrawCached());
   }
+  get available():boolean { return this.active; }
   key(base: ActorDefinition, equipment: Partial<Record<EquipmentSlot, string>>, classId?: string,
     options?: WardrobePrepareOptions): string {
     const recipe = costumeRecipe(this.catalog, this.items, equipment, classId, base.id, options?.learnedSkills);
@@ -67,6 +69,7 @@ export class OutfitPool {
       entry = { controller: new AbortController(), users: 0, promise: undefined! };
       this.entries.set(key, entry);
       entry.promise = this.prepare(base, equipment, classId, options, entry.controller.signal).then(outfit => {
+        if(entry!.controller.signal.aborted){this.dispose(outfit);entry!.controller.signal.throwIfAborted();}
         entry!.outfit = outfit; this.trim(); return outfit;
       }, error => {
         if (this.entries.get(key) === entry) this.entries.delete(key);
@@ -76,11 +79,12 @@ export class OutfitPool {
     entry.users++;
     const held = entry;
     let released = false;
-    const release = () => {
+    const release = (retain = true) => {
       if (released) return; released = true; held.users--;
-      if (!held.users && !held.outfit) {
+      if (!held.users && (!held.outfit || !retain)) {
         if (this.entries.get(key) === held) this.entries.delete(key);
         held.controller.abort(new DOMException('人物外观已无人使用', 'AbortError'));
+        if(held.outfit)this.dispose(held.outfit);
       } else if (!held.users && held.retired && held.outfit) this.dispose(held.outfit);
       this.trim();
     };
@@ -93,7 +97,7 @@ export class OutfitPool {
       });
       signal.throwIfAborted();
       return { outfit, release };
-    } catch (error) { release(); throw error; }
+    } catch (error) { release(false); throw error; }
   }
   clear(): void {
     this.lifetime.abort(new DOMException('人物外观生成已取消', 'AbortError'));
@@ -161,7 +165,9 @@ export class OutfitPool {
         if (!texture.has(key)) texture.add(key, 0, piece.x, piece.y, piece.width, piece.height);
       }
       const outfit = await this.compose(base, recipe, poses, signal);
-      this.sources.set(outfit, sources); return outfit;
+      this.sources.set(outfit, sources);
+      if(signal.aborted){this.dispose(outfit);signal.throwIfAborted();}
+      return outfit;
     } catch (error) { sources.release(); throw error; }
   }
   private async compose(base:ActorDefinition,recipe:ReturnType<typeof costumeRecipe>,poses:[string,string|undefined][],
@@ -174,12 +180,14 @@ export class OutfitPool {
       return key?{key,piece:this.catalog.sprites[key]}:undefined;
     };
     try {
-      let lastYieldAt=0;
+      const budget=new CompositionBudget();
+      let partCount=0;
       for(const [name,id]of poses) {
         signal.throwIfAborted();
         const pose=this.catalog.poses[id!];
         const points: {x:number;y:number}[]=[];
         for(const frame of pose.frames)for(const part of frame) {
+          if(budget.due)await budget.pause(signal);
           const info=source(part);if(!info)continue;
           const {piece}=info,angle=part.angle*Math.PI/180,co=Math.cos(angle),si=Math.sin(angle);
           for(const x of [0,piece.width])for(const y of [0,piece.height]) {
@@ -211,31 +219,24 @@ export class OutfitPool {
           for(const stamp of stamps)texture.stamp(stamp.texture,stamp.frame,stamp.x,stamp.y,stamp.config);
           texture.render();
         };
-        paint();
+        texture.clear();
+        for(let offset=0;offset<stamps.length;offset+=128){
+          signal.throwIfAborted();
+          for(const stamp of stamps.slice(offset,offset+128))texture.stamp(stamp.texture,stamp.frame,stamp.x,stamp.y,stamp.config);
+          texture.render();partCount+=Math.min(128,stamps.length-offset);
+          if(budget.due)await budget.pause(signal);
+        }
+        if(!stamps.length)texture.render();
         paints.push(paint);
         const clip:AnimationClip={frameWidth:width,frameHeight:height,frames:pose.frames.length,originX:-left/width,originY:-top/height,
           frameRate:pose.frameRate,mirrorX:pose.mirrorX,layers:[{key,file:'',blend:'normal'}]};
         clips[name as ClipName]=clip;
-        // 佣兵加入时才首次合成整套外观；累计占用超过 4 毫秒才让出一次绘制，
-        // 避免 stamp/render 连续挤在同一帧里，也不让低帧率设备一姿态等一帧。
-        if(performance.now()-lastYieldAt>=4){
-          lastYieldAt=performance.now();
-          await new Promise<void>((resolve,reject)=>{
-            let timer: ReturnType<typeof setTimeout> | number;
-            const cancel=()=>{
-              if(typeof requestAnimationFrame==='function')cancelAnimationFrame(timer as number);
-              else clearTimeout(timer as ReturnType<typeof setTimeout>);
-              signal.removeEventListener('abort',cancel);reject(signal.reason);
-            };
-            const done=()=>{signal.removeEventListener('abort',cancel);resolve();};
-            timer=typeof requestAnimationFrame==='function'?requestAnimationFrame(done):setTimeout(done,0);
-            signal.addEventListener('abort',cancel,{once:true});
-            if(signal.aborted)cancel();
-          });
-        }
+        if(budget.due)await budget.pause(signal);
         signal.throwIfAborted();
       }
       signal.throwIfAborted();
+      budget.finish();
+      globalThis.storyDiagnostics?.record('outfit-compose-summary',{clips:poses.length,parts:partCount,longestWorkMs:Math.round(budget.longestMs*10)/10});
       const outfit={actor:{...base,clips:{...base.clips,...clips}},textures,users:0,
         redraw:()=>{for(const paint of paints)paint();}};
       return outfit;
