@@ -2880,6 +2880,15 @@ test('moving a party member between active and reserve keeps the roster',t=>{
   assert.equal(f.scene.button(member.definition.name),roster);assert.equal(f.scene.button('人物能力'),tab);
 });
 
+test('dismissing a mercenary keeps the other roster cells',t=>{
+  const f=fixture();t.after(f.cleanup);const first=f.recruit('warlock'),second=f.recruit('assassin');
+  f.session.party!.reserve(first.id);f.menu.show('party');
+  const kept=f.scene.button(second.definition.name),tab=f.scene.button('人物能力');f.scene.click(f.scene.button(first.definition.name));
+  f.scene.click(f.scene.button('放逐'));f.scene.click(f.scene.button('确定'));
+  assert.equal(f.session.party!.get(first.id),undefined);assert.equal(f.scene.button(second.definition.name),kept);
+  assert.equal(f.scene.button('人物能力'),tab);assert(f.scene.button('空佣兵槽 1'));
+});
+
 test('opening and closing party confirmation keeps the roster and details',t=>{
   const f=fixture();t.after(f.cleanup);const member=f.recruit('warlock');
   f.session.party!.reserve(member.id);

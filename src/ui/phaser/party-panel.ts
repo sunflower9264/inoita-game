@@ -61,8 +61,7 @@ export class PartyPanel {
   private surface?:UiSurface;
   private selectionMarks=new Map<string,UiNode>();
   private deployedMarkers=new Map<string,UiNode>();
-  private rosterNodes:UiNode[]=[];
-  private rosterIds=new Set<string>();
+  private rosterCells=new Map<number,{id?:string;button:UiNode;portrait:UiImage}>();
   private pageButton?:UiNode;
   private readonly runAction?:(action:()=>void)=>void;
   private detailNodes:UiNode[]=[];
@@ -158,7 +157,7 @@ export class PartyPanel {
     return{lineHeight,height:Math.max(0,lines.length*lineHeight-5)};
   }
   render(v:UiSurface,modal:UiSurface,placeModal?:PlaceModal):void{
-    this.placeModal=placeModal;this.pageText=[];this.surface=v;this.selectionMarks.clear();this.deployedMarkers.clear();this.tabs.clear();
+    this.placeModal=placeModal;this.pageText=[];this.surface=v;this.selectionMarks.clear();this.deployedMarkers.clear();this.rosterCells.clear();this.tabs.clear();
     const party=this.session.party;if(!party)return;
     const snapshot=party.snapshot(),assets=this.app.menuPanels.assets;
     // The protagonist and story members do not consume mercenary roster slots.
@@ -197,28 +196,34 @@ export class PartyPanel {
     if(this.modal)this.renderModal(modal);
   }
   private renderRoster(v:UiSurface):void{
-    const snapshot=this.session.party!.snapshot(),assets=this.app.menuPanels.assets,before=new Set(v.root.list);this.rosterIds.clear();
+    const snapshot=this.session.party!.snapshot(),assets=this.app.menuPanels.assets;
     for(let index=0;index<ROSTER_SLOTS_PER_PAGE;index++){
-      const id=snapshot.rosterSlots[this.page*ROSTER_SLOTS_PER_PAGE+index],x=70+index%ROSTER_COLUMNS*136,y=5+Math.floor(index/ROSTER_COLUMNS)*123;
-      const button=v.button('',x,y,127,114,()=>{if(id)this.select(id);},{bare:true}).setData('label',id?this.name(id):`空佣兵槽 ${this.page*ROSTER_SLOTS_PER_PAGE+index+1}`);
-      v.image(assets['party-slot'],0,0,127,114,button);
-      const portrait=v.imageCover(id?this.portrait(id):assets['party-empty'],0,0,127,114,button,.5,.2);
-      if(id&&this.member(id)!.player.health<=0){
-        portrait.setAlpha(.45);
-        this.text(`roster-dead-${index}`,'阵亡',x+63,y+88,18,TEXT_COLORS.dangerSoft,.5,0);
+      const id=snapshot.rosterSlots[this.page*ROSTER_SLOTS_PER_PAGE+index]??undefined,x=70+index%ROSTER_COLUMNS*136,y=5+Math.floor(index/ROSTER_COLUMNS)*123;
+      let cell=this.rosterCells.get(index);
+      if(cell&&cell.id!==id){
+        cell.button.destroy();if(cell.id){this.selectionMarks.delete(cell.id);this.deployedMarkers.delete(cell.id);}cell=undefined;
       }
-      v.image(assets['party-frame'],-7,-7,141,128,button);
-      if(id){this.rosterIds.add(id);const selected=v.image(assets['party-selected'],-7,-7,141,128,button).setVisible(id===this.selected);this.selectionMarks.set(id,selected);}
-      if(id)this.deployedMarkers.set(id,v.image(assets['party-deployed'],68,54,78,64,button).setVisible(snapshot.active.includes(id)));
+      if(!cell){
+        const button=v.button('',x,y,127,114,()=>{if(id)this.select(id);},{bare:true});
+        v.image(assets['party-slot'],0,0,127,114,button);
+        const portrait=v.imageCover(id?this.portrait(id):assets['party-empty'],0,0,127,114,button,.5,.2);
+        v.image(assets['party-frame'],-7,-7,141,128,button);
+        if(id){this.selectionMarks.set(id,v.image(assets['party-selected'],-7,-7,141,128,button));
+          this.deployedMarkers.set(id,v.image(assets['party-deployed'],68,54,78,64,button));}
+        cell={id,button,portrait};this.rosterCells.set(index,cell);
+      }
+      cell.button.setData('label',id?this.name(id):`空佣兵槽 ${this.page*ROSTER_SLOTS_PER_PAGE+index+1}`);
+      const dead=!!id&&this.member(id)!.player.health<=0;cell.portrait.setAlpha(dead?.45:1);
+      if(dead)this.text(`roster-dead-${index}`,'阵亡',x+63,y+88,18,TEXT_COLORS.dangerSoft,.5,0);
+      if(id){this.selectionMarks.get(id)?.setVisible(id===this.selected);this.deployedMarkers.get(id)?.setVisible(snapshot.active.includes(id));}
     }
-    this.rosterNodes=v.root.list.filter(node=>!before.has(node));
+    v.pruneDestroyed();
   }
-  private switchRosterPage():void{
-    const v=this.surface;if(!v){this.page=1-this.page;this.selected=undefined;this.changed();return;}
+  private switchRosterPage():void{this.page=1-this.page;this.refreshRoster();}
+  private refreshRoster():void{
+    const v=this.surface;if(!v){this.selected=undefined;this.changed();return;}
     if(this.selected)this.selectionMarks.get(this.selected)?.setVisible(false);
-    this.page=1-this.page;this.selected='player';this.modal=undefined;this.error='';
-    for(const node of this.rosterNodes)node.destroy();
-    for(const id of this.rosterIds){this.selectionMarks.delete(id);this.deployedMarkers.delete(id);}
+    this.selected='player';this.modal=undefined;this.error='';
     this.pageText.length=this.rosterTextCount;this.pageText=this.pageText.filter(spec=>!spec.key.startsWith('roster-dead-'));
     this.renderRoster(v);this.rosterTextCount=this.pageText.length;this.selectionMarks.get('player')?.setVisible(true);
     (this.pageButton?.getData('face') as UiImage|undefined)?.load(this.app.menuPanels.assets[`party-page-${this.page+1}`]);
@@ -360,9 +365,14 @@ export class PartyPanel {
       v.button('',270,350,170,48,()=>this.cancel()).setData('label','取消');
       v.button('',480,350,190,48,()=>{
         this.modal=undefined;
-        try{this.session.party!.dismiss(modal.id);this.selected=undefined;}
+        if(!this.runAction){
+          try{this.session.party!.dismiss(modal.id);this.selected=undefined;}
+          catch(error){modal.error=(error as Error).message;this.modal=modal;}
+          this.changed();return;
+        }
+        try{this.runAction(()=>this.session.party!.dismiss(modal.id));this.refreshRoster();}
         catch(error){modal.error=(error as Error).message;this.modal=modal;}
-        this.changed();
+        this.modalChanged();
       }).setData('label','确定');
       this.modalButtonText('dismiss-cancel','取消',270,350,170,48);
       this.modalButtonText('dismiss-confirm','确定',480,350,190,48);
