@@ -80,6 +80,17 @@ test('enemy mana drains per instance, clamps to its source maximum, and disappea
   config.removeEnemy(a.key);assert.equal(config.enemySnapshot(a.key,enemy),undefined);
 });
 
+test('party size changes preserve derived summon health',()=>{
+  const enemy=example(),roster=new EnemyRoster(),summon=roster.placeEnemy(enemy.id,0,0);
+  summon.summonedBy='player';
+  summon.summonedStats={maxHealth:3520,physicalResistanceBonus:0,magicResistance:0};
+  roster.setEnemyHealth(summon.key,1760,enemy);
+  roster.setPartySize(2,[enemy]);
+  assert.equal(roster.enemySnapshot(summon.key,enemy)!.health,1760);
+  roster.setPartySize(1,[enemy]);
+  assert.equal(roster.enemySnapshot(summon.key,enemy)!.health,1760);
+});
+
 test('reducing party size preserves living, defeated and untouched enemy states',()=>{
   const enemy=example(),roster=new EnemyRoster();
   roster.setPartySize(3,[enemy]);

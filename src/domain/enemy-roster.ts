@@ -76,9 +76,10 @@ export class EnemyRoster {
       if(!definition)throw new Error(`怪物内容缺失：${placed.enemyId}`);
       const before=this.enemySnapshot(placed.key,definition)!;
       const after=calculateEnemy(definition,{level:placed.level,elite:placed.elite,partySize:size});
+      const maxHealth=placed.summonedStats?.maxHealth??after.maxHealth;
       const minimumHealth=before.health>0?1:0;
       return {placed,health:placed.health===undefined?undefined:
-        Math.max(minimumHealth,Math.trunc(before.health*after.maxHealth/before.maxHealth))};
+        Math.max(minimumHealth,Math.trunc(before.health*maxHealth/before.maxHealth))};
     });
     this.currentPartySize=size;for(const {placed,health} of changes)placed.health=health;
     this.notifyEnemies();
