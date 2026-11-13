@@ -1285,7 +1285,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
             if(spawn)session.enemyDefeated(spawn);
             const living=session.party?.livingIds??[];
             const settlement=settleCombatRewards({
-              enemy:targetEnemy.definition,hasSpawn:!!spawn,enemyLevel:before.level,elite:before.elite,
+              enemy:targetEnemy.definition,hasSpawn:!!spawn,oneTime:spawn?.respawn===false,enemyLevel:before.level,elite:before.elite,
               heroLevel:hero.level,map,x,y,lootLevel:this.scene.map?.lootLevel,
               partySize:Math.max(1,living.length||1),earnsExperience,
               party:(living.length?living:['player']).map(id=>{
@@ -2268,7 +2268,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
     this.pausedValue=undefined;
     this.partySignature=party.activeIds.join('|');
     const active=new Set(party.activeIds.slice(1));
-    for(const ally of [...this.allies])if(!active.has(ally.id)){
+    for(const ally of [...this.allies])if(!active.has(ally.id)||!this.partyControllers.has(ally.id)){
       this.deathTweens.get(ally.id)?.stop();this.deathTweens.delete(ally.id);this.fallen.delete(ally.id);
       ally.ai.dispose();ally.presenter.clear();ally.overhead.destroy();this.movement.remove(ally.visual);ally.visual.container.destroy();ally.assets?.release();
       this.combatRuntime?.removeActor(ally.id);this.partyControllers.delete(ally.id);this.partySkills.delete(ally.id);this.conditions.remove(ally.id);this.threat?.removeActor(ally.id);this.allySkillSignatures.delete(ally.id);this.allySkillGates.delete(ally.id);this.releaseSkillLeases(ally.id);this.forgetMemberCaches(ally.id);

@@ -291,6 +291,21 @@ test('equipment changed during initial ally preparation defers spawning until a 
   assert.equal(host.nextPartySyncAt,100,'下次更新再重试，避免在同一轮不断补载');
 });
 
+test('redeployed ally without a controller replaces its stale hidden visual',async()=>{
+  const {host,invoke}=pendingAllyFixture();
+  let destroyed=0,prepared=0;
+  host.deathTweens=new Map();host.fallen=new Set();host.partyControllers=new Map();host.partySkills=new Map();host.arena=[];
+  host.conditions={remove(){}};host.threat={removeActor(){}};host.combatRuntime={removeActor(){}};
+  host.scene.movement={remove(){}};host.releaseSkillLeases=()=>{};host.forgetMemberCaches=()=>{};
+  host.allies=[{id:'ally',ai:{dispose(){}},presenter:{clear(){}},overhead:{destroy(){}},
+    visual:{container:{destroy(){destroyed++;}}}}];
+  host.scene.preparePartyMember=async()=>{prepared++;host.allySkillSignatureNow=()=> 'changed';};
+  await invoke('syncAllies');
+  assert.equal(destroyed,1);assert.equal(prepared,1);
+  assert.equal(host.allies.length,0);
+  assert.equal(host.partySignature,'');
+});
+
 test('restore waits for all current party skill leases and rejects incomplete preparation',async()=>{
   const {host,invoke}=fixture();
   host.extraSkillLeases=new Map();host.preparedSkillIds=new Map();
