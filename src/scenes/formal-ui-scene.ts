@@ -295,7 +295,7 @@ export class FormalUiScene extends Phaser.Scene implements GameUiView {
     const box=this.textBox(ui),screen=ui.dialogueLine?.presentation==='screen';
     const next:{text:string;x:number;y:number;color:string}[]=[];
     this.dialogueMetrics(box.size,(measure,lineHeight)=>{
-      const layout=layoutDialogueText(ui.page,DIALOGUE_TEXT_COLOR,box.width,measure);
+      const layout=layoutDialogueText(ui.dialoguePageMarkup,DIALOGUE_TEXT_COLOR,box.width,measure);
       this.dialogueLayout=layout;
       const top=screen?320-layout.lines.length*lineHeight/2:box.y;
       layout.lines.forEach((line,index)=>{
@@ -331,7 +331,7 @@ export class FormalUiScene extends Phaser.Scene implements GameUiView {
     const shell=ui.dialogueLine
       ?JSON.stringify([ui.dialogueLine.speaker,ui.dialogueLine.actor,ui.dialogueLine.portrait??null,ui.dialogueLine.presentation??'box'])
       :null;
-    const bodySignature=JSON.stringify([ui.page,ui.dialogueLine?.presentation]);
+    const bodySignature=JSON.stringify([ui.dialoguePageMarkup,ui.dialogueLine?.presentation]);
     const signature=JSON.stringify([ui.mode,ui.loadingState?.label,!!ui.loadingState?.retry,ui.failed,ui.suspended,portrait,cover,defeat,ui.toastMessage,shell,ui.portraitFile,ui.canSkip,showSkip,ui.choices?.prompt,ui.choices?.description,ui.choices?.options,ui.quest?.definition.id,ui.quest?.kind]);
     if(signature===this.signature){
       if(this.dialogueShell&&!uiOcclusion(ui)&&bodySignature!==this.dialogueBodySignature){this.dialogueBodySignature=bodySignature;this.renderDialogueBody(ui);}

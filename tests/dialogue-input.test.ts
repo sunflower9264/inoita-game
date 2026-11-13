@@ -1,6 +1,7 @@
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { GameUI } from '../src/ui/game-ui.ts';
+import { dialogueTextParts } from '../src/ui/dialogue-text.ts';
 
 function harness(_t:TestContext) {
   const ui=new GameUI();ui.ready=true;ui.page='当前对白';
@@ -15,6 +16,14 @@ function harness(_t:TestContext) {
   return {ui,pointer,completed:()=>completed};
 }
 const settle = () => new Promise(resolve => setTimeout(resolve, 5));
+
+test('翻页保留前文颜色和颜色锁定状态', () => {
+  const ui=new GameUI();
+  ui.dialogueState={text:'&C$G前文$R后文&C普通',start:7,readTo:7,skipped:false};
+  ui.page='$R后文&C普通';
+  const parts=dialogueTextParts(ui.dialoguePageMarkup,'base');
+  assert.deepEqual(parts,[{text:'后文',key:'#808080'},{text:'普通',key:'base'}]);
+});
 
 test('screen pointer release reveals and advances dialogue without any browser click event', async t => {
   const h = harness(t);

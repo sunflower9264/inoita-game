@@ -180,6 +180,11 @@ export class GameUI {
     if(this.portraitToken===token){this.portraitFile=file;this.view?.sync(this);}
   }
   paginate(text:string):DialoguePage[]{return this.view?.paginate(this,text)??[{text,end:text.length}];}
+  get dialoguePageMarkup():string {
+    const state=this.dialogueState;
+    const previous=state?.text.slice(0,state.start).match(/\$[A-Y]|&C/g)?.join('') ?? '';
+    return previous+this.page;
+  }
   renderText():void{this.view?.renderText(this);}
   reflowDialogue():void{const state=this.dialogueState;if(!state||!this.pending)return;state.readTo=Math.max(state.readTo,state.start+typedOffset(this.page,this.revealed));this.layoutDialoguePage();}
   layoutDialoguePage():void{
