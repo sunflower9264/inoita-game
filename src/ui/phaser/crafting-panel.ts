@@ -37,14 +37,14 @@ export class CraftingPanel {
   private pageText:MenuTextSpec[]=[];private modalText:MenuTextSpec[]=[];private text?:CraftingTextTarget;
   private band?:NativeMessageBand;
   private surface?:UiSurface;
-  private readonly changed:()=>void;private readonly sound:()=>void;
-  constructor(crafting:EquipmentCrafting,panels:MenuPanels,changed:()=>void,sound:()=>void,grades:ShopCatalog['grades']=[]){this.grades=grades;this.crafting=crafting;this.panels=panels;this.changed=changed;this.sound=sound;}
+  private readonly changed:()=>void;private readonly sound:()=>void;private readonly modalChanged:()=>void;
+  constructor(crafting:EquipmentCrafting,panels:MenuPanels,changed:()=>void,sound:()=>void,grades:ShopCatalog['grades']=[],modalChanged:()=>void=changed){this.grades=grades;this.crafting=crafting;this.panels=panels;this.changed=changed;this.sound=sound;this.modalChanged=modalChanged;}
   get modalOpen():boolean{return !!this.message||!!this.confirmation;}
   /** 原生提示横带在弹层本地坐标里的上下边界；页面文字按它让位。 */
   get messageBand():NativeMessageBand|undefined{return this.band;}
   captureScroll():void {this.offset=this.bagScroll?.scrollTop??this.offset;this.recipeOffset=this.recipeScroll?.scrollTop??this.recipeOffset;}
   close():void {this.message=undefined;this.confirmation=undefined;}
-  cancel():void {this.message=undefined;this.confirmation=undefined;this.changed();}
+  cancel():void {const hadModal=this.modalOpen;this.message=undefined;this.confirmation=undefined;if(hadModal)this.modalChanged();else this.changed();}
   chooseMode(mode:'recipes'|ChaosTier|'socket'):void {
     if(mode==='recipes'||mode==='socket'){this.mode=mode;this.recipe=undefined;this.target=undefined;}
     else {this.mode='chaos';this.tier=mode;this.target=undefined;}
@@ -53,8 +53,8 @@ export class CraftingPanel {
   select(target:string):void {
     if(this.mode==='recipes'||this.modalOpen||this.committing)return;
     const problem=this.mode==='socket'?this.crafting.targetSocketProblem(target):this.crafting.targetProblem(this.tier,target);
-    if(problem)this.message=this.panels.itemMessages[problem];else this.target=target;
-    this.changed();
+    if(problem){this.message=this.panels.itemMessages[problem];this.modalChanged();}
+    else{this.target=target;this.changed();}
   }
   private selectRecipe(recipe:string):void {
     if(this.modalOpen||this.committing)return;
@@ -69,13 +69,13 @@ export class CraftingPanel {
       else return;
     }
     catch(error){if(error instanceof CraftingError)this.message=this.panels.itemMessages[error.notice];else throw error;}
-    this.changed();
+    this.modalChanged();
   }
   private beginRecipe():void {
     if(this.modalOpen||this.committing||!this.recipe)return;
     try {this.confirmation={kind:'recipe',quote:this.crafting.recipeQuote(this.recipe)};}
     catch(error){if(error instanceof CraftingError)this.message=this.panels.itemMessages[error.notice];else throw error;}
-    this.changed();
+    this.modalChanged();
   }
   private confirm():void {
     const confirmation=this.confirmation;if(!confirmation||this.committing)return;
@@ -91,7 +91,7 @@ export class CraftingPanel {
     catch(error){if(confirmation.kind!=='recipe')this.target=target;if(error instanceof CraftingError)this.message=this.panels.itemMessages[error.notice];else throw error;}
     finally {this.committing=false;}
     // 成功时 session 通知已经重画过；配方保持不变，可以留在详情页连续合成。失败才本地重画显示错误。
-    if(!committed)this.changed();
+    if(!committed)this.modalChanged();
   }
   private addText(key:string,text:string,x:number,y:number,size:number,color?:string,anchorX=0,anchorY=0,
     style:Partial<MenuTextSpec['style']>={},extras:Pick<MenuTextSpec,'scroll'|'clip'>={}):void {
@@ -119,12 +119,15 @@ export class CraftingPanel {
     else if(this.mode==='socket')this.renderSocket(v);
     else this.renderChaos(v);
     this.renderBag(v,startDrag);
-    if(this.modalOpen){
-      placeModal(1024,640);
-      const writer:MenuTextWriter={add:spec=>this.modalText.push(spec)};
-      this.band=drawNativeMessage(modal,assets,this.message??this.panels.itemMessages['craft-confirm'],()=>this.message?this.cancel():this.confirm(),this.confirmation?()=>this.cancel():undefined,writer,
-        text?{scroll:(name,x,y,width,height)=>text.scroll(name,x,y,width,height,modal)}:undefined);
-    }
+    this.renderModal(modal,placeModal);
+  }
+  renderModal(modal:UiSurface,placeModal:(width:number,height:number)=>void):void {
+    this.modalText=[];this.band=undefined;
+    if(!this.modalOpen)return;
+    placeModal(1024,640);
+    const writer:MenuTextWriter={add:spec=>this.modalText.push(spec)};
+    this.band=drawNativeMessage(modal,this.panels.assets,this.message??this.panels.itemMessages['craft-confirm'],()=>this.message?this.cancel():this.confirm(),this.confirmation?()=>this.cancel():undefined,writer,
+      this.text?{scroll:(name,x,y,width,height)=>this.text!.scroll(name,x,y,width,height,modal)}:undefined);
   }
   private renderModeStrip(v:UiSurface):void {
     // 模式切换放在左侧框上方，不再占用框内第一行；按钮同步放大，手机上也更好点。

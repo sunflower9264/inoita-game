@@ -1775,10 +1775,15 @@ test('fusion menu selects or drags equipment, confirms once and blocks underlyin
   f.scene.input.activePointer.isDown=false;f.scene.input.emit('pointerup',f.scene.input.activePointer);
   assert(visibleDomLabels(f).some(label=>label.text===item.name));
   const before=bag.captureState(),money=f.session.money;
-  f.scene.click(f.scene.button('组合'));
+  const combine=f.scene.button('组合'),scrolls=f.internals.body.scrolls.slice();
+  f.scene.click(combine);
+  assert.equal(f.scene.button('组合'),combine,'打开确认保留工作台按钮');
+  assert.deepEqual(f.internals.body.scrolls,scrolls,'打开确认保留工作台滚动区');
   assert(domTexts(f).includes('是否以当前的配方来合成？'));
   assert.equal(f.scene.canHit(f.scene.button('深渊混沌合成')),false);
   const no=f.scene.button('否');f.scene.click(no);assert.deepEqual(bag.captureState(),before);assert.equal(f.session.money,money);
+  assert.equal(f.scene.button('组合'),combine,'取消确认保留工作台按钮');
+  assert.deepEqual(f.internals.body.scrolls,scrolls);
   f.scene.click(f.scene.button('组合'));
   const yes=f.scene.button('是'),confirm=yes.getData('action');f.scene.click(yes);
   assert.equal(bag.get(target)!.numbers!.chaos!.tier,'chaos');assert.equal(f.session.money,money-item.level*700);

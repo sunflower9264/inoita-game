@@ -527,7 +527,7 @@ export class StoryUI {
     if(!this.session||!this.app.crafting||this.world?.actors[actorId]?.service!=='fusion-machine'||this.app.ui.mode!=='game')return;
     if(this.requestAllocationExit(()=>this.openCrafting(actorId)))return;
     this.close();this.craftingActor=actorId;
-    this.craftingPanel=new CraftingPanel(new EquipmentCrafting(this.session,this.app.crafting),this.app.menuPanels,()=>this.render(),()=>this.app.audio?.ui('craft'),this.app.shops.grades);
+    this.craftingPanel=new CraftingPanel(new EquipmentCrafting(this.session,this.app.crafting),this.app.menuPanels,()=>this.render(),()=>this.app.audio?.ui('craft'),this.app.shops.grades,()=>this.updateCraftingModal());
     this.show('crafting');
   }
   /**
@@ -1224,6 +1224,14 @@ export class StoryUI {
     if(!this.savePage.modalOpen)this.menuText?.renderPage(this.page);
   }
   /** 存档确认框：横带和按钮留在 Phaser，正文与按钮文字由宿主提供的 writer 收集。 */
+  private updateCraftingModal():void{
+    if(!this.modal||!this.craftingPanel||this.page!=='crafting')return;
+    this.modal.clear();
+    for(const [name,scroll] of this.scrollNames)if(scroll.surface===this.modal)this.scrollNames.delete(name);
+    this.craftingPanel.renderModal(this.modal,this.placeModal);
+    this.menuText?.renderPage('crafting');
+    this.sync();
+  }
   private renderSaveConfirmations():void{
     if(!this.savePage.modalOpen){this.savePage.renderConfirmations();return;}
     this.saveModalTextSpecs=[];
