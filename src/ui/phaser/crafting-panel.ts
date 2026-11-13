@@ -23,6 +23,7 @@ interface CraftingTextTarget {
   scroll(name:string,x:number,y:number,width:number,height:number,surface?:UiSurface):ScrollArea;
   refresh():void;
   updatePage?():void;
+  removeScroll?(scroll:ScrollArea):void;
 }
 
 interface CraftingDrop {object:UiNode|UiImage;entry?:string;view?:InventoryView;cell?:number;craft?:boolean}
@@ -43,6 +44,7 @@ export class CraftingPanel {
   private bagButtons=new Map<string,UiNode>();
   private targetMarker?:UiImage;
   private bagHighlight?:UiNode;
+  private modeTabs=new Map<'recipes'|ChaosTier|'socket',UiNode>();
   private readonly changed:()=>void;private readonly sound:()=>void;private readonly modalChanged:()=>void;
   constructor(crafting:EquipmentCrafting,panels:MenuPanels,changed:()=>void,sound:()=>void,grades:ShopCatalog['grades']=[],modalChanged:()=>void=changed){this.grades=grades;this.crafting=crafting;this.panels=panels;this.changed=changed;this.sound=sound;this.modalChanged=modalChanged;}
   get modalOpen():boolean{return !!this.message||!!this.confirmation;}
@@ -54,19 +56,20 @@ export class CraftingPanel {
   chooseMode(mode:'recipes'|ChaosTier|'socket'):void {
     if(mode==='recipes'||mode==='socket'){this.mode=mode;this.recipe=undefined;this.target=undefined;}
     else {this.mode='chaos';this.tier=mode;this.target=undefined;}
-    this.close();this.changed();
+    const hadModal=this.modalOpen;this.close();
+    if(!this.updateWork())this.changed();else if(hadModal)this.modalChanged();
   }
   select(target:string):void {
     if(this.mode==='recipes'||this.modalOpen||this.committing)return;
     const problem=this.mode==='socket'?this.crafting.targetSocketProblem(target):this.crafting.targetProblem(this.tier,target);
     if(problem){this.message=this.panels.itemMessages[problem];this.modalChanged();}
-    else{this.target=target;if(!this.updateTarget())this.changed();}
+    else{this.target=target;if(!this.updateWork())this.changed();}
   }
   private selectRecipe(recipe:string):void {
     if(this.modalOpen||this.committing)return;
-    this.recipe=recipe;this.changed();
+    this.recipe=recipe;if(!this.updateWork())this.changed();
   }
-  private backToRecipes():void {this.recipe=undefined;this.changed();}
+  private backToRecipes():void {this.recipe=undefined;if(!this.updateWork())this.changed();}
   private begin():void {
     if(this.modalOpen||this.committing)return;
     try {
@@ -115,7 +118,7 @@ export class CraftingPanel {
   render(v:UiSurface,modal:UiSurface,placeModal:(width:number,height:number)=>void,startDrag:(pointer:UiPointer,entry:string,scroll:ScrollArea)=>void,text?:CraftingTextTarget):void {
     this.pageText=[];this.modalText=[];this.band=undefined;this.text=text;this.surface=v;
     const assets=this.panels.assets;
-    this.drops=[];this.bagButtons.clear();this.targetMarker=undefined;
+    this.drops=[];this.bagButtons.clear();this.modeTabs.clear();this.targetMarker=undefined;this.recipeScroll=undefined;
     v.staticLayer('crafting',()=>{
       v.border(assets,10,0,462,431,v.staticRoot);
       drawBagRail(v,assets,496,v.staticRoot);
@@ -130,17 +133,25 @@ export class CraftingPanel {
     this.renderBag(v,startDrag);
     this.renderModal(modal,placeModal);
   }
-  private updateTarget():boolean{
+  private updateWork():boolean{
     const v=this.surface;
-    if(!v||!this.text?.updatePage||this.mode==='recipes')return false;
+    if(!v||!this.text?.updatePage)return false;
+    for(const [mode,button] of this.modeTabs){
+      const selected=mode==='chaos'||mode==='epic-chaos'?this.mode==='chaos'&&this.tier===mode:this.mode===mode;
+      (button.getData('setSelected') as (value:boolean)=>void)(selected);
+    }
     this.targetMarker?.destroy();this.targetMarker=undefined;
     const button=this.target?this.bagButtons.get(this.target):undefined;
     if(button)this.targetMarker=v.image(this.panels.assets['inventory-selected'],-5,-5,84,84,button);
+    if(this.recipeScroll){
+      this.recipeOffset=this.recipeScroll.scrollTop;this.text.removeScroll?.(this.recipeScroll);
+      this.recipeScroll.destroy();const index=v.scrolls.indexOf(this.recipeScroll);if(index>=0)v.scrolls.splice(index,1);this.recipeScroll=undefined;
+    }
     for(const node of this.workNodes)node.destroy();
     this.pageText=this.pageText.filter(spec=>!this.workKeys.has(spec.key));
     for(let i=this.drops.length-1;i>=0;i--)if(this.drops[i]!.craft)this.drops.splice(i,1);
     const before=new Set(v.root.list),textStart=this.pageText.length;
-    if(this.mode==='socket')this.renderSocket(v);else this.renderChaos(v);
+    if(this.mode==='recipes')this.renderRecipes(v);else if(this.mode==='socket')this.renderSocket(v);else this.renderChaos(v);
     this.workNodes=v.root.list.filter(node=>!before.has(node));
     this.workKeys=new Set(this.pageText.slice(textStart).map(spec=>spec.key));
     v.pruneDestroyed();this.text.updatePage();
@@ -157,7 +168,7 @@ export class CraftingPanel {
   private renderModeStrip(v:UiSurface):void {
     // 模式切换放在左侧框上方，不再占用框内第一行；按钮同步放大，手机上也更好点。
     const tab=(label:string,data:string,x:number,width:number,selected:boolean,mode:'recipes'|ChaosTier|'socket')=>{
-      v.button('',x,-46,width,42,()=>this.chooseMode(mode),{selected,fontSize:18}).setData('label',data);
+      const button=v.button('',x,-46,width,42,()=>this.chooseMode(mode),{selected,fontSize:18}).setData('label',data);this.modeTabs.set(mode,button);
       this.buttonText(`craft-tab-${mode}`,label,x,-46,width,42,18);
     };
     tab('配方','切换融合模式',8,104,this.mode==='recipes','recipes');
@@ -214,7 +225,7 @@ export class CraftingPanel {
     if(this.target&&!bag.entries.some(entry=>entry.id===this.target))this.target=undefined;
     const target=this.target?bag.get(this.target):undefined,item=target?bag.catalog.items[target.item]:undefined;
     const frame=item&&target&&session.hero?equipmentSlotFrame(item,target.numbers,session.hero.catalog.equipment[target.item],this.grades,this.tier):undefined;
-    const slot=v.button('',204,26,74,74,()=>{this.target=undefined;if(!this.updateTarget())this.changed();},{image:assets[frame??'inventory-slot']}).setData('label','合成装备');
+    const slot=v.button('',204,26,74,74,()=>{this.target=undefined;if(!this.updateWork())this.changed();},{image:assets[frame??'inventory-slot']}).setData('label','合成装备');
     if(item)v.image(item.icon,5,5,64,64,slot);
     this.drops.push({object:slot,craft:true});
     if(item&&target){
@@ -244,7 +255,7 @@ export class CraftingPanel {
     const {session,catalog}=this.crafting,bag=session.bag,assets=this.panels.assets,op=catalog.operations.socket;
     if(this.target&&!bag.entries.some(entry=>entry.id===this.target))this.target=undefined;
     const target=this.target?bag.get(this.target):undefined,item=target?bag.catalog.items[target.item]:undefined;
-    const slot=v.button('',204,26,74,74,()=>{this.target=undefined;if(!this.updateTarget())this.changed();},{image:assets['inventory-slot']}).setData('label','合成装备');
+    const slot=v.button('',204,26,74,74,()=>{this.target=undefined;if(!this.updateWork())this.changed();},{image:assets['inventory-slot']}).setData('label','合成装备');
     if(item)v.image(item.icon,5,5,64,64,slot);
     this.drops.push({object:slot,craft:true});
     if(item&&target){

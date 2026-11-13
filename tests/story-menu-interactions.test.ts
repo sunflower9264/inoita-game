@@ -1895,6 +1895,23 @@ test('fusion recipe detail stays open and crafts again on the next 组合', t =>
   assert.equal(f.session.bag.count('leaf-of-life'),0,'两次合成各扣 3 个材料');
 });
 
+test('crafting mode and recipe changes retain the tabs and bag',t=>{
+  const f=fixture();t.after(f.cleanup);const entry=f.add('leaf-of-life',6);
+  const machine=Object.keys(world.actors).find(id=>world.actors[id].service==='fusion-machine')!;
+  f.menu.openCrafting(machine);const scroll=f.internals.scrollNames.get('craft-bag')!;
+  const item=f.scene.buttons(items.items[entry.item].name).find(button=>button.parentContainer===scroll.content)!;
+  const recipeTab=f.scene.button('切换融合模式'),chaosTab=f.scene.button('混沌合成');
+  const recipe=f.session.bag.catalog.recipes['mix-healing-potion-s']!;
+  f.scene.click(f.scene.buttons(recipe.name).find(button=>button.input?.hitArea.width===390)!);
+  assert.equal(f.scene.button('切换融合模式'),recipeTab);assert.equal(f.internals.scrollNames.get('craft-bag'),scroll);
+  assert.equal(f.scene.buttons(items.items[entry.item].name).find(button=>button.parentContainer===scroll.content),item);
+  f.scene.click(f.scene.button('返回配方'));assert(f.scene.buttons(recipe.name).some(button=>button.input?.hitArea.width===390));
+  f.scene.click(chaosTab);assert.equal(f.scene.button('混沌合成'),chaosTab);
+  assert.equal(f.internals.scrollNames.get('craft-bag'),scroll);
+  assert.equal(f.scene.buttons(items.items[entry.item].name).find(button=>button.parentContainer===scroll.content),item);
+  f.scene.click(recipeTab);assert(f.scene.buttons(recipe.name).some(button=>button.input?.hitArea.width===390));
+});
+
 test('crafting bag filters retain matching item nodes and the scrolling area',t=>{
   const f=fixture();t.after(f.cleanup);const entry=f.add('healing-potion-xl');
   const machine=Object.keys(world.actors).find(id=>world.actors[id].service==='fusion-machine')!;
