@@ -48,7 +48,7 @@ export class CraftingPanel {
   chooseMode(mode:'recipes'|ChaosTier|'socket'):void {
     if(mode==='recipes'||mode==='socket'){this.mode=mode;this.recipe=undefined;this.target=undefined;}
     else {this.mode='chaos';this.tier=mode;this.target=undefined;}
-    this.cancel();
+    this.close();this.changed();
   }
   select(target:string):void {
     if(this.mode==='recipes'||this.modalOpen||this.committing)return;
