@@ -35,7 +35,7 @@ import type { CloudSavePort } from '../application/cloud-save.ts';
 
 const art=(name:string)=>`/assets/ui/title-menu/${name}.png`;
 /** 标题页右下角展示的版本号；等用户要求时再改。 */
-const GAME_VERSION='v1.0.5';
+const GAME_VERSION='v1.0.6';
 /** 版本号下方一行；说明作品性质，并提醒支持官方版本。 */
 const FAN_WORK_NOTICE='同人作品 · 仅供个人学习研究 · 请支持官方正版';
 const CLOSE_IMAGE='/assets/ui/menus/close.png';
