@@ -79,6 +79,7 @@ export class ShopPanel {
   private description?:UiSurface;
   private modal?:UiSurface;
   private selectionButtons=new Map<string,UiNode>();
+  private categoryButtons=new Map<string,UiNode>();
   private selectionMarker?:UiImage;
   private batchControls:UiNode[]=[];
   private incrementalDescription=false;
@@ -352,10 +353,35 @@ export class ShopPanel {
   private scrollAt(surface:UiSurface,name:string,x:number,y:number,width:number,height:number):ScrollArea{
     return this.text?.scroll(name,x,y,width,height,surface)??surface.scroll(x,y,width,height);
   }
+  private selectCategory(name:string):void{
+    if(this.cleaning||this.store.category===name)return;
+    const previous=this.store.category;this.store.selectCategory(name);
+    if(previous)(this.categoryButtons.get(previous)?.getData('face') as UiImage|undefined)?.load(this.catalog.assets[previous]);
+    (this.categoryButtons.get(name)?.getData('face') as UiImage|undefined)?.load(this.catalog.assets[`${name}-selected`]);
+    if(this.selection?.kind==='buy'){this.selection=undefined;this.refreshDescription();}
+    const view=this.view;if(!view){this.changed();return;}
+    for(const [key,button] of this.selectionButtons)if(key.startsWith('buy:')){button.destroy();this.selectionButtons.delete(key);}
+    view.pruneDestroyed();this.renderShelf(view);
+    const categoryText=this.catalog.categories[name].name;
+    const spec=this.pageText.find(value=>value.key==='shop-category-name');if(spec)spec.text=categoryText;
+    this.text?.setText('shop-category-name',categoryText);
+  }
+  private renderShelf(v:UiSurface):void{
+    const {shelf,slot}=this.layout;
+    for(let index=0;index<SHELF_SLOTS;index++){
+      const x=shelf.x+index%SHELF_COLUMNS*slot.stride,y=shelf.y+Math.floor(index/SHELF_COLUMNS)*slot.stride,offer=this.store.offers[index];
+      if(!offer||offer.sold)continue;
+      const item=this.session.bag.catalog.items[offer.instance.item];
+      const button=v.button('',x,y,slot.size,slot.size,()=>this.select('buy',offer.id),{bare:true,disabled:this.cleaning}).setData('label',`购买 ${item.name}`);
+      v.image(item.icon,slot.icon.x,slot.icon.y,slot.icon.size,slot.icon.size,button);
+      this.selectionButtons.set(`buy:${offer.id}`,button);
+      if(this.selection?.id===offer.id)this.selectionMarker=v.image(this.catalog.assets.selection,slot.selection.x,slot.selection.y,slot.selection.size,slot.selection.size,button);
+    }
+  }
   render(v:UiSurface,modal:UiSurface,placeModal?:PlaceModal,description?:UiSurface,text?:ShopTextTarget):void{
     this.placeModal=placeModal;this.pageText=[];this.modalText=[];this.detailText=[];this.text=text;
     this.view=v;this.description=description;this.modal=modal;this.incrementalDescription=false;
-    this.selectionButtons.clear();this.selectionMarker=undefined;this.batchControls=[];
+    this.selectionButtons.clear();this.categoryButtons.clear();this.selectionMarker=undefined;this.batchControls=[];
     const {store,session,catalog}=this,classified=store.shop.categories.length>0;
     const layout=this.layout=shopLayout(classified),{leftFrame,bagFrame,title,shelf,bag,slot,category}=layout;
     // 两栏内容区保留透明背景，背包侧栏使用共用图框和底色。
@@ -383,22 +409,17 @@ export class ShopPanel {
     if(classified){
       // 分类列的滚动区与按钮随筛选重建；端盖和竖条已经在静态层。
       this.categoryScroll=this.scrollAt(v,'shop-category',category.scroll.x,category.scroll.y,category.scroll.width,category.scroll.height);
-      store.shop.categories.forEach((name,index)=>v.button('',0,index*category.button.stride,category.button.width,category.button.height,
-        ()=>{if(this.cleaning)return;store.selectCategory(name);this.changed();},
-        {image:catalog.assets[`${name}${store.category===name?'-selected':''}`],parent:this.categoryScroll!.content,guard:this.categoryScroll!.guard})
-        .setData('label',catalog.categories[name].name));
+      store.shop.categories.forEach((name,index)=>{
+        const button=v.button('',0,index*category.button.stride,category.button.width,category.button.height,
+          ()=>this.selectCategory(name),
+          {image:catalog.assets[`${name}${store.category===name?'-selected':''}`],parent:this.categoryScroll!.content,guard:this.categoryScroll!.guard})
+          .setData('label',catalog.categories[name].name);
+        this.categoryButtons.set(name,button);
+      });
       this.categoryScroll.setHeight(store.shop.categories.length*category.button.stride);this.categoryScroll.scrollTop=this.categoryOffset;
       this.addPage('shop-category-name',catalog.categories[store.category!].name,category.name.x,category.name.y,22,AREA_COLOR,.5,.5);
     }
-    for(let index=0;index<SHELF_SLOTS;index++){
-      const x=shelf.x+index%SHELF_COLUMNS*slot.stride,y=shelf.y+Math.floor(index/SHELF_COLUMNS)*slot.stride,offer=store.offers[index];
-      if(!offer||offer.sold)continue;
-      const item=session.bag.catalog.items[offer.instance.item];
-      const button=v.button('',x,y,slot.size,slot.size,()=>this.select('buy',offer.id),{bare:true,disabled:this.cleaning}).setData('label',`购买 ${item.name}`);
-      v.image(item.icon,slot.icon.x,slot.icon.y,slot.icon.size,slot.icon.size,button);
-      this.selectionButtons.set(`buy:${offer.id}`,button);
-      if(this.selection?.id===offer.id)this.selectionMarker=v.image(catalog.assets.selection,slot.selection.x,slot.selection.y,slot.selection.size,slot.selection.size,button);
-    }
+    this.renderShelf(v);
     this.bagScroll=this.scrollAt(v,'shop-bag',bag.x,bag.y,bag.width,bag.height);
     const entries=this.cleaning?this.cleanupQuote!.entries.map(value=>value.entry):session.bag.entries.filter(entry=>matchesFilter(session.bag.catalog.items[entry.item],this.filter)
         &&(!this.batch||!entry.locked&&this.store.sellPrice(entry)>0)),

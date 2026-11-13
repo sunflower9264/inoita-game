@@ -1658,6 +1658,24 @@ test('opening and closing shop details keeps shelf and bag controls',t=>{
   assert.deepEqual(body.root.list,controls);
 });
 
+test('switching shop shelf categories keeps category controls and the bag',t=>{
+  const f=fixture();t.after(f.cleanup);
+  const entry=f.add('novice-weapon-scroll');
+  const shop=Object.entries(f.app.shops.shops).find(([,value])=>value.categories.length>1&&value.stockRules.some(rule=>rule.kind==='level-range'))!;
+  f.menu.openShop(shop[0],'');const store=f.internals.shopPanel!.store;
+  const names=shop[1].categories.map(id=>f.app.shops.categories[id].name);
+  const categories=names.map(name=>f.scene.button(name));
+  const bag=f.scene.button(`出售 ${items.items[entry.item].name}`),scroll=f.internals.shopPanel!.bagScroll!;
+  const offer=store.offers[0];f.scene.click(f.scene.buttons(`购买 ${items.items[offer.instance.item].name}`)[0]!);
+  const next=shop[1].categories.findIndex(id=>id!==store.category);f.scene.click(categories[next]);
+  assert.equal(store.category,shop[1].categories[next]);
+  assert.equal(f.scene.button(`出售 ${items.items[entry.item].name}`),bag);
+  assert.equal(f.internals.shopPanel!.bagScroll,scroll);
+  names.forEach((name,index)=>assert.equal(f.scene.button(name),categories[index]));
+  assert.equal(f.scene.buttons('关闭').length,0,'原商品详情在切换后关闭');
+  assert(visibleDomLabels(f).some(label=>label.text===names[next]),'分类名称已更新');
+});
+
 test('shop category changes reset scrolling while details, transactions and session updates preserve it', t => {
   const f = fixture(); t.after(f.cleanup);
   const supplies = Object.keys(items.items).filter(id => items.items[id].category === 'consumable' && !items.items[id].pickup).slice(0, 40);
