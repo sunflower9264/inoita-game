@@ -35,6 +35,7 @@ class Node {
   setFlipX(){return this;}setFlipY(){return this;}
   setFontSize(){return this;}setVisible(){return this;}setText(value:string){this.text=value;return this;}
   add(child:Node){this.children.push(child);return this;}
+  addAt(child:Node,index:number){this.children.splice(index,0,child);return this;}
 }
 type Call = Record<string, unknown> & {node?:Node};
 /** 只实现 ShopPanel 用到的那几个方法，按调用顺序记下每个绘制指令。UiSurface 新增方法被 ShopPanel 使用时同步补这里。 */
@@ -49,6 +50,7 @@ class Surface {
   /** 静态层：生产代码按 key 只画一次；测试每次重画都会清空 calls，所以这里直接重放，保证静态图框仍被记录。 */
   staticRoot=new Node();
   staticLayer(_key:string,draw:()=>void){draw();}
+  pruneDestroyed(){}
   frame(_frames:Record<string,string>,x:number,y:number,width:number,height:number){this.calls.push({kind:'frame',x,y,width,height});}
   /** `frame` 拆出图框之后的单独入口；说明面板用它。 */
   border(_frames:Record<string,string>,x:number,y:number,width:number,height:number){this.calls.push({kind:'border',x,y,width,height});}

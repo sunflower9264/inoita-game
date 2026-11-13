@@ -86,6 +86,8 @@ export class ShopPanel {
   private filterHighlight?:UiNode;
   private selectionMarker?:UiImage;
   private batchControls:UiNode[]=[];
+  private batchMarkers=new Map<string,UiImage>();
+  private batchSellButton?:UiNode;
   private incrementalDescription=false;
 
   private bagOffset=0;
@@ -265,7 +267,20 @@ export class ShopPanel {
   private toggleBatchEntry(id:string):void{
     if(this.batchSelection.has(id))this.batchSelection.delete(id);else this.batchSelection.add(id);
     this.batchError=undefined;
-    this.changed();
+    const button=this.selectionButtons.get(`sell:${id}`),v=this.view;
+    if(!button||!v||!this.text?.updatePage){this.changed();return;}
+    const marker=this.batchMarkers.get(id);
+    if(this.batchSelection.has(id)){
+      if(!marker){const r=this.layout.slot.selection;this.batchMarkers.set(id,v.image(this.catalog.assets.selection,r.x,r.y,r.size,r.size,button));}
+    }else if(marker){marker.destroy();this.batchMarkers.delete(id);}
+    this.updateBatchStats();this.text.updatePage();
+  }
+  private updateBatchStats():void{
+    const entries=this.batchEntries(),total=entries.reduce((sum,{entry,price})=>sum+price*entry.quantity,0);
+    const summary=this.pageText.find(spec=>spec.key==='shop-batch-label');
+    if(summary){summary.text=this.batchError??`合计 ${moneyText(total)}`;summary.style.color=this.batchError?'#e9a08a':this.layout.money.color;}
+    const label=this.pageText.find(spec=>spec.key==='shop-batch-sell');if(label)label.text=`出售选中（${entries.length}）`;
+    this.batchSellButton?.getData('setEnabled')?.(entries.length>0);
   }
   /** 背包可能在批量模式开着时变化，顺手丢掉已经不存在或卖不掉的勾选。 */
   private batchEntries():{entry:ItemInstance;price:number}[]{
@@ -284,12 +299,15 @@ export class ShopPanel {
     const selected=[...this.batchSelection];
     this.batchSelection.clear();
     try{
-      this.store.sellMany(entries.map(({entry})=>({id:entry.id,quantity:entry.quantity})));
+      const sell=()=>this.store.sellMany(entries.map(({entry})=>({id:entry.id,quantity:entry.quantity})));
+      if(this.text?.runTrade)this.text.runTrade(sell);else sell();
       this.batchError=undefined;
+      for(const marker of this.batchMarkers.values())marker.destroy();this.batchMarkers.clear();
+      if(this.text?.runTrade){if(!this.updateAfterTrade())this.changed();else{this.updateBatchStats();this.text.updatePage?.();}}
     }catch(error){
       for(const id of selected)this.batchSelection.add(id);
       this.batchError=(error as Error).message;
-      this.changed();
+      if(this.text?.updatePage){this.updateBatchStats();this.text.updatePage();}else this.changed();
     }
   }
   /** 选中物品的单价：买入看货架标价，卖出看回收价。 */
@@ -383,7 +401,7 @@ export class ShopPanel {
       if(entry.quantity>1)this.addPage(`shop-badge-${index}`,String(entry.quantity),bag.x+x+this.layout.badge.x,bag.y+y+this.layout.badge.y,
         20,this.layout.badge.color,1,0,{},{scroll:'shop-bag',clip:{top:bag.y,bottom:bag.y+bag.height}});
       if(this.selection?.id===entry.id)this.selectionMarker=v.image(catalog.assets.selection,slot.selection.x,slot.selection.y,slot.selection.size,slot.selection.size,button);
-      else if(this.batchSelection.has(entry.id))v.image(catalog.assets.selection,slot.selection.x,slot.selection.y,slot.selection.size,slot.selection.size,button);
+      else if(this.batchSelection.has(entry.id)&&!this.batchMarkers.has(entry.id))this.batchMarkers.set(entry.id,v.image(catalog.assets.selection,slot.selection.x,slot.selection.y,slot.selection.size,slot.selection.size,button));
     }
     for(const [key,button] of old){button.destroy();this.selectionButtons.delete(key);}
     v.pruneDestroyed();scroll.setHeight(Math.ceil(slots/bag.columns)*bag.stride);scroll.scrollTop=offset;
@@ -427,7 +445,7 @@ export class ShopPanel {
   render(v:UiSurface,modal:UiSurface,placeModal?:PlaceModal,description?:UiSurface,text?:ShopTextTarget):void{
     this.placeModal=placeModal;this.pageText=[];this.modalText=[];this.detailText=[];this.text=text;
     this.view=v;this.description=description;this.modal=modal;this.incrementalDescription=false;
-    this.selectionButtons.clear();this.categoryButtons.clear();this.bagSlots=[];this.filterHighlight=undefined;this.selectionMarker=undefined;this.batchControls=[];
+    this.selectionButtons.clear();this.categoryButtons.clear();this.batchMarkers.clear();this.batchSellButton=undefined;this.bagSlots=[];this.filterHighlight=undefined;this.selectionMarker=undefined;this.batchControls=[];
     const {store,session,catalog}=this,classified=store.shop.categories.length>0;
     const layout=this.layout=shopLayout(classified),{leftFrame,bagFrame,title,shelf,bag,slot,category}=layout;
     // 两栏内容区保留透明背景，背包侧栏使用共用图框和底色。
@@ -508,7 +526,7 @@ export class ShopPanel {
       }
       if(this.batch){
         const pickLabel=`出售选中（${batchItems.length}）`,width=batchBar.width-158;
-        v.button('',batchBar.x+158,batchBar.y-42,width,40,
+        this.batchSellButton=v.button('',batchBar.x+158,batchBar.y-42,width,40,
           ()=>this.sellBatch(),{fontSize:16,disabled:!batchItems.length}).setData('label','出售选中');
         this.buttonText('shop-batch-sell',pickLabel,batchBar.x+158,batchBar.y-42,width,40,false,16);
       }

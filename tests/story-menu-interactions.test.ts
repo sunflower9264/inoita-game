@@ -1780,6 +1780,20 @@ test('completed shop trade keeps unchanged items and scrolling controls',t=>{
   assert.equal(f.scene.buttons('确定').length,0);
 });
 
+test('batch selection and sale keep the remaining shop items',t=>{
+  const f=fixture();t.after(f.cleanup);const first=f.add('healing-potion-xl',3),second=f.add('healing-potion-l',2);
+  f.menu.openShop(f.app.shops.lampShop,'');f.scene.click(f.scene.button('批量出售'));
+  const selected=f.scene.button(`选择 ${items.items[first.item].name}`),kept=f.scene.button(`选择 ${items.items[second.item].name}`);
+  const scroll=f.internals.shopPanel!.bagScroll!,sell=f.scene.button('出售选中');
+  assert.equal(sell.input!.enabled,false);f.scene.click(selected);
+  assert.equal(f.scene.button(`选择 ${items.items[first.item].name}`),selected);
+  assert.equal(f.scene.button(`选择 ${items.items[second.item].name}`),kept);assert.equal(f.scene.button('出售选中'),sell);
+  assert.equal(sell.input!.enabled,true);assert(visibleDomLabels(f).some(label=>label.text==='出售选中（1）'));
+  f.scene.click(sell);assert.equal(f.session.bag.count(first.item),0);
+  assert.equal(f.scene.button(`选择 ${items.items[second.item].name}`),kept);
+  assert.equal(f.internals.shopPanel!.bagScroll,scroll);assert.equal(f.scene.button('出售选中'),sell);assert.equal(sell.input!.enabled,false);
+});
+
 test('buying from a shop keeps the remaining shelf and bag controls',t=>{
   const f=fixture();t.after(f.cleanup);f.session.gainMoney(1000000);const entry=f.add('healing-potion-xl');
   const shop=Object.entries(f.app.shops.shops).find(([,value])=>value.categories.length&&value.stockRules.some(rule=>rule.kind==='level-range'))!;
