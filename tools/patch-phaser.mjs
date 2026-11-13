@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /**
- * 把 Phaser PR #7420 的动态缓冲区补丁固化到运行时包。
+ * 把 Phaser PR #7420 的动态缓冲区补丁和绘图缓冲创建失败清理固化到运行时包。
  *
  * 旧逻辑在批次 flush 时用 `bufferSubData` 局部覆盖同一块动态顶点缓冲；同一帧
  * 前面的 draw call 还在引用它，驱动只能复制或等待整块缓冲。补丁在“从偏移 0
@@ -18,7 +18,7 @@ const target = path.join(phaserDir, 'dist', 'phaser.esm.js');
 const EXPECTED_VERSION = '4.2.1';
 
 const fail = message => {
-  console.error(`Phaser 动态缓冲补丁失败：${message}`);
+  console.error(`Phaser 运行时补丁失败：${message}`);
   process.exit(1);
 };
 
@@ -31,7 +31,6 @@ if (version !== EXPECTED_VERSION) {
 let source = fs.readFileSync(target, 'utf8');
 if (source.includes('_gpuByteLength')) {
   console.log('Phaser 4.2.1 动态缓冲补丁已在位');
-  process.exit(0);
 }
 
 const replaceOnce = (label, needle, replacement) => {
@@ -49,6 +48,7 @@ const replaceOnce = (label, needle, replacement) => {
   fail(`找不到${label}的补丁锚点`);
 };
 
+if (!source.includes('_gpuByteLength')) {
 replaceOnce('缓冲区字段',
   `        this.bufferUsage = bufferUsage;
 
@@ -130,5 +130,32 @@ replaceOnce('扩容',
     /**
      * Creates the views into the dataBuffer.`);
 
+}
+
+if (!source.includes('清理尚未登记到 renderer 的失败 framebuffer')) {
+  replaceOnce('绘图缓冲创建失败清理',
+    `        if (this.attachments[0])
+        {
+            this.renderTexture = this.attachments[0].texture;
+        }
+
+        this.createResource();`,
+    `        if (this.attachments[0])
+        {
+            this.renderTexture = this.attachments[0].texture;
+        }
+
+        try
+        {
+            this.createResource();
+        }
+        catch (error)
+        {
+            // 清理尚未登记到 renderer 的失败 framebuffer，包括其颜色纹理。
+            this.destroy();
+            throw error;
+        }`);
+}
+
 fs.writeFileSync(target, source);
-console.log('已给 Phaser 4.2.1 打上 PR #7420 动态缓冲补丁');
+console.log('Phaser 4.2.1 动态缓冲与绘图缓冲失败清理补丁已就绪');

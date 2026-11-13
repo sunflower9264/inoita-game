@@ -16,6 +16,7 @@
 
 - `tools/` 不进入 tsconfig 的 include，脚本独立于应用的类型检查运行。
 - **Phaser 固定在 4.2.1，动态缓冲补丁由 `patch-phaser.mjs` 固化。** `postinstall`、`predev` 和 `prebuild` 会自动执行；脚本按版本和补丁锚点校验，重复执行直接跳过。升级 Phaser 时先核对 PR #7420，再同步更新脚本里的版本号和锚点，不要手工改 `node_modules` 后依赖它。
+- 同一脚本还给 `WebGLFramebufferWrapper` 构造失败补清理：登记到 renderer 之前创建失败时释放颜色纹理、绘图缓冲与绑定状态，避免重复进图累积失败资源。`tests/phaser-framebuffer.test.ts` 用运行时包中的真实构造器验证失败与成功路径。
 - `.mjs` 脚本不做类型检查；`.ts` 脚本由 Node 的类型剥离直接执行，写法保持可擦除。
 - **Android 打包工具链**：Cefrium 需要 JDK 25、Gradle 9.7.1、AGP 9.4、Android SDK 37 和 build-tools 37.0.0。`build-apk.mjs` 优先使用 `~/.local/jdk-25`，其次 `JAVA_HOME`；低于 JDK 25 直接失败。不要退回 JDK 17 / Gradle 8.7。
 - `verify-apk.mjs` 会检查 Cefrium 类、arm64 原生库、16 KB 页对齐；Cefrium 自带的 `icudtl.dat`、`*.pak`、`stored-locales/`、`cefrium/` 不参与和 `dist` 的逐文件对比。

@@ -32,6 +32,7 @@
 - `story-stage-isolation.test.ts` 验证加载途中跳过、迟到画面清理、共享启动与真实坐标保留；`story-skip.test.ts` 验证流程阶段及解锁顺序。
 - `scene-assets.test.ts` 验证已齐全的资源不等待无关下载，以及缺帧修复仍按队列执行。
 - `wardrobe.test.ts` 验证跨场景合成外观复用、独立取消、无外观变化的换装、大动作分批绘制、缓存上限、会话清理及图形上下文恢复；`composition-budget.test.ts` 验证工作预算排除等待时间及中途取消。
+- `wardrobe.test.ts` 还覆盖绘图恢复等待、超时、取消、半成品重建、尺寸限制与外观显存预算；`phaser-framebuffer.test.ts` 从实际运行时包提取构造器验证分配失败清理和补丁重复执行。
 - `world-frame-work.test.ts` 验证饰品换装保留角色、碰撞体和攻击动作，随后投影不会重复准备；`world-skill-cache.test.ts` 验证饰品不触发技能资源补载，新技能等待外观合成；`story-menu-interactions.test.ts` 验证装备准备期间保留页面、完成后只刷新一次。
 
 ```bash

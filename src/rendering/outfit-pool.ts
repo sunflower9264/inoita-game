@@ -6,7 +6,7 @@ import type { EquipmentSlot, ItemCatalog } from '../domain/items.ts';
 import { costumeRecipe, type CostumePart, type CostumePiece, type CostumePose, type WardrobeCatalog } from '../domain/wardrobe.ts';
 import { retainLoadedSceneAssets } from './scene-assets.ts';
 import { releaseEffectAnimations } from './effect-animations.ts';
-import { onWebGLRestore } from './webgl-recovery.ts';
+import { isWebGLContextLost, onWebGLRestore, waitForWebGLRestore, webGLTextureLimit } from './webgl-recovery.ts';
 
 export interface Outfit {
   actor: ActorDefinition;
@@ -31,8 +31,9 @@ interface OutfitEntry {
   retired?: boolean;
 }
 export const OUTFIT_CACHE_LIMIT = 8;
-/** 动态纹理单边最大宽度；动作帧太宽时按这个上限分列摆放。 */
-const MAX_TEXTURE_WIDTH_PX = 2048;
+/** 包含颜色与模板缓冲的估算预算；正在使用和合成的外观受保护。 */
+export const OUTFIT_CACHE_BYTES = 64 * 1024 * 1024;
+class InterruptedComposition extends Error {}
 /** 每次向动态纹理提交 128 个部件后让出一帧，避免合成卡住主线程。 */
 const STAMP_BATCH_SIZE = 128;
 let serial = 0;
@@ -48,13 +49,15 @@ export class OutfitPool {
   private lifetime = new AbortController();
   private active = true;
   private readonly offRestore: () => void;
+  private contextRevision = 0;
+  private readonly textureBytes = new Map<string, number>();
 
   constructor(host: Pick<Phaser.Scene, 'textures' | 'anims' | 'game'>, catalog: WardrobeCatalog,
     items: ItemCatalog, poseLoader?: WardrobePoseLoader) {
     this.host = { textures: host.textures, anims: host.anims, game: host.game,
       sys: { settings: { key: 'outfit-pool' } } } as Phaser.Scene;
     this.catalog = { ...catalog, poses: { ...catalog.poses } }; this.items = items; this.poseLoader = poseLoader;
-    this.offRestore = onWebGLRestore(this.host, () => this.redrawCached());
+    this.offRestore = onWebGLRestore(this.host, () => { this.contextRevision++; this.redrawCached(); });
   }
   get available():boolean { return this.active; }
   key(base: ActorDefinition, equipment: Partial<Record<EquipmentSlot, string>>, classId?: string,
@@ -117,10 +120,12 @@ export class OutfitPool {
     if (!this.active) return;
     this.active = false; this.offRestore(); this.clear();
   }
-  private trim(): void {
+  private trim(requiredBytes = 0): void {
+    let bytes = [...this.textureBytes.values()].reduce((sum, value) => sum + value, 0);
     for (const [key, entry] of this.entries) {
-      if (this.entries.size <= OUTFIT_CACHE_LIMIT) break;
+      if (this.entries.size <= OUTFIT_CACHE_LIMIT && bytes + requiredBytes <= OUTFIT_CACHE_BYTES) break;
       if (entry.users || !entry.outfit) continue;
+      for (const texture of entry.outfit.textures) bytes -= this.textureBytes.get(texture) ?? 0;
       this.dispose(entry.outfit); this.entries.delete(key);
     }
   }
@@ -138,6 +143,7 @@ export class OutfitPool {
       // 合成外观的动画 key 是 `${key}#...`，不是纹理 key；按全局账本删掉引用它的动画。
       releaseEffectAnimations(this.host.anims, key);
       if (this.host.textures.exists(key)) this.host.textures.remove(key);
+      this.textureBytes.delete(key);
     }
     this.sources.get(outfit)?.release(); this.sources.delete(outfit);
   }
@@ -168,15 +174,37 @@ export class OutfitPool {
         const texture = this.host.textures.get(piece.texture);
         if (!texture.has(key)) texture.add(key, 0, piece.x, piece.y, piece.width, piece.height);
       }
-      const outfit = await this.compose(base, recipe, poses, signal);
-      this.sources.set(outfit, sources);
-      if(signal.aborted){this.dispose(outfit);signal.throwIfAborted();}
-      return outfit;
+      for (let attempt = 0; ; attempt++) {
+        if (isWebGLContextLost(this.host)) await waitForWebGLRestore(this.host, signal);
+        signal.throwIfAborted();
+        const revision = this.contextRevision;
+        let outfit: Outfit;
+        try { outfit = await this.compose(base, recipe, poses, signal); }
+        catch (error) {
+          if (!(error instanceof InterruptedComposition)) throw error;
+          if (attempt >= 2) throw new Error('绘图服务反复中断，请重新打开游戏后读取存档。', { cause: error });
+          continue;
+        }
+        this.sources.set(outfit, sources);
+        if (signal.aborted) { this.dispose(outfit); signal.throwIfAborted(); }
+        if (revision !== this.contextRevision || isWebGLContextLost(this.host)) {
+          // 仍由本次准备持有源图；丢弃已失效的合成结果后重试。
+          this.sources.delete(outfit); this.dispose(outfit);
+          if (attempt >= 2) throw new Error('绘图服务反复中断，请重新打开游戏后读取存档。');
+          continue;
+        }
+        return outfit;
+      }
     } catch (error) { sources.release(); throw error; }
   }
   private async compose(base:ActorDefinition,recipe:ReturnType<typeof costumeRecipe>,poses:[string,string|undefined][],
     signal:AbortSignal):Promise<Outfit> {
     const textures:string[]=[], clips:ActorDefinition['clips']={}, paints:(()=>void)[]=[];
+    const revision = this.contextRevision;
+    const checkContext = () => {
+      signal.throwIfAborted();
+      if (revision !== this.contextRevision || isWebGLContextLost(this.host)) throw new InterruptedComposition();
+    };
     const source=(part:CostumePart): {key:string;piece:CostumePiece} | undefined => {
       const variant=recipe.variants[part.part];
       if(!variant)return;
@@ -184,14 +212,17 @@ export class OutfitPool {
       return key?{key,piece:this.catalog.sprites[key]}:undefined;
     };
     try {
+      checkContext();
+      const limit = webGLTextureLimit(this.host);
       const budget=new CompositionBudget();
+      const pause = async () => { await budget.pause(signal); checkContext(); };
       let partCount=0;
       for(const [name,id]of poses) {
-        signal.throwIfAborted();
+        checkContext();
         const pose=this.catalog.poses[id!];
         const points: {x:number;y:number}[]=[];
         for(const frame of pose.frames)for(const part of frame) {
-          if(budget.due)await budget.pause(signal);
+          if(budget.due)await pause();
           const info=source(part);if(!info)continue;
           const {piece}=info,angle=part.angle*Math.PI/180,co=Math.cos(angle),si=Math.sin(angle);
           for(const x of [0,piece.width])for(const y of [0,piece.height]) {
@@ -202,10 +233,26 @@ export class OutfitPool {
         if(!points.length)points.push({x:0,y:0});
         const left=Math.floor(Math.min(...points.map(p=>p.x)))-1,top=Math.floor(Math.min(...points.map(p=>p.y)))-1;
         const width=Math.ceil(Math.max(...points.map(p=>p.x)))-left+1,height=Math.ceil(Math.max(...points.map(p=>p.y)))-top+1;
-        const columns=Math.min(pose.frames.length,Math.max(1,Math.floor(MAX_TEXTURE_WIDTH_PX/width)));
-        const key=`outfit-${++serial}`,texture=this.host.textures.addDynamicTexture(key,columns*width,Math.ceil(pose.frames.length/columns)*height);
-        if(!texture)throw new Error('人物外观纹理创建失败');
+        const columns=Math.min(pose.frames.length,Math.max(1,Math.floor(limit/width)));
+        const textureWidth=Math.ceil(columns*width/2)*2,textureHeight=Math.ceil(Math.ceil(pose.frames.length/columns)*height/2)*2;
+        const key=`outfit-${++serial}`,bytes=textureWidth*textureHeight*8;
+        let texture: Phaser.Textures.DynamicTexture | null;
+        try {
+          if (!Number.isFinite(bytes) || textureWidth <= 0 || textureHeight <= 0 || textureWidth > limit || textureHeight > limit)
+            throw new Error(`人物动作图片超出设备支持范围：${textureWidth}×${textureHeight}，上限 ${limit}`);
+          this.trim(bytes); checkContext();
+          texture=this.host.textures.addDynamicTexture(key,textureWidth,textureHeight);
+          if(!texture)throw new Error('人物外观纹理创建失败');
+        } catch (error) {
+          globalThis.storyDiagnostics?.record('outfit-texture-error', {actor:base.id,clip:name,width:textureWidth,height:textureHeight,
+            limit,contextLost:isWebGLContextLost(this.host),allocatedBytes:[...this.textureBytes.values()].reduce((sum,value)=>sum+value,0),message:String(error)});
+          if(this.host.textures.exists(key))this.host.textures.remove(key);
+          checkContext();
+          throw new Error(`人物外观绘制失败（${name}，${textureWidth}×${textureHeight}），请重新进入游戏。`, {cause:error});
+        }
         textures.push(key);
+        this.textureBytes.set(key,bytes);
+        checkContext();
         const stamps:{texture:string;frame:string;x:number;y:number;config:{originX:number;originY:number;scaleX:number;scaleY:number;angle:number;alpha:number}}[]=[];
         pose.frames.forEach((parts,index)=>{
           const x=index%columns*width,y=Math.floor(index/columns)*height;
@@ -225,25 +272,29 @@ export class OutfitPool {
         };
         texture.clear();
         for(let offset=0;offset<stamps.length;offset+=STAMP_BATCH_SIZE){
-          signal.throwIfAborted();
+          checkContext();
           for(const stamp of stamps.slice(offset,offset+STAMP_BATCH_SIZE))texture.stamp(stamp.texture,stamp.frame,stamp.x,stamp.y,stamp.config);
           texture.render();partCount+=Math.min(STAMP_BATCH_SIZE,stamps.length-offset);
-          if(budget.due)await budget.pause(signal);
+          if(budget.due)await pause();
         }
         if(!stamps.length)texture.render();
         paints.push(paint);
         const clip:AnimationClip={frameWidth:width,frameHeight:height,frames:pose.frames.length,originX:-left/width,originY:-top/height,
           frameRate:pose.frameRate,mirrorX:pose.mirrorX,layers:[{key,file:'',blend:'normal'}]};
         clips[name as ClipName]=clip;
-        if(budget.due)await budget.pause(signal);
-        signal.throwIfAborted();
+        if(budget.due)await pause();
+        checkContext();
       }
-      signal.throwIfAborted();
+      checkContext();
       budget.finish();
       globalThis.storyDiagnostics?.record('outfit-compose-summary',{clips:poses.length,parts:partCount,longestWorkMs:Math.round(budget.longestMs*10)/10});
       const outfit={actor:{...base,clips:{...base.clips,...clips}},textures,users:0,
         redraw:()=>{for(const paint of paints)paint();}};
       return outfit;
-    } catch(error){this.dispose({actor:base,textures,users:0,redraw:()=>{}});throw error;}
+    } catch(error){
+      this.dispose({actor:base,textures,users:0,redraw:()=>{}});
+      checkContext();
+      throw error;
+    }
   }
 }

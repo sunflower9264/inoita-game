@@ -162,4 +162,6 @@ npm run verify:update              # 核对 APK 基线与线上清单的差量
 
 现状：安卓战斗实测有效，已固化为 `tools/patch-phaser.mjs`，由 `postinstall`、`predev` 和 `prebuild` 自动应用；Phaser 仍锁 `4.2.1`，补丁打在 `node_modules/phaser/dist/phaser.esm.js`，构建和 APK 都会带它。升级 Phaser 时先核对 PR #7420 和脚本里的补丁锚点，再更新 `patch-phaser.mjs` 的版本检查。
 
+同一脚本还处理绘图缓冲创建失败时的资源清理：构造器抛错前释放已申请的颜色纹理和缓冲，避免进图重试累积显存。升级时一并核对这一清理分支；验证见 `tests/phaser-framebuffer.test.ts`。
+
 验证方式：同一台安卓设备、同一张地图和战斗，对比补丁前后的实际帧率。菜单和静态地图不掉、只有战斗掉且随同屏敌人/特效增加而变差，才更像这个补丁能解决的「批次缓冲复制」问题。
