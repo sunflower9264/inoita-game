@@ -2467,7 +2467,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
   focusSelected():void{if(this.targetId)this.focusTarget(this.targetId);else this.followControlled();}
   followControlled():void{this.focusTarget(undefined);this.combat?.cancel(false);}
 
-  async start():Promise<void>{
+  async start(options:{restore?:boolean}={}):Promise<void>{
     const catalog=this.app.battleCatalog;
     const attack=this.equipmentAttack(this.player.actor);
     // 玩家侧素材已由入口常驻包持有，这里再取同一批是幂等的；敌人按进图预取的同一份超集加载，
@@ -2509,7 +2509,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
     this.unsubscribeHero=this.hero.subscribe(()=>this.onHeroChanged());
     this.unsubscribeSession=this.app.session.subscribe(()=>this.onPartyChanged());
     await this.syncAllies();
-    for(const placed of [...this.roster.enemies])this.spawnEnemy(placed);
+    if(!options.restore)for(const placed of [...this.roster.enemies])this.spawnEnemy(placed);
     this.setPerformanceActive(this.scene.performing);
     this.scene.refreshCombatTarget();
   }

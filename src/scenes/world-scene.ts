@@ -557,7 +557,7 @@ export class WorldScene extends Phaser.Scene {
       roster.adoptPreparedState(prepared);
     }
     this.combat=new WorldCombat(this,this.app,roster,hero,drops);
-    await this.combat.start();
+    await this.combat.start({ restore: !!options.checkpoint });
     if(options.preparedScene){this.restoreScenePositions(options.preparedScene);this.combat.adoptStoryPositions(options.preparedScene.actors);}
     signal.throwIfAborted();
     if(options.checkpoint)await this.combat.restoreState(options.checkpoint,signal);

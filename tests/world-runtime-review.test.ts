@@ -21,6 +21,63 @@ const { WorldScene } = await import('../src/scenes/world-scene.ts');
 phaser.deregister();
 const battle=JSON.parse(readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')) as BattleCatalog;
 
+test('combat entry creates enemies once when loading a checkpoint',async()=>{
+  const wardrobe=JSON.parse(readFileSync(new URL('../public/content/wardrobe.json',import.meta.url),'utf8'));
+  for(const restore of [false,true]){
+    const created:string[]=[];
+    const ring={setOrigin(){return this;},setVisible(){return this;},destroy(){}};
+    const scene:any={player:{actor:{}},combatEnemyIds:()=>[],entities:[],performing:false,refreshCombatTarget(){},
+      textures:{exists:()=>true,get:()=>({has:()=>true}),on(){},remove(){}},anims:{exists:()=>false},
+      events:{once(){},off(){}},add:{image:()=>ring}};
+    const host:any=Object.assign(Object.create(WorldCombat.prototype),{
+      scene,app:{battleCatalog:battle,wardrobe,world:{actors:{}},session:{skills:{resetVersion:0},subscribe:()=>()=>{}}},
+      roster:{spawns:[],enemies:[{key:'one'},{key:'two'}]},drops:{chests:{}},
+      hero:{player:{health:1},subscribe:()=>()=>{}},generation:0,closed:false,
+      equipmentAttack:()=>({}),prepareCombatSounds(){},outcomes:{warm(){}},feedback:{warm(){}},
+      refreshSkillAssets:async()=>{},playerSkillSignatureNow:()=>'',playerSkillGateNow:()=>'',
+      extraSkillLeases:new Map([['player',{}]]),combatEffects:{},createPartyController:()=>({controller:{},port:{}}),
+      partySkills:new Map(),partySkillsFor:()=>[],syncAllies:async()=>{},spawnEnemy:(enemy:any)=>created.push(enemy.key),
+      setPerformanceActive(){}
+    });
+    await host.start({restore});
+    assert.deepEqual(created,restore?[]:['one','two']);
+    if(restore){
+      const id=battle.enemies[0]!.id;
+      const saved={roster:{sequence:2,partySize:1,enemies:[
+        {key:'one',enemyId:id,x:9,y:11,health:0},
+        {key:'two',enemyId:id,x:14,y:18,summonedBy:'one'}]},
+        conditions:{buffs:[],states:[],temporary:[]},threat:{entries:[]},party:[],
+        enemies:[{id:'one',facing:'south'},{id:'two',facing:'north'}],summonGroups:[['one',['two']]]};
+      const placed:unknown[]=[],groups:unknown[]=[];
+      Object.assign(host,{
+        prepareRestoredSkills:async()=>{},enemyAssets:()=>[],combatRuntime:{reset(){}},
+        pendingDefeats:{clear(){}},summonAwareness:undefined,combatEffects:{clear(){}},buffLoops:{clear(){}},
+        presenterFor:()=>undefined,deathTweens:new Map(),fallen:new Set(),clearEnemies(){},
+        roster:{enemies:[],restoreState(state:any){this.enemies=state.enemies;}},
+        conditions:{restoreState(){}},syncControlled(){},visualOf:()=>undefined,arena:[],
+        spawnEnemy:(enemy:any)=>placed.push(enemy),threat:{restoreState(){}},
+        summons:{restore:(value:unknown)=>groups.push(value)}
+      });
+      await host.restoreState(saved);
+      assert.deepEqual(placed,saved.roster.enemies,'恢复保存的敌人位置、血量和召唤关系');
+      assert.deepEqual(groups,[saved.summonGroups]);
+    }
+  }
+});
+
+test('same-map rollback restores combat without rebuilding the scene',async()=>{
+  const calls:string[]=[];
+  const host:any=Object.assign(Object.create(WorldScene.prototype),{
+    map:{id:'home'},loadingWorld:false,encounterResults:new Map(),app:{},
+    projectStoryWorld:async()=>{calls.push('project');},
+    combat:{restoreState:async()=>{calls.push('combat');}},
+    restoreScenePositions:()=>{calls.push('positions');},syncControlledCharacter:()=>{calls.push('controlled');},
+    restartStoryWorld:()=>{throw new Error('same-map rollback must not restart');}
+  });
+  await host.restoreStoryWorld({location:{map:'home'},generatedEntities:[],world:{},scene:{}},new AbortController().signal);
+  assert.deepEqual(calls,['project','combat','positions','controlled']);
+});
+
 test('manual hostile skills continue into basic attack only on completion and for the same controlled member',()=>{
   for(const id of ['dark-strike','dark-attack','blood-curse','celestial-lightning'])assert.equal(targetsEnemies(battle.skills[id].action!),true,id);
   for(const id of ['demon-s-shield','guardian-of-darkness','hell-s-pawn','prayer-of-recovery'])assert.equal(targetsEnemies(battle.skills[id].action!),false,id);
