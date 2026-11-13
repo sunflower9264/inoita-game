@@ -8,8 +8,8 @@
 export const CHANGELOG_LAYOUT = {
   /** 弹窗面板：在 1024×640 弹层画布里的外框。 */
   panel: { x: 82, y: 60, width: 860, height: 520 },
-  /** 滚动文字区：让开 slot 的金线和关闭钮，文字不会压到边框。 */
-  scroll: { x: 138, y: 180, width: 748, height: 340 },
+  /** 滚动文字区：让开 slot 的金线和关闭钮，底部与金线再留一点空隙。 */
+  scroll: { x: 138, y: 180, width: 748, height: 330 },
   /** 标题中心在面板内、金线下方的位置。 */
   titleY: 146,
   /** 右上角圆形关闭钮。 */
