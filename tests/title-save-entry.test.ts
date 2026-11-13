@@ -456,7 +456,7 @@ test('challenge mode needs five hidden clicks before starting the pressure test'
 test('the version number sits bottom-right at menu-button size and toggles GM',()=>{
   const gm={on:false,toggles:0,toggle(){this.on=!this.on;this.toggles+=1;return this.on;}};
   const f=fixture(gm);
-  const node=f.domLabels.find(text=>text.text==='v1.0.6');assert.ok(node);
+  const node=f.domLabels.find(text=>text.text==='v1.0.7');assert.ok(node);
   assert.equal(Number.parseFloat(String(node.style.fontSize)),36,'版本号与主菜单按钮同字号');
   assert.deepEqual(node.anchor,[1,1],'以右下角为锚点');
   assert.equal(node.x,1180);assert.equal(node.y,612);
