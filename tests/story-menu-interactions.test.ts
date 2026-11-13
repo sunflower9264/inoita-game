@@ -3157,9 +3157,11 @@ test('cleanup quality buttons keep selected appearance across redraws and empty 
   const f=fixture();t.after(f.cleanup);
   f.menu.openShop(f.app.shops.lampShop,'');f.scene.click(f.scene.button('清理装备'));
   const selected=(label:string)=>f.scene.button(label).getData('selected');
+  const green=f.scene.button('绿装'),white=f.scene.button('白装'),scroll=f.internals.shopPanel!.bagScroll;
   assert.equal(selected('白装'),true);assert.equal(selected('绿装'),false);
   f.scene.click(f.scene.button('绿装'));
   assert.equal(selected('白装'),true);assert.equal(selected('绿装'),true);
+  assert.equal(f.scene.button('绿装'),green);assert.equal(f.scene.button('白装'),white);assert.equal(f.internals.shopPanel!.bagScroll,scroll);
   assert.equal((f.scene.button('绿装').getData('highlight') as UiNode).visible,true);
   f.scene.click(f.scene.button('白装'));f.scene.click(f.scene.button('绿装'));
   assert.equal(selected('白装'),false);assert.equal(selected('绿装'),false);

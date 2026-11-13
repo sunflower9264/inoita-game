@@ -60,6 +60,7 @@ export class ShopPanel {
   private pendingBagOffset?:number;
   private cleanupSellButton?:UiNode;
   private cleanupMinus?:UiNode;
+  private cleanupQualityButtons=new Map<number,UiNode>();
   private cleanupError?:string;
   private sellingCleanup=false;
   private readonly batchSelection=new Set<string>();
@@ -227,7 +228,21 @@ export class ShopPanel {
   private stepCleanupLevel(step:number):void {
     const value=Math.max(0,Math.min(Number.MAX_SAFE_INTEGER,this.cleanupLevel+step));
     if(value===this.cleanupLevel)return;
-    this.cleanupLevel=value;this.selection=undefined;this.cleanupError=undefined;this.changed();
+    this.cleanupLevel=value;this.refreshCleanup();
+  }
+  private refreshCleanup():void{
+    const v=this.view,target=this.text;if(!v||!target?.updatePage){this.selection=undefined;this.cleanupError=undefined;this.changed();return;}
+    const hadSelection=!!this.selection;this.selection=undefined;this.cleanupError=undefined;
+    this.selectionMarker?.destroy();this.selectionMarker=undefined;
+    if(hadSelection)target.updateDescription?.(()=>{this.detailText=[];});
+    this.cleanupQuote=this.store.previewCleanup(this.cleanupSettings());this.renderBagCells(v);
+    this.cleanupSellButton?.getData('setEnabled')?.(this.cleanupQuote.entries.length>0&&!this.sellingCleanup);
+    this.cleanupMinus?.getData('setEnabled')?.(this.cleanupLevel>0);
+    const summary=this.pageText.find(spec=>spec.key==='cleanup-summary');
+    if(summary){summary.text=`待售 ${this.cleanupQuote.entries.length} 件 · ${moneyText(this.cleanupQuote.total)}`;summary.style.color=AREA_COLOR;}
+    const level=this.pageText.find(spec=>spec.key==='cleanup-level');if(level)level.text=String(this.cleanupLevel);
+    for(const [index,button] of this.cleanupQualityButtons)button.getData('setSelected')?.(this.cleanupRarities.has(index));
+    target.updatePage();
   }
   private renderCleanupControls(v:UiSurface):void {
     const l=cleanupLayout;
@@ -250,12 +265,13 @@ export class ShopPanel {
     this.addPage('cleanup-level',String(this.cleanupLevel),l.levelValue.x,l.levelValue.y,24,AREA_COLOR,.5,.5);
     this.buttonText('cleanup-minus','−',l.minus.x,l.minus.y,l.minus.width,l.minus.height);
     this.buttonText('cleanup-plus','＋',l.plus.x,l.plus.y,l.plus.width,l.plus.height);
+    this.cleanupQualityButtons.clear();
     CLEANUP_RARITIES.forEach(({name,color},index)=>{
       const x=q.x+index*(q.width+q.gap);
-      v.button('',x,q.y,q.width,q.height,()=>{
+      const button=v.button('',x,q.y,q.width,q.height,()=>{
         if(this.cleanupRarities.has(index))this.cleanupRarities.delete(index);else this.cleanupRarities.add(index);
-        this.selection=undefined;this.cleanupError=undefined;this.changed();
-      },{selected:this.cleanupRarities.has(index)}).setData('label',name);
+        this.refreshCleanup();
+      },{selected:this.cleanupRarities.has(index)}).setData('label',name);this.cleanupQualityButtons.set(index,button);
       this.addPage(`cleanup-quality-${index}`,name,x+q.width/2,q.y+q.height/2,18,color,.5,.5);
     });
   }
