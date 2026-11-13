@@ -1072,6 +1072,20 @@ test('using a skill book opens the icon page and returns to the bag', t => {
   assert.equal(f.scene.buttons('使用').length, 1, '下一次点一次技能书就能重新打开说明');
 });
 
+test('selecting a skill book entry keeps skill icons and frames',t=>{
+  const f=fixture();t.after(f.cleanup);f.hero.addExperience(Number.MAX_SAFE_INTEGER);
+  const skills=battle.classes.find(value=>value.id===f.hero.classId)!.skills.slice(0,2);
+  for(const id of skills)while(f.session.skills.level(id)<battle.skills[id].normalMaxLevel)f.session.skills.learn(id);
+  const book=f.add('skillbook',2);f.menu.debugDescribe(book.id);f.scene.click(f.scene.button('使用'));
+  const first=f.scene.button(battle.skills[skills[0]].name),second=f.scene.button(battle.skills[skills[1]].name);
+  const frame=f.internals.body.staticRoot.list.slice(),oldScroll=f.internals.scrollNames.get('skill-book-description');
+  f.scene.click(second);
+  assert.equal(f.scene.button(battle.skills[skills[0]].name),first);assert.equal(f.scene.button(battle.skills[skills[1]].name),second);
+  assert.deepEqual(f.internals.body.staticRoot.list,frame);assert.notEqual(f.internals.scrollNames.get('skill-book-description'),oldScroll);
+  assert(visibleDomLabels(f).some(label=>label.text===battle.skills[skills[1]].name));
+  f.scene.click(first);assert.equal(f.scene.button(battle.skills[skills[0]].name),first);
+});
+
 test('skill book page only lists upgradable skills and has an empty state', t => {
   const f = fixture(); t.after(f.cleanup); f.hero.addExperience(Number.MAX_SAFE_INTEGER);
   const skills = battle.classes.find(value => value.id === f.hero.classId)!.skills;

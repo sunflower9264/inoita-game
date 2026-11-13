@@ -5,6 +5,7 @@ import type { MenuPanels } from '../../domain/menu-panels.ts';
 import type { StorySkillProgression } from '../../domain/story-skills.ts';
 import { layoutDescriptionText } from '../description-text-layout.ts';
 import type { MenuTextSpec, MenuTextWriter } from '../dom/menu-text.ts';
+import type { UiImage, UiNode } from '../dom/node.ts';
 import { SKILL_PREVIEW_COLORS, skillDescriptionParts, skillNextLevelPreview } from '../skill-detail-lines.ts';
 import { SKILL_BOOK, skillBookCell } from '../skill-book-layout.ts';
 import { TEXT_COLORS } from '../text-style.ts';
@@ -39,14 +40,20 @@ export class SkillBookPanel {
   private offset = 0;
   /** 这一轮绘制要显示的文字；页面重绘时按 key 复用 DOM 标签。 */
   private textSpecs: MenuTextSpec[] = [];
+  private surface?:UiSurface;
+  private cells=new Map<string,{button:UiNode;marker?:UiImage}>();
+  private detailNodes:UiNode[]=[];
+  private detailKeys=new Set<string>();
+  private readonly updatePage?:()=>void;
+  private readonly removeScroll?:(scroll:ScrollArea)=>void;
 
   constructor(bag: Bag, skills: StorySkillProgression, catalog: BattleCatalog, panels: MenuPanels,
     entryId: string, changed: () => void, sound: () => void, close: (message?: string) => void,
-    scrollArea?: ScrollFactory, refreshText: () => void = () => {}) {
+    scrollArea?: ScrollFactory, refreshText: () => void = () => {}, updatePage?:()=>void, removeScroll?:(scroll:ScrollArea)=>void) {
     this.bag = bag; this.skills = skills; this.catalog = catalog; this.panels = panels;
     this.entryId = entryId; this.changed = changed; this.sound = sound; this.close = close;
     this.scrollArea = scrollArea ?? ((view, _name, x, y, width, height) => view.scroll(x, y, width, height));
-    this.refreshText = refreshText;
+    this.refreshText = refreshText;this.updatePage=updatePage;this.removeScroll=removeScroll;
   }
 
   get skillIds(): string[] {
@@ -76,12 +83,14 @@ export class SkillBookPanel {
 
   render(v: UiSurface): void {
     const layout = SKILL_BOOK;
-    this.textSpecs = [];
-    v.border(this.panels.assets, layout.leftFrame.x, layout.leftFrame.y, layout.leftFrame.width, layout.leftFrame.height);
-    v.border(this.panels.assets, layout.rightFrame.x, layout.rightFrame.y, layout.rightFrame.width, layout.rightFrame.height);
+    this.textSpecs = [];this.surface=v;this.cells.clear();
+    v.staticLayer('skill-book',()=>{
+      v.border(this.panels.assets,layout.leftFrame.x,layout.leftFrame.y,layout.leftFrame.width,layout.leftFrame.height,v.staticRoot);
+      v.border(this.panels.assets,layout.rightFrame.x,layout.rightFrame.y,layout.rightFrame.width,layout.rightFrame.height,v.staticRoot);
+    });
     this.scroll = undefined;
     this.renderGrid(v);
-    this.renderDetails(v);
+    this.drawDetails(v);
   }
 
   /** 当前能升级的技能；页面只列这些，不能升级的不出现在图标格里。 */
@@ -110,11 +119,29 @@ export class SkillBookPanel {
         v.image(assets[`skill-rank-${rank}`], layout.rankDigit.x, layout.rankDigit.y,
           layout.rankDigit.width, layout.rankDigit.height, cell);
       }
-      if (id === this.selected) v.image(assets[rank ? 'skill-selected' : 'skill-selected-ai'],
-        layout.selection.x, layout.selection.y, layout.selection.width, layout.selection.height, cell);
+      const marker=id === this.selected?v.image(assets[rank ? 'skill-selected' : 'skill-selected-ai'],
+        layout.selection.x, layout.selection.y, layout.selection.width, layout.selection.height, cell):undefined;
+      this.cells.set(id,{button:cell,marker});
     });
   }
 
+  private drawDetails(v:UiSurface):void{
+    const before=new Set(v.root.list),textStart=this.textSpecs.length;
+    this.renderDetails(v);this.detailNodes=v.root.list.filter(node=>!before.has(node));
+    this.detailKeys=new Set(this.textSpecs.slice(textStart).map(spec=>spec.key));
+  }
+  private updateDetails():void{
+    const v=this.surface;if(!v||!this.updatePage){this.changed();return;}
+    const layout=SKILL_BOOK,assets=this.panels.assets;
+    for(const [id,cell] of this.cells){
+      if(id===this.selected&&!cell.marker){const rank=this.skills.level(id);cell.marker=v.image(assets[rank?'skill-selected':'skill-selected-ai'],layout.selection.x,layout.selection.y,layout.selection.width,layout.selection.height,cell.button);}
+      else if(id!==this.selected&&cell.marker){cell.marker.destroy();cell.marker=undefined;}
+    }
+    if(this.scroll){this.removeScroll?.(this.scroll);this.scroll.destroy();const index=v.scrolls.indexOf(this.scroll);if(index>=0)v.scrolls.splice(index,1);this.scroll=undefined;}
+    for(const node of this.detailNodes)node.destroy();
+    this.textSpecs=this.textSpecs.filter(spec=>!this.detailKeys.has(spec.key));
+    v.pruneDestroyed();this.drawDetails(v);this.updatePage();
+  }
   private renderDetails(v: UiSurface): void {
     const layout = SKILL_BOOK, skill = this.selected ? this.catalog.skills[this.selected] : undefined;
     if (!skill) {
@@ -208,7 +235,7 @@ export class SkillBookPanel {
 
   private select(id: string): void {
     if (id === this.selected) return;
-    this.selected = id; this.message = ''; this.offset = 0; this.sound(); this.changed();
+    this.selected = id; this.message = ''; this.offset = 0; this.sound(); this.updateDetails();
   }
 
   private use(): void {

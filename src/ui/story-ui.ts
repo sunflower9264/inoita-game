@@ -932,7 +932,7 @@ export class StoryUI {
     if(this.app.ui.controlLayoutEditing){this.surface.clearStatic();this.body.clearStatic();this.sync();return;}
     if(this.shortcutEdit){this.surface.clearStatic();this.body.clearStatic();this.renderShortcutScreen();this.renderBackButton();this.sync();return;}
     // 各面板的固定图框交给静态层，切换到其他页面时清除。
-    if(!['bag','shop','crafting','forge'].includes(this.page))this.body.clearStatic();
+    if(!['bag','shop','crafting','forge','learn'].includes(this.page))this.body.clearStatic();
     const commonTabs=!['shop','crafting','forge','learn','save','load'].includes(this.page);
     const chromeKey=commonTabs?'chrome:tabs':`chrome:${this.page}${this.page==='crafting'?`:${this.craftingActor}`:''}`;
     v.staticLayer(chromeKey,()=>{
@@ -2151,7 +2151,8 @@ export class StoryUI {
     this.cancelDrag();this.operation=undefined;this.itemNotice=undefined;this.notice='';
     this.skillBook=new SkillBookPanel(bag,this.session!.skills,this.app.battleCatalog,this.app.menuPanels,entry,
       ()=>this.render(),()=>this.app.audio?.ui('select'),(message)=>this.closeSkillBook(message),
-      (view,name,x,y,width,height)=>this.scroll(name,x,y,width,height,view),()=>this.menuText?.refresh());
+      (view,name,x,y,width,height)=>this.scroll(name,x,y,width,height,view),()=>this.menuText?.refresh(),()=>this.menuText?.renderPage('learn'),
+      scroll=>{for(const [name,value] of this.scrollNames)if(value===scroll)this.scrollNames.delete(name);});
     this.skillBook.open();this.page='learn';this.render();
   }
   private closeSkillBook(message?:string):void {
