@@ -165,8 +165,8 @@ test('companion wardrobe cache keeps a global LRU bound and protects in-use memb
   assert.deepEqual(destroyed,['member-1','member-3']);
 });
 
-function sharedSetup(t: test.TestContext) {
-  const run = setup(t); run.wardrobe.destroy();
+function sharedSetup(t: test.TestContext, skillPose = false) {
+  const run = setup(t, false, skillPose); run.wardrobe.destroy();
   const items = { items: {} } as ItemCatalog;
   const pool = new OutfitPool(run.scene, run.catalog, items);
   const create = () => new Wardrobe({ ...run.scene, events: new EventEmitter() } as unknown as Phaser.Scene,
@@ -198,13 +198,15 @@ test('repeated context interruption stops after two retries and leaves no partia
 });
 
 test('world and stage share an outfit across shutdown and returning to the map', async t => {
-  const run = sharedSetup(t), world = run.create(), stage = run.create();
-  const first = world.prepare(run.actor, {}, 'hero'); const outfit = await first; world.activate(outfit);
-  const other = await stage.prepare(run.actor, {}, 'hero'); stage.activate(other);
+  const run = sharedSetup(t, true), world = run.create(), stage = run.create();
+  const options = { learnedSkills: new Set<string>() };
+  const first = world.prepare(run.actor, {}, 'hero', options); const outfit = await first; world.activate(outfit);
+  const other = await stage.prepare(run.actor, {}, 'hero', options); stage.activate(other);
   assert.equal(other, outfit); assert.equal(run.ops.size, 1);
+  assert.equal(outfit.actor.clips['skill-firestorm-south'], undefined);
   world.destroy(); assert.equal(run.textures.size, 1, '舞台仍持有纹理');
   stage.destroy();
-  const next = run.create(), reused = await next.prepare(run.actor, {}, 'hero');
+  const next = run.create(), reused = await next.prepare(run.actor, {}, 'hero', options);
   assert.equal(reused, outfit); assert.equal(run.ops.size, 1, '回图不重新合成');
   next.destroy(); run.pool.destroy(); assert.equal(run.textures.size, 0);
 });

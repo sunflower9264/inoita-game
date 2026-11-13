@@ -8,6 +8,7 @@ import { validateStoryStageSnapshot, type StoryCurtain, type StoryStageSnapshot 
 import { assertScenePlan,planScene } from '../domain/scene-plan.ts';
 import { NavigationWorld } from '../domain/navigation-world.ts';
 import { MovementWorld } from '../rendering/movement-world.ts';
+import { learnedSkillIds } from '../domain/skill-configuration.ts';
 import { characterAssets, type CharacterVisual } from '../rendering/characters.ts';
 import { effectAssets } from '../rendering/effects.ts';
 import { characterSceneClips } from '../rendering/combat-asset-descriptors.ts';
@@ -170,7 +171,10 @@ export class StoryStageScene extends Phaser.Scene {
         }
         const bag = this.app.session.bag;
         const equipment = member ? bag.equipmentItems(bag.equipmentFor(memberId)) : bag.equipmentItems();
-        const outfit = await wardrobe.prepare(base, equipment, character?.classId ?? member?.classId, { signal });
+        const classId = character?.classId ?? member?.classId;
+        const skills = character ? this.app.session.skills : member?.skills;
+        const learnedSkills = classId ? learnedSkillIds(this.app.battleCatalog, classId, skills) : undefined;
+        const outfit = await wardrobe.prepare(base, equipment, classId, { signal, learnedSkills });
         guard(); appearances.set(actor.id, outfit.actor); outfits.push({ wardrobe, outfit });
       }
       nextLayers = drawStoryMap(this, map);
