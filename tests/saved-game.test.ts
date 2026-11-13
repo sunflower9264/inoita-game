@@ -199,6 +199,19 @@ test('invalid class, map, position and actors are rejected without changing the 
   }
 });
 
+test('scene visit actors are validated before installation for current and previous saves',()=>{
+  for(const format of [47,48]){
+    const saved=record();saved.format=format;
+    saved.world.scene!.visit={generatedEntities:[{id:'visitor',actor:'missing',x:0,y:0}],
+      breakableRolls:[],roster:{enemies:[],sequence:0,partySize:1}};
+    const before=structuredClone(saved);
+    assert.throws(()=>prepareSavedGame(saved,content),/存档记录的地图人物无效/);
+    assert.deepEqual(saved,before);
+    saved.world.scene!.visit.generatedEntities[0]!.actor=content.campaign.start.actor;
+    assert.equal(prepareSavedGame(saved,content).world.scene!.visit!.generatedEntities[0]!.actor,content.campaign.start.actor);
+  }
+});
+
 test('format 37 pity counters migrate to unique and epic counters',()=>{
   const saved=record();saved.format=37;
   const pity=saved.session.lootPity as unknown as {

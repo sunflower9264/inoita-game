@@ -56,6 +56,7 @@ function stageHasDuplicateActors(stage:unknown):boolean {
  * 如果带重复演员，丢弃舞台快照，让剧情从当前节点继续而不是拒绝整份存档。
  */
 const SAVE_UPGRADES:Record<number,SaveUpgrade>={
+  47:game=>{game.format=48;},
   46:game=>{
     const visit = (value: unknown): void => {
       if (!value || typeof value !== 'object') return;
@@ -267,6 +268,8 @@ export function prepareSavedGame(game:SaveGame<StoryWorldViewSnapshot>,content:S
   // 33 版存档没有场景快照；位置由 `location` 与剧情世界状态重新投影。
   if(world.scene){
     validateSceneSnapshot(world.scene);
+    if(world.scene.visit?.generatedEntities.some(entity=>!content.world.actors[entity.actor]))
+      throw new Error('存档记录的地图人物无效');
     const player=world.scene.actors.find(actor=>actor.id==='player');
     if(world.scene.map!==location.map||!player||player.x!==location.x||player.y!==location.y||player.facing!==location.facing)
       throw new Error('存档场景与主角位置不一致');
