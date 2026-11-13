@@ -74,7 +74,7 @@ test('equipment levels, class proportions and unique armor follow separate draws
   assert.throws(()=>parseDrops(data,items,['enemy']),/装备掉落池无效/);
   data.equipment.unique=[{item:'amulet',dropLevel:25}];
   assert.deepEqual(enemyDrops(data,'enemy',30,random(0,.5,.5,0,0,0,0)),[
-    {kind:'item',item:'cloak',quantity:1},{kind:'item',item:'amulet',quantity:1}
+    {kind:'item',item:'amulet',quantity:1},{kind:'item',item:'amulet',quantity:1}
   ]);
   assert.deepEqual(enemyDrops(data,'enemy',30,random(0,.75,.75,.3,0,0,0)),[
     {kind:'item',item:'amulet',quantity:1},{kind:'item',item:'amulet',quantity:1}

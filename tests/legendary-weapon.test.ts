@@ -4,13 +4,15 @@ import test from 'node:test';
 import { BattleCharacter, type CharacterStatsCatalog } from '../src/domain/character-stats.ts';
 import type { Campaign } from '../src/domain/campaign.ts';
 import type { DropCatalog } from '../src/domain/drops.ts';
-import { rollLegendaryWeapon } from '../src/domain/drops.ts';
+import { parseDrops, rollLegendaryWeapon } from '../src/domain/drops.ts';
 import type { ItemCatalog } from '../src/domain/items.ts';
 import { LegendaryWeapons, legendaryStatGate, pullLegendaryWeapon } from '../src/domain/legendary-weapon.ts';
 import { Session } from '../src/domain/session.ts';
 
 const read=<T>(name:string):T=>JSON.parse(readFileSync(new URL(`../public/content/${name}.json`,import.meta.url),'utf8')) as T;
-const campaign=read<Campaign>('campaign'),items=read<ItemCatalog>('items'),stats=read<CharacterStatsCatalog>('character-stats'),drops=read<DropCatalog>('drops');
+const campaign=read<Campaign>('campaign'),items=read<ItemCatalog>('items'),stats=read<CharacterStatsCatalog>('character-stats');
+const battle=read<{enemies:{id:string}[]}>('battle');
+const drops=parseDrops(read<DropCatalog>('drops'),items,battle.enemies.map(enemy=>enemy.id));
 const sequence=(values:number[]):(()=>number)=>{let index=0;return()=>values[index++]??0.5;};
 const createSession=()=>new Session(campaign,undefined,undefined,items,new BattleCharacter('dark-knight',stats,items));
 
@@ -47,7 +49,7 @@ test('pulling a sword consumes it even on failure and grants a weapon on success
   assert.equal(failed.legendaryWeapons.isPulled('map-a','sword-001'),true);
   assert.equal(failed.bag.entries.length,before);
   const success=createSession();
-  const result=pullLegendaryWeapon(success,stats,drops,'map-a','sword-002',1,sequence([0,0.01,0.1,0,0,0]),{x:1,y:2});
+  const result=pullLegendaryWeapon(success,stats,drops,'map-a','sword-002',3,sequence([0,0.01,0.1,0,0,0]),{x:1,y:2});
   assert.equal(result.success,true);assert.equal(result.message,'成功获得武器。');
   assert.equal(success.legendaryWeapons.isPulled('map-a','sword-002'),true);
   assert.equal(success.legendaryWeapons.isPulled('map-b','sword-002'),false);
@@ -57,14 +59,14 @@ test('pulling a sword consumes it even on failure and grants a weapon on success
 test('a level-zero map is clamped to level one for the pull',()=>{
   const session=createSession();
   const result=pullLegendaryWeapon(session,stats,drops,'map-zero','sword-zero',0,sequence([0,0.01,0.1,0,0,0]),{x:1,y:2});
-  assert.equal(result.success,true);
+  assert.equal(result.success,false);
   assert.equal(session.legendaryWeapons.isPulled('map-zero','sword-zero'),true);
 });
 
 test('group skill 122 adds an extra unique upgrade roll',()=>{
-  const hit=rollLegendaryWeapon(drops,stats,50,sequence([0.01,0.1,0,0,0,0.029,0]),30);
+  const hit=rollLegendaryWeapon(drops,stats,50,sequence([0.01,0.1,0,0.029,0]),30);
   assert.ok(hit);assert.equal(hit.unique,true);
-  const miss=rollLegendaryWeapon(drops,stats,50,sequence([0.01,0.1,0,0,0,0.031]),30);
+  const miss=rollLegendaryWeapon(drops,stats,50,sequence([0.01,0.1,0,0.031]),30);
   assert.ok(miss);assert.equal(miss.unique,false);
   const rescued=rollLegendaryWeapon(drops,stats,50,sequence([0.97,0.029,0]),30);
   assert.ok(rescued);assert.equal(rescued.unique,true);
@@ -73,7 +75,7 @@ test('group skill 122 adds an extra unique upgrade roll',()=>{
 test('the pull passes the group skill bonus through to the reward roll',()=>{
   const session=createSession();session.hero!.addExperience(100000);
   session.hero!.commitAllocation({strength:10,dexterity:0,vitality:0,intelligence:0,mentality:0});
-  const result=pullLegendaryWeapon(session,stats,drops,'map-skill','sword-skill',10,sequence([0,0.01,0.1,0,0,0,0.029,0]),{x:1,y:2},30);
+  const result=pullLegendaryWeapon(session,stats,drops,'map-skill','sword-skill',10,sequence([0,0.01,0.1,0,0.029,0]),{x:1,y:2},30);
   assert.equal(result.success,true);assert.equal(result.unique,true);
   assert.equal(result.message,'获得了传说中的武器。');
 });

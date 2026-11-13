@@ -21,6 +21,18 @@ function record(index=0){
   return captureSaveGame(session,world,saveSummary(session,{id:map.id,name:map.name},{name:character.name,portrait:'assets/ui/menus/character-kiyan.png'}));
 }
 
+test('format 50 merges party loot pity without losing the best progress',()=>{
+  const saved=record();
+  saved.format=50;
+  saved.session.lootPity={version:2,members:[
+    ['player',{equipmentMisses:2,uniqueMisses:18,epicMisses:5}],
+    ['old-companion',{equipmentMisses:6,uniqueMisses:3,epicMisses:32}],
+  ],chests:[],bossDefeats:['enemy-queen-spider-1']};
+  const restored=prepareSavedGame(saved,content).session.lootPity.captureState();
+  assert.deepEqual(restored.members,[['player',{equipmentMisses:6,uniqueMisses:18,epicMisses:32}]]);
+  assert.deepEqual(restored.bossDefeats,['enemy-queen-spider-1']);
+});
+
 test('format 36 saves keep their cached stage appearances through the upgrade',()=>{
   const saved=record(),script=Object.keys(content.campaign.scripts)[0],definition=content.campaign.scripts[script];
   const actor=content.world.actors[content.campaign.start.actor]!;

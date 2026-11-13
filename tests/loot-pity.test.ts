@@ -4,7 +4,7 @@ import { LootPity, type LootPityConfig, type PityEligibility } from '../src/doma
 
 const config: LootPityConfig = {
   equipment: { stepPermille: 60, capPermille: 900 },
-  unique: { stepPermille: 100, capPermille: 900, guaranteeAfter: 10 },
+  unique: { stepPermille: 100, capPermille: 900, guaranteeAfter: 25 },
   epic: { stepPermille: 10, capPermille: 600, guaranteeAfter: 40 },
   levelWindow: 10
 };
@@ -45,11 +45,11 @@ test('unique and epic hits reset their own counters, purple resets both', () => 
 
 test('hard guarantees fire on the configured attempt', () => {
   const pity = new LootPity();
-  for (let index = 0; index < 8; index += 1) pity.recordEnemy('player', { equipment: false }, eligible);
+  for (let index = 0; index < 23; index += 1) pity.recordEnemy('player', { equipment: false }, eligible);
   assert.equal(pity.uniqueGuaranteed('player', config), false);
   pity.recordEnemy('player', { equipment: false }, eligible);
-  assert.equal(pity.uniqueGuaranteed('player', config), true, '第 10 次合格击杀必出黄装');
-  for (let index = 0; index < 29; index += 1) pity.recordEnemy('player', { equipment: false }, eligible);
+  assert.equal(pity.uniqueGuaranteed('player', config), true, '第 25 次合格击杀必出黄装');
+  for (let index = 0; index < 14; index += 1) pity.recordEnemy('player', { equipment: false }, eligible);
   assert.equal(pity.epicGuaranteed('player', config), false);
   pity.recordEnemy('player', { equipment: false }, eligible);
   assert.equal(pity.epicGuaranteed('player', config), true, '第 40 次合格击杀必出紫装');

@@ -14,8 +14,8 @@ interface CombatRewardPity {
   equipmentBonus(ownerId: string, config: LootPityConfig): number;
   uniqueBonus(ownerId: string, config: LootPityConfig): number;
   epicBonus(ownerId: string, config: LootPityConfig): number;
-  uniqueGuaranteed(ownerId: string, config: LootPityConfig): boolean;
-  epicGuaranteed(ownerId: string, config: LootPityConfig): boolean;
+  uniqueGuaranteed(ownerId: string, config: LootPityConfig, points?: number): boolean;
+  epicGuaranteed(ownerId: string, config: LootPityConfig, points?: number): boolean;
 }
 
 /** 存活上阵成员；等级用于个人掉落与经验分配。 */
@@ -29,6 +29,7 @@ interface CombatRewardInput {
   enemy: EnemyDefinition;
   /** 是否有地图生成点。没有生成点时仍可给经验，但不写击杀记录、不掷掉落。 */
   hasSpawn: boolean;
+  oneTime?: boolean;
   enemyLevel: number;
   elite: boolean;
   heroLevel: number;
@@ -72,6 +73,7 @@ interface CombatRewardPityRecord {
   equipment: boolean;
   bestRarity: number;
   eligibility: PityEligibility;
+  points: number;
 }
 
 interface CombatRewardSettlement {
@@ -122,36 +124,38 @@ export function settleCombatRewards(input: CombatRewardInput): CombatRewardSettl
     settlement.breakable = { rewards: rolled.rewards, enemies: rolled.enemies };
   } else if (rule && !rule.noNormalDrops) {
     // 没有掉落规则或原版标记「无普通掉落」的敌人不掷骰，也不消耗首杀/保底计数。
-    const chapterLevel = lootLevel > 0 ? lootLevel : (rule.level ?? input.heroLevel);
-    const firstBoss = rule.threat === 'boss' ? pity.takeBossFirstDefeat(enemy.id) : false;
+    const chapterLevel = input.enemyLevel;
+    const threat = rule.threat === 'boss' ? 'boss' : rule.threat === 'elite' || rule.paidDropEligible ? 'elite' : 'normal';
+    const points = threat === 'boss' ? 2 : threat === 'elite' ? 1 : 0;
+    const firstBoss = (rule.threat === 'boss' || (threat === 'elite' && input.oneTime)) ? pity.takeBossFirstDefeat(enemy.id) : false;
     const pityConfig: PityConfig | undefined = drops.pity;
     input.party.forEach((member, slot) => {
-      const eligibility = specialDropEligibility(drops, member.level, rule.level ?? input.heroLevel, chapterLevel);
+      const eligibility = specialDropEligibility(drops, input.heroLevel, input.enemyLevel, chapterLevel);
       const guarantee = firstBossGuarantee(pityConfig, firstBoss);
-      const equipmentBonus = guarantee.equipmentBonus
-        || (pityConfig ? pity.equipmentBonus(member.id, pityConfig) : 0);
-      const uniqueBonus = eligibility.unique && pityConfig ? pity.uniqueBonus(member.id, pityConfig) : 0;
-      const epicBonus = eligibility.epic && pityConfig ? pity.epicBonus(member.id, pityConfig) : 0;
-      const uniqueGuarantee = eligibility.unique && pityConfig ? pity.uniqueGuaranteed(member.id, pityConfig) : false;
-      const epicGuarantee = eligibility.epic && pityConfig ? pity.epicGuaranteed(member.id, pityConfig) : false;
+      const equipmentBonus = slot === 0 ? guarantee.equipmentBonus || (pityConfig ? pity.equipmentBonus('player',pityConfig) : 0) : 0;
+      const uniqueBonus = slot === 0 && points && eligibility.withinWindow && eligibility.unique && pityConfig ? pity.uniqueBonus('player', pityConfig) : 0;
+      const epicBonus = slot === 0 && points && eligibility.withinWindow && eligibility.epic && pityConfig ? pity.epicBonus('player', pityConfig) : 0;
+      const uniqueGuarantee = slot === 0 && eligibility.unique && (firstBoss || !!(points && eligibility.withinWindow && pityConfig && pity.uniqueGuaranteed('player', pityConfig, points)));
+      const epicGuarantee = slot === 0 && !!(points && eligibility.withinWindow && eligibility.epic && pityConfig && pity.epicGuaranteed('player', pityConfig, points));
       const rolled = rollEnemyLoot(drops, stats, enemy.id, member.level, chapterLevel, random,
         input.modifiers ?? {}, {
           equipmentBonus, uniqueBonus, uniqueGuarantee, epicBonus, epicGuarantee,
-          minRarity: guarantee.minRarity, itemChance: input.itemChance,
+          minRarity: threat === 'boss' ? 2 : guarantee.minRarity, itemChance: input.itemChance, sourceLevel: input.enemyLevel, firstDefeat:slot===0&&firstBoss,
         });
+      if(slot>0)rolled.rewards=rolled.rewards.filter(reward=>reward.kind!=='item'||!reward.roll);
       const equipment = rolled.rewards.filter(reward => reward.kind === 'item' && !!reward.roll);
       const bestRarity = equipment.reduce((best, reward) =>
         Math.max(best, reward.kind === 'item' && reward.roll ? reward.roll.rarity : 0), 0);
       settlement.owners.push({ ownerId: member.id, slot, rewards: rolled.rewards });
-      settlement.pityRecords.push({
-        ownerId: member.id, equipment: equipment.length > 0, bestRarity, eligibility,
+      if(slot===0)settlement.pityRecords.push({
+        ownerId: 'player', equipment: equipment.length > 0, bestRarity, eligibility, points,
       });
     });
     const reservedSource = rule.threat === 'boss' ? 'boss'
       : rule.threat === 'elite' || rule.paidDropEligible ? 'elite' : undefined;
     if (reservedSource && drops.reservedDrops) {
       const reserved = rollReservedDrops(drops, stats, {
-        source: reservedSource, heroLevel: input.heroLevel,
+        source: reservedSource, heroLevel: input.heroLevel, sourceLevel: input.enemyLevel,
         pending: input.reserved.pending, claimed: input.reserved.claimed,
         unlockMisses: input.reserved.misses, random,
       });

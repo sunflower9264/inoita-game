@@ -56,6 +56,19 @@ function stageHasDuplicateActors(stage:unknown):boolean {
  * 如果带重复演员，丢弃舞台快照，让剧情从当前节点继续而不是拒绝整份存档。
  */
 const SAVE_UPGRADES:Record<number,SaveUpgrade>={
+  50:game=>{
+    const pity=game.session.lootPity;
+    if(pity){
+      const shared={equipmentMisses:0,uniqueMisses:0,epicMisses:0};
+      for(const [,value] of pity.members){
+        shared.equipmentMisses=Math.max(shared.equipmentMisses,value.equipmentMisses);
+        shared.uniqueMisses=Math.max(shared.uniqueMisses,value.uniqueMisses);
+        shared.epicMisses=Math.max(shared.epicMisses,value.epicMisses);
+      }
+      pity.members=[['player',shared]];
+    }
+    game.format=51;
+  },
   49:game=>{game.format=50;},
   48:game=>{game.format=49;},
   47:game=>{game.format=48;},

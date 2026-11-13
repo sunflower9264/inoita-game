@@ -61,6 +61,7 @@ export function verifyBagState(state: BagState, catalog: ItemCatalog): void {
   for (const entry of state.instances) {
     if (!entry.id || ids.has(entry.id) || !entry.item || knownItems && !catalog.items[entry.item] || !Number.isSafeInteger(entry.quantity) || entry.quantity <= 0) throw new Error('背包物品引用或数量无效');
     if(entry.locked!==undefined&&typeof entry.locked!=='boolean')throw new Error('装备锁定状态无效');
+    if(entry.lootLevel!==undefined&&(!Number.isSafeInteger(entry.lootLevel)||entry.lootLevel<1||entry.lootLevel>105||catalog.items[entry.item]?.use?.kind!=='box'||entry.quantity!==1))throw new Error('封印盒掉落等级无效');
     if(entry.locked&&knownItems&&!catalog.items[entry.item]?.equipment)throw new Error('只有装备可以上锁');
     ids.add(entry.id);
     for (const gem of entry.gems) if (knownItems && !catalog.items[gem]) throw new Error('背包宝石引用无效');
@@ -83,7 +84,7 @@ export function verifyBagState(state: BagState, catalog: ItemCatalog): void {
 
 /** 实例是否带有只属于单件物品的状态；带状态就不能把多件并成一条。 */
 function holdsInstanceState(entry: ItemInstance): boolean {
-  return !!entry.locked || !!entry.skill || entry.numbers !== undefined || entry.enhancement > 0 || entry.gems.length > 0;
+  return !!entry.locked || !!entry.skill || entry.lootLevel !== undefined || entry.numbers !== undefined || entry.enhancement > 0 || entry.gems.length > 0;
 }
 /** 这件实例能否参与同 id 合并：目录允许叠加，且没有独立状态。 */
 function isStackableInstance(entry: ItemInstance, catalog: ItemCatalog): boolean {
@@ -317,9 +318,10 @@ export class Bag {
     } else for(let index=0;index<quantity;index++)this.put(this.create(item,skill).id);
   }
   /** Resolve a ground item's modifiers when it drops; collecting it keeps this result. */
-  prepareDrop(item:string,drop?:{grade?:import('./character-stats.ts').EquipmentGradeSeed;sockets?:boolean}):ItemInstance {
+  prepareDrop(item:string,drop?:{grade?:import('./character-stats.ts').EquipmentGradeSeed;sockets?:boolean;lootLevel?:number}):ItemInstance {
     if(!this.catalog.items[item])throw new Error('物品定义不存在');
     const entry:ItemInstance={id:`ground-${++this.serial}`,item,quantity:1,enhancement:0,gems:[]};
+    if(drop?.lootLevel!==undefined)entry.lootLevel=drop.lootLevel;
     this.rules?.initialize(entry,drop);
     return copy(entry);
   }
@@ -566,7 +568,11 @@ export class Bag {
       case 'purify': {const entry=this.instances.get(target!)!;delete entry.numbers!.chaos;result.message=`${this.catalog.items[entry.item].name}的混沌属性已净化`;break;}
       case 'pack': result.rewards=use.rewards!.map(reward=>({...reward}));break;
       case 'box': case 'unseal': {
-        result.rewards=[{...pick(use.rewards!)}];
+        const rewards=source.lootLevel===undefined?use.rewards!:use.rewards!.filter(reward=>{
+          const level=this.catalog.items[reward.item]?.level;
+          return level!==undefined&&level>=Math.max(1,source.lootLevel!-15)&&level<=source.lootLevel!;
+        });
+        result.rewards=[{...pick(rewards)}];
         if(use.kind==='unseal'){result.classId=use.classId;result.skill=pick(this.catalog.classSkills[use.classId!]??[]);}
         break;
       }

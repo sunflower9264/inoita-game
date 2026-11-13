@@ -190,7 +190,7 @@ test('a summon kill grants experience while a non-party killer does not', t => {
 test('the unique pity forces a unique drop and resets the unique counter', t => {
   t.mock.method(Math, 'random', () => 0.999);
   const run = harness({ enemyId: 'enemy-head-goblin-1', heroLevel: 20, level: 13 });
-  run.pity.counters('player').uniqueMisses = 9;
+  run.pity.counters('player').uniqueMisses = 24;
 
   run.settle();
 
@@ -245,7 +245,7 @@ test('the first boss defeat guarantees equipment, and the same boss does not rep
   second.pity.takeBossFirstDefeat('enemy-starving-boss-wolf-1');
   second.pity.counters('player').equipmentMisses = 0;
   second.settle();
-  assert.deepEqual(second.loot.flatMap(call => call.rewards), [], '同一 Boss 的后续击杀不再触发首杀必中');
+  assert.ok(second.loot.flatMap(call => call.rewards).some(reward=>reward.roll&&reward.roll.rarity>=2), 'Boss 每次至少掉落稀有装备');
 });
 
 test('a paid drop uses its own channel and advances its own pity counter', t => {

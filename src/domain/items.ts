@@ -170,6 +170,8 @@ export function blockedNormalAcquisitionIds(catalog: ItemCatalog): ReadonlySet<s
 }
 
 export interface ItemInstance {
+  /** 掉落封印盒的来源等级，用于打开时挑选装备。 */
+  lootLevel?: number;
   /** 玩家手动保护：只阻止出售与丢弃。 */
   locked?: boolean;
   numbers?: ItemNumbers;

@@ -80,6 +80,18 @@ test('reserved equipment rewards carry a static grade snapshot', () => {
   if (reward?.kind === 'item') assert.ok(reward.roll, '装备掉落需要带品级快照');
 });
 
+test('sealed equipment box drops only when its source level has suitable contents',()=>{
+  const entry=drops.reservedDrops!.entries.find(value=>value.item==='sealed-necklace-chest')!;
+  const config={...drops.reservedDrops!,sources:{elite:{chancePer10000:10000},boss:{chancePer10000:10000}},entries:[entry]};
+  const catalog={...drops,reservedDrops:config};
+  const low=rollReservedDrops(catalog,stats,{source:'elite',heroLevel:105,sourceLevel:38,unlockMisses:24,random:()=>0});
+  assert.deepEqual(low.rewards,[]);
+  assert.equal(low.unlockMisses,24);
+  const high=rollReservedDrops(catalog,stats,{source:'elite',heroLevel:20,sourceLevel:100,random:()=>0});
+  assert.equal(high.rewards[0]?.kind,'item');
+  if(high.rewards[0]?.kind==='item')assert.equal(high.rewards[0].lootLevel,100);
+});
+
 test('a failed base roll still advances the unlock pity counter', () => {
   const miss = { ...syntheticDrops, reservedDrops: { ...syntheticConfig, sources: { elite: { chancePer10000: 0 }, boss: { chancePer10000: 0 } } } } as DropCatalog;
   const result = rollReservedDrops(miss, plainStats, { source: 'elite', heroLevel: 15, unlockMisses: 0, random: () => 0 });

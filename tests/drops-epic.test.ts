@@ -78,13 +78,13 @@ test('epic is rolled once per kill even when the enemy has three passes', () => 
   assert.equal(epics[0]!.roll!.grade, stats.equipment[epics[0]!.item]!.defaultGrade);
 });
 
-test('epic item level cap is the minimum of player, content and chapter', () => {
-  assert.equal(specialDropEligibility(drops, 58, 100, 100).epic, false, '人物等级不够');
+test('epic item level follows the defeated enemy', () => {
+  assert.equal(specialDropEligibility(drops, 58, 100, 100).epic, true, '越级击杀可以掉高等级紫装');
   assert.equal(specialDropEligibility(drops, 100, 58, 58).epic, false, '内容等级不够');
   const bandCap = specialDropEligibility(drops, 100, 100, 50);
-  assert.equal(bandCap.cap, 50, '章节上限压住物品等级');
-  assert.equal(bandCap.epic, false);
-  assert.equal(specialDropEligibility(drops, 60, 100, 100).cap, 60);
+  assert.equal(bandCap.cap, 100, '地图等级不限制怪物掉落');
+  assert.equal(bandCap.epic, true);
+  assert.equal(specialDropEligibility(drops, 60, 100, 100).cap, 100);
   assert.equal(specialDropEligibility(drops, 105, 105, 105).cap, 105);
 });
 
@@ -132,7 +132,7 @@ test('chests use a fixed epic chance, skip below 59, and never use kill pity', (
     '宝箱等级低于 59 不判定');
 });
 
-test('v3 unique slot rolls once per kill while v2 keeps three passes', () => {
+test('unique slot rolls once per kill even with three passes', () => {
   const data = structuredClone(drops);
   const id = enemyId(rule => rule.rolls === 3 && rule.level >= 59 && !rule.noNormalDrops);
   const rule = clearRule(data, id);
@@ -146,7 +146,7 @@ test('v3 unique slot rolls once per kill while v2 keeps three passes', () => {
   const legacyRule = clearRule(legacy, id);
   legacyRule.rolls = 3;
   legacyRule.chances.unique = 10000;
-  assert.equal(uniqueRewards(rollEnemyLoot(legacy, stats, id, legacyRule.level, legacyRule.level, () => .5)).length, 3);
+  assert.equal(uniqueRewards(rollEnemyLoot(legacy, stats, id, legacyRule.level, legacyRule.level, () => .5)).length, 1);
 });
 
 test('unique guarantee forces one yellow; an empty unique pool is skipped', () => {

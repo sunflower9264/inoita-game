@@ -1597,8 +1597,8 @@ export class WorldScene extends Phaser.Scene {
     const landing=this.lootLanding(map,x,y);
     const store=groundLootFor(this.app.session);
     store.add(map,landing.x,landing.y,rewards.map(reward=>reward.kind==='item'&&!reward.instance&&
-      !this.app.items.items[reward.item].stackable
-      ?{...reward,instance:this.app.session.bag.prepareDrop(reward.item,reward.roll?{grade:reward.roll,sockets:reward.roll.sockets}:undefined)}
+      (!this.app.items.items[reward.item].stackable||reward.lootLevel!==undefined)
+      ?{...reward,instance:this.app.session.bag.prepareDrop(reward.item,{...(reward.roll?{grade:reward.roll,sockets:reward.roll.sockets}:{}),lootLevel:reward.lootLevel})}
       :reward),{nowMs:this.app.session.nowMs});
     if(render&&!this.destroyed&&this.map?.id===map){this.groundLootView?.sync(store.dropsOnMap(map));this.groundLootRevision=store.revision;}
   }

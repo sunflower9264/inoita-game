@@ -1,6 +1,6 @@
 /**
  * 温和保底：连续没有出装备/黄装/紫装时，下一次的概率逐步提高，达到次数后必出。
- * 计数按成员、按存档保存；宝箱只维护装备计数，黄装/紫装保底只按敌人击杀累计。
+ * 击杀结算使用 player 记录全队进度；宝箱按类型维护独立装备计数。
  */
 /** 稀有度档位：3 是黄装（unique），4 是紫装（epic）。 */
 export const RARITY_UNIQUE = 3;
@@ -80,12 +80,12 @@ export class LootPity {
   }
 
   /** 下一次合格击杀是否必须出黄装/紫装。 */
-  uniqueGuaranteed(ownerId: string, config: LootPityConfig): boolean {
-    return this.counters(ownerId).uniqueMisses + 1 >= config.unique.guaranteeAfter;
+  uniqueGuaranteed(ownerId: string, config: LootPityConfig, points = 1): boolean {
+    return this.counters(ownerId).uniqueMisses + points >= config.unique.guaranteeAfter;
   }
 
-  epicGuaranteed(ownerId: string, config: LootPityConfig): boolean {
-    return this.counters(ownerId).epicMisses + 1 >= config.epic.guaranteeAfter;
+  epicGuaranteed(ownerId: string, config: LootPityConfig, points = 1): boolean {
+    return this.counters(ownerId).epicMisses + points >= config.epic.guaranteeAfter;
   }
 
   chestEquipmentBonus(key: string, config: LootPityConfig): number {
@@ -96,15 +96,15 @@ export class LootPity {
    * 一次怪物结算：装备、黄装、紫装三本账各自累计和清零。
    * 蓝装不再清黄账；固定槽掉出的黄/紫装通过 bestRarity 正常刷新对应计数。
    */
-  recordEnemy(ownerId: string, result: { equipment: boolean; bestRarity?: number }, eligibility: PityEligibility): void {
+  recordEnemy(ownerId: string, result: { equipment: boolean; bestRarity?: number }, eligibility: PityEligibility, points = 1): void {
     if (!eligibility.withinWindow) return;
     const counters = this.counters(ownerId);
     if (result.equipment) counters.equipmentMisses = 0;
     else counters.equipmentMisses += 1;
     if ((result.bestRarity ?? 0) >= RARITY_UNIQUE) counters.uniqueMisses = 0;
-    else if (eligibility.unique) counters.uniqueMisses += 1;
+    else if (eligibility.unique) counters.uniqueMisses += points;
     if ((result.bestRarity ?? 0) >= RARITY_EPIC) counters.epicMisses = 0;
-    else if (eligibility.epic) counters.epicMisses += 1;
+    else if (eligibility.epic) counters.epicMisses += points;
   }
 
   recordChest(key: string, result: { equipment: boolean }): void {

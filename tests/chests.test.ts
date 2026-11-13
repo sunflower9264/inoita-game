@@ -59,16 +59,15 @@ test('story-placed BOSS treasure chests use the improved three-pass profile',()=
   assert.deepEqual(placements.map(value=>value.script),[...new Set(placements.map(value=>value.script))],'每个脚本只摆放一次');
 });
 
-test('native chest rules retain independent one-pass and three-pass drops and mimic selection',()=>{
+test('chests retain their resource rolls and select equipment once',()=>{
   const rules=drops.chests;
-  assert.deepEqual(rules.ordinary.chances,{money:9000,equipment:1200,consumable:1800,upgrade:300,crafting:2000,misc:400,unique:0,fixed:0});
-  assert.deepEqual(rules.improved.chances,{money:9000,equipment:3000,consumable:3600,upgrade:3200,crafting:3000,misc:1200,unique:0,fixed:0});
+  assert.equal(rules.ordinary.chances.equipment,2000);
+  assert.equal(rules.improved.chances.equipment,7500);
+  assert.equal(rules.boss!.chances.equipment,10000);
   const ordinary=rollChestLoot(drops,stats,'ordinary',30,30,()=>0);
   const improved=rollChestLoot(drops,stats,'improved',30,30,()=>0);
-  // 普通箱与优质箱的品质下限不同，品级快照不能直接逐项比较；这里核对三次重复的奖励身份。
-  const identity=(result:typeof ordinary)=>result.rewards.map(reward=>reward.kind==='money'
-    ?{kind:reward.kind,amount:reward.amount}:{kind:reward.kind,item:reward.item});
-  assert.deepEqual(identity(improved),[...identity(ordinary),...identity(ordinary),...identity(ordinary)]);
+  assert.equal(improved.rewards.filter(reward=>reward.kind==='item'&&reward.roll).length,1);
+  assert.equal(improved.rewards.filter(reward=>reward.kind==='money').length,3);
   assert.deepEqual(ordinary.enemies,[mimic]);
   assert.deepEqual(improved.enemies,[]);
   assert.deepEqual(rollChestLoot(drops,stats,'ordinary',30,30,()=>.9999),empty());
@@ -81,11 +80,12 @@ test('chest rare chance uses map level, caps hero level at the chest level, and 
   for(const slot of Object.keys(rule.chances) as (keyof typeof rule.chances)[])rule.chances[slot]=0;
   delete rule.spawn;
   delete data.epicDrops; // 这个用例只测 unique 槽；紫装另有用例。
-  data.equipment.unique=[{item:'test-rare',dropLevel:1}];
+  data.equipment.unique=[{item:'test-rare',dropLevel:100}];
   // floor(2000/(100+100))=10; at equal levels random integer 9 passes and 10 fails.
   assert.equal(rollChestLoot(data,stats,'ordinary',100,100,()=>8/9999).rewards.length,1);
   assert.equal(rollChestLoot(data,stats,'ordinary',100,100,()=>9/9999).rewards.length,0);
   // 体验版：满级玩家开 1 级宝箱仍按宝箱等级结算，不会被玩家等级压成空箱。
+  data.equipment.unique=[{item:'test-rare',dropLevel:1}];
   assert.equal(rollChestLoot(data,stats,'ordinary',1,100,()=>0).rewards.length,1);
 });
 
