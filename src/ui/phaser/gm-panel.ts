@@ -151,6 +151,7 @@ export class GmPanel {
   private storyRow?:StoryTaskRow;
   private refreshItemPage?:()=>void;
   private refreshStatusPage?:()=>void;
+  private reportSerial=0;
   private characterControls?:{
     members:Map<string,{button:UiNode;key:string}>;values:string[];level:UiNode;mana:UiNode;
     toggles:{invincible:{button:UiNode;key:string};noCooldown:{button:UiNode;key:string};oneHitKill:{button:UiNode;key:string}};
@@ -175,7 +176,7 @@ export class GmPanel {
   }
 
   dispose():void {
-    this.previewToken++;
+    this.previewToken++;this.reportSerial++;
     this.previewQuest=undefined;this.previewResult=undefined;this.storyCatalog=undefined;this.writer=undefined;
   }
 
@@ -203,7 +204,7 @@ export class GmPanel {
     this.textSerial=this.tabText.length;this.renderContent(body,writer);
   }
   private renderContent(body:UiSurface,writer?:MenuTextWriter):void{
-    this.writer=writer;this.storyBody=undefined;this.storyRow=undefined;this.characterControls=undefined;this.refreshItemPage=undefined;this.refreshStatusPage=undefined;const before=new Set(body.root.list),scrolls=new Set(body.scrolls);
+    this.reportSerial++;this.writer=writer;this.storyBody=undefined;this.storyRow=undefined;this.characterControls=undefined;this.refreshItemPage=undefined;this.refreshStatusPage=undefined;const before=new Set(body.root.list),scrolls=new Set(body.scrolls);
     const hint = this.page === 'story' ? this.renderStory(body)
       : this.page === 'character' ? this.renderCharacter(body)
       : this.page === 'items' ? this.renderItems(body)
@@ -673,8 +674,8 @@ export class GmPanel {
   }
 
   private async onReport(): Promise<void> {
-    const result = await this.gm.report();
-    if(this.references.active&&(!this.references.active()||this.page!=='status'))return;
+    const serial=++this.reportSerial,result = await this.gm.report();
+    if(serial!==this.reportSerial||this.references.active&&(!this.references.active()||this.page!=='status'))return;
     this.result = result.ok ? '已上报：服务器 .diagnostics/client-errors.jsonl 里能查到。' : `上报失败：${result.reason}`;
     if(this.refreshStatusPage)this.refreshStatusPage();else this.hooks.render();
   }

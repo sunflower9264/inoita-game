@@ -2642,7 +2642,8 @@ test('debug status actions keep controls and ignore a late report after switchin
   Object.defineProperty(f.app,'gm',{value:gm,configurable:true});f.menu.show('debug');
   const wall=f.scene.button('穿墙'),report=f.scene.button('上报当前状态'),tab=f.scene.button('调试页 人物');
   f.scene.click(wall);assert.equal(f.scene.button('穿墙'),wall);assert.equal(f.scene.button('上报当前状态'),report);
-  f.scene.click(report);f.scene.click(tab);finish(true);await new Promise<void>(resolve=>setImmediate(resolve));
+  f.scene.click(report);f.scene.click(tab);f.scene.click(f.scene.button('调试页 状态'));finish(true);
+  await new Promise<void>(resolve=>setImmediate(resolve));
   assert.equal(f.scene.button('调试页 人物'),tab);assert(!domTexts(f).some(text=>text.includes('已上报：')));
 });
 
