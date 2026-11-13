@@ -86,6 +86,10 @@ export class FormalUiScene extends Phaser.Scene implements GameUiView {
   create():void{
     if(!this.uiAssetsBound){this.uiAssetsBound=true;this.events.once(Phaser.Scenes.Events.DESTROY,()=>this.uiAssets.releaseResident());}
     this.background=new UiNode(this,uiMount(this,'overlay')).setSize(1,1).setFillStyle(0,1).setDepth(998);this.blocker=new UiNode(this,uiMount(this,'overlay')).setSize(1,1).setDepth(999).setInteractive();
+    // 挡板本来就铺满整个画框，对白推进直接挂在它上面，宽屏两侧的黑边也能点。
+    this.blocker.on('pointerdown',(pointer:UiPointer)=>this.app.ui.pressDialogue(pointer.id))
+      .on('pointerup',(pointer:UiPointer)=>this.app.ui.releaseDialogue(pointer.id))
+      .on('pointerupoutside',()=>this.app.ui.resetInput());
     this.surface=new UiSurface(this,960,640,1000,'overlay');this.app.ui.view=this;this.app.uiAssets=this.uiAssets;
     const domUi=this.app.domUi;
     if(domUi){
@@ -339,14 +343,13 @@ export class FormalUiScene extends Phaser.Scene implements GameUiView {
     this.background.setVisible(modal).setSize(width,height).setFillStyle(0x000000,!!defeat&&!portrait&&!ui.loadingState&&!cover ? .65:1);
     this.blocker.setVisible((modal||!!ui.quest||!!ui.dialogueLine||!!ui.choices)).setSize(width,height);if(this.blocker.input)this.blocker.input.hitArea.setSize(width,height);
     this.cover?.destroy();this.cover=undefined;
-    const block=()=>{v.rect(0,0,960,640,0,0).setInteractive().on('pointerdown',(pointer:UiPointer)=>ui.pressDialogue(pointer.id)).on('pointerup',(pointer:UiPointer)=>ui.releaseDialogue(pointer.id)).on('pointerupoutside',()=>ui.resetInput());};
-    if(portrait){v.rect(0,0,960,640,0x101d24,1);block();}
+    if(portrait){v.rect(0,0,960,640,0x101d24,1);}
     else if(ui.loadingState){
       const file='/assets/ui/loading-background.webp';this.cover=new UiImage(this,uiMount(this,'overlay'),file).setDisplaySize(width,height).fitting().setDepth(998).setTint(0xaaaaaa);
-      block();v.rect(200,531,560,5,0xeee2cc,.3);this.progressBar=v.rect(200,531,560*progress,5,0xe2c88d,1);
+      v.rect(200,531,560,5,0xeee2cc,.3);this.progressBar=v.rect(200,531,560*progress,5,0xe2c88d,1);
       if(ui.loadingState.retry){v.button('',380,552,200,48,ui.loadingState.retry);if(ui.canReturn)v.button('',26,20,180,48,()=>ui.onMenu?.());}
     }else if(defeat){
-      block();v.frame(this.app.storyInterface?.assets??{},142,142,676,356);
+      v.frame(this.app.storyInterface?.assets??{},142,142,676,356);
       const guard=()=>!ui.suspended&&!ui.defeatState?.busy;
       // 读档进入剧情战斗时可能还没有任何检查点；按钮直接禁用，避免点下去才发现回不去。
       const noCheckpoint=!this.app.checkpoint.available;
@@ -360,7 +363,7 @@ export class FormalUiScene extends Phaser.Scene implements GameUiView {
       }
     }
     else if(!cover&&ui.choices&&!ui.quest){
-      block();const choices=ui.choices;
+      const choices=ui.choices;
       // 选项竖排：整行宽度、按钮高度按标签实际换行后的高度算，文字不会压在按钮框外。
       const left=30,width=900,optionFontSize=22;
       // 提示、说明和选项标签都按原版控制码排版：`$X` 换色、`&N` 换行；文字全部交给 DOM。
@@ -430,7 +433,7 @@ export class FormalUiScene extends Phaser.Scene implements GameUiView {
       });
       if(dom)this.hideChoiceLabels(dom.list.labels,optionCursor);
     }else if(!cover&&ui.dialogueLine&&!ui.quest){
-      block();const edges=this.dialogueSafeEdges(),box=this.textBox(ui);if(ui.dialogueLine.presentation!=='screen'){
+      const edges=this.dialogueSafeEdges(),box=this.textBox(ui);if(ui.dialogueLine.presentation!=='screen'){
         const screen=screenCoverage(v);v.rect(screen.left,399,screen.width,218,0x000000,.7);const edge=this.app.storyInterface?.assets['dialogue-edge'];if(edge){v.image(edge,screen.left,399,screen.width,17);v.image(edge,screen.left,600,screen.width,17);}
         if(ui.portraitFile){const left=ui.dialogueLine.actor===ui.playerActor;v.image(ui.portraitFile,left?edges.left:edges.right,606,undefined,516).setOrigin(left?0:1,1);}
         const point=this.surfacePoint(box.x,428),speaker=ui.dialogueLine.speaker??'';
