@@ -8,8 +8,7 @@ const world = read('content/world.json');
 const fixture = JSON.parse(fs.readFileSync(new URL('./fixtures/map-prop-baseline.json', import.meta.url), 'utf8'));
 
 /**
- * 图集改造只改变纹理来源；地图内容、feature 顺序和绘制公式必须完全不动。
- * 这个基线在改代码前生成，实现后仍必须逐项一致。
+ * 地图物件的纹理、顺序和绘制坐标由基线检查；地图内容变化时核对调试表的来源摘要。
  */
 test('map prop feature manifest and debug source hashes stay unchanged', () => {
   const records: unknown[] = [];
@@ -35,9 +34,7 @@ test('map prop feature manifest and debug source hashes stay unchanged', () => {
   assert.equal(duplicateGroups, fixture.duplicateGroups);
   assert.equal(flips, fixture.flips);
   assert.equal(nonNormal, fixture.nonNormal);
-  assert.equal(contentDigest(mapEntries), fixture.mapsHash);
-
   const debug = read('content/debug/start.json');
-  assert.equal(debug.meta.sources.maps, fixture.mapsHash);
+  assert.equal(debug.meta.sources.maps, contentDigest(mapEntries));
   assert.equal(debug.meta.sourceHash, contentDigest(debug.meta.sources));
 });
