@@ -1676,6 +1676,21 @@ test('switching shop shelf categories keeps category controls and the bag',t=>{
   assert(visibleDomLabels(f).some(label=>label.text===names[next]),'分类名称已更新');
 });
 
+test('shop bag filters keep matching items and the shelf',t=>{
+  const f=fixture();t.after(f.cleanup);const entry=f.add('healing-potion-xl');
+  const shop=Object.entries(f.app.shops.shops).find(([,value])=>value.categories.length&&value.stockRules.some(rule=>rule.kind==='level-range'))!;
+  f.menu.openShop(shop[0],'');const store=f.internals.shopPanel!.store;
+  const sell=f.scene.button(`出售 ${items.items[entry.item].name}`),offer=store.offers[0];
+  const buy=f.scene.buttons(`购买 ${items.items[offer.instance.item].name}`)[0]!;
+  const all=f.scene.button('全部'),filter=f.scene.button('消耗'),scroll=f.internals.shopPanel!.bagScroll!;
+  scroll.scrollTop=30;f.scene.click(filter);
+  assert.equal(f.scene.button(`出售 ${items.items[entry.item].name}`),sell);
+  assert.equal(f.scene.buttons(`购买 ${items.items[offer.instance.item].name}`)[0],buy);
+  assert.equal(f.internals.shopPanel!.bagScroll,scroll);assert.equal(scroll.scrollTop,0);
+  assert.equal(f.scene.button('全部'),all);assert.equal(f.scene.button('消耗'),filter);
+  f.scene.click(all);assert.equal(f.scene.button(`出售 ${items.items[entry.item].name}`),sell);
+});
+
 test('shop category changes reset scrolling while details, transactions and session updates preserve it', t => {
   const f = fixture(); t.after(f.cleanup);
   const supplies = Object.keys(items.items).filter(id => items.items[id].category === 'consumable' && !items.items[id].pickup).slice(0, 40);

@@ -1,5 +1,5 @@
 import { updateEquipmentLock } from '../slot-frame.ts';
-import { drawBagRail, drawBagRailSelection } from './bag-rail.ts';
+import { drawBagRail } from './bag-rail.ts';
 import type { UiImage, UiNode } from '../dom/node.ts';
 import type { Session } from '../../domain/session.ts';
 import type { ItemInstance } from '../../domain/items.ts';
@@ -24,6 +24,7 @@ interface ShopTextTarget {
   refresh():void;
   updateDescription?(draw:()=>void):void;
   updateModal?(draw:()=>void):void;
+  updatePage?():void;
 }
 
 type Selection = {kind:'buy'|'sell'; id:string; step:'description'|'quantity'|'confirm'|'notice'; quantity:number; error?:string};
@@ -80,6 +81,8 @@ export class ShopPanel {
   private modal?:UiSurface;
   private selectionButtons=new Map<string,UiNode>();
   private categoryButtons=new Map<string,UiNode>();
+  private bagSlots:UiImage[]=[];
+  private filterHighlight?:UiNode;
   private selectionMarker?:UiImage;
   private batchControls:UiNode[]=[];
   private incrementalDescription=false;
@@ -353,6 +356,36 @@ export class ShopPanel {
   private scrollAt(surface:UiSurface,name:string,x:number,y:number,width:number,height:number):ScrollArea{
     return this.text?.scroll(name,x,y,width,height,surface)??surface.scroll(x,y,width,height);
   }
+  private renderBagCells(v:UiSurface):void{
+    const scroll=this.bagScroll!,{bag,slot}=this.layout,session=this.session,catalog=this.catalog;
+    const entries=this.cleaning?this.cleanupQuote!.entries.map(value=>value.entry):session.bag.entries.filter(entry=>matchesFilter(session.bag.catalog.items[entry.item],this.filter)
+      &&(!this.batch||!entry.locked&&this.store.sellPrice(entry)>0));
+    const slots=Math.max(SHELF_SLOTS,Math.ceil(entries.length/bag.columns)*bag.columns);
+    while(this.bagSlots.length<slots){
+      const index=this.bagSlots.length,x=index%bag.columns*bag.stride,y=Math.floor(index/bag.columns)*bag.stride;
+      const frame=v.image(catalog.assets.slot,x,y,slot.size,slot.size,scroll.content);scroll.content.addAt(frame,index);this.bagSlots.push(frame);
+    }
+    while(this.bagSlots.length>slots)this.bagSlots.pop()!.destroy();
+    const old=new Map([...this.selectionButtons].filter(([key])=>key.startsWith('sell:')));
+    this.pageText=this.pageText.filter(spec=>!spec.key.startsWith('shop-badge-'));
+    if(this.selection?.kind==='sell'){this.selectionMarker?.destroy();this.selectionMarker=undefined;}
+    for(let index=0;index<entries.length;index++){
+      const x=index%bag.columns*bag.stride,y=Math.floor(index/bag.columns)*bag.stride,entry=entries[index],item=session.bag.catalog.items[entry.item],key=`sell:${entry.id}`;
+      let button=old.get(key);old.delete(key);
+      if(!button){
+        button=v.button('',x,y,slot.size,slot.size,()=>this.batch?this.toggleBatchEntry(entry.id):this.select('sell',entry.id),
+          {bare:true,parent:scroll.content,guard:scroll.guard}).setData('label',`${this.batch?'选择':'出售'} ${item.name}`);
+        v.image(item.icon,slot.icon.x,slot.icon.y,slot.icon.size,slot.icon.size,button);
+        updateEquipmentLock(v,button,!!entry.locked);this.selectionButtons.set(key,button);
+      }else button.setPosition(x,y);
+      if(entry.quantity>1)this.addPage(`shop-badge-${index}`,String(entry.quantity),bag.x+x+this.layout.badge.x,bag.y+y+this.layout.badge.y,
+        20,this.layout.badge.color,1,0,{},{scroll:'shop-bag',clip:{top:bag.y,bottom:bag.y+bag.height}});
+      if(this.selection?.id===entry.id)this.selectionMarker=v.image(catalog.assets.selection,slot.selection.x,slot.selection.y,slot.selection.size,slot.selection.size,button);
+      else if(this.batchSelection.has(entry.id))v.image(catalog.assets.selection,slot.selection.x,slot.selection.y,slot.selection.size,slot.selection.size,button);
+    }
+    for(const [key,button] of old){button.destroy();this.selectionButtons.delete(key);}
+    v.pruneDestroyed();scroll.setHeight(Math.ceil(slots/bag.columns)*bag.stride);scroll.scrollTop=this.bagOffset;
+  }
   private selectCategory(name:string):void{
     if(this.cleaning||this.store.category===name)return;
     const previous=this.store.category;this.store.selectCategory(name);
@@ -381,7 +414,7 @@ export class ShopPanel {
   render(v:UiSurface,modal:UiSurface,placeModal?:PlaceModal,description?:UiSurface,text?:ShopTextTarget):void{
     this.placeModal=placeModal;this.pageText=[];this.modalText=[];this.detailText=[];this.text=text;
     this.view=v;this.description=description;this.modal=modal;this.incrementalDescription=false;
-    this.selectionButtons.clear();this.categoryButtons.clear();this.selectionMarker=undefined;this.batchControls=[];
+    this.selectionButtons.clear();this.categoryButtons.clear();this.bagSlots=[];this.filterHighlight=undefined;this.selectionMarker=undefined;this.batchControls=[];
     const {store,session,catalog}=this,classified=store.shop.categories.length>0;
     const layout=this.layout=shopLayout(classified),{leftFrame,bagFrame,title,shelf,bag,slot,category}=layout;
     // 两栏内容区保留透明背景，背包侧栏使用共用图框和底色。
@@ -421,27 +454,7 @@ export class ShopPanel {
     }
     this.renderShelf(v);
     this.bagScroll=this.scrollAt(v,'shop-bag',bag.x,bag.y,bag.width,bag.height);
-    const entries=this.cleaning?this.cleanupQuote!.entries.map(value=>value.entry):session.bag.entries.filter(entry=>matchesFilter(session.bag.catalog.items[entry.item],this.filter)
-        &&(!this.batch||!entry.locked&&this.store.sellPrice(entry)>0)),
-      slots=Math.max(SHELF_SLOTS,Math.ceil(entries.length/bag.columns)*bag.columns);
-    for(let index=0;index<slots;index++){
-      const x=index%bag.columns*bag.stride,y=Math.floor(index/bag.columns)*bag.stride,entry=entries[index];
-      v.image(catalog.assets.slot,x,y,slot.size,slot.size,this.bagScroll.content);
-      if(!entry)continue;
-      const item=session.bag.catalog.items[entry.item];
-      const button=v.button('',x,y,slot.size,slot.size,
-        ()=>this.batch?this.toggleBatchEntry(entry.id):this.select('sell',entry.id),
-        {bare:true,parent:this.bagScroll.content,guard:this.bagScroll.guard}).setData('label',`${this.batch?'选择':'出售'} ${item.name}`);
-      v.image(item.icon,slot.icon.x,slot.icon.y,slot.icon.size,slot.icon.size,button);
-      updateEquipmentLock(v,button,!!entry.locked);
-      // 角标挂在格子容器上，坐标相对格子左上角；DOM 文字仍按滚动区内容坐标落点。
-      if(entry.quantity>1)this.addPage(`shop-badge-${index}`,String(entry.quantity),bag.x+x+layout.badge.x,bag.y+y+layout.badge.y,
-        20,layout.badge.color,1,0,{},{scroll:'shop-bag',clip:{top:bag.y,bottom:bag.y+bag.height}});
-      this.selectionButtons.set(`sell:${entry.id}`,button);
-      if(this.selection?.id===entry.id)this.selectionMarker=v.image(catalog.assets.selection,slot.selection.x,slot.selection.y,slot.selection.size,slot.selection.size,button);
-      else if(this.batchSelection.has(entry.id))v.image(catalog.assets.selection,slot.selection.x,slot.selection.y,slot.selection.size,slot.selection.size,button);
-    }
-    this.bagScroll.setHeight(Math.ceil(slots/bag.columns)*bag.stride);this.bagScroll.scrollTop=this.bagOffset;
+    this.renderBagCells(v);
     const batchItems=this.batch?this.batchEntries():[],
       batchTotal=batchItems.reduce((sum,{entry,price})=>sum+price*entry.quantity,0);
     if(this.batch){
@@ -457,10 +470,12 @@ export class ShopPanel {
     // 玩家买进时仍然看得到、点得到分类。
     const side=layout.sideButtons;
     if(!this.cleaning)INVENTORY_SIDE_FILTERS.forEach((filter,index)=>{
-        if(this.filter===filter)drawBagRailSelection(v,side.x,side.y+side.offsets[index],side.width,side.height);
+        if(this.filter===filter)this.filterHighlight=v.rect(side.x,side.y+side.offsets[index],side.width,side.height,0xe2c88d,.10);
         const button=v.button('',side.x,side.y+side.offsets[index],side.width,side.height,
-          ()=>{this.filter=filter;this.bagOffset=0;if(this.bagScroll)this.bagScroll.scrollTop=0;
-            this.batchSelection.clear();this.batchError=undefined;this.changed();},{bare:true});
+          ()=>{if(this.filter===filter)return;this.filter=filter;this.bagOffset=0;if(this.bagScroll)this.bagScroll.scrollTop=0;
+            this.batchSelection.clear();this.batchError=undefined;
+            if(this.batch||!this.text?.updatePage){this.changed();return;}
+            this.filterHighlight?.setPosition(side.x,side.y+side.offsets[index]);this.renderBagCells(v);this.text.updatePage();},{bare:true});
         this.addPage(`shop-filter-${filter}`,INVENTORY_LABELS[filter],side.x+side.width/2,
           side.y+side.offsets[index]+side.height/2,SIDE_FILTER_TEXT_SIZE,undefined,.5,.5,
           {width:side.width-6,align:'center',wrap:'word'});

@@ -952,7 +952,7 @@ export class StoryUI {
     const refreshText=()=>this.menuText?.refresh();
     if(this.page==='bag')this.renderBag();if(this.page==='status')this.renderStatus();if(this.page==='skills')this.renderSkills();if(this.page==='party')this.renderParty();if(this.page==='quests')this.renderQuests();
     if(this.page==='shop')this.shopPanel?.render(this.body,this.modal!,this.placeModal,this.description!,{scroll:textScroll,refresh:refreshText,
-      setText:(key,text)=>this.menuText?.setText('shop',key,text),
+      setText:(key,text)=>this.menuText?.setText('shop',key,text),updatePage:()=>this.menuText?.renderPage('shop'),
       updateDescription:draw=>{this.description?.clear();this.removeDescriptionScrolls();draw();this.menuText?.renderPage('shop');},
       updateModal:draw=>{
         this.modal?.clear();
