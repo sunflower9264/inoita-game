@@ -198,6 +198,18 @@ test('resident menu images survive content release and are loaded once',async t=
   host.releaseResident();host.releaseResident();assert.equal(releases,1,'场景销毁才释放常驻图');
 });
 
+test('resident menu images are acquired again after the original request is cancelled',async t=>{
+  const f=fixture();t.after(f.cleanup);const batches:string[][]=[];
+  t.mock.method(domAssets,'preloadFiles',async(files:readonly string[])=>{batches.push([...files]);return {release:()=>{}};});
+  const host=new SceneUiAssets(f.scene),first=new AbortController(),second=new AbortController();
+  await host.preloadResident(['menu-frame.png'],first.signal,()=>{});
+  first.abort();
+  await host.preloadResident(['menu-frame.png'],second.signal,()=>{});
+  assert.equal(batches.length,2);
+  assert.ok(batches[1].includes('menu-frame.png'));
+  host.releaseResident();
+});
+
 
 test('quest confirmation stays above the input blocker and accepts one tap',t=>{
   const f=fixture();t.after(f.cleanup);
