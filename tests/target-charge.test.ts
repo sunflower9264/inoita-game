@@ -19,7 +19,7 @@ test('charge finds four grid landings, handles the close boundary, and respects 
   assert.equal(planCharge(caster,{...target,position:{x:320+31*dx,y:192+31*dy}},charge,()=>true)?.close,true);
   assert.equal(planCharge(caster,{...target,position:{x:320+32*dx,y:192+32*dy}},charge,()=>true)?.close,false);
  }
- assert.deepEqual(planCharge(caster,enemy,charge,p=>p.x<344),{destination:{x:336,y:192},close:false},'solid wall falls back to the furthest standable point');
+ assert.deepEqual(planCharge(caster,enemy,charge,p=>p.x<344),{destination:{x:343,y:192},close:false},'solid wall falls back to the furthest standable point');
  const detour=planCharge(caster,enemy,charge,p=>p.x!==344||p.y<=176);
  assert.ok(detour&&!detour.close);assert.ok(Math.abs(detour.destination.x-384)+Math.abs(detour.destination.y-192)<=24);
 });
@@ -65,13 +65,18 @@ test('arrival uses the saved landing despite new occupation; cancellation preser
 });
 test('unreachable target area falls back toward the target instead of cancelling',()=>{
  const plan=planCharge(caster,enemy,charge,point=>point.x<344,()=>true,()=>true);
- assert.deepEqual(plan,{destination:{x:336,y:192},close:false});
+ assert.deepEqual(plan,{destination:{x:343,y:192},close:false});
 });
 test('charge verifies at most two reachable candidates before falling back',()=>{
  let verifies=0;
  const plan=planCharge(caster,enemy,charge,()=>true,()=>true,()=>{verifies++;return false;});
- assert.equal(verifies,2);
- assert.ok(plan);
+ assert.equal(verifies,3);
+ assert.deepEqual(plan,{destination:caster.position,close:false});
+});
+test('fallback stops before a narrow barrier and rejects unreachable landings',()=>{
+ const stand=(point:{x:number;y:number})=>point.x<329||point.x>331;
+ const plan=planCharge(caster,enemy,charge,stand,p=>p.x<329,p=>p.x<329);
+ assert.deepEqual(plan,{destination:{x:328,y:192},close:false});
 });
 test('charge stays put when even the caster position cannot stand',()=>{
  assert.equal(planCharge(caster,enemy,charge,()=>false),undefined);

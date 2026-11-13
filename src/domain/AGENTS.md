@@ -8,6 +8,7 @@
 - 战斗：`combat-*.ts`、`battle.ts`、`action-*.ts`、`attack-*.ts`、`buff-*.ts`、`skill-*.ts`、`enemy-*.ts`；击杀奖励结算在 `combat-rewards.ts`。
 - 队伍人数变化时按单位实际生命上限保持血量比例，主人派生的召唤物生命上限沿用召唤属性。
 - 敌人的一次性技能在动作开始播放时计为已使用，追近目标期间保留使用机会。
+- 冲锋备用落点逐像素检查身体、地形连通和沿途内容阻挡，停在最后一个可达点。
 - 物品/背包：`items.ts`、`inventory.ts`、`bag.ts`、`drops.ts`、`loot-pity.ts`、`ground-loot.ts`、`crafting.ts`、`enhancement.ts`、`equipment-*.ts`、`shop.ts`、`money.ts`（金额拆分与显示文本）。
 - 队伍/召唤：`party*.ts`、`companion-progression.ts`、`friendly-summon-ai.ts`、`summon-*.ts`；召唤物的归属分组、顶替、寿命与退场在 `summon-lifecycle.ts`。
 - 导航/地图：`navigation.ts`、`navigation-world.ts`、`pathfinding.ts`、`path-budget.ts`、`walk-route.ts`、`map-placement.ts`、`minimap.ts`。

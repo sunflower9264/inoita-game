@@ -89,22 +89,22 @@ export function planCharge(caster: Combatant, target: Combatant, charge: SkillCh
       push({x:nextX,y:nextY,cost,order:nextOrder++});
     }
   }
-  return forwardFallback(caster,target,charge,canStand);
+  return forwardFallback(caster,target,canStand,canReach,verify);
 }
 
 /** 朝目标方向逐格退到最远的可站点；原地也站不住时返回 undefined。 */
-function forwardFallback(caster: Combatant, target: Combatant, charge: SkillCharge,
-  canStand: (point: Point) => boolean): ChargePlan | undefined {
+function forwardFallback(caster: Combatant, target: Combatant,
+  canStand: (point: Point) => boolean, canReach: (point: Point) => boolean,
+  verify: (point: Point) => boolean): ChargePlan | undefined {
   if(!canStand(caster.position))return undefined;
   const dx=target.position.x-caster.position.x, dy=target.position.y-caster.position.y;
   const distance=Math.hypot(dx,dy);
   if(distance<=0)return {destination:{...caster.position},close:false};
-  const step=charge.gridSizePx;
-  const steps=Math.floor(distance/step);
+  const steps=Math.floor(distance);
   let landing={...caster.position};
   for(let index=1;index<=steps;index++){
-    const point={x:caster.position.x+dx/distance*step*index,y:caster.position.y+dy/distance*step*index};
-    if(!canStand(point))break;
+    const point={x:caster.position.x+dx/distance*index,y:caster.position.y+dy/distance*index};
+    if(!canStand(point)||!canReach(point)||!verify(point))break;
     landing=point;
   }
   return {destination:landing,close:false};
