@@ -117,6 +117,9 @@ export class StoryUI {
   private statusPortrait?:UiImage;
   private statusAdjustButton?:UiNode;
   private statusRightNodes:UiNode[]=[];
+  private allocationButtons=new Map<PrimaryStat,{minus:UiNode;plus:UiNode}>();
+  private allocationHeld=false;
+  private allocationHoldSource?:UiNode;
   private statusRightAdjusting=false;
   private statusResources=new Map<string,{fill:UiImage;start:UiImage;end:UiImage}>();
   private statusModalTextSpecs:MenuTextSpec[]=[];
@@ -374,8 +377,8 @@ export class StoryUI {
     const nativeInput=new AbortController();
     window.addEventListener('pointermove',event=>this.moveDrag(uiPointer(scene,event)),{signal:nativeInput.signal,capture:true});
     window.addEventListener('pointerup',event=>{this.stopAllocationHold();this.endDrag(uiPointer(scene,event));},{signal:nativeInput.signal,capture:true});
-    window.addEventListener('pointercancel',event=>{uiPointer(scene,event);this.stopAllocationHold();this.cancelDrag();},{signal:nativeInput.signal,capture:true});
-    window.addEventListener('blur',()=>{this.stopAllocationHold();this.cancelDrag();},{signal:nativeInput.signal});
+    window.addEventListener('pointercancel',event=>{uiPointer(scene,event);this.allocationHeld=false;this.stopAllocationHold();this.cancelDrag();},{signal:nativeInput.signal,capture:true});
+    window.addEventListener('blur',()=>{this.allocationHeld=false;this.stopAllocationHold();this.cancelDrag();},{signal:nativeInput.signal});
     scene.events.once('shutdown',()=>nativeInput.abort());
     scene.game.events.on(UI_EVENTS.minimapLayout,this.onMinimap,this);scene.game.events.on(UI_EVENTS.cancelInput,this.cancelDrag,this);
     scene.events.once('shutdown',()=>{this.closePressurePicker();this.unregisterKeyboard?.();this.unregisterKeyboard=undefined;this.unsubscribe?.();this.unsubscribeFullscreen?.();this.discardAllocation();this.menuText?.destroy();this.menuText=undefined;this.shortcutPrompt?.remove();this.shortcutPrompt=undefined;scene.scale.off('resize',this.resize,this);scene.game.events.off(UI_EVENTS.minimapLayout,this.onMinimap,this);scene.game.events.off(UI_EVENTS.cancelInput,this.cancelDrag,this);this.cancelOperation();this.savePage.destroy();this.surface!.root.remove(this.body!.root);this.surface?.destroy();this.body?.destroy();this.modal?.destroy();this.hudButtons?.destroy();this.description?.destroy();this.shortcutScreen?.destroy();this.backTab?.destroy();this.bagPortrait?.destroy();this.backdrop?.destroy();this.popupMask?.destroy();this.popupMask=undefined;this.controlEditor?.destroy();this.controlEditor=undefined;this.keyBindingEditor?.destroy();this.keyBindingEditor=undefined;});
@@ -1345,7 +1348,7 @@ export class StoryUI {
   private renderStatusRight():void{
     const v=this.body!,member=this.member()!,panels=this.app.menuPanels,character=this.app.storyClasses.classes.find(value=>value.id===member.classId)!;
     const hero='source' in member&&member.source!=='mercenary'?undefined:member,statPoints=this.allocation?.remainingPoints??hero?.statPoints??0,attributes=this.allocation?.attributes??member.panel.attributes;
-    const before=new Set(v.root.list);
+    const before=new Set(v.root.list);this.allocationButtons.clear();
     // 右侧两块同样只有图框：原版 `Scene_Draw_...` 只对它们调 `UI_DrawBorderRect`，
     // 加点时属性栏宽 409（画到 x=905），常态宽 224，战斗指标栏固定在 `+0xe2`(226) 处、224 宽。
     // 两种视图都由 53 高的标题和 y=49 起的内容框相接，宽度分别为 224、409。
@@ -1369,14 +1372,17 @@ export class StoryUI {
       this.addStatusText(`attribute-${stat}-name`,attribute.name,nameX,nameY,23);
       this.addStatusText(`attribute-${stat}-value`,String(attributes[stat]),adjusting?751:684,adjusting?index*64+84:index*69+84,23,GOLD,1,0);
       const added=(allocated?.[stat]??0)+(this.allocation?.pending[stat]??0);
-      if(adjusting&&added>=1)this.addStatusText(`attribute-${stat}-added`,`+${added}`,781,index*64+84,23,'#e1823b');
+      if(adjusting)this.addStatusText(`attribute-${stat}-added`,added>=1?`+${added}`:'',781,index*64+84,23,'#e1823b');
       if(adjusting&&this.allocation){
         // 原版减点使用左箭头，增点翻转同图；按下叠加对应亮图，透明处露出属性行底带。
         for(const [delta,x,label,disabled] of [[-1,630,'减少',this.allocation.pending[stat]===0],[1,822,'增加',statPoints<1]] as const){
-          const button=v.button('',x,index*64+70,51,58,()=>this.action(()=>this.allocation!.change(stat,delta)),{
+          const button=v.button('',x,index*64+70,51,58,()=>{if(this.allocationHeld){this.allocationHeld=false;return;}this.changeAllocation(stat,delta);},{
             image:panels.assets['character-step'],pressed:panels.assets['character-step-pressed'],native:true,disabled,
           }).setData('label',`${label}${attribute.name}`);
-          button.on('pointerdown',(pointer:UiPointer)=>this.startAllocationHold(pointer,stat,delta));
+          const pair=this.allocationButtons.get(stat)??{} as {minus:UiNode;plus:UiNode};
+          if(delta===-1)pair.minus=button;else pair.plus=button;this.allocationButtons.set(stat,pair);
+          button.on('pointerdown',(pointer:UiPointer)=>this.startAllocationHold(pointer,stat,delta,button));
+          button.on('pointerupoutside',()=>{if(this.allocationHoldSource===button)this.allocationHeld=false;});
           if(delta===1)for(const part of ['face','highlight']) (button.getData(part) as UiImage).setFlipX(true);
         }
       }
@@ -1390,18 +1396,29 @@ export class StoryUI {
         this.addStatusText(`combat-${index}-value`,values[index],928,24+index*35,19,GOLD,1,0);
       });
     }else{
-      v.button('',571,376,257,48,()=>this.action(()=>this.resetAttributes())).setData('label','能力初始化');
+      v.button('',571,376,257,48,()=>this.resetAllocation()).setData('label','能力初始化');
       this.addStatusText('reset-attributes','能力初始化',571+257/2,376+48/2,Math.min(22,48*.42),GOLD,.5,.5);
     }
     this.addStatusText('stat-points',`${panels.character.labels.statPoints} ${statPoints}`,this.adjusting?534:522,14,20,AREA_TEXT);
     this.statusRightNodes=v.root.list.filter(node=>!before.has(node));this.statusRightAdjusting=this.adjusting;
   }
   private toggleAllocation():void{
-    if(this.adjusting){if(this.requestAllocationExit(()=>this.render()))return;}
+    if(this.adjusting){if(this.requestAllocationExit(()=>{this.modal?.clear();this.updateStatusMember();}))return;}
     else{const hero=this.member();if(!hero||('source' in hero&&hero.source!=='mercenary'))return;this.allocation=new AttributeAllocation(hero);this.adjusting=true;}
-    this.render();
+    this.updateStatusMember();
   }
   /** 能力初始化免费返还全部已分配点数；本轮还没确认的增量也一起作废。 */
+  private changeAllocation(stat:PrimaryStat,delta:1|-1):void{
+    if(this.busy||!this.allocation)return;
+    try{this.allocation.change(stat,delta);this.updateStatusMember();}
+    catch(error){this.notice=(error as Error).message;this.menuText?.renderPage('status');}
+  }
+  private resetAllocation():void{
+    if(this.busy)return;this.busy=true;
+    try{this.resetAttributes();}catch(error){this.notice=(error as Error).message;}
+    finally{this.busy=false;}
+    this.sessionSignature=this.sessionDataSignature()??this.sessionSignature;this.updateStatusMember();
+  }
   private resetAttributes():void{
     const hero=this.member();
     if(!hero||('source' in hero&&hero.source!=='mercenary'))return;
@@ -1414,16 +1431,16 @@ export class StoryUI {
     this.allocation?.cancel();this.allocation=undefined;this.allocationExit=undefined;this.allocationError='';this.adjusting=false;
   }
   /** 长按加点：按住 400ms 后开始，每 90ms 加／减一点；松开或到达上下限就停。 */
-  private startAllocationHold(pointer:UiPointer,stat:PrimaryStat,delta:1|-1):void{
-    this.stopAllocationHold();
+  private startAllocationHold(pointer:UiPointer,stat:PrimaryStat,delta:1|-1,source:UiNode):void{
+    this.stopAllocationHold();this.allocationHeld=false;this.allocationHoldSource=source;
     this.allocationHold=this.scene!.time.delayedCall(400,()=>this.stepAllocationHold(pointer,stat,delta));
   }
   private stepAllocationHold(pointer:UiPointer,stat:PrimaryStat,delta:1|-1):void{
     const allocation=this.allocation;
-    // 每一步都会重画并换掉按钮，所以继续的条件只看指针、分配视图和余额，不看按下时的那个按钮。
+    // 长按期间复用同一组按钮，指针松开或点数用尽时停止。
     if(!pointer.isDown||!this.adjusting||!allocation||!this.surface?.root.visible
       ||(delta===1?allocation.remainingPoints<1:allocation.pending[stat]===0)){this.stopAllocationHold();return;}
-    this.action(()=>this.allocation!.change(stat,delta));
+    this.allocationHeld=true;this.changeAllocation(stat,delta);
     this.allocationHold=this.scene!.time.delayedCall(90,()=>this.stepAllocationHold(pointer,stat,delta));
   }
   private stopAllocationHold():void{this.allocationHold?.remove();this.allocationHold=undefined;}
@@ -2469,9 +2486,13 @@ export class StoryUI {
       text(`resource-${kind}-value`,max===0?'已满级':`${value} / ${max}`);text(`resource-${kind}-percent`,`${Math.floor(ratio*100)}%`);
       if(view){view.fill.setCrop(0,0,view.fill.width*ratio,view.fill.height).setVisible(width>0);view.start.setVisible(width>0);view.end.setX(178+Math.max(0,width-7)).setVisible(width>0);}
     }
-    character.attributes.forEach((attribute,index)=>{const stat=PRIMARY_STATS[index];text(`attribute-${stat}-name`,attribute.name);text(`attribute-${stat}-value`,String(member.panel.attributes[stat]));});
+    const heroForAllocation='source' in member&&member.source!=='mercenary'?undefined:member;
+    character.attributes.forEach((attribute,index)=>{const stat=PRIMARY_STATS[index];text(`attribute-${stat}-name`,attribute.name);text(`attribute-${stat}-value`,String(this.allocation?.attributes[stat]??member.panel.attributes[stat]));
+      const added=(heroForAllocation?.allocated[stat]??0)+(this.allocation?.pending[stat]??0);
+      text(`attribute-${stat}-added`,added?`+${added}`:'');
+      const buttons=this.allocationButtons.get(stat);buttons?.minus.getData('setEnabled')?.((this.allocation?.pending[stat]??0)>0);buttons?.plus.getData('setEnabled')?.((this.allocation?.remainingPoints??0)>0);});
     const hero='source' in member&&member.source!=='mercenary'?undefined:member;
-    text('stat-points',`${panels.character.labels.statPoints} ${hero?.statPoints??0}`);
+    text('stat-points',`${panels.character.labels.statPoints} ${this.allocation?.remainingPoints??hero?.statPoints??0}`);
     this.statusAdjustButton?.getData('setEnabled')?.(!!hero);
     this.statusCombatValues(member).forEach((value,index)=>text(`combat-${index}-value`,value));
     this.menuText?.renderPage('status');this.sync();

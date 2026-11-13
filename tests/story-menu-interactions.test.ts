@@ -352,15 +352,18 @@ test('holding an allocation arrow keeps adding points until released',t=>{
   const f=fixture();t.after(f.cleanup);f.hero.addExperience(f.hero.player.nextLevelExperience);
   f.menu.show('status');f.scene.click(f.scene.button('查看属性加点'));
   const added=()=>visibleDomLabels(f).find(label=>label.style.color==='#e1823b'&&label.text.startsWith('+'));
-  f.scene.press(f.scene.button('增加力量'));
+  const arrow=f.scene.button('增加力量'),portrait=f.internals.body.root.list[0];
+  f.scene.press(arrow);
   assert.equal(added(),undefined,'还没到长按阈值时不加点');
   f.scene.hold();
   assert.equal(added()?.text,'+1','按住到阈值后开始自动加点');
   f.scene.hold();
   assert.equal(added()?.text,'+2','按住期间每一拍再加一点');
+  assert.equal(f.scene.button('增加力量'),arrow);assert.equal(f.internals.body.root.list[0],portrait);
   f.scene.release(f.scene.button('增加力量'));
   f.scene.hold();
   assert.equal(added()?.text,'+2','松开后停止连加');
+  f.scene.click(arrow);assert.equal(added()?.text,'+3','松开后下一次点击仍可加点');
 });
 
 test('skill settings page drops the initial-point label and keeps the reset button',t=>{
