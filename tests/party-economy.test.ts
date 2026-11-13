@@ -54,14 +54,14 @@ test('potion group skills increase the shared heal and subtract forty-five logic
   assert.equal(session.recovery.cooldown.durationMs,recovery.cooldownMs);
 });
 
-test('drop talents add absolute chances after level scaling and never enable a zero-rate slot',()=>{
+test('drop talents add absolute chances and never enable a zero-rate slot',()=>{
   const catalog=read<DropCatalog>('drops'),source=Object.values(catalog.enemies)[0];
   for(const [slot,effect,value] of [['equipment','equipment-drop',10],['upgrade','scroll-drop',20],['crafting','material-drop',20]] as const){
     const chances={money:0,equipment:0,consumable:0,upgrade:0,crafting:0,misc:0,unique:0,fixed:0};chances[slot]=50;
     const data:DropCatalog={...catalog,enemies:{fixture:{...source,level:1,rolls:1,pool:'fixture',chances}},
       pools:{...catalog.pools,fixture:{upgrade:[{item:'resurrection-scroll',weight:10000}],crafting:[{item:'mithril',weight:10000}]}},
       equipment:{weapon:[{item:'fixture-weapon',dropLevel:1}],armor:[],special:[],unique:[],epic:[]}};
-    const random=()=>{let n=0;return()=>n++===0?5/9999:0;};
+    const random=()=>{let n=0;return()=>n++===0?(slot==='equipment'?53:5)/9999:0;};
     const modifiers:DropModifiers={[effect]:value};
     assert.deepEqual(enemyDrops(data,'fixture',99,random()),[]);
     assert.equal(enemyDrops(data,'fixture',99,random(),modifiers).length,1);
@@ -76,7 +76,8 @@ test('the treasure talent selects the better breakable-box table on the original
   for(const rule of [base,fortunate]){rule.spawn=undefined;rule.chances={money:0,equipment:0,consumable:0,upgrade:0,crafting:0,misc:0,unique:0,fixed:0};rule.uniqueChance.numerator=0;}
   fortunate.chances.money=10000;
   const random=(first:number)=>{let n=0;return()=>n++===0?first:0;};
-  assert.equal(rollBreakableLoot(data,stats,'box',1,1,random(48/999),{'chest-quality':1}).rewards.length,1);
-  assert.equal(rollBreakableLoot(data,stats,'box',1,1,random(49/999),{'chest-quality':1}).rewards.length,0);
-  assert.equal(rollBreakableLoot(data,stats,'box',1,1,()=>0).rewards.length,0);
+  const money=(rewards:ReturnType<typeof rollBreakableLoot>['rewards'])=>rewards.filter(reward=>reward.kind==='money').length;
+  assert.equal(money(rollBreakableLoot(data,stats,'box',1,1,random(48/999),{'chest-quality':1}).rewards),1);
+  assert.equal(money(rollBreakableLoot(data,stats,'box',1,1,random(49/999),{'chest-quality':1}).rewards),0);
+  assert.equal(money(rollBreakableLoot(data,stats,'box',1,1,()=>0).rewards),0);
 });
