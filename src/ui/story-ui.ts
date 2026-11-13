@@ -1955,7 +1955,7 @@ export class StoryUI {
         run:()=>assigned?this.clearShortcut('item',entry.item):this.openShortcutScreen('item',entry.item)});
     }
     if(item.equipment)actions.push({label:entry.locked?'解锁':'上锁',run:()=>{
-      bag.setLocked(entry.id,!entry.locked);this.app.ui.showInstant(entry.locked?'装备已解锁':'装备已上锁');
+      bag.setLocked(entry.id,!entry.locked);
     }});
     if(item.discardable&&!worn)actions.push({label:'丢弃',disabled:!!entry.locked,run:()=>this.beginOperation(entry.id,'discard')});
     return actions;

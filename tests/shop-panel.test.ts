@@ -551,6 +551,15 @@ test('cleanup controls sit above the grid, preview details and lock without sell
   press(surface,'清理装备');draw();
   assert.ok(textSpecs(texts,String(session.hero?.level??1)).length);
   for(const label of ['返回商店','全部出售','提高等级上限','白装','紫装'])assert.ok(Number(boxButton(surface,label).y)<0);
+  assert.equal((boxButton(surface,'白装').options as {selected:boolean}).selected,true);
+  assert.equal((boxButton(surface,'绿装').options as {selected:boolean}).selected,false);
+  assert.equal(textSpecs(texts,'白装').length,1);
+  assert.equal(texts.page.some(spec=>String(spec.text).includes('✓')||String(spec.text).includes('□')),false);
+  press(surface,'白装');draw();
+  assert.equal((boxButton(surface,'白装').options as {selected:boolean}).selected,false);
+  assert.equal(textSpecs(texts,'暂无可出售装备').length,0);
+  assert.equal(surface.images.filter(call=>call.file===shops.assets.slot).length,32,'无可售装备时保留空格子');
+  press(surface,'白装');draw();
   assert.deepEqual((boxButton(surface,'提高等级上限').options as {hold:unknown}).hold,{delayMs:350,intervalMs:80});
   press(surface,'提高等级上限');draw();assert.ok(textSpecs(texts,String((session.hero?.level??1)+1)).length);
   press(surface,`出售 ${items.items[id].name}`);draw();

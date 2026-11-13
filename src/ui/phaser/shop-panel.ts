@@ -179,14 +179,8 @@ export class ShopPanel {
     this.cleanupSellButton=button('全部出售',l.sell,()=>this.sellCleanup());
     this.cleanupMinus=button('降低等级上限',l.minus,()=>this.stepCleanupLevel(-1),true);
     button('提高等级上限',l.plus,()=>this.stepCleanupLevel(1),true);
-    ['白装','绿装','蓝装','黄装','紫装'].forEach((name,index)=>{
-      const q=l.qualities;button(name,{x:q.x+index*(q.width+q.gap),y:q.y,width:q.width,height:q.height},()=>{
-        if(this.cleanupRarities.has(index))this.cleanupRarities.delete(index);else this.cleanupRarities.add(index);
-        this.selection=undefined;this.cleanupError=undefined;this.changed();
-      });
-    });
   }
-  private renderCleanupText():void {
+  private renderCleanupText(v:UiSurface):void {
     const l=cleanupLayout,q=l.qualities,quote=this.cleanupQuote!;
     this.cleanupSellButton?.getData('setEnabled')?.(quote.entries.length>0&&!this.sellingCleanup);
     this.cleanupMinus?.getData('setEnabled')?.(this.cleanupLevel>0);
@@ -199,9 +193,14 @@ export class ShopPanel {
     this.buttonText('cleanup-minus','−',l.minus.x,l.minus.y,l.minus.width,l.minus.height);
     this.buttonText('cleanup-plus','＋',l.plus.x,l.plus.y,l.plus.width,l.plus.height);
     const colors=['#ffffff','#4eff00','#00b4ff','#ffe600','#b977ff'];
-    ['白装','绿装','蓝装','黄装','紫装'].forEach((name,index)=>this.addPage(`cleanup-quality-${index}`,
-      `${this.cleanupRarities.has(index)?'✓':'□'}${name}`,q.x+index*(q.width+q.gap)+q.width/2,q.y+q.height/2,18,colors[index],.5,.5));
-    if(!quote.entries.length)this.addPage('cleanup-empty','暂无可出售装备',this.layout.bag.x+160,this.layout.bag.y+140,22,AREA_COLOR,.5,.5);
+    ['白装','绿装','蓝装','黄装','紫装'].forEach((name,index)=>{
+      const x=q.x+index*(q.width+q.gap);
+      v.button('',x,q.y,q.width,q.height,()=>{
+        if(this.cleanupRarities.has(index))this.cleanupRarities.delete(index);else this.cleanupRarities.add(index);
+        this.selection=undefined;this.cleanupError=undefined;this.changed();
+      },{selected:this.cleanupRarities.has(index)}).setData('label',name);
+      this.addPage(`cleanup-quality-${index}`,name,x+q.width/2,q.y+q.height/2,18,colors[index],.5,.5);
+    });
   }
   private toggleBatch():void{
     this.batch=!this.batch;
@@ -393,7 +392,7 @@ export class ShopPanel {
     });
     // 批量出售的入口与动作放在背包框上方那一条空带里（和标题框同一高度），不占格子。
     // 说明面板打开时先收起，避免和“出售”那一步抢同一块区域。
-    if(this.cleaning)this.renderCleanupText();
+    if(this.cleaning)this.renderCleanupText(v);
     if(!this.selection&&!this.cleaning){
       const batchBar=this.layout.bagFrame,batchLabel=this.batch?'退出批量':'批量出售';
       v.button('',batchBar.x,batchBar.y-42,150,40,()=>this.toggleBatch(),
@@ -439,7 +438,7 @@ export class ShopPanel {
     const actions:{label:string;run:()=>void;disabled?:boolean}[]=[];
     if(!this.cleaning)actions.push({label:selection.kind==='buy'?'购买':'出售',run:()=>this.beginTrade(),disabled:selection.kind==='sell'&&!!entry.locked});
     if(ownEquipment)actions.push({label:entry.locked?'解锁':'上锁',run:()=>{
-      this.session.bag.setLocked(entry.id,!entry.locked);this.notify?.(entry.locked?'装备已解锁':'装备已上锁');
+      this.session.bag.setLocked(entry.id,!entry.locked);
       if(this.cleaning)this.selection=undefined;this.changed();
     }});
     const actionLayout=descriptionActionLayout(panel.width,actions.length),detailHeight=actionLayout.scrollHeight;

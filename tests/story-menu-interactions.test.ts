@@ -2620,7 +2620,34 @@ test('bag equipment lock updates marker and actions without closing details',t=>
   assert.equal(f.session.bag.get(entry.id)!.locked,true);assert.ok(f.scene.button('解锁'));
   assert.ok(visibleDomLabels(f).some(label=>label.text.includes('已锁定')));
   f.scene.click(f.scene.button('解锁'));assert.equal(f.session.bag.get(entry.id)!.locked,false);
-  assert.deepEqual(notices.mock.calls.map(call=>call.arguments[0]),['装备已上锁','装备已解锁']);
+  assert.equal(notices.mock.callCount(),0);
+});
+
+test('cleanup quality buttons keep selected appearance across redraws and empty grid stays silent',t=>{
+  const f=fixture();t.after(f.cleanup);
+  f.menu.openShop(f.app.shops.lampShop,'');f.scene.click(f.scene.button('清理装备'));
+  const selected=(label:string)=>f.scene.button(label).getData('selected');
+  assert.equal(selected('白装'),true);assert.equal(selected('绿装'),false);
+  f.scene.click(f.scene.button('绿装'));
+  assert.equal(selected('白装'),true);assert.equal(selected('绿装'),true);
+  assert.equal((f.scene.button('绿装').getData('highlight') as UiNode).visible,true);
+  f.scene.click(f.scene.button('白装'));f.scene.click(f.scene.button('绿装'));
+  assert.equal(selected('白装'),false);assert.equal(selected('绿装'),false);
+  assert.equal((f.scene.button('绿装').getData('highlight') as UiNode).visible,false);
+  assert.equal(f.scene.button('全部出售').input!.enabled,false);
+  assert.ok(!visibleDomLabels(f).some(label=>label.text.includes('暂无可出售装备')));
+  assert.ok(visibleDomLabels(f).some(label=>label.text==='白装'));
+});
+
+test('locking equipment in a shop does not show a notification',t=>{
+  const f=fixture();t.after(f.cleanup);const notices=t.mock.method(f.controls,'showInstant');
+  const entry=f.add('ferrule');
+  f.menu.openShop(f.app.shops.lampShop,'');f.scene.click(f.scene.button(`出售 ${items.items[entry.item].name}`));
+  f.scene.click(f.scene.button('上锁'));
+  assert.equal(f.session.bag.get(entry.id)!.locked,true);
+  f.scene.click(f.scene.button('解锁'));
+  assert.equal(f.session.bag.get(entry.id)!.locked,false);
+  assert.equal(notices.mock.callCount(),0);
 });
 
 
