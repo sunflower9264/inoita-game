@@ -66,7 +66,7 @@ test('combat entry creates enemies once when loading a checkpoint',async()=>{
       textures:{exists:()=>true,get:()=>({has:()=>true}),on(){},remove(){}},anims:{exists:()=>false},
       events:{once(){},off(){}},add:{image:()=>ring}};
     const host:any=Object.assign(Object.create(WorldCombat.prototype),{
-      scene,app:{battleCatalog:battle,wardrobe,world:{actors:{}},session:{skills:{resetVersion:0},subscribe:()=>()=>{}}},
+      scene,app:{battleCatalog:battle,wardrobe,world:{actors:{}},session:{skills:{resetVersion:0},subscribe:()=>()=>{},party:{activeSize:3,activeIds:['player','ally','ally2']}}},
       roster:{spawns:[],enemies:[{key:'one'},{key:'two'}]},drops:{chests:{}},
       hero:{player:{health:1},subscribe:()=>()=>{}},generation:0,closed:false,
       equipmentAttack:()=>({}),prepareCombatSounds(){},outcomes:{warm(){}},feedback:{warm(){}},
@@ -78,6 +78,7 @@ test('combat entry creates enemies once when loading a checkpoint',async()=>{
     await host.start({restore});
     assert.deepEqual(created,restore?[]:['one','two']);
     if(restore){
+      const partySizes:number[]=[];
       const id=battle.enemies[0]!.id;
       const saved={roster:{sequence:2,partySize:1,enemies:[
         {key:'one',enemyId:id,x:9,y:11,health:0},
@@ -89,12 +90,14 @@ test('combat entry creates enemies once when loading a checkpoint',async()=>{
         prepareRestoredSkills:async()=>{},enemyAssets:()=>[],combatRuntime:{reset(){}},
         pendingDefeats:{clear(){}},summonAwareness:undefined,combatEffects:{clear(){}},buffLoops:{clear(){}},
         presenterFor:()=>undefined,deathTweens:new Map(),fallen:new Set(),clearEnemies(){},
-        roster:{enemies:[],restoreState(state:any){this.enemies=state.enemies;}},
+        roster:{enemies:[],restoreState(state:any){this.enemies=state.enemies;},setPartySize(size:number){partySizes.push(size);}},
         conditions:{restoreState(){}},syncControlled(){},visualOf:()=>undefined,arena:[],
         spawnEnemy:(enemy:any)=>placed.push(enemy),threat:{restoreState(){}},
         summons:{restore:(value:unknown)=>groups.push(value)}
       });
       await host.restoreState(saved);
+      assert.deepEqual(partySizes,[3],'读档后按当前上阵人数校正名册');
+      assert.equal(host.partySignature,'player|ally|ally2');
       assert.deepEqual(placed,saved.roster.enemies,'恢复保存的敌人位置、血量和召唤关系');
       assert.deepEqual(groups,[saved.summonGroups]);
     }

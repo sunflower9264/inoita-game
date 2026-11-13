@@ -576,6 +576,9 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
     this.defeated=false;this.wipeoutPending=false;
     // 恢复会按 roster 重建同一批召唤物；它们的会话状态来自存档，不能在这里清掉。
     this.clearEnemies(true,true);this.roster.restoreState(state.roster);this.conditions.restoreState(state.conditions);
+    // 菜单里改队伍后立即保存时，名册人数可能还是旧值；读档以当前上阵人数为准重新缩放敌人。
+    const party=this.app.session.party;
+    if(party){this.roster.setPartySize(party.activeSize,this.app.battleCatalog.enemies);this.partySignature=party.activeIds.join('|');}
     // 恢复会换掉状态和增益；蓝耗缓存必须按新现场重算。
     this.aiSkillCostCache?.clear();
     this.syncControlled();
