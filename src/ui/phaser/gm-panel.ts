@@ -149,6 +149,7 @@ export class GmPanel {
   private storyDetailScrolls:ScrollArea[]=[];
   private storyBody?:UiSurface;
   private storyRow?:StoryTaskRow;
+  private refreshItemPage?:()=>void;
   private characterControls?:{
     members:Map<string,{button:UiNode;key:string}>;values:string[];level:UiNode;mana:UiNode;
     toggles:{invincible:{button:UiNode;key:string};noCooldown:{button:UiNode;key:string};oneHitKill:{button:UiNode;key:string}};
@@ -201,7 +202,7 @@ export class GmPanel {
     this.textSerial=this.tabText.length;this.renderContent(body,writer);
   }
   private renderContent(body:UiSurface,writer?:MenuTextWriter):void{
-    this.writer=writer;this.storyBody=undefined;this.storyRow=undefined;this.characterControls=undefined;const before=new Set(body.root.list),scrolls=new Set(body.scrolls);
+    this.writer=writer;this.storyBody=undefined;this.storyRow=undefined;this.characterControls=undefined;this.refreshItemPage=undefined;const before=new Set(body.root.list),scrolls=new Set(body.scrolls);
     const hint = this.page === 'story' ? this.renderStory(body)
       : this.page === 'character' ? this.renderCharacter(body)
       : this.page === 'items' ? this.renderItems(body)
@@ -384,7 +385,13 @@ export class GmPanel {
       this.references.setText?.(this.itemQuantityTextKey!,`数量 ${this.itemQuantity}`);
       (give.getData('setEnabled') as (enabled:boolean)=>void)(!!current);
     };
-    this.text(`金币 ${this.gm.money()}`, 60, 412, 200, 16);
+    const moneyKey=`gm-text-${this.textSerial}`;this.text(`金币 ${this.gm.money()}`, 60, 412, 200, 16);
+    this.refreshItemPage=()=>{
+      if(!this.references.setText){this.hooks.render();return;}
+      entries=this.gm.items(this.itemFilter);refreshSelection();
+      this.references.setText(moneyKey,`金币 ${this.gm.money()}`);
+      if(this.resultTextKey)this.references.setText(this.resultTextKey,this.result);
+    };
     const moneyBands: readonly (readonly [string, number])[] = [['+1万', 10_000], ['+10万', 100_000], ['+100万', 1_000_000]];
     moneyBands.forEach(([label, amount], index) =>
       this.button(body, label, 280 + index * 100, 404, index === 2 ? 100 : 90, 40,
@@ -468,16 +475,16 @@ export class GmPanel {
   }
   private onGiveItem(entry: GmItemEntry | undefined): void {
     if (!entry) return;
-    const result = this.gm.giveItem(entry.id, this.itemQuantity);
+    const result = this.perform(()=>this.gm.giveItem(entry.id, this.itemQuantity));
     this.result = result.ok
       ? `已加入 ${result.name} ×${result.requested}（持有 ${result.total}）`
       : `发放失败：${result.reason}`;
-    this.hooks.render();
+    if(this.refreshItemPage)this.refreshItemPage();else this.hooks.render();
   }
   private onGainMoney(amount: number): void {
-    const result = this.gm.gainMoney(amount);
+    const result = this.perform(()=>this.gm.gainMoney(amount));
     this.result = result.ok ? `金币 +${amount}，现有 ${result.money}` : `加金币失败：${result.reason}`;
-    this.hooks.render();
+    if(this.refreshItemPage)this.refreshItemPage();else this.hooks.render();
   }
 
   /** 剧情页只有任务列表一层；Escape 交给菜单继续处理。 */

@@ -61,3 +61,5 @@ npm test -- tests/control-layout.test.ts tests/native-message-layout.test.ts
 - 存档手动槽按槽号复用行节点，排序改变时移动节点与文字；内容变化只重建对应行。
 
 - 调试人物切换及升级、恢复和开关动作只更新角色文字与按钮状态，保留原控件。
+
+- 调试发放道具或金币时更新数量和结果文字，保留道具网格与按钮。

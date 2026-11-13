@@ -2618,7 +2618,9 @@ test('the GM item page scrolls addable items, shows details and gives a chosen q
   assert.equal(f.internals.body.scrolls.find(scroll=>scroll.x===60&&scroll.y===100),itemGrid);
   assert.ok(visibleDomLabels(f).some(label=>label.text==='数量 11'));
   f.scene.click(quantityButton);
-  f.scene.click(f.scene.button('加入背包'));
+  const giveButton=f.scene.button('加入背包');f.scene.click(giveButton);
+  assert.equal(f.scene.button('加入背包'),giveButton);assert.equal(f.scene.button('数量 +10'),quantityButton);
+  assert.equal(f.internals.body.scrolls.find(scroll=>scroll.x===60&&scroll.y===100),itemGrid);
   assert.equal(f.session.bag.count(id), before + 21);
   assert.equal(gm.actions().at(-1)?.call, 'giveItem');
 
@@ -2628,7 +2630,8 @@ test('the GM item page scrolls addable items, shows details and gives a chosen q
   assert.ok(visibleDomLabels(f).some(label => label.text === '滚轮或拖动列表查看更多'));
 
   const money = f.session.money;
-  f.scene.click(f.scene.button('金币 +1万'));
+  const moneyButton=f.scene.button('金币 +1万');f.scene.click(moneyButton);
+  assert.equal(f.scene.button('金币 +1万'),moneyButton);assert.equal(f.internals.body.scrolls.find(scroll=>scroll.x===60&&scroll.y===100),itemGrid);
   assert.equal(f.session.money, money + 10_000);
   assert.equal(gm.actions().at(-1)?.call, 'gainMoney');
 });
