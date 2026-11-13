@@ -36,6 +36,8 @@ export interface StoryStage extends TravelDestination {
   camera?: { x: number; y: number };
   curtain?: StoryCurtain;
   audio?: { music: string | null; ambience: string | null };
+  /** 舞台地图褪色色调是否开启。 */
+  mapEffect?: boolean;
 }
 
 /** 已解析的完整场景；声明中的演员名单不是场景快照。 */
@@ -202,7 +204,8 @@ export function validateStoryStageSnapshot(value: unknown): asserts value is Sto
       || member.enemyId !== undefined && actor.enemyId !== member.enemyId)
       throw new Error('剧情检查点演员身份不一致：' + member.id);
   }
-  if (stage.camera && (!Number.isFinite(stage.camera.x) || !Number.isFinite(stage.camera.y))
+  if (stage.mapEffect !== undefined && typeof stage.mapEffect !== 'boolean'
+    || stage.camera && (!Number.isFinite(stage.camera.x) || !Number.isFinite(stage.camera.y))
     || stage.curtain && (!Number.isFinite(stage.curtain.opacity) || stage.curtain.opacity < 0 || stage.curtain.opacity > 1
       || !Number.isSafeInteger(stage.curtain.color) || stage.curtain.color < 0 || stage.curtain.color > 0xffffff)
     || stage.audio && [stage.audio.music, stage.audio.ambience].some(id => id !== null && (typeof id !== 'string' || !id)))

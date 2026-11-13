@@ -58,6 +58,7 @@ export class StoryPresenter implements StoryPresentationPort {
   private groundEffects?: Phaser.GameObjects.Layer;
   private topEffects?: Phaser.GameObjects.Layer;
   private toneFilter?: Phaser.Filters.ColorMatrix;
+  private mapEffect = false;
   constructor(app: StoryContext, world: () => WorldScene, stage?: () => StoryStageScene) {
     this.app = app; this.world = world;
     this.scene = stage ?? (() => world().scene.get(SCENE_KEYS.storyStage) as StoryStageScene);
@@ -174,6 +175,7 @@ export class StoryPresenter implements StoryPresentationPort {
     const center = { x: camera.scrollX + camera.width / 2, y: camera.scrollY + camera.height / 2 };
     if (Number.isFinite(center.x) && Number.isFinite(center.y)) snapshot.camera = center;
     snapshot.curtain = { opacity: this.opacity, color: this.color };
+    snapshot.mapEffect = this.mapEffect;
     if (this.app.audio) snapshot.audio = this.app.audio.captureStoryAudio();
     snapshot.scenes = [...this.scenes.values()].filter(visited => visited.map !== snapshot.map).map(visited => structuredClone(visited));
     return syncStoryScene(snapshot);
@@ -188,12 +190,14 @@ export class StoryPresenter implements StoryPresentationPort {
       scene: { ...state.scene, actors: state.scene.actors.map(actor => ({ ...actor })) },
       cast: state.cast.map(member => ({ ...member })),
       curtain: { opacity: this.opacity, color: this.color },
+      mapEffect: this.mapEffect,
       scenes: [...this.scenes.values()].filter(visited => visited.map !== state.map).map(visited => structuredClone(visited))
     };
     if (this.app.audio) snapshot.audio = this.app.audio.captureStoryAudio();
     return syncStoryScene(snapshot);
   }
   private applyLogicalStage(snapshot: StoryStageSnapshot): void {
+    if (snapshot.mapEffect !== undefined) this.mapEffect = snapshot.mapEffect;
     for (const actor of snapshot.scene.actors) if (actor.storyPoseHold !== undefined) {
       if (actor.storyPoseHold) { actor.animationProgress = 1; actor.animationPlaying = false; }
       else { actor.clip = `idle-${actor.facing}`; actor.animationProgress = 0; actor.animationPlaying = true; delete actor.storyPoseHold; }
@@ -293,6 +297,7 @@ export class StoryPresenter implements StoryPresentationPort {
    * 切图复位，所以重建舞台时不清理它，只在剧情结束时随舞台相机一起消失。
    */
   private applyMapEffect(enabled: boolean): void {
+    this.mapEffect = enabled;
     const filters = this.scene().cameras.main.filters;
     if (!this.toneFilter) {
       if (!enabled || !filters) return;
@@ -374,6 +379,7 @@ export class StoryPresenter implements StoryPresentationPort {
     if (snapshot.camera) scene.cameras.main.centerOn(snapshot.camera.x, snapshot.camera.y);
     if (snapshot.curtain) { this.opacity = snapshot.curtain.opacity; this.color = snapshot.curtain.color; }
     if (snapshot.audio) this.app.audio?.restoreStoryAudio(snapshot.audio);
+    this.applyMapEffect(snapshot.mapEffect ?? this.mapEffect);
     this.drawCurtain();
   }
   async travel(destination: TravelDestination, signal: AbortSignal): Promise<void> {
@@ -584,7 +590,7 @@ export class StoryPresenter implements StoryPresentationPort {
         case 'fade': this.opacity = action.opacity; this.color = action.color; return;
         case 'stop-audio': this.app.audio?.stopStoryAudio(); return;
         case 'music': this.app.audio?.setStoryMusic(action.sound); return;
-        case 'map-effect': if (this.scene()?.sys?.isActive()) this.applyMapEffect(action.enabled); return;
+        case 'map-effect': this.mapEffect = action.enabled; return;
         case 'pose': await this.poseAction(action, playback); return;
         case 'camera': {
           const target = this.state?.bindings.find(([alias]) => alias === action.target)?.[1];
@@ -794,7 +800,7 @@ export class StoryPresenter implements StoryPresentationPort {
     this.epoch++;
     this.resetActors(); this.opacity = 0; this.finalStage = undefined; this.baseline = undefined;
     this.state = undefined;  this.scenes.clear(); this.committedScenes.clear();
-    this.groundEffects = undefined; this.topEffects = undefined; this.toneFilter = undefined;
+    this.groundEffects = undefined; this.topEffects = undefined; this.toneFilter = undefined; this.mapEffect = false;
     const scene = this.scene();
     if (scene.sys.isActive() || scene.sys.isPaused() || scene.sys.isSleeping?.()) {
       scene.releaseStage();

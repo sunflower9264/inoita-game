@@ -793,6 +793,21 @@ test('skipping applies persistent audio commands', async () => {
   assert.deepEqual(calls,['stop','theme']);
 });
 
+test('map tone survives restoring a stage and skipped map effects', async () => {
+  const signal=new AbortController().signal, first=harness(), restored=harness();
+  let active=false;
+  Object.assign(restored.stage.cameras.main,{filters:{internal:{addColorMatrix:()=>({
+    colorMatrix:{set(){}},setActive(value:boolean){active=value;}
+  })}}});
+  await first.presenter.begin(signal);
+  const skip=new AbortController();skip.abort();
+  await first.presenter.execute({type:'map-effect',enabled:true},{signal,skipSignal:skip.signal});
+  const snapshot=first.presenter.captureStage()!;
+  assert.equal(snapshot.mapEffect,true);
+  await restored.presenter.begin(signal,snapshot);
+  assert.equal(active,true);
+});
+
 test('a run skipped before its first frame never launches the stage scene', async () => {
   const run=harness(),signal=new AbortController().signal,skip=new AbortController();skip.abort();
   await run.presenter.begin(signal,undefined,undefined,false,skip.signal);
