@@ -107,7 +107,7 @@ test('dialogue and choice text stays above its shade and hides during occlusion'
   dom.layer=name=>document.getElementById(`ui-${name}`) as HTMLDivElement;
   dom.setOccluded=()=>{};
   const ui={mode:'game',ready:true,suspended:false,worldRebuildCover:false,defeated:false,canSkip:false,
-    dialogueLine:{speaker:'说话人',actor:'npc',text:'对白内容'},page:'对白内容',revealed:4,
+    dialogueLine:{speaker:'说话人',actor:'npc',text:'对白内容'},page:'对白内容',get dialoguePageMarkup(){return this.page;},revealed:4,
     choices:undefined as undefined|{prompt:string;options:never[];choose:()=>void},quest:undefined,
     pressDialogue:()=>{},releaseDialogue:()=>{},resetInput:()=>{}};
   const app={ui,domUi:dom,storyInterface:{assets:{}},director:{canSkip:false}};
