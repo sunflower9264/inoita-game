@@ -314,6 +314,17 @@ test('character allocation uses native arrow art and keeps points in the allocat
   assert(!f.scene.canHit(f.scene.button('减少力量')),'确认后的点数不再属于本轮投入');
 });
 
+test('allocation failure preserves the page and confirmation controls',t=>{
+  const f=fixture();t.after(f.cleanup);f.hero.addExperience(f.hero.player.nextLevelExperience);
+  f.menu.show('status');f.scene.click(f.scene.button('查看属性加点'));f.scene.click(f.scene.button('增加力量'));
+  f.scene.click(f.scene.button('确认属性加点'));
+  const confirm=f.scene.button('确定'),cancel=f.scene.button('取消'),tab=f.scene.button('人物');
+  const state=f.menu as unknown as {allocation:{commit():void}};
+  t.mock.method(state.allocation,'commit',()=>{throw new Error('加点失败');});f.scene.click(confirm);
+  assert.ok(f.scene.button('确定')===confirm);assert.ok(f.scene.button('取消')===cancel);assert.ok(f.scene.button('人物')===tab);
+  assert.ok(visibleDomLabels(f).some(label=>label.text==='加点失败'));
+});
+
 test('character level, class and name stack without overlapping',t=>{
   const f=fixture();t.after(f.cleanup);f.menu.show('status');
   const label=(text:string)=>domLabel(f,text)!;

@@ -1474,7 +1474,15 @@ export class StoryUI {
     try{if(commit)this.allocation!.commit();this.discardAllocation();}
     catch(error){this.allocationError=(error as Error).message;}
     finally{this.busy=false;}
-    if(this.allocationExit){this.render();return;}
+    if(this.allocationExit){
+      if(this.page==='status'&&this.modal){
+        const error=this.statusModalTextSpecs.find(spec=>spec.key==='alloc-error');
+        if(error)error.text=this.allocationError;
+        else this.statusModalTextSpecs.push({key:'alloc-error',text:this.allocationError,x:35,y:292,style:{size:20,color:GOLD,width:648,wrap:'word'}});
+        this.menuText?.renderPage('status');this.sync();
+      }else this.render();
+      return;
+    }
     this.keyboardFocus=undefined;next();
   }
   private renderAllocationConfirmation():void{
