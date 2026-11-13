@@ -387,8 +387,8 @@ test('switching skill sections keeps the frame, party column and section tabs',t
   assert.equal(f.scene.button('设置'),settings);
 });
 
-test('opening and cancelling skill reset confirmation keeps the skill page',t=>{
-  const f=fixture();t.after(f.cleanup);f.menu.show('skills');
+test('skill reset confirmation keeps the skill page',t=>{
+  const f=fixture();t.after(f.cleanup);f.hero.addExperience(Number.MAX_SAFE_INTEGER);const base=f.session.skills.level('dark-strike');f.session.skills.learn('dark-strike');f.menu.show('skills');
   f.scene.click(f.scene.button('设置'));
   const reset=f.scene.button(panels.skillPanel.labels.resetButton),tabs=f.scene.button('技能目录');
   const body=f.internals.body.root.list.slice();
@@ -401,6 +401,9 @@ test('opening and cancelling skill reset confirmation keeps the skill page',t=>{
   assert.deepEqual(f.internals.body.root.list,body);
   f.scene.click(reset);f.scene.key('Escape');
   assert.equal(f.scene.button(panels.skillPanel.labels.resetButton),reset);
+  assert.equal(f.scene.button('技能目录'),tabs);assert.deepEqual(f.internals.body.root.list,body);
+  f.scene.click(reset);f.scene.click(f.scene.button('确定'));
+  assert.equal(f.session.skills.level('dark-strike'),base);assert.equal(f.scene.button(panels.skillPanel.labels.resetButton),reset);
   assert.equal(f.scene.button('技能目录'),tabs);assert.deepEqual(f.internals.body.root.list,body);
 });
 

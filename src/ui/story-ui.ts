@@ -1717,7 +1717,9 @@ export class StoryUI {
       try{this.session!.skills.reset();this.skillReset=false;}
       catch(error){this.notice=(error as Error).message;}
       finally{this.busy=false;}
-      this.render();
+      const header=this.skillTextSpecs.find(spec=>spec.key==='skills-header');
+      if(header)header.text=`${panels.character.labels.skillPoints} ${this.session!.skills.points()}`;
+      this.sessionSignature=this.sessionDataSignature()??this.sessionSignature;this.updateSkillResetModal();
     }).setData('label','确定');
     button('skill-reset-confirm','确定',480,350,190,48);
   }
