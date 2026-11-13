@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { parseDrops, rollEnemyLoot, rollQuestDrops, type DropCatalog, type EnemyDropRule } from '../src/domain/drops.ts';
+import { cachedDropCatalog, parseDrops, rollEnemyLoot, rollQuestDrops, type DropCatalog, type EnemyDropRule } from '../src/domain/drops.ts';
 import type { CharacterStatsCatalog } from '../src/domain/character-stats.ts';
 import { GroundLootStore } from '../src/domain/ground-loot.ts';
 import type { ItemCatalog } from '../src/domain/items.ts';
@@ -129,4 +129,14 @@ test('prepared equipment keeps its generated values after pickup',()=>{
   bag.receiveDrop(prepared);
   assert.equal(bag.entries[0].enhancement,4);
   assert.notEqual(bag.entries[0].id,prepared.id);
+});
+
+
+test('validated drop catalogs are shared only for the same content inputs', () => {
+  const data = catalog({level:20,pool:'ordinary',rolls:1,chances:chances(),fixed:[]});
+  const enemies = [{id:'enemy'}];
+  const first = cachedDropCatalog(data, items, enemies);
+  assert.equal(cachedDropCatalog(data, items, enemies), first);
+  assert.notEqual(cachedDropCatalog(structuredClone(data), items, enemies), first);
+  assert.throws(() => cachedDropCatalog(data, items, [{id:'missing'}]), /敌人掉落规则缺失/);
 });

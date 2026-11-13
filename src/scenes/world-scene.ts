@@ -33,7 +33,7 @@ import type { StoryContext } from '../application/ports.ts';
 import { WorldEnemyRoster } from '../domain/world-enemies.ts';
 import { WorldCombat, type WorldCombatState } from './world-combat.ts';
 import { QuestEnemyWatch } from '../domain/quest-enemies.ts';
-import { parseDrops, rollChestLoot, type DropCatalog, type DropReward } from '../domain/drops.ts';
+import { cachedDropCatalog, rollChestLoot, type DropCatalog, type DropReward } from '../domain/drops.ts';
 import { resolveInteraction } from '../domain/interaction.ts';
 import { faceTarget } from '../domain/basic-attack.ts';
 import { BODY_ADJACENT_GAP, canReachChest, CHEST_OPEN_MS, nearInteractable, nearInteractive, SHOP_COUNTER_GAP } from '../domain/chests.ts';
@@ -396,7 +396,7 @@ export class WorldScene extends Phaser.Scene {
     globalThis.storyDiagnostics?.record('start-phase',{phase:'map-data-ready',map:map.id});
     this.map = map;
     this.app.session.enterMap(map.id,map.questItemSpawns??[],map,map.enemySpawns);
-    this.dropCatalog=parseDrops(rawDrops,this.app.items,this.app.battleCatalog.enemies.map(enemy=>enemy.id));
+    this.dropCatalog=cachedDropCatalog(rawDrops,this.app.items,this.app.battleCatalog.enemies);
     this.springCatalog=parseSprings(rawSprings);
     const generated=options.preparedScene?.visit?.generatedEntities??options.generatedEntities;
     // 正式地图保留“条件可能变化”的静态候选，投影时再按当前剧情条件决定谁顶掉

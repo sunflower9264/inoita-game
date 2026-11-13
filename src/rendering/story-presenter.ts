@@ -2,7 +2,7 @@ import { applyStorySceneAction, hidePendingEntrances, hideUnboundStageActors, re
 import { prepareSceneVisit } from '../domain/scene-visit.ts';
 import { assertScenePlan, planScene } from '../domain/scene-plan.ts';
 import { diffSceneActors } from '../domain/scene-delta.ts';
-import { parseDrops } from '../domain/drops.ts';
+import { cachedDropCatalog } from '../domain/drops.ts';
 import type { SceneSnapshot } from '../domain/scene-snapshot.ts';
 import { SCENE_KEYS } from '../application/scene-keys.ts';
 import Phaser from 'phaser';
@@ -339,7 +339,7 @@ export class StoryPresenter implements StoryPresentationPort {
           ?? this.world().captureStoryScene().actors.find(actor => actor.id === 'player');
         if (!player) throw new Error('剧情玩家尚未准备好');
         source = prepareSceneVisit({ session: this.app.session, campaign: this.app.campaign, world: this.app.world,
-          battleCatalog: this.app.battleCatalog, drops: parseDrops(drops, this.app.items, this.app.battleCatalog.enemies.map(enemy => enemy.id)), springs, partyActors: current?.scene.actors },
+          battleCatalog: this.app.battleCatalog, drops: cachedDropCatalog(drops, this.app.items, this.app.battleCatalog.enemies), springs, partyActors: current?.scene.actors },
           worldMap, { ...player, x: declaration.x, y: declaration.y, facing: declaration.facing });
       }
       this.rememberScene(source);

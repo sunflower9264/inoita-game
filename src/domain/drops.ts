@@ -117,6 +117,22 @@ const chanceKinds:readonly DropChance[]=['money','equipment','consumable','upgra
 const poolKinds:readonly DropCategory[]=['consumable','upgrade','crafting','misc'];
 
 /** The source files are parsed offline; the game only sees named enemies and items. */
+const parsedDropCatalogs = new WeakMap<object, WeakMap<ItemCatalog, WeakMap<readonly { id: string }[], DropCatalog>>>();
+
+export function cachedDropCatalog(value: unknown, items: ItemCatalog, enemies: readonly { id: string }[]): DropCatalog {
+  if (!value || typeof value !== 'object') return parseDrops(value, items, enemies.map(enemy => enemy.id));
+  let byItems = parsedDropCatalogs.get(value);
+  if (!byItems) { byItems = new WeakMap(); parsedDropCatalogs.set(value, byItems); }
+  let byEnemies = byItems.get(items);
+  if (!byEnemies) { byEnemies = new WeakMap(); byItems.set(items, byEnemies); }
+  let catalog = byEnemies.get(enemies);
+  if (!catalog) {
+    catalog = parseDrops(value, items, enemies.map(enemy => enemy.id));
+    byEnemies.set(enemies, catalog);
+  }
+  return catalog;
+}
+
 export function parseDrops(value:unknown,items:ItemCatalog,enemyIds:readonly string[]):DropCatalog {
   if(!value||typeof value!=='object')throw new Error('掉落目录无效');
   const catalog=value as DropCatalog;
