@@ -2243,6 +2243,17 @@ test('load preparation keeps the game menu alive under loading and reports failu
   f.scene.click(f.scene.button('确认'));assert.equal(f.scene.canHit(f.scene.button('存档槽 1')),true);
 });
 
+test('closing the save page ignores a late rename result',async t=>{
+  const f=fixture();t.after(f.cleanup);
+  f.menu.show('save');f.scene.click(f.scene.button('存档槽 1'));f.scene.click(f.scene.button('确认'));
+  let finish!:(name:string|undefined)=>void;
+  f.app.promptText=()=>new Promise(resolve=>{finish=resolve;});
+  f.scene.click(f.scene.button('存档槽 1 改名'));
+  const before=f.app.saves.peek(1);f.menu.close();finish('迟到的名称');
+  await new Promise<void>(resolve=>setImmediate(resolve));
+  assert.deepEqual(f.app.saves.peek(1),before);assert.equal(f.internals.surface.root.visible,false);
+});
+
 test('closing a pending load cancels its preparation and a late error cannot reopen the menu',async t=>{
   const f=fixture();t.after(f.cleanup);let reject!:(error:Error)=>void,signal:AbortSignal|undefined;
   f.app.resumeSlot=async(_slot,request)=>{signal=request;await new Promise<void>((_done,fail)=>reject=fail);};

@@ -62,6 +62,7 @@ export class SavePage {
   private loadConfirm?: SaveSlotRef;
   private deleteConfirm?: SaveSlotRef;
   private renameRef?: SaveSlotRef;
+  private renameSerial=0;
   private messageBand?: NativeMessageBand;
   private readonly prompt = new TextPrompt();
   private readonly host: SavePageHost;
@@ -152,7 +153,7 @@ export class SavePage {
 
   /** 切换页面或关闭菜单时清掉确认框和改名输入，并让在途保存结果失效。 */
   cancelPending(): void {
-    this.saveSerial++;
+    this.saveSerial++;this.renameSerial++;
     this.saving = false;
     this.saveConfirm = undefined;
     this.loadConfirm = undefined;
@@ -164,7 +165,7 @@ export class SavePage {
   /** 页面挂起时只收起系统输入框，保留当前页码。 */
   closeInput(): void {
     if (this.renameRef === undefined) return;
-    this.prompt.close();
+    this.renameSerial++;this.prompt.close();
     this.renameRef = undefined;
   }
 
@@ -276,7 +277,9 @@ export class SavePage {
     if (ref === AUTO_SAVE_SLOT) return;
     const reading = this.host.app.saves.peek(ref);
     if (reading.kind !== 'ok') return;
+    const serial=++this.renameSerial;this.renameRef=ref;
     const apply = (value: string | undefined): void => {
+      if(serial!==this.renameSerial||this.renameRef!==ref)return;
       if (value !== undefined) {
         try { this.host.app.saves.rename(ref, value); }
         catch (error) { console.warn('存档改名失败', error); }
@@ -284,12 +287,14 @@ export class SavePage {
       this.renameRef = undefined; this.host.render(); this.host.sync();
     };
     // 测试没有 DOM 输入框，直接注入一个返回值。
-    if (this.host.app.promptText) { void this.host.app.promptText(reading.summary.name ?? '').then(apply); return; }
-    this.renameRef = ref; this.host.render(); this.host.sync();
+    if (this.host.app.promptText) {
+      this.host.sync();void this.host.app.promptText(reading.summary.name ?? '').then(apply,()=>apply(undefined));return;
+    }
+    this.host.sync();
     this.prompt.show({ title: '存档名称', initial: reading.summary.name ?? '',
       onConfirm: value => apply(value), onCancel: () => apply(undefined) });
     // 没有 DOM（测试或极端环境）时输入框起不来，别让菜单一直处于「让出输入」状态。
-    if (!this.prompt.active) { this.renameRef = undefined; this.host.render(); this.host.sync(); }
+    if (!this.prompt.active) { this.renameRef = undefined; this.host.sync(); }
   }
 
   /** 摘要里的职业名和缩略图在存档时就展开，标题页读档不必再加载职业目录。 */
