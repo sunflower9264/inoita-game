@@ -790,6 +790,19 @@ test('processing items no longer expose a use button on their own description', 
   assert.equal(f.scene.buttons('强化').length,0,'卷轴不再从道具侧强化');
 });
 
+test('using an item and closing its result keeps the other bag controls',async t=>{
+  const f=fixture();t.after(f.cleanup);const pack=f.add('beginner-knight-set'),other=f.add('ferrule');
+  f.menu.debugDescribe(pack.id);const organize=f.scene.button('整理');
+  const otherSlot=f.scene.button(items.items[other.item].name),scroll=f.internals.scrollNames.get('inventory');
+  f.menu.debugUse(pack.id);await f.internals.confirmOperation();
+  assert.equal(f.session.bag.get(pack.id),undefined);
+  assert.ok(f.internals.itemResult);assert.ok(f.scene.button('整理')===organize);
+  assert.ok(f.scene.button(items.items[other.item].name)===otherSlot);assert.ok(f.internals.scrollNames.get('inventory')===scroll);
+  f.scene.click(f.scene.button('关闭'));
+  assert.ok(f.scene.button('整理')===organize);assert.ok(f.scene.button(items.items[other.item].name)===otherSlot);
+  assert.ok(f.internals.scrollNames.get('inventory')===scroll);
+});
+
 test('equipment without enhancement, sockets or chaos has no forge button', t => {
   const f=fixture();t.after(f.cleanup);
   const equipmentId=Object.keys(items.items).find(id=>{const equipment=items.items[id].equipment;return !!equipment&&!equipment.enchantable&&!equipment.locked;})!;

@@ -875,7 +875,7 @@ export class StoryUI {
    */
   private render():void{
     // 背包页已经画好时，普通数据变化只更新格子、装备和说明，不再把整页 DOM 拆掉。
-    // 物品结果、操作确认这类弹层仍走整页重画，保证弹层和背后的页面一起换。
+    // 操作确认等弹层有独立更新路径，正常背包变化只更新受影响的节点。
     if(this.page==='bag'&&this.bagPageCached&&this.bagGrid&&!this.bagOverlayOpen()){
       this.updateBagPage();
       const signature=this.sessionDataSignature();
@@ -887,7 +887,7 @@ export class StoryUI {
     if(signature!==undefined)this.sessionSignature=signature;
   }
   private bagOverlayOpen():boolean{
-    return !!this.itemResult||!!this.operation||!!this.itemNotice||!!this.allocationExit||!!this.skillReset
+    return !!this.operation||!!this.itemNotice||!!this.allocationExit||!!this.skillReset
       ||!!this.shortcutEdit||this.app.ui.controlLayoutEditing;
   }
   /** 当前页的显式签名；具体字段由 `story-ui-signature.ts` 按页面收口。 */
@@ -2003,9 +2003,10 @@ export class StoryUI {
       grid.scrollTop=0;
     }
     const {slots,slotCount}=inventoryView({all:bag.allCells,...bag.pouchCells},this.filter);
-    const wasDetail=this.bagDetailOpen,describing=!!this.selectedItem&&!!bag.get(this.selectedItem);
-    this.bagDetailOpen=describing;
-    const panelCoversBag=describing&&this.descSide==='right';
+    const showingResult=itemResultDetails(this.itemResult,bag.catalog,id=>id,id=>id).length>0;
+    const wasDetail=this.bagDetailOpen,describing=!showingResult&&!!this.selectedItem&&!!bag.get(this.selectedItem);
+    this.bagDetailOpen=describing||showingResult;
+    const panelCoversBag=(describing||showingResult)&&this.descSide==='right';
     this.bagTextSpecs=this.bagTextSpecs.filter(spec=>!spec.key.startsWith('bag-slot-')&&!spec.key.startsWith('bag-money-'));
     const oldItems=new Map<string,BagSlotView>(),oldCells=new Map<string,BagSlotView>();
     for(const view of this.bagSlots){
@@ -2030,9 +2031,9 @@ export class StoryUI {
     this.bagSlots=next;
     this.addBagMoneyTexts(panelCoversBag);
     this.updateBagSelection();
-    if(describing){
+    if(showingResult||describing){
       this.bagDetailTextSpecs=[];this.description!.clear();this.removeDescriptionScrolls();
-      this.renderItemDetail(this.selectedItem!);
+      if(showingResult)this.renderItemResult();else this.renderItemDetail(this.selectedItem!);
     }else if(wasDetail){
       this.bagDetailTextSpecs=[];this.description!.clear();this.removeDescriptionScrolls();
     }
@@ -2412,7 +2413,12 @@ export class StoryUI {
       this.selectedItem=bag.get(op.entry)?op.entry:undefined;
       this.operation=undefined;
     }
-    catch(error){if(signal.aborted)return;op.error=(error as Error).message;op.confirmed=false;}finally{if(!signal.aborted)this.busy=false;}this.render();
+    catch(error){if(signal.aborted)return;op.error=(error as Error).message;op.confirmed=false;}finally{if(!signal.aborted)this.busy=false;}
+    if(this.page==='bag'&&this.bagPageCached){
+      this.modal?.clear();this.scrollNames.delete('operation');
+      if(this.operation){this.renderOperation();this.menuText?.renderPage('operation-notice');this.sync();}
+      else this.render();
+    }else this.render();
   }
   private startDrag(pointer:UiPointer,entry:string,scroll:ScrollArea):void{
     if(this.busy||this.operation||this.itemNotice||!scroll.contains(pointer))return;this.cancelDrag();this.suppressClick=false;
