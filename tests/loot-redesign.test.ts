@@ -90,6 +90,25 @@ test('bosses advance two points and normal kills do not advance rarity pity',()=
   assert.equal(pity.counters('player').uniqueMisses,25);
 });
 
+test('low-level elite advances and triggers epic pity when a matching item exists',()=>{
+  const id='enemy-head-goblin-1';
+  const enemy=battle.enemies.find(entry=>entry.id===id)!;
+  const catalog=structuredClone(drops);
+  catalog.epicDrops!.enemyChance=0;
+  const pity=new LootPity();
+  pity.counters('player').epicMisses=39;
+  const result=settleCombatRewards({enemy,hasSpawn:true,enemyLevel:13,elite:false,heroLevel:13,map:'test',x:0,y:0,
+    partySize:1,earnsExperience:true,party:[{id:'player',level:13}],drops:catalog,stats,random:()=>0.9999,
+    questRequirements:[],pity,reserved:{misses:0,claimed:new Set(),pending:new Set()}});
+  const epic=result.owners[0]!.rewards.find(reward=>reward.kind==='item'&&reward.roll?.rarity===4);
+  assert.ok(epic&&epic.kind==='item');
+  assert.equal(epic.item,'cloak-of-devotion');
+  const record=result.pityRecords[0]!;
+  assert.equal(record.eligibility.epic,true);
+  pity.recordEnemy(record.ownerId,record,record.eligibility,record.points);
+  assert.equal(pity.counters('player').epicMisses,0);
+});
+
 test('three members receive only one equipment reward and a first boss kill gives yellow',()=>{
   const enemy=battle.enemies.find(entry=>entry.id==='enemy-blackhoods-boss-1')!;
   const pity=new LootPity();

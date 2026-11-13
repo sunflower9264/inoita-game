@@ -63,7 +63,6 @@ export interface PityConfig extends LootPityConfig {
 }
 /** 独立紫装判定：没有这个配置时紫装随机路径完全关闭。 */
 interface EpicDropsConfig {
-  minLevel:number;
   enemyChance:number;
   chestChance:number;
 }
@@ -155,12 +154,10 @@ export function parseDrops(value:unknown,items:ItemCatalog,enemyIds:readonly str
   }
   if(catalog.epicDrops){
     const epic=catalog.epicDrops;
-    if(!Number.isSafeInteger(epic.minLevel)||epic.minLevel<1||epic.minLevel>255||
-      !Number.isSafeInteger(epic.enemyChance)||epic.enemyChance<0||epic.enemyChance>10000||
+    if(!Number.isSafeInteger(epic.enemyChance)||epic.enemyChance<0||epic.enemyChance>10000||
       !Number.isSafeInteger(epic.chestChance)||epic.chestChance<0||epic.chestChance>10000||
       !Array.isArray(catalog.equipment.epic)||!catalog.equipment.epic.length||
-      new Set(catalog.equipment.epic.map(choice=>choice.item)).size!==catalog.equipment.epic.length||
-      catalog.equipment.epic.some(choice=>choice.dropLevel<epic.minLevel))
+      new Set(catalog.equipment.epic.map(choice=>choice.item)).size!==catalog.equipment.epic.length)
       throw new Error('紫装掉落配置无效');
   }
   for(const enemyId of enemyIds.filter(id=>!['enemy-bush-1','enemy-jar-1','enemy-box-1'].includes(id))) {
@@ -487,7 +484,7 @@ export function specialDropEligibility(catalog:DropCatalog,playerLevel:number,co
   const withinWindow=!catalog.pity||contentLevel>=playerLevel-catalog.pity.levelWindow;
   const unique=catalog.equipment.unique.some(choice=>choice.dropLevel>=Math.max(1,cap-15)&&choice.dropLevel<=cap);
   const epicDrops=catalog.epicDrops;
-  const epic=!!epicDrops&&cap>=epicDrops.minLevel&&
+  const epic=!!epicDrops&&
     Array.isArray(catalog.equipment.epic)&&catalog.equipment.epic.some(choice=>choice.dropLevel>=Math.max(1,cap-15)&&choice.dropLevel<=cap);
   return {cap,withinWindow,unique,epic};
 }

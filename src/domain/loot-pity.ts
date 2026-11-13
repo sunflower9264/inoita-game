@@ -10,7 +10,7 @@ interface PityCounters {
   equipmentMisses: number;
   /** 替代旧的 rarePlusMisses：连续没有黄装（unique）的次数。 */
   uniqueMisses: number;
-  /** 连续没有紫装（epic）的次数；只在 59 级以上、有候选的合格击杀里累计。 */
+  /** 连续没有紫装（epic）的次数；在有候选的合格击杀里累计。 */
   epicMisses: number;
 }
 

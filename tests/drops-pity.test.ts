@@ -48,7 +48,7 @@ test('parseDrops rejects malformed pity configuration', () => {
   invalidGuarantee.pity.unique.guaranteeAfter = 0;
   assert.throws(() => parseDrops(invalidGuarantee, items, enemyIds), /保底配置无效/);
 
-  const invalidEpic = structuredClone(drops) as { epicDrops: { minLevel: number; enemyChance: number; chestChance: number } };
+  const invalidEpic = structuredClone(drops) as { epicDrops: { enemyChance: number; chestChance: number } };
   invalidEpic.epicDrops.enemyChance = 20000;
   assert.throws(() => parseDrops(invalidEpic, items, enemyIds), /紫装掉落配置无效/);
 

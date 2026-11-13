@@ -14,8 +14,8 @@ const items = read<ItemCatalog>('items');
 const storyEquipment = new Set(items.storyEquipment ?? []);
 const stats = read<CharacterStatsCatalog>('character-stats');
 const battle = read<BattleCatalog>('battle');
-const drops = read<DropCatalog>('drops');
-parseDrops(drops, items, battle.enemies.map(enemy => enemy.id));
+const rawDrops = read<DropCatalog>('drops');
+const drops = parseDrops(rawDrops, items, battle.enemies.map(enemy => enemy.id));
 
 type RolledReward = Extract<DropReward, { kind: 'item' }> & { roll: DropRoll };
 const withRarity = (result: ChestOpenResult, rarity: number): RolledReward[] =>
@@ -37,21 +37,21 @@ function clearRule(data: DropCatalog, id: string) {
   return rule;
 }
 
-test('epic pool contains every level 59+ rarity-4 equipment and nothing below 59', () => {
+test('epic pool contains every non-story rarity-4 equipment at its own level', () => {
   const rarity = new Map((stats.grades ?? []).map(grade => [grade.index, grade.rarity]));
   const target = Object.entries(stats.equipment)
     .filter(([id, entry]) => {
       const item = items.items[id];
-      return !!item && item.category === 'equipment' && (item.level ?? 0) >= 59 && !storyEquipment.has(id)
+      return !!item && item.category === 'equipment' && !storyEquipment.has(id)
         && entry.defaultGrade !== undefined && rarity.get(entry.defaultGrade) === 4;
     })
     .map(([id]) => id);
-  const pool = drops.equipment.epic.map(entry => entry.item);
-  assert.equal(pool.length, 162);
-  assert.equal(new Set(pool).size, 162);
+  const pool = rawDrops.equipment.epic.map(entry => entry.item);
+  assert.equal(pool.length, 199);
+  assert.equal(new Set(pool).size, 199);
   assert.ok([...storyEquipment].every(id => !pool.includes(id)), '剧情人物装备不进入史诗池');
   assert.deepEqual([...pool].sort(), [...target].sort());
-  assert.ok(drops.equipment.epic.every(entry => entry.dropLevel >= 59));
+  assert.ok(rawDrops.equipment.epic.every(entry => entry.dropLevel === items.items[entry.item]!.level));
   assert.equal(target.filter(id => id.startsWith('merciless-')).length, 6, '品级 14 的紫装也在池内');
   const lowLevel = Object.entries(stats.equipment)
     .filter(([id, entry]) => {
@@ -61,7 +61,9 @@ test('epic pool contains every level 59+ rarity-4 equipment and nothing below 59
     })
     .map(([id]) => id);
   assert.equal(lowLevel.length, 43);
-  assert.ok(lowLevel.every(id => !pool.includes(id)), '59 级以下紫装不进入随机池');
+  assert.ok(lowLevel.filter(id => !storyEquipment.has(id)).every(id => pool.includes(id)));
+  assert.ok(drops.equipment.epic.some(entry => entry.item === 'cloak-of-devotion' && entry.dropLevel === 1));
+  assert.ok(!drops.equipment.epic.some(entry => entry.item === 'black-sword-2'), '保留道具使用独立掉落');
 });
 
 test('epic is rolled once per kill even when the enemy has three passes', () => {
@@ -80,7 +82,8 @@ test('epic is rolled once per kill even when the enemy has three passes', () => 
 
 test('epic item level follows the defeated enemy', () => {
   assert.equal(specialDropEligibility(drops, 58, 100, 100).epic, true, '越级击杀可以掉高等级紫装');
-  assert.equal(specialDropEligibility(drops, 100, 58, 58).epic, false, '内容等级不够');
+  assert.equal(specialDropEligibility(drops, 1, 1, 1).epic, true, '1 级有候选紫装');
+  assert.equal(specialDropEligibility(drops, 100, 58, 58).epic, false, '当前等级范围没有普通紫装候选');
   const bandCap = specialDropEligibility(drops, 100, 100, 50);
   assert.equal(bandCap.cap, 100, '地图等级不限制怪物掉落');
   assert.equal(bandCap.epic, true);
@@ -88,12 +91,13 @@ test('epic item level follows the defeated enemy', () => {
   assert.equal(specialDropEligibility(drops, 105, 105, 105).cap, 105);
 });
 
-test('below level 59 or with an empty epic pool, the epic path is skipped', () => {
-  const lowLevelId = enemyId(rule => rule.level < 59 && !rule.noNormalDrops);
+test('low-level enemies can drop epic equipment and an empty pool is skipped', () => {
+  const lowLevelId = enemyId(rule => rule.level === 1 && !rule.noNormalDrops);
   const low = structuredClone(drops);
   const lowRule = clearRule(low, lowLevelId);
+  low.epicDrops!.enemyChance = 10000;
   const lowResult = rollEnemyLoot(low, stats, lowLevelId, lowRule.level, lowRule.level, () => 0);
-  assert.equal(epicRewards(lowResult).length, 0);
+  assert.equal(epicRewards(lowResult)[0]?.item, 'cloak-of-devotion');
 
   const empty = structuredClone(drops);
   empty.equipment.epic = [];
@@ -117,7 +121,7 @@ test('epic hard guarantee forces a purple even against a failing random stream',
   assert.equal(epicRewards(none).length, 0);
 });
 
-test('chests use a fixed epic chance, skip below 59, and never use kill pity', () => {
+test('chests roll epic items whenever their level has candidates', () => {
   const data = structuredClone(drops);
   const rule = data.chests.ordinary;
   for (const key of Object.keys(rule.chances)) rule.chances[key as keyof typeof rule.chances] = 0;
@@ -128,8 +132,9 @@ test('chests use a fixed epic chance, skip below 59, and never use kill pity', (
   data.epicDrops!.chestChance = 0;
   assert.equal(epicRewards(rollChestLoot(data, stats, 'ordinary', 60, 60, () => 0)).length, 0);
   data.epicDrops!.chestChance = 10000;
-  assert.equal(epicRewards(rollChestLoot(data, stats, 'ordinary', 58, 60, () => 0)).length, 0,
-    '宝箱等级低于 59 不判定');
+  assert.equal(epicRewards(rollChestLoot(data, stats, 'ordinary', 1, 1, () => 0))[0]?.item, 'cloak-of-devotion');
+  assert.equal(epicRewards(rollChestLoot(data, stats, 'ordinary', 17, 17, () => 0)).length, 0,
+    '等级范围里没有候选时不掉紫装');
 });
 
 test('unique slot rolls once per kill even with three passes', () => {
