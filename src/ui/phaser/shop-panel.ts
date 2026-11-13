@@ -611,8 +611,12 @@ export class ShopPanel {
     const actions:{label:string;run:()=>void;disabled?:boolean}[]=[];
     if(!this.cleaning)actions.push({label:selection.kind==='buy'?'购买':'出售',run:()=>this.beginTrade(),disabled:selection.kind==='sell'&&!!entry.locked});
     if(ownEquipment)actions.push({label:entry.locked?'解锁':'上锁',run:()=>{
-      this.session.bag.setLocked(entry.id,!entry.locked);
-      if(this.cleaning)this.selection=undefined;this.changed();
+      if(!this.text?.runTrade){this.session.bag.setLocked(entry.id,!entry.locked);if(this.cleaning)this.selection=undefined;this.changed();return;}
+      this.text.runTrade(()=>this.session.bag.setLocked(entry.id,!entry.locked));
+      if(this.cleaning){this.refreshCleanup();return;}
+      const button=this.selectionButtons.get(`sell:${entry.id}`),current=this.session.bag.get(entry.id);
+      if(button&&current&&this.view)updateEquipmentLock(this.view,button,!!current.locked);
+      if(!this.refreshDescription())this.changed();
     }});
     const actionLayout=descriptionActionLayout(panel.width,actions.length),detailHeight=actionLayout.scrollHeight;
     const detail=this.scrollAt(v,'shop-detail',left+panel.scroll.x,top+panel.scroll.y,panel.scroll.width,detailHeight);

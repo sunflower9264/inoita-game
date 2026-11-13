@@ -3183,11 +3183,11 @@ test('cleanup quality buttons keep selected appearance across redraws and empty 
 test('locking equipment in a shop does not show a notification',t=>{
   const f=fixture();t.after(f.cleanup);const notices=t.mock.method(f.controls,'showInstant');
   const entry=f.add('ferrule');
-  f.menu.openShop(f.app.shops.lampShop,'');f.scene.click(f.scene.button(`出售 ${items.items[entry.item].name}`));
+  f.menu.openShop(f.app.shops.lampShop,'');const slot=f.scene.button(`出售 ${items.items[entry.item].name}`),scroll=f.internals.shopPanel!.bagScroll;f.scene.click(slot);
   f.scene.click(f.scene.button('上锁'));
-  assert.equal(f.session.bag.get(entry.id)!.locked,true);
+  assert.equal(f.session.bag.get(entry.id)!.locked,true);assert.equal(f.scene.button(`出售 ${items.items[entry.item].name}`),slot);assert.equal(f.internals.shopPanel!.bagScroll,scroll);
   f.scene.click(f.scene.button('解锁'));
-  assert.equal(f.session.bag.get(entry.id)!.locked,false);
+  assert.equal(f.session.bag.get(entry.id)!.locked,false);assert.equal(f.scene.button(`出售 ${items.items[entry.item].name}`),slot);
   assert.equal(notices.mock.callCount(),0);
 });
 
