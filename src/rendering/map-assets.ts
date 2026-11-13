@@ -59,7 +59,7 @@ interface MapVisualOptions {
 }
 
 /** 所有脚本里在这张地图上开演的舞台角色（含 `node.stage` 与 parallel 里的舞台）。 */
-function stageActorsForMap(campaign: Pick<Campaign, 'scripts'>, mapId: string): string[] {
+function stageActorsForMap(campaign: Pick<Campaign, 'scripts'>, mapId: string, scriptNames: readonly string[]): string[] {
   const actors = new Set<string>();
   const addStage = (stage: StoryStage | undefined) => {
     if (!stage || stage.mapFromWorld || stage.map !== mapId) return;
@@ -71,7 +71,9 @@ function stageActorsForMap(campaign: Pick<Campaign, 'scripts'>, mapId: string): 
       else if (action.type === 'parallel') addActions(action.actions);
     }
   };
-  for (const script of Object.values(campaign.scripts)) {
+  for (const name of scriptNames) {
+    const script = campaign.scripts[name];
+    if (!script) continue;
     for (const node of script.nodes) {
       addStage(node.stage);
       addActions(node.presentation);
@@ -112,9 +114,9 @@ export function planMapVisuals(map: WorldMap, input: WorldAssetInputs, options: 
     for (const spring of springs.springs) add(spring.id);
     add(springs.empty);
   }
-  for (const actor of stageActorsForMap(campaign, map.id)) add(actor);
-  // 剧情命令写入本图的人物，以及外观替换。只扫描本次闭包脚本，避免把整部剧情的人物都装进每张图。
   const scriptNames = options.scripts ? [...options.scripts] : Object.keys(campaign.scripts);
+  for (const actor of stageActorsForMap(campaign, map.id, scriptNames)) add(actor);
+  // 剧情命令写入本图的人物，以及外观替换。只扫描本次闭包脚本，避免把整部剧情的人物都装进每张图。
   for (const name of scriptNames) {
     const script = campaign.scripts[name];
     if (!script) continue;

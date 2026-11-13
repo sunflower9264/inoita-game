@@ -110,3 +110,13 @@ test('target map local scripts stay in the plan when a chain activeScripts set i
   for (const id of plain.scripts) assert.ok(chained.scripts.includes(id), `本地脚本被链脚本挤掉：${id}`);
   assert.ok(chained.scripts.includes('event-0'), '链上的脚本也要保留');
 });
+
+test('map visuals only prepare cast from selected stage scripts', () => {
+  const map = read<WorldMap>('maps/berkelen-knights-headquarters-8ee0e218');
+  const unrelated = planMapVisuals(map, inputs(), { scripts: [] });
+  const selected = planMapVisuals(map, inputs(), { scripts: ['event-156'] });
+  const all = planMapVisuals(map, inputs());
+  assert.equal(unrelated.actorIds.has('janus'), false);
+  assert.equal(selected.actorIds.has('janus'), true);
+  assert.equal(all.actorIds.has('janus'), true);
+});
