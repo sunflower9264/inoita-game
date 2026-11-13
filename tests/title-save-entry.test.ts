@@ -100,7 +100,7 @@ function fixture(gmMode?:MenuContext['gmMode'],cloud?:CloudSavePort){
     // 场景缩放通知与屏幕布局分别提供。
     scale:{width:1200,height:640,zoom:1,on(){},off(){}},
     cloudStatus:undefined,cloudCount:undefined,cloudRequest:undefined,confirmAction:undefined,confirmResolve:undefined,
-    renameRef:undefined,slotRequest:undefined,slotPortraits:undefined,prompt:undefined,settingsScroll:0,backdrop:undefined,
+    renameRef:undefined,renameSerial:0,slotRequest:undefined,slotPortraits:undefined,prompt:undefined,settingsScroll:0,backdrop:undefined,
     challengeClicks:0,challengeTimer:undefined,
     domSpecs:[] as MenuTextSpec[],menuText:undefined as MenuTextLayer|undefined,changelogBackgroundText:undefined as MenuTextLayer|undefined,modalLabels:[] as FakeDomLabel[],
     changelogVersionButtons:[] as Button[],changelogOpen:false,changelogState:'idle',changelogReleases:[] as {gameVersion:string;entries:string[]}[],changelogSelected:0,
@@ -312,6 +312,24 @@ test('title slots rename a manual save through the system keyboard',async()=>{
   const reading=f.saves.inspect(0);
   assert.equal(reading.kind==='ok'?reading.game.summary.name:undefined,'第一章');
   assert.equal(f.view.enabled(),true,'改名结束后恢复输入');
+});
+
+test('canceling title save rename keeps the current list',async()=>{
+  const f=fixture();f.entries.set('inotia4.story.v1.slot0',saved());
+  let finish!:(name:string|undefined)=>void;f.app.promptText=()=>new Promise(resolve=>{finish=resolve;});
+  f.click('开始游戏');const button=f.view.buttons.find(value=>value.getData('label')==='存档槽 1 改名')!;
+  f.click('存档槽 1 改名');assert.equal(f.view.enabled(),false);finish(undefined);
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(f.view.buttons.find(value=>value.getData('label')==='存档槽 1 改名'),button);assert.equal(f.view.enabled(),true);
+});
+
+test('title save rename ignores input after leaving the save page',async()=>{
+  const f=fixture();f.entries.set('inotia4.story.v1.slot0',saved());
+  let finish!:(name:string|undefined)=>void;f.app.promptText=()=>new Promise(resolve=>{finish=resolve;});
+  f.click('开始游戏');f.click('存档槽 1 改名');f.call('showHome');finish('迟到的名称');
+  await new Promise(resolve=>setImmediate(resolve));
+  const reading=f.saves.inspect(0);assert.equal(reading.kind==='ok'?reading.game.summary.name:undefined,undefined);
+  assert.equal(f.state.page,'home');assert(f.view.buttons.some(button=>button.getData('label')==='开始游戏'));
 });
 
 test('the auto save sits on top of the list and a renamed manual slot shows its name',()=>{

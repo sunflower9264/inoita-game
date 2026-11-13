@@ -97,6 +97,7 @@ export class MenuScene extends Phaser.Scene {
   private challengeClicks=0;
   /** 改名输入与通用确认：标题页的存档管理与云存档覆盖确认共用。 */
   private renameRef?:SaveSlotRef;
+  private renameSerial=0;
   private prompt?:TextPrompt;
   private passwordPrompt?:PasswordChangePrompt;
   /** 云存档登录的账号/密码输入框：直接盖在面板行上，不是独立弹层。 */
@@ -134,7 +135,7 @@ export class MenuScene extends Phaser.Scene {
     if(!this.titleAssetsBound){this.titleAssetsBound=true;this.events.once(Phaser.Scenes.Events.DESTROY,()=>this.titleAssets.releaseResident());}
     this.page='home';this.app.ui.setMode('menu');this.app.ui.loading('正在准备主菜单…');
     const controller=new AbortController();
-    this.events.once('shutdown',()=>{this.resetChallengeClicks();this.unregisterInput?.();this.unregisterInput=undefined;controller.abort();this.cancelCloudRequest();this.settleConfirm(false,false);this.slotRequest?.abort();this.changelogRequest?.abort();this.changelogRequest=undefined;this.changelogOpen=false;this.app.releaseChangelog?.();this.prompt?.close();this.passwordPrompt?.close();this.credentials?.destroy();this.credentials=undefined;this.clearModalLabels();this.menuText?.destroy();this.menuText=undefined;this.changelogBackgroundText?.destroy();this.changelogBackgroundText=undefined;this.domSpecs=[];this.slotsScroll=undefined;this.settingsList=undefined;this.cloudScroll=undefined;this.surface?.destroy();this.surface=undefined;this.modal?.destroy();this.modal=undefined;this.popupMask?.destroy();this.popupMask=undefined;this.events.off(Phaser.Scenes.Events.RESUME,this.renderOnResume,this);this.events.off(Phaser.Scenes.Events.PAUSE,this.hideCredentials);this.scale.off('resize',this.resize,this);});
+    this.events.once('shutdown',()=>{this.renameSerial++;this.renameRef=undefined;this.resetChallengeClicks();this.unregisterInput?.();this.unregisterInput=undefined;controller.abort();this.cancelCloudRequest();this.settleConfirm(false,false);this.slotRequest?.abort();this.changelogRequest?.abort();this.changelogRequest=undefined;this.changelogOpen=false;this.app.releaseChangelog?.();this.prompt?.close();this.passwordPrompt?.close();this.credentials?.destroy();this.credentials=undefined;this.clearModalLabels();this.menuText?.destroy();this.menuText=undefined;this.changelogBackgroundText?.destroy();this.changelogBackgroundText=undefined;this.domSpecs=[];this.slotsScroll=undefined;this.settingsList=undefined;this.cloudScroll=undefined;this.surface?.destroy();this.surface=undefined;this.modal?.destroy();this.modal=undefined;this.popupMask?.destroy();this.popupMask=undefined;this.events.off(Phaser.Scenes.Events.RESUME,this.renderOnResume,this);this.events.off(Phaser.Scenes.Events.PAUSE,this.hideCredentials);this.scale.off('resize',this.resize,this);});
     // 标题页整屏独占键盘；原始事件由正式界面场景那一处桥接进 router。
     this.unregisterInput?.();this.unregisterInput=this.app.inputRouter.register('menu',this.routeKey,{exclusive:()=>true});
     this.events.on(Phaser.Scenes.Events.RESUME,this.renderOnResume,this);
@@ -710,16 +711,18 @@ export class MenuScene extends Phaser.Scene {
     if(ref===AUTO_SAVE_SLOT)return;
     const reading=this.app.saves.peek(ref);
     if(reading.kind!=='ok')return;
+    const serial=++this.renameSerial;this.renameRef=ref;
     const apply=(value:string|undefined):void=>{
+      if(serial!==this.renameSerial||this.renameRef!==ref||this.page!=='slots'||!this.sys.isActive())return;
       if(value!==undefined){
         try{this.app.saves.rename(ref,value);}
         catch(error){console.warn('存档改名失败',error);}
       }
-      this.renameRef=undefined;this.render();
+      this.renameRef=undefined;if(value!==undefined)this.render();else this.layout();
     };
     // 测试没有 DOM 输入框，直接注入一个返回值。
-    if(this.app.promptText){void this.app.promptText(reading.summary.name??'').then(apply,()=>{});return;}
-    this.renameRef=ref;this.render();
+    if(this.app.promptText){void this.app.promptText(reading.summary.name??'').then(apply,()=>apply(undefined));return;}
+    this.layout();
     this.prompt?.show({title:'存档名称',initial:reading.summary.name??'',
       onConfirm:value=>apply(value),onCancel:()=>apply(undefined)});
   }
@@ -1064,7 +1067,7 @@ export class MenuScene extends Phaser.Scene {
   /** 离开页面或重进时收掉确认框、改名输入和密码输入，免得残留状态一直挡住输入。 */
   private closeDialogs():void {
     this.settleConfirm(false,false);
-    this.renameRef=undefined;
+    this.renameSerial++;this.renameRef=undefined;
     this.prompt?.close();
     this.passwordPrompt?.close();
   }
