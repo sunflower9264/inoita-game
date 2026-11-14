@@ -362,7 +362,6 @@
       },
       async migrate() {
         const db = await openDb();
-        if (!db) return;
         if (fallbackTimer) { clearTimeout(fallbackTimer); fallbackTimer = 0; }
         const legacy = fallback.slice();
         let fatal = [];
@@ -370,6 +369,18 @@
           const saved = JSON.parse(localStorage.getItem(FATAL_KEY) || '[]');
           if (Array.isArray(saved)) fatal = saved.filter(entry => entry && typeof entry.id === 'string');
         } catch { /* 损坏的应急记录直接跳过。 */ }
+        if (!db) {
+          // 没有 IndexedDB 时应急副本也必须能补传：并入降级队列，上传成功后随 remove 清除。
+          const known = new Set(fallback.map(item => item.id));
+          for (const entry of fatal) if (!known.has(entry.id)) fallback.push(entry);
+          if (fallback.length > MAX_FALLBACK_ENTRIES) fallback = fallback.slice(-MAX_FALLBACK_ENTRIES);
+          // 先把副本落到待发队列，再清应急键，避免两步之间进程被杀导致记录消失。
+          if (fatal.length) {
+            fallbackSave();
+            try { localStorage.removeItem(FATAL_KEY); } catch { /* 存储不可用时保留。 */ }
+          }
+          return;
+        }
         const movedIds = new Set();
         // 单个事务已经各自有 5 秒超时；整个迁移再设总时限，避免 IDB 卡死时 ready 等上几分钟。
         const deadline = Date.now() + IDB_TIMEOUT_MS * 2;

@@ -253,6 +253,16 @@ test('indexeddb journal survives reload and reports an unfinished session', asyn
     (entry.details as { message?: string }).message === 'idb offline strike'));
 });
 
+test('fatal copies upload even when indexeddb is unavailable', async () => {
+  const fatalEntry = { id: 'fatal:1', session: 'old', seq: 1, kind: 'window-error',
+    time: '2026-01-01T00:00:00.000Z', details: { message: 'fatal copy' } };
+  const storage = new Map([['inotia4.diagnostics.fatal.v1', JSON.stringify([fatalEntry])]]);
+  const f = client(storage); await settle();
+  await f.collector.flush(); await settle();
+  assert(f.sent.some(batch => batch.entries.some(entry => entry.details.message === 'fatal copy')));
+  assert.equal(storage.get('inotia4.diagnostics.fatal.v1'), undefined);
+});
+
 test('legacy pending entries migrate into the indexeddb journal', async () => {
   const legacyEntry = { id: 'old:1', session: 'old', seq: 1, kind: 'window-error',
     time: '2026-01-01T00:00:00.000Z', details: { message: 'legacy error' } };
