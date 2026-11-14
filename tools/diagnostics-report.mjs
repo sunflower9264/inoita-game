@@ -17,6 +17,12 @@ import { isErrorEntry } from './diagnostic-collector.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_DIR = path.join(path.dirname(HERE), '.diagnostics');
+/** GM 面板和安卓壳的记录没有网页会话 id，单独归为一组显示，不能被过滤掉。 */
+export const NO_SESSION = '(无会话)';
+
+function sessionOf(entry) {
+  return typeof entry.session === 'string' ? entry.session : NO_SESSION;
+}
 
 function argument(name, fallback) {
   const index = process.argv.indexOf(name);
@@ -40,7 +46,7 @@ async function readStream(directory, base) {
       if (!line.trim()) continue;
       try {
         const entry = JSON.parse(line);
-        if (entry && typeof entry.id === 'string' && typeof entry.session === 'string') entries.push(entry);
+        if (entry && typeof entry.id === 'string') entries.push(entry);
       } catch { /* 半行或损坏的记录跳过。 */ }
     }
   }
@@ -124,8 +130,9 @@ function summarize(session, entries) {
 export function groupSessions(entries) {
   const groups = new Map();
   for (const entry of entries) {
-    let group = groups.get(entry.session);
-    if (!group) { group = []; groups.set(entry.session, group); }
+    const key = sessionOf(entry);
+    let group = groups.get(key);
+    if (!group) { group = []; groups.set(key, group); }
     group.push(entry);
   }
   return [...groups].map(([session, list]) => ({ ...summarize(session, list), entries: list }))
@@ -183,11 +190,11 @@ function detailLine(entry) {
 async function list(directory, limit) {
   const entries = await loadEntries(directory);
   if (!entries.length) {
-    console.log(`没有诊断日志：${path.join(directory, 'client-errors.jsonl')}`);
+    console.log(`没有诊断日志：${directory}`);
     return;
   }
   const sessions = groupSessions(entries).slice(0, limit);
-  console.log(`最近 ${sessions.length} 个会话（共 ${new Set(entries.map(entry => entry.session)).size} 个）\n`);
+  console.log(`最近 ${sessions.length} 个会话（共 ${new Set(entries.map(sessionOf)).size} 个）\n`);
   for (const session of sessions) {
     const build = session.build ? [session.build.game, session.build.contentVersion].filter(Boolean).join('/') : '?';
     console.log(`${session.session}  ${session.start ?? '?'}  时长 ${duration(session.durationMs)}  ${session.ended ? '正常结束' : '未正常结束'}`);
@@ -200,7 +207,7 @@ async function list(directory, limit) {
 
 async function showSession(directory, sessionId) {
   const entries = await loadEntries(directory);
-  const session = entries.filter(entry => entry.session === sessionId);
+  const session = entries.filter(entry => sessionOf(entry) === sessionId);
   if (!session.length) {
     console.error(`找不到会话：${sessionId}`);
     process.exitCode = 1;
