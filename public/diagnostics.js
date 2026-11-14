@@ -230,7 +230,16 @@
         const db = await openDb();
         if (db && await idbAdd(db, entry)) return;
         fallback.push(entry);
-        if (fallback.length > MAX_FALLBACK_ENTRIES) fallback = fallback.slice(-MAX_FALLBACK_ENTRIES);
+        if (fallback.length > MAX_FALLBACK_ENTRIES) {
+          // 与 prune 同一口径：正在上传、尚未确认的记录不能删，只淘汰最旧的非在途记录。
+          const excess = fallback.length - MAX_FALLBACK_ENTRIES;
+          const dropped = new Set();
+          for (const item of fallback) {
+            if (dropped.size >= excess) break;
+            if (!inFlight.has(item.id)) dropped.add(item.id);
+          }
+          fallback = fallback.filter(item => !dropped.has(item.id));
+        }
         fallbackSaveSoon();
       },
       async readBatch(limit, maxBytes) {

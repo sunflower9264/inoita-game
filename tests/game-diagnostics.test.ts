@@ -292,6 +292,18 @@ test('fallback records stay uploadable while indexeddb is available', async () =
   assert.equal(tick?.state, undefined, '非错误记录默认不附完整快照');
 });
 
+test('trimming the fallback queue keeps records that are being uploaded', async () => {
+  const fake = fakeIndexedDB({ failAdds: true });
+  const reports: string[] = [];
+  const f = client(new Map(), false, { indexedDB: fake.api, native: true,
+    onNativeReport: (_body, id) => reports.push(id) });
+  await settle();
+  assert.equal(reports.length, 1, '启动记录正在等待原生确认');
+  for (let index = 0; index < 210; index += 1) f.collector.record('custom', { index }, false);
+  await settle();
+  assert((await f.pending()).some(entry => entry.kind === 'session-start'), '在途记录没有被裁剪删除');
+});
+
 test('pagehide keeps a synchronous session-end copy', async () => {
   const storage = new Map<string, string>();
   const fake = fakeIndexedDB();
