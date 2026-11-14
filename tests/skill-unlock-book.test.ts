@@ -112,6 +112,25 @@ test('mercenary max-all learns every class skill and keeps it at max after level
   }
 });
 
+test('skill books and sealed books can be sold and discarded',()=>{
+  const {session}=fixture();
+  const catalog=parseShops(read('shops'));
+  const store=new Storefront(catalog,items,stats,session,'merchandise-dealer-b09d9585','shadow-camp');
+  const skill=battle.classes.find(entry=>entry.id==='dark-knight')!.skills[0]!;
+  for(const [id,bookSkill] of [['skillbook',undefined],['sealed-skillbook-black-knight',undefined],['skill-unlock-book',skill]] as const){
+    session.bag.add(id,1,bookSkill);
+    const entry=session.bag.entries.find(value=>value.item===id)!;
+    assert.ok(store.sellPrice(entry)>0,`${id} 应有售价`);
+    const before=session.money;store.sell(entry.id,1);
+    assert.equal(session.bag.count(id),0,`${id} 可以出售`);
+    assert.ok(session.money>before,`${id} 出售后有钱`);
+    session.bag.add(id,1,bookSkill);
+    const discarded=session.bag.entries.find(value=>value.item===id)!;
+    session.bag.discard(discarded.id,1);
+    assert.equal(session.bag.count(id),0,`${id} 可以丢弃`);
+  }
+});
+
 test('sealed books sold by shops have a positive price and can be bought',()=>{
   const catalog=parseShops(read('shops'));
   const id='test-sealed-shop';
