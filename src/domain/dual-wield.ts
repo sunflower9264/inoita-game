@@ -4,17 +4,17 @@ const LEATHER_OFFHAND_CHANCE_PER_MILLE=50;
 /** 原版副手判定掷点范围是 1..999。 */
 const NATIVE_CHANCE_ROLL_MAX=999;
 
-/** Equipment contributes to the offhand chance only for the two dual-wield classes. */
-export function baseOffhandAttackChance(classId:string,offhandKind:string,armorKind:string):number {
-  if(classId!=='assassin'&&classId!=='warrior')return 0;
+/** 双持资格以内容表的 `dualWieldClasses` 为准，与背包允许的副手槽位共用同一份名单。 */
+export function baseOffhandAttackChance(classId:string,offhandKind:string,armorKind:string,dualWieldClasses:readonly string[]):number {
+  if(!dualWieldClasses.includes(classId))return 0;
   const weapon=OFFHAND_WEAPON_CHANCE_PER_MILLE.get(offhandKind)??0;
   return weapon+(armorKind==='leather'?LEATHER_OFFHAND_CHANCE_PER_MILLE:0);
 }
 
 /** Eligible attacks draw before reading the current chance, even when that chance is zero. */
-export function chooseDualWield(classId:string,hasOffhandWeapon:boolean,ports:{random:()=>number;chance:()=>number}):boolean {
-  if((classId!=='assassin'&&classId!=='warrior')||!hasOffhandWeapon)return false;
-  const roll=Math.floor(ports.random()*NATIVE_CHANCE_ROLL_MAX)+1;
+export function chooseDualWield(classId:string,hasOffhandWeapon:boolean,ports:{random:()=>number;chance:()=>number},dualWieldClasses:readonly string[]):boolean {
+  if(!dualWieldClasses.includes(classId)||!hasOffhandWeapon)return false;
+  const roll=Math.min(NATIVE_CHANCE_ROLL_MAX,Math.floor(ports.random()*NATIVE_CHANCE_ROLL_MAX)+1);
   return roll<Math.max(0,ports.chance());
 }
 

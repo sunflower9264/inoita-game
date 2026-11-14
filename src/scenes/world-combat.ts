@@ -1887,7 +1887,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
     }else if(key==='offhandAttackChance'){
       const equipped=member?.bag.equipmentItems(member.bag.equipmentFor(id));
       const offhand=equipped?.['off-hand'],armor=equipped?.body;
-      original=baseOffhandAttackChance(member?.classId??'',offhand?this.app.items.items[offhand].kind:'empty',armor?this.app.items.items[armor].kind:'');
+      original=baseOffhandAttackChance(member?.classId??'',offhand?this.app.items.items[offhand].kind:'empty',armor?this.app.items.items[armor].kind:'',this.app.items.dualWieldClasses);
     }else if(key==='threatGenerationRate'){original=1000;
     }else if(key in defaults){
       original=defaults[key as keyof typeof defaults]+(key==='manaRecoveryPerPulse'?this.equipmentRecovery(id).manaRecoveryPerPulse:key==='manaCostReductionRate'?this.equipmentRecovery(id).manaCostReductionRate:0);
@@ -2533,7 +2533,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
     const offhand=equipment['off-hand'];
     const normalStep=()=>step===0?normal:this.equipmentAttack(actor,id,step);
     if(chooseDualWield(member.classId,!!offhand&&this.app.items.items[offhand].equipment?.slot==='main-hand',
-      {random:Math.random,chance:()=>this.actorAttribute(id,'offhandAttackChance')})){
+      {random:Math.random,chance:()=>this.actorAttribute(id,'offhandAttackChance')},this.app.items.dualWieldClasses)){
       const profile=costumeRecipe(this.app.wardrobe,this.app.items,equipment).dualWieldAttack;
       if(!profile)return normalStep();
       return resolveBasicAttack({basicAttacks:{'dual-wield':profile}},
