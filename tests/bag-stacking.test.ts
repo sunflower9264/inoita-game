@@ -63,7 +63,7 @@ test('徽章两枚叠成一格，丢弃与出售都按数量结算', () => {
   assert.equal(session.bag.get(entry.id), undefined);
 });
 
-test('带词条、强化、宝石或绑定技能的实例不会被并进普通堆叠', () => {
+test('带词条、强化、宝石的实例不会被并进普通堆叠，绑定同技能的书单独合并', () => {
   const bag = new Bag(() => {}, catalog, 'dark-knight'), item = 'magic-branch';
   const addDrop = (edit: (entry: ItemInstance) => void) => {
     const drop = bag.prepareDrop(item);
@@ -94,7 +94,10 @@ test('带词条、强化、宝石或绑定技能的实例不会被并进普通�
   const merged = mergeStackableInstances(state, catalog);
   assert.equal(merged.instances.filter(entry => entry.item === item && !entry.numbers && !entry.enhancement && !entry.gems.length && !entry.skill).length, 1);
   assert.equal(merged.instances.find(entry => entry.id === plain.id)!.quantity, 4);
-  assert.equal(merged.instances.filter(entry => entry.item === item).length, 9, '四件带状态的实例和它们的复制件原样保留');
+  const bound = merged.instances.filter(entry => entry.item === item && entry.skill === 'dark-strike');
+  assert.equal(bound.length, 1, '绑定同技能的书复制件合并为一条');
+  assert.equal(bound[0]!.quantity, 2);
+  assert.equal(merged.instances.filter(entry => entry.item === item).length, 8, '三件带状态实例的复制件保留，绑定书合并');
 });
 
 test('旧档里分散的两条技能书读档后合并为一条并更新所有格位引用', () => {

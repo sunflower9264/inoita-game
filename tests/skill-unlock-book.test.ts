@@ -36,6 +36,35 @@ test('sealed skill books open into a bound unlock book for a random class skill'
   assert.equal(opened.skill,result.skill);
 });
 
+test('sealed books never give a second unlock book for the same skill',()=>{
+  const {session}=fixture();
+  const classSkills=items.classSkills['dark-knight']!;
+  for(const expected of classSkills){
+    session.bag.add('sealed-skillbook-black-knight');
+    const sealedEntry=session.bag.entries.find(entry=>entry.item==='sealed-skillbook-black-knight')!;
+    const result=session.bag.use(sealedEntry.id,undefined,undefined,()=>0);
+    assert.equal(result.skill,expected,'每次只从未拥有的技能里选第一个');
+  }
+  assert.equal(session.bag.entries.filter(entry=>entry.item==='skill-unlock-book').length,classSkills.length);
+
+  session.bag.add('sealed-skillbook-black-knight');
+  const extra=session.bag.entries.find(entry=>entry.item==='sealed-skillbook-black-knight')!;
+  assert.throws(()=>session.bag.use(extra.id,undefined,undefined,()=>0),/已经全部获得/);
+  assert.ok(session.bag.get(extra.id),'没有可选技能时封印书不消耗');
+});
+
+test('an unlock book can be obtained again after it is discarded',()=>{
+  const {session}=fixture();
+  session.bag.add('sealed-skillbook-black-knight');
+  const first=session.bag.use(session.bag.entries.find(entry=>entry.item==='sealed-skillbook-black-knight')!.id,undefined,undefined,()=>0);
+  const book=session.bag.entries.find(entry=>entry.item==='skill-unlock-book')!;
+  session.bag.discard(book.id,1);
+
+  session.bag.add('sealed-skillbook-black-knight');
+  const second=session.bag.use(session.bag.entries.find(entry=>entry.item==='sealed-skillbook-black-knight')!.id,undefined,undefined,()=>0);
+  assert.equal(second.skill,first.skill,'不再持有时可以重新获得');
+});
+
 test('an unlock book teaches a mercenary an off-table skill without being consumed',()=>{
   const {session,recruit}=fixture();
   const member=recruit('mercenary-emblem-black-knight');
@@ -94,6 +123,20 @@ test('unlocking an initial-table skill at level zero freezes its natural growth 
   member.addExperience(Number.MAX_SAFE_INTEGER);
   assert.equal(member.skills.skillLevels()[capped],1,'解锁技能不随角色等级自然成长');
   assert.equal(member.skills.book(capped,battle),2,'普通技能书仍能从解锁等级继续升');
+});
+
+test('unlock books bound to the same skill stack in the bag',()=>{
+  const {session,recruit}=fixture();
+  const member=recruit('mercenary-emblem-black-knight');
+  const classSkills=battle.classes.find(entry=>entry.id===member.classId)!.skills;
+  const missing=classSkills.find(id=>!(id in member.skills.skillLevels()))!;
+  session.bag.add('skill-unlock-book',2,missing);
+  const same=session.bag.entries.filter(entry=>entry.item==='skill-unlock-book'&&entry.skill===missing);
+  assert.equal(same.length,1,'同技能解锁书叠成一格');
+  assert.equal(same[0]!.quantity,2);
+  const other=classSkills.find(id=>id!==missing)!;
+  session.bag.add('skill-unlock-book',1,other);
+  assert.equal(session.bag.entries.filter(entry=>entry.item==='skill-unlock-book').length,2,'不同技能不合并');
 });
 
 test('mercenary max-all learns every class skill and keeps it at max after level changes',()=>{

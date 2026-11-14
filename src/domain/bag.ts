@@ -82,14 +82,18 @@ export function verifyBagState(state: BagState, catalog: ItemCatalog): void {
   for (const recipe of state.recipes) if (knownItems && !catalog.recipes[recipe]) throw new Error('背包配方引用不存在');
 }
 
-/** 实例是否带有只属于单件物品的状态；带状态就不能把多件并成一条。 */
-function holdsInstanceState(entry: ItemInstance): boolean {
-  return !!entry.locked || !!entry.skill || entry.lootLevel !== undefined || entry.numbers !== undefined || entry.enhancement > 0 || entry.gems.length > 0;
+/** 同 id、同绑定技能的书仍可叠成一格；其余单件状态会阻止合并。 */
+function instanceStackKey(entry: ItemInstance): string | undefined {
+  if (entry.locked || entry.lootLevel !== undefined || entry.numbers !== undefined || entry.enhancement > 0 || entry.gems.length > 0) return undefined;
+  return `${entry.item}\u0000${entry.skill ?? ''}`;
 }
-/** 这件实例能否参与同 id 合并：目录允许叠加，且没有独立状态。 */
+function stackKey(item: string, skill?: string): string {
+  return `${item}\u0000${skill ?? ''}`;
+}
+/** 这件实例能否参与合并：目录允许叠加，且没有独立状态。 */
 function isStackableInstance(entry: ItemInstance, catalog: ItemCatalog): boolean {
   const definition = catalog.items[entry.item];
-  return !!definition?.stackable && !definition.equipment && !holdsInstanceState(entry);
+  return !!definition?.stackable && !definition.equipment && instanceStackKey(entry) !== undefined;
 }
 /**
  * 把背包里同 id、可叠加、没有实例状态的多条实例并成一条：
@@ -97,22 +101,24 @@ function isStackableInstance(entry: ItemInstance, catalog: ItemCatalog): boolean
  * 不修改传入的状态；没有可合并的条目时原样返回。
  *
  * 旧存档在可叠加物品还是逐件存放时，会把同一件物品散在多个格位里；读档时用它收拢。
- * 带强化、宝石、词条或绑定技能（`skill`）的实例各算一件，不参与合并。
+ * 带强化、宝石、词条等单件状态的实例各算一件；绑定同门技能的解锁书仍会合并。
  */
 export function mergeStackableInstances(state: BagState, catalog: ItemCatalog): BagState {
   const seen = new Set<string>();
   let mergeable = false;
   for (const entry of state.instances) {
     if (!isStackableInstance(entry, catalog)) continue;
-    if (seen.has(entry.item)) { mergeable = true; break; }
-    seen.add(entry.item);
+    const key = instanceStackKey(entry)!;
+    if (seen.has(key)) { mergeable = true; break; }
+    seen.add(key);
   }
   if (!mergeable) return state;
   const merged = structuredClone(state), keep = new Map<string, ItemInstance>(), dropped = new Map<string, string>(), instances: ItemInstance[] = [];
   for (const entry of merged.instances) {
     if (!isStackableInstance(entry, catalog)) { instances.push(entry); continue; }
-    const canonical = keep.get(entry.item);
-    if (!canonical) { keep.set(entry.item, entry); instances.push(entry); continue; }
+    const key = instanceStackKey(entry)!;
+    const canonical = keep.get(key);
+    if (!canonical) { keep.set(key, entry); instances.push(entry); continue; }
     canonical.quantity += entry.quantity;
     dropped.set(entry.id, canonical.id);
   }
@@ -311,10 +317,10 @@ export class Bag {
     if(this.catalog.items[item]?.pickup)throw new Error('该物品在地面拾取时生效');
     this.revision++;
     const stackable = this.catalog.items[item]?.stackable ?? true;
-    if (stackable && !skill) {
-      const existing=this.orderedIds().map(id=>this.instances.get(id)!).find(entry=>entry.item===item&&!holdsInstanceState(entry));
+    if (stackable) {
+      const key=stackKey(item,skill),existing=this.orderedIds().map(id=>this.instances.get(id)!).find(entry=>instanceStackKey(entry)===key);
       if(existing){existing.quantity+=quantity;return;}
-      const entry=this.create(item);entry.quantity=quantity;this.put(entry.id);
+      const entry=this.create(item,skill);entry.quantity=quantity;this.put(entry.id);
     } else for(let index=0;index<quantity;index++)this.put(this.create(item,skill).id);
   }
   /** Resolve a ground item's modifiers when it drops; collecting it keeps this result. */
@@ -327,7 +333,7 @@ export class Bag {
   }
   receiveDrop(prepared:ItemInstance):void {
     if(!this.catalog.items[prepared.item]||this.catalog.items[prepared.item].pickup||prepared.quantity!==1)throw new Error('地面物品无效');
-    if(this.catalog.items[prepared.item].stackable&&!holdsInstanceState(prepared)){this.add(prepared.item);return;}
+    if(this.catalog.items[prepared.item].stackable&&instanceStackKey(prepared)!==undefined){this.add(prepared.item,prepared.quantity,prepared.skill);return;}
     const entry={...copy(prepared),id:`owned-${++this.serial}`};
     this.instances.set(entry.id,entry);this.put(entry.id);this.revision++;
   }
@@ -575,7 +581,13 @@ export class Bag {
           return level!==undefined&&level>=Math.max(1,source.lootLevel!-15)&&level<=source.lootLevel!;
         });
         result.rewards=[{...pick(rewards)}];
-        if(use.kind==='unseal'){result.classId=use.classId;result.skill=pick(this.catalog.classSkills[use.classId!]??[]);}
+        if(use.kind==='unseal'){
+          const owned=new Set([...this.instances.values()].filter(entry=>entry.item==='skill-unlock-book').map(entry=>entry.skill));
+          const skills=(this.catalog.classSkills[use.classId!]??[]).filter(skill=>!owned.has(skill));
+          if(!skills.length)throw new Error('本职业的技能解锁书已经全部获得');
+          result.classId=use.classId;
+          result.skill=pick(skills);
+        }
         break;
       }
       case 'recipe': result.recipe=pick(use.recipes!);break;
