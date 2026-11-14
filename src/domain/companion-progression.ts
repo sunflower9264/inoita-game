@@ -80,6 +80,8 @@ export function generateCompanion(rules:CompanionGenerationRules,definition:{cla
 export class CompanionSkillProgression extends SkillConfiguration {
   private levels:Record<string,number>={};
   private bookLevels:Record<string,number>={};
+  /** 被封印技能书解锁的技能等级；不参与角色等级自然成长。 */
+  private unlocked:Record<string,number>={};
   readonly caps:Record<string,number>;
   private readonly training:Record<string,CompanionTraining>;
   constructor(caps:Record<string,number>,training:Record<string,CompanionTraining>){super();this.caps={...caps};this.training=training;}
@@ -88,21 +90,48 @@ export class CompanionSkillProgression extends SkillConfiguration {
       (this.training[id]?.requiredLevels.slice(0,cap).filter(required=>level>=required).length??0)+(this.bookLevels[id]??0)]));
     this.markChanged();
   }
-  skillLevels():Record<string,number>{return {...this.levels};}
+  skillLevels():Record<string,number>{
+    const levels={...this.levels};
+    // 解锁技能不随角色等级自然成长；有效等级以解锁记录为准。
+    for(const [id,level] of Object.entries(this.unlocked))levels[id]=level;
+    return levels;
+  }
   bookState():Record<string,number>{return {...this.bookLevels};}
+  unlockedState():Record<string,number>{return {...this.unlocked};}
   restoreBooks(books:Record<string,number>,level:number):void{
     this.bookLevels={...books};this.updateLevel(level);
   }
+  restoreUnlocked(unlocked:Record<string,number>):void{
+    this.unlocked={...unlocked};this.markChanged();
+  }
   bookProblem(id:string,catalog:BattleCatalog):string|undefined{
-    const cap=this.caps[id],skill=catalog.skills[id],rank=this.levels[id]??0;
-    if(!cap||!skill)return '该佣兵未开放此技能';
-    if(rank<cap)return `技能达到 ${cap} 级后才能使用技能书`;
-    if(rank>=skill.companion!.ranks.length)return '技能已达到最高等级';
+    const skill=catalog.skills[id],cap=this.caps[id],rank=this.skillLevels()[id]??0;
+    if(!skill)return '技能不存在';
+    const maximum=skill.companion?.ranks.length??skill.ranks.length;
+    if(this.unlocked[id]===undefined){
+      if(!cap)return '该佣兵未开放此技能';
+      if(rank<cap)return `技能达到 ${cap} 级后才能使用技能书`;
+    }
+    if(rank>=maximum)return '技能已达到最高等级';
   }
   book(id:string,catalog:BattleCatalog):number{
     const problem=this.bookProblem(id,catalog);if(problem)throw new Error(problem);
+    if(this.unlocked[id]!==undefined){
+      const rank=(this.unlocked[id]??0)+1;
+      if(rank>(catalog.skills[id].companion?.ranks.length??catalog.skills[id].ranks.length))throw new Error('技能已达到最高等级');
+      this.unlocked[id]=rank;this.markChanged();return rank;
+    }
     this.bookLevels[id]=(this.bookLevels[id]??0)+1;
     this.levels[id]++;this.markChanged();return this.levels[id];
+  }
+  /** 用封印技能书让佣兵学会初始技能表外的技能，从 1 级开始。 */
+  unlockSkill(id:string,catalog:BattleCatalog):number{
+    const skill=catalog.skills[id];
+    if(!skill)throw new Error('技能不存在');
+    if((this.skillLevels()[id]??0)>0||this.unlocked[id]!==undefined)throw new Error('该佣兵已学会此技能');
+    const maximum=skill.companion?.ranks.length??skill.ranks.length;
+    if(maximum<1)throw new Error('技能已达到最高等级');
+    this.unlocked[id]=1;this.markChanged();return 1;
   }
   /**
    * GM 调试：把佣兵自己这套技能直接拉到各自上限，不改变角色等级。
@@ -121,7 +150,8 @@ export class CompanionSkillProgression extends SkillConfiguration {
   override draft(catalog:BattleCatalog,classId:string):SkillLoadout{
     this.draftCallCount++;
     const character=catalog.classes.find(entry=>entry.id===classId);if(!character)throw new Error('职业不存在');
-    return {levels:Object.fromEntries(character.skills.map(id=>[id,this.levels[id]??0]))};
+    const levels=this.skillLevels();
+    return {levels:Object.fromEntries(character.skills.map(id=>[id,levels[id]??0]))};
   }
   override save(catalog:BattleCatalog,classId:string,draft:SkillLoadout):void{
     const expected=this.draft(catalog,classId),character=catalog.classes.find(entry=>entry.id===classId);

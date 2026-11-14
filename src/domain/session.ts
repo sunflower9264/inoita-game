@@ -424,8 +424,19 @@ export class Session {
     this.hero = hero;
     this.skills = new StorySkillProgression(hero,battle);
     hero?.setSkillUseHandler((item,skill,memberId)=>{
+      const definition=items?.items[item];
+      if(definition?.use?.kind==='unlock-skill'){
+        if(!memberId||memberId==='player')throw new Error('解锁书只能给佣兵使用');
+        const member=this.party?.get(memberId);
+        if(!member||member.source!=='mercenary'||!skill||!battle)throw new Error('无法为该成员使用解锁书');
+        const classSkills=items?.classSkills[member.classId]??battle.classes.find(entry=>entry.id===member.classId)?.skills??[];
+        if(!classSkills.includes(skill))throw new Error('该佣兵职业不符');
+        member.skills.unlockSkill(skill,battle);
+        this.recordPerformance(['party','bag']);this.emit();
+        return `${battle.skills[skill].name}已解锁（1 级）`;
+      }
       if(!memberId||memberId==='player')return this.skills.applyItem(item,skill);
-      const member=this.party?.get(memberId),definition=items?.items[item];
+      const member=this.party?.get(memberId);
       if(!member||member.source!=='mercenary'||definition?.use?.kind!=='learn'||!skill||!battle)throw new Error('无法为该成员使用技能书');
       const rank=member.skills.book(skill,battle);
       return `${battle.skills[skill].name}提升至 ${rank} 级`;

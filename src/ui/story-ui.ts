@@ -308,7 +308,7 @@ export class StoryUI {
       this.menuText.register('bag',writer=>this.renderBagText(writer));
       // 技能书页顶部标题画在菜单画布坐标里，换算到内容块坐标后和面板文字一起输出。
       this.menuText.register('learn',writer=>{
-        writer.add({key:'learn-title',text:'使用技能书',x:512-CONTENT_ORIGIN.x,y:25-CONTENT_ORIGIN.y,
+        writer.add({key:'learn-title',text:this.skillBook?.title??'使用技能书',x:512-CONTENT_ORIGIN.x,y:25-CONTENT_ORIGIN.y,
           style:{size:28,color:GOLD,anchorX:.5,anchorY:0}});
         this.skillBook?.renderText(writer);
       });
@@ -1658,7 +1658,9 @@ export class StoryUI {
       skill=skillForGrowth(this.app.battleCatalog.skills[this.skill!]!,memberSkillGrowth(this.selectedMemberId)),
       level=draft.levels[skill.id]??0,
       companion=this.selectedMemberId==='player'?undefined:this.session!.party?.get(this.selectedMemberId),
-      maximum=companion?Math.max(companion.snapshot().skillCaps[skill.id]??0,level):skill.normalMaxLevel;
+      naturalCap=companion?.snapshot().skillCaps[skill.id],
+      unlocked=companion?companion.skills.unlockedState()[skill.id]!==undefined:false,
+      maximum=companion?(unlocked?skill.ranks.length:Math.max(naturalCap??0,level)):skill.normalMaxLevel;
     // AI 页未掌握的格子只保留选中状态，右侧说明区清空（原版 UISkill_AIMainExe 调 UIDesc_SetOff）。
     if(this.skillSection==='ai'&&level===0)return;
     const detailHeight=this.skillSection==='ai'?342:279;
@@ -2213,7 +2215,8 @@ export class StoryUI {
       ()=>this.render(),()=>this.app.audio?.ui('select'),(message)=>this.closeSkillBook(message),
       (view,name,x,y,width,height)=>this.scroll(name,x,y,width,height,view),()=>this.menuText?.refresh(),()=>this.menuText?.renderPage('learn'),
       scroll=>{for(const [name,value] of this.scrollNames)if(value===scroll)this.scrollNames.delete(name);},
-      this.selectedMemberId==='player'?undefined:this.session!.party?.get(this.selectedMemberId));
+      this.selectedMemberId==='player'?undefined:this.session!.party?.get(this.selectedMemberId),
+      this.session!.party?.ownedMembers().filter(member=>member.source==='mercenary')??[]);
     this.skillBook.open();this.page='learn';this.render();
   }
   private closeSkillBook(message?:string):void {
@@ -2230,7 +2233,7 @@ export class StoryUI {
     if(kind==='use'&&this.itemUseProblem(instance))return;
     const use=this.session!.bag.catalog.items[instance.item].use;
     // 技能书不弹确认框：独立页本身就承担选择与确认。
-    if(kind==='use'&&use?.kind==='learn'){this.openSkillBook(entry);return;}
+    if(kind==='use'&&(use?.kind==='learn'||use?.kind==='unlock-skill')){this.openSkillBook(entry);return;}
     // 神灯的动作按钮直接召唤一名地图商人。
     if(kind==='use'&&use?.kind==='merchant'){
       this.operation={entry,kind,quantity:1};this.confirmOperation();return;

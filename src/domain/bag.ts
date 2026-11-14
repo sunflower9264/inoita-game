@@ -550,10 +550,12 @@ export class Bag {
     };
     const learnedSkill=source.skill||skill;
     if(use.kind==='learn'&&(!learnedSkill||(!memberId&&!this.catalog.classSkills[this.classId]?.includes(learnedSkill))))throw new Error('请选择本职业的技能');
+    if(use.kind==='unlock-skill'&&(!learnedSkill||!memberId))throw new Error('请选择要解锁技能的佣兵');
     const result:ItemResult={kind:use.kind,title:USE_LABELS[use.kind],message:`已使用${definition.name}`,rewards:[],target,item:source.item};
     const enchantOutcome=use.kind==='enchant'?this.rules?.enchant?.(source,this.instances.get(target!)!,random):undefined;
     const useMessage=this.rules?.applyUse(source,target?this.instances.get(target):undefined,learnedSkill,memberId);
     if(useMessage)result.message=useMessage;
+    if(use.kind==='unlock-skill'&&!useMessage)throw new Error('解锁书只能通过角色使用');
     // 每种用途都要有一个 case：新增 ItemUseKind 时，`default` 的 `never` 兜底会在这里编译失败。
     switch(use.kind) {
       // consume 与技能点类的结算由上面的 applyUse 完成；神灯在地图召唤事务中扣除物品，人物由世界场景准备。
@@ -578,12 +580,13 @@ export class Bag {
       }
       case 'recipe': result.recipe=pick(use.recipes!);break;
       case 'learn': result.skill=learnedSkill;break;
+      case 'unlock-skill': result.skill=learnedSkill;break;
       // 上面已按 USE_HANDLING 拒绝，走不到这几行；列出来只为让 switch 保持穷尽。
       case 'recover-health': case 'regenerate': case 'recruit': case 'revive': throw new Error(USE_INTERFACE_ONLY);
       case 'dungeon': throw new Error(USE_NOT_IMPLEMENTED);
       default: {const missing:never=use.kind;throw new Error(`未处理的物品用途：${missing}`);}
     }
-    this.consume(id);
+    if(use.kind!=='unlock-skill')this.consume(id);
     for(const reward of result.rewards)this.add(reward.item,reward.quantity,use.kind==='unseal'?result.skill:undefined);
     if(result.recipe)this.recipeBook.add(result.recipe);
     this.lastResult=result;this.notify();return result;
