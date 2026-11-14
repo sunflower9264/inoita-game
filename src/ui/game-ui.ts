@@ -109,7 +109,9 @@ export class GameUI {
   }
   showDefeat(actions:DefeatActions):void {
     // 旧流程残留时不能让新的全灭被静默吞掉：替换并记录一次，界面重新弹出。
-    if(this.defeatFlow)globalThis.storyDiagnostics?.record('defeat-flow-replaced',{});
+    if(this.defeatFlow)globalThis.storyDiagnostics?.record('defeat-flow-replaced',{
+      busy:this.defeatFlow.busy,hidden:!!this.defeatFlow.hidden,
+      confirmation:this.defeatFlow.confirmation??null,error:this.defeatFlow.error??null});
     this.defeatFlow={actions,busy:false};this.toastMessage='';this.loadingState=undefined;this.lock(true,'defeat');
   }
   selectDefeatAction(action:DefeatAction):void {
