@@ -214,6 +214,8 @@ export class Session {
   isOneHitKill(actorId:string):boolean { return this.oneHitKill.has(actorId); }
   readonly frenzyAnimations = new FrenzyAnimationMemory();
   readonly skills: StorySkillProgression;
+  /** 战斗目录只读访问：GM 拉满佣兵技能需要职业技能表与伙伴成长表的最高等级。 */
+  get battleCatalog():BattleCatalog|undefined {return this.battle;}
   readonly campaign: Campaign;
   readonly questBook:QuestBook;
   readonly storyWorld = new StoryWorldState();

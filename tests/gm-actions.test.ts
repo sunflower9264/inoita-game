@@ -201,27 +201,45 @@ test('maxSkills learns and maxes every class skill for the hero without spending
   const classSkills = battle.classes.find(value => value.id === session.hero!.classId)!.skills;
   const before = Object.fromEntries(classSkills.map(id => [id, session.skills.level(id)]));
   const points = session.skills.points();
+  let notifications = 0;
+  const unsubscribe = session.subscribe(() => { notifications += 1; });
   const result = gm.maxSkills('player');
+  unsubscribe();
   assert.equal(result.ok, true);
   for (const id of classSkills) {
     assert.equal(session.skills.level(id), battle.skills[id]!.ranks.length, `${id} 达到最高等级`);
   }
   assert.equal(session.skills.points(), points, '不消耗技能点');
+  assert.equal(notifications, 1, '执行后只发一次会话通知');
   assert.equal(result.learned! + result.maxed!,
     classSkills.filter(id => before[id]! < battle.skills[id]!.ranks.length).length, '变化数量与实际提升的技能一致');
   const again = gm.maxSkills('player');
   assert.deepEqual([again.ok, again.learned, again.maxed], [true, 0, 0], '再次执行没有变化');
 });
 
-test('maxSkills raises companion skills to their own caps without changing level', () => {
+test('maxSkills learns every companion class skill at its growth maximum without changing level', () => {
   const { session, gm } = harness();
   const member = recruit(session);
+  const classSkills = battle.classes.find(value => value.id === member.classId)!.skills;
+  const maximum = (id: string) => battle.skills[id]!.companion?.ranks.length ?? battle.skills[id]!.ranks.length;
+  const before = member.skills.skillLevels();
   const level = member.level;
+  let notifications = 0;
+  const unsubscribe = session.subscribe(() => { notifications += 1; });
   const result = gm.maxSkills(member.id);
+  unsubscribe();
   assert.equal(result.ok, true);
   const levels = member.skills.skillLevels();
-  for (const [id, cap] of Object.entries(member.skills.caps)) assert.equal(levels[id], cap, `${id} 达到上限`);
+  for (const id of classSkills) assert.equal(levels[id], maximum(id), `${id} 达到伙伴成长最高等级`);
+  const unlockedByGeneratedCaps = classSkills.filter(id => !(id in member.skills.caps));
+  assert.ok(unlockedByGeneratedCaps.length > 0, '佣兵招募时的自然技能表只开放部分职业技能');
+  for (const id of unlockedByGeneratedCaps) assert.ok((levels[id] ?? 0) > 0, `${id} 未开放也要学会`);
+  assert.equal(result.learned! + result.maxed!,
+    classSkills.filter(id => (before[id] ?? 0) < maximum(id)).length, '变化数量与实际提升的技能一致');
   assert.equal(member.level, level, '不改变角色等级');
+  assert.equal(notifications, 1, '执行后只发一次会话通知');
+  const again = gm.maxSkills(member.id);
+  assert.deepEqual([again.ok, again.learned, again.maxed], [true, 0, 0], '再次执行没有变化');
   assert.equal(gm.maxSkills('nope').ok, false);
 });
 

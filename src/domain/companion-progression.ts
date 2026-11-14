@@ -134,12 +134,19 @@ export class CompanionSkillProgression extends SkillConfiguration {
     this.unlocked[id]=1;this.markChanged();return 1;
   }
   /**
-   * GM 调试：把佣兵自己这套技能直接拉到各自上限，不改变角色等级。
+   * GM 调试：把佣兵本职业的全部技能直接学会并升到最高等级，不改变角色等级。
+   * 最高等级取该技能的伙伴成长表（`companion.ranks`）长度；没有伙伴成长表时退回普通表长度。
+   * 不写技能书等级，也不改变招募时生成的自然上限。
    */
-  maxAll(): { learned: number; maxed: number } {
+  maxAll(catalog:BattleCatalog,classId:string): { learned: number; maxed: number } {
+    const character=catalog.classes.find(entry=>entry.id===classId);
+    if(!character)throw new Error('职业不存在');
+    const before=this.skillLevels();
     let learned=0,maxed=0;
-    for(const [id,cap] of Object.entries(this.caps)){
-      const from=this.levels[id]??0,to=Math.max(0,cap);
+    for(const id of character.skills){
+      const skill=catalog.skills[id];
+      if(!skill)continue;
+      const from=before[id]??0,to=skill.companion?.ranks.length??skill.ranks.length;
       if(to<=from)continue;
       if(from===0)learned++;else maxed++;
       this.levels[id]=to;

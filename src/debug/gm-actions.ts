@@ -654,7 +654,9 @@ export function createGmActions(ports: GmPorts): GmActions {
       else {
         const companion = session.party?.get(id);
         if (!companion) return { ok: false, reason: `没有该角色：${id}` };
-        result = companion.skills.maxAll();
+        const catalog = session.battleCatalog;
+        if (!catalog) return { ok: false, reason: '当前会话没有战斗目录，无法拉满佣兵技能' };
+        result = companion.skills.maxAll(catalog, companion.classId);
       }
       session.emit();
       return { ok: true, ...result };
