@@ -116,9 +116,10 @@ export class AutoSaver<World = unknown> {
       const next=new Map<string,string>();
       for(const [id,state] of session.quests){
         next.set(id,state.status);
-        if(statuses.get(id)!==state.status&&(state.status==='active'||state.status==='completed')){
-          changed=true;
+        if(statuses.get(id)!==state.status){
+          // 诊断记录所有真实状态变化（含可接取、可交付），存档仍只在接取和完成时触发。
           globalThis.storyDiagnostics?.record('quest-change',{quest:id,status:state.status},false);
+          if(state.status==='active'||state.status==='completed')changed=true;
         }
       }
       statuses=next;

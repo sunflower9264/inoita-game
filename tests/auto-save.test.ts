@@ -150,8 +150,13 @@ test('the timer writes on its own schedule',async t=>{
   assert.ok(f.writes.length>=1,'定时存档至少写一次');
 });
 
-test('quest accept and completion trigger a write while progress-only updates do not',async t=>{
+test('quest state changes are logged while only accept and completion trigger a write',async t=>{
   const f=harness();t.after(()=>f.saver.stop());
+  const records:{kind:string;details:unknown}[]=[];
+  const previous=globalThis.storyDiagnostics;
+  globalThis.storyDiagnostics={record:(kind:string,details:unknown)=>{records.push({kind,details});},
+    flush:async()=>{},setSnapshot(){},setMetrics(){},export:async()=>''};
+  t.after(()=>{globalThis.storyDiagnostics=previous;});
   let status='locked',version=0;
   const listeners=new Set<()=>void>();
   const session={
@@ -160,15 +165,23 @@ test('quest accept and completion trigger a write while progress-only updates do
     subscribe(listener:()=>void){listeners.add(listener);return()=>listeners.delete(listener);},
   };
   const off=f.saver.watchQuests(session as never);
-  status='active';version=1;for(const listener of listeners)listener();
+  status='available';version=1;for(const listener of listeners)listener();
   await wait(20);
-  assert.equal(f.writes.length,1,'接取任务写一次');
+  assert.equal(f.writes.length,0,'任务变为可接取不触发存档');
   status='active';version=2;for(const listener of listeners)listener();
   await wait(20);
+  assert.equal(f.writes.length,1,'接取任务写一次');
+  status='active';version=3;for(const listener of listeners)listener();
+  await wait(20);
   assert.equal(f.writes.length,1,'只有目标进度变化不写');
-  status='completed';version=3;for(const listener of listeners)listener();
+  status='ready';version=4;for(const listener of listeners)listener();
+  await wait(20);
+  assert.equal(f.writes.length,1,'任务变为可交付不触发存档');
+  status='completed';version=5;for(const listener of listeners)listener();
   await wait(20);
   assert.equal(f.writes.length,2,'完成任务再写一次');
+  assert.deepEqual(records.map(record=>record.details),
+    [{quest:'q',status:'available'},{quest:'q',status:'active'},{quest:'q',status:'ready'},{quest:'q',status:'completed'}]);
   off();
 });
 
