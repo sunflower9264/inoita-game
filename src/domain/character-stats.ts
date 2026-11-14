@@ -238,7 +238,14 @@ export function previewGemPanel(options:{
   const clone=structuredClone(target);clone.numbers!.gemModifiers=options.gemModifiers.map(modifier=>({...modifier}));
   const equipped:Partial<Record<EquipmentSlot,ItemInstance>>={};
   for(const [key,id]of Object.entries(options.equipped))if(id)equipped[key as EquipmentSlot]=options.bag.get(id);
-  equipped[slot??options.emptySlot!]=clone;
+  const targetSlot=slot??options.emptySlot!, rule=options.items.items[target.item]?.equipment;
+  // 预览也要执行换手规则：装双手武器会卸下副手，把盾/副手武器放进空副手会卸下双手主手。
+  if(targetSlot==='main-hand'&&rule?.twoHanded)delete equipped['off-hand'];
+  if(targetSlot==='off-hand'){
+    const main=equipped['main-hand'];
+    if(main&&options.items.items[main.item]?.equipment?.twoHanded)delete equipped['main-hand'];
+  }
+  equipped[targetSlot]=clone;
   return calculateCharacter(options.catalog,options.items,options.classId,options.level,options.allocated,equipped);
 }
 

@@ -1481,3 +1481,27 @@ test('an undefined equipment instance in a slot is skipped rather than treated a
   assert.equal(panel.physicalAttack, 0);
   assert.equal(panel.shieldBlock, 0);
 });
+
+test('previewGemPanel applies the hand rules when the previewed item occupies an empty hand', () => {
+  const hero = new BattleCharacter('dark-knight', catalog, items);
+  hero.addExperience(Number.MAX_SAFE_INTEGER);
+  const twoHandedId = Object.keys(items.items).find(id => {
+    const equipment = items.items[id].equipment;
+    return equipment?.twoHanded && equipment.classes.includes('dark-knight') && !equipment.locked && catalog.equipment[id];
+  })!;
+  const shieldId = Object.keys(items.items).find(id => {
+    const equipment = items.items[id].equipment;
+    return equipment?.slot === 'off-hand' && equipment.classes.includes('dark-knight') && !equipment.locked;
+  })!;
+  hero.bag.add(shieldId);
+  hero.bag.equip(hero.bag.entries.find(entry => entry.item === shieldId)!.id, 'off-hand');
+  hero.bag.add(twoHandedId);
+  const twoHanded = hero.bag.entries.find(entry => entry.item === twoHandedId)!;
+  const preview = previewGemPanel({
+    catalog, items, classId: hero.classId, level: hero.level, allocated: hero.allocated,
+    equipped: hero.bag.equipment, bag: hero.bag, targetId: twoHanded.id, gemModifiers: [], emptySlot: 'main-hand',
+  });
+  assert.ok(preview);
+  assert.equal(preview.offhandShield, false, '装上双手武器后盾牌会被卸下，预览也要按没有盾计算');
+  assert.equal(preview.shieldBlock, 0);
+});
