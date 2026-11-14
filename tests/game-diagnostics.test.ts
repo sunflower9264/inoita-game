@@ -170,6 +170,7 @@ test('console and global errors retain stack, cause, state and original console 
   const args = records.at(-3)!.details.args as { message: string; stack: string; cause: { message: string }; self: string }[];
   assert.equal(args[0].message, 'strike failed'); assert.match(args[0].stack, /strike failed/);
   assert.equal(args[0].cause.message, 'missing frame'); assert.equal(args[1].self, '[Circular]');
+  assert.match((records.at(-3)!.details as { callStack: string }).callStack, /console\.error/);
   assert.deepEqual(records.at(-1)!.state, { map: 'shadow-forest-east', health: 12 });
 });
 

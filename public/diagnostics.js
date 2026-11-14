@@ -628,14 +628,15 @@
     if (entries.length) record('slow-resources', { entries }, false);
   }, 10_000);
 
+  // 抓栈比较贵；用惰性字段，只有真正写入日志时才构造错误对象，被限流压掉的重复错误不付这份开销。
   const originalError = console.error;
   console.error = function (...args) {
-    record('console-error', { args, callStack: new Error('console.error').stack });
+    record('console-error', { args, get callStack() { return new Error('console.error').stack; } });
     return originalError.apply(this, args);
   };
   const originalWarn = console.warn;
   console.warn = function (...args) {
-    record('console-warn', { args, callStack: new Error('console.warn').stack });
+    record('console-warn', { args, get callStack() { return new Error('console.warn').stack; } });
     return originalWarn.apply(this, args);
   };
   window.addEventListener('error', event => {
