@@ -7,6 +7,8 @@ import { domAssets, type DomAssets } from './assets.ts';
 import { DomComponent, DomImage } from './components.ts';
 
 export interface MinimapTask extends Point { id: string; status: 'available' | 'active' | 'ready' }
+/** 原版给宝箱、泉水、商店和服务 NPC 共用同一个交互圆环。 */
+export interface MinimapInteraction extends Point { id: string }
 interface Marker { image: DomImage; file: string; x: number; y: number }
 /** 小地图边框厚度：也是地形、出口和标记相对图框的内缩。 */
 const MINIMAP_FRAME_INSET = 3;
@@ -24,6 +26,7 @@ export class DomMinimap extends DomComponent {
   private playerKey = '';
   private readonly tasks = new Map<string, Marker>();
   private readonly enemies = new Map<string, Marker>();
+  private readonly interactions = new Map<string, Marker>();
   private placed = { x: 0, y: 0, scale: 1 };
   readonly width: number;
   readonly height: number;
@@ -89,6 +92,9 @@ export class DomMinimap extends DomComponent {
   }
   updateEnemies(enemies: readonly (Point & { id: string })[]): void {
     this.markers(this.enemies, enemies.map(enemy => ({ ...enemy, part: 'special' })), 0);
+  }
+  updateInteractions(interactions: readonly MinimapInteraction[]): void {
+    this.markers(this.interactions, interactions.map(point => ({ ...point, part: 'interact' })), 3);
   }
   private markers(current: Map<string, Marker>, points: readonly (Point & { id: string; part: string })[], lift: number): void {
     const ids = new Set(points.map(point => point.id));

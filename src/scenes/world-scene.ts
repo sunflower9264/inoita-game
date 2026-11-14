@@ -18,7 +18,7 @@ import { buildStoryTriggerIndex, type StoryTriggerIndex } from '../domain/story-
 import { NavigationWorld, collisionAt } from '../domain/navigation-world.ts';
 import { MovementWorld } from '../rendering/movement-world.ts';
 import { isBodyWalking } from '../rendering/arcade-movement.ts';
-import type { ClipName, EntityPlacement, ExitFacing, Facing, MapExit, WorldMap } from '../domain/content.ts';
+import type { ClipName, EntityPlacement, ExitFacing, Facing, MapExit, QuestStatus, WorldMap } from '../domain/content.ts';
 import type { AssetLease } from '../application/assets.ts';
 import { Wardrobe } from '../rendering/wardrobe.ts';
 import { acquireCompanionWardrobe, pruneCompanionWardrobes } from '../rendering/wardrobe-cache.ts';
@@ -67,7 +67,7 @@ import { ActionControls, type ShortcutSlot } from '../ui/phaser/action-controls.
 import { ShortcutBar, type ShortcutEntry } from '../domain/shortcut-bar.ts';
 import { learnedSkillIds, type SkillConfiguration } from '../domain/skill-configuration.ts';
 import { NameBanner } from '../rendering/name-banner.ts';
-import { StoryMinimap, type MinimapTask } from '../rendering/story-minimap.ts';
+import { StoryMinimap, type MinimapInteraction, type MinimapTask } from '../rendering/story-minimap.ts';
 import { displaySettings } from '../application/display-settings.ts';
 import { controlSettings } from '../application/control-settings.ts';
 import { ComputerSkillHud } from '../ui/phaser/computer-skill-hud.ts';
@@ -1309,6 +1309,34 @@ export class WorldScene extends Phaser.Scene {
     return this.app.session.chests.isOpened(this.map.id,character.entity.id,
       this.app.session.storyWorld.isPlaced(character.entity.id));
   }
+
+  /** 原版小地图给可交互点画同一个圆环：宝箱、泉水、服务 NPC 和商店。 */
+  private minimapInteractable(character: Character): boolean {
+    const actor = character.actor, entity = character.entity;
+    return !!(actor.chest || actor.service || entity.spring || this.app.shops?.shops[entity.actor]);
+  }
+
+  /** 有任务图标、已经开启或已经消耗的角色不再画交互圆环。 */
+  private showsInteractionMarker(character: Character, status: QuestStatus | null, marked: boolean): boolean {
+    if (!character.container.visible || this.chestOpened(character) || this.legendarySwordConsumed(character)) return false;
+    if (character.entity.spring && this.map && this.app.session.springs.isEmpty(this.map.id, character.entity.id)) return false;
+    if (!this.minimapInteractable(character)) return false;
+    return !(marked && status && status !== 'locked' && status !== 'completed');
+  }
+
+  /** 宝箱开启、泉水喝空这类状态变化不触发整图刷新，单独更新小地图圆环。 */
+  private refreshMinimapInteractions(): void {
+    const map = this.map;
+    if (!map || !this.minimap) return;
+    const session = this.app.session, markers: MinimapInteraction[] = [];
+    for (const character of this.characters) {
+      const status = session.marker(character.entity.actor, character.entity.characterId);
+      const marked = session.markerActor(character.entity.actor, character.entity.characterId);
+      if (this.showsInteractionMarker(character, status, marked))
+        markers.push({id: character.entity.id, x: character.container.x, y: character.container.y});
+    }
+    this.minimap.updateInteractions(markers);
+  }
   /**
    * 任务完成和进度只在任务簿版本变化时对比；完成优先，同一轮不再发进度。
    * 日志外和对话/剧情任务不提示：它们本来就不进任务日志，或已有任务窗。
@@ -1352,14 +1380,15 @@ export class WorldScene extends Phaser.Scene {
     if(stateSignature===this.refreshStateSignatureValue)return;
     this.refreshStateSignatureValue=stateSignature;
     this.interactionRevision=(this.interactionRevision??0)+1;
-    const taskMarkers: MinimapTask[] = [];
+    const taskMarkers: MinimapTask[] = [], interactionMarkers: MinimapInteraction[] = [];
     for (const character of this.characters) {
       const opened = this.chestOpened(character), consumed = this.legendarySwordConsumed(character);
       // `actor-visibility` / `remove-character` 记在本图角色状态里；静态摆放也要立即隐藏并停碰撞。
       const present = !this.map || session.storyWorld.actorVisible(this.map.id, character.entity.actor, character.entity.characterId);
-      character.container.setVisible(!this.performing && present && session.visible(character.entity) &&
-        (!opened || this.chestFades.has(character.entity.id)) && !consumed);
-      this.movement?.setEnabled(character, character.container.visible && !opened && !consumed);
+      const visible = !this.performing && present && session.visible(character.entity) &&
+        (!opened || this.chestFades.has(character.entity.id)) && !consumed;
+      character.container.setVisible(visible);
+      this.movement?.setEnabled(character, visible && !opened && !consumed);
       const status = session.marker(character.entity.actor,character.entity.characterId);
       // 头顶和小地图共用 `markerActor` 这一个判断，避免同一任务在两处显示不同标记。
       // 日志外任务不进任务日志，但可接、进行中、待交付照常挂场景标记。
@@ -1372,15 +1401,19 @@ export class WorldScene extends Phaser.Scene {
         character.marker.setFile(marked && status ? this.app.storyInterface.assets[`minimap-${status}`] : undefined);
         this.syncQuestMarker(character);
       }
-      if (character.entity.id !== 'player' && character.container.visible && marked
-        && status && status !== 'locked' && status !== 'completed')
+      const questMarked = visible && marked;
+      if (character.entity.id !== 'player' && questMarked && status && status !== 'locked' && status !== 'completed')
         taskMarkers.push({id: character.entity.id, x: character.container.x, y: character.container.y, status});
+      // 原版一个角色只画一个标记：有任务图标时不再叠交互圆环。
+      if (this.showsInteractionMarker(character, status, marked))
+        interactionMarkers.push({id: character.entity.id, x: character.container.x, y: character.container.y});
     }
     const map = this.map;
     if (!map) return;
     if (this.minimap) {
       if (this.player) this.minimap.updatePlayer((this.combat?.controlledVisual??this.player).container);
       this.minimap.updateTasks(taskMarkers);
+      this.minimap.updateInteractions(interactionMarkers);
     }
   }
   resizeView(): void {
@@ -1641,6 +1674,7 @@ export class WorldScene extends Phaser.Scene {
     // 喝空：换外观并记进本次地图访问，之后靠近不再是可交互物。
     this.app.session.springs.drain(map.id, spring.entity.id);
     this.drainSpring(spring);
+    this.refreshMinimapInteractions();
     this.updateInteractionTarget(); this.syncHud();
   }
   /**
@@ -1675,6 +1709,7 @@ export class WorldScene extends Phaser.Scene {
       onComplete: () => { this.chestFades.delete(character.entity.id); character.container.setVisible(false); this.interactionRevision=(this.interactionRevision??0)+1; }
     });
     this.chestFades.set(character.entity.id, tween);
+    this.refreshMinimapInteractions();
     this.updateInteractionTarget(); this.syncHud();
   }
   private playStory(work: () => Promise<boolean>): Promise<boolean> {

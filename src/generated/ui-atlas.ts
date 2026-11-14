@@ -1222,6 +1222,11 @@ export const UI_ATLAS_FRAMES: Readonly<Record<string, { key: string; frame: stri
     "frame": "assets/ui/minimap/exit.png",
     "page": 4
   },
+  "assets/ui/minimap/interact.png": {
+    "key": "interface:assets/ui/menu-ui-4.png",
+    "frame": "assets/ui/minimap/interact.png",
+    "page": 4
+  },
   "assets/ui/minimap/player.png": {
     "key": "interface:assets/ui/menu-ui-4.png",
     "frame": "assets/ui/minimap/player.png",
@@ -1753,4 +1758,4 @@ export const UI_ATLAS_FRAMES: Readonly<Record<string, { key: string; frame: stri
     "page": 0
   }
 };
-export const UI_ATLAS_SOURCE_DIGEST = "7c79c5ee6441f3aa8975763bd9ce6714e24380a5c3b97b5e01ce79686c00a36d";
+export const UI_ATLAS_SOURCE_DIGEST = "b260eb19be99034dfe7d73fe753e51f60169ec037ffe8cf4a9da3cf014a3f87c";

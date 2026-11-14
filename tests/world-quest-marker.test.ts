@@ -67,7 +67,8 @@ test('a quest marker is created when a quest becomes available after the map is 
     characters: [character],
     map: { id: 'map' },
     player: { container: { x: 0, y: 0 } },
-    minimap: { updatePlayer() {}, updateTasks(tasks: unknown[]) { taskLists.push(tasks); } },
+    minimap: { updatePlayer() {}, updateTasks(tasks: unknown[]) { taskLists.push(tasks); },
+    updateInteractions() {} },
     refreshLoadout() {}, noticeQuestChanges() {},
     chestOpened: () => false, legendarySwordConsumed: () => false,
     movement: { setEnabled() {} },
@@ -127,6 +128,7 @@ test('the minimap receives quest characters on the first refresh after it is cre
   host.minimap = {
     updatePlayer() {},
     updateTasks(tasks: unknown[]) { taskLists.push(tasks); },
+    updateInteractions() {},
   };
   invoke(host, 'refreshState');
   assert.deepEqual(taskLists, [[{ id: 'npc-1', x: 64, y: 96, status: 'available' }]]);
@@ -156,7 +158,8 @@ test('journal-external ready deliveries still light the overhead marker and the 
       'minimap-available': 'available.png', 'minimap-active': 'active.png', 'minimap-ready': 'ready.png' } } },
     characters: [character], map: { id: 'map' },
     player: { container: { x: 0, y: 0 } },
-    minimap: { updatePlayer() {}, updateTasks(tasks: unknown[]) { taskLists.push(tasks); } },
+    minimap: { updatePlayer() {}, updateTasks(tasks: unknown[]) { taskLists.push(tasks); },
+    updateInteractions() {} },
     refreshLoadout() {}, noticeQuestChanges() {},
     chestOpened: () => false, legendarySwordConsumed: () => false,
     movement: { setEnabled() {} },

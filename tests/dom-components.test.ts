@@ -275,6 +275,16 @@ test('DOM minimap combines terrain, keeps native marker sizes and reuses or remo
     assert.equal(root.children.length, count, '同一个任务复用节点');
     assert.equal(task.style.left, '13px');
     view.updateTasks([]); assert.equal(task.removed, true);
+    view.updateInteractions([{ id: 'chest', x: 48, y: 16 }]);
+    const interaction = root.children.at(-1)!;
+    await new Promise(resolve => setTimeout(resolve, 0));
+    assert.equal(interaction.style.width, '22px', '交互圆环保持原素材尺寸');
+    assert.equal(interaction.style.left, '18px');
+    const countWithInteraction = root.children.length;
+    view.updateInteractions([{ id: 'chest', x: 64, y: 16 }]);
+    assert.equal(root.children.length, countWithInteraction, '同一个交互点复用节点');
+    assert.equal(interaction.style.left, '23px');
+    view.updateInteractions([]); assert.equal(interaction.removed, true);
     assert.equal(view.extent().x, 16); assert.equal(view.extent().y, 2);
     view.destroy(); await new Promise(resolve => setTimeout(resolve, 0));
     assert.equal(assets.size, 0); assert.deepEqual(errors, []);

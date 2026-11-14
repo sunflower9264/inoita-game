@@ -1,7 +1,7 @@
 export const MINIMAP_ASSETS = ['minimap-edge-horizontal', 'minimap-edge-vertical',
   'minimap-corner-nw', 'minimap-corner-ne', 'minimap-corner-sw', 'minimap-corner-se',
   'minimap-player', 'minimap-exit', 'minimap-available', 'minimap-active', 'minimap-ready',
-  'minimap-special'] as const;
+  'minimap-special', 'minimap-interact'] as const;
 
 export interface StoryPlayerState {
   level: number;

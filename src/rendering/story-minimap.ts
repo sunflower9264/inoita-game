@@ -5,9 +5,9 @@ import type { StoryInterface } from '../domain/story-interface.ts';
 import type { Point } from '../domain/navigation.ts';
 import type { Hud } from './hud.ts';
 import type { DomUi } from '../ui/dom/dom-ui.ts';
-import { DomMinimap, type MinimapTask } from '../ui/dom/minimap.ts';
+import { DomMinimap, type MinimapInteraction, type MinimapTask } from '../ui/dom/minimap.ts';
 import { controlViewport } from '../ui/phaser/control-layout-viewport.ts';
-export type { MinimapTask } from '../ui/dom/minimap.ts';
+export type { MinimapInteraction, MinimapTask } from '../ui/dom/minimap.ts';
 
 /** 小地图的场景接线；地形、边框和标记由 DOM/SVG 绘制。 */
 export class StoryMinimap {
@@ -33,6 +33,7 @@ export class StoryMinimap {
   updatePlayer(point: Point): void { this.view.updatePlayer(point); }
   updateTasks(tasks: MinimapTask[]): void { this.view.updateTasks(tasks); }
   updateEnemies(enemies: (Point & { id: string })[]): void { this.view.updateEnemies(enemies); }
+  updateInteractions(interactions: MinimapInteraction[]): void { this.view.updateInteractions(interactions); }
   setVisible(visible: boolean): void { this.requested = visible; this.view.visible(visible && this.active); }
   destroy(): void { this.unwatch(); this.view.destroy(); }
 }
