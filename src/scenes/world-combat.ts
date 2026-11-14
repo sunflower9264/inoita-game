@@ -1274,22 +1274,16 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
       ||targetEnemy&&this.app.session.storyWorld?.visible(targetEnemy.key)===false)return;
     this.diagnosticHits+=1;
     this.diagnosticTotalHits+=1;
-    if(hit.damage>0){
-      if(this.memberOf(event.targetId)){
-        this.diagnosticDamageTaken+=hit.damage;
-        this.diagnosticTotalDamageTaken+=hit.damage;
-      } else {
-        this.diagnosticDamageDealt+=hit.damage;
-        this.diagnosticTotalDamageDealt+=hit.damage;
-      }
-    }
     this.recordSummonContact?.(event.casterId,event.targetId);
     if(hit.damage){
       if(hit.damage>0)this.conditions.removeState(event.targetId,'sleep');
       const recipient=this.memberOf(event.targetId);
-      if(recipient){const wasAlive=recipient.player.health>0;
+      if(recipient){const before=recipient.player.health,wasAlive=before>0;
         if(hit.damage>0)this.readResourceCapacity(event.targetId,'maxHealth');
-        recipient.setHealth(recipient.player.health-hit.damage);
+        recipient.setHealth(before-hit.damage);
+        // 按实际掉血统计：伤害不能超过结算前的生命值。
+        const dropped=Math.max(0,Math.min(hit.damage,before));
+        if(dropped>0){this.diagnosticDamageTaken+=dropped;this.diagnosticTotalDamageTaken+=dropped;}
         if(wasAlive&&recipient.player.health===0)(this.hitResolution??=new CombatHitResolution()).deferDefeat(event.targetId,()=>{
           if(recipient.player.health===0)this.memberDefeated(event.targetId);
         });}
@@ -1304,6 +1298,9 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
         if(interrupted&&this.app.session.enemyVitals(targetEnemy.key).capture){this.removeEnemy(targetEnemy.key);return;}
         const remaining=interrupted?Math.max(1,proposed):proposed;
         this.roster.setEnemyHealth(targetEnemy.key,remaining,targetEnemy.definition);
+        // 结算之后按实际掉血统计：一击必杀改写的伤害和超出剩余生命的溢出都不算。
+        const dropped=Math.max(0,before.health-remaining);
+        if(dropped>0){this.diagnosticDamageDealt+=dropped;this.diagnosticTotalDamageDealt+=dropped;}
         if(before.health>0&&remaining===0)(this.hitResolution??=new CombatHitResolution()).deferDefeat(targetEnemy.key,()=>{
           if(this.closed||this.pendingDefeats.has(targetEnemy.key)||
             (this.roster.enemySnapshot(targetEnemy.key,targetEnemy.definition,hero.level)?.health??0)>0)return;
