@@ -528,20 +528,16 @@
   }
 
   const nativeCallbacks = new Map();
-  window.__inoitaNativeReportResult = function (id, result) {
+  window.__inoitaNativeReportResult = function (id, ok) {
     const callback = nativeCallbacks.get(id);
-    if (!callback) return;
-    nativeCallbacks.delete(id);
-    // 新壳回传 HTTP 状态码；旧壳只回传布尔，按 200 / 网络失败换算，保持兼容。
-    callback(result === true ? 200 : typeof result === 'number' ? result : 0);
+    if (callback) { nativeCallbacks.delete(id); callback(!!ok); }
   };
-  /** 返回原生桥转发得到的 HTTP 状态码；0 表示桥不可达或超时。 */
   function sendNative(body, id) {
     return new Promise(resolve => {
-      const timer = setTimeout(() => { nativeCallbacks.delete(id); resolve(0); }, 20000);
-      nativeCallbacks.set(id, status => { clearTimeout(timer); resolve(status); });
+      const timer = setTimeout(() => { nativeCallbacks.delete(id); resolve(false); }, 20000);
+      nativeCallbacks.set(id, ok => { clearTimeout(timer); resolve(ok); });
       try { window.InotiaNative.report(body, id); }
-      catch { clearTimeout(timer); nativeCallbacks.delete(id); resolve(0); }
+      catch { clearTimeout(timer); nativeCallbacks.delete(id); resolve(false); }
     });
   }
   async function flush() {
@@ -562,10 +558,8 @@
       const body = JSON.stringify({ version: SCHEMA_VERSION, entries });
       let status = 0;
       let ok = false;
-      if (nativeBridge) {
-        status = await sendNative(body, entries[0].id);
-        ok = status >= 200 && status < 300;
-      } else {
+      if (nativeBridge) ok = await sendNative(body, entries[0].id);
+      else {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 8000);
         try {

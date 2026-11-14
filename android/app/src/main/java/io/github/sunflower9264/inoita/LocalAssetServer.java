@@ -105,15 +105,8 @@ final class LocalAssetServer extends NanoHTTPD {
     private Response nativeReport(IHTTPSession session) {
         byte[] body = readBody(session);
         if (body == null) return text(Response.Status.BAD_REQUEST, "body too large");
-        return reportResult(body);
-    }
-
-    /** 把上游状态码原样回给页面，413/400 才能触发页面端的缩批与丢弃；0 表示不可达。 */
-    private Response reportResult(byte[] body) {
-        int code = Diagnostics.post(new String(body, StandardCharsets.UTF_8));
-        if (code == 0) return empty(Response.Status.INTERNAL_ERROR);
-        Response.Status status = Response.Status.lookup(code);
-        return empty(status == null ? Response.Status.INTERNAL_ERROR : status);
+        boolean ok = Diagnostics.post(new String(body, StandardCharsets.UTF_8));
+        return empty(ok ? Response.Status.OK : Response.Status.INTERNAL_ERROR);
     }
 
     /** 页面只报 30/60；壳自己选刷新率能整除它的显示模式。 */
@@ -137,7 +130,8 @@ final class LocalAssetServer extends NanoHTTPD {
     private Response proxyDiagnostics(IHTTPSession session) {
         byte[] body = readBody(session);
         if (body == null) return text(Response.Status.BAD_REQUEST, "body too large");
-        return reportResult(body);
+        boolean ok = Diagnostics.post(new String(body, StandardCharsets.UTF_8));
+        return empty(ok ? Response.Status.OK : Response.Status.INTERNAL_ERROR);
     }
 
     private Response proxyCloud(IHTTPSession session, String uri) {
@@ -262,8 +256,8 @@ final class LocalAssetServer extends NanoHTTPD {
         script.append("window.InotiaNative={")
                 .append("report:function(body,id){")
                 .append("fetch('/__native/report',{method:'POST',headers:{'Content-Type':'application/json'},body:body})")
-                .append(".then(function(r){return r.status}).catch(function(){return 0})")
-                .append(".then(function(status){try{window.__inoitaNativeReportResult&&window.__inoitaNativeReportResult(id,status)}catch(e){}});")
+                .append(".then(function(r){return r.ok}).catch(function(){return false})")
+                .append(".then(function(ok){try{window.__inoitaNativeReportResult&&window.__inoitaNativeReportResult(id,ok)}catch(e){}});")
                 .append("},")
                 .append("markBootOk:function(){fetch('/__native/boot-ok',{method:'POST'}).catch(function(){});},")
                 .append("setFrameRate:function(rate){fetch('/__native/frame-rate?rate='+encodeURIComponent(rate),{method:'POST'}).catch(function(){});},")
