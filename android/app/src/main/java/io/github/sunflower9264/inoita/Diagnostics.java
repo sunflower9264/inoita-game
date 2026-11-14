@@ -31,8 +31,9 @@ final class Diagnostics {
 
     private Diagnostics() {}
 
-    static boolean post(String body) {
-        if (body == null || body.isEmpty() || body.length() > MAX_BODY_BYTES) return false;
+    /** 返回上游 HTTP 状态码；0 表示请求没有到达或发生了网络错误。 */
+    static int post(String body) {
+        if (body == null || body.isEmpty() || body.length() > MAX_BODY_BYTES) return 0;
         HttpURLConnection connection = null;
         try {
             connection = (HttpURLConnection) new URL(BuildConfig.DIAGNOSTICS_URL).openConnection();
@@ -49,12 +50,12 @@ final class Diagnostics {
             int code = connection.getResponseCode();
             if (code < 200 || code >= 300) {
                 Log.w(TAG, "diagnostics report returned HTTP " + code);
-                return false;
             }
-            return true;
+            // 把状态码交给页面，让 413/400 的缩批与丢弃路径在 APK 里也能生效。
+            return code;
         } catch (Exception error) {
             Log.w(TAG, "diagnostics report failed: " + error.getClass().getSimpleName());
-            return false;
+            return 0;
         } finally {
             if (connection != null) connection.disconnect();
         }

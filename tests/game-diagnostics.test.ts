@@ -65,9 +65,9 @@ function client(storage = new Map<string, string>(), brokenStorage = false,
   const entries = async () => (JSON.parse(await collector.export()) as { entries: Entry[] }).entries;
   return { sandbox, context, collector, sent, entries, originals, windowEvents, documentEvents, document, storage,
     pending: entries,
-    nativeResult: (id: string, ok: boolean) =>
-      (sandbox as unknown as { __inoitaNativeReportResult?: (id: string, ok: boolean) => void })
-        .__inoitaNativeReportResult?.(id, ok),
+    nativeResult: (id: string, result: boolean | number) =>
+      (sandbox as unknown as { __inoitaNativeReportResult?: (id: string, result: boolean | number) => void })
+        .__inoitaNativeReportResult?.(id, result),
     online(value: boolean) { online = value; },
     advance(ms: number) { now += ms; for (const timer of intervals) timer(); },
     runTimers() { for (const timer of timeouts.splice(0)) timer.callback(); } };
@@ -216,6 +216,16 @@ test('a rejected native report keeps the record pending', async () => {
   f.nativeResult(reports[0]!, false);
   await settle();
   assert.equal((await f.pending()).length, 1);
+});
+
+test('native bridge HTTP status codes reach the rejection handling', async () => {
+  const reports: string[] = [];
+  const f = client(new Map(), false, { native: true, onNativeReport: (_body, id) => reports.push(id) });
+  await settle();
+  assert.equal(reports.length, 1, '启动记录正在等待原生确认');
+  f.nativeResult(reports[0]!, 413);
+  await settle();
+  assert.equal((await f.pending()).length, 0, '413 的单条记录按毒记录丢弃，不再无限重试');
 });
 
 test('an offline shell placeholder response never discards pending records', async () => {
