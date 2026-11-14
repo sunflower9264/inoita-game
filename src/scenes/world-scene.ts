@@ -103,6 +103,11 @@ function waitForAbort<T>(work: Promise<T>, signal?: AbortSignal): Promise<T> {
   });
 }
 
+/** 角色头顶和小地图都会显示的任务图标；锁定与已完成不显示。 */
+function hasQuestIcon(status: QuestStatus | null, marked: boolean): status is 'available' | 'active' | 'ready' {
+  return marked && (status === 'available' || status === 'active' || status === 'ready');
+}
+
 /** 进图参数：去哪张地图、落在哪里、朝哪边。 */
 export interface SceneOptions {
   initialEntry?: boolean;
@@ -1317,11 +1322,12 @@ export class WorldScene extends Phaser.Scene {
   }
 
   /** 有任务图标、已经开启或已经消耗的角色不再画交互圆环。 */
-  private showsInteractionMarker(character: Character, status: QuestStatus | null, marked: boolean): boolean {
-    if (!character.container.visible || this.chestOpened(character) || this.legendarySwordConsumed(character)) return false;
+  private showsInteractionMarker(character: Character, status: QuestStatus | null, marked: boolean,
+    opened = this.chestOpened(character), consumed = this.legendarySwordConsumed(character)): boolean {
+    if (!character.container.visible || opened || consumed) return false;
     if (character.entity.spring && this.map && this.app.session.springs.isEmpty(this.map.id, character.entity.id)) return false;
     if (!this.minimapInteractable(character)) return false;
-    return !(marked && status && status !== 'locked' && status !== 'completed');
+    return !hasQuestIcon(status, marked);
   }
 
   /** 宝箱开启、泉水喝空这类状态变化不触发整图刷新，单独更新小地图圆环。 */
@@ -1401,11 +1407,11 @@ export class WorldScene extends Phaser.Scene {
         character.marker.setFile(marked && status ? this.app.storyInterface.assets[`minimap-${status}`] : undefined);
         this.syncQuestMarker(character);
       }
-      const questMarked = visible && marked;
-      if (character.entity.id !== 'player' && questMarked && status && status !== 'locked' && status !== 'completed')
+      if (character.entity.id !== 'player' && visible && hasQuestIcon(status, marked))
         taskMarkers.push({id: character.entity.id, x: character.container.x, y: character.container.y, status});
       // 原版一个角色只画一个标记：有任务图标时不再叠交互圆环。
-      if (this.showsInteractionMarker(character, status, marked))
+      // 小地图还没创建时不必收集交互点；创建后的那次刷新会因为签名变化重新收集。
+      if (this.minimap && this.showsInteractionMarker(character, status, marked, opened, consumed))
         interactionMarkers.push({id: character.entity.id, x: character.container.x, y: character.container.y});
     }
     const map = this.map;
@@ -2112,6 +2118,7 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
     }
     this.movement.placeAll(placements,{evictOccupied:true,displaceable:this.player?[this.player]:[]});
     this.interactionRevision=(this.interactionRevision??0)+1;
+    this.refreshMinimapInteractions();
   }
 
   async restoreStoryWorld(snapshot:unknown,signal:AbortSignal):Promise<void>{
