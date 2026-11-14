@@ -418,6 +418,8 @@
   /** 413 后先缩到单条隔离毒记录；400 视为全局问题，保留并退避。 */
   let batchEntryLimit = MAX_BATCH_ENTRIES;
   let blockedUntil = 0;
+  /** 连续被服务端以 400 拒绝的次数；到上限后隔离或丢弃，避免协议错位时永久重试。 */
+  let consecutiveRejections = 0;
   /** 与 server 分流口径一致；错误类默认附完整快照，也参与全局限流。 */
   function isErrorKind(kind) {
     return kind === 'console-warn' || kind === 'webgl-context-lost' || kind === 'session-recovered'
@@ -548,8 +550,10 @@
       if (ok) {
         batchEntryLimit = nativeBridge ? 3 : MAX_BATCH_ENTRIES;
         blockedUntil = 0;
+        consecutiveRejections = 0;
         await queue.remove(batch);
       } else if (status === 413) {
+        consecutiveRejections = 0;
         // 先缩到单条：确认是某一条太大就丢掉它，不让整条队列永久卡住。
         if (batch.length > 1) batchEntryLimit = 1;
         else {
@@ -557,8 +561,19 @@
           batchEntryLimit = nativeBridge ? 3 : MAX_BATCH_ENTRIES;
         }
       } else if (status === 400) {
-        // 协议版本或代理返回的全局拒绝；保留记录，退避后再试，不能把积压清空。
-        blockedUntil = Date.now() + 60_000;
+        // 协议版本、代理或毒记录都会返回 400。先退避重试；连续三次后逐级隔离：
+        // 多条批次缩到单条，单条仍被拒就丢弃这一条，避免整条队列永远发不出去。
+        consecutiveRejections += 1;
+        if (consecutiveRejections >= 3 && batch.length > 1) {
+          batchEntryLimit = 1;
+          consecutiveRejections = 0;
+        } else if (consecutiveRejections >= 3) {
+          await queue.remove(batch);
+          batchEntryLimit = nativeBridge ? 3 : MAX_BATCH_ENTRIES;
+          consecutiveRejections = 0;
+        } else {
+          blockedUntil = Date.now() + 60_000;
+        }
       }
     } catch { /* 发送失败保留日志，下一轮重试。 */ }
     finally {
