@@ -158,12 +158,24 @@ export function createDiagnosticMiddleware(root) {
       const kept = noise.kept;
       if (!kept.length) { res.writeHead(204); res.end(); return; }
       const splitEntries = split(kept);
+      // 两路流分别记账：一路写成功、另一路失败时，重试只应补写失败的那一路。
       const pending = [];
-      if (splitEntries.errors.length) pending.push(streams.errors.write(splitEntries.errors));
-      if (splitEntries.session.length) pending.push(streams.session.write(splitEntries.session));
-      void Promise.all(pending).then(
-        () => { noise.commit(); for (const entry of kept) remember(entry.id); res.writeHead(204); res.end(); },
-        () => { if (!res.writableEnded) { res.writeHead(500); res.end(); } });
+      if (splitEntries.errors.length) {
+        pending.push(streams.errors.write(splitEntries.errors).then(() => splitEntries.errors));
+      }
+      if (splitEntries.session.length) {
+        pending.push(streams.session.write(splitEntries.session).then(() => splitEntries.session));
+      }
+      void Promise.allSettled(pending).then(results => {
+        let failed = false;
+        for (const result of results) {
+          if (result.status === 'fulfilled') for (const entry of result.value) remember(entry.id);
+          else failed = true;
+        }
+        if (!failed) noise.commit();
+        if (res.writableEnded) return;
+        res.writeHead(failed ? 500 : 204); res.end();
+      });
     });
   };
 }

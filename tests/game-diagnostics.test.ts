@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import vm from 'node:vm';
-import { readFile, writeFile, mkdtemp, rm } from 'node:fs/promises';
+import { readFile, writeFile, mkdtemp, mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { EventEmitter } from 'node:events';
@@ -480,6 +480,28 @@ test('server splits session records, accepts batches and drops duplicate ids', a
     assert.equal(errors.trim().split('\n').length, 1);
     assert.equal(session.trim().split('\n').length, 19, '第二次上报的重复 id 被丢弃');
     assert.equal(await request(middleware, JSON.stringify({ version: 1, entries: [...entries, { id: 'x', kind: 'y', time: 'now' }] })), 400);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('a partially failed write remembers the stream that succeeded', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'inotia-diagnostics-'));
+  try {
+    const diagnosticsDir = path.join(root, '.diagnostics');
+    const sessionFile = path.join(diagnosticsDir, 'client-session.jsonl');
+    await mkdir(diagnosticsDir, { recursive: true });
+    await mkdir(sessionFile, { recursive: true });
+    const middleware = createDiagnosticMiddleware(root);
+    const entries = [
+      { id: 'err:1', kind: 'window-error', time: 'now', details: { message: 'boom' } },
+      { id: 'tick:1', kind: 'combat-tick', time: 'now', details: {} },
+    ];
+    assert.equal(await request(middleware, JSON.stringify({ version: 1, entries })), 500);
+    await rm(sessionFile, { recursive: true, force: true });
+    assert.equal(await request(middleware, JSON.stringify({ version: 1, entries })), 204);
+    const sessionText = await readFile(sessionFile, 'utf8');
+    assert.equal(sessionText.trim().split('\n').length, 1, '成功写入的错误流不再重复追加');
+    const errorsText = await readFile(path.join(diagnosticsDir, 'client-errors.jsonl'), 'utf8');
+    assert.equal(errorsText.trim().split('\n').length, 1);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
