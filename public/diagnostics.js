@@ -210,7 +210,8 @@
             if (!cursor || out.length >= limit) { resolve(out); return; }
             const entry = cursor.value;
             const size = utf8Bytes(JSON.stringify(entry)) + 1;
-            if (bytes + size > maxBytes) { resolve(out); return; }
+            // 首条即使超预算也要放行；否则整条队列永远读不出东西。
+            if (bytes + size > maxBytes && out.length) { resolve(out); return; }
             out.push(entry); bytes += size;
             cursor.continue();
           };
@@ -224,6 +225,8 @@
       flushFallback,
       async ready() { await openDb(); },
       async add(entry) {
+        // 单条超过批量预算时任何一批都装不下，服务端也会拒收；直接丢弃，避免堵住队列。
+        if (utf8Bytes(JSON.stringify(entry)) > MAX_BATCH_BYTES) return;
         const db = await openDb();
         if (db && await idbAdd(db, entry)) return;
         fallback.push(entry);
@@ -237,7 +240,8 @@
         let bytes = 0;
         for (const entry of fallback) {
           const size = utf8Bytes(JSON.stringify(entry)) + 1;
-          if (bytes + size > maxBytes) break;
+          // 首条即使超预算也要放行；否则 flush 永远拿到空批，后面的记录全部积压。
+          if (bytes + size > maxBytes && out.length) break;
           out.push(entry); bytes += size;
           if (out.length >= limit) break;
         }

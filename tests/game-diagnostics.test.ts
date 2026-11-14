@@ -269,6 +269,17 @@ test('server rejections drop poison records instead of blocking later uploads', 
   assert(f.sent.some(batch => batch.entries.some(entry => entry.details.message === 'after drop')));
 });
 
+test('an oversized pending record cannot block the upload queue', async () => {
+  const huge = { id: 'old:huge', session: 'old', seq: 1, kind: 'combat-tick', time: '2026-01-01T00:00:00.000Z',
+    details: { args: Array.from({ length: 20 }, () => '中'.repeat(2000)) } };
+  const small = { id: 'old:small', session: 'old', seq: 2, kind: 'combat-tick', time: '2026-01-01T00:00:01.000Z',
+    details: { message: 'after huge' } };
+  const storage = new Map([['inotia4.diagnostics.pending.v1', JSON.stringify([huge, small])]]);
+  const f = client(storage); await settle();
+  for (let index = 0; index < 3; index += 1) { await f.collector.flush(); await settle(); }
+  assert(f.sent.some(batch => batch.entries.some(entry => entry.details.message === 'after huge')));
+});
+
 test('fallback records stay uploadable while indexeddb is available', async () => {
   const fake = fakeIndexedDB({ failAdds: true });
   const f = client(new Map(), false, { indexedDB: fake.api }); await settle();
