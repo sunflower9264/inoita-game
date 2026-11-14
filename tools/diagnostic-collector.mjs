@@ -36,19 +36,26 @@ export function isErrorEntry(entry) {
 function withoutRepeatedNoise(entries) {
   const now = Date.now();
   const kept = [];
+  const updates = new Map();
   for (const entry of entries) {
     if (entry.kind !== NOISY_KIND) { kept.push(entry); continue; }
     const mapId = typeof entry.details?.map === 'string' ? entry.details.map : '';
     const key = `${entry.session ?? ''}\u0000${mapId}`;
-    const last = lastNoisyAt.get(key) ?? 0;
+    const last = updates.has(key) ? updates.get(key) : lastNoisyAt.get(key) ?? 0;
     if (now - last < NOISY_WINDOW_MS) continue;
-    lastNoisyAt.set(key, now);
+    updates.set(key, now);
     kept.push(entry);
   }
-  if (lastNoisyAt.size > 512) {
-    for (const [key, at] of lastNoisyAt) if (now - at > NOISY_WINDOW_MS * 5) lastNoisyAt.delete(key);
-  }
-  return kept;
+  return {
+    kept,
+    /** 写盘成功后才推进噪声窗口：写失败时客户端重试必须仍被接收。 */
+    commit() {
+      for (const [key, at] of updates) lastNoisyAt.set(key, at);
+      if (lastNoisyAt.size > 512) {
+        for (const [key, at] of lastNoisyAt) if (now - at > NOISY_WINDOW_MS * 5) lastNoisyAt.delete(key);
+      }
+    },
+  };
 }
 
 function createLogStream(directory, file, limitBytes, olderCount) {
@@ -147,14 +154,15 @@ export function createDiagnosticMiddleware(root) {
             || typeof entry.time !== 'string' || Buffer.byteLength(JSON.stringify(entry)) > MAX_ENTRY_JSON_LENGTH)) throw new Error('Invalid report');
       } catch { res.writeHead(400); res.end(); return; }
       const fresh = entries.filter(entry => !seenIds.has(entry.id));
-      const kept = withoutRepeatedNoise(fresh);
+      const noise = withoutRepeatedNoise(fresh);
+      const kept = noise.kept;
       if (!kept.length) { res.writeHead(204); res.end(); return; }
       const splitEntries = split(kept);
       const pending = [];
       if (splitEntries.errors.length) pending.push(streams.errors.write(splitEntries.errors));
       if (splitEntries.session.length) pending.push(streams.session.write(splitEntries.session));
       void Promise.all(pending).then(
-        () => { for (const entry of kept) remember(entry.id); res.writeHead(204); res.end(); },
+        () => { noise.commit(); for (const entry of kept) remember(entry.id); res.writeHead(204); res.end(); },
         () => { if (!res.writableEnded) { res.writeHead(500); res.end(); } });
     });
   };

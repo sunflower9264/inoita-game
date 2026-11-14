@@ -483,6 +483,22 @@ test('server splits session records, accepts batches and drops duplicate ids', a
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test('a failed write does not consume the repeated-noise window', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'inotia-diagnostics-'));
+  try {
+    const blocker = path.join(root, '.diagnostics');
+    await writeFile(blocker, 'not a directory');
+    const middleware = createDiagnosticMiddleware(root);
+    const body = JSON.stringify({ version: 1, entries: [{ id: 'noise:1',
+      kind: 'checkpoint-kept-waiting-encounter', session: 's1', time: 'now', details: { map: 'forest' } }] });
+    assert.equal(await request(middleware, body), 500);
+    await rm(blocker, { force: true });
+    assert.equal(await request(middleware, body), 204, '写盘失败后重试仍应被接收');
+    const text = await readFile(path.join(root, '.diagnostics', 'client-session.jsonl'), 'utf8');
+    assert.match(text, /noise:1/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('a failed write does not mark the id as delivered', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'inotia-diagnostics-'));
   try {
