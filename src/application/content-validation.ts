@@ -205,7 +205,12 @@ export function validateStoryItems(campaign:Campaign, content:ItemCatalog):void 
   for(const script of Object.values(campaign.scripts))for(const node of script.nodes)for(const command of node.commands){
     if(command.type==='item-give'||command.type==='item-take'||command.type==='item-drop'||command.type==='equip'||command.type==='unequip-destroy'){
       requireValue(content.items[command.item],node.id,'剧情命令物品不存在');
-      if(command.type==='equip')requireValue(content.items[command.item].equipment,node.id,'剧情穿戴物品需要是装备');
+      if(command.type==='equip'){
+        const rule=content.items[command.item].equipment;
+        requireValue(rule,node.id,'剧情穿戴物品需要是装备');
+        // 与背包判定同一口径：主/副手和饰品槽必须和物品定义匹配，双手武器不能塞进副手。
+        requireValue(rule.slot===command.slot||(command.slot==='off-hand'&&rule.dualWield)||(command.slot==='accessory'&&rule.slot==='ring'),node.id,'剧情装备槽位不匹配');
+      }
       if(command.type==='item-give')
         requireValue(!reserved.has(command.item),node.id,`剧情不能发放保留道具 ${command.item}`);
       if(command.type==='item-drop')
@@ -258,10 +263,15 @@ export function parseItemCatalog(value:unknown):ItemCatalog {
     if(use?.kind==='enchant')requireValue(use.target,id,'缺少强化目标类型');
     for(const reward of use?.rewards??[])requireValue(result.items[reward.item],id,'产物物品不存在');
   }
-  for(const [id,slots]of Object.entries(result.startingEquipment))for(const [slot,item]of Object.entries(slots)) {
-    requireValue(EQUIPMENT_SLOTS.includes(slot as typeof EQUIPMENT_SLOTS[number]),id,'装备槽不存在');
-    const definition=result.items[item!];
-    requireValue(definition?.equipment?.slot===slot&&definition.equipment.classes.includes(id),id,'初始装备不符合职业或位置');
+  for(const [id,slots]of Object.entries(result.startingEquipment)) {
+    for(const [slot,item]of Object.entries(slots)) {
+      requireValue(EQUIPMENT_SLOTS.includes(slot as typeof EQUIPMENT_SLOTS[number]),id,'装备槽不存在');
+      const definition=result.items[item!];
+      requireValue(definition?.equipment?.slot===slot&&definition.equipment.classes.includes(id),id,'初始装备不符合职业或位置');
+    }
+    // 主手双手武器和副手不能同时出现在初始装备里，否则换装外观找不到对应姿态。
+    const main=slots['main-hand']?result.items[slots['main-hand']]:undefined;
+    requireValue(!main?.equipment?.twoHanded||!slots['off-hand'],id,'初始装备不能同时有双手武器和副手');
   }
   requireValue(result.startingInventory.length>0,'items.startingInventory','需要初始背包物品');
   const starterIds=new Set<string>();
