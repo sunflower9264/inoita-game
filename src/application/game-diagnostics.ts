@@ -33,6 +33,8 @@ export interface FrameSnapshot {
   p95FrameMs: number;
   /** 当前参与统计的帧间隔样本数。 */
   samples: number;
+  /** 当前窗口里的每秒帧率样本数；为 0 时平均/最低帧率还没有意义。 */
+  secondSamples: number;
   /** 本次会话累计交付帧数。 */
   frames: number;
 }
@@ -114,6 +116,7 @@ export class FrameStats {
       maxFrameMs: Math.round(maxFrameMs),
       p95FrameMs: Math.round(p95FrameMs),
       samples: count,
+      secondSamples: this.secondCount,
       frames: this.frames,
     };
   }

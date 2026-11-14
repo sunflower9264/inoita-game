@@ -436,6 +436,7 @@ test('frame stats report delivered frames, long frames and reset after idle gaps
   const afterIdle = stats.snapshot();
   assert.equal(afterIdle.frames, beforeIdle + 1);
   assert.equal(afterIdle.samples, 0, '长空档后的第一帧不参与统计');
+  assert.equal(afterIdle.secondSamples, 0, '没有秒级样本时不能判定掉帧');
 });
 
 function request(middleware: Middleware, body: string, method = 'POST', url = '/__diagnostics/report') {

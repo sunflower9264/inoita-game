@@ -932,7 +932,9 @@ function diagnosticTick(): void {
   diagnosticFrames = framesNow.frames;
   const target = displaySettings.frameRateLimit;
   const now = performance.now();
-  const degraded = framesNow.samples >= 30 && frameDelta > 0
+  // 切后台或长停顿后窗口里可能只有帧间隔、还没有每秒帧率样本；此时 avg/min 都是 0，
+  // 不能当成明显掉帧，否则会写一条假记录并占掉接下来 5 分钟的上报额度。
+  const degraded = framesNow.samples >= 30 && framesNow.secondSamples > 0 && frameDelta > 0
     && (framesNow.avgFps < target * 0.8 || framesNow.minFps < target * 0.5 || longDelta >= 5);
   if (degraded && now - lastLowFpsAt > 5 * 60_000) {
     lastLowFpsAt = now;
