@@ -338,13 +338,19 @@ test('trimming the fallback queue keeps records that are being uploaded', async 
   assert((await f.pending()).some(entry => entry.kind === 'session-start'), '在途记录没有被裁剪删除');
 });
 
-test('pagehide keeps a synchronous session-end copy', async () => {
+test('pagehide keeps a synchronous session-end copy without evicting fatal errors', async () => {
   const storage = new Map<string, string>();
   const fake = fakeIndexedDB();
   const f = client(storage, false, { indexedDB: fake.api }); await settle();
+  f.online(false);
+  const windowTarget = vm.runInContext('window', f.context);
+  f.windowEvents.emit('error', { target: windowTarget, message: 'fatal one', error: new Error('fatal one') });
+  f.windowEvents.emit('error', { target: windowTarget, message: 'fatal two', error: new Error('fatal two') });
   f.windowEvents.emit('pagehide');
   const fatal = JSON.parse(storage.get('inotia4.diagnostics.fatal.v1') || '[]') as Entry[];
-  assert(fatal.some(entry => entry.kind === 'session-end'));
+  assert.equal(fatal.length, 2, '结束标记不占用致命错误的两个应急槽位');
+  const end = JSON.parse(storage.get('inotia4.diagnostics.session-end.v1') || '[]') as Entry[];
+  assert(end.some(entry => entry.kind === 'session-end'));
 });
 
 test('batch budgets count UTF-8 bytes rather than characters', async () => {

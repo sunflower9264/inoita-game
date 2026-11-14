@@ -8,6 +8,8 @@
   const LEGACY_KEY = 'inotia4.diagnostics.pending.v1';
   /** 致命记录先同步落一小份，进程被杀后下次启动补传。 */
   const FATAL_KEY = 'inotia4.diagnostics.fatal.v1';
+  /** 页面隐藏时写入的结束标记单独存一份，不占用致命错误的两个应急槽位。 */
+  const SESSION_END_KEY = 'inotia4.diagnostics.session-end.v1';
   const MAX_BATCH_ENTRIES = 20;
   /** 批量预算按编码后的字节算；服务端和 keepalive 都按字节限制。 */
   const MAX_BATCH_BYTES = 48 * 1024;
@@ -364,27 +366,34 @@
         const db = await openDb();
         if (fallbackTimer) { clearTimeout(fallbackTimer); fallbackTimer = 0; }
         const legacy = fallback.slice();
-        let fatal = [];
-        try {
-          const saved = JSON.parse(localStorage.getItem(FATAL_KEY) || '[]');
-          if (Array.isArray(saved)) fatal = saved.filter(entry => entry && typeof entry.id === 'string');
-        } catch { /* 损坏的应急记录直接跳过。 */ }
+        const emergencyEntries = key => {
+          try {
+            const saved = JSON.parse(localStorage.getItem(key) || '[]');
+            return Array.isArray(saved) ? saved.filter(entry => entry && typeof entry.id === 'string') : [];
+          } catch { return []; }
+        };
+        const fatal = emergencyEntries(FATAL_KEY);
+        const sessionEnd = emergencyEntries(SESSION_END_KEY);
+        const stashed = [...fatal, ...sessionEnd];
         if (!db) {
           // 没有 IndexedDB 时应急副本也必须能补传：并入降级队列，上传成功后随 remove 清除。
           const known = new Set(fallback.map(item => item.id));
-          for (const entry of fatal) if (!known.has(entry.id)) fallback.push(entry);
+          for (const entry of stashed) if (!known.has(entry.id)) fallback.push(entry);
           if (fallback.length > MAX_FALLBACK_ENTRIES) fallback = fallback.slice(-MAX_FALLBACK_ENTRIES);
           // 先把副本落到待发队列，再清应急键，避免两步之间进程被杀导致记录消失。
-          if (fatal.length) {
+          if (stashed.length) {
             fallbackSave();
-            try { localStorage.removeItem(FATAL_KEY); } catch { /* 存储不可用时保留。 */ }
+            try {
+              localStorage.removeItem(FATAL_KEY);
+              localStorage.removeItem(SESSION_END_KEY);
+            } catch { /* 存储不可用时保留。 */ }
           }
           return;
         }
         const movedIds = new Set();
         // 单个事务已经各自有 5 秒超时；整个迁移再设总时限，避免 IDB 卡死时 ready 等上几分钟。
         const deadline = Date.now() + IDB_TIMEOUT_MS * 2;
-        for (const entry of [...legacy, ...fatal]) {
+        for (const entry of [...legacy, ...stashed]) {
           if (Date.now() > deadline) break;
           const copy = { ...entry };
           delete copy.key;
@@ -395,9 +404,13 @@
         fallback = fallback.filter(item => !movedIds.has(item.id));
         fallbackSave();
         try {
-          const remaining = fatal.filter(item => !movedIds.has(item.id));
-          if (remaining.length) localStorage.setItem(FATAL_KEY, JSON.stringify(remaining));
-          else localStorage.removeItem(FATAL_KEY);
+          const keep = (key, entries) => {
+            const remaining = entries.filter(item => !movedIds.has(item.id));
+            if (remaining.length) localStorage.setItem(key, JSON.stringify(remaining));
+            else localStorage.removeItem(key);
+          };
+          keep(FATAL_KEY, fatal);
+          keep(SESSION_END_KEY, sessionEnd);
           if (!fallback.length) localStorage.removeItem(LEGACY_KEY);
         } catch { /* 存储不可用时保留内存队列。 */ }
       },
@@ -492,12 +505,12 @@
   function nowMs() {
     try { return performance.now(); } catch { return Date.now() - startedAt; }
   }
-  function stashFatal(entry) {
+  function stashEmergency(key, entry) {
     try {
-      const saved = JSON.parse(localStorage.getItem(FATAL_KEY) || '[]');
+      const saved = JSON.parse(localStorage.getItem(key) || '[]');
       const next = Array.isArray(saved) ? saved : [];
       next.push(entry);
-      localStorage.setItem(FATAL_KEY, JSON.stringify(next.slice(-2)));
+      localStorage.setItem(key, JSON.stringify(next.slice(-2)));
     } catch { /* 存储不可用时只能依赖 IndexedDB。 */ }
   }
   function record(kind, details, withState = isErrorKind(kind)) {
@@ -508,7 +521,7 @@
       if (repeat.limited) return;
       const entry = buildEntry(kind, details, withState);
       if (repeat.repeats) entry.repeats = repeat.repeats;
-      if (FATAL.has(kind)) stashFatal(entry);
+      if (FATAL.has(kind)) stashEmergency(FATAL_KEY, entry);
       void ready.then(() => queue.add(entry));
     } catch { /* 收集器不能成为新的游戏异常来源。 */ }
     finally { capturing = false; }
@@ -639,7 +652,8 @@
   window.addEventListener('pagehide', () => {
     const entry = buildEntry('session-end', { durationMs: Date.now() - startedAt, sequence }, false);
     // 页面可能立刻被系统收回：结束标记同步写一份应急副本，IndexedDB 提交不保证完成。
-    stashFatal(entry);
+    // 单独存一个键，避免挤掉可能还没写进 IndexedDB 的致命错误。
+    stashEmergency(SESSION_END_KEY, entry);
     queue.flushFallback();
     void ready.then(async () => { await queue.add(entry); await flush(); });
   });
