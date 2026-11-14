@@ -861,7 +861,10 @@ function storageDiagnostics(): Record<string, unknown> | null {
     if (!storage?.estimate) return null;
     void storage.estimate().then(estimate => {
       cachedStorage = { quota: estimate.quota ?? null, usage: estimate.usage ?? null };
-    }).catch(() => {});
+    }).catch(() => {
+      // 失败也记下结果：否则缓存一直是 null，每条诊断都会重新发起一次估算。
+      cachedStorage = { unavailable: true };
+    });
   } catch { return null; }
   return cachedStorage;
 }
