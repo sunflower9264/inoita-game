@@ -32,6 +32,8 @@ test('equipment details list the suitable classes and collapse the full roster',
   assert(bodyText(dagger).includes('适合职业：黑暗骑士、忍者、祭司、狂战士'));
   const bow=describe(entry('基础弓'),{classId:'warrior',level:105},false,classNames);
   assert(bodyText(bow).includes('适合职业：暗影猎手'));
+  assert(bodyText(bow).startsWith('双手武器\n'));
+  assert(bodyText(describe(entry('双手剑'))).startsWith('双手武器\n'));
   const armor=describe(entry('皮甲'),{classId:'warrior',level:105},false,classNames);
   assert(bodyText(armor).includes('适合职业：全部职业'));
 });

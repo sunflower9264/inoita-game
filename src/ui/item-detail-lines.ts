@@ -85,7 +85,9 @@ export function itemDescriptionBody(options: {
   const parts: DescriptionTextPart[] = [];
   if(entry.locked)parts.push({text:'已锁定\n',color:TEXT_COLORS.primary});
   if (equipment) {
-    parts.push({text:item.typeName, color:member && !equipment.classes.includes(member.classId) ? TEXT_COLORS.requirementUnmet : TEXT_COLORS.white},
+    // 法杖、弓、弩和水晶球同样占用双手，类型行与双手武器类别一样显示「双手武器」，避免玩家以为还能配副手。
+    const typeName = equipment.twoHanded ? '双手武器' : item.typeName;
+    parts.push({text:typeName, color:member && !equipment.classes.includes(member.classId) ? TEXT_COLORS.requirementUnmet : TEXT_COLORS.white},
       {text:'\n等级 '}, {text:String(equipmentLevel(item,entry)), color:member && member.level < equipmentLevel(item,entry) ? TEXT_COLORS.requirementUnmet : TEXT_COLORS.white});
     if (classNames) {
       const all = Object.keys(classNames);
