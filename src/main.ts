@@ -791,7 +791,8 @@ function returnToMenu(): void {
 const frameStats = new FrameStats();
 let diagnosticFrames = 0;
 let diagnosticLongFrames = 0;
-let lastLowFpsAt = 0;
+// 用 -Infinity 而不是 0：判断基于 performance.now()，初始 0 会让启动后前 5 分钟的掉帧无法上报。
+let lastLowFpsAt = Number.NEGATIVE_INFINITY;
 let heartbeatIndex = 0;
 let cachedRenderer: Record<string, unknown> | null = null;
 let cachedStorage: Record<string, unknown> | null = null;
