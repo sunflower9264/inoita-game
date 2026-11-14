@@ -90,9 +90,6 @@ const PRESSURE_SPAWN_INTERVAL_MS = 900;
 /** 小地图敌人标记最多每 100 毫秒刷新一次。 */
 const MINIMAP_ENEMY_REFRESH_MS = 100;
 
-/** 已经由 `restartWorld` 包装过的进图参数；重建时不能拿它当下一轮的基础参数。 */
-const restartedWorldOptions = new WeakSet<SceneOptions>();
-
 /** 等待一个 Promise，同时响应调用方的取消信号。 */
 function waitForAbort<T>(work: Promise<T>, signal?: AbortSignal): Promise<T> {
   if (!signal) return work;
@@ -170,17 +167,20 @@ export class WorldScene extends Phaser.Scene {
   private targetStatusCache?:{tick:number;actor:string;status:ReturnType<WorldCombat['targetStatus']>;hostile:boolean};
   /** 切图或首次加载期间为 true，此时不接受输入。 */
   loadingWorld = true;
-  /** 最近一次进图的异步任务；就绪检查和错误重试要等它结算。 */
+  /** 当前场景代际的打开任务：init 先放占位，create 换成真正的进图任务。 */
   private openTask?: Promise<void>;
-  /** 进行中的世界就绪/重建任务；并发调用共用同一次重建。 */
+  /** 解析 init 里的占位打开任务，表示 create 已经开始。 */
+  private settleOpenStarted?: () => void;
+  /** 进行中的世界就绪/重建任务；并发调用共用同一次。 */
   private readyTask?: Promise<void>;
   /** 重建任务自己的取消源；只跟随场景换代或关闭，不跟随某个调用方的剧情信号。 */
   private readyAbort = new AbortController();
-  /** 基础进图参数：重复重建都从这里生成，避免每轮重试再套一层回调。 */
+  /** 基础进图参数：正常进图时更新，重建只从这里生成，避免回调和参数套娃。 */
   private baseOptions?: SceneOptions;
-  /** 本次场景代际的 create 已经开始；用来等待已排队但还没执行的重启。 */
-  private openStarted?: Promise<void>;
-  private markOpenStarted?: () => void;
+  /** 已经排队、等待新场景 init 的重建；init 用参数对象身份认领它。 */
+  private pendingRestart?: { options: SceneOptions; controller: AbortController; settle: (error?: unknown) => void };
+  /** 当前就绪任务是否承诺重建；让更强的重建请求不会复用只等待的任务。 */
+  private readyRebuild = false;
   destroyed = false;
   performing = false;
   /** 演出舞台已经铺满画面；正式世界这帧不更新、不渲染、物理也不步进。 */
@@ -282,11 +282,20 @@ export class WorldScene extends Phaser.Scene {
     this.performing = false; this.player = undefined; this.noclipVisual = undefined; this.map = undefined;
     this.options = options; this.characters = []; this.questMarkerCharacters?.clear(); this.near = null; this.loadingWorld = true; this.destroyed = false;
     // 新一代场景：上一代的重建任务立即结算，旧任务不能继续等在途的世界。
-    this.openTask = undefined; this.readyTask = undefined;
+    this.readyTask = undefined; this.readyRebuild = false;
+    if (!this.openTask) this.beginWorldSwitch();
     this.readyAbort.abort(new Error('正式地图已经重新加载'));
     this.readyAbort = new AbortController();
-    this.openStarted = new Promise(resolve => { this.markOpenStarted = resolve; });
-    if (!restartedWorldOptions.has(options)) this.baseOptions = options;
+    const pending = this.pendingRestart;
+    this.pendingRestart = undefined;
+    if (pending && pending.options === options) {
+      // 这次 init 就是排队中的重建：基础参数已在 restartWorld 里更新。
+    } else {
+      // 被更新的世界切换取代：旧重建立即结算，不让调用方空等到超时。
+      pending?.controller.abort(new Error('正式地图已经重新加载'));
+      pending?.settle(new Error('正式地图已经重新加载'));
+      this.baseOptions = options;
+    }
     this.stageOccluded = false;
     this.movement = undefined; this.lastPlayerPosition = undefined;this.combat=undefined;this.checkpointPending=!options.checkpoint;this.checkpointWaitLogged=false;
     this.shortcutPageCache=undefined;this.shortcutTick=undefined;
@@ -298,9 +307,15 @@ export class WorldScene extends Phaser.Scene {
     this.projectedActorIds.clear();
   }
   create(): void {
-    this.markOpenStarted?.(); this.markOpenStarted = undefined;
+    this.settleOpenStarted?.(); this.settleOpenStarted = undefined;
     globalThis.storyDiagnostics?.record('start-phase',{phase:'world-create'});
-    if(this.options.signal?.aborted){this.options.onError?.(this.options.signal.reason);this.scene.stop();return;}
+    if(this.options.signal?.aborted){
+      this.destroyed = true;
+      this.readyAbort.abort(this.options.signal.reason);
+      this.openTask = undefined; this.settleOpenStarted = undefined;
+      this.options.onError?.(this.options.signal.reason);
+      this.scene.stop();return;
+    }
     const externalSignal=this.options.signal;
     const cancelLoad=()=>this.request.abort(externalSignal?.reason);
     externalSignal?.addEventListener('abort',cancelLoad,{once:true});
@@ -308,7 +323,7 @@ export class WorldScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#000000');
     this.events.once('shutdown', () => {
       this.readyAbort.abort(new Error('正式地图已经关闭'));
-      this.openStarted = undefined; this.markOpenStarted = undefined;
+      this.openTask = undefined; this.settleOpenStarted = undefined; this.readyTask = undefined;
       for (const tween of this.chestFades.values()) tween.stop();
       this.chestFades.clear();
       this.app.ui.closeDefeat();
@@ -385,46 +400,67 @@ export class WorldScene extends Phaser.Scene {
   /** 正式世界完整可读：地图、主角、移动层都在，且不在加载或关闭中。 */
   worldReady(): boolean { return this.worldObjectsReady && !this.loadingWorld && !this.destroyed; }
 
-  /**
-   * 剧情开演、错误重试和世界快照之前调用：正在进图就等它结算；
-   * 只建了一半或已经失败，就用最近一次进图参数重建。并发调用共用同一次重建。
-   */
-  ensureWorldReady(signal?: AbortSignal): Promise<void> {
-    if (this.worldReady()) return Promise.resolve();
-    if (!this.readyTask) {
-      const task = this.ensureWorldReadyNow();
-      this.readyTask = task;
-      void task.finally(() => { if (this.readyTask === task) this.readyTask = undefined; }).catch(() => {});
-    }
-    // 调用方只取消自己的等待；共享的重建任务跟随场景换代或关闭。
-    return waitForAbort(this.readyTask, signal);
+  /** 世界切换已经排队：占住 openTask，等 create 结算并换成真正的进图任务。 */
+  private beginWorldSwitch(): void {
+    // 连续排队时先叫醒上一批等待者，让它们重新读取新的占位，而不是等满超时。
+    this.settleOpenStarted?.();
+    this.openTask = new Promise<void>(resolve => { this.settleOpenStarted = resolve; });
   }
 
-  private async ensureWorldReadyNow(): Promise<void> {
+  /**
+   * 剧情正常开演前调用：只等在途进图结算，不重建。
+   * 世界没有在途打开却仍不完整时抛错，交给错误页和重试路径处理。
+   */
+  waitWorldReady(signal?: AbortSignal): Promise<void> { return this.ensureReady(false, signal); }
+
+  /** 错误重试和剧情投影前调用：先等在途进图；世界仍不完整就用基础参数重建。 */
+  recoverWorld(signal?: AbortSignal): Promise<void> { return this.ensureReady(true, signal); }
+
+  private ensureReady(rebuild: boolean, signal?: AbortSignal): Promise<void> {
+    if (this.worldReady()) return Promise.resolve();
+    if (this.readyTask) {
+      // 复用已有任务；但「只等待」的任务不能满足重建请求，先等它结束再重建。
+      if (!rebuild || this.readyRebuild) return waitForAbort(this.readyTask, signal);
+      const current = this.readyTask;
+      return waitForAbort(current, signal).catch(() => {}).then(() => {
+        signal?.throwIfAborted();
+        // 防御：即使收尾的 finally 还没跑，也不要递归复用同一个只等待的任务。
+        if (this.readyTask === current) { this.readyTask = undefined; this.readyRebuild = false; }
+        return this.ensureReady(true, signal);
+      });
+    }
+    this.readyRebuild = rebuild;
+    const task = this.ensureReadyNow(rebuild);
+    this.readyTask = task;
+    void task.finally(() => {
+      if (this.readyTask === task) { this.readyTask = undefined; this.readyRebuild = false; }
+    }).catch(() => {});
+    // 调用方只取消自己的等待；共享任务跟随场景换代或关闭。
+    return waitForAbort(task, signal);
+  }
+
+  private async ensureReadyNow(rebuild: boolean): Promise<void> {
     const signal = this.readyAbort.signal;
     signal.throwIfAborted();
-    // 先等在途进图；等待期间若又换了新一代，继续等新的那一次，而不是急着再排重启。
+    let lastError: unknown;
+    // 先等在途进图；等待期间若又换了新一代，继续等新的那一次。
     for (let attempts = 0; attempts < 3; attempts++) {
+      if (this.worldReady()) return;
       const task = this.openTask;
-      if (!task) {
-        // 重启已经排队、create 还没开始：等这次重启真的开始，避免重复排队。
-        if (this.loadingWorld && this.openStarted) {
-          try { await waitForAbort(this.openStarted, signal); }
-          catch { signal.throwIfAborted(); }
-          continue;
-        }
-        break;
-      }
+      if (!task) break;
       try { await this.waitOpenTask(task, signal); }
-      catch { signal.throwIfAborted(); } // 进图失败：下面用同一份参数重建
+      catch (error) { signal.throwIfAborted(); lastError = error; }
       if (this.worldReady()) return;
       if (this.openTask === task) break;
     }
     if (this.worldReady()) return;
     signal.throwIfAborted();
+    // 只等待的入口把真实进图错误原样交给调用方，不统一改写成「尚未就绪」。
+    if (!rebuild) throw lastError instanceof Error ? lastError : new Error('正式地图尚未就绪');
     // 场景关闭后进图参数已删除，没有重建依据；保留断言让错误页给出明确结果。
-    if (this.destroyed || !this.options) throw new Error('正式地图尚未就绪');
-    await this.restartWorld(this.baseOptions ?? this.options, signal);
+    const options = this.baseOptions ?? this.options;
+    if (this.destroyed || !options) throw new Error('正式地图尚未就绪');
+    await this.restartWorld(options);
   }
 
   /** 进图卡住时不能让重试永远等下去；超时后按失败处理并重建。 */
@@ -437,34 +473,40 @@ export class WorldScene extends Phaser.Scene {
     });
   }
 
-  /** 用基础参数重建正式世界并等待新场景就绪；失败、取消或超时都会结算等待者。 */
-  private restartWorld(options: SceneOptions, signal: AbortSignal): Promise<void> {
-    signal.throwIfAborted();
+  /**
+   * 用基础参数重建正式世界并等待新场景就绪。
+   * 不监听场景代际的取消源：这次重启自己触发的 shutdown/init 不能取消它，
+   * 场景真正关闭时由 open 的失败回调结算，超时再兜底。
+   */
+  private restartWorld(options: SceneOptions): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       let finished = false, timer: ReturnType<typeof setTimeout> | undefined;
       const controller = new AbortController();
       const done = (error?: unknown) => {
         if (finished) return;
         finished = true;
+        if (this.pendingRestart?.controller === controller) this.pendingRestart = undefined;
         if (timer) clearTimeout(timer);
-        signal.removeEventListener('abort', forwardAbort);
         if (error) reject(error); else resolve();
       };
-      const forwardAbort = () => { controller.abort(signal.reason); done(signal.reason ?? new Error('正式地图已经关闭')); };
-      signal.addEventListener('abort', forwardAbort, { once: true });
       timer = setTimeout(() => {
         const error = new Error('正式地图重建超时');
         controller.abort(error);
         done(error);
       }, STORY_WORLD_SWITCH_TIMEOUT_MS);
       this.loadingWorld = true;
+      this.baseOptions = options;
       const { onReady, onError } = options;
       const wrapped: SceneOptions = { ...options, signal: controller.signal,
-        onReady: () => { if (finished) return; onReady?.(); done(); },
-        onError: (error: unknown) => { if (finished) return; onError?.(error); done(error); } };
-      restartedWorldOptions.add(wrapped);
-      try { this.scene.restart(wrapped); }
-      catch (error) { done(error); }
+        onReady: () => { if (finished) return; try { onReady?.(); } finally { done(); } },
+        onError: (error: unknown) => { if (finished) return; try { onError?.(error); } finally { done(error); } } };
+      this.pendingRestart = { options: wrapped, controller, settle: done };
+      try { this.beginWorldSwitch(); this.scene.restart(wrapped); }
+      catch (error) {
+        this.pendingRestart = undefined;
+        this.openTask = undefined; this.settleOpenStarted = undefined;
+        done(error);
+      }
     });
   }
   /** 先把当前武器/职业那套人物动作请求发出去；失败不挡进图，Wardrobe 会重试。 */
@@ -1435,7 +1477,11 @@ export class WorldScene extends Phaser.Scene {
     console.error(error);
     // 错误页在背景之上；先撤掉跨图黑幕，保证重试按钮可见。
     this.app.ui.setWorldRebuildCover(false);
-    this.app.ui.error(this.recordFailure(error), () => this.scene.restart(this.options));
+    this.app.ui.error(this.recordFailure(error), () => {
+      // 统一走重建设装：重新生成取消源和回调，避免把旧请求里已 abort 的 signal 带进下一次加载。
+      const options = this.baseOptions ?? this.options;
+      if (options) void this.restartWorld(options).catch(next => this.failure(next));
+    });
   }
   /**
    * 攻击键这一帧做什么。先查身边有没有可交互对象，命中就走交互，落空才发起普攻；
@@ -1637,7 +1683,7 @@ export class WorldScene extends Phaser.Scene {
       this.app.ui.error(this.recordFailure(error), () => {
         this.app.ui.loaded();
         // 重试前先确认正式世界完整；世界只建了一半就重建，而不是让剧情快照再抛一次断言。
-        void this.ensureWorldReady().then(() => {
+        void this.recoverWorld().then(() => {
           if (!this.destroyed) return this.playStory(() => this.app.director.retry());
           return false;
         }).catch(next => this.failure(next));
@@ -1649,6 +1695,7 @@ export class WorldScene extends Phaser.Scene {
     if (this.loadingWorld||!this.exitAvailable(exit)) return;
     this.app.session.applyStoryCommands([{type:'travel',destination:{map:exit.destination,...exit.spawn,facing:exit.facing==='any'?'south':exit.facing}}]);
     this.loadingWorld = true; this.near = null; this.app.ui.loading('正在前往新的地方…');
+    this.beginWorldSwitch();
     this.scene.restart({ map: exit.destination, x: exit.spawn.x, y: exit.spawn.y, facing: exit.facing });
   }
   /**
@@ -1683,6 +1730,7 @@ export class WorldScene extends Phaser.Scene {
         finished = true; clearTimeout(timer); resolve(result);
       };
       const timer = setTimeout(() => done({ ok: false, reason: '切图等待超时' }), DEBUG_MAP_WAIT_TIMEOUT_MS);
+      this.beginWorldSwitch();
       this.scene.restart({ map: destination, x: point.x, y: point.y, facing: 'south', suppressEntry: true,
         onReady: () => done({ ok: true }),
         onError: (error: unknown) => done({ ok: false, reason: error instanceof Error ? error.message : String(error) }) } satisfies SceneOptions);
@@ -2010,6 +2058,7 @@ captureStoryScene(includeEnemyAppearance=true):SceneSnapshot {
       // 场景重建既没报错也没就绪时（例如加载卡住），不能让调用方永远等下去。
       timer=setTimeout(()=>{const error=new Error('剧情世界切换超时');controller.abort(error);done(error);},STORY_WORLD_SWITCH_TIMEOUT_MS);
       this.loadingWorld=true;
+      this.beginWorldSwitch();
       this.scene.restart({...location,checkpoint:world,generatedEntities,preparedScene,suppressEntry:true,silentEntry:silent,signal:controller.signal,onReady:()=>done(),onError:(error:unknown)=>done(error)} satisfies SceneOptions);
     });
   }
@@ -2081,7 +2130,7 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
       }
       return;
     }
-    if(location&&!this.worldReady())await this.ensureWorldReady(signal);
+    if(location&&!this.worldReady())await this.recoverWorld(signal);
     if(!this.worldReady())throw new Error('正式地图尚未就绪');
     this.app.director.onSkipProgress?.('assets-start');
     const projected=this.app.session.storyWorld.projectEntities(this.map!.id,

@@ -302,8 +302,8 @@ test('concurrent readiness checks share one rebuild and a cancelled waiter does 
   let queued:SceneOptions|undefined,restarts=0;
   f.state.scene.restart=(options:SceneOptions)=>{restarts++;queued=options;};
   const first=new AbortController();
-  const a=f.scene.ensureWorldReady(first.signal);
-  const b=f.scene.ensureWorldReady();
+  const a=f.scene.recoverWorld(first.signal);
+  const b=f.scene.recoverWorld();
   await new Promise(resolve=>setImmediate(resolve));
   assert.equal(restarts,1,'并发检查只排一次重建');
   first.abort(new DOMException('cancelled','AbortError'));
@@ -319,7 +319,7 @@ test('readiness waits for an in-flight open before rebuilding',async()=>{
   let release!:()=>void,restarts=0;
   (f.state as unknown as {openTask?:Promise<void>}).openTask=new Promise<void>(resolve=>{release=resolve;});
   f.state.scene.restart=(options:SceneOptions)=>{restarts++;options.onReady?.();};
-  const ready=f.scene.ensureWorldReady();
+  const ready=f.scene.recoverWorld();
   await new Promise(resolve=>setImmediate(resolve));
   assert.equal(restarts,0,'在途进图还没结算时不重复重启');
   release();
@@ -327,19 +327,75 @@ test('readiness waits for an in-flight open before rebuilding',async()=>{
   assert.equal(restarts,1,'进图结算后世界仍不完整才重建');
 });
 
-test('ensureWorldReady rebuilds a half-built world and is a no-op when ready',async()=>{
+test('recoverWorld rebuilds a half-built world and is a no-op when ready',async()=>{
   const ready=fixture();
-  await ready.scene.ensureWorldReady();
+  await ready.scene.recoverWorld();
   assert.equal(ready.restarts(),0,'已经就绪的世界不重启');
 
   const broken=fixture();
   broken.scene.options={map:'home',x:10,y:20,facing:'south'};
   delete (broken.state as unknown as Record<string,unknown>).movement;
-  await broken.scene.ensureWorldReady();
+  await broken.scene.recoverWorld();
   assert.equal(broken.restarts(),1,'只建了一半的世界用进图参数重建');
 });
 
 test('a closing world refuses to capture a save instead of reading torn-down objects',()=>{
   const f=fixture();f.state.destroyed=true;
   assert.deepEqual(f.scene.captureSaveWorld(),{ok:false,reason:'not-ready'});
+});
+
+test('waitWorldReady only waits for an in-flight open and never rebuilds',async()=>{
+  const f=fixture();
+  delete (f.state as unknown as Record<string,unknown>).movement;
+  let restarts=0;
+  f.state.scene.restart=()=>{restarts++;};
+  await assert.rejects(f.scene.waitWorldReady(),/正式地图尚未就绪/);
+  assert.equal(restarts,0,'正常开演前的等待不重建世界');
+});
+
+test('a rebuild is not cancelled by the shutdown it triggers',async()=>{
+  const f=fixture();
+  f.scene.options={map:'home',x:10,y:20,facing:'south'};
+  delete (f.state as unknown as Record<string,unknown>).movement;
+  f.state.scene.restart=(options:SceneOptions)=>{
+    // 真实 Phaser 的 restart 会先 shutdown 旧场景，shutdown 会 abort 这一代的取消源。
+    f.state.readyAbort.abort(new Error('正式地图已经关闭'));
+    f.state.loadingWorld=false;f.state.movement=f.movement;
+    options.onReady?.();
+  };
+  await f.scene.recoverWorld();
+});
+
+test('waitWorldReady surfaces the in-flight open error and recoverWorld then rebuilds',async()=>{
+  const f=fixture();
+  f.scene.options={map:'home',x:10,y:20,facing:'south'};
+  delete (f.state as unknown as Record<string,unknown>).movement;
+  let rejectOpen!: (error: Error)=>void;
+  (f.state as unknown as {openTask?:Promise<void>}).openTask=new Promise<void>((_,reject)=>{rejectOpen=reject;});
+  let restarts=0;
+  f.state.scene.restart=(options:SceneOptions)=>{restarts++;options.onReady?.();};
+  const waiting=f.scene.waitWorldReady();
+  await new Promise(resolve=>setImmediate(resolve));
+  rejectOpen(new Error('这片区域的资源尚未准备好'));
+  await assert.rejects(waiting,/这片区域的资源尚未准备好/);
+  assert.equal(restarts,0,'只等待的入口不重建');
+  await f.scene.recoverWorld();
+  assert.equal(restarts,1,'错误重试入口重建一次');
+});
+
+test('recoverWorld escalates a wait-only task into a rebuild after the open settles',async()=>{
+  const f=fixture();
+  f.scene.options={map:'home',x:10,y:20,facing:'south'};
+  delete (f.state as unknown as Record<string,unknown>).movement;
+  let release!:()=>void,restarts=0;
+  (f.state as unknown as {openTask?:Promise<void>}).openTask=new Promise<void>(resolve=>{release=resolve;});
+  f.state.scene.restart=(options:SceneOptions)=>{restarts++;options.onReady?.();};
+  const waiting=f.scene.waitWorldReady();
+  const recovering=f.scene.recoverWorld();
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(restarts,0,'在途进图还没结束时两个入口都不重建');
+  release();
+  await assert.rejects(waiting,/正式地图尚未就绪/);
+  await recovering;
+  assert.equal(restarts,1,'等待型任务结束后重建请求只排一次重建');
 });

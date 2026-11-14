@@ -19,7 +19,7 @@ Phaser 场景层：驱动生命周期、转发输入，把 domain、rendering、
 
 ## 规则
 
-- **正式世界就绪统一判断。** 跨场景入口在读取世界快照、启动剧情和错误重试前用 `WorldScene.worldReady()`；需要等待或重建时调用 `ensureWorldReady()`，由它统一处理在途进图和失败重建。新增会 `scene.restart` 的入口把参数登记为基础进图参数，重复重建从基础参数生成，避免回调套娃。
+- **正式世界就绪统一判断。** 跨场景入口在读取世界快照前用 `WorldScene.worldReady()`；正常开演前只在途进图用 `waitWorldReady()`，错误重试和剧情投影用 `recoverWorld()`（等待后仍不完整才重建）。会自己包装参数的重建入口要登记基础进图参数（`restartWorld` 用 `pendingRestart` 身份认领），直接 `scene.restart` 的入口由 `init` 正常登记为基础参数。
 - 剧情舞台恢复敌人时优先使用剧情外观；快照没有外观时按敌人 ID 从战斗目录恢复。
 - 玩家存档的世界快照只保留敌人身份和现场状态；运行时剧情与回滚快照保留完整敌人外观。
 

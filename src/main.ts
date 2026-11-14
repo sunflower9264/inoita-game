@@ -590,8 +590,8 @@ function installSession(session: Session, keepMapFile?: string): void {
     settle: () => worldScene()?.settleStoryPlayback(),
     prepare: async (_commands, signal, stage, script, cursor) => {
       const scene = worldScene();
-      // 剧情开演前先确认正式世界完整；进图失败或只建了一半会在这里重建，而不是让快照抛断言。
-      await scene?.ensureWorldReady(signal);
+      // 剧情开演前先等在途进图；世界不完整时把真实错误交给错误页和重试路径恢复。
+      await scene?.waitWorldReady(signal);
       if (scene?.map) {
         const target = cursor ? nextStoryMap(campaign, cursor, scene.map.id)
           : stage && !stage.mapFromWorld ? stage.map : undefined;
@@ -617,7 +617,7 @@ function installSession(session: Session, keepMapFile?: string): void {
       ui.loaded(); void (async () => {
         try {
           // 世界只建了一半时先重建，成功后再接着走剧情游标。
-          await worldScene()?.ensureWorldReady();
+          await worldScene()?.recoverWorld();
           await retry();
         } catch (next) { director.onError?.(next, retry); }
       })();
