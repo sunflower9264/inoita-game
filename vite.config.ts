@@ -1,6 +1,7 @@
 import path from 'node:path';
 import process from 'node:process';
 import fs from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import os from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { defineConfig, type Plugin } from 'vite';
@@ -86,6 +87,48 @@ function cloudSaveService(): Plugin {
         server.config.logger.warn(`云存档开发服务未启动：${error instanceof Error ? error.message : String(error)}`);
       }
     }
+  };
+}
+
+interface BuildInfo {
+  game: string;
+  package: string;
+  contentVersion: string;
+  assetVersion: string;
+  mode: 'build' | 'dev';
+}
+
+/** 在页面脚本之前注入版本信息，最早的一条诊断记录也能对上代码。 */
+function injectBuildInfo(info: BuildInfo): Plugin {
+  return {
+    name: 'build-info',
+    transformIndexHtml: {
+      order: 'pre',
+      handler: () => [{
+        tag: 'script',
+        children: `window.__inoitaBuild=${JSON.stringify(info)};`,
+        injectTo: 'head-prepend',
+      }],
+    },
+  };
+}
+
+function readBuildInfo(root: string, command: string, versions: { assetVersion: string; contentVersion: string }): BuildInfo {
+  let packageVersion = '';
+  let gameVersion = '';
+  try {
+    packageVersion = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')).version ?? '';
+  } catch { /* 版本缺失不影响启动。 */ }
+  try {
+    const changelog = JSON.parse(readFileSync(path.join(root, 'public', 'content', 'changelog.json'), 'utf8'));
+    gameVersion = changelog?.releases?.[0]?.gameVersion ?? '';
+  } catch { /* 更新日志缺失时只留空。 */ }
+  return {
+    game: gameVersion,
+    package: packageVersion,
+    contentVersion: versions.contentVersion,
+    assetVersion: versions.assetVersion,
+    mode: command === 'build' ? 'build' : 'dev',
   };
 }
 
@@ -200,6 +243,7 @@ export default defineConfig(({ command }) => {
     if (!versions.assetVersion || !versions.contentVersion)
       versions = computeVersions(path.join(root, 'public'));
   }
+  const buildInfo = readBuildInfo(root, command, versions);
   return {
     base: './',
     publicDir: 'public',
@@ -212,7 +256,7 @@ export default defineConfig(({ command }) => {
       // 开发服务与 Node 测试打开快照冻结和内部全量校验；生产构建关闭。
       __STORY_DEV_MODE__: JSON.stringify(command !== 'build')
     },
-    plugins: [contentGuard(), devBuiltContent(), diagnosticCollector(), cloudSaveService(), versionPublicAssets(versions.assetVersion)],
+    plugins: [contentGuard(), devBuiltContent(), diagnosticCollector(), cloudSaveService(), injectBuildInfo(buildInfo), versionPublicAssets(versions.assetVersion)],
     server: {
       host: true,
       port: 4003,

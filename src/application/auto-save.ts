@@ -116,7 +116,10 @@ export class AutoSaver<World = unknown> {
       const next=new Map<string,string>();
       for(const [id,state] of session.quests){
         next.set(id,state.status);
-        if(statuses.get(id)!==state.status&&(state.status==='active'||state.status==='completed'))changed=true;
+        if(statuses.get(id)!==state.status&&(state.status==='active'||state.status==='completed')){
+          changed=true;
+          globalThis.storyDiagnostics?.record('quest-change',{quest:id,status:state.status},false);
+        }
       }
       statuses=next;
       if(changed)this.request();

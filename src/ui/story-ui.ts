@@ -508,7 +508,9 @@ export class StoryUI {
       this.itemResult=undefined;this.cancelOperation();this.adjusting=false;this.notice='';
     }
     // 背包页的 DOM、静态图框和合成立绘都留着；数据没变时只把整层显示出来。
+    const previousPage=this.page;
     this.page=page;
+    if(reopening||previousPage!==page)globalThis.storyDiagnostics?.record('menu-page',{page,open:true},false);
     if(reuseBag){this.sync();return;}
     // render() 末尾已经 sync 过；这里再调一次会把整层再排版一遍。
     this.render();
@@ -592,6 +594,7 @@ export class StoryUI {
   }
   close():void{
     if(this.open&&this.requestAllocationExit(()=>this.close()))return;
+    if(this.open)globalThis.storyDiagnostics?.record('menu-page',{page:this.page,open:false},false);
     if(this.debugStoryTimer){clearTimeout(this.debugStoryTimer);this.debugStoryTimer=undefined;}
     this.debugOpenToken++;this.debugStoryOnOpen=false;this.debugStoryMessage='';
     if(!this.open){

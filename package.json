@@ -32,6 +32,8 @@
     "release:story": "npm run validate:content && npm run debug-start:check && npm run audit:story && node tools/test.ts tests/save-game.test.ts tests/saved-game.test.ts tests/story-chapters.test.ts && npm run build",
     "debug-start": "node tools/debug-start/story-debug-start.ts --write",
     "debug-start:check": "node tools/debug-start/story-debug-start.ts --check",
+    "diag:list": "node tools/diagnostics-report.mjs",
+    "diag:session": "node tools/diagnostics-report.mjs --session",
     "report:assets": "node tools/asset-report.ts",
     "audit:assets": "node tools/prune-assets.ts --check",
     "atlas:icons": "node tools/build-icon-atlas.ts",

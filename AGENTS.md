@@ -125,6 +125,8 @@ npm run atlas:all                  # 重新生成图标/道具/界面/特效/角
 npm run test:content-build         # 真实内容编译后跑最小战斗与剧情节点
 npm run debug-start                # 内容改动后重新生成 GM 任务现场表
 npm run debug-start:check          # 只检查 GM 任务现场表是否过期
+npm run diag:list                  # 查看最近的诊断会话
+npm run diag:session -- <会话 id>   # 查看单个会话的完整时间线
 npm run test:all                   # 用户明确要求全量单元测试时
 npm run test:standalone            # 独立安装、类型检查与构建验收
 npm run build                      # 校验、替换 dist/，并把未引用素材移进 asset-archive/

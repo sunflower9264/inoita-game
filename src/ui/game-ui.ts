@@ -217,7 +217,9 @@ export class GameUI {
     return new Promise((resolve,reject)=>{
       let settled=false;const clean=()=>{signal?.removeEventListener('abort',cancel);this.cancelDialogue=undefined;this.choices=undefined;this.updateControls();};
       const cancel=()=>{if(settled)return;settled=true;clean();reject(new DOMException('选项已取消','AbortError'));};this.cancelDialogue=cancel;signal?.addEventListener('abort',cancel,{once:true});
-      this.choices={prompt,options,description,choose:option=>{if(settled||this.suspended)return;settled=true;clean();resolve(option);}};this.updateControls();
+      this.choices={prompt,options,description,choose:option=>{if(settled||this.suspended)return;settled=true;
+        globalThis.storyDiagnostics?.record('story-choice',{value:option.value,options:options.map(item=>item.value)},false);
+        clean();resolve(option);}};this.updateControls();
     });
   }
   closeDialogue():void{this.cancelDialogue?.();this.portraitToken=Symbol('closed');this.portraitFile=undefined;this.dialogueLine=undefined;this.choices=undefined;this.dialogueState=null;this.pending=null;this.page='';this.updateControls();}

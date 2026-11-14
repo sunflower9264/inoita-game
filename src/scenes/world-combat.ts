@@ -283,6 +283,16 @@ export class WorldCombat {
   private partyActionsSuspended=false;
   private performanceHidden=false;
   private closed=false;
+  /** 战斗诊断计数器：区间值给每 5 秒摘要，累计值给收战摘要。 */
+  private diagnosticHits=0;
+  private diagnosticDamageDealt=0;
+  private diagnosticDamageTaken=0;
+  private diagnosticTotalHits=0;
+  private diagnosticTotalDamageDealt=0;
+  private diagnosticTotalDamageTaken=0;
+  private diagnosticStartedAt=0;
+  /** 用每帧 delta 累加，避免额外定时器；只在可战斗状态推进。 */
+  private diagnosticElapsedMs=0;
   private defeated=false;
   /** 全队已经确认阵亡，但结算界面还没弹出；暂停或重建战斗后用它补触发。 */
   private wipeoutPending=false;
@@ -414,10 +424,18 @@ export class WorldCombat {
   get castingSkill():boolean{return !!this.combat?.activeAction()?.skill;}
   get targetId(){return this.combat?.selectedTargetId();}
   get cooldowns(){return this.combat?.snapshot().cooldowns??{};}
-  /**
-   * 卡住排查的最小快照：谁被冻住、在放什么动作、身上挂着哪些状态、移动体是否还在推进。
-   * 「不能移动」可能来自任何一层（流程锁、战斗暂停、buff、移动体固定），这里一次给全。
-   */
+  /** 每 5 秒一条轻量战斗摘要；没有敌人也没有新命中时跳过，不写空记录。 */
+  private reportCombatTick():void{
+    if(this.closed)return;
+    const enemies=this.arena.filter(enemy=>!this.pendingDefeats.has(enemy.key)).length;
+    if(!enemies&&!this.diagnosticHits&&!this.diagnosticDamageDealt&&!this.diagnosticDamageTaken)return;
+    const tick={map:this.scene.map?.id,controlled:this.controlledId,target:this.targetId??null,
+      action:this.attackState,skill:this.combat?.activeAction()?.skill?.id??null,
+      enemies,aliveParty:this.activeParty.filter(id=>(this.memberOf(id)?.player.health??0)>0).length,
+      hits:this.diagnosticHits,damageDealt:this.diagnosticDamageDealt,damageTaken:this.diagnosticDamageTaken};
+    this.diagnosticHits=0;this.diagnosticDamageDealt=0;this.diagnosticDamageTaken=0;
+    globalThis.storyDiagnostics?.record('combat-tick',tick,false);
+  }
   /**
    * 全量现场快照：每个出战队员的控制器、AI 寻路、移动体和状态，以及敌人和交战判定。
    * 「佣兵不动」「卡墙」「技能收不了尾」可能落在不同层，这里一次给全。
@@ -1254,6 +1272,17 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
   private settleHit(event:AttackContact,hit:PhysicalHit,hero:BattleCharacter,targetEnemy?:MapEnemy,presentation:{style?:HitEffectStyle;periodic?:boolean;sound?:boolean}={}):void {
     if(this.pendingDefeats.has(event.targetId)||!this.conditions.canLoseHealth(event.targetId)
       ||targetEnemy&&this.app.session.storyWorld?.visible(targetEnemy.key)===false)return;
+    this.diagnosticHits+=1;
+    this.diagnosticTotalHits+=1;
+    if(hit.damage>0){
+      if(this.memberOf(event.targetId)){
+        this.diagnosticDamageTaken+=hit.damage;
+        this.diagnosticTotalDamageTaken+=hit.damage;
+      } else {
+        this.diagnosticDamageDealt+=hit.damage;
+        this.diagnosticTotalDamageDealt+=hit.damage;
+      }
+    }
     this.recordSummonContact?.(event.casterId,event.targetId);
     if(hit.damage){
       if(hit.damage>0)this.conditions.removeState(event.targetId,'sleep');
@@ -2523,6 +2552,10 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
     if(!options.restore)for(const placed of [...this.roster.enemies])this.spawnEnemy(placed);
     this.setPerformanceActive(this.scene.performing);
     this.scene.refreshCombatTarget();
+    this.diagnosticStartedAt=performance.now();
+    this.diagnosticElapsedMs=0;
+    globalThis.storyDiagnostics?.record('combat-start',{map:this.scene.map?.id,controlled:this.controlledId,
+      party:this.activeParty,heroLevel:this.hero.level,enemies:this.arena.length},false);
   }
   private equipmentAttack(actor:ActorDefinition,id='player',step=0){
     return equipmentAttackFor(this.app.wardrobe,this.app.items,this.hero,actor,id,step);
@@ -3171,6 +3204,8 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
       return;
     }
     this.partyActionsSuspended=false;
+    this.diagnosticElapsedMs+=delta;
+    if(this.diagnosticElapsedMs>=5000){this.diagnosticElapsedMs=0;this.reportCombatTick();}
     this.app.session.advanceGameTime(delta);
     if(this.scene.time.now>=this.nextPartySyncAt&&this.app.session.party?.activeIds.join('|')!==this.partySignature)
       void this.syncAllies().catch(error=>this.app.ui.toast((error as Error).message));
@@ -3269,6 +3304,11 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
   }
   destroy():void{
     if(this.closed)return;
+    if(this.diagnosticStartedAt)globalThis.storyDiagnostics?.record('combat-end',{map:this.scene.map?.id,
+      durationMs:Math.round(performance.now()-this.diagnosticStartedAt),
+      hits:this.diagnosticTotalHits,damageDealt:this.diagnosticTotalDamageDealt,
+      damageTaken:this.diagnosticTotalDamageTaken,
+      enemies:this.arena.length,defeated:this.defeated},false);
     this.closed=true;this.generation++;this.combatRuntime?.dispose();this.partyDefeatWork?.clear();
     for(const notify of [...this.allyWaiters])notify();
     for(const tween of this.deathTweens.values())tween.stop();this.deathTweens.clear();this.fallen.clear();

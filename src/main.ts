@@ -4,7 +4,7 @@ import {installPageInteractionGuard} from './application/page-interaction-guard.
 import {prepareSavedGame} from './application/saved-game.ts';
 import {SavedGameLoader} from './application/saved-game-loader.ts';
 import {AutoSaver} from './application/auto-save.ts';
-import {AUTO_SAVE_SLOT, type SaveSlotRef} from './domain/save-game.ts';
+import {AUTO_SAVE_SLOT, SAVE_FORMAT, type SaveSlotRef} from './domain/save-game.ts';
 import { SCENE_KEYS } from './application/scene-keys.ts';
 import { UI_EVENTS } from './application/ui-events.ts';
 import {validateCrafting} from './domain/crafting.ts';
@@ -44,7 +44,7 @@ import { GAME_FRAME_TIMING, installFrameLimitClock } from './application/game-ti
 import { displaySettings, parallelTextureUnits } from './application/display-settings.ts';
 import { currentRefreshRate, detectRefreshRate, refreshRateKnown, resolveFrameLimit, setRefreshRate } from './application/frame-pacing.ts';
 import { requestNativeFrameRate } from './application/native-frame-rate.ts';
-import { installDiagnosticSnapshot, installStorySkipDiagnostics } from './application/game-diagnostics.ts';
+import { installDiagnosticMetrics, installDiagnosticSnapshot, installStorySkipDiagnostics, FrameStats } from './application/game-diagnostics.ts';
 import { createGmActions, consoleGmActions, type ConsoleGmActions } from './debug/gm-actions.ts';
 import { IndexedDbDebugMarkStore } from './application/debug-mark-store.ts';
 import { prepareDebugMark } from './application/debug-mark-preparation.ts';
@@ -172,16 +172,33 @@ function startAutoSave(session:Session):void {
     locked:()=>app.locked||!!app.director?.busy,
     capture:()=>{const captured=app.storyUI.captureSaveRecord(lastSaveThumbnail);return captured.ok?captured.record:undefined;},
     write:game=>{
-      if(generation===autoSaveGeneration&&app.session===session&&app.mode==='game')
-        app.saves.write(AUTO_SAVE_SLOT,game);
+      if(generation===autoSaveGeneration&&app.session===session&&app.mode==='game'){
+        const started=performance.now();
+        try {
+          app.saves.write(AUTO_SAVE_SLOT,game);
+          globalThis.storyDiagnostics?.record('save',{slot:'auto',mode:'sync',
+            elapsedMs:Math.round((performance.now()-started)*10)/10},false);
+        } catch(error) {
+          globalThis.storyDiagnostics?.record('save-error',{slot:'auto',mode:'sync',error});
+          throw error;
+        }
+      }
     },
     // 常规自动存档先截一张当前画面；页面即将隐藏时仍走同步 write，保留上一张截图。
     writeAsync:async (game,isLatest)=>{
+      const started=performance.now();
       const screenshot=await app.captureSaveThumbnail?.();
       // 等截图期间回标题、读档或换了会话时，不能把旧快照写进新的自动槽。
       if(!isLatest()||generation!==autoSaveGeneration||app.session!==session||app.mode!=='game')return;
       if(screenshot)game.summary.screenshot=screenshot;
-      app.saves.write(AUTO_SAVE_SLOT,game);
+      try {
+        app.saves.write(AUTO_SAVE_SLOT,game);
+        globalThis.storyDiagnostics?.record('save',{slot:'auto',mode:'async',
+          elapsedMs:Math.round((performance.now()-started)*10)/10},false);
+      } catch(error) {
+        globalThis.storyDiagnostics?.record('save-error',{slot:'auto',mode:'async',error});
+        throw error;
+      }
     },
   });
   autoSaver=saver;
@@ -276,7 +293,10 @@ function prepareStory(_signal: AbortSignal): Promise<void> {
       app.content.world(signal), app.content.campaign(signal), app.content.storyInterface(signal), app.content.battle(signal),
       app.content.menuPanels(signal), app.content.items(signal), app.content.wardrobe(signal),
       app.content.statusHud(signal), app.content.controlSkin(signal), app.content.characterStats(signal), app.content.shops(signal), app.content.companions(signal), app.content.crafting(signal)
-    ]);
+    ]).catch(error => {
+      globalThis.storyDiagnostics?.record('content-load-error', { stage: 'story-fetch', error });
+      throw error;
+    });
     signal.throwIfAborted();
     recordStartPhase('story-fetched');
     // 调试现场表是独立产物：只有 GM 会话加载，普通游玩不请求 1.35MB 的调试数据。
@@ -377,6 +397,7 @@ async function enterGame(slot?:number): Promise<void> {
   modeRequest.abort(); modeRequest = new AbortController();
   const signal = modeRequest.signal;
   app.mode = 'class-select'; ui.setMode('class-select'); ui.loading('正在加载资源…');
+  recordSceneChange(SCENE_KEYS.classSelect, { source: 'menu' });
   try {
     app.storyClasses = await app.content.storyClasses(signal);
     signal.throwIfAborted();
@@ -385,6 +406,7 @@ async function enterGame(slot?:number): Promise<void> {
   } catch (error) {
     if(signal.aborted)return;
     console.error(error);
+    globalThis.storyDiagnostics?.record('content-load-error', { stage: 'story-classes', error });
     ui.error(error instanceof Error ? error.message : String(error), () => {
       app.mode = 'menu'; void enterGame(slot);
     });
@@ -417,6 +439,7 @@ async function startPressureTest(): Promise<void> {
     app.pressureMode = false;
     if (signal.aborted) return;
     console.error(error);
+    globalThis.storyDiagnostics?.record('content-load-error', { stage: 'pressure-start', error });
     app.mode = 'menu';
     ui.error(error instanceof Error ? error.message : String(error), () => { void startPressureTest(); });
   };
@@ -432,10 +455,11 @@ async function startPressureTest(): Promise<void> {
   if (!selected) { fail(new Error('压测缺少默认职业')); return; }
   cancelCommonPreload();
   app.mode = 'game'; ui.setMode('game'); ui.loading('正在进入压测战场…');
+  app.saveSlot = undefined;
   installSession(newStorySession(app.campaign, app.world.actors[app.campaign.start.actor], selected,
     app.items, app.characterStats, app.battleCatalog, app.companions));
-  app.saveSlot = undefined;
   const menu = app.game!.scene.getScene(SCENE_KEYS.menu);
+  recordSceneChange(SCENE_KEYS.world, { map: PRESSURE_MAP, source: 'pressure' });
   menu.scene.start(SCENE_KEYS.world, { map: PRESSURE_MAP, x: PRESSURE_START.x, y: PRESSURE_START.y,
     facing: 'south', initialEntry: true, suppressEntry: true,
     onReady: () => { app.storyUI?.prewarmBag(); void worldScene()?.startPressureSpawner(); } });
@@ -459,6 +483,7 @@ async function finishStoryStart(classId: string): Promise<void> {
   catch (error) {
     if (signal.aborted) return;
     console.error(error);
+    globalThis.storyDiagnostics?.record('content-load-error', { stage: 'story-start', error });
     ui.error(error instanceof Error ? error.message : String(error), () => { void finishStoryStart(classId); });
     return;
   }
@@ -471,6 +496,7 @@ async function finishStoryStart(classId: string): Promise<void> {
   recordStartPhase('session-install-start');
   installSession(newStorySession(campaign, app.world.actors[campaign.start.actor], selected, app.items,app.characterStats,app.battleCatalog,app.companions));
   recordStartPhase('session-installed');
+  recordSceneChange(SCENE_KEYS.world, { map: app.campaign.start.map, source: 'new-game' });
   selection.scene.start(SCENE_KEYS.world, { ...app.campaign.start, initialEntry: true,
     onReady: () => { app.storyUI?.prewarmBag(); remeasureRefreshAfterStart?.(); } });
   recordStartPhase('world-scene-start');
@@ -485,6 +511,8 @@ async function resumeSlot(slot:SaveSlotRef,signal?:AbortSignal):Promise<void> {
     !sourceScene?.sys.isActive()||sourceMode==='game'&&worldScene()?.loadingWorld)return;
   const isCurrent=()=>modeRequest===sourceLifetime&&app.mode===sourceMode&&currentScene()===sourceScene&&app.session===sourceSession&&
     (sourceScene.sys.isActive()||sourceScene.sys.isPaused());
+  const loadStarted=performance.now();
+  globalThis.storyDiagnostics?.record('load-start',{slot,from:sourceMode},false);
   try{
     await savedGameLoader.load(slot,{
       isCurrent,
@@ -511,9 +539,10 @@ async function resumeSlot(slot:SaveSlotRef,signal?:AbortSignal):Promise<void> {
       install:(candidate,lifetime)=>{
         modeRequest=lifetime;const {session,world}=candidate,location=world.location;
         app.mode='game';ui.setMode('game');ui.loading('正在读取存档…');
-        installSession(session, candidate.map.file);
         // 自动槽不是玩家手动选择的槽，所以这里留空。
         app.saveSlot=slot===AUTO_SAVE_SLOT?undefined:slot;
+        installSession(session, candidate.map.file);
+        recordSceneChange(SCENE_KEYS.world, { map: location.map, source: 'load' });
         game.scene.start(SCENE_KEYS.world,{map:location.map,x:location.x,y:location.y,facing:location.facing,
           initialEntry:true,suppressEntry:true,resumeStory:true,signal:lifetime.signal,checkpoint:world.world,generatedEntities:world.generatedEntities,preparedScene:world.scene,
           onReady:()=>{
@@ -524,7 +553,20 @@ async function resumeSlot(slot:SaveSlotRef,signal?:AbortSignal):Promise<void> {
           }});
       },
     },signal);
-  }catch(error){if(isCurrent())ui.loaded();throw error;}
+    globalThis.storyDiagnostics?.record('load',{slot,
+      elapsedMs:Math.round((performance.now()-loadStarted)*10)/10},false);
+  }catch(error){
+    // 玩家返回、切槽或换会话会让 loader 抛 AbortError；取消不是读档失败，不能写进错误流。
+    const cancelled=!!signal?.aborted||(typeof error==='object'&&error!==null
+      &&(error as {name?:string}).name==='AbortError');
+    if(cancelled){
+      globalThis.storyDiagnostics?.record('load-cancel',{slot},false);
+    }else{
+      globalThis.storyDiagnostics?.record('load-error',{slot,
+        elapsedMs:Math.round((performance.now()-loadStarted)*10)/10,error});
+    }
+    if(isCurrent())ui.loaded();throw error;
+  }
 }
 
 async function changePressureClass(classId:string):Promise<void> {
@@ -539,9 +581,10 @@ async function changePressureClass(classId:string):Promise<void> {
   game.scene.stop(SCENE_KEYS.world);await stopped;
   app.releaseSession(oldSession);
   if(!app.pressureMode)return;
+  app.saveSlot=undefined;
   installSession(newStorySession(app.campaign,app.world.actors[app.campaign.start.actor],selected,
     app.items,app.characterStats,app.battleCatalog,app.companions));
-  app.saveSlot=undefined;
+  recordSceneChange(SCENE_KEYS.world, { map: PRESSURE_MAP, source: 'pressure-class' });
   game.scene.start(SCENE_KEYS.world,{map:PRESSURE_MAP,x:PRESSURE_START.x,y:PRESSURE_START.y,
     facing:'south',initialEntry:true,suppressEntry:true,
     onReady:()=>{app.storyUI?.prewarmBag();void worldScene()?.startPressureSpawner();}});
@@ -560,6 +603,11 @@ function installSession(session: Session, keepMapFile?: string): void {
     app.wardrobe, app.items, (ids, signal) => app.content.wardrobePoses(ids, signal));
   const campaign = app.campaign, presentation = app.storyInterface;
   app.session = session;
+  globalThis.storyDiagnostics?.record('session-install', {
+    slot: app.saveSlot ?? null, map: session.storyWorld.currentLocation?.map ?? null,
+    pressure: app.pressureMode, party: session.party?.activeIds ?? null,
+    classId: session.hero?.classId ?? null, level: session.hero?.level ?? null,
+  }, false);
   app.storySignal = modeRequest.signal;
   app.checkpoint.clear();
   app.summonLampMerchant=(entry,signal)=>requireWorldScene().summonLampMerchant(entry,signal);
@@ -732,6 +780,7 @@ function returnToMenu(): void {
   } else releaseSessionAssets();
   // 初始内容请求失败时菜单场景仍在运行。
   app.mode = 'menu'; ui.lock(false,'game'); ui.setMode('menu');
+  recordSceneChange(SCENE_KEYS.menu, { source: 'return' });
   app.audio?.enterMenu();
 }
 /**
@@ -739,12 +788,180 @@ function returnToMenu(): void {
  * `lockOwners` 说明谁按住了操作，`world.player.inWall` 说明身体是否嵌进墙，
  * `world.combat` 说明技能/暂停/状态是否还挂着。
  */
+const frameStats = new FrameStats();
+let diagnosticFrames = 0;
+let diagnosticLongFrames = 0;
+let lastLowFpsAt = 0;
+let heartbeatIndex = 0;
+let cachedRenderer: Record<string, unknown> | null = null;
+let cachedStorage: Record<string, unknown> | null = null;
+let cachedStorageAt = 0;
+let cachedTextureBytes = -1;
+let cachedTextureBytesAt = 0;
+let cachedTextureCount = -1;
+let cachedTextureCountAt = 0;
+
+function recordSceneChange(scene: string, details: Record<string, unknown> = {}): void {
+  globalThis.storyDiagnostics?.record('scene-change', { scene, mode: app.mode, ...details }, false);
+}
+
+function rendererDiagnostics(): Record<string, unknown> | null {
+  if (cachedRenderer) return cachedRenderer;
+  const renderer = app.game?.renderer as unknown as { gl?: WebGL2RenderingContext | WebGLRenderingContext } | undefined;
+  const gl = renderer?.gl;
+  if (!gl) return null;
+  try {
+    const debug = gl.getExtension('WEBGL_debug_renderer_info') as
+      { UNMASKED_VENDOR_WEBGL: number; UNMASKED_RENDERER_WEBGL: number } | null;
+    cachedRenderer = {
+      version: gl.getParameter(gl.VERSION) as string,
+      vendor: gl.getParameter(gl.VENDOR) as string,
+      renderer: gl.getParameter(gl.RENDERER) as string,
+      unmaskedVendor: debug ? gl.getParameter(debug.UNMASKED_VENDOR_WEBGL) as string : null,
+      unmaskedRenderer: debug ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL) as string : null,
+      maxTextureSize: gl.getParameter(gl.MAX_TEXTURE_SIZE) as number,
+    };
+  } catch { cachedRenderer = { unavailable: true }; }
+  return cachedRenderer;
+}
+
+function textureDiagnostics(): Record<string, unknown> {
+  const game = app.game;
+  if (!game) return { count: 0, estimatedBytes: null };
+  try {
+    const now = performance.now();
+    // 事件记录可能每秒多条；纹理名单一秒最多取一次，避免每条记录都分配一个键数组。
+    if (cachedTextureCount < 0 || now - cachedTextureCountAt > 1000) {
+      const keys = game.textures.getTextureKeys();
+      cachedTextureCount = keys.length;
+      cachedTextureCountAt = now;
+      if (cachedTextureBytes < 0 || now - cachedTextureBytesAt > 60_000) {
+        let bytes = 0;
+        for (const key of keys) {
+          const texture = game.textures.get(key) as unknown as
+            { source?: { width?: number; height?: number } | Array<{ width?: number; height?: number }> };
+          const source = Array.isArray(texture?.source) ? texture.source[0] : texture?.source;
+          if (source?.width && source?.height) bytes += source.width * source.height * 4;
+        }
+        cachedTextureBytes = bytes;
+        cachedTextureBytesAt = now;
+      }
+    }
+    return { count: cachedTextureCount, estimatedBytes: cachedTextureBytes };
+  } catch { return { count: 0, estimatedBytes: null }; }
+}
+
+function storageDiagnostics(): Record<string, unknown> | null {
+  const now = performance.now();
+  if (cachedStorage && now - cachedStorageAt < 300_000) return cachedStorage;
+  cachedStorageAt = now;
+  try {
+    const storage = navigator.storage;
+    if (!storage?.estimate) return null;
+    void storage.estimate().then(estimate => {
+      cachedStorage = { quota: estimate.quota ?? null, usage: estimate.usage ?? null };
+    }).catch(() => {});
+  } catch { return null; }
+  return cachedStorage;
+}
+
+function memoryUsage(): Record<string, number> | null {
+  const memory = (performance as Performance & { memory?: {
+    usedJSHeapSize?: number; totalJSHeapSize?: number; jsHeapSizeLimit?: number } }).memory;
+  if (!memory) return null;
+  return { usedBytes: memory.usedJSHeapSize ?? 0, totalBytes: memory.totalJSHeapSize ?? 0,
+    limitBytes: memory.jsHeapSizeLimit ?? 0 };
+}
+
+function navigatorMetrics(): Record<string, unknown> {
+  const nav = navigator as Navigator & { deviceMemory?: number; connection?: {
+    effectiveType?: string; downlink?: number; rtt?: number; saveData?: boolean } };
+  const connection = nav.connection;
+  return {
+    hardwareConcurrency: nav.hardwareConcurrency || null,
+    deviceMemory: nav.deviceMemory ?? null,
+    online: nav.onLine,
+    connection: connection ? { effectiveType: connection.effectiveType ?? null,
+      downlink: connection.downlink ?? null, rtt: connection.rtt ?? null,
+      saveData: connection.saveData ?? null } : null,
+    maxTouchPoints: nav.maxTouchPoints,
+    language: nav.language,
+  };
+}
+
+/** 每条诊断记录都附带的轻量指标；只做整数统计和缓存读取，不遍历纹理之外的集合。 */
+function diagnosticMetrics(): Record<string, unknown> {
+  return {
+    frames: frameStats.snapshot(),
+    heap: memoryUsage(),
+    textures: textureDiagnostics(),
+    renderer: rendererDiagnostics(),
+    screen: { width: innerWidth, height: innerHeight, pixelRatio: devicePixelRatio,
+      refreshHz: currentRefreshRate(), orientation: screen.orientation?.type ?? null,
+      visualScale: visualViewport?.scale ?? null },
+    settings: { frameRateLimit: displaySettings.frameRateLimit, renderScale: displaySettings.renderScale,
+      fpsReadout: displaySettings.fps, textureBatching: displaySettings.textureBatching },
+    document: { hidden: document.hidden, focused: document.hasFocus() },
+    storage: storageDiagnostics(),
+    ...navigatorMetrics(),
+  };
+}
+
+/** 心跳只带少量状态，避免每分钟复制一份完整战斗现场。 */
+function compactDiagnostics(): Record<string, unknown> {
+  const session = app.session;
+  const scene = worldScene();
+  const location = session?.storyWorld.currentLocation;
+  return {
+    mode: app.mode, map: scene?.map?.id ?? location?.map ?? null,
+    location: location ? { x: Math.round(location.x), y: Math.round(location.y), facing: location.facing } : null,
+    player: session?.player ? { health: session.player.health, mana: session.player.mana } : null,
+    quest: session?.currentQuest()?.id ?? null,
+    locked: ui.locked, lockOwners: ui.lockOwners,
+    menuOpen: app.storyUI?.menuOpen ?? false, storyBusy: app.director?.busy ?? false,
+    saveSlot: app.saveSlot ?? null,
+  };
+}
+
+/** 每分钟检查一次：明显掉帧才上报；在游戏世界内每分钟发一条心跳。 */
+function diagnosticTick(): void {
+  const framesNow = frameStats.snapshot();
+  const longDelta = framesNow.longFrames - diagnosticLongFrames;
+  const frameDelta = framesNow.frames - diagnosticFrames;
+  diagnosticLongFrames = framesNow.longFrames;
+  diagnosticFrames = framesNow.frames;
+  const target = displaySettings.frameRateLimit;
+  const now = performance.now();
+  const degraded = framesNow.samples >= 30 && frameDelta > 0
+    && (framesNow.avgFps < target * 0.8 || framesNow.minFps < target * 0.5 || longDelta >= 5);
+  if (degraded && now - lastLowFpsAt > 5 * 60_000) {
+    lastLowFpsAt = now;
+    const location = app.session?.storyWorld.currentLocation;
+    globalThis.storyDiagnostics?.record('performance-low-fps', {
+      target, fps: framesNow.fps, avgFps: framesNow.avgFps, minFps: framesNow.minFps,
+      longFrames: longDelta, frames: frameDelta,
+      maxFrameMs: framesNow.maxFrameMs, p95FrameMs: framesNow.p95FrameMs,
+      map: location?.map ?? null, mode: app.mode,
+    }, false);
+  }
+  heartbeatIndex += 1;
+  const inWorld = app.mode === 'game' && !!worldScene();
+  if (!inWorld && heartbeatIndex % 5 !== 0) return;
+  if (document.visibilityState !== 'visible') return;
+  globalThis.storyDiagnostics?.record('heartbeat', compactDiagnostics(), false);
+}
+
 function runtimeDiagnostics(): Record<string, unknown> {
   const session = app.session, party = session?.party;
   const sound=app.game?.sound, context=(sound as Phaser.Sound.WebAudioSoundManager | undefined)?.context;
   const sounds=sound?.getAll('')??[]; // NoAudioSoundManager 的类型声明要求传入 key。
   return {
     mode: app.mode, ready: ui.ready, locked: ui.locked, lockOwners: ui.lockOwners,
+    saveSlot: app.saveSlot ?? null, saveFormat: SAVE_FORMAT,
+    pressureMode: app.pressureMode, gm: gmOn(), trustedContent: app.content.trusted,
+    input: { editingText: editingText(),
+      visualViewport: visualViewport ? { width: visualViewport.width, height: visualViewport.height,
+        scale: visualViewport.scale, offsetTop: visualViewport.offsetTop } : null },
     suspended: ui.suspended, defeatOpen: ui.defeatOpen, menuOpen: app.storyUI?.menuOpen ?? false,
     dialogue: !!ui.dialogueState, choice: !!ui.choices, questPopup: !!ui.quest,
     editingControls: ui.controlLayoutEditing, editingKeys: ui.keyBindingEditing, loading: ui.loadingState?.label,
@@ -823,6 +1040,8 @@ function boot(): void {
     scene: [], banner: false, audio: { disableWebAudio: false }
   });
   app.game = game;
+  // 每交付一帧只做一次整数加减；统计器不分配对象，也不读场景状态。
+  game.events.on(Phaser.Core.Events.POST_STEP, () => frameStats.frame(performance.now()));
   game.events.once(Phaser.Core.Events.DESTROY, () => {
     contentRequest.abort();cancelCommonPreload();app.releaseCommonAssets();
   });
@@ -887,6 +1106,10 @@ function boot(): void {
   });
   const clearDiagnosticSnapshot = installDiagnosticSnapshot(runtimeDiagnostics);
   game.events.once(Phaser.Core.Events.DESTROY, clearDiagnosticSnapshot);
+  const clearDiagnosticMetrics = installDiagnosticMetrics(diagnosticMetrics);
+  game.events.once(Phaser.Core.Events.DESTROY, clearDiagnosticMetrics);
+  const diagnosticTimer = window.setInterval(diagnosticTick, 60_000);
+  game.events.once(Phaser.Core.Events.DESTROY, () => window.clearInterval(diagnosticTimer));
   game.events.once('ready', () => {
     configureCanvas(game,displaySettings.renderScale);
     // iOS 弹出系统键盘会让窗口短暂失焦。Phaser 把这次失焦当成页面切走：暂停游戏

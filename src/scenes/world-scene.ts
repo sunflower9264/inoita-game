@@ -327,6 +327,7 @@ export class WorldScene extends Phaser.Scene {
     this.events.once('shutdown',()=>externalSignal?.removeEventListener('abort',cancelLoad));
     this.cameras.main.setBackgroundColor('#000000');
     this.events.once('shutdown', () => {
+      globalThis.storyDiagnostics?.record('map-exit', { map: this.map?.id, loading: this.loadingWorld }, false);
       this.readyAbort.abort(new Error('正式地图已经关闭'));
       this.openTask = undefined; this.settleOpenStarted = undefined; this.readyTask = undefined;
       for (const tween of this.chestFades.values()) tween.stop();
@@ -579,6 +580,8 @@ export class WorldScene extends Phaser.Scene {
     signal.throwIfAborted();
     globalThis.storyDiagnostics?.record('start-phase',{phase:'map-data-ready',map:map.id});
     this.map = map;
+    globalThis.storyDiagnostics?.record('map-enter', { map: map.id, x: options.x, y: options.y,
+      initialEntry: !!options.initialEntry, resumeStory: !!options.resumeStory }, false);
     this.app.session.enterMap(map.id,map.questItemSpawns??[],map,map.enemySpawns);
     this.dropCatalog=cachedDropCatalog(rawDrops,this.app.items,this.app.battleCatalog.enemies);
     this.springCatalog=parseSprings(rawSprings);
@@ -1571,6 +1574,8 @@ export class WorldScene extends Phaser.Scene {
       questSlot,
       shop,
     });
+    globalThis.storyDiagnostics?.record('interact', { action: action.kind, target: target.entity.id,
+      actor: target.entity.actor ?? null, map: this.map?.id ?? null }, false);
     // 朝向只决定交互时的表演方向，不再参与“能不能交互”的判定。
     this.turnToInteractionTarget(target);
     switch (action.kind) {
@@ -1875,6 +1880,8 @@ export class WorldScene extends Phaser.Scene {
     const availability=`${session.bag.revision}|${session.questBook.version}|${session.storyWorld.revision}|${session.restorationVersion}|${session.debugFocusQuest??''}|${!!this.combat}|${session.hasLivingMember}`;
     const picked=store.collectNearby(this.map.id,position.x,position.y,reward=>this.receiveGroundReward(reward),availability);
     if(!picked.length)return;
+    globalThis.storyDiagnostics?.record('pickup', { map: this.map.id, count: picked.length,
+      items: picked.slice(0, 12).map(drop => drop.reward.kind === 'item' ? drop.reward.item : 'money') }, false);
     session.questItemGenerators.collected(picked.map(drop=>drop.id),session.combatTick);
     // 原版在批量拾取结束时播放音效 6，与捡到的是物品还是钱无关；魔法宝石另外在恢复时播音效 5。
     if(picked.length)this.app.audio?.ui('loot');
