@@ -1078,6 +1078,27 @@ test('hero bag still applies skill reset and supreme elixir', t => {
   }
 });
 
+test('a wrapped bag item name pushes the item detail content down',t=>{
+  const f=fixture();t.after(f.cleanup);
+  const entry=f.add('healing-potion-s');
+  f.menu.debugDescribe(entry.id);
+  const baseline=f.internals.scrollNames.get('item')!,baselineY=baseline.y,baselineBottom=baseline.y+baseline.height;
+  const original=items.items['healing-potion-s']!.name,long='非常非常长的恢复药水名称用来测试换行不会覆盖正文'.repeat(2);
+  items.items['healing-potion-s']!.name=long;
+  try{
+    f.menu.debugDescribe(entry.id);
+    const scroll=f.internals.scrollNames.get('item')!;
+    assert.ok(scroll.y>baselineY,'物品名换行后正文滚动区下移');
+    assert.equal(scroll.y+scroll.height,baselineBottom,'正文区底边仍停在原动作行上方');
+
+    items.items['healing-potion-s']!.name=long.repeat(10);
+    f.menu.debugDescribe(entry.id);
+    const capped=f.internals.scrollNames.get('item')!;
+    assert.equal(capped.y+capped.height,baselineBottom,'极长名字只压缩正文区，不再把底部推下去');
+    assert.ok(capped.height>=60);
+  }finally{items.items['healing-potion-s']!.name=original;}
+});
+
 test('using a skill book opens the icon page and returns to the bag', t => {
   const f = fixture(); t.after(f.cleanup); f.hero.addExperience(Number.MAX_SAFE_INTEGER);
   const skills = battle.classes.find(value => value.id === f.hero.classId)!.skills;

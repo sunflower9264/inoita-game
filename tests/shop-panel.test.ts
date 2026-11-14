@@ -319,6 +319,22 @@ test('both shops keep the bag category column on the right of the bag frame',()=
   }
 });
 
+test('a wrapped item name pushes the description content down',()=>{
+  const original=items.items['healing-potion-s']!.name,long='非常非常长的恢复药水名称用来测试换行不会覆盖正文'.repeat(2);
+  const baselineShop=open('merchandise-dealer-b09d9585');
+  press(baselineShop.surface,`购买 ${original}`);baselineShop.draw();
+  const baseline=baselineShop.description.calls.filter(call=>call.kind==='scroll').at(-1)!,
+    baselineY=Number(baseline.y),baselineBottom=baselineY+Number(baseline.height);
+  items.items['healing-potion-s']!.name=long;
+  try{
+    const {surface,description,draw}=open('merchandise-dealer-b09d9585');
+    press(surface,`购买 ${long}`);draw();
+    const scroll=description.calls.filter(call=>call.kind==='scroll').at(-1)!;
+    assert.ok(Number(scroll.y)>baselineY,'物品名换行后正文滚动区下移');
+    assert.equal(Number(scroll.y)+Number(scroll.height),baselineBottom,'正文区底边仍停在价格带上方');
+  }finally{items.items['healing-potion-s']!.name=original;}
+});
+
 test('picking an item first opens the description panel on the opposite column',()=>{
   const {store,surface,description,session,draw,texts}=open('merchandise-dealer-b09d9585');
   session.gainMoney(1_000_000);

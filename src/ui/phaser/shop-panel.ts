@@ -12,7 +12,7 @@ import { cleanupLayout, shopLayout, tradeLayout, tradeMessageLayout, tradeMessag
 import { TEXT_COLORS } from '../text-style.ts';
 import { BAG_DESCRIPTION_WIDTH, DESCRIPTION_PANEL, descriptionPanel, descriptionActionLayout, SIDE_FILTER_TEXT_SIZE } from '../bag-layout.ts';
 import type { PlaceModal } from './modal-placement.ts';
-import { drawDescriptionClose, drawDescriptionPanel, drawDescriptionRows, drawDescriptionTitle } from './description-panel.ts';
+import { descriptionTitleOverflow, drawDescriptionClose, drawDescriptionPanel, drawDescriptionRows, drawDescriptionTitle } from './description-panel.ts';
 import { drawPopupPanel } from './popup-panel.ts';
 import type { MenuTextSpec, MenuTextWriter } from '../dom/menu-text.ts';
 import type { UiSurface, ScrollArea } from './widgets.ts';
@@ -654,17 +654,20 @@ export class ShopPanel {
       if(button&&current&&this.view)updateEquipmentLock(this.view,button,!!current.locked);
       if(!this.refreshDescription())this.changed();
     }});
-    const actionLayout=descriptionActionLayout(panel.width,actions.length),detailHeight=actionLayout.scrollHeight;
-    const detail=this.scrollAt(v,'shop-detail',left+panel.scroll.x,top+panel.scroll.y,panel.scroll.width,detailHeight);
+    const actionLayout=descriptionActionLayout(panel.width,actions.length),
+      titleOverflow=descriptionTitleOverflow(v,body.title,panel.width,panel.title.y,panel.scroll.y,actionLayout.scrollHeight),
+      scrollTop=top+panel.scroll.y+titleOverflow,
+      detailHeight=Math.max(60,actionLayout.scrollHeight-titleOverflow);
+    const detail=this.scrollAt(v,'shop-detail',left+panel.scroll.x,scrollTop,panel.scroll.width,detailHeight);
     detail.onScroll=()=>this.text?.refresh();
     let y=drawDescriptionRows(v,body.rows,panel.scroll.width,
-      {writer,keyPrefix:'shop-detail-row',x:left+panel.scroll.x,y:top+panel.scroll.y,scroll:'shop-detail',
-        clip:{top:top+panel.scroll.y,bottom:top+panel.scroll.y+detailHeight}});
+      {writer,keyPrefix:'shop-detail-row',x:left+panel.scroll.x,y:scrollTop,scroll:'shop-detail',
+        clip:{top:scrollTop,bottom:scrollTop+detailHeight}});
     detail.setHeight(y);
     drawDescriptionClose(v,this.frames,panel,left,top,()=>this.cancel());
     // 面板盖住背包栏时，底下的金币行让位；单价改在滚动区与按钮之间的空带里重画，
     // 玩家开面板就能看到这件东西多少钱，不用先点「购买」再退回确认框。
-    const priceY=top+panel.scroll.y+detailHeight+2,priceX=left+panel.scroll.x,
+    const priceY=scrollTop+detailHeight+2,priceX=left+panel.scroll.x,
       coinX=priceX+46,coinValue=splitMoney(this.price(selection)),{stride,coin,digit,color}=this.layout.money;
     this.addDetail('shop-detail-price-label','价格',priceX,priceY+20,18,AREA_COLOR,0,.5);
     MONEY_UNITS.forEach((unit,index)=>{

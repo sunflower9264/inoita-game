@@ -55,6 +55,24 @@ export function drawDescriptionTitle(name: string, x: number, y: number, width: 
     style: { size: title.size, color: color ?? DESCRIPTION_TEXT, anchorX: 0, anchorY: 0, width: textWidth, wrap: 'word' } });
 }
 
+/** 物品名按同一宽度断行后的高度；标题换行时调用方把正文滚动区整体下移。 */
+function descriptionTitleHeight(v: UiSurface, name: string, width: number): number {
+  const title = DESCRIPTION_PANEL.title;
+  return layoutDescriptionTextForSurface(v, [{ text: name }], Math.max(0, width - title.right), title.size).height;
+}
+
+/**
+ * 标题换行后正文区需要下移的距离。
+ *
+ * 下移不能超过正文区原有高度减 60：极长的名字可以占很多行，若只按标题高度下移，
+ * 滚动区会被推到动作按钮和价格带上。夹住之后最坏情况是正文区变矮，底部位置不变。
+ */
+export function descriptionTitleOverflow(v: UiSurface, name: string, width: number,
+  titleY: number, scrollY: number, scrollHeight: number): number {
+  const overflow = Math.max(0, titleY + descriptionTitleHeight(v, name, width) - scrollY);
+  return Math.min(overflow, Math.max(0, scrollHeight - 60));
+}
+
 /**
  * 正文与属性块之间那条浅蓝点线：`UI_DrawHDotLine @0x143e78` 以 8 像素为步长画 5 像素一段，
  * 颜色 `#8caace`（`UIDesc_DrawTextScroll @0x145d30` 传的 `0xff8caece`）。

@@ -40,7 +40,7 @@ import { GOLD, UiSurface, type ScrollArea } from './phaser/widgets.ts';
 import { MenuTextLayer, type MenuTextOcclude, type MenuTextSpec, type MenuTextWriter } from './dom/menu-text.ts';
 import type { DomLabel } from './dom/dom-ui.ts';
 import { setSaveBoardTextSink, type SaveBoardTextSpec } from './phaser/save-board.ts';
-import { drawDescriptionClose, drawDescriptionPanel, drawDescriptionRows, drawDescriptionSeparator, drawDescriptionTitle } from './phaser/description-panel.ts';
+import { descriptionTitleOverflow, drawDescriptionClose, drawDescriptionPanel, drawDescriptionRows, drawDescriptionSeparator, drawDescriptionTitle } from './phaser/description-panel.ts';
 import { drawNativeMessage, NATIVE_MESSAGE_EDGE, type NativeMessageBand } from './phaser/native-message.ts';
 import { drawBagRail } from './phaser/bag-rail.ts';
 import type { SaveGame } from '../domain/save-game.ts';
@@ -2081,14 +2081,16 @@ export class StoryUI {
     // 滚动区必须建在说明层上（末尾的 `v`）：面板底色、图框与物品名都画在这一层，
     // 滚动区若留在内容块那一层（默认值）会被面板自己的黑底压住，正文看起来就是灰的。
     const actions=this.bagMenu(entry,worn),actionLayout=descriptionActionLayout(panel.width,actions.length);
-    const detail=this.scroll('item',left+panel.scroll.x,top+panel.scroll.y,panel.scroll.width,actionLayout.scrollHeight,v);
     // 标题、颜色与正文由同一个实例说明生成器提供；当前查看的成员决定职业与等级条件。
     const body=itemDescriptionBody({item,entry,numbers:this.app.characterStats.equipment[entry.item],catalog:this.app.characterStats,
       grades:this.app.shops.grades,member:this.member(),classNames:this.classNames(),gemNames:entry.gems.map(id=>bag.catalog.items[id]?.name),skill:entry.skill?bag.catalog.skillDescriptions?.[entry.skill]:undefined});
-    // 说明正文走 DOM：断行和高度仍在布局阶段算完，滚动时由文字层扣掉滚动偏移。
-    const scrollX=left+panel.scroll.x,scrollY=top+panel.scroll.y,
-      clip={top:scrollY,bottom:scrollY+actionLayout.scrollHeight},
+    // 名字换行时正文区整体下移，底部仍停在原动作行上方。
+    const titleOverflow=descriptionTitleOverflow(v,body.title,panel.width,panel.title.y,panel.scroll.y,actionLayout.scrollHeight),
+      scrollX=left+panel.scroll.x,scrollY=top+panel.scroll.y+titleOverflow,
+      scrollHeight=Math.max(60,actionLayout.scrollHeight-titleOverflow),
+      clip={top:scrollY,bottom:scrollY+scrollHeight},
       writer={add:(spec:MenuTextSpec)=>this.bagDetailTextSpecs.push(spec)};
+    const detail=this.scroll('item',left+panel.scroll.x,scrollY,panel.scroll.width,scrollHeight,v);
     drawDescriptionTitle(body.title,left,top,panel.width,body.color,{writer,keyPrefix:'item-title'});
     let y=drawDescriptionRows(v,body.rows,panel.scroll.width,
       {writer,keyPrefix:'item-row',x:scrollX,y:scrollY,scroll:'item',clip});
@@ -2129,14 +2131,16 @@ export class StoryUI {
     drawDescriptionPanel(v,this.app.menuPanels.assets,left,top,panel.width,panelHeight);
     // 每次打开都从正文顶部开始，不沿用上一件物品的滚动位置。
     this.scrollOffsets.delete('debug:item');
-    const detail=this.scroll('item',left+panel.scroll.x,top+panel.scroll.y,panel.scroll.width,panel.scroll.height,v);
     const body=itemDescriptionBody({item,entry,numbers:this.app.characterStats.equipment[entry.item],
       catalog:this.app.characterStats,grades:this.app.shops.grades,member:this.member(),
       classNames:this.classNames(),gemNames:entry.gems.map(id=>catalog.items[id]?.name),skill:entry.skill?catalog.skillDescriptions?.[entry.skill]:undefined});
-    // 说明层坐标与内容块一致；调试页的文字层按内容块坐标输出。
-    const scrollX=left+panel.scroll.x,scrollY=top+panel.scroll.y,
-      clip={top:scrollY,bottom:scrollY+panel.scroll.height},
+    // 名字换行时正文区整体下移，底边仍停在原面板内。
+    const titleOverflow=descriptionTitleOverflow(v,body.title,panel.width,panel.title.y,panel.scroll.y,panel.scroll.height),
+      scrollX=left+panel.scroll.x,scrollY=top+panel.scroll.y+titleOverflow,
+      scrollHeight=Math.max(60,panel.scroll.height-titleOverflow),
+      clip={top:scrollY,bottom:scrollY+scrollHeight},
       writer={add:(spec:MenuTextSpec)=>this.gmDetailTextSpecs.push(spec)};
+    const detail=this.scroll('item',left+panel.scroll.x,scrollY,panel.scroll.width,scrollHeight,v);
     drawDescriptionTitle(body.title,left,top,panel.width,body.color,{writer,keyPrefix:'gm-item-title'});
     const height=drawDescriptionRows(v,body.rows,panel.scroll.width,
       {writer,keyPrefix:'gm-item-row',x:scrollX,y:scrollY,scroll:'item',clip});
