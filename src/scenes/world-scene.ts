@@ -372,6 +372,19 @@ export class WorldScene extends Phaser.Scene {
       this.targetStatusCache = undefined; this.shortcutPageCache = undefined; this.unsubscribe = undefined;
       this.entryStoryStarted = undefined; this.prefetchTask = undefined; this.questStatuses.clear(); this.questStatusVersion=undefined; this.questNoticesReady=false; this.encounterResults.clear();
       Reflect.deleteProperty(this, 'options');
+      // 进图参数持有 checkpoint 世界状态和回调闭包，场景关闭后不能留在实例上。
+      this.baseOptions = undefined;
+      const pendingRestart = this.pendingRestart;
+      if (pendingRestart) {
+        // 场景重启也会触发 shutdown，而同一帧内紧接着的 init 会认领 pendingRestart；
+        // 推到微任务里再看：仍未被认领才说明这次是真正关闭，需要结算并释放闭包。
+        queueMicrotask(() => {
+          if (this.pendingRestart !== pendingRestart) return;
+          this.pendingRestart = undefined;
+          pendingRestart.controller.abort(new Error('场景已关闭'));
+          pendingRestart.settle(new Error('场景已关闭'));
+        });
+      }
     });
     this.hud = new Hud(this);
     this.layoutHud();
