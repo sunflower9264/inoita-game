@@ -262,7 +262,7 @@ test('locked equipment cannot be player-equipped but a forced wear keeps its rol
     assert.deepEqual(hero.bag.slotsFor(loose.id, hero.classId), [], id);
     assert.throws(() => hero.bag.equip(loose.id, rule.slot), /不能装备在此位置/, id);
     hero.bag.remove(id, 1);
-    const wornId = hero.bag.addEquipped(id, rule.slot, 'player');
+    const wornId = hero.bag.addEquipped(id, rule.slot, 'player', hero.classId, MAX_LEVEL);
     const before = hero.bag.get(wornId);
     assert.ok(before?.numbers, `${id} 应该有随机数值`);
     hero.bag.unequip(rule.slot);

@@ -100,8 +100,21 @@ test('story companions use authored join and leave without inventing an event in
   const member=party.joinStory('story-example');
   assert.equal(party.joinStory('story-example'),member);
   assert.ok(party.activeIds.includes(member.id));
+  const startingItems=Object.values(items.startingEquipment[member.definition.classId]!),
+    looseAtJoin=startingItems.map(item=>party.bag.count(item)),
+    wornBeforeLeave=party.bag.equipmentFor(member.id);
   assert.equal(party.leaveStory('story-example'),true);
   assert.equal(party.get(member.id),undefined);
+  party.joinStory('story-example');
+  assert.deepEqual(startingItems.map(item=>party.bag.count(item)),looseAtJoin,'归队后背包里不额外留一套初始装备');
+  assert.deepEqual(party.bag.equipmentFor(member.id),wornBeforeLeave,'归队穿回同一批装备实例，没有重新生成');
+  // 离队状态也要能存读档：退役装备记录跟着背包走，读档后归队仍复用原实例。
+  assert.equal(party.leaveStory('story-example'),true);
+  const checkpoint=party.bag.captureState(),
+    hero2=new BattleCharacter('dark-knight',stats,items),party2=new PartyRoster(hero2,stats,items,story,()=>{});
+  party2.bag.restoreState(checkpoint);
+  const rejoined=party2.joinStory('story-example');
+  assert.deepEqual(party2.bag.equipmentFor(rejoined.id),wornBeforeLeave,'读档后归队仍复用原装备实例');
 });
 
 test('story companions join the roster as reserves when both active slots are full',()=>{

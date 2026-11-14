@@ -14,7 +14,7 @@ const catalog=parseItemCatalog(read('items')), wardrobe=parseWardrobe(read('ward
 const create=(classId='dark-knight',changed=()=>{},initial:readonly string[]=['healing-potion-s'])=>{
   let ready=false;const bag=new Bag(()=>{if(ready)changed();},catalog,classId);
   for(const item of initial)bag.add(item);
-  for(const [slot,item] of Object.entries(catalog.startingEquipment[classId]))bag.addEquipped(item!,slot as import('../src/domain/items.ts').EquipmentSlot,'player');
+  for(const [slot,item] of Object.entries(catalog.startingEquipment[classId]))bag.addEquipped(item!,slot as import('../src/domain/items.ts').EquipmentSlot,'player',classId);
   ready=true;return bag;
 };
 /** 每个场景只准备要用的物品，目录检索不等于把整个目录塞进背包。 */
@@ -462,4 +462,33 @@ test('initial layout groups categories and equipping or returning gear updates b
   assert.equal(bag.entries.length,2);
   const dropped=bag.prepareDrop(weapon);bag.receiveDrop(dropped);
   assert.equal(bag.allCells.filter(entry=>entry?.item===weapon).length,2,'独立装备掉落也进入全部');
+});
+
+test('direct equipment creation follows the same hand rules as the bag',()=>{
+  const bag=create();
+  const twoHanded=Object.entries(catalog.items).find(([,item])=>item.equipment?.twoHanded&&item.equipment.classes.includes('dark-knight')&&!item.equipment.locked)![0],
+    shield=Object.entries(catalog.items).find(([,item])=>item.equipment?.slot==='off-hand'&&item.equipment.classes.includes('dark-knight')&&!item.equipment.locked)![0];
+  const main=bag.addEquipped(twoHanded,'main-hand','player','dark-knight');
+  assert.equal(bag.equipmentFor()['main-hand'],main);
+  assert.throws(()=>bag.addEquipped(twoHanded,'off-hand','player','dark-knight'),/不能装备在此位置/);
+  // 盾牌装进副手会把双手主手挤回背包，而不是让两者并存。
+  const off=bag.addEquipped(shield,'off-hand','player','dark-knight');
+  assert.equal(bag.equipmentFor()['off-hand'],off);
+  assert.equal(bag.equipmentFor()['main-hand'],undefined);
+  assert.ok(bag.entries.some(entry=>entry.item===twoHanded),'被挤下的双手武器回到背包');
+  bag.verifyConsistency();
+});
+
+test('restore rejects a two-handed main hand that still has an off hand',()=>{
+  const bag=create();
+  const twoHanded=Object.entries(catalog.items).find(([,item])=>item.equipment?.twoHanded&&item.equipment.classes.includes('dark-knight')&&!item.equipment.locked)![0],
+    shield=Object.entries(catalog.items).find(([,item])=>item.equipment?.slot==='off-hand'&&item.equipment.classes.includes('dark-knight')&&!item.equipment.locked)![0];
+  bag.addEquipped(twoHanded,'main-hand','player','dark-knight');
+  bag.addEquipped(shield,'off-hand','player','dark-knight');
+  const state=bag.captureState(),two=state.instances.find(entry=>entry.item===twoHanded)!;
+  // 伪造一份存档：把退回背包的双手武器重新塞回主手，副手盾牌保留。
+  state.worn['main-hand']=two.id;
+  for(const row of Object.values(state.pouches)){const at=row.indexOf(two.id);if(at>=0)row.splice(at,1);}
+  const allAt=state.allCells.indexOf(two.id);if(allAt>=0)state.allCells.splice(allAt,1);
+  assert.throws(()=>bag.restoreState(state),/双手武器不能同时占用副手/);
 });

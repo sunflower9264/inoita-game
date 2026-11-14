@@ -308,8 +308,25 @@ export class PartyRoster {
     if(!this.catalog.growth[definition.classId])throw new Error('伙伴成长数据缺失');
     const member=new CompanionMember(id,definition,source,generated.level,this.stats,this.items,this.bag,
       this.catalog.growth[definition.classId],this.changed,generated,this.catalog.generation.training,()=>this.bumpGroupModifiers());
-    const gear=this.items.startingEquipment[definition.classId]??{};
-    try {for(const [slot,item] of Object.entries(gear))this.bag.addEquipped(item!,slot as import('./items.ts').EquipmentSlot,id);}
+    const gear=this.items.startingEquipment[definition.classId]??{},
+      retired=source==='story'?this.bag.takeRetiredEquipment(id):undefined;
+    try {
+      // 剧情伙伴离队时装备退回背包并留下实例记录；归队先穿回同一批，避免再造一套同样的装备。
+      for(const [slot,instanceId] of Object.entries(retired??{})) {
+        if(!instanceId||!this.bag.get(instanceId))continue;
+        try{this.bag.equip(instanceId,slot as import('./items.ts').EquipmentSlot,id,definition.classId,generated.level);}
+        catch{
+          // 角色自己的初始装备穿不上就丢掉；玩家给的其它装备留在背包里。
+          if(gear[slot as import('./items.ts').EquipmentSlot])this.bag.take(instanceId,1);
+        }
+      }
+      for(const [slot,item] of Object.entries(gear)) {
+        const slotName=slot as import('./items.ts').EquipmentSlot,
+          previous=retired?.[slotName];
+        if(previous&&this.bag.equipmentFor(id)[slotName]===previous)continue;
+        this.bag.addEquipped(item!,slotName,id,definition.classId,generated.level);
+      }
+    }
     catch(error){this.bag.removeOwner(id,false);throw error;}
     // Initial equipment may change maximum life. A recruit begins at full resources.
     member.recover();this.owned.set(id,member);
@@ -368,17 +385,18 @@ export class PartyRoster {
   }
   leaveStory(definitionId:string):boolean{
     const id=`story-${definitionId}`,member=this.owned.get(id);if(!member||member.source!=='story')return false;
-    this.remove(id,true);return true;
+    // 装备退回背包，同时记下实例 ID；归队时穿回同一批，剧本反复离队、归队不会再复制装备。
+    this.remove(id,true,true);return true;
   }
   dismiss(id:string):void{
     const member=this.owned.get(id);if(!member||member.source!=='mercenary')throw new Error('只能放逐佣兵');
     if(this.activeIds.includes(id))throw new Error('请先将佣兵移出队伍');
     this.remove(id,false);
   }
-  private remove(id:string,returnEquipment:boolean):void{
+  private remove(id:string,returnEquipment:boolean,retireEquipment=false):void{
     this.owned.delete(id);this.onMemberRemoved?.(id);this.rosterSlots=this.rosterSlots.map(value=>value===id?null:value);this.slots=this.slots.map(value=>value===id?undefined:value);
     if(this.selected===id)this.selected=this.livingIds[0]??'player';
-    this.bag.removeOwner(id,returnEquipment);this.bumpGroupModifiers();this.changed();
+    this.bag.removeOwner(id,returnEquipment,retireEquipment);this.bumpGroupModifiers();this.changed();
   }
   deploy(id:string,slot:1|2):void{
     if(!this.owned.has(id))throw new Error('伙伴不存在');

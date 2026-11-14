@@ -534,3 +534,19 @@ test('waiting checkpoints require one active encounter with the declared node an
   assert.throws(()=>{session.runtimeState=runtime;},/等待遭遇/);assert.equal(session.runtimeState.runs[0].status,'running');
 });
 
+
+test('unequip-destroy removes both hands when unequipping the main hand cascades the off hand',()=>{
+  const hero=new BattleCharacter('assassin',stats,items),
+    session=new Session(campaign([quest('one')]),undefined,undefined,items,hero,battle,stats,companions);
+  // 不用初始武器 basic-dagger，避免替换主手时把起始装备退回背包混进计数。
+  hero.bag.add('basic-longsword',2);
+  const [first,second]=hero.bag.entries.filter(entry=>entry.item==='basic-longsword');
+  hero.bag.equip(first!.id,'main-hand');
+  hero.bag.equip(second!.id,'off-hand');
+  assert.equal(hero.bag.equipmentFor()['main-hand'],first!.id);
+  assert.equal(hero.bag.equipmentFor()['off-hand'],second!.id);
+  // 卸主手时游戏会级联卸下双持副手；命令仍要把副手那件也销毁，不能因槽位已空而整批回滚。
+  session.applyStoryCommands([{type:'unequip-destroy',member:'player',item:'basic-longsword'}]);
+  assert.deepEqual(hero.bag.equipmentFor(),{});
+  assert.equal(hero.bag.count('basic-longsword'),0);
+});

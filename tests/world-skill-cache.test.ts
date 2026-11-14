@@ -156,11 +156,11 @@ test('skill asset refresh uses cheap gates and ignores health changes',async()=>
   assert.equal(calls.length,1,'掉血回蓝不触发补载');
 
   const ring=Object.entries(host.app.items.items as ItemCatalog['items']).find(([,item])=>item.equipment?.slot==='ring'&&!item.equipment.locked)![0];
-  host.hero.bag.addEquipped(ring,'ring','player');
+  host.hero.bag.addEquipped(ring,'ring','player',host.hero.classId);
   schedule();await settle();
   assert.equal(calls.length,1,'饰品属性变化不重新准备技能贴图');
 
-  host.hero.bag.addEquipped('dagger','main-hand','player');
+  host.hero.bag.addEquipped('basic-dagger','main-hand','player',host.hero.classId);
   schedule();await settle();
   assert.equal(calls.length,2,'换武器才补载');
 });

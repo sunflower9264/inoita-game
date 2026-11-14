@@ -33,6 +33,8 @@ export interface BagState {
   allCells: (string | undefined)[];
   worn: Equipment;
   companionEquipment: [string, Equipment][];
+  /** 已离队剧情伙伴的装备表：实例仍在背包里，重新入队时按它穿回同一批，避免复制。 */
+  retiredEquipment?: [string, Equipment][];
   serial: number;
   /** 每个角色一份十二格快捷栏：技能与物品共用，见 `shortcut-bar.ts`。 */
   shortcuts: [string, ShortcutRow][];
@@ -74,9 +76,19 @@ export function verifyBagState(state: BagState, catalog: ItemCatalog): void {
   const all = state.allCells.filter((id): id is string => id != null);
   if (new Set(all).size !== all.length || all.some(id => !loose.has(id)) || all.length !== loose.size) throw new Error('全部页与分类袋的物品不一致');
   const equipped = new Set<string>();
-  for (const equipment of [state.worn, ...state.companionEquipment.map(([, equipment]) => equipment)]) for (const id of Object.values(equipment)) if (id !== undefined) {
-    if (!ids.has(id) || loose.has(id) || equipped.has(id)) throw new Error('背包装备引用无效');
-    equipped.add(id);
+  for (const equipment of [state.worn, ...state.companionEquipment.map(([, equipment]) => equipment)]) {
+    for (const [slot, id] of Object.entries(equipment)) {
+      if (id === undefined) continue;
+      if (!ids.has(id) || loose.has(id) || equipped.has(id)) throw new Error('背包装备引用无效');
+      equipped.add(id);
+      if (!knownItems) continue;
+      const entry = state.instances.find(value => value.id === id)!, rule = catalog.items[entry.item]?.equipment;
+      // 存档里的槽位必须与物品定义匹配；双持武器可以放副手，戒指可以放饰品槽。
+      const fits = !!rule && (rule.slot === slot || (slot === 'off-hand' && rule.dualWield) || (slot === 'accessory' && rule.slot === 'ring'));
+      if (!fits) throw new Error('装备槽位与物品不匹配');
+      // 双手主手时副手必须为空，否则换装外观会找不到对应姿态。
+      if (slot === 'main-hand' && rule.twoHanded && equipment['off-hand'] !== undefined) throw new Error('双手武器不能同时占用副手');
+    }
   }
   if (ids.size !== loose.size + equipped.size) throw new Error('背包存在无归属的物品');
   for (const recipe of state.recipes) if (knownItems && !catalog.recipes[recipe]) throw new Error('背包配方引用不存在');
@@ -153,6 +165,7 @@ export class Bag {
   private all: (string | undefined)[] = [];
   private worn: Equipment = {};
   private readonly companionEquipment = new Map<string, Equipment>();
+  private readonly retiredEquipment = new Map<string, Equipment>();
   private serial = 0;
   private changed: () => void;
   private readonly shortcuts = new Map<string, ShortcutRow>();
@@ -171,7 +184,10 @@ export class Bag {
       for(const entry of catalog.startingInventory)this.add(entry.item,entry.quantity);
       this.all = this.orderedIds();
       for (const [slot, item] of Object.entries(catalog.startingEquipment[classId] ?? {})) {
-        const entry = this.create(item!); this.worn[slot as EquipmentSlot] = entry.id;
+        const entry = this.create(item!), step = this.equipStep(entry, slot as EquipmentSlot, 'player', classId, undefined, true);
+        // 初始装备也走同一套槽位与主副手判定，避免内容写出双手加副手的非法组合。
+        if (step.problem) { this.instances.delete(entry.id); throw new Error(`初始装备无效：${step.problem}`); }
+        this.worn = step.next!;
       }
     }
   }
@@ -202,13 +218,14 @@ export class Bag {
   }
   private snapshot(): BagState {
     return structuredClone({instances:[...this.instances.values()],pouches:this.pouches,allCells:this.all,worn:this.worn,
-      companionEquipment:[...this.companionEquipment],serial:this.serial,shortcuts:[...this.shortcuts],recipes:[...this.recipeBook]});
+      companionEquipment:[...this.companionEquipment],retiredEquipment:[...this.retiredEquipment],serial:this.serial,shortcuts:[...this.shortcuts],recipes:[...this.recipeBook]});
   }
   private writeState(restored: BagState): void {
     this.instances.clear();for(const entry of restored.instances)this.instances.set(entry.id,entry);
     this.pouches=Object.fromEntries(Object.entries(restored.pouches).map(([view,cells])=>[view,cells.map(id=>id??undefined)])) as BagState['pouches'];
     this.all=restored.allCells.map(id=>id??undefined);this.worn=restored.worn;this.serial=restored.serial;
     this.companionEquipment.clear();for(const [owner,equipment] of restored.companionEquipment)this.companionEquipment.set(owner,equipment);
+    this.retiredEquipment.clear();for(const [owner,equipment] of restored.retiredEquipment??[])this.retiredEquipment.set(owner,equipment);
     this.shortcuts.clear();for(const [owner,row] of restored.shortcuts)this.shortcuts.set(owner,dedupeSkillShortcuts(row));
     this.recipeBook=new Set(restored.recipes);this.lastResult=undefined;
     // Invalidate equipment operations prepared before the checkpoint was restored.
@@ -255,24 +272,36 @@ export class Bag {
   }
   get equipment(): Equipment { return {...this.worn}; }
   equipmentFor(owner = 'player'): Equipment { return {...(owner === 'player' ? this.worn : this.companionEquipment.get(owner) ?? {})}; }
-  addEquipped(item: string, slot: EquipmentSlot, owner: string): string {
+  /** 直接创建并穿上一件装备；同样受槽位、职业、等级与主副手规则约束。 */
+  addEquipped(item: string, slot: EquipmentSlot, owner: string, classId: string, level?: number): string {
     if (!this.catalog.items[item]?.equipment) throw new Error('初始装备不存在');
-    const entry=this.create(item);
-    const next=this.equipmentFor(owner);next[slot]=entry.id;
-    if(owner==='player')this.worn=next;else this.companionEquipment.set(owner,next);
-    this.notify();return entry.id;
+    const entry=this.create(item), step=this.equipStep(entry,slot,owner,classId,level,true);
+    if(step.problem){this.instances.delete(entry.id);throw new Error(step.problem);}
+    // 统一由提交入口处理被挤下的旧装备，避免它既不在背包也不在装备表里。
+    this.commitEquipment(step.next!,owner);
+    return entry.id;
   }
-  removeOwner(owner: string, returnEquipment: boolean): void {
+  removeOwner(owner: string, returnEquipment: boolean, retireEquipment = false): void {
     if(owner==='player')throw new Error('主角不能移出队伍');
     const equipment=this.companionEquipment.get(owner);
     this.shortcuts.delete(owner);
     if(!equipment){this.notify();return;}
     this.companionEquipment.delete(owner);
+    // 剧情伙伴会随剧本反复离队、归队。记住离队时的装备表，归队时按实例穿回，
+    // 既不复制新装备，也不会误穿玩家背包里的同名物品。
+    if(retireEquipment)this.retiredEquipment.set(owner,structuredClone(equipment));
     for(const id of Object.values(equipment)){
       if(!id)continue;
       if(returnEquipment)this.put(id);else this.instances.delete(id);
     }
     this.notify();
+  }
+  /** 取出剧情伙伴上次离队时的装备表；没有记录时返回 undefined。 */
+  takeRetiredEquipment(owner: string): Equipment | undefined {
+    const equipment=this.retiredEquipment.get(owner);
+    if(!equipment)return undefined;
+    this.retiredEquipment.delete(owner);
+    return {...equipment};
   }
   /**
    * 该角色的十二格快捷栏。这一行还不存在时用 `defaults` 铺开并记下来——铺开前后的可见内容
@@ -412,19 +441,23 @@ export class Bag {
     this.trim(cells);
     this.notify();return true;
   }
-  slotsFor(id: string, classId = this.classId): EquipmentSlot[] {
-    const entry=this.instances.get(id), rule=entry&&this.catalog.items[entry.item]?.equipment;
-    if(!rule || rule.locked || !rule.classes.includes(classId))return [];
+  private slotCandidates(entry: ItemInstance, classId: string, allowLocked: boolean): EquipmentSlot[] {
+    const rule=this.catalog.items[entry.item]?.equipment;
+    // 剧情装备只由内容入口创建；创建时不按玩家职业卡，普通装备仍要求职业匹配。
+    if(!rule || (rule.locked && !allowLocked) || (!rule.locked && !rule.classes.includes(classId)))return [];
     const slots=[rule.slot];
     if(rule.dualWield&&this.catalog.dualWieldClasses.includes(classId))slots.push('off-hand');
     if(rule.slot==='ring')slots.push('accessory');
     return slots;
   }
+  slotsFor(id: string, classId = this.classId): EquipmentSlot[] {
+    const entry=this.instances.get(id);
+    return entry?this.slotCandidates(entry,classId,false):[];
+  }
   /** 这件物品能装备且当前为空的槽位；没有空位时返回 undefined。 */
   emptyEquipSlot(id:string,owner='player',classId=this.classId,level?:number):EquipmentSlot|undefined {
     const equipment=this.equipmentFor(owner);
-    return this.slotsFor(id,classId).find(slot=>!equipment[slot]
-      &&this.planEquipStep(id,slot,owner,classId,level).problem===undefined);
+    return this.equippableSlots(id,owner,classId,level).find(slot=>!equipment[slot]);
   }
 
   /** 这件物品实际可装备的槽位；职业、等级或槽位规则不满足的会被过滤掉。 */
@@ -440,22 +473,30 @@ export class Bag {
   equipProblem(id: string, slot: EquipmentSlot, owner = 'player', classId = this.classId, level?: number): string | undefined {
     return this.planEquipStep(id,slot,owner,classId,level).problem;
   }
-  private planEquipStep(id: string, slot: EquipmentSlot, owner: string, classId: string, level?: number): { next?: Equipment; problem?: string } {
-    const entry=this.instances.get(id);
-    if(!entry || this.cellOf(id)<0 || !this.slotsFor(id,classId).includes(slot))return { problem:'该物品不能装备在此位置' };
+  /**
+   * 槽位、职业、等级与主副手关系的唯一判定入口。
+   * 背包里的装备和直接创建的初始/剧情装备共用它，不再各写一份规则。
+   */
+  private equipStep(entry: ItemInstance, slot: EquipmentSlot, owner: string, classId: string, level?: number, allowLocked = false): { next?: Equipment; problem?: string } {
+    if(!this.slotCandidates(entry,classId,allowLocked).includes(slot))return { problem:'该物品不能装备在此位置' };
     const problem=owner==='player'?this.rules?.equipProblem(entry):
       level!==undefined&&equipmentLevel(this.catalog.items[entry.item],entry)>level?`需要等级 ${equipmentLevel(this.catalog.items[entry.item],entry)}`:undefined;
     if(problem)return { problem };
     const rule=this.catalog.items[entry.item].equipment!;
-    const next={...this.equipmentFor(owner),[slot]:id};
+    const next={...this.equipmentFor(owner),[slot]:entry.id};
     if(slot==='main-hand'&&rule.twoHanded)delete next['off-hand'];
-    if(slot==='off-hand'&&rule.dualWield&&!next['main-hand'])return { problem:'请先装备一件单手主武器' };
-    if(slot==='off-hand'&&next['main-hand']) {
-      const main=this.catalog.items[this.instances.get(next['main-hand']!)!.item];
-      if(main.equipment?.twoHanded)delete next['main-hand'];
-      if(rule.dualWield && !next['main-hand'])return { problem:'请先装备一件单手主武器' };
+    if(slot==='off-hand') {
+      const mainId=next['main-hand'];
+      if(mainId&&this.catalog.items[this.instances.get(mainId)!.item].equipment?.twoHanded)delete next['main-hand'];
+      // 双手主手被清掉后，副手武器同样失去「单手主武器」前提。
+      if(rule.dualWield&&!next['main-hand'])return { problem:'请先装备一件单手主武器' };
     }
     return { next };
+  }
+  private planEquipStep(id: string, slot: EquipmentSlot, owner: string, classId: string, level?: number): { next?: Equipment; problem?: string } {
+    const entry=this.instances.get(id);
+    if(!entry || this.cellOf(id)<0)return { problem:'该物品不能装备在此位置' };
+    return this.equipStep(entry,slot,owner,classId,level);
   }
   planEquip(id: string, slot: EquipmentSlot, owner = 'player', classId = this.classId, level?: number): Equipment {
     const step=this.planEquipStep(id,slot,owner,classId,level);

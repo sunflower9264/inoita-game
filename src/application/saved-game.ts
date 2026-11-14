@@ -56,6 +56,11 @@ function stageHasDuplicateActors(stage:unknown):boolean {
  * 如果带重复演员，丢弃舞台快照，让剧情从当前节点继续而不是拒绝整份存档。
  */
 const SAVE_UPGRADES:Record<number,SaveUpgrade>={
+  53:game=>{
+    // 旧档没有剧情伙伴的退役装备记录；补空，归队时按当前进度重新发放。
+    game.session.bag.retiredEquipment??=[];
+    game.format=54;
+  },
   52:game=>{
     for(const member of game.session.party?.members??[])member.unlockedSkills={};
     game.format=53;

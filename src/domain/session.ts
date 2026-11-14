@@ -1131,9 +1131,15 @@ export class Session {
     }
     if(command.type==='unequip-destroy'){
       if(command.member!=='player'&&!party?.get(command.member)){if(command.ifPresent)return;throw new Error('剧情装备拥有者不存在');}
-      for(const [slot,item]of Object.entries(bag.equipmentItems(bag.equipmentFor(command.member))))if(item===command.item){
-        const entry=bag.equipmentFor(command.member)[slot as import('./items.ts').EquipmentSlot]!;
-        bag.unequip(slot as import('./items.ts').EquipmentSlot,command.member);bag.take(entry,1);
+      // 先记下命中槽位和实例：卸主手会级联卸下双持副手，那一轮槽位已经空了，
+      // 但快照里的副手实例仍在背包里，仍要按命令销毁。
+      const targets=Object.entries(bag.equipmentItems(bag.equipmentFor(command.member)))
+        .filter(([,item])=>item===command.item)
+        .map(([slot])=>[slot as import('./items.ts').EquipmentSlot,bag.equipmentFor(command.member)[slot as import('./items.ts').EquipmentSlot]] as const);
+      for(const [slot,id] of targets) {
+        if(!id)continue;
+        if(bag.equipmentFor(command.member)[slot]===id)bag.unequip(slot,command.member);
+        bag.take(id,1);
       }
       return;
     }
@@ -1144,7 +1150,7 @@ export class Session {
       if(!classId)throw new Error('剧情装备拥有者不存在');
       if(command.create){
         if(bag.equipmentFor(command.member)[command.slot])bag.unequip(command.slot,command.member);
-        bag.addEquipped(command.item,command.slot,command.member);return;
+        bag.addEquipped(command.item,command.slot,command.member,classId,level);return;
       }
       const entry=bag.entries.find(entry=>entry.item===command.item);
       if(!entry)throw new Error('剧情指定装备不在背包中');
