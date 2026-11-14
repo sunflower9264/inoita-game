@@ -211,7 +211,8 @@ test('receives diagnostics reports into the project log', async () => {
       method: 'POST', headers: { 'content-type': 'application/json' }, body: payload,
     });
     assert.equal(posted.status, 204);
-    const log = await readFile(path.join(f.root, '.diagnostics', 'client-errors.jsonl'), 'utf8');
+    // 非错误记录进会话流；错误流只有 isErrorEntry 命中的记录。
+    const log = await readFile(path.join(f.root, '.diagnostics', 'client-session.jsonl'), 'utf8');
     assert.match(log, /"id":"test:1"/);
     const get = await request(f.port, '/__diagnostics/report');
     assert.equal(get.status, 405);
