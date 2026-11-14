@@ -38,7 +38,7 @@ npm run deploy     # typecheck + build + 核对 HTTPS 入口正在提供的版�
 - `/assets/*`、`/content/*` 的 URL 带内容版本（`?v=`）；只有版本等于当前 `dist/.build-meta.json` 时才返回 `immutable`，旧版本或无版本返回 `no-cache` + ETag。
 - `index.html`、`diagnostics.js`、`manifest.webmanifest` 始终 `no-cache`，部署后刷新即可拿到新入口。
 - 文本资源（JS/CSS/JSON/HTML/manifest/SVG）按需 gzip；图片与 MP3 不重复压缩。MP3 支持单段 Range（iOS 播放/seek 需要）。
-- `POST /__diagnostics/report` 由 `tools/serve-built.ts` 在静态处理之前挂载 `tools/diagnostic-collector.mjs`，nginx 原样转发；收到后写到 `.diagnostics/client-errors.jsonl`，每行一条 JSON，达到 2 MiB 时轮转。
+- `POST /__diagnostics/report` 由 `tools/serve-built.ts` 在静态处理之前挂载 `tools/diagnostic-collector.mjs`，nginx 原样转发；按错误和会话分流写入 `.diagnostics/client-errors.jsonl`（2 MiB × 8）和 `.diagnostics/client-session.jsonl`（8 MiB × 11），每行一条 JSON，各自轮转。
 - `/__cloud/*` 由 `tools/cloud-save-service.ts` 处理，所有响应 `Cache-Control: no-store`。数据在 `.cloud-save/`：`accounts/`、`saves/`、`sessions.json`。每账号只保留一个有效 token；token 30 天有效，剩余 7 天内打开云页会续期，登录链最多 90 天；账号连续输错 3 次锁 15 分钟。备份时整个目录一起备份。
 - nginx 必须允许云存档请求体：仓库配置已加 `client_max_body_size 4m`。不设置时 nginx 默认 1m 会在 Node 之前用 HTML 413 拒绝大存档。
 - 云服务初始化失败时只把 `/__cloud` 降级为 503 JSON；静态首页和游戏继续提供。

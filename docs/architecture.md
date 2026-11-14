@@ -126,7 +126,7 @@
 ## 构建、缓存与部署
 
 - 4002 由 nginx 终止 TLS 并转发到 `127.0.0.1:4004`；4004 由 `npm run serve` 运行 `tools/serve-built.ts`，直接提供 `dist/`；4003 是 Vite 开发服务（`npm run dev`）。
-- 静态服务在静态文件之前挂载 `tools/diagnostic-collector.mjs`，`POST /__diagnostics/report` 与开发服务共用同一套日志：`.diagnostics/client-errors.jsonl`。
+- 静态服务在静态文件之前挂载 `tools/diagnostic-collector.mjs`，`POST /__diagnostics/report` 与开发服务共用同一套日志：`.diagnostics/` 下按错误和会话拆成两个 JSONL 流，分别轮转。
 - `tools/build-version.ts` 对 `public/assets`、`public/content` 做内容哈希；构建时通过 `vite.config.ts` 的 `define` 注入 `__STORY_ASSET_VERSION__` / `__STORY_CONTENT_VERSION__`。加载边界只在 `content-loader.ts`、`audio-scene.ts`、`scene-assets.ts`、`game-audio.ts` 拼 `?v=`，不改内容字段、纹理键或音频键。
 - 缓存策略：`/bundles/*` 与版本匹配的 `/assets/*`、`/content/*` 返回 `immutable`；`index.html`、`diagnostics.js`、`manifest.webmanifest` 与旧版本/无版本资源返回 `no-cache` + ETag。静态服务支持 gzip、单段 Range、304、HEAD，构建替换 dist 的极短窗口返回 503。
 - `npm run deploy` = 类型检查 + `npm run build` + 读取 `dist/.build-meta.json` + 请求 `/__build` 比对版本并抽查首页/入口 bundle/版本化资源。服务直接读磁盘，构建完成即生效，不需要重启；只有 `serve-built.ts` 自身改动才需要重启静态服务。

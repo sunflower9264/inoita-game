@@ -48,7 +48,7 @@ render_game_to_text()   // GM 打开时返回的就是 digest()，含实时玩�
 
 ## 状态上报
 
-面板的「状态」页与 `gm.report()` 会把**摘要 + 最近 40 条 GM 操作**发给既有的报错收集端点（`/__diagnostics/report`，见 `tools/diagnostic-collector.mjs`），落到 `.diagnostics/client-errors.jsonl`。排查者 `tail` 这个文件即可，手机端不用复制长文本。
+面板的「状态」页与 `gm.report()` 会把**摘要 + 最近 40 条 GM 操作**发给既有的报错收集端点（`/__diagnostics/report`，见 `tools/diagnostic-collector.mjs`）。`gm-state` 属于运行记录，落到 `.diagnostics/client-session.jsonl`；错误、警告、恢复和加载失败进 `client-errors.jsonl`。排查时用 `npm run diag:session -- <会话 id>` 看完整时间线，没有会话 id 的 GM 记录在「(无会话)」分组里。
 
 端点单条上限 12 KB，所以摘要是**摘要**：超出时逐级丢掉最占体积的列表（操作日志→世界实体→世界标记与选择→任务列表→已完成事件）并在返回值里说明已裁剪。`.diagnostics/` 由 4004 打包静态服务与 4003 开发服务共同写入；手机验收走 4002 的 HTTPS 入口，由 nginx 转发到 4004。
 
