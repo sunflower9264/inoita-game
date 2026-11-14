@@ -150,6 +150,8 @@ export class CompanionSkillProgression extends SkillConfiguration {
       if(to<=from)continue;
       if(from===0)learned++;else maxed++;
       this.levels[id]=to;
+      // 职业技能里的未解锁技能也要在自然成长重建后保留满级。
+      this.unlocked[id]=Math.max(this.unlocked[id]??0,to);
     }
     this.markChanged();
     return {learned,maxed};

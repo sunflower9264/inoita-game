@@ -96,6 +96,22 @@ test('unlocking an initial-table skill at level zero freezes its natural growth 
   assert.equal(member.skills.book(capped,battle),2,'普通技能书仍能从解锁等级继续升');
 });
 
+test('mercenary max-all learns every class skill and keeps it at max after level changes',()=>{
+  const {recruit}=fixture();
+  const member=recruit('mercenary-emblem-black-knight');
+  const classSkills=battle.classes.find(entry=>entry.id===member.classId)!.skills;
+  member.skills.maxAll(battle,member.classId);
+  for(const id of classSkills){
+    const maximum=battle.skills[id]!.companion?.ranks.length??battle.skills[id]!.ranks.length;
+    assert.equal(member.skills.skillLevels()[id],maximum,`${id} 应满级`);
+  }
+  member.addExperience(Number.MAX_SAFE_INTEGER);
+  for(const id of classSkills){
+    const maximum=battle.skills[id]!.companion?.ranks.length??battle.skills[id]!.ranks.length;
+    assert.equal(member.skills.skillLevels()[id],maximum,`${id} 升级后仍满级`);
+  }
+});
+
 test('sealed books sold by shops have a positive price and can be bought',()=>{
   const catalog=parseShops(read('shops'));
   const id='test-sealed-shop';
