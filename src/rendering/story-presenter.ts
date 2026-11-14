@@ -68,7 +68,8 @@ export class StoryPresenter implements StoryPresentationPort {
     if (!signal) throw new Error('剧情舞台需要导演的取消信号');
     signal.throwIfAborted();
     const world = this.world(), player = world.player;
-    if (!player || !world.map) throw new Error('正式地图尚未准备好');
+    if (!world.worldReady() || !player) throw new Error('正式地图尚未准备好');
+    const mapId = world.map!.id;
     this.appearance = player.actor;
     const source = world.captureStoryScene();
     const current = this.captureStage() ?? resolveStoryScene({
@@ -79,7 +80,7 @@ export class StoryPresenter implements StoryPresentationPort {
     const stage = restored ?? current;
     this.baseline = structuredClone(current); this.finalStage = undefined;
     this.rememberScene(current.scene);
-    const curtain = initialCurtain ?? (stage.map !== world.map.id ? { opacity: 1, color: 0 } : undefined);
+    const curtain = initialCurtain ?? (stage.map !== mapId ? { opacity: 1, color: 0 } : undefined);
     if (curtain) { this.opacity = curtain.opacity; this.color = curtain.color; }
     if (this.skipping) {
       const logical = deferFirstStage ? current
@@ -97,7 +98,7 @@ export class StoryPresenter implements StoryPresentationPort {
     await this.stage(stage, signal, undefined, skipSignal);
     if (this.skipping) return;
     const camera = this.scene().cameras.main;
-    if (!restored && !stage.camera && stage.map === world.map.id) camera.setScroll(world.cameras.main.scrollX, world.cameras.main.scrollY);
+    if (!restored && !stage.camera && stage.map === mapId) camera.setScroll(world.cameras.main.scrollX, world.cameras.main.scrollY);
     this.baseline = this.captureStage();
   }
   /** 等待者可取消；迟到结果只由原工作自己的信号和版本检查决定是否应用。 */

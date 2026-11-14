@@ -15,15 +15,16 @@ function fixture(){
   const assetLoads:unknown[][]=[],coverCalls:boolean[]=[];
   const player={container:{active:true,x:10,y:20},entity:{id:'player'}};
   const positions:unknown[]=[],adopted:unknown[][]=[];let restarts=0,stops=0,regroups=0;
-  const state={map:{id:'home',name:'Home'},player,baseEntities:[],characters:[] as unknown[],entities:[],storyEntityAssets:[],projectedActorIds:new Set(),encounterResults:new Set<string>(),destroyed:false,
+  const movement={placeAll:(values:{position:{x:number;y:number}}[])=>{positions.push(values);for(const value of values){player.container.x=value.position.x;player.container.y=value.position.y;}}};
+  const state={map:{id:'home',name:'Home'},player,baseEntities:[],characters:[] as unknown[],entities:[],storyEntityAssets:[],projectedActorIds:new Set(),encounterResults:new Set<string>(),loadingWorld:false,destroyed:false,readyAbort:new AbortController(),
     app:{director:{},campaign:{placements:[]},session:{storyWorld:{get currentLocation(){return location;},projectEntities:()=>projected,actorAppearance:(actor:string)=>actor,entity:()=>undefined},visible:()=>true},world:{actors:{} as Record<string,unknown>},ui:{setWorldRebuildCover:(covered:boolean)=>{coverCalls.push(covered);}}},
-    movement:{placeAll:(values:{position:{x:number;y:number}}[])=>{positions.push(values);for(const value of values){player.container.x=value.position.x;player.container.y=value.position.y;}}},
+    movement,
     combat:{regroupPartyAroundHero(){regroups++;},async projectStoryEnemies(){},async restoreState(){},adoptStoryPositions(actors:unknown[]){adopted.push(actors);}},
     loadAssets:async(...args:unknown[])=>{assetLoads.push(args);return {release(){}};},refreshState(){},syncHud(){},setClip(){},syncControlledCharacter(){},
     scene:{isActive(){return stageActive;},get(){return {worldCovered};},restart(options:SceneOptions){restarts++;lastRestart=options;options.onReady?.();},stop(){stops++;}}
   };
   const scene=Object.setPrototypeOf(state,WorldScene.prototype) as unknown as InstanceType<typeof WorldScene>;
-  return {scene,state,positions,adopted,location:(value:typeof location)=>{location=value;},stageActive:(value:boolean)=>{stageActive=value;},covered:(value:boolean)=>{worldCovered=value;},coverCalls:()=>coverCalls,projected:(value:unknown[])=>{projected=value;},restarts:()=>restarts,stops:()=>stops,regroups:()=>regroups,lastRestart:()=>lastRestart,assetLoads};
+  return {scene,state,movement,positions,adopted,location:(value:typeof location)=>{location=value;},stageActive:(value:boolean)=>{stageActive=value;},covered:(value:boolean)=>{worldCovered=value;},coverCalls:()=>coverCalls,projected:(value:unknown[])=>{projected=value;},restarts:()=>restarts,stops:()=>stops,regroups:()=>regroups,lastRestart:()=>lastRestart,assetLoads};
 }
 
 test('a cinematic stage cannot travel the formal map or adopt uncommitted player positions',async()=>{
@@ -280,4 +281,65 @@ test('defeat checkpoint recovery keeps the ordinary loading screen',async()=>{
   await f.scene.restoreStoryWorld({location:{map:'destination',x:1,y:2,facing:'south'},generatedEntities:[]},new AbortController().signal);
   assert.equal(f.restarts(),1);assert.notEqual(f.lastRestart()?.silentEntry,true);
   assert.deepEqual(f.coverCalls(),[],'读档恢复不走剧情黑幕');
+});
+
+test('a same-map projection rebuilds a world that is only half built instead of throwing',async()=>{
+  const f=fixture();f.location({map:'home',x:80,y:90,facing:'south'});
+  // open 已经赋值地图，但主角/移动层还没创建：这是错误重试时会遇到的半初始化现场。
+  const movement=f.movement,restart=f.state.scene.restart;
+  delete (f.state as unknown as Record<string,unknown>).movement;
+  f.scene.options={map:'home',x:80,y:90,facing:'south'};
+  f.state.scene.restart=(options:SceneOptions)=>{f.state.loadingWorld=false;f.state.movement=movement;restart(options);};
+  await f.scene.projectStoryWorld(undefined,new AbortController().signal);
+  assert.equal(f.restarts(),1,'半初始化的同图现场交给新场景重建');
+  assert.deepEqual([f.lastRestart()?.map,f.lastRestart()?.x,f.lastRestart()?.y],[ 'home',80,90 ],'重建沿用目标落点');
+});
+
+test('concurrent readiness checks share one rebuild and a cancelled waiter does not cancel the shared work',async()=>{
+  const f=fixture();
+  f.scene.options={map:'home',x:10,y:20,facing:'south'};
+  delete (f.state as unknown as Record<string,unknown>).movement;
+  let queued:SceneOptions|undefined,restarts=0;
+  f.state.scene.restart=(options:SceneOptions)=>{restarts++;queued=options;};
+  const first=new AbortController();
+  const a=f.scene.ensureWorldReady(first.signal);
+  const b=f.scene.ensureWorldReady();
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(restarts,1,'并发检查只排一次重建');
+  first.abort(new DOMException('cancelled','AbortError'));
+  await assert.rejects(a,{name:'AbortError'});
+  queued!.onReady?.();
+  await b;
+});
+
+test('readiness waits for an in-flight open before rebuilding',async()=>{
+  const f=fixture();
+  f.scene.options={map:'home',x:10,y:20,facing:'south'};
+  delete (f.state as unknown as Record<string,unknown>).movement;
+  let release!:()=>void,restarts=0;
+  (f.state as unknown as {openTask?:Promise<void>}).openTask=new Promise<void>(resolve=>{release=resolve;});
+  f.state.scene.restart=(options:SceneOptions)=>{restarts++;options.onReady?.();};
+  const ready=f.scene.ensureWorldReady();
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(restarts,0,'在途进图还没结算时不重复重启');
+  release();
+  await ready;
+  assert.equal(restarts,1,'进图结算后世界仍不完整才重建');
+});
+
+test('ensureWorldReady rebuilds a half-built world and is a no-op when ready',async()=>{
+  const ready=fixture();
+  await ready.scene.ensureWorldReady();
+  assert.equal(ready.restarts(),0,'已经就绪的世界不重启');
+
+  const broken=fixture();
+  broken.scene.options={map:'home',x:10,y:20,facing:'south'};
+  delete (broken.state as unknown as Record<string,unknown>).movement;
+  await broken.scene.ensureWorldReady();
+  assert.equal(broken.restarts(),1,'只建了一半的世界用进图参数重建');
+});
+
+test('a closing world refuses to capture a save instead of reading torn-down objects',()=>{
+  const f=fixture();f.state.destroyed=true;
+  assert.deepEqual(f.scene.captureSaveWorld(),{ok:false,reason:'not-ready'});
 });

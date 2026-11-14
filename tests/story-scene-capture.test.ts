@@ -275,7 +275,7 @@ test('story presenter prepares a foreign map through the real visit builder', as
   const destination='shadow-training-dungeon1-5e8c19b4',startMap=campaign.start.map;
   const player={actor:worldIndex.actors[campaign.start.actor],
     entity:{id:'player',actor:campaign.start.actor,x:10,y:20},container:{x:10,y:20,visible:true},layers:[],clipName:null};
-  const formal={map:{id:startMap},player,facing:'south',characters:[],cameras:{main:{scrollX:5,scrollY:6}},
+  const formal={map:{id:startMap},player,facing:'south',characters:[],cameras:{main:{scrollX:5,scrollY:6}},worldReady:()=>true,
     captureStoryScene(){return {map:startMap,actors:[{id:'player',actor:campaign.start.actor,x:10,y:20,facing:'south',visible:true}]};},
     prefetchMap(){}};
   const characters=new Map<string,unknown>();

@@ -208,7 +208,7 @@ function harness() {
     destroy() { this.scene = undefined; }
   });
   const visual = (x: number, y: number) => ({ actor: appearance, entity: { id: 'player', actor: 'hero', x, y }, container: container(x, y), layers: [], clipName: null });
-  const world = { map: { id: 'home' }, player: visual(10, 20), facing: 'south', characters: [],
+  const world = { map: { id: 'home' }, player: visual(10, 20), facing: 'south', characters: [], worldReady: () => true,
     cameras: { main: { scrollX: 5, scrollY: 6 } },
     scene: { launch() { throw new Error('active stage must be reused'); }, restart() { throw new Error('formal world must be retained'); } },
     captureStoryScene(this: WorldScene){return {map:this.map!.id,actors:[

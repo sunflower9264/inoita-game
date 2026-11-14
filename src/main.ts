@@ -590,6 +590,8 @@ function installSession(session: Session, keepMapFile?: string): void {
     settle: () => worldScene()?.settleStoryPlayback(),
     prepare: async (_commands, signal, stage, script, cursor) => {
       const scene = worldScene();
+      // 剧情开演前先确认正式世界完整；进图失败或只建了一半会在这里重建，而不是让快照抛断言。
+      await scene?.ensureWorldReady(signal);
       if (scene?.map) {
         const target = cursor ? nextStoryMap(campaign, cursor, scene.map.id)
           : stage && !stage.mapFromWorld ? stage.map : undefined;
@@ -612,7 +614,13 @@ function installSession(session: Session, keepMapFile?: string): void {
     globalThis.storyDiagnostics?.record('story-error', { message, stack: error instanceof Error ? error.stack : undefined,
       map: snapshot?.map, player: snapshot?.player });
     ui.error(message, () => {
-      ui.loaded(); void retry().catch(next => director.onError?.(next, retry));
+      ui.loaded(); void (async () => {
+        try {
+          // 世界只建了一半时先重建，成功后再接着走剧情游标。
+          await worldScene()?.ensureWorldReady();
+          await retry();
+        } catch (next) { director.onError?.(next, retry); }
+      })();
     });
   };
   // GM 动作层在会话装配好之后才建（它要 session 与 director）；开关关闭时**不建也不挂**，
@@ -663,7 +671,10 @@ function installSession(session: Session, keepMapFile?: string): void {
         try { return worldScene()?.captureStoryWorld(); }
         catch { return undefined; }
       },
-      capturePersistent: () => { const scene = worldScene(); return scene ? persistentDebugWorld(scene.captureStoryWorld()) : undefined; },
+      capturePersistent: () => {
+        try { const scene = worldScene(); return scene ? persistentDebugWorld(scene.captureStoryWorld()) : undefined; }
+        catch { return undefined; }
+      },
       restore: async (snapshot, signal = modeRequest.signal) => {
         const scene = worldScene();
         if (!scene) return { ok: false, reason: '不在游戏场景里' };

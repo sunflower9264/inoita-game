@@ -90,6 +90,22 @@ const PRESSURE_SPAWN_INTERVAL_MS = 900;
 /** 小地图敌人标记最多每 100 毫秒刷新一次。 */
 const MINIMAP_ENEMY_REFRESH_MS = 100;
 
+/** 已经由 `restartWorld` 包装过的进图参数；重建时不能拿它当下一轮的基础参数。 */
+const restartedWorldOptions = new WeakSet<SceneOptions>();
+
+/** 等待一个 Promise，同时响应调用方的取消信号。 */
+function waitForAbort<T>(work: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return work;
+  if (signal.aborted) return Promise.reject(signal.reason ?? new Error('操作已取消'));
+  return new Promise<T>((resolve, reject) => {
+    const abort = () => reject(signal.reason ?? new Error('操作已取消'));
+    signal.addEventListener('abort', abort, { once: true });
+    work.then(
+      value => { signal.removeEventListener('abort', abort); resolve(value); },
+      error => { signal.removeEventListener('abort', abort); reject(error); });
+  });
+}
+
 /** 进图参数：去哪张地图、落在哪里、朝哪边。 */
 export interface SceneOptions {
   initialEntry?: boolean;
@@ -154,6 +170,17 @@ export class WorldScene extends Phaser.Scene {
   private targetStatusCache?:{tick:number;actor:string;status:ReturnType<WorldCombat['targetStatus']>;hostile:boolean};
   /** 切图或首次加载期间为 true，此时不接受输入。 */
   loadingWorld = true;
+  /** 最近一次进图的异步任务；就绪检查和错误重试要等它结算。 */
+  private openTask?: Promise<void>;
+  /** 进行中的世界就绪/重建任务；并发调用共用同一次重建。 */
+  private readyTask?: Promise<void>;
+  /** 重建任务自己的取消源；只跟随场景换代或关闭，不跟随某个调用方的剧情信号。 */
+  private readyAbort = new AbortController();
+  /** 基础进图参数：重复重建都从这里生成，避免每轮重试再套一层回调。 */
+  private baseOptions?: SceneOptions;
+  /** 本次场景代际的 create 已经开始；用来等待已排队但还没执行的重启。 */
+  private openStarted?: Promise<void>;
+  private markOpenStarted?: () => void;
   destroyed = false;
   performing = false;
   /** 演出舞台已经铺满画面；正式世界这帧不更新、不渲染、物理也不步进。 */
@@ -254,6 +281,12 @@ export class WorldScene extends Phaser.Scene {
     this.mapLayers?.destroy(); this.mapLayers = undefined;
     this.performing = false; this.player = undefined; this.noclipVisual = undefined; this.map = undefined;
     this.options = options; this.characters = []; this.questMarkerCharacters?.clear(); this.near = null; this.loadingWorld = true; this.destroyed = false;
+    // 新一代场景：上一代的重建任务立即结算，旧任务不能继续等在途的世界。
+    this.openTask = undefined; this.readyTask = undefined;
+    this.readyAbort.abort(new Error('正式地图已经重新加载'));
+    this.readyAbort = new AbortController();
+    this.openStarted = new Promise(resolve => { this.markOpenStarted = resolve; });
+    if (!restartedWorldOptions.has(options)) this.baseOptions = options;
     this.stageOccluded = false;
     this.movement = undefined; this.lastPlayerPosition = undefined;this.combat=undefined;this.checkpointPending=!options.checkpoint;this.checkpointWaitLogged=false;
     this.shortcutPageCache=undefined;this.shortcutTick=undefined;
@@ -265,6 +298,7 @@ export class WorldScene extends Phaser.Scene {
     this.projectedActorIds.clear();
   }
   create(): void {
+    this.markOpenStarted?.(); this.markOpenStarted = undefined;
     globalThis.storyDiagnostics?.record('start-phase',{phase:'world-create'});
     if(this.options.signal?.aborted){this.options.onError?.(this.options.signal.reason);this.scene.stop();return;}
     const externalSignal=this.options.signal;
@@ -273,6 +307,8 @@ export class WorldScene extends Phaser.Scene {
     this.events.once('shutdown',()=>externalSignal?.removeEventListener('abort',cancelLoad));
     this.cameras.main.setBackgroundColor('#000000');
     this.events.once('shutdown', () => {
+      this.readyAbort.abort(new Error('正式地图已经关闭'));
+      this.openStarted = undefined; this.markOpenStarted = undefined;
       for (const tween of this.chestFades.values()) tween.stop();
       this.chestFades.clear();
       this.app.ui.closeDefeat();
@@ -329,13 +365,106 @@ export class WorldScene extends Phaser.Scene {
     this.events.on('wake', wake);
     this.events.once('shutdown', () => this.events.off('wake', wake));
     const options=this.options, signal=this.request.signal;
-    this.open(options).catch(error => {
+    const openTask=this.open(options);
+    this.openTask=openTask;
+    void openTask.catch(error => {
       // 取消也要把结果交给等待者：`restartStoryWorld` 靠 onError 结算 Promise，
       // 只在非取消时调用会让反复读图/切图时留下永远挂起的旧请求。结算必须用发起本次
       // 加载的 options——`this.options` 可能已被下一次 init 换掉，旧请求取消时会把
       // 错误算到新场景头上（GM 播放剧情时表现为演出中途退出）。
       options.onError?.(error);
       if (!signal.aborted && this.options === options) this.failure(error);
+    }).finally(() => {
+      if (this.openTask === openTask) this.openTask = undefined;
+    });
+  }
+
+  /** 地图、主角和移动层是否都已创建；不包含加载状态。 */
+  private get worldObjectsReady(): boolean { return !!this.map && !!this.player && !!this.movement; }
+
+  /** 正式世界完整可读：地图、主角、移动层都在，且不在加载或关闭中。 */
+  worldReady(): boolean { return this.worldObjectsReady && !this.loadingWorld && !this.destroyed; }
+
+  /**
+   * 剧情开演、错误重试和世界快照之前调用：正在进图就等它结算；
+   * 只建了一半或已经失败，就用最近一次进图参数重建。并发调用共用同一次重建。
+   */
+  ensureWorldReady(signal?: AbortSignal): Promise<void> {
+    if (this.worldReady()) return Promise.resolve();
+    if (!this.readyTask) {
+      const task = this.ensureWorldReadyNow();
+      this.readyTask = task;
+      void task.finally(() => { if (this.readyTask === task) this.readyTask = undefined; }).catch(() => {});
+    }
+    // 调用方只取消自己的等待；共享的重建任务跟随场景换代或关闭。
+    return waitForAbort(this.readyTask, signal);
+  }
+
+  private async ensureWorldReadyNow(): Promise<void> {
+    const signal = this.readyAbort.signal;
+    signal.throwIfAborted();
+    // 先等在途进图；等待期间若又换了新一代，继续等新的那一次，而不是急着再排重启。
+    for (let attempts = 0; attempts < 3; attempts++) {
+      const task = this.openTask;
+      if (!task) {
+        // 重启已经排队、create 还没开始：等这次重启真的开始，避免重复排队。
+        if (this.loadingWorld && this.openStarted) {
+          try { await waitForAbort(this.openStarted, signal); }
+          catch { signal.throwIfAborted(); }
+          continue;
+        }
+        break;
+      }
+      try { await this.waitOpenTask(task, signal); }
+      catch { signal.throwIfAborted(); } // 进图失败：下面用同一份参数重建
+      if (this.worldReady()) return;
+      if (this.openTask === task) break;
+    }
+    if (this.worldReady()) return;
+    signal.throwIfAborted();
+    // 场景关闭后进图参数已删除，没有重建依据；保留断言让错误页给出明确结果。
+    if (this.destroyed || !this.options) throw new Error('正式地图尚未就绪');
+    await this.restartWorld(this.baseOptions ?? this.options, signal);
+  }
+
+  /** 进图卡住时不能让重试永远等下去；超时后按失败处理并重建。 */
+  private waitOpenTask(task: Promise<void>, signal: AbortSignal): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('正式地图加载超时')), STORY_WORLD_SWITCH_TIMEOUT_MS);
+      waitForAbort(task, signal).then(
+        () => { clearTimeout(timer); resolve(); },
+        error => { clearTimeout(timer); reject(error); });
+    });
+  }
+
+  /** 用基础参数重建正式世界并等待新场景就绪；失败、取消或超时都会结算等待者。 */
+  private restartWorld(options: SceneOptions, signal: AbortSignal): Promise<void> {
+    signal.throwIfAborted();
+    return new Promise<void>((resolve, reject) => {
+      let finished = false, timer: ReturnType<typeof setTimeout> | undefined;
+      const controller = new AbortController();
+      const done = (error?: unknown) => {
+        if (finished) return;
+        finished = true;
+        if (timer) clearTimeout(timer);
+        signal.removeEventListener('abort', forwardAbort);
+        if (error) reject(error); else resolve();
+      };
+      const forwardAbort = () => { controller.abort(signal.reason); done(signal.reason ?? new Error('正式地图已经关闭')); };
+      signal.addEventListener('abort', forwardAbort, { once: true });
+      timer = setTimeout(() => {
+        const error = new Error('正式地图重建超时');
+        controller.abort(error);
+        done(error);
+      }, STORY_WORLD_SWITCH_TIMEOUT_MS);
+      this.loadingWorld = true;
+      const { onReady, onError } = options;
+      const wrapped: SceneOptions = { ...options, signal: controller.signal,
+        onReady: () => { if (finished) return; onReady?.(); done(); },
+        onError: (error: unknown) => { if (finished) return; onError?.(error); done(error); } };
+      restartedWorldOptions.add(wrapped);
+      try { this.scene.restart(wrapped); }
+      catch (error) { done(error); }
     });
   }
   /** 先把当前武器/职业那套人物动作请求发出去；失败不挡进图，Wardrobe 会重试。 */
@@ -1505,7 +1634,14 @@ export class WorldScene extends Phaser.Scene {
   private playStory(work: () => Promise<boolean>): Promise<boolean> {
     return work().catch(error => {
       console.error(error);
-      this.app.ui.error(this.recordFailure(error), () => { this.app.ui.loaded(); this.playStory(()=>this.app.director.retry()); });
+      this.app.ui.error(this.recordFailure(error), () => {
+        this.app.ui.loaded();
+        // 重试前先确认正式世界完整；世界只建了一半就重建，而不是让剧情快照再抛一次断言。
+        void this.ensureWorldReady().then(() => {
+          if (!this.destroyed) return this.playStory(() => this.app.director.retry());
+          return false;
+        }).catch(next => this.failure(next));
+      });
       return false;
     });
   }
@@ -1795,12 +1931,12 @@ export class WorldScene extends Phaser.Scene {
       return false;
     }
     this.checkpointWaitLogged=false;
-    if(!this.map||!this.combat||!this.player||!this.movement)return false;
+    if(!this.worldReady()||!this.combat)return false;
     if(!this.app.session.hasLivingMember){
-      globalThis.storyDiagnostics?.record('checkpoint-skipped-no-survivor',{map:this.map.id});
+      globalThis.storyDiagnostics?.record('checkpoint-skipped-no-survivor',{map:this.map!.id});
       return false;
     }
-    if(!this.app.checkpoint.capture(this.app.session,{map:this.map.id,...this.movement.position(this.player)},this.captureStoryWorld()))return false;
+    if(!this.app.checkpoint.capture(this.app.session,{map:this.map!.id,...this.movement!.position(this.player!)},this.captureStoryWorld()))return false;
     this.checkpointPending=false;
     return true;
   }
@@ -1815,30 +1951,31 @@ export class WorldScene extends Phaser.Scene {
     this.collectMapGroundLoot();
   }
 captureStoryScene(includeEnemyAppearance=true):SceneSnapshot {
-    if(!this.map||!this.player||!this.movement)throw new Error('正式地图尚未就绪');
+    if(!this.worldReady())throw new Error('正式地图尚未就绪');
+    const map=this.map!, movement=this.movement!;
     const {session}=this.app;
-    const actors:SceneActorState[]=[this.player,...this.characters.filter(character=>character!==this.player)].map(character=>{
+    const actors:SceneActorState[]=[this.player!,...this.characters.filter(character=>character!==this.player)].map(character=>{
       const player=character===this.player;
-      const visible=session.storyWorld.actorVisible(this.map!.id,character.entity.actor,character.entity.characterId)
+      const visible=session.storyWorld.actorVisible(map.id,character.entity.actor,character.entity.characterId)
         &&session.visible(character.entity)&&!this.chestOpened(character)&&!this.legendarySwordConsumed(character);
       const facing=player?this.facing:character.facing??undefined;
       const animation=characterAnimationState(character);
       return {id:player?'player':`entity:${character.entity.id}`,actor:character.entity.actor,
         characterId:character.entity.characterId,worldEntityId:player?undefined:character.entity.id,
         authority:player?undefined:character.entity.authority,
-        memberId:player?'player':undefined,...this.movement!.position(character),facing:facing??'south',visible,
+        memberId:player?'player':undefined,...movement.position(character),facing:facing??'south',visible,
         flip:character.entity.flip,appearance:storyDevMode()?freezeSnapshot(character.actor):character.actor,clip:character.clipName??undefined,
         alpha:character.container.alpha,animationProgress:animation.progress,
         animationPlaying:animation.playing};
     });
     const visit=this.combat?.captureStoryVisit();
-    return {map:this.map.id,actors:[...actors,...this.combat?.captureStoryActors(includeEnemyAppearance)??[]],
+    return {map:map.id,actors:[...actors,...this.combat?.captureStoryActors(includeEnemyAppearance)??[]],
       ...(visit?{visit:{generatedEntities:structuredClone(this.baseEntities),...visit}}:{})};
   }
 
   captureStoryWorld(includeEnemyAppearance=true):StoryWorldViewSnapshot {
-    if(!this.map||!this.player||!this.movement)throw new Error('正式地图尚未就绪');
-    return {location:{map:this.map.id,...this.movement.position(this.player),facing:this.facing},world:this.combat?.captureState(),generatedEntities:structuredClone(this.baseEntities),scene:this.captureStoryScene(includeEnemyAppearance),audio:this.app.audio?.captureStoryAudio()};
+    if(!this.worldReady())throw new Error('正式地图尚未就绪');
+    return {location:{map:this.map!.id,...this.movement!.position(this.player!),facing:this.facing},world:this.combat?.captureState(),generatedEntities:structuredClone(this.baseEntities),scene:this.captureStoryScene(includeEnemyAppearance),audio:this.app.audio?.captureStoryAudio()};
   }
   /**
    * 存档要连世界一起带走。换图途中（`loadingWorld`）与还没进图时没有完整的落点，
@@ -1848,14 +1985,15 @@ captureStoryScene(includeEnemyAppearance=true):SceneSnapshot {
     // 调试现场和压测现场禁手动存档，返回失败由界面给具体提示。
     if(this.app.pressureMode)return {ok:false,reason:'pressure'};
     if(this.app.session.debugFocusQuest||this.app.gm?.storyDebug().autoSavePaused)return {ok:false,reason:'debug'};
-    if(!this.map||!this.player||!this.movement)return {ok:false,reason:'not-ready'};
+    // 场景关闭时字段可能还没清完，不能把正在拆掉的世界当成可存档现场。
+    if(!this.worldObjectsReady||this.destroyed)return {ok:false,reason:'not-ready'};
     if(this.loadingWorld)return {ok:false,reason:'loading'};
     if(!this.app.session.hasLivingMember){
-      globalThis.storyDiagnostics?.record('save-refused-no-survivor',{map:this.map.id});
+      globalThis.storyDiagnostics?.record('save-refused-no-survivor',{map:this.map!.id});
       return {ok:false,reason:'no-survivors'};
     }
     this.combat?.settleForSave();
-    return {ok:true,map:{id:this.map.id,name:this.map.name},world:this.captureStoryWorld(false)};
+    return {ok:true,map:{id:this.map!.id,name:this.map!.name},world:this.captureStoryWorld(false)};
   }
   private restartStoryWorld(location:TravelDestination,signal:AbortSignal,world?:WorldCombatState,generatedEntities?:EntityPlacement[],silent=false,preparedScene?:SceneSnapshot):Promise<void>{
     signal.throwIfAborted();
@@ -1913,7 +2051,7 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
    * 取消、换图、回滚和菜单仍然走各自的快照/落位路径，不在这里重复移动。
    */
   settleStoryPlayback():void {
-    if(this.destroyed||this.loadingWorld||this.stageOccluded||!this.map||!this.player||!this.movement||!this.combat)return;
+    if(!this.worldReady()||this.stageOccluded||!this.combat)return;
     if(this.app.ui?.mode!=='game'||this.app.suspended)return;
     if(this.app.director?.busy)return;
     this.combat.settleFriendlyUnitsAroundHero();
@@ -1922,6 +2060,7 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
     signal.throwIfAborted();
     const location=this.app.session.storyWorld.currentLocation;
     const signature=JSON.stringify(location);
+    // 换图按重建处理；同图但世界只建了一半时先等这次加载，不重复排队重启。
     if(location&&location.map!==this.map?.id){
       signal.throwIfAborted();
       // 舞台真的遮住世界（worldCovered）时直接沿用；舞台未启动或仍透明时，
@@ -1942,10 +2081,11 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
       }
       return;
     }
-    if(!this.map||!this.player||!this.movement)throw new Error('正式地图尚未就绪');
+    if(location&&!this.worldReady())await this.ensureWorldReady(signal);
+    if(!this.worldReady())throw new Error('正式地图尚未就绪');
     this.app.director.onSkipProgress?.('assets-start');
-    const projected=this.app.session.storyWorld.projectEntities(this.map.id,
-      resolveMapActors({base:this.baseEntities,map:this.map,campaign:this.app.campaign,active:entity=>this.app.session.visible(entity)}),
+    const projected=this.app.session.storyWorld.projectEntities(this.map!.id,
+      resolveMapActors({base:this.baseEntities,map:this.map!,campaign:this.app.campaign,active:entity=>this.app.session.visible(entity)}),
       this.app.campaign.placements);
     const projectedActors=projected.map(entity=>this.app.session.storyWorld.actorAppearance(entity.actor));
     if(projected.some(entity=>entity.spring)&&this.springCatalog)projectedActors.push(this.springCatalog.empty);
@@ -1953,17 +2093,17 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
     if(needed.length){
       const lease=await this.loadAssets(needed.flatMap(id=>{
         const actor=this.app.world.actors[id];if(!actor)throw new Error(`剧情角色资源缺失：${id}`);return characterAssets(actor,characterSceneClips(actor));
-      }),this.map.name,false,true);
+      }),this.map!.name,false,true);
       if(signal.aborted||this.destroyed){lease.release();signal.throwIfAborted();throw new Error('正式地图已经关闭');}
       this.storyEntityAssets.push(lease);for(const id of needed)this.projectedActorIds.add(id);
     }
     const projectedIds=new Set(projected.map(entity=>entity.id));
     for(const character of [...this.characters])if(!projectedIds.has(character.entity.id)){
-      this.movement.remove(character);this.removeQuestMarker(character);character.container.destroy();this.characters.splice(this.characters.indexOf(character),1);
+      this.movement!.remove(character);this.removeQuestMarker(character);character.container.destroy();this.characters.splice(this.characters.indexOf(character),1);
     }
     for(const entity of projected){
       const old=this.characters.find(character=>character.entity.id===entity.id);
-      if(old&&old.actor.id!==this.app.session.storyWorld.actorAppearance(entity.actor)){this.movement.remove(old);this.removeQuestMarker(old);old.container.destroy();this.characters.splice(this.characters.indexOf(old),1);}
+      if(old&&old.actor.id!==this.app.session.storyWorld.actorAppearance(entity.actor)){this.movement!.remove(old);this.removeQuestMarker(old);old.container.destroy();this.characters.splice(this.characters.indexOf(old),1);}
       const character=this.characters.find(character=>character.entity.id===entity.id)??this.createActor(entity);
       if(!this.characters.includes(character))this.characters.push(character);
       character.entity={...entity};
@@ -1974,10 +2114,10 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
     this.restoreDrainedSprings();
     const positions=this.characters.map(character=>({visual:character,position:{x:character.entity.x,y:character.entity.y},enabled:this.app.session.visible(character.entity)}));
     const playerLocation=restoredLocation??(location&&signature!==this.lastProjectedLocation?location:undefined);
-    if(playerLocation)positions.push({visual:this.player,position:playerLocation,enabled:true});
+    if(playerLocation)positions.push({visual:this.player!,position:playerLocation,enabled:true});
     // 剧情实体的位置来自内容，压住主角或其他人时就近让位，不让整组落位失败。
-    this.movement.placeAll(positions,{evictOccupied:true,displaceable:[this.player]});
-    if(playerLocation){this.facing=playerLocation.facing;this.setClip(this.player,`idle-${this.facing}`);this.lastProjectedLocation=signature;}
+    this.movement!.placeAll(positions,{evictOccupied:true,displaceable:[this.player!]});
+    if(playerLocation){this.facing=playerLocation.facing;this.setClip(this.player!,`idle-${this.facing}`);this.lastProjectedLocation=signature;}
     this.entities=projected;
     await this.combat?.projectStoryEnemies(signal);
     this.app.director.onSkipProgress?.('assets-ready');
@@ -1986,7 +2126,7 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
     signal.throwIfAborted();
     // 新队员生成与换装（碰撞盒可能刷新）之后再收拢队伍；回滚路径由 restoreState 逐名恢复。
     if(playerLocation){if(!restoredLocation)this.combat?.regroupPartyAroundHero();this.syncControlledCharacter(true);}
-    if(stage?.scene.map===this.map.id)this.combat?.adoptStoryPositions(stage.scene.actors);
+    if(stage?.scene.map===this.map!.id)this.combat?.adoptStoryPositions(stage.scene.actors);
     this.rebuildTriggerIndex();
     this.refreshState();this.syncHud();
   }
