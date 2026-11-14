@@ -799,6 +799,8 @@ export class WorldScene extends Phaser.Scene {
       if(this.destroyed||this.app.session.party?.get(memberId)!==member||revision!==bag.revision||learnedSignature!==[...learnedSkillIds(this.app.battleCatalog,member.classId,member.skills)].sort().join('|'))throw new Error('装备状态已改变，请重新选择');
       if(entry)this.app.session.bag.equip(entry,slot,memberId,member.classId,member.level);
       else this.app.session.bag.unequip(slot,memberId);
+      // 装备改变上限后伙伴不会像主角那样自动夹紧，换下的装备不能留下越界的血量/法力。
+      member.setHealth(member.player.health);member.setMana(member.player.mana);
       const wardrobeChanged=this.companionOutfits.get(memberId)?.actor!==outfit.actor;
       wardrobe.activate(outfit);this.companionOutfits.set(memberId,outfit);
       this.projectedMemberEquipment.set(memberId,JSON.stringify(bag.equipmentItems(bag.equipmentFor(memberId))));
