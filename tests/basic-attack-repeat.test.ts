@@ -47,7 +47,7 @@ function sceneFixture(){
   const state={
     player:{container:{x:0,y:0}},characters:[],near:null,loadingWorld:false,destroyed:false,
     autoAttack:new BasicAttackRepeat(),
-    stick:{axis:{x:0,y:0}},
+    worldHud:{axis:{x:0,y:0},updateFps(){},updateStatus(){}},
     movement:{drive:()=>calls.push('drive'),stop(){}},
     combat,
     app:{ui:{ready:true},locked:false,suspended:false,director:{busy:false},session:{combatTick:0,refresh(){}}},
@@ -100,7 +100,7 @@ test('the scene drops the repeat when the stick moves or the target is gone',()=
 
   const moving=sceneFixture();
   moving.scene.startBasicAttack();
-  moving.state.stick.axis={x:1,y:0};
+  moving.state.worldHud.axis={x:1,y:0};
   moving.scene.update(0,16);
   assert.ok(moving.calls.includes('cancelAttack'),'普攻仍会被摇杆取消');
   assert.ok(moving.calls.includes('clearTarget'),'摇杆一动先清目标');
@@ -113,7 +113,7 @@ test('the scene ignores the stick while an active skill is being released',()=>{
   scene.startBasicAttack();
   calls.length=0;
   combat.castingSkill=true;
-  state.stick.axis={x:1,y:0};
+  state.worldHud.axis={x:1,y:0};
   scene.update(0,16);
   assert.equal(calls.includes('cancelAttack'),false,'技能期间不被移动取消');
   assert.equal(calls.includes('clearTarget'),false,'技能期间不清目标');
@@ -152,7 +152,7 @@ test('the attack key interacts with a nearby object before attacking',()=>{
     player:{container:{x:0,y:0}},characters:[],loadingWorld:false,destroyed:false,
     autoAttack:new BasicAttackRepeat(),
     near:{actor:{},entity:{}} as {actor:object;entity:object}|null,
-    stick:{axis:{x:0,y:0}},movement:{drive(){},stop(){}},
+    worldHud:{axis:{x:0,y:0},updateFps(){},updateStatus(){}},movement:{drive(){},stop(){}},
     updateInteractionTarget(){},interact(){calls.push('interact');return true;},
     combat:{targetId:'enemy' as string|undefined,attackState:'idle' as 'idle'|'approaching'|'attacking',
       attack:()=>calls.push('attack'),update(){},playerCannotMove:()=>false,movementSpeedForPlayer:()=>4,

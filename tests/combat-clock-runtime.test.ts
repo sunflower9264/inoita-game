@@ -81,7 +81,7 @@ test('scene respawn uses main-camera map coordinates and stops both deadlines wh
 test('scene removal clears enemy cooldowns while checkpoint visual replacement preserves restored records',()=>{
   const session=new Session(campaign),port=session.cooldowns.forActor('enemy');
   const enemy={key:'enemy',controller:{dispose:()=>{},targetRemoved:()=>{}},presenter:{clear:()=>{}},visual:{container:{destroy:()=>{}}}};
-  const host={app:{session},arena:[enemy],movement:{remove:()=>{}}};
+  const host=Object.setPrototypeOf({app:{session},arena:[enemy],movement:{remove:()=>{}}},WorldCombat.prototype);
   port.start('probe',20);invoke(host,'destroyEnemy',enemy,true);
   assert.equal(port.isReady('probe'),false);
   invoke(host,'destroyEnemy',enemy);assert.equal(port.isReady('probe'),true);
