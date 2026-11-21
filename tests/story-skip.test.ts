@@ -156,6 +156,30 @@ test('跳过时仍发起后续节点的世界预取，但不等待加载完成',
   assert.deepEqual(h.locks, [true, false]);
 });
 
+test('早按和晚按跳过都等正式世界结算，只结束对素材的等待', async () => {
+  for (const when of ['结算期间','预取期间']) {
+    let finishSettlement!:()=>void, finishAssets!:()=>void;
+    const script:StoryScript={entry:'end',nodes:[{id:'end',presentation:[],commands:[],exit:{type:'end'}}]};
+    const h=harness({...campaign,scripts:{...campaign.scripts,demo:script}}, {}, {
+      capture(){},async restore(){},async project(){},checkpoint(){},
+      normalize:()=>new Promise<void>(resolve=>{finishSettlement=resolve;}),
+      prepare:()=>new Promise<void>(resolve=>{finishAssets=resolve;}),
+    });
+    try {
+      const playing=h.director.trigger({id:'skip-prepare',script:'demo'});
+      await tick();
+      if(when==='结算期间')h.director.skip();
+      assert.equal(finishAssets,undefined);
+      assert.deepEqual(h.locks,[true]);
+      finishSettlement();
+      await tick();
+      if(when==='预取期间')h.director.skip();
+      assert.equal(await playing,true);
+      assert.deepEqual(h.locks,[true,false]);
+    } finally { finishAssets?.();h.director.dispose(); }
+  }
+});
+
 test('跳过不等卡住的立绘预取，剧情仍会结束并解锁', async () => {
   const h = harness({ ...campaign, scripts: { ...campaign.scripts, demo: compileScript('demo', [
     { type: 'dialogue', speaker: '', actor: null, text: '一句' }

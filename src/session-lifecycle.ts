@@ -166,23 +166,25 @@ export function createSessionLifecycle(app:StoryApp,hooks:SessionLifecycleHooks)
       const scene = worldScene();
       if (locked && scene?.player) scene.setClip(scene.player, `idle-${scene.facing}`);
     }, presenter, {
-      normalize: signal => worldScene()?.normalizeForStory(signal),
+      normalize: async signal => {
+        const scene = worldScene();
+        await scene?.waitWorldReady(signal);
+        signal.throwIfAborted();
+        await scene?.normalizeForStory(signal);
+      },
       capture: () => worldScene()?.captureStoryWorld(),
       restore: async (snapshot, signal) => { await worldScene()?.restoreStoryWorld(snapshot, signal); },
       project: async (stage, signal) => { await worldScene()?.projectStoryWorld(stage, signal); },
       checkpoint: () => worldScene()?.checkpointStoryWorld(),
       settle: () => worldScene()?.settleStoryPlayback(),
-      prepare: async (_commands, signal, stage, script, cursor) => {
+      prepare: (_commands, signal, stage, script, cursor) => {
         const scene = worldScene();
-        // 剧情开演前先等在途进图；世界不完整时把真实错误交给错误页和重试路径恢复。
-        await scene?.waitWorldReady(signal);
         signal.throwIfAborted();
         if (scene?.map) {
           const target = cursor ? nextStoryMap(campaign, cursor, scene.map.id)
             : stage && !stage.mapFromWorld ? stage.map : undefined;
           void scene.prefetchStoryEntry(target ?? scene.map.id, script, signal);
         }
-        signal.throwIfAborted();
       },
       prefetch: async (scripts, signal) => { await worldScene()?.ensureStoryAssets(scripts, signal); },
     });

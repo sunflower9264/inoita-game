@@ -24,7 +24,7 @@ export interface StoryUI {
 /** 世界负责把已经提交的游戏状态投影到 Phaser 场景。 */
 export interface StoryWorldPort {
   normalize?(signal: AbortSignal): void | Promise<void>;
-  prepare?(commands: readonly StoryCommand[], signal: AbortSignal, stage?: StoryStage, script?: string, cursor?: StoryPreparationCursor): Promise<void>;
+  prepare?(commands: readonly StoryCommand[], signal: AbortSignal, stage?: StoryStage, script?: string, cursor?: StoryPreparationCursor): void | Promise<void>;
   /** 演出前准备脚本立绘与音效；跳过时只取消等待。 */
   prefetch?(scripts: readonly string[], signal: AbortSignal): void | Promise<void>;
   capture(): unknown;
@@ -330,10 +330,8 @@ export class StoryDirector {
     const run = this.runtime.snapshot().runs.find(run => run.id === context.runId);
     const preparation = this.world?.prepare?.(node.commands, context.signal, context.stage, script,
       run ? { node: run.cursor, stack: run.stack ?? [] } : undefined);
-    if (preparation) {
-      if (this.skipping) void preparation.catch(() => {});
-      else await preparation;
-    }
+    if (preparation) await this.waitSkippable(preparation, context.signal);
+    context.signal.throwIfAborted();
     if (context.stage && (node.stage || !this.presenting)) {
       await this.presentation?.begin(context.signal, context.stage, undefined, false, this.skipRequest.signal); this.presenting = !!this.presentation;
       // `begin` 已经把这一幕画出来了；进图加载页到这里就可以收。
