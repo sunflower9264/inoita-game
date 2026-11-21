@@ -21,6 +21,38 @@ function setup(blocked=(_p:Point)=>false){
   return {actor,leader,follower,port,step,rescues:()=>rescues};
 }
 
+function setupOccupiedFollow(blockerBounds={x:-8,y:-8,width:16,height:16}){
+  const run=setup();
+  run.actor.position={x:40,y:120};
+  run.leader.position={x:220,y:120};
+  const navigation=new NavigationWorld({name:'occupied follow route',bounds:{x:0,y:0,width:320,height:240}});
+  const self={
+    position:()=>run.actor.position,
+    shape:()=>({collision:run.actor.bounds}),
+    enabled:()=>true,
+    faction:()=>'party' as const,
+  };
+  navigation.register(self);
+  navigation.register({
+    position:()=>run.leader.position,
+    shape:()=>({collision:run.leader.bounds}),
+    enabled:()=>true,
+    faction:()=>'party',
+  });
+  const blocker={position:{x:88,y:120}};
+  navigation.register({
+    position:()=>blocker.position,
+    shape:()=>({collision:blockerBounds}),
+    enabled:()=>true,
+    faction:()=>'hostile',
+  });
+  run.port.canStand=point=>navigation.canStand(self,point);
+  run.port.navigationBounds=()=>navigation.bounds;
+  run.port.navigationSnapshot=()=>navigation.captureStandability(self);
+  run.port.followNavigationSnapshot=()=>navigation.captureStandability(self,true);
+  return {...run,blocker};
+}
+
 test('wall-hidden support formation walks to its leader without rescue',()=>{
   const f=setup(p=>p.x>=32&&p.x<=112&&p.y>=48&&p.y<=144);
   for(let i=0;i<100;i++)f.step();
@@ -126,4 +158,54 @@ test('recovery attempts preserve the four-second rescue threshold without resett
   assert.equal(run.rescues(),0,'不足四秒不能拉回');
   for(let frame=0;frame<6;frame++)run.step(false);
   assert.equal(run.rescues(),1,'多次恢复仍不移动时应保留拉回兜底');
+});
+
+test('following detours around a blocking actor without crossing its body or rescuing',()=>{
+  const run=setupOccupiedFollow();
+  for(let frame=0;frame<120;frame++){
+    const previous={...run.actor.position};
+    run.step();
+    assert(canTraverse(previous,run.actor.position,run.port.canStand),'行走不能穿过挡路的人物');
+  }
+  assert(Math.hypot(run.actor.position.x-168,run.actor.position.y-94)<=12);
+  assert.equal(run.rescues(),0);
+});
+
+test('following resumes after an actor that closed the passage moves away',()=>{
+  const run=setupOccupiedFollow({x:-8,y:-120,width:16,height:240});
+  for(let frame=0;frame<40;frame++)run.step();
+  assert(run.actor.position.x<=72);
+  assert.equal(run.rescues(),0);
+  run.blocker.position.y=-200;
+  for(let frame=0;frame<80;frame++)run.step();
+  assert(Math.hypot(run.actor.position.x-168,run.actor.position.y-94)<=12);
+  assert.equal(run.rescues(),0);
+});
+
+test('an occupied-route search keeps its snapshot while waiting for budget and then continues walking',()=>{
+  const run=setupOccupiedFollow();
+  const capture=run.port.navigationSnapshot!;
+  let snapshots=0,waiting=true;
+  run.port.navigationSnapshot=()=>{
+    snapshots++;
+    return capture();
+  };
+  run.port.pathBudget={take:(_owner,limit)=>snapshots&&waiting?0:Math.min(limit,48)};
+  for(let frame=0;frame<100;frame++)run.step();
+  assert.equal(snapshots,1,'跨帧搜索复用同一份占位');
+  assert.equal(run.rescues(),0,'等预算时不应拉回');
+  assert.equal(run.follower.diagnostics.recoveries,0,'等预算不算一次恢复失败');
+  waiting=false;
+  for(let frame=0;frame<80;frame++)run.step();
+  assert(Math.hypot(run.actor.position.x-168,run.actor.position.y-94)<=12);
+  assert.equal(run.rescues(),0);
+});
+
+test('a genuinely closed passage still permits rescue after repeated failed routes',()=>{
+  const run=setupOccupiedFollow({x:-8,y:-120,width:16,height:240});
+  for(let frame=0;frame<60;frame++)run.step();
+  assert.equal(run.rescues(),0);
+  for(let frame=0;frame<180;frame++)run.step();
+  assert.equal(run.rescues(),1);
+  assert(run.follower.diagnostics.recoveries>=2);
 });

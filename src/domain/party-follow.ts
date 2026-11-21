@@ -13,6 +13,7 @@ export class PartyFollow {
   private nextDecision=0;
   private search?:ReturnType<typeof createPathSearch>;
   private path:Point[]=[];
+  private routeAroundActors=false;
   private goal?:Point;
   private progress?:Point;
   private stalled=0;
@@ -37,6 +38,7 @@ export class PartyFollow {
   get leader():string|undefined{return this.goal?this.lastLeader:undefined;}
   reset():void {
     this.path=[];this.search=undefined;this.goal=undefined;this.progress=undefined;this.stalled=0;
+    this.routeAroundActors=false;
     this.attemptStalled=0;
     this.failures=0;this.returning=false;this.softSince=this.hardSince=this.nearSince=undefined;
     this.nextDecision=0;this.settled=false;this.lastLeader='';this.lastLeaderPoint=undefined;this.stanceFacing='south';this.leaderTowardsAlly=false;
@@ -49,6 +51,7 @@ export class PartyFollow {
         this.diagnostics.rescues++;this.diagnostics.reason='leader-relocated';
       }
       this.path=[];this.search=undefined;this.goal=undefined;this.nextDecision=0;this.stalled=0;
+      this.routeAroundActors=false;
       this.attemptStalled=0;
       this.returning=false;this.softSince=this.hardSince=this.nearSince=undefined;this.leaderTowardsAlly=false;
       this.lastLeader=leader.id;
@@ -81,6 +84,7 @@ export class PartyFollow {
   move(actor:Combatant,leader:Combatant,stance:CompanionStance,delta:number):void {
     // 队长朝伙伴走来时原地等待；该让路的是队长，伙伴不迎上去也不重新找站位。
     if(this.leaderTowardsAlly&&!this.returning){
+      this.routeAroundActors=false;
       this.attemptStalled=0;
       this.progress=undefined;this.stalled=0;this.path=[];this.search=undefined;this.goal=undefined;this.port.stop();return;
     }
@@ -97,6 +101,7 @@ export class PartyFollow {
     // 先结束走不动的旧路线，再给下一次恢复完整的移动机会。
     if(this.attemptStalled>=1000&&!this.search&&this.clock>=this.nextRetry){
       this.path=[];
+      this.routeAroundActors=true;
       this.nextDecision=0;
       this.nextRetry=this.clock+120;
       this.attemptStalled=0;
@@ -121,19 +126,35 @@ export class PartyFollow {
       }
       const gap=distance(actor.position,goal),stop=goal===leader.position?24:12;
       if(gap<=stop||this.settled&&gap<=24){
+        this.routeAroundActors=false;
         this.attemptStalled=0;
         this.settled=true;this.path=[];this.search=undefined;this.progress=undefined;this.stalled=0;this.port.stop();return;
       }
       this.settled=false;
-      if(!this.search&&this.clock>=this.nextRetry&&(!this.path.length||!this.goal||distance(this.goal,goal)>=8||!this.next())){
-        this.goal={...goal};
-        if(canTraverse(actor.position,goal,free)){this.path=[{...goal}];}
-        else {
-          const snapshot=(this.port.followNavigationSnapshot??this.port.navigationSnapshot)?.();
-          const canStand=snapshot?.canStand??free;
-          this.search=createPathSearch(actor.position,{bounds:snapshot?.bounds??this.port.navigationBounds(),canStand,canStandXY:snapshot?.canStandXY,
-            isGoal:p=>distance(p,goal)<=12&&canStand(p),heuristic:p=>Math.max(0,distance(p,goal)-12)});
-          this.diagnostics.searches++;
+      if(!this.search&&this.clock>=this.nextRetry){
+        const waypoint=this.next();
+        const blocked=this.path.length>0&&waypoint===undefined;
+        if(blocked)this.routeAroundActors=true;
+        if(!this.path.length||!this.goal||distance(this.goal,goal)>=8||blocked){
+          this.goal={...goal};
+          if(canTraverse(actor.position,goal,free)){
+            this.path=[{...goal}];
+            this.routeAroundActors=false;
+          }else{
+            // 迈不出去时把当前挡路的人物纳入这次搜索，后续重试重新取占位。
+            const snapshot=this.routeAroundActors
+              ?this.port.navigationSnapshot?.()
+              :(this.port.followNavigationSnapshot??this.port.navigationSnapshot)?.();
+            const canStand=snapshot?.canStand??free;
+            this.search=createPathSearch(actor.position,{
+              bounds:snapshot?.bounds??this.port.navigationBounds(),
+              canStand,
+              canStandXY:snapshot?.canStandXY,
+              isGoal:p=>distance(p,goal)<=12&&canStand(p),
+              heuristic:p=>Math.max(0,distance(p,goal)-12),
+            });
+            this.diagnostics.searches++;
+          }
         }
       }
     }
