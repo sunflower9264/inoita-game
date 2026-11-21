@@ -15,9 +15,10 @@
 - 五个文件都由脚本生成：`npm run atlas:icons`、`atlas:props`、`atlas:effects`、`atlas:ui`、`atlas:characters`；不手改。
 - `npm run atlas:all` 按 icons → props → ui → effects → characters 的顺序全部重生成；`npm run build` 的 `prebuild` 会自动执行它。
 - 素材或图集 JSON 变化后重新运行对应脚本，再提交生成结果。
-- 生成文件参与类型检查；图集数据缺失或帧名不匹配会在 `npm run typecheck` 暴露。
+- `npm run typecheck` 保证生成文件的类型与引用可编译；图集新鲜度、哨兵帧和内容引用由 `npm run validate:content` 检查，帧映射由对应 atlas 测试覆盖。
 - 消费方使用导出的常量和映射取纹理键，不自己拼资源路径。
 - 新增图集先改 `tools/` 里的生成脚本，再由脚本产出本目录文件。
+- 剧情职业演员的 `previewActor`/`playerActor` 及其全部 `clips`（含默认攻击）随 `sourceActors` 收集，四向动画按演员自身的原版动画行生成。
 
 ## 验证
 
@@ -25,5 +26,3 @@
 npm run typecheck
 npm test -- tests/icon-atlas.test.ts tests/prop-atlas.test.ts tests/effect-atlas.test.ts tests/ui-atlas.test.ts tests/character-atlas.test.ts
 ```
-
-- 剧情人物的默认攻击也纳入角色图集，四向动画按演员自身的原版动画行生成；内容指令与图集引用一起验证。

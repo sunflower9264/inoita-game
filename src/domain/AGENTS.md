@@ -16,7 +16,7 @@
 
 `Session.openChest` 一次提交开启记录、箱中敌人、保底和掉落。地面物品由 `Session.placeGroundRewards` 按背包规则生成实例。每张受影响的地图只保存一次原状，外层结算失败时也能还原物品和编号。
 
-剧情离队时，会话只记下离队伙伴原先的技能冷却、调试开关和狂暴动作帧数。撤销剧情时连同队伍一起还原。
+剧情离队时，会话只记下离队伙伴原先的技能冷却和狂暴动作帧数。撤销剧情时连同队伍一起还原。
 
 存档摘要、完整读取和原始备份都通过 `readSaveRecord` 判断格式与外层字段。
 
@@ -24,6 +24,7 @@
 
 ## 文件
 
+- 内容类型：`content.ts`（世界、地图、剧情动作、任务与奖励类型）。
 - 会话/剧情：`session.ts`、`story-director.ts`、`story-runtime.ts`、`story-graph.ts`、`story-condition.ts`、`story-scene.ts`、`story-script.ts`、`campaign.ts`、`scene-plan.ts`，以及同前缀的 `story-*.ts`、`scene-*.ts`；开发/测试模式开关与快照冻结在 `dev-mode.ts`，存档检查点的写时复制在 `playback-checkpoint.ts`。
 - 挑战刷怪：`pressure-enemies.ts` 按主角等级筛选普通战斗怪并随机选择。
 - 战斗：`combat-*.ts`、`battle.ts`、`action-*.ts`、`attack-*.ts`、`buff-*.ts`、`skill-*.ts`、`enemy-*.ts`；击杀奖励结算在 `combat-rewards.ts`。
@@ -119,11 +120,6 @@
 - **遭遇完成按修订号缓存。** `completedEncounters` 的缓存键覆盖 `encounterRevision`、`enemySpawnRevision`、`membershipRevision`；死亡结算、捕获、遭遇增删和恢复会推进这些修订号。判定仍是 `deadUntil !== undefined && !capture`。
 - **AI 候选按控制器分别查询。** 敌人 `map-wide` 回退全量，普通警戒用附近圆；队友用自身+队长联合圆，但 `partyIds` 仍从全量收集；召唤物用主人+自身联合圆。附近查询只做预筛，后置过滤和候选顺序不变。
 - 人物页大立绘按来源取图：主角和剧情同伴用 `character.portraits` 的 252×271 立绘，佣兵用 `character.classPortraits` 的职业 252×271 立绘；小头像统一用 `party-class-*` 或 `character-party-*`。`memberArt` 是唯一入口。
-- 单元测试写在 `tests/*.test.ts`。
-
-## 验证
-
-- `npm test -- tests/session.test.ts` 覆盖会话与剧情状态；`npm test -- tests/save-game.test.ts` 覆盖存档结构与格式号。
 
 - 放逐成功时同步删除该成员的掉落保底计数；移入预备队保持计数。读档按存档原样恢复。
 
@@ -156,3 +152,7 @@
 - 局部事务和剧情命令回滚通过 `PartyRoster.checkpoint` 恢复原成员及技能对象，保持战斗与血条的引用有效；完整读档仍用 `restoreState` 重建队伍。剧情节点按加入、离队命令执行后的队伍名单清理地图人物，离队后显式放置的人物留在地图。
 
 - 剧情导演的 `script` 和 `trigger` 都返回实际播放结果，调用方可据此判定演出是否启动。手动交互产生的后续剧情等本次弹窗和演出成功收起才开始；遇错保留到重试成功，换存档或取消时清掉。
+
+## 验证
+
+- `npm test -- tests/session.test.ts` 覆盖会话与剧情状态；`npm test -- tests/save-game.test.ts` 覆盖存档结构与格式号。

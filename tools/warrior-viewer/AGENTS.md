@@ -29,4 +29,4 @@ npx tsc --noEmit -p tools/warrior-viewer/tsconfig.json
 git diff --check
 ```
 
-用例覆盖真实狂战士武器组合、四向动作、图集边界、独立换装、镜像基准点、播放状态和姿势拆包加载。页面入口与真实拆包数据可通过 HTTP 请求检查；界面效果由用户在浏览器验收。
+用例见 `tests/warrior-viewer.test.ts`。页面入口与真实拆包数据可通过 HTTP 请求检查；界面效果由用户在浏览器验收。

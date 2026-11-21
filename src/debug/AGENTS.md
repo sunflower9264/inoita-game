@@ -33,14 +33,14 @@
 - 调试道具列表按物品定义过滤仅地面拾取和剧情人物专属装备；可穿戴装备不按当前角色职业筛选，保留调试时给其他职业发放的能力。按物品 ID 直接发放同样校验剧情专属装备限制。
 - 人物页的「技能全满」调用 `maxSkills`：主角拉满本职业技能（未学的也学会）；佣兵学会本职业全部技能，并升到该技能伙伴成长表的最高等级（没有伙伴成长表时用普通表长度）。不扣技能点、不改变角色等级，执行后发一次会话通知。
 - GM 的诊断上报地址从 `application/endpoints.ts` 取，不在 `gm-actions.ts` 里写默认域名。
+- 会话关闭时调用 `GmActions.dispose()`，释放本局操作日志引用。
 - 本目录不导入 Phaser，保持能在 Node 下直接运行和测试。
 
 ## 验证
 
 ```bash
 npm run typecheck
-npm test -- tests/gm-scene.test.ts tests/gm-actions.test.ts tests/gm-quest-jump.test.ts tests/quest-catalog.test.ts tests/quest-jump.test.ts tests/story-director-event-filter.test.ts
+npm test -- tests/gm-scene.test.ts tests/gm-actions.test.ts tests/gm-quest-jump.test.ts tests/gm-complete-golem.test.ts tests/quest-catalog.test.ts tests/quest-jump.test.ts tests/story-director-event-filter.test.ts
 ```
 
-- 会话关闭时调用 `GmActions.dispose()`，释放本局操作日志引用。
-- `tests/gm-complete-golem.test.ts` 覆盖状态页完成任务先结算石魔遭遇、推进后续任务，以及旧路径已卡住时优先结算等待战斗且不误完成无关任务。
+- `tests/gm-complete-golem.test.ts` 覆盖状态页完成任务先结算石魔遭遇、推进后续任务，以及等待中的战斗已卡住时优先结算且不误完成无关任务。

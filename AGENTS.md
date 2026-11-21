@@ -39,14 +39,14 @@ Phaser 4.2.1 + TypeScript 的艾诺迪亚4重制版。源码、内容、素材�
 - **剧情独立创作**。`public/content/campaign.json` 是剧情、任务和角色摆放的源文件；新增字段先定义游戏含义、单位和消费方式，内容加载和构建共用校验器。多张地图共用同一种祭坛时，地点限定写进近身事件的 `map`，任务指引使用同一张图。剧情改变地图人物的显隐时，沿用地图或剧情实际摆放的那个人物编号。
 - **名字用游戏里的概念**。动画叫 `walk-east`、`idle-south`，地图属性叫 `blocked`、`exits`、`entities`，剧情行为叫 `dialogue`、`choice`。
 - **首次发行的存档格式为 1**。默认从空槽开始，本地与云端均读写格式 1。更早的格式按空槽处理，更新的格式按不可读取处理。已有正式存档后，结构变化时升格式，同时保留上一版为可读并在读取入口迁移，补当前格式到新格式的迁移和旧档测试。读取范围在 `src/domain/save-game.ts`，读取校验在 `src/application/saved-game.ts`。
-- **服务地址分开发与部署**。网页始终同源，页面不写域名；Android 壳由内置内容服务在页面脚本前注入 `__inoitaEndpoints` 和原生桥。环境根地址只维护 `config/endpoints.json`：Android 调试用 `adb reverse` 指向本机 4003，发布和网页生产共用 `https://catgo.online`；云存档 `/__cloud`、诊断 `/__diagnostics/report` 路径固定。热更新检查地址从同一根地址派生 `/update/latest.json`，自测通道用 `/update/latest-staging.json`；下载走原生 HTTP，不需要 CORS。细则见 `config/AGENTS.md`、`src/application/AGENTS.md`、`android/AGENTS.md`。
+- **服务地址分开发与部署**。网页始终同源，页面不写域名；Android 壳由内置内容服务在页面脚本前注入 `__inoitaEndpoints` 和原生桥。环境根地址只维护 `config/endpoints.json`：网页根地址为空，Android 发布写 `https://catgo.online`；调试约定用 `adb reverse` 指向本机 4003，当前 Gradle 尚未按 buildType 切换，接线见 `config/AGENTS.md`。云存档 `/__cloud`、诊断 `/__diagnostics/report` 路径固定。热更新检查地址从同一根地址派生 `/update/latest.json`，自测通道用 `/update/latest-staging.json`；下载走原生 HTTP，不需要 CORS。细则见 `config/AGENTS.md`、`src/application/AGENTS.md`、`android/AGENTS.md`。
 
 ## 3. 测试与验证
 
 默认按本次改动的行为和直接依赖选择相关测试文件：
 
 ```bash
-npm test -- tests/example.test.ts
+npm test -- tests/combat.test.ts
 ```
 
 该命令先做一次类型检查，再用 `node:test` 运行指定文件；不带文件参数时输出用法并退出。自动化测试只写在 `tests/*.test.ts`。
@@ -97,19 +97,19 @@ src/                   游戏源码（规则见 src/AGENTS.md）
   scenes/              地图、剧情舞台与菜单（AGENTS.md）
   domain/              内容类型、会话状态、剧情调度、通行、战斗规则（AGENTS.md）
   rendering/           角色、世界、战斗与特效表现（AGENTS.md）
-  ui/                  菜单、HUD、对话、DOM 组件与界面逻辑（AGENTS.md）
+  ui/                  菜单、HUD、对话与界面逻辑（AGENTS.md；dom 屏幕绘制，phaser 场景面板）
   debug/               GM 动作层与调试开关（AGENTS.md）
   generated/           图集常量，生成物（AGENTS.md）
 public/                运行时静态资源和内容（图集页、地图、音频、未进图集的例外图片）
-  content/             剧情、任务、地图、战斗、物品、音频等内容 JSON
+  content/             剧情、任务、地图（`content/maps/`）、战斗、物品、音频等内容 JSON
   assets/              运行时图片与音频素材
 config/                环境服务根地址（AGENTS.md；网页固定同源，Android 调试/发布分环境）
-asset-source/          图集生成与内容去重的源素材（进 Git；原图不再放 public）
+asset-source/          图集生成与内容去重的源素材（进 Git；运行时原图只从这里读取）
 asset-archive/         构建裁剪出的运行时旧图副本（不进 Git）
-tests/                 单元测试（AGENTS.md；helpers、support 另有）
-tools/                 构建、校验、静态服务、APK 打包（AGENTS.md）
-deploy/                nginx 站点等部署配置
-docs/                  架构、模块原理、剧情创作、音频、掉落、云存档、部署、服务地址、热更新、调试与诊断
+tests/                 单元测试（AGENTS.md；helpers、support、fixtures 另有）
+tools/                 构建、校验、图集、素材、静态服务、诊断、云存档、热更新与 APK 打包（AGENTS.md）
+deploy/                nginx 站点等部署配置（当前入口 `catgo.online-web.conf`）
+docs/                  架构、模块原理、剧情创作、音频、掉落、云存档、部署、服务地址、热更新、调试、诊断与补丁管理
 android/               Android 自带 Chromium 156 的壳（minSdk 29，规则见 AGENTS.md）
 .agents/skills/        Phaser 4 开发技能
 .claude/skills         指向 ../.agents/skills 的符号链接
@@ -126,6 +126,9 @@ npm run validate:content           # 内容、校验器或素材引用变化时
 npm run audit:assets               # 只检查素材保留集，不裁剪
 npm run atlas:all                  # 重新生成图标/道具/界面/特效/角色全部图集
 npm run test:content-build         # 真实内容编译后跑最小战斗与剧情节点
+npm run report:assets              # 素材源重复与生产构建口径报告
+npm run audit:story                # 剧情角色与演出内容审计
+npm run release:story              # 剧情发版门禁：内容校验 + 审计 + 存档测试 + 构建
 npm run diag:list                  # 查看最近的诊断会话
 npm run diag:session -- <会话 id>   # 查看单个会话的完整时间线
 npm run test:all                   # 用户明确要求全量单元测试时
@@ -138,7 +141,8 @@ npm run dev                        # 开发服务器 http://localhost:4003/
 npm run apk                        # 打包 Android 安装包（Cefrium/Chromium 156，需要 JDK 25）
 npm run verify:apk                 # 校验 APK 产物
 npm run update:key                 # 首次生成热更新签名密钥（私钥在仓库外）
-npm run verify:update              # 核对 APK 基线与线上清单的差量
+npm run patch:phaser               # 手动重跑 Phaser 动态缓冲区补丁
+npm run verify:update -- --apk <APK 路径> --url <线上基址>  # 核对 APK 基线与线上清单的差量
 ```
 
 ## 7. 性能优化
@@ -159,16 +163,16 @@ npm run verify:update              # 核对 APK 基线与线上清单的差量
 
 **不用等基线才动手。** 按上面的类别先改，一次只改一类，单独提交；改完在线上入口/APK 上实测，确认没有把别的指标弄坏。各目录已有的索引、版本缓存和素材占用登记继续沿用，具体机制见对应 `AGENTS.md`。
 
-### Phaser 动态缓冲区补丁（验证中）
+### Phaser 动态缓冲区补丁
 
-安卓战斗掉帧（安卓浏览器和 APK 都掉，iOS 不卡）目前有一个待验证的候选：[Phaser PR #7420](https://github.com/phaserjs/phaser/pull/7420)。它改 `WebGLBufferWrapper.update`：动态缓冲区从偏移 0 上传时改用 `bufferData` 重新分配存储，让驱动丢弃旧缓冲，避免同一帧前面的 draw call 还在用的缓冲被复制或同步；`STATIC_DRAW` 和带偏移的局部更新保持原逻辑。早期版本 [PR #7345](https://github.com/phaserjs/phaser/pull/7345) 只做了每次 `bufferData` 重分配，没有处理局部更新，不要单独采用。
+安卓战斗掉帧（安卓浏览器和 APK 都掉，iOS 不卡）采用 [Phaser PR #7420](https://github.com/phaserjs/phaser/pull/7420)：它改 `WebGLBufferWrapper.update`，动态缓冲区从偏移 0 上传时改用 `bufferData` 重新分配存储，让驱动丢弃旧缓冲，避免同一帧前面的 draw call 还在用的缓冲被复制或同步；常规局部更新仍走 `bufferSubData`，容量变化时重新分配。早期版本 [PR #7345](https://github.com/phaserjs/phaser/pull/7345) 没有处理局部更新，不单独采用。
 
-现状：安卓战斗实测有效，已固化为 `tools/patch-phaser.mjs`，由 `postinstall`、`predev` 和 `prebuild` 自动应用；Phaser 仍锁 `4.2.1`，补丁打在 `node_modules/phaser/dist/phaser.esm.js`，构建和 APK 都会带它。升级 Phaser 时先核对 PR #7420 和脚本里的补丁锚点，再更新 `patch-phaser.mjs` 的版本检查。
+补丁已固化在 `tools/patch-phaser.mjs`，由 `postinstall`、`predev` 和 `prebuild` 自动应用；Phaser 锁 `4.2.1`，补丁打在 `node_modules/phaser/dist/phaser.esm.js`，构建和 APK 都会带它。升级 Phaser 时先核对 PR #7420 和脚本里的补丁锚点，再更新版本检查。
 
-同一脚本还处理绘图缓冲创建失败时的资源清理：构造器抛错前释放已申请的颜色纹理和缓冲，避免进图重试累积显存。升级时一并核对这一清理分支；验证见 `tests/phaser-framebuffer.test.ts`。
+同一脚本还给绘图缓冲创建失败补资源清理：构造器抛错前释放已申请的颜色纹理和缓冲，避免进图重试累积显存；验证见 `tests/phaser-framebuffer.test.ts`。
 
 验证方式：同一台安卓设备、同一张地图和战斗，对比补丁前后的实际帧率。菜单和静态地图不掉、只有战斗掉且随同屏敌人/特效增加而变差，才更像这个补丁能解决的「批次缓冲复制」问题。
 
 ## 8. 补丁管理
 
-长期补丁登记在 `docs/patches.md`。运行时/上游补丁、存档修补、兼容/迁移、内容补丁和普通 bug 修复按该文件的分类与 Done 清单执行；补丁退役时删除代码、测试和登记，不保留墓碑。正式版存档修补只针对上线后当前格式的已知坏状态。
+长期补丁登记在 `docs/patches.md`。按该文件的分类、必须做到与结束条件执行；普通 bug 另走 Done 清单。补丁退役时删除代码、测试和登记，不保留墓碑。正式版存档修补只针对上线后当前格式的已知坏状态。

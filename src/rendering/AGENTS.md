@@ -1,21 +1,19 @@
 # src/rendering
 
-剧情更换外观时，正常播放和跳过都刷新主角、队员和剧情刚指定外观的人物。场景快照中其余人物的外观继续沿用。
-
 把 `domain` 的状态画到 Phaser 里：角色、地图、战斗表现和界面特效。
 
 ## 文件
 
-- 角色/移动：`characters.ts`、`arcade-movement.ts`、`movement-world.ts`、`movement-interpolation.ts`、`character-visibility.ts`、`name-banner.ts`、`control-skin.ts`。
-- 地图/资源：`map-layers.ts`、`map-assets.ts`、`prop-atlas.ts`、`scene-assets.ts`、`story-map-view.ts`、`story-minimap.ts`。
+- 角色/移动：`characters.ts`、`arcade-movement.ts`、`movement-world.ts`、`movement-interpolation.ts`、`character-visibility.ts`、`name-banner.ts`、`control-skin.ts`、`depths.ts`。
+- 地图/资源：`map-layers.ts`、`map-assets.ts`、`prop-atlas.ts`、`scene-assets.ts`、`character-atlas.ts`、`story-map-view.ts`、`story-minimap.ts`。
+- 资源所有权：`appearance-ownership.ts`、`texture-lifecycle.ts`。
 - 战斗表现：`combat-presenter.ts`、`combat-effects.ts`、`combat-feedback.ts`、`combat-outcomes.ts`、`combat-assets.ts`、`combat-asset-descriptors.ts`、`resident-combat-assets.ts`、`combat-visual-coverage.ts`、`buff-loop-renderer.ts`、`state-markers.ts`、`status-color.ts`、`status-hud.ts`、`overhead-status.ts`、`target-focus.ts`、`target-focus-assets.ts`、`target-focus-pulse.ts`。
 - 剧情/HUD/其他：`story-presenter.ts`、`hud.ts`、`action-controls.ts`、`ground-loot.ts`、`pickup-messages.ts`、`quest-marker.ts`、`wardrobe.ts`、`outfit-pool.ts`、`composition-budget.ts`、`wardrobe-cache.ts`、`effects.ts`、`effect-animations.ts`、`effect-colors.ts`、`blend-modes.ts`、`webgl-recovery.ts`。
 
 ## 规则
 
-
-
-- 本目录只读取 `domain` 状态并绘制，规则变化和存档写入留在 `domain` 与 `application`。
+- 剧情更换外观时，正常播放和跳过都刷新主角、队员和剧情刚指定外观的人物。场景快照中其余人物的外观继续沿用。
+- 本目录读取 `domain` 状态并绘制，规则变化和存档写入留在 `domain` 与 `application`。DOM 覆盖层（小地图、名称条、拾取提示）允许依赖 `ui/dom`、`ui/viewport` 与 `ui/phaser/control-layout-viewport.ts`，这是现有例外，不扩大。
 - `Hud.watchVisibility` 将所属场景的暂停、睡眠与恢复状态传给 DOM 状态栏；组件关闭时注销监听，场景销毁时统一隐藏。
 - 拾取提示是画布外的 DOM 元素，每帧按当前镜头投影定位。
 - **脚下选中圈常驻。** `TargetFocus` 的绿圈跟当前受控角色，红圈优先跟该角色的动作/选中目标；移动清掉选择后回退到队友正在打的目标，最后退到队伍集火目标，佣兵继续攻击时圈不会消失。换目标后按原版 17 帧（30fps，约 567ms）做 80%..130% 缩放脉冲，之后常亮；脉冲按真实耗时推进，120/144Hz 屏不会播得更快。位置用 `displayPosition` 的脚点，深度取 `y - 0.5`，画在角色脚下；两张 24×18 小图不进 UI 图集，按原始路径走公共常驻包，切图与战斗结束都不释放。
@@ -61,17 +59,6 @@
 - 性能敏感的改动先在线上入口/APK 上实测基线，再决定是否新增对象或逐帧逻辑。
 - **特殊怪只在原版的位置标记。** 小地图按全图已生成的 `specialRank` 非零怪物画星标，精英和 Boss 共用 `minimap-special`；选中特殊目标时顶部面板在血条下方画三星。地图角色头顶不加常驻 Boss 图标。
 - **可交互点共用原版橙色圆环。** 宝箱、泉水、商店、旅店、灵魂治疗师、融合器和古剑都通过 `StoryMinimap.updateInteractions` 使用 `minimap-interact`；纵向抬 3 像素，与任务标记同一高度。有任务图标时只显示任务图标。
-
-## 验证
-
-- `npm run typecheck`：类型检查覆盖本目录。
-- `npm test -- tests/buff-loop-renderer.test.ts`：状态图标循环表现。
-- `npm test -- tests/movement-content-recovery.test.ts`：内容机关压住队伍单位后的自愈。
-- `npm test -- tests/state-markers.test.ts`：眩晕/睡眠状态标记的创建与销毁。
-- `npm test -- tests/target-focus-pulse.test.ts`：脚下选中圈换目标后的 17 帧（30fps）缩放脉冲与按耗时推进。
-- `npm test -- tests/target-focus-world.test.ts`：移动清目标后红圈按动作目标、队友目标、集火目标的顺序回退。
-- `npm test -- tests/story-skip.test.ts tests/story-stage-isolation.test.ts`：跳过剧情不重建舞台，选择与任务弹窗前按逻辑快照补画。
-
 - 特效容器持有当前动画贴图到销毁；转向飞弹另持有全部方向。循环效果缺图时保留逻辑状态，素材到齐后重建，按当前帧龄显示。
 
 - `loadSceneAssets` 支持独立取消信号；排队期间取消立即退出，取消预取只释放该请求，常驻加载场景继续运行，迟到写入按写入登记结算，无主时走纹理退役。标题预载和进图把各自的信号交给加载器。
@@ -87,3 +74,15 @@
 - 剧情舞台的世界查询绑定所属会话；会话结束后正常操作按取消结束，舞台释放在没有所属世界时直接完成，不恢复其他会话的地图音乐。
 
 - `loadSceneAssets(consumer, assets, options)` 的 consumer 表示请求所属场景，底层文件统一交给已登记的图片加载场景；options 的 lifetime 为 scene 时随请求场景关闭归还，manual 时交付后由调用方归还。等待中两种方式均响应场景关闭与 signal 取消，交付前重新检查取消状态。
+
+## 验证
+
+```bash
+npm run typecheck
+npm test -- tests/buff-loop-renderer.test.ts
+npm test -- tests/movement-content-recovery.test.ts
+npm test -- tests/state-markers.test.ts
+npm test -- tests/target-focus-pulse.test.ts
+npm test -- tests/target-focus-world.test.ts
+npm test -- tests/story-skip.test.ts tests/story-stage-isolation.test.ts
+```

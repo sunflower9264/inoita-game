@@ -1,13 +1,13 @@
 # src/ui/phaser
 
-界面面板与输入适配代码。布局数字来自 `src/ui/`；屏幕组件使用 `src/ui/dom/` 的图片、控件、裁剪与生命周期能力。
+界面面板与输入适配代码。布局数字来自 `src/ui/`；屏幕组件使用 `src/ui/dom/` 的图片、控件、裁剪与生命周期能力。场景接线可读取 `rendering/hud.ts` 的只读状态；面板绘制仍走 `UiSurface`/`ui/dom`。
 
 ## 文件
 
 - 面板：`forge-panel.ts`（强化台）、`skill-book-panel.ts`（技能书页）、`crafting-panel.ts`（合成台）、`shop-panel.ts`（商店）、`quest-panel.ts`（任务阅读）、`party-panel.ts`（佣兵队伍）、`description-panel.ts`（说明框）、`save-board.ts`（存档槽）、`cloud-save-panel.ts`（云存档账号与同步页）、`gm-panel.ts`（GM 面板）、`popup-panel.ts`（通用弹层）、`quest-popup.ts`（任务窗）、`volume-slider.ts`（音量条）。
 - 控件与输入：`action-controls.ts`（DOM 动作按钮的场景生命周期适配）、`keyboard-actions.ts`（键盘派发）、`move-stick.ts`（DOM 移动控件的键盘与场景接线）、`key-binding-editor.ts`（键位编辑）、`control-layout-editor.ts`（布局编辑）、`control-layout-viewport.ts`（统一屏幕 CSS 宽高与安全区）。
-- 绘制与组件：`bag-rail.ts`（背包侧栏与选中底色）、`widgets.ts`（导出 DOM 菜单表面并预载图片）、`solid-border.ts`（实心边框）、`round-band.ts`（圆角带）、`cooldown-fan.ts`（冷却比例与秒数计算）、`native-message.ts`（原生提示）、`ui-asset-host.ts`（菜单图片预载）、`status-hud.ts`（DOM 状态栏的场景接线）、`computer-skill-hud.ts`（电脑模式技能行）、`quest-text.ts`（任务文本）、`description-text.ts`（说明文本）、`modal-placement.ts`（弹层定位）。
-- 视图适配：`class-selection-view.ts`（职业选择页的背景、纹理过滤和加色选中层）。
+- 绘制与组件：`bag-rail.ts`（背包侧栏与选中底色）、`widgets.ts`（导出 DOM 菜单表面并预载图片）、`solid-border.ts`（实心边框）、`round-band.ts`（圆角带）、`cooldown-fan.ts`（冷却比例与秒数计算）、`native-message.ts`（原生提示）、`ui-asset-host.ts`（菜单图片预载）、`status-hud.ts`（DOM 状态栏的场景接线）、`computer-skill-hud.ts`（电脑模式技能行）、`quest-text.ts`（任务文本）、`description-text.ts`（说明文本）、`modal-placement.ts`（弹层定位）、`game-thumbnail.ts`（同一局共享画布截图）。
+- 视图适配：`class-selection-view.ts`（职业选择页的背景、纹理过滤和加色选中层）、`live-character-preview.ts`（菜单角色预览的画布换算与外观持有）。
 
 ## 规则
 
@@ -17,7 +17,7 @@
 - 移动控件的 D-pad 圆盘按 274×274 显示，热区半径 137；摇杆按 210×210，尺寸都从 `CONTROL_SIZES` 取。
 - 布局编辑器在缩放模式下点击控件才画白色空心框和四角把手，移动模式直接拖控件。工具栏的「移动」「缩放」按钮决定整次拖动的含义，选中模式常驻高亮，默认移动；缩放以控件中心为准，不改位置，松手才写入偏好。放大上限按控件完整留在安全区内计算。
 - 队友阵亡时保留该成员自己的头像并压暗，不换成通用的 down 头像；只有拿不到头像时才回退到通用图。
-- **头像槽位用 `imageCover`。** 头像来源的宽高比不统一，`UiSurface.image` 同时收到宽高会拉伸原图；头像一律用 `imageCover`，需要直接操作 Image 时用 `fitPortrait` 保持比例。
+- **头像槽位用 `imageCover`。** 头像来源的宽高比不统一，`UiSurface.image` 同时收到宽高会拉伸原图；头像一律用 `imageCover`，需要直接操作 Image 时用 `portraitFit`（`src/ui/portrait-fit.ts`）保持比例。
 - 队伍装备页的备用人物图用 `imageContain` 完整放进预览框，角色外观准备好后使用同一框显示合成角色。
 - `live-character-preview.ts` 接收菜单的屏幕矩形，经 `screenRectToCanvas` 换算后在游戏画布上播放待机动作；给菜单遮罩留出的预览区域保持 CSS 坐标。职业选择可直接显示场景背景；隐藏期间角色继续持有外观，切换页和关闭时销毁角色并由共用绘制层归还外观。
 - 队伍页选人保留名册、图框和页签，只更新选中标记和成员详情；外观准备完成只更新预览。
@@ -35,9 +35,9 @@
 - **背包侧栏共用绘制。** 背包、商人、合成台和强化台使用 `bag-rail.ts` 的图框、平铺行和选中底色；商店按右框位置平移。
 - **子页面用原版图框。** 强化台、合成台复用左右固定图框，强化选择素材、合成选择装备时保留背包格与滚动区，强化和合成确认框打开或取消时保留工作台；背景用原版边框/底色；只有确认框用 `modal` 的 `drawNativeMessage`，不给整页铺黑色遮罩。
 - **任务窗位于全屏输入遮挡之上。** 任务窗、遮罩和文字放在 overlay 层；遮挡层拦住底层输入，任务窗按钮和滚动区在其上方。同一个任务窗临时隐藏后保留读到的位置，打开下一份任务时从头显示。
-- **确认框文字由 DOM 输出。** `drawNativeMessage` 的正文和按钮文字都通过 `writer` 登记；按钮用 `UiSurface.button` 的共用皮肤，不再叠带字的 `message-yes`/`message-no`/`message-ok` 素材。临时 DOM 文字只用于量横带高度，量完立刻销毁。
+- **确认框文字由 DOM 输出。** `drawNativeMessage` 的正文和按钮文字都通过 `writer` 登记；按钮用 `UiSurface.button` 的共用皮肤，素材本身不叠字。临时 DOM 文字只用于量横带高度，量完立刻销毁。
 - **全屏横带挂在画框覆盖层上。** `drawNativeMessage` 的浅色罩、黑横带和上下花纹建在直接铺满画框、不随弹层根节点缩放的覆盖层上，横向用 `left:0; right:0` 由画框定宽；弹层根节点的缩放只决定纵向位置。弹层每次重排后调用 `UiSurface.relayoutOverlay()` 更新纵向和花纹，画框变宽不需要重新量宽度；弹层清空时覆盖层一起销毁。`screenCoverage` 仍按弹层本地坐标返回横带覆盖范围，供页面文字裁剪。
-- **菜单弹层的内容区一律不透明。** `drawPopupPanel` 的内缩黑底、说明面板、原生确认横带和 `v.frame` 弹层都必须用 alpha 1；压暗页面只由外层的 65% 半透明遮罩负责。新增菜单弹层不要再留半透明内容底。
+- **菜单弹层的内容区一律不透明。** `drawPopupPanel` 的内缩黑底、说明面板、原生确认横带和 `v.frame` 弹层都必须用 alpha 1；压暗页面只由外层的 65% 半透明遮罩负责。新增菜单弹层的内容底也用 alpha 1。
 - **长正文在弹层里滚动，按钮固定。** 原生确认横带高度封顶到「画面高 − 120」，正文超过可用高度时由宿主传入的 `scroll` 建滚动区，按钮留在横带底部；商店确认框正文超过 162（有金额）或 200 像素时同样滚动。`drawNativeMessage` 返回横带的实际覆盖范围（left/top/width/height），背包页和存档页用它裁剪被横带盖住的页面文字，不要在调用方另算一份。
 - **说明面板的物品名换行时正文区整体下移。** 标题高度按与绘制相同的宽度和字号测量；正文滚动区顶边跟着标题底边下移，底边保持在动作行上方，下移量最多让正文区剩 60 像素。背包、商店和调试详情共用 `descriptionTitleOverflow`。
 - **强化台右栏整列留给物品格。** 宝石和卷轴的预览文字写在左框；右框网格一直排到框底边框内沿（431 − 24），底部不再放说明段，格子和边框内沿之间不留空档。
@@ -45,13 +45,6 @@
 - **带边框的面板内部先按可滚动设计。** 属性、强化概率、宝石孔、配方材料这类内容会随数据变长，边框内不要假设固定高度一定放得下。用 `v.scroll` 给内部内容单独滚动，内容高度按实际底部计算；底部按钮和提示跟着内容下移，不要固定在会被长内容压住的位置。
 - **边框内边距不能盖住内容。** `v.border` 先画，滚动内容和控件后画；内容的 `parent` / `guard` 要指向对应滚动区，坐标保持在边框内。不要把内容画到内边距的黑色底下面，也不要让滚动裁剪区吞掉按钮的点击。
 - **面板动作只更新受影响的内容。** 会话通知与面板动作使用同一个更新边界，保持未变化的节点、滚动区和输入状态。
-
-## 验证
-
-```bash
-npm run typecheck
-npm test -- tests/control-layout.test.ts tests/native-message-layout.test.ts
-```
 
 - 商店清理只预览装备，点击格子在左侧查看详情；上锁立即移出预览。等级或品质变化时保留筛选按钮和滚动区，按装备身份更新候选格与合计；退出后恢复原背包滚动位置。整批出售以当前报价校验并一次提交，空清单禁用出售。
 
@@ -74,3 +67,10 @@ npm test -- tests/control-layout.test.ts tests/native-message-layout.test.ts
 - 商店数量行按物品图标、减箭头、居中数量、加箭头排列；数量文字与输入热区共用 `shop-layout.ts` 的矩形。
 
 - 调试任务详情按所选阶段预览现场。「单独潜入」可选独自进城或救出圣女后返回莱曼；切换阶段更新地点、前置和接取演出。
+
+## 验证
+
+```bash
+npm run typecheck
+npm test -- tests/control-layout.test.ts tests/native-message-layout.test.ts
+```
