@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 import {registerHooks} from 'node:module';
 import test from 'node:test';
 import type {BattleCatalog,NumericCombatUnit} from '../src/domain/battle.ts';
+import type {BattleStatKey} from '../src/domain/battle-semantics.ts';
 import {CombatConditions} from '../src/domain/combat-conditions.ts';
 import {CombatHitResolution} from '../src/domain/combat-hit-resolution.ts';
 import {PendingEnemyDefeats} from '../src/domain/combat-outcomes.ts';
@@ -90,6 +91,26 @@ function fixture(){
     :call('skillUnit',{casterId:'player',targetId,cueIndex:0,skill:{id:'test-strike',action:{combatUnits:[unit]}}});
   return {host,members,enemyState,order,conditions,fallen,call,direct,hit,onReaction:(callback:()=>void)=>{react=callback;}};
 }
+
+test('圣徒之牺牲按敌人普攻的实际伤害分摊，保护者在本次命中结束后倒地',()=>{
+  const run=fixture();
+  Reflect.deleteProperty(run.host,'resolveHitReactions');
+  run.host.actorAttribute=(id:string,key:BattleStatKey)=>run.conditions.attribute(id,key,0);
+  const buff=catalog.skills['holy-sacrifice'].action!.combatUnits![0];
+  assert.equal(buff.effect,'buff');
+  const firstRank=buff.ranks[0];
+  run.conditions.applyBuff('ally',buff.buff,firstRank.strength,firstRank.effect,'player');
+
+  const attack=()=>run.call('attackContact',{casterId:'enemy',targetId:'ally',basicAttack:{damage:unit}});
+  attack();
+  assert.equal(run.members.get('ally')!.player.health,427);
+  assert.equal(run.members.get('player')!.player.health,3);
+  attack();
+  assert.equal(run.members.get('ally')!.player.health,354);
+  assert.equal(run.members.get('player')!.player.health,0);
+  assert.deepEqual(run.order.filter(event=>event.startsWith('hit:')||event.startsWith('defeat:')),
+    ['hit:player','hit:ally','hit:player','hit:ally','defeat:player']);
+});
 
 test('a capture conversion removes the source enemy instead of leaving a one-HP corpse',()=>{
   const run=fixture();let healthWrites=0;
