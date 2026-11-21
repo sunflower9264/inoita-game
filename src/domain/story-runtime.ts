@@ -409,110 +409,110 @@ export class StoryRuntime {
     this.install(commit.checkpoint);
   }
   private async execute(id: string, signal: AbortSignal, epoch: number): Promise<boolean> {
-    let committed = false;
+    let run = this.state.runs.find(candidate => candidate.id === id)!;
     const recent: StoryNodeRef[] = [];
-    // 内容环仍受执行预算约束；有出口的循环也可能因条件配置永远走回原处。
     for (let steps = 0; steps < MAX_STORY_EXECUTION_STEPS; steps++) {
       this.guard(epoch, signal);
-      const run = this.state.runs.find(run => run.id === id)!;
-      if (run.status !== 'running') return committed;
+      if (run.status !== 'running') return steps > 0;
       recent[steps % STORY_EXECUTION_TRACE_SIZE] = run.cursor;
-      const node = this.nodes.get(StoryRuntime.nodeKey(run.cursor))!;
-      const context: StoryPlaybackContext = { signal, epoch, runId: id, stage: node.stage ?? run.stage };
-      await this.port.prepare(node, context); this.guard(epoch, signal);
-      const baseline = this.port.capture(); this.active = { baseline, context };
-      try {
-        const result = await this.port.present(node, context); this.guard(epoch, signal);
-        await this.port.finish(context); this.guard(epoch, signal);
-        if (result.stage) validateStoryStageSnapshot(result.stage);
-        const commands = clone(node.commands);
-        for(const command of commands)if(command.type==='world'&&(command.command.kind==='place'||command.command.kind==='remove-character'||command.command.kind==='enemy-location')&&command.command.mapFromStage){
-          const map=result.stage?.map??run.stage?.map??this.port.currentMap?.();
-          if(!map)throw new Error('剧情物件缺少当前地图');
-          if(command.command.kind==='place')command.command.entity.map=map;
-          else if(command.command.kind==='enemy-location'){if(command.command.location)command.command.location.map=map;}
-          else command.command.map=map;
-          delete command.command.mapFromStage;
-        }
-        // 只替换这一条 run，其余运行和顶层字段保持引用；快照不再整份深拷贝。
-        const nextRun: StoryRun = { ...run, stage: result.stage ?? run.stage };
-        switch (node.exit.type) {
-          case 'next': nextRun.cursor = node.exit.target; break;
-          case 'call': {
-            const stack = [...nextRun.stack ?? [], node.exit.then];
-            if (stack.length > MAX_STORY_CALL_DEPTH) throw new Error('剧情调用层级超过限制');
-            nextRun.stack = stack; nextRun.cursor = node.exit.target; break;
-          }
-          case 'branch': nextRun.cursor = node.exit.then; break;
-          case 'choice': {
-            if (result.choice === undefined) throw new Error('剧情选择没有返回结果');
-            const target = node.exit.cases[result.choice] ?? node.exit.otherwise;
-            if (!target) throw new Error(`剧情选择未配置出口：${result.choice}`);
-            commands.push({ type: 'choice', choice: node.exit.choice, value: result.choice }); nextRun.cursor = target; break;
-          }
-          case 'waitEncounter': {
-            const encounter = clone(node.exit.encounter);
-            if(encounter.mapFromStage){encounter.map=nextRun.stage?.map??this.port.currentMap?.()??encounter.map;delete encounter.mapFromStage;}
-            encounter.definitionId ??= encounter.id;
-            encounter.id = `${id}:${node.id}:${encounter.id}`; encounter.status = 'active';
-            commands.push({ type: 'encounter', encounter });
-            nextRun.status = 'waiting'; nextRun.waiting = { encounter: encounter.id, outcomes: node.exit.outcomes }; break;
-          }
-          case 'defer': nextRun.status = 'deferred'; break;
-          case 'end': {
-            // 返回栈来自共享快照，先切出新数组再退一层。
-            const stack = nextRun.stack;
-            if (stack?.length) { nextRun.stack = stack.slice(0, -1); nextRun.cursor = stack[stack.length - 1]!; break; }
-            nextRun.status = 'completed'; break;
-          }
-        }
-        let completedEvents = this.state.completedEvents;
-        if (node.exit.type === 'end' && nextRun.status === 'completed' && run.eventId && !this.completedEvents().has(run.eventId))
-          completedEvents = [...completedEvents, run.eventId];
-        let handledOccurrences = this.state.handledOccurrences;
-        if (run.eventId && nextRun.status !== 'running' && !handledOccurrences.some(([event, occurrence]) => event === run.eventId && occurrence === run.occurrence))
-          handledOccurrences = [...handledOccurrences.filter(([event]) => event !== run.eventId), [run.eventId, run.occurrence]];
-        let occurrenceSequences = this.state.occurrenceSequences;
-        if (run.eventId && run.occurrenceSource !== undefined && run.occurrenceSequence !== undefined && nextRun.status !== 'running') {
-          const sourceKey = JSON.stringify([run.eventId, run.occurrenceSource]);
-          occurrenceSequences = [...occurrenceSequences.filter(([key]) => key !== sourceKey), [sourceKey, run.occurrenceSequence]];
-        }
-        let runs = this.state.runs.map(candidate => candidate.id === id ? nextRun : candidate);
-        if (nextRun.status === 'completed' || nextRun.status === 'deferred') runs = runs.filter(candidate =>
-          candidate.id === id || candidate.status === 'running' || candidate.status === 'waiting'
-          || (run.eventId ? candidate.eventId !== run.eventId : candidate.eventId !== undefined || candidate.cursor.script !== nextRun.cursor.script));
-        const stage = nextRun.stage;
-        if (nextRun.status !== 'running' || commands.some(command => command.type === 'travel' || command.type === 'world' && command.command.kind === 'travel')) delete nextRun.stage;
-        const next: StoryRuntimeSnapshot = freezeSnapshot({ ...this.state, runs, completedEvents, handledOccurrences, occurrenceSequences });
-        const commit: StoryNodeCommit = { commands, checkpoint: next, eventId: run.eventId, node: run.cursor, runId: id, stage };
-        if (node.exit.type === 'branch') {
-          // 命令先落地，再读真实状态求值；分支游标替换成一条新的 run 对象。
-          this.port.apply(commit);
-          const takeThen = this.port.evaluate(node.exit.condition);
-          const finalRun: StoryRun = { ...nextRun, cursor: takeThen ? node.exit.then : node.exit.otherwise };
-          const final: StoryRuntimeSnapshot = freezeSnapshot({ ...next, runs: next.runs.map(candidate => candidate.id === id ? finalRun : candidate) });
-          const finalCommit: StoryNodeCommit = { ...commit, checkpoint: final };
-          this.port.commit(finalCommit);
-          this.state = final;
-          this.active = undefined; committed = true;
-          await this.port.afterCommit?.(finalCommit, context); this.guard(epoch, signal);
-        } else {
-          this.publish(commit);
-          this.active = undefined; committed = true;
-          await this.port.afterCommit?.(commit, context); this.guard(epoch, signal);
-        }
-      } catch (error) {
-        if (this.current(epoch, signal) && this.active) { this.active = undefined; this.port.rollback(baseline, context); }
-        throw error;
-      }
+      run = await this.executeNode(run, signal, epoch);
     }
-    const run = this.state.runs.find(run => run.id === id);
-    if (run && run.status !== 'running') return committed;
+    if (run.status !== 'running') return true;
     const offset = MAX_STORY_EXECUTION_STEPS % STORY_EXECUTION_TRACE_SIZE;
     throw new StoryExecutionBudgetError({
-      run: id, event: run?.eventId, map: this.port.currentMap?.(), ...this.port.executionContext?.(),
-      recent: [...recent.slice(offset), ...recent.slice(0, offset)], next: run?.cursor,
+      run: id, event: run.eventId, map: this.port.currentMap?.(), ...this.port.executionContext?.(),
+      recent: [...recent.slice(offset), ...recent.slice(0, offset)].map(ref => ({ ...ref })), next: { ...run.cursor },
     });
+  }
+
+  private async executeNode(run: StoryRun, signal: AbortSignal, epoch: number): Promise<StoryRun> {
+    const node = this.nodes.get(StoryRuntime.nodeKey(run.cursor))!;
+    const context: StoryPlaybackContext = { signal, epoch, runId: run.id, stage: node.stage ?? run.stage };
+    await this.port.prepare(node, context); this.guard(epoch, signal);
+    const baseline = this.port.capture(); this.active = { baseline, context };
+    try {
+      const result = await this.port.present(node, context); this.guard(epoch, signal);
+      await this.port.finish(context); this.guard(epoch, signal);
+      if (result.stage) validateStoryStageSnapshot(result.stage);
+      const commands = clone(node.commands);
+      for(const command of commands)if(command.type==='world'&&(command.command.kind==='place'||command.command.kind==='remove-character'||command.command.kind==='enemy-location')&&command.command.mapFromStage){
+        const map=result.stage?.map??run.stage?.map??this.port.currentMap?.();
+        if(!map)throw new Error('剧情物件缺少当前地图');
+        if(command.command.kind==='place')command.command.entity.map=map;
+        else if(command.command.kind==='enemy-location'){if(command.command.location)command.command.location.map=map;}
+        else command.command.map=map;
+        delete command.command.mapFromStage;
+      }
+      // 只替换这一条 run，其余运行和顶层字段保持引用；快照不再整份深拷贝。
+      let nextRun: StoryRun = { ...run, stage: result.stage ?? run.stage };
+      switch (node.exit.type) {
+        case 'next': nextRun.cursor = node.exit.target; break;
+        case 'call': {
+          const stack = [...nextRun.stack ?? [], node.exit.then];
+          if (stack.length > MAX_STORY_CALL_DEPTH) throw new Error('剧情调用层级超过限制');
+          nextRun.stack = stack; nextRun.cursor = node.exit.target; break;
+        }
+        case 'branch': nextRun.cursor = node.exit.then; break;
+        case 'choice': {
+          if (result.choice === undefined) throw new Error('剧情选择没有返回结果');
+          const target = node.exit.cases[result.choice] ?? node.exit.otherwise;
+          if (!target) throw new Error(`剧情选择未配置出口：${result.choice}`);
+          commands.push({ type: 'choice', choice: node.exit.choice, value: result.choice }); nextRun.cursor = target; break;
+        }
+        case 'waitEncounter': {
+          const encounter = clone(node.exit.encounter);
+          if(encounter.mapFromStage){encounter.map=nextRun.stage?.map??this.port.currentMap?.()??encounter.map;delete encounter.mapFromStage;}
+          encounter.definitionId ??= encounter.id;
+          encounter.id = `${run.id}:${node.id}:${encounter.id}`; encounter.status = 'active';
+          commands.push({ type: 'encounter', encounter });
+          nextRun.status = 'waiting'; nextRun.waiting = { encounter: encounter.id, outcomes: node.exit.outcomes }; break;
+        }
+        case 'defer': nextRun.status = 'deferred'; break;
+        case 'end': {
+          // 返回栈来自共享快照，先切出新数组再退一层。
+          const stack = nextRun.stack;
+          if (stack?.length) { nextRun.stack = stack.slice(0, -1); nextRun.cursor = stack[stack.length - 1]!; break; }
+          nextRun.status = 'completed'; break;
+        }
+      }
+      let completedEvents = this.state.completedEvents;
+      if (node.exit.type === 'end' && nextRun.status === 'completed' && run.eventId && !this.completedEvents().has(run.eventId))
+        completedEvents = [...completedEvents, run.eventId];
+      let handledOccurrences = this.state.handledOccurrences;
+      if (run.eventId && nextRun.status !== 'running' && !handledOccurrences.some(([event, occurrence]) => event === run.eventId && occurrence === run.occurrence))
+        handledOccurrences = [...handledOccurrences.filter(([event]) => event !== run.eventId), [run.eventId, run.occurrence]];
+      let occurrenceSequences = this.state.occurrenceSequences;
+      if (run.eventId && run.occurrenceSource !== undefined && run.occurrenceSequence !== undefined && nextRun.status !== 'running') {
+        const sourceKey = JSON.stringify([run.eventId, run.occurrenceSource]);
+        occurrenceSequences = [...occurrenceSequences.filter(([key]) => key !== sourceKey), [sourceKey, run.occurrenceSequence]];
+      }
+      let runs = this.state.runs.map(candidate => candidate.id === run.id ? nextRun : candidate);
+      if (nextRun.status === 'completed' || nextRun.status === 'deferred') runs = runs.filter(candidate =>
+        candidate.id === run.id || candidate.status === 'running' || candidate.status === 'waiting'
+        || (run.eventId ? candidate.eventId !== run.eventId : candidate.eventId !== undefined || candidate.cursor.script !== nextRun.cursor.script));
+      const stage = nextRun.stage;
+      if (nextRun.status !== 'running' || commands.some(command => command.type === 'travel' || command.type === 'world' && command.command.kind === 'travel')) delete nextRun.stage;
+      const next: StoryRuntimeSnapshot = freezeSnapshot({ ...this.state, runs, completedEvents, handledOccurrences, occurrenceSequences });
+      let commit: StoryNodeCommit = { commands, checkpoint: next, eventId: run.eventId, node: run.cursor, runId: run.id, stage };
+      if (node.exit.type === 'branch') {
+        // 命令先落地，再读真实状态求值；分支游标替换成一条新的 run 对象。
+        this.port.apply(commit);
+        const takeThen = this.port.evaluate(node.exit.condition);
+        nextRun = { ...nextRun, cursor: takeThen ? node.exit.then : node.exit.otherwise };
+        const final = freezeSnapshot({ ...next, runs: next.runs.map(candidate => candidate.id === run.id ? nextRun : candidate) });
+        commit = { ...commit, checkpoint: final };
+        this.port.commit(commit);
+        this.state = final;
+      } else {
+        this.publish(commit);
+      }
+      this.active = undefined;
+      await this.port.afterCommit?.(commit, context); this.guard(epoch, signal);
+      return nextRun;
+    } catch (error) {
+      if (this.current(epoch, signal) && this.active) { this.active = undefined; this.port.rollback(baseline, context); }
+      throw error;
+    }
   }
   encounterResult(encounter: string, outcome: string, resultId: string): Promise<boolean> {
     if (!resultId) return Promise.reject(new Error('剧情遭遇结果必须有本次发生的标识'));

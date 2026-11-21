@@ -56459,11 +56459,7 @@
             }
           ],
           "exit": {
-            "type": "next",
-            "target": {
-              "script": "event-90",
-              "node": "done"
-            }
+            "type": "end"
           }
         },
         {
@@ -57626,11 +57622,7 @@
             }
           ],
           "exit": {
-            "type": "next",
-            "target": {
-              "script": "event-92",
-              "node": "done"
-            }
+            "type": "end"
           }
         },
         {

@@ -246,6 +246,8 @@ test('a conditional cycle that never takes its exit stops at the execution budge
     assert.equal(details.recent.length, 12);
     assert.deepEqual(details.recent.at(-1), { script: 'main', node: 'loop' });
     assert.deepEqual(details.next, details.recent.at(-1));
+    // 诊断按对象引用识别循环，每一步都应能单独序列化。
+    assert.equal(new Set([...details.recent, details.next]).size, details.recent.length + 1);
     return true;
   });
   assert.equal(h.runtime.busy, false); assert.equal(h.runtime.snapshot().runs[0].status, 'running');
