@@ -4,6 +4,8 @@ import {PartyFollow} from '../src/domain/party-follow.ts';
 import type {PartyPort} from '../src/domain/party-ai.ts';
 import type {Point} from '../src/domain/navigation.ts';
 import {PathBudget} from '../src/domain/path-budget.ts';
+import {NavigationWorld} from '../src/domain/navigation-world.ts';
+import {canTraverse} from '../src/domain/pathfinding.ts';
 
 function setup(blocked=(_p:Point)=>false){
   const bounds={x:-8,y:-8,width:16,height:16};
@@ -69,4 +71,37 @@ test('fixed-obstacle path snapshots skip moving actors but still check their occ
   assert.equal(sampled,0);assert.equal(snapshot.canStand({x:80,y:80}),true);
   assert.equal(snapshot.canStand({x:112,y:112}),false);
   assert.equal(navigation.canStand(self,{x:80,y:80}),false);
+});
+
+test('following walks through a narrow corner with the same terrain clearance as live movement',()=>{
+  const columns=12,rows=12;
+  const blocked=Array.from({length:columns*rows},(_,index)=>{
+    const column=index%columns,row=Math.floor(index/columns);
+    return !((column===2&&row>=2&&row<=8)||(row===8&&column>=2&&column<=9));
+  });
+  const navigation=new NavigationWorld({name:'narrow corner',tileSize:16,columns,rows,blocked});
+  const run=setup();
+  run.actor.position={x:40,y:40};
+  run.leader.position={x:152,y:136};
+  run.actor.bounds={x:-8,y:-16,width:16,height:24};
+  const self={shape:()=>({collision:run.actor.bounds}),position:()=>run.actor.position,enabled:()=>true};
+  navigation.register(self);
+  run.port.canStand=point=>navigation.canStand(self,point);
+  run.port.navigationBounds=()=>navigation.bounds;
+  run.port.followNavigationSnapshot=()=>navigation.captureStandability(self,true);
+
+  const snapshot=navigation.captureStandability(self,true);
+  assert(snapshot.canStandXY);
+  for(const point of [{x:40,y:40},{x:40,y:136},{x:56,y:136},{x:56,y:120}]){
+    const expected=navigation.canStand(self,point);
+    assert.equal(snapshot.canStand(point),expected,`point query at ${point.x},${point.y}`);
+    assert.equal(snapshot.canStandXY(point.x,point.y),expected,`coordinate query at ${point.x},${point.y}`);
+  }
+  for(let frame=0;frame<120;frame++){
+    const previous={...run.actor.position};
+    run.step();
+    assert(canTraverse(previous,run.actor.position,run.port.canStand));
+  }
+  assert(Math.hypot(run.actor.position.x-128,run.actor.position.y-136)<=12);
+  assert.equal(run.rescues(),0);
 });

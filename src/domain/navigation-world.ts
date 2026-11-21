@@ -215,7 +215,6 @@ export class NavigationWorld {
     }
     const terrainFree=(point:Point)=>terrainFreeAt(bounds,terrain,point);
     const canStandXY=(x:number,y:number)=>terrainFreeAtXY(bounds,terrain,x,y)
-      &&(!contentOnly||!collision||bodyFreeAt(bounds,terrain,{x:x+collision.x,y:y+collision.y,width:collision.width,height:collision.height}))
       &&(!collision||!blockedInOccupancyXY(occupied,collision,x,y));
     return {bounds,start,terrain,terrainFree,canStandXY,canStand(point){
       // 与 `canStand()` 同口径：地形和地图边界对所有角色都生效；没有碰撞盒只表示不查人物占位。
