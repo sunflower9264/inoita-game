@@ -1,5 +1,5 @@
 import { boundedHealth } from './status-hud.ts';
-import { calculateCharacter, previewGemPanel, PRIMARY_STATS, primaryAttributesFrom, type CharacterPanel, type CharacterStatsCatalog, type Modifier, type PrimaryAttributes, type BattleCharacter } from './character-stats.ts';
+import { calculateCharacter, experienceAfterReward, previewGemPanel, PRIMARY_STATS, primaryAttributesFrom, type CharacterPanel, type CharacterStatsCatalog, type Modifier, type PrimaryAttributes, type BattleCharacter } from './character-stats.ts';
 import type { SkillConfigurationState } from './skill-configuration.ts';
 import { CompanionSkillProgression, generateCompanion, MERCENARY_CLASS_ORDER, randomInteger, weightedIndex, type CompanionGenerationRules, type CompanionGroupEffect, type CompanionGroupSkill, type GeneratedCompanion, type MercenarySkillPoints } from './companion-progression.ts';
 export type { CompanionGroupEffect, CompanionGroupSkill } from './companion-progression.ts';
@@ -189,15 +189,15 @@ export class CompanionMember {
   }
   clearCombatResourceLimits():void{this.combatResourceLimits=null;this.currentHealth=boundedHealth(this.currentHealth,this.panel.maxHealth);this.currentMana=boundedHealth(this.currentMana,this.panel.maxMana);this.changed();}
   recover():void{this.currentHealth=this.player.maxHealth;this.currentMana=this.player.maxMana;this.changed();}
-  addExperience(amount:number):number{
-    if(!Number.isSafeInteger(amount)||amount<0)throw new Error('经验奖励无效');
-    if(!amount||this.currentLevel>=this.stats.maxLevel)return 0;
-    this.currentExperience+=amount;let levels=0;
-    while(this.currentLevel<this.stats.maxLevel&&this.currentExperience>=(this.stats.experience[this.currentLevel-1]??Infinity)){
-      this.currentExperience-=this.stats.experience[this.currentLevel-1]!;this.currentLevel++;levels++;
+  addExperience(amount:number):number {
+    const next=experienceAfterReward(this.stats,this.currentLevel,this.currentExperience,amount);
+    if(!next)return 0;
+    this.currentLevel=next.level;this.currentExperience=next.experience;
+    if(next.gained){
+      this.skills.updateLevel(next.level);this.onLevelUp?.();
     }
-    if(this.currentLevel===this.stats.maxLevel)this.currentExperience=0;
-    if(levels){this.skills.updateLevel(this.currentLevel);this.onLevelUp?.();if(this.alive)this.recover();else this.changed();}else this.changed();return levels;
+    if(next.gained&&this.alive)this.recover();else this.changed();
+    return next.gained;
   }
   snapshot():CompanionSnapshot{const player=this.player;return {id:this.id,definitionId:this.definition.id,
     skillLevels:this.skills.skillLevels(),skillCaps:{...this.generated.skillCaps},groupSkills:[...this.generated.groupSkills],quality:this.definition.quality??0,

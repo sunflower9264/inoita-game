@@ -46,6 +46,20 @@ export interface CharacterStatsCatalog {
   gems: Record<string,ModifierRange[][]>;
   enchantments: Record<string,Record<string,EnhancementRule>>;
 }
+
+export function experienceAfterReward(catalog:Pick<CharacterStatsCatalog,'maxLevel'|'experience'>,
+  level:number,experience:number,amount:number) {
+  if(!Number.isSafeInteger(amount)||amount<0)throw new Error('经验奖励无效');
+  if(amount===0||level>=catalog.maxLevel)return;
+  const originalLevel=level;
+  experience+=amount;
+  while(level<catalog.maxLevel){
+    const required=catalog.experience[level-1]??Infinity;
+    if(experience<required)break;
+    experience-=required;level++;
+  }
+  return {level,experience:level===catalog.maxLevel?0:experience,gained:level-originalLevel};
+}
 export interface ItemNumbers {
   baseAttack?: number; baseDefense?: number; gradeName?: string; grade?: number;
   modifiers: Modifier[]; gemModifiers: Modifier[]; magicPercent: number;
@@ -384,18 +398,11 @@ export class BattleCharacter {
   private refill(){const p=this.player;this.health=p.maxHealth;this.mana=p.maxMana;}
   recover():void {this.refill();this.changed();}
   addExperience(amount:number):number {
-    if(!Number.isSafeInteger(amount)||amount<0)throw new Error('经验奖励无效');
-    if(this.level>=this.catalog.maxLevel||amount===0)return 0;
-    this.experience+=amount;
-    let gained=0;
-    while(this.level<this.catalog.maxLevel){
-      const needed=this.catalog.experience[this.level-1]!;
-      if(this.experience<needed)break;
-      this.experience-=needed;this.currentLevel++;gained++;
-    }
-    if(this.level===this.catalog.maxLevel)this.experience=0;
-    if(gained)this.refill();
-    this.changed();return gained;
+    const next=experienceAfterReward(this.catalog,this.level,this.experience,amount);
+    if(!next)return 0;
+    this.currentLevel=next.level;this.experience=next.experience;
+    if(next.gained)this.refill();
+    this.changed();return next.gained;
   }
   commitAllocation(delta:PrimaryAttributes):void {
     if(!delta||Object.keys(delta).length!==PRIMARY_STATS.length||
