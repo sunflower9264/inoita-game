@@ -238,6 +238,17 @@ test('reserve experience and group skills apply without deployment, duplicates d
   party.dismiss(first.id);assert.equal(party.groupModifiers()['low-health-resistance'],100);
   party.dismiss(second.id);assert.equal(party.groupModifiers()['low-health-resistance'],undefined);
 });
+test('倒地的后备佣兵分到经验并升级后，生命仍然为零',()=>{
+  const {party}=setup();
+  const member=recruit(party);
+  const level=member.level;
+  member.setHealth(0);
+  assert.equal(party.activeIds.includes(member.id),false);
+  party.addExperience(stats.experience[level-1]!);
+  assert.equal(member.level,level+1);
+  assert.equal(member.player.experience,0);
+  assert.equal(member.player.health,0);
+});
 test('follow slots are reranked around the controlled member',()=>{
   const {party}=setup(),first=recruit(party),second=recruit(party);
   party.deployFirstAvailable(first.id);party.deployFirstAvailable(second.id);
