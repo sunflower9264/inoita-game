@@ -2,6 +2,9 @@ import test from 'node:test';
 import { stageSnapshot } from './helpers/story-stage.ts';
 import assert from 'node:assert/strict';
 import { StoryExecutionBudgetError, StoryRuntime, type StoryRuntimePort, type StoryRuntimeSnapshot, type StoryNodeCommit } from '../src/domain/story-runtime.ts';
+import {nextStoryMap} from '../src/domain/story-preparation.ts';
+import {validateStoryPerformance} from '../src/application/story-performance-validation.ts';
+import type {Campaign} from '../src/domain/campaign.ts';
 import type { StoryGraph, StoryNode } from '../src/domain/story-graph.ts';
 const node = (id: string, exit: StoryNode['exit'] = { type: 'end' }, money = 0): StoryNode => ({ id, presentation: [], commands: money ? [{ type: 'item-give', item: 'coin', quantity: money }] : [], exit });
 const graph = (nodes: StoryNode[]): StoryGraph => ({ version: 2, scripts: { main: { entry: nodes[0].id, nodes } }, events: [{ id: 'intro', source: 'map-entry', map: 'camp', script: 'main' }] });
@@ -129,6 +132,22 @@ test('invalid restored references leave current state and playback untouched', a
   const before = h.runtime.snapshot(), invalid = structuredClone(before); invalid.runs[0].cursor.node = 'missing';
   assert.throws(() => h.runtime.restore(invalid), /不存在/); assert.deepEqual(h.runtime.snapshot(), before);
 });
+test('playback, prefetch and content validation agree at 32 and 33 nested calls',async()=>{
+  const ref=(index:number)=>({script:'main',node:String(index)});
+  for(const depth of [32,33]){
+    const calls=Array.from({length:depth},(_,i)=>node(String(i),{type:'call',target:ref(i+1),then:{script:'main',node:'end'}}));
+    const destination={map:'B',x:1,y:1,facing:'south'} as const;
+    const graphData=graph([...calls,{...node(String(depth)),commands:[{type:'travel',destination}]},node('end')]);
+    const campaign:Campaign={...graphData,events:[],contentVersion:1,
+      start:{...destination,map:'A',actor:'hero',script:'main'},quests:[],placements:[],questGroups:[],
+      storyProgression:{steps:[],ongoing:[]}};
+    const check=()=>validateStoryPerformance({version:1,maps:[],actors:{},portraits:{},props:[]},campaign);
+    assert.equal(nextStoryMap(campaign,{node:ref(0),stack:[]},'A'),depth===32?'B':undefined);
+    if(depth===32){check();assert.equal(await harness(campaign).runtime.start('main'),true);}
+    else{assert.throws(check,/调用层级/);await assert.rejects(harness(campaign).runtime.start('main'),/调用层级/);}
+  }
+});
+
 test('shared scripts return through a saved call stack without repeating a committed award',async()=>{
   const data=graph([node('call',{type:'call',target:{script:'shared',node:'award'},then:{script:'main',node:'after'}}),node('after')]);
   data.scripts.shared={entry:'award',nodes:[node('award',{type:'next',target:{script:'shared',node:'return'}},4),node('return')]};

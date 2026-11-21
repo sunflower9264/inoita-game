@@ -1,11 +1,9 @@
-import type { StoryGraph, StoryNodeRef } from './story-graph.ts';
+import { MAX_STORY_CALL_DEPTH, type StoryGraph, type StoryNodeRef } from './story-graph.ts';
 
 export interface StoryPreparationCursor { node: StoryNodeRef; stack: readonly StoryNodeRef[] }
 
 /** 单次预取最多沿确定路径前进的节点数，防止内容环让查询停不下来。 */
 const MAX_PREPARATION_STEPS = 1000;
-/** 剧情 call/end 返回栈上限；超出说明内容递归过深。 */
-const MAX_STORY_CALL_DEPTH = 32;
 
 /** 只沿确定路径查找下一个地图，不执行命令或猜测玩家选择。 */
 export function nextStoryMap(graph: StoryGraph, cursor: StoryPreparationCursor, currentMap: string): string | undefined {

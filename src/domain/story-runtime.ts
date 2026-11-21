@@ -1,5 +1,4 @@
-import { validateStoryGraph } from './story-graph.ts';
-import { STORY_TRIGGER_SOURCES } from './story-graph.ts';
+import { MAX_STORY_CALL_DEPTH, STORY_TRIGGER_SOURCES, validateStoryGraph } from './story-graph.ts';
 import type { StoryCommand, StoryEvent, StoryGraph, StoryNode, StoryNodeRef, StoryTriggerSource } from './story-graph.ts';
 import type { StoryCondition } from './story-condition.ts';
 import { validateStoryStageSnapshot, type StoryStage, type StoryStageSnapshot } from './story-performance.ts';
@@ -8,8 +7,6 @@ import { freezeSnapshot, storyDevMode } from './dev-mode.ts';
 /** 一次连续执行最多推进的剧情节点数，防止条件环让播放停不下来。 */
 const MAX_STORY_EXECUTION_STEPS = 1000;
 const STORY_EXECUTION_TRACE_SIZE = 12;
-/** 剧情 call/end 返回栈上限；超出说明内容递归过深。 */
-const MAX_STORY_CALL_DEPTH = 32;
 /** 遭遇结果记账只保留最近这么多次，避免快照无限增长。 */
 const ENCOUNTER_RESULT_HISTORY_LIMIT = 64;
 

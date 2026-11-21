@@ -84,7 +84,8 @@ test('a failed objective performance can be retried without consuming the object
   const entity={id:'fixture-entity',actor:'earl-grafton',objective:'fixture-target',afterInteractScript:'objective',x:0,y:0};
   await assert.rejects(director.interact(entity,world.actors[entity.actor]),/asset failed/);
   assert.equal(session.status(quest.id),'active');assert.equal(session.questBook.state(quest.id)!.goals.objective,0);
-  fail=false;assert.equal(await director.interact(entity,world.actors[entity.actor]),true);
+  assert.equal(await director.interact(entity,world.actors[entity.actor]),false);
+  fail=false;assert.equal(await director.retry(),true);
   assert.equal(session.status(quest.id),'ready');assert.notEqual(session.storyWorld.entity(entity.id)?.removed,true);
 });
 test('the native forest event grants the assassination after Darius departs', async () => {

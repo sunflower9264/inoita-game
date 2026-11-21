@@ -4,6 +4,9 @@ import type { StoryCondition } from './story-condition.ts';
 import type { QuestCommand } from './quest-book.ts';
 import type { StoryWorldCommand, StoryEncounter } from './story-world.ts';
 
+/** 剧情调用最多可嵌套的层数，播放、地图预取与内容检查共用。 */
+export const MAX_STORY_CALL_DEPTH=32;
+
 export interface StoryNodeRef { script: string; node: string }
 type StoryPresentationAction = Exclude<ScriptAction, { type: 'party-join' | 'party-leave' }>
   | { type: 'quest-popup'; kind: 'start' | 'complete'; quest: string };

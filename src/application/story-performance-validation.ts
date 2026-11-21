@@ -1,15 +1,13 @@
 import type { ClipName, DialogueLine, WorldIndex, WorldMap } from '../domain/content.ts';
 import type { Campaign } from '../domain/campaign.ts';
 import type { AudioCatalog } from './game-audio.ts';
-import { storyExitTargets, type StoryNodeRef } from '../domain/story-graph.ts';
+import { MAX_STORY_CALL_DEPTH, storyExitTargets, type StoryNodeRef } from '../domain/story-graph.ts';
 import type { PerformanceAction } from '../domain/story-performance.ts';
 import { mapPlacementCandidates } from '../domain/map-placement.ts';
 import { NavigationWorld, type NavigationActor, type Placement } from '../domain/navigation-world.ts';
 
 /** 一次校验最多走访多少个分支状态；防止内容里的循环让构建期检查永远跑不完。 */
 const MAX_BRANCH_VISITS = 100_000;
-/** 剧情 call 的嵌套上限；正常剧本远低于此值。 */
-const MAX_CALL_DEPTH = 32;
 
 /** 加载时核对演出引用；构建提供地图后同时检查整段走位。 */
 export function validateStoryPerformance(world: WorldIndex, campaign: Campaign, maps?: ReadonlyMap<string, WorldMap>, audio?: Pick<AudioCatalog, 'music' | 'effects'>): void {
@@ -184,7 +182,7 @@ export function validateStoryPerformance(world: WorldIndex, campaign: Campaign, 
       }
       const after = snapshot();
       if (node.exit.type === 'call') {
-        ensure(stack.length < MAX_CALL_DEPTH, '剧情调用层级超过限制');
+        ensure(stack.length < MAX_STORY_CALL_DEPTH, '剧情调用层级超过限制');
         pending.push({ reference: node.exit.target, state: after, stack: [...stack, node.exit.then] });
       } else if (node.exit.type === 'end' && stack.length) {
         pending.push({ reference: stack.at(-1)!, state: after, stack: stack.slice(0, -1) });
