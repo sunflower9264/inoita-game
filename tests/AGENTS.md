@@ -54,6 +54,7 @@ npm run test:standalone
 - `basic-attack-repeat.test.ts` 与 `world-runtime-review.test.ts` 验证手动对敌技能自然结束后接普攻，以及无目标、辅助技能和切人时的边界。
 
 - `quest-actor-visibility.test.ts` 覆盖任务交付人在同一次进图中现身，以及取消剧情后恢复此前的缺席状态。
+- `story-native-triggers.test.ts` 直接检查《最后的记忆2》的交付通知，验证前三次交付各播一段对应的对白、各发一次奖励，并重新开放下一轮对话。
 - 剧情跳转回归遍历全部菜单任务并颠倒显示顺序，同时用正式进图、行走、战斗、交付和存读档流程验证蜘蛛巢穴的前跳与回跳，以及在接取演出里赢得首领战后的跳转结果。
 - `gm-actions.test.ts` 验证调试道具列表隐藏剧情人物专属装备，并保留其他职业的可穿戴装备；`gm-quest-jump.test.ts` 覆盖剧情跳转的传送、接取剧情与交接（清强制状态、检查点、自动存档），等待剧情战斗结束才交接，以及失败回滚、播放失败报告和并发拒绝；`gm-quest-panel.test.ts` 验证任务页只把跳转交给宿主先存档。
 

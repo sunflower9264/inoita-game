@@ -17,6 +17,43 @@ async function settled(director: StoryDirector): Promise<void> {
   assert.fail('剧情没有在有限调度次数内收尾');
 }
 
+test('《最后的记忆2》连续三次交付时各播一次对应的收尾', async () => {
+  const questId = 'quest-453', nextRound = 'quest-452';
+  const firstEnding = 'event-548', repeatEnding = 'event-547';
+  const content: Campaign = {
+    ...campaign,
+    events: campaign.events.filter(event => event.id === firstEnding || event.id === repeatEnding),
+    scripts: { [firstEnding]: campaign.scripts[firstEnding], [repeatEnding]: campaign.scripts[repeatEnding] },
+  };
+  const session = new Session(content);
+
+  for (const [round, expected] of [firstEnding, repeatEnding, repeatEnding].entries()) {
+    const moneyBefore = session.money;
+    // 先准备好刚交付的进度，再单独检查每条通知会不会引出对白。
+    session.applyStoryCommands([
+      { type: 'quest', command: { type: 'script-complete', quest: nextRound } },
+      { type: 'quest', command: { type: 'script-complete', quest: questId } },
+    ]);
+    const reward = session.rewardReceiptFor(questId);
+    assert.ok(reward);
+    const director = new StoryDirector(content, session, ui, () => {}, presentation);
+    const played: string[] = [];
+    director.onEventCompleted = id => played.push(id);
+    try {
+      assert.equal(await director.notify('event', 'event-0'), false);
+      assert.equal(await director.notify('quest', nextRound), false);
+      assert.equal(await director.notify('quest', questId), true, `第${round + 1}次交付应立即播放收尾`);
+      await settled(director);
+      assert.deepEqual(played, [expected]);
+      assert.equal(session.status(nextRound), 'active');
+      assert.equal(session.status(questId), 'available');
+      assert.equal(session.money, moneyBefore + reward.money);
+    } finally {
+      director.dispose();
+    }
+  }
+});
+
 test('completing a parent event automatically starts its child without any quest or inventory change', async () => {
   const content: Campaign = {...campaign, events:[
     {id:'parent',source:'battle',key:'parent',script:'parent'},

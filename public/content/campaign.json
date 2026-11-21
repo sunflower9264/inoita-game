@@ -294101,7 +294101,8 @@
     },
     {
       "id": "event-547",
-      "source": "event",
+      "source": "quest",
+      "key": "quest-453",
       "script": "event-547",
       "condition": {
         "type": "all",
@@ -294126,6 +294127,7 @@
     {
       "id": "event-548",
       "source": "quest",
+      "key": "quest-453",
       "script": "event-548",
       "condition": {
         "type": "all",

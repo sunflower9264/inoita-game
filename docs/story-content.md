@@ -27,6 +27,8 @@
 
 `events` 统一声明 `source`、`script`、`condition` 和可选 `priority`。来源包括 start、map-entry、region、near、interaction、quest、inventory、choice、battle、event。区域需要 `map` 和 `region`，省略 key 时按事件 ID 触发；交互可限定 `entity`，任务及物品可用 `key` 限定对象。一般事件成功后播放一次；`repeat` 允许新发生再次触发。同一发生会按优先级依次重查候选条件，延期不完成事件。选择来源例外：每次选择都会产生新的发生，同一个选项再选一次也算；一次选择只执行一条选择事件，新的选择进入下一次发生。
 
+给任务写交付后的自动对白时，把 `source` 设为 `quest`，`key` 填这项任务的编号，再用 `condition` 判断任务是否已交付。《最后的记忆2》的首轮结尾只播一次。后续交付的简短对白设 `repeat: true`，并在条件里要求首轮结尾已经播完。
+
 条件可以使用 all、any、not 组合任务、事件、选择、标记和世界谓词。角色摆放 `condition`、事件 `condition`、任务 `availableWhen` 与出口 `exitRules[].condition` 共享这些规则。**角色摆放的 `condition` 是必填项**：常显写 `{"type":"always","value":true}`，漏写会在校验与构建阶段报错。区域触发保留条件表中的地图与矩形，包括覆盖进图落点和部分越界的有效区域。世界谓词包括 map、near-actor、near-entity、interaction 和 `region:<事件ID>`；对应资源和标记来源必须能够校验。
 
 ## 用稳定节点编排
