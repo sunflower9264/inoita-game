@@ -310,6 +310,24 @@ test('a checkpoint restored mid-performance keeps its state under either cancel 
   assert.equal(second.h.session.money,10);await second.finish(secondRun);assert.equal(second.h.session.money,10);
 });
 
+test('舞台投影失败时保留位置供重试，随后点击任务目标只刷新当前地图',async()=>{
+  const last=node('last',[{type:'world',command:{kind:'actor-visibility',map:stage.map,actor:'guard',visible:true}}]);
+  last.presentation=[stage];
+  const projections:(string|undefined)[]=[];
+  const h=harness([last],{begin(){},async execute(){},getStageState:()=>stageSnapshot(stage),async finish(){},async release(){}},{
+    capture(){},async restore(){},checkpoint(){},async project(snapshot){
+      projections.push(snapshot?.map);
+      if(projections.length===1)throw new Error('第一次刷新失败');
+    },
+  });
+  try{
+    await assert.rejects(h.director.start(),/第一次刷新失败/);
+    await h.director.retry();
+    await h.director.interact({id:'quest-target:captured',actor:'captured',x:0,y:0},worldBase.actors[base.start.actor]);
+    assert.deepEqual(projections,[stage.map,stage.map,undefined]);
+  }finally{h.director.dispose();}
+});
+
 test('a cross-map performance that waits for an encounter commits travel and opens the encounter',async()=>{
   const other='shadow-hall';
   const battleStage:StoryStage={...stage,map:other};

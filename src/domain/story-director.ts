@@ -181,6 +181,7 @@ export class StoryDirector {
         if (!this.restoring) {
           this.restorationVersion = session.restorationVersion;
           this.runtime.restore(session.runtimeState); this.recovery = undefined; this.completedEventPending = undefined; this.projectionPending = true;
+          this.projectionStage = undefined; this.travelPending = undefined; this.travelApplied = false;
         }
         this.observeChanges(false); return;
       }
@@ -498,8 +499,10 @@ export class StoryDirector {
       :command.type==='world'&&command.command.kind==='travel'?[command.command.destination]:[])[0];
     const receipt=this.session.applyStoryCommands(commands, commit.checkpoint, { deferFinalize: true });
     this.applied={runId:commit.runId,receipt};
-    this.projectionStage = stage;
-    if (commands.some(command => ['world', 'travel', 'encounter', 'party-join', 'party-leave', 'party-control', 'equip', 'unequip-destroy', 'health', 'mana'].includes(command.type))) this.projectionPending = true;
+    if (commands.some(command => ['world', 'travel', 'encounter', 'party-join', 'party-leave', 'party-control', 'equip', 'unequip-destroy', 'health', 'mana'].includes(command.type))) {
+      this.projectionPending = true;
+      this.projectionStage = stage;
+    }
     if (explicitTravel) {
       this.travelPending = explicitTravel; this.travelApplied = false;
       // The formal travel becomes the new baseline for following nodes.
@@ -524,7 +527,7 @@ export class StoryDirector {
     }
     await this.world?.project(this.projectionStage, signal); signal.throwIfAborted();
     if (this.travelPending && this.presenting) { await this.presentation?.release?.(); this.presenting = false; this.presentationRun = undefined; }
-    this.world?.checkpoint(); this.projectionPending = false; this.travelPending = undefined; this.travelApplied = false;
+    this.world?.checkpoint(); this.projectionPending = false; this.projectionStage = undefined; this.travelPending = undefined; this.travelApplied = false;
   }
   private occurrence(source: StoryTriggerSource, key?: string, map?: string, entity?: string): StoryOccurrence {
     const state = this.runtime.snapshot();
