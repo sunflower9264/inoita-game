@@ -592,7 +592,7 @@ export class StoryDirector {
     return this.request(this.runtime.dispatch(this.occurrence(source, key, map, entity)));
   }
   start(): Promise<boolean> { return this.notify('start'); }
-  enterMap(map: string): Promise<boolean> { return this.notify('map-entry', undefined, map); }
+  enterMap(map: string): Promise<boolean> { return this.notify('map-entry', map, map); }
   /** 场景与任务交互都上报选中的近身事件和实际接触的实体。 */
   approach(event: StoryEvent, entity: Pick<EntityPlacement, 'actor' | 'characterId' | 'id'>, map?: string): Promise<boolean> {
     if (event.source !== 'near' || event.near !== entity.actor || (event.nearCharacterId && event.nearCharacterId !== entity.characterId))

@@ -17,6 +17,21 @@ async function settled(director: StoryDirector): Promise<void> {
   assert.fail('剧情没有在有限调度次数内收尾');
 }
 
+test('进图按地图名派发，同时接续本图未指定键的事件', async () => {
+  const map = campaign.start.map;
+  const content: Campaign = { ...campaign, events: [
+    {id:'here',source:'map-entry',key:map,script:'entry'},
+    {id:'any-key',source:'map-entry',map,script:'entry'},
+    {id:'elsewhere',source:'map-entry',key:'another-map',script:'entry'},
+  ], scripts:{entry:{entry:'done',nodes:[{id:'done',presentation:[],commands:[],exit:{type:'end'}}]}} };
+  const session = new Session(content), director = new StoryDirector(content,session,ui,()=>{});
+  try {
+    assert.equal(await director.enterMap(map),true);
+    assert.deepEqual(director.runtime.snapshot().completedEvents,['here','any-key']);
+    assert.equal(await director.enterMap(map),false);
+  } finally { director.dispose(); }
+});
+
 test('《最后的记忆2》连续三次交付时各播一次对应的收尾', async () => {
   const questId = 'quest-453', nextRound = 'quest-452';
   const firstEnding = 'event-548', repeatEnding = 'event-547';
