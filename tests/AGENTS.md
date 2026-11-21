@@ -60,7 +60,7 @@
 
 - `dom-text-layout.test.ts` 验证菜单仅移动时文字跟随、锚点即时更新；`dom-surface.test.ts` 验证输入守卫、原生拖动、取消、嵌套长按、滚动后点击、静态按钮键盘导航、嵌套菜单滚动层坐标、图片裁边翻转、角色预览与预载信号，以及 3× 采样下的坐标一致性。
 - `dom-assets.test.ts` 覆盖共享图集、独立取消与失败重试；`dom-components.test.ts` 覆盖裁剪、父子清理、轮盘技能/物品、多指互斥、隐藏后释放按键、DOM 小地图、技能行、SVG 冷却、四向移动、触摸取消与改键；`status-hud.test.ts` 验证场景暂停、唤醒和销毁时的可见性通知。
-- `story-menu-interactions.test.ts` 用真实 DOM 菜单和原生事件验证交易、加点、背包拖放、存读档、布局编辑与弹层输入隔离，覆盖 1×/2×/3×、小数倍率和横竖屏；`scene-input-routing.test.ts` 验证职业选择预览与页面复用；`character-animation-reuse.test.ts` 验证六职业待机循环、角色释放和合成外观持有。
+- `story-menu-interactions.test.ts` 用真实 DOM 菜单和原生事件验证交易、加点、背包拖放、存读档、布局编辑与弹层输入隔离，覆盖 1×/2×/3×、小数倍率和横竖屏；`scene-input-routing.test.ts` 验证职业选择预览与页面复用，并通过实际改名入口验证输入期间的 Escape 隔离及取消后的返回；`character-animation-reuse.test.ts` 验证六职业待机循环、角色释放和合成外观持有。
 - `wardrobe.test.ts` 验证跨场景合成外观复用、独立取消、无外观变化换装、大动作分批绘制、缓存上限、会话清理、图形上下文恢复、尺寸限制与显存预算；`composition-budget.test.ts` 验证工作预算排除等待与中途取消；`texture-lifecycle.test.ts` 验证可见引用不删、隐藏不算引用、容器内角色计入、帧后补删。
 - `prompt-shell.test.ts` 覆盖输入弹窗图片层、释放、系统键盘可见范围与密码表单；`menu-item-drag.test.ts` 覆盖长按阈值、移动取消、多指隔离、失效定时器和资源释放；`formal-presentation.test.ts` 覆盖全屏优先级、跳过补画与世界重建遮挡；`world-hud.test.ts` 覆盖一次地图访问的 HUD 装配、会话绑定与释放。
 - `status-color-renderer.test.ts` 验证受击闪光结束后的颜色恢复与换动作混合方式；`warrior-viewer.test.ts` 覆盖展示器的狂战士主副手组合、四向动作、图集切片、独立外观、镜像基准点、播放控制和姿势拆包。

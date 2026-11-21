@@ -250,19 +250,29 @@ test('正式界面场景只把原始按键桥接给 router', () => {
   assert.deepEqual(seen, ['Escape']);
 });
 
-test('标题页的 Escape 先关确认框，再返回上一页', () => {
+test('标题页的 Escape 先关确认框，再返回上一页', async () => {
   const inputRouter = new InputRouter({ textInputFocused: () => false });
-  const app = { inputRouter, ui: { suspended: false } };
-  const scene = new TitleMenuController({} as never,app as never,{} as never) as unknown as {
+  let finishRename!: (value: string | undefined) => void;
+  const renameInput = new Promise<string | undefined>(resolve => { finishRename = resolve; });
+  const app = {
+    inputRouter, ui: { suspended: false },
+    saves: { peek: () => ({ kind: 'ok', summary: { name: '第一章' } }) },
+    promptText: () => renameInput,
+  };
+  const host = { sys: { isActive: () => true } };
+  const scene = new TitleMenuController(host as never, app as never, {} as never) as unknown as {
     routeKey(event: FakeEvent): boolean;
+    renameSlot(slot: number): void;
     page: string;
     confirmAction?: { cancel(): void };
     surface: { key(event: FakeEvent): boolean };
     back(): void;
+    layout(): void;
   };
   const calls: string[] = [];
   scene.surface = { key: () => false };
   scene.back = () => calls.push('back');
+  scene.layout = () => {};
 
   scene.page = 'slots';
   scene.confirmAction = { cancel: () => calls.push('cancel-confirm') };
@@ -280,9 +290,13 @@ test('标题页的 Escape 先关确认框，再返回上一页', () => {
   assert.deepEqual(calls, ['cancel-confirm', 'back']);
 
   scene.page = 'slots';
-  (scene as unknown as { renameRef?: object }).renameRef = {};
-  assert.equal(scene.routeKey(press('Escape')), true, '输入框有焦点时场景不处理按键');
+  scene.renameSlot(0);
+  assert.equal(scene.routeKey(press('Escape')), true, '改名输入期间场景不处理按键');
   assert.deepEqual(calls, ['cancel-confirm', 'back']);
+  finishRename(undefined);
+  await renameInput;
+  assert.equal(scene.routeKey(press('Escape')), true);
+  assert.deepEqual(calls, ['cancel-confirm', 'back', 'back'], '取消改名后 Escape 恢复返回页面');
 });
 
 test('确认框文字使用弹层的屏幕坐标，不再减页面原点', () => {
