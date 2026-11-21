@@ -63,6 +63,7 @@ npm test -- tests/control-layout.test.ts tests/native-message-layout.test.ts
 - 键位编辑与控件布局编辑只更新变化的按钮状态和文字。
 
 - 存档手动槽按槽号复用行节点，排序改变时移动节点与文字；内容变化只重建对应行。
+- `game-thumbnail.ts` 让同一局的存档共用一次画布截图。换局时结束旧请求，新的存档从下一次截到的画面开始使用。
 
 - 调试人物切换及升级、恢复和开关动作只更新角色文字与按钮状态，保留原控件。
 

@@ -87,7 +87,7 @@ npm run test:standalone
 - `mercenary-skills.test.ts`、`mercenary-skill-unlocks.test.ts`、存档和菜单测试覆盖佣兵手动加点、主角学习规则、招募上限、解锁资格、技能书突破、免费初始化、历史补点与成员隔离；战斗缓存测试验证初始化只清理对应成员。主角初始化继续验证初始技能和快捷栏恢复。
 - `mercenary-skills.test.ts` 同时验证剧情伙伴自动成长提示与实际升级一致，以及成长门槛不超过角色等级范围。
 
-- `saved-game.test.ts` 覆盖格式 1 读档、继续击败第八名哨兵，以及再次读档时保留交付回执和奖励。
+- `saved-game.test.ts` 覆盖格式 1 读档、尚未创建菜单时的后台保存、继续击败第八名哨兵，以及再次读档时保留交付回执和奖励。`game-thumbnail.test.ts` 验证换局、截图超时和回调晚到时后台保存可用的画面。
 - `story-scene`、`story-stage-isolation` 与 `saved-game` 覆盖主角收放武器、同图保留、换图恢复默认和存档读回。「消失的圣女1」在装备外观还没准备好时分别跳过和取消整段剧情，核对主角姿态和迟到的外观。
 
 - `mercenary-skill-unlocks.test.ts` 覆盖六职业封印书的永久共享、候补与未来佣兵继承、抽取去重、失败回滚和检查点恢复；存档与菜单用例覆盖共享资格、等级保留和背包控件复用。

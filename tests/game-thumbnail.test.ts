@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { thumbnailSize } from '../src/ui/phaser/game-thumbnail.ts';
+import type Phaser from 'phaser';
+import { SaveThumbnails, thumbnailSize } from '../src/ui/phaser/game-thumbnail.ts';
 
 test('存档缩略图等比缩进最大尺寸，不放大也不变形', () => {
   assert.deepEqual(thumbnailSize(1280, 720), { width: 360, height: 203 });
@@ -12,4 +13,49 @@ test('存档缩略图等比缩进最大尺寸，不放大也不变形', () => {
   assert.deepEqual(thumbnailSize(10000, 10), { width: 360, height: 1 });
   assert.deepEqual(thumbnailSize(0, 100), { width: 0, height: 0 });
   assert.deepEqual(thumbnailSize(Number.NaN, 100), { width: 0, height: 0 });
+});
+
+test('换局后只接收本局的截图，后台保存只读取本局最近的画面', async t => {
+  class Frame {
+    width = 32;
+    height = 24;
+    url: string;
+    constructor(url: string) { this.url = url; }
+  }
+  let drawn: Frame | undefined;
+  const document = { createElement: () => ({
+    getContext: () => ({ drawImage: (frame: Frame) => { drawn = frame; } }),
+    toDataURL: () => drawn!.url,
+  }) };
+  for (const [key, value] of Object.entries({ HTMLImageElement: Frame, document })) {
+    const previous = Object.getOwnPropertyDescriptor(globalThis, key);
+    Object.defineProperty(globalThis, key, { configurable: true, value });
+    t.after(() => previous ? Object.defineProperty(globalThis, key, previous) : Reflect.deleteProperty(globalThis, key));
+  }
+  const frames: ((image: Frame) => void)[] = [];
+  const game = { renderer: { snapshot: (callback: (image: Frame) => void) => frames.push(callback) } } as unknown as Phaser.Game;
+  const photos = new SaveThumbnails();
+  const old = new Frame('data:image/jpeg;base64,AQ==');
+  const current = new Frame('data:image/jpeg;base64,Ag==');
+
+  const first = photos.capture(game);
+  frames[0](old);
+  assert.equal(await first, old.url);
+  const previous = photos.capture(game);
+  photos.reset();
+  const next = photos.capture(game);
+  assert.equal(await previous, undefined);
+  assert.equal(photos.capture(game), next);
+  assert.equal(frames.length, 3);
+  frames[1](old);
+  assert.equal(photos.latest, undefined);
+  assert.equal(photos.capture(game), next);
+  frames[2](current);
+  assert.equal(await next, current.url);
+  assert.equal(photos.latest, current.url);
+
+  const delayed = photos.capture(game, 0);
+  assert.equal(await delayed, undefined);
+  frames[3](old);
+  assert.equal(photos.latest, current.url);
 });

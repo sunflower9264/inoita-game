@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {readFileSync} from 'node:fs';
-import {prepareSavedGame,type SavedGameContent} from '../src/application/saved-game.ts';
+import {AutoSaver} from '../src/application/auto-save.ts';
+import {captureSessionSave,prepareSavedGame,type SavedGameContent} from '../src/application/saved-game.ts';
+import type {MenuPanels} from '../src/domain/menu-panels.ts';
 import {newStorySession} from '../src/domain/story-class.ts';
 import {captureSaveGame,saveSummary} from '../src/domain/save-game.ts';
 import type {StoryWorldViewSnapshot} from '../src/scenes/world-scene.ts';
@@ -27,6 +29,28 @@ test('each class restores into a fresh candidate and retains its destination, re
     assert.deepEqual(candidate.world,saved.world);assert.equal(candidate.map.id,saved.world.location.map);
     assert.deepEqual(saved,before);
   }
+});
+
+test('未创建菜单时，切到后台仍能保存当前职业和地图并读回',()=>{
+  const {session,map,world}=prepareSavedGame(record(1),content);
+  const source={storyClasses:content.storyClasses,menuPanels:read<MenuPanels>('menu-panels'),
+    captureSaveWorld:()=>({ok:true as const,map,world})};
+  const writes:ReturnType<typeof record>[]=[];
+  const saver=new AutoSaver<StoryWorldViewSnapshot>({
+    enabled:()=>true,
+    capture:()=>{
+      const captured=captureSessionSave(session,content.world,source);
+      return captured.ok?captured.record:undefined;
+    },
+    write:game=>writes.push(game),
+  });
+  saver.flushForBackground();
+  assert.equal(writes.length,1);
+  const saved=writes[0];
+  assert.equal(saved.summary.classId,session.hero!.classId);
+  assert.equal(saved.summary.mapId,map.id);
+  assert.equal(saved.summary.screenshot,undefined);
+  assert.deepEqual(prepareSavedGame(saved,content).world,world);
 });
 
 test('a save before the minotaur scene keeps its fishcake',()=>{

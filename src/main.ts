@@ -31,7 +31,7 @@ import { AudioScene } from './scenes/audio-scene.ts';
 import { WorldScene } from './scenes/world-scene.ts';
 import { GameUI, uiOcclusion } from './ui/game-ui.ts';
 import { StoryUI } from './ui/story-ui.ts';
-import { captureSaveThumbnail } from './ui/phaser/game-thumbnail.ts';
+import { SaveThumbnails } from './ui/phaser/game-thumbnail.ts';
 import { validateCharacterStats, validateMenuClasses, validateItemSkills, validateStoryItems, validateStoryPortraits, validateWardrobe, validateShops, validateCompanions } from './application/content-validation.ts';
 
 import { GAME_HEIGHT, GAME_WIDTH, fitViewport, configureCanvas } from './ui/viewport.ts';
@@ -134,8 +134,7 @@ const sessionLifecycle=createSessionLifecycle(app,{
  * 会话装上之后才创建，回到主菜单时停掉。
  */
 let autoSaver:AutoSaver<StoryWorldViewSnapshot>|undefined;
-/** 最近一张成功截下的存档缩略图；背景写出或截图失败时沿用上一张。 */
-let lastSaveThumbnail:string|undefined;
+const saveThumbnails = new SaveThumbnails();
 /** 自动存档代次：停止后旧的异步写入即使截图才落地也不能再写。 */
 let autoSaveGeneration=0;
 let unsubscribeAutoSaveQuests:(()=>void)|undefined;
@@ -143,8 +142,7 @@ function stopAutoSave():void {
   autoSaveGeneration++;
   unsubscribeAutoSaveQuests?.();unsubscribeAutoSaveQuests=undefined;
   autoSaver?.stop();autoSaver=undefined;
-  // 上一局的截图不能跟着新的自动存档写进新会话。
-  lastSaveThumbnail=undefined;
+  saveThumbnails.reset();
 }
 function startAutoSave(session:Session):void {
   stopAutoSave();
@@ -153,7 +151,7 @@ function startAutoSave(session:Session):void {
     enabled:()=>app.mode==='game'&&!app.suspended&&!!app.session&&!app.pressureMode&&!app.storyJumpActive,
     // 演出与菜单锁着时不抢写：等解锁后再写，免得存到一半的状态。
     locked:()=>app.locked||!!app.director?.busy,
-    capture:()=>{const captured=captureSessionSave(session,app.world,app,lastSaveThumbnail);return captured.ok?captured.record:undefined;},
+    capture:()=>{const captured=captureSessionSave(session,app.world,app,saveThumbnails.latest);return captured.ok?captured.record:undefined;},
     write:game=>{
       if(generation===autoSaveGeneration&&app.session===session&&app.mode==='game'){
         const started=performance.now();
@@ -732,8 +730,7 @@ function boot(): void {
   app.captureSaveWorld = () => app.pressureMode ? {ok:false,reason:'pressure'}
     : worldScene()?.captureSaveWorld() ?? {ok:false,reason:'not-ready'};
   // 只读 Phaser 画布，存档页和其他 DOM 界面不在快照里。
-  app.captureSaveThumbnail = () => captureSaveThumbnail(app.game)
-    .then(screenshot => { if (screenshot) lastSaveThumbnail = screenshot; return screenshot; });
+  app.captureSaveThumbnail = () => saveThumbnails.capture(app.game);
   app.autoSave = () => autoSaver?.request();
   app.captureControlPreview = () => worldScene()?.getControlLayoutPreview()??[];
   app.prefetchStory = () => afterFirstPaint(() => {
