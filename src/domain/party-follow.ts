@@ -16,6 +16,7 @@ export class PartyFollow {
   private goal?:Point;
   private progress?:Point;
   private stalled=0;
+  private attemptStalled=0;
   private failures=0;
   private nextRetry=0;
   private nextRescue=0;
@@ -36,6 +37,7 @@ export class PartyFollow {
   get leader():string|undefined{return this.goal?this.lastLeader:undefined;}
   reset():void {
     this.path=[];this.search=undefined;this.goal=undefined;this.progress=undefined;this.stalled=0;
+    this.attemptStalled=0;
     this.failures=0;this.returning=false;this.softSince=this.hardSince=this.nearSince=undefined;
     this.nextDecision=0;this.settled=false;this.lastLeader='';this.lastLeaderPoint=undefined;this.stanceFacing='south';this.leaderTowardsAlly=false;
   }
@@ -47,6 +49,7 @@ export class PartyFollow {
         this.diagnostics.rescues++;this.diagnostics.reason='leader-relocated';
       }
       this.path=[];this.search=undefined;this.goal=undefined;this.nextDecision=0;this.stalled=0;
+      this.attemptStalled=0;
       this.returning=false;this.softSince=this.hardSince=this.nearSince=undefined;this.leaderTowardsAlly=false;
       this.lastLeader=leader.id;
     }
@@ -70,15 +73,36 @@ export class PartyFollow {
     if(this.nearSince!==undefined&&this.clock-this.nearSince>=600)this.returning=false;
     return this.returning;
   }
-  suspend():void {this.progress=undefined;this.stalled=0;}
+  suspend():void {
+    this.progress=undefined;
+    this.stalled=0;
+    this.attemptStalled=0;
+  }
   move(actor:Combatant,leader:Combatant,stance:CompanionStance,delta:number):void {
     // 队长朝伙伴走来时原地等待；该让路的是队长，伙伴不迎上去也不重新找站位。
     if(this.leaderTowardsAlly&&!this.returning){
+      this.attemptStalled=0;
       this.progress=undefined;this.stalled=0;this.path=[];this.search=undefined;this.goal=undefined;this.port.stop();return;
     }
     const free=(p:Point)=>(this.port.followCanStand??this.port.canStand)(p);
-    if(!this.progress||distance(actor.position,this.progress)>=4){this.progress={...actor.position};this.stalled=0;this.failures=0;}
-    else if(!this.search)this.stalled+=delta;
+    if(!this.progress||distance(actor.position,this.progress)>=4){
+      this.progress={...actor.position};
+      this.stalled=0;
+      this.attemptStalled=0;
+      this.failures=0;
+    }else if(!this.search){
+      this.stalled+=delta;
+      this.attemptStalled+=delta;
+    }
+    // 先结束走不动的旧路线，再给下一次恢复完整的移动机会。
+    if(this.attemptStalled>=1000&&!this.search&&this.clock>=this.nextRetry){
+      this.path=[];
+      this.nextDecision=0;
+      this.nextRetry=this.clock+120;
+      this.attemptStalled=0;
+      this.failures++;
+      this.diagnostics.recoveries++;
+    }
     if(this.clock>=this.nextDecision){
       this.nextDecision=this.clock+120;
       const slot=this.port.followSlot?.()??0;
@@ -97,6 +121,7 @@ export class PartyFollow {
       }
       const gap=distance(actor.position,goal),stop=goal===leader.position?24:12;
       if(gap<=stop||this.settled&&gap<=24){
+        this.attemptStalled=0;
         this.settled=true;this.path=[];this.search=undefined;this.progress=undefined;this.stalled=0;this.port.stop();return;
       }
       this.settled=false;
@@ -119,12 +144,15 @@ export class PartyFollow {
         if(result.status!=='pending'){
           this.search=undefined;
           if(result.status==='found'){let closest=0;for(let i=1;i<result.path.length;i++){if(distance(actor.position,result.path[i]!)>=distance(actor.position,result.path[closest]!))break;closest=i;}this.path=result.path.slice(closest);}
-          else{this.failures++;this.path=[];this.nextRetry=this.clock+600;this.diagnostics.recoveries++;}
+          else{
+            this.failures++;
+            this.path=[];
+            this.attemptStalled=0;
+            this.nextRetry=this.clock+600;
+            this.diagnostics.recoveries++;
+          }
         }
       }
-    }
-    if(this.stalled>=1000&&!this.search&&this.clock>=this.nextRetry){
-      this.path=[];this.nextDecision=0;this.nextRetry=this.clock+120;this.failures++;this.diagnostics.recoveries++;
     }
     if(this.stalled>=4000&&this.failures>=2&&this.clock>=this.nextRescue){
       if(this.port.regroup?.()===true){this.diagnostics.rescues++;this.diagnostics.reason='recovery-failed';this.reset();this.nextRescue=this.clock+5000;return;}

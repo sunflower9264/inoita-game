@@ -16,8 +16,8 @@ function setup(blocked=(_p:Point)=>false){
     pathBudget:budget,followPath:(callback:()=>Point|undefined,speed=1)=>{next=callback;scale=speed;},stop:()=>{next=undefined;},
     regroup:()=>{rescues++;actor.position={...leader.position};return true;}} as unknown as PartyPort;
   const follower=new PartyFollow(actor.id,port);
-  const step=()=>{budget.reset();follower.tick(actor,leader,60);follower.move(actor,leader,'support',60);
-    const p=next?.();if(p){const dx=p.x-actor.position.x,dy=p.y-actor.position.y,d=Math.hypot(dx,dy),n=Math.min(d,6*scale);if(d)actor.position={x:actor.position.x+dx/d*n,y:actor.position.y+dy/d*n};}};
+  const step=(move=true)=>{budget.reset();follower.tick(actor,leader,60);follower.move(actor,leader,'support',60);
+    const p=next?.();if(p&&move){const dx=p.x-actor.position.x,dy=p.y-actor.position.y,d=Math.hypot(dx,dy),n=Math.min(d,6*scale);if(d)actor.position={x:actor.position.x+dx/d*n,y:actor.position.y+dy/d*n};}};
   return {actor,leader,follower,port,step,rescues:()=>rescues};
 }
 
@@ -104,4 +104,26 @@ test('following walks through a narrow corner with the same terrain clearance as
   }
   assert(Math.hypot(run.actor.position.x-128,run.actor.position.y-136)<=12);
   assert.equal(run.rescues(),0);
+});
+
+test('a follower resumes its recovered route when physical blocking ends',()=>{
+  const run=setup();
+  run.actor.position={x:40,y:128};
+  run.leader.position={x:200,y:128};
+  // 模拟移动意图被物理碰撞挡住 1.5 秒，再让角色正常走动。
+  for(let frame=0;frame<25;frame++)run.step(false);
+  assert.equal(run.rescues(),0);
+  for(let frame=0;frame<12;frame++)run.step();
+  assert(run.actor.position.x>64,'挡路解除后应重新迈步');
+  for(let frame=0;frame<40;frame++)run.step();
+  assert(Math.hypot(run.actor.position.x-148,run.actor.position.y-102)<=12);
+  assert.equal(run.rescues(),0);
+});
+
+test('recovery attempts preserve the four-second rescue threshold without resetting total stalled time',()=>{
+  const run=setup();
+  for(let frame=0;frame<66;frame++)run.step(false);
+  assert.equal(run.rescues(),0,'不足四秒不能拉回');
+  for(let frame=0;frame<6;frame++)run.step(false);
+  assert.equal(run.rescues(),1,'多次恢复仍不移动时应保留拉回兜底');
 });
