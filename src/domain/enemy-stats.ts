@@ -1,3 +1,4 @@
+import {physicalResistanceFor} from './physical-hit.ts';
 import type { EnemyDefinition } from './battle.ts';
 
 export const MAX_ENEMY_LEVEL = 107;
@@ -67,7 +68,7 @@ export function calculateEnemy(definition:EnemyDefinition,options:EnemyStatsOpti
   const evasionBonus=Math.min(MAX_RESISTANCE_PER_MILLE,attrs.evasionBonus);
   const evasionRate=Math.min(MAX_RESISTANCE_PER_MILLE,PER_MILLE+evasionBonus-trunc((5000*level+1000000)/(5*level+evasionBase+1200)));
   const defense=trunc(attrs.defense*(PER_MILLE+attrs.defenseRate)/PER_MILLE);
-  const physicalResistance=trunc(PER_MILLE*defense/(defense+20*(level+3)))+attrs.physicalResistanceBonus;
+  const physicalResistance=physicalResistanceFor(defense,level)+attrs.physicalResistanceBonus;
   const baseExperience=attrs.physicalAttack*10+definition.maxHealth;
   const partyExperience=trunc(baseExperience*(PERCENT-PARTY_SCALING_PERCENT_PER_MEMBER*(partySize-1))/PERCENT);
   const levelDifference=Math.max(EXPERIENCE_LEVEL_ADVANTAGE_MIN,Math.min(EXPERIENCE_LEVEL_ADVANTAGE_MAX,level-playerLevel));

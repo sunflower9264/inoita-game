@@ -62,6 +62,11 @@ export function calculateEffectiveDefense(defense:number,defenseRate:number):num
   return div(Math.max(0,defense)*(PER_MILLE+Math.max(0,defenseRate)),PER_MILLE);
 }
 
+/** 有效防御换算为物理减伤千分数，最后取整。 */
+export function physicalResistanceFor(defense:number,level:number):number {
+  return div(PER_MILLE*defense,defense+20*(level+3));
+}
+
 /** 普通魔抗重算合并全部来源后只限制上界，负抗性仍会增加所受伤害。 */
 export function calculateMagicResistance(resistance:number):number {
   return Math.min(MAX_MAGIC_RESISTANCE_PER_MILLE,resistance);
@@ -74,7 +79,7 @@ function criticalDamage(damage:number,attacker:PhysicalFighter,target:PhysicalFi
 function shieldDamage(damage:number,target:PhysicalFighter):number {
   damage-=div(target.shieldBlock,target.shieldBlock+target.level*20+60);
   const defense=div(target.shieldBlock*2*(PER_MILLE+(target.defenseRate??0)),PER_MILLE);
-  const reduction=div(PER_MILLE*defense,defense+20*(target.level+3));
+  const reduction=physicalResistanceFor(defense,target.level);
   const product=damage*(PER_MILLE-reduction);
   // 负数乘积还没超过 -1000‰ 时取整为 0；压得更低才保底 1 点伤害。
   return product>=-999?div(product,PER_MILLE):1;

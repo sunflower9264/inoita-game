@@ -1,6 +1,6 @@
 import { applyAttributeModifiers, applyCombatOperation } from './combat-operation.ts';
 import { LOGIC_FRAME_MS,type CombatOperation,type BattleBuffEffect } from './battle.ts';
-import { calculateEffectiveDefense,calculateMagicResistance,eligibleShieldBlock,type PhysicalFighter } from './physical-hit.ts';
+import { calculateEffectiveDefense,physicalResistanceFor,calculateMagicResistance,eligibleShieldBlock,type PhysicalFighter } from './physical-hit.ts';
 import type { PassiveModifier } from './passive-skills.ts';
 import type { BattleBuffKey, BattleStateKey, BattleStatKey } from './battle-semantics.ts';
 import { combatStateCapabilities } from './combat-state.ts';
@@ -35,10 +35,7 @@ interface StoredBuff { id:BattleBuffKey;sourceId:string;remainingMs:number;elaps
 interface StoredState { id:BattleStateKey;sourceId:string;ownerBuff?:BattleBuffKey;remainingMs:number;
   simulationFrames?:{lastActiveFrame:number};nextFrameAge?:number }
 const MAX_STATE_NODES=128;
-/** 物理减伤率与角色面板同一公式：1000×防御 / (防御 + 20×(等级 + 3))。 */
 const PER_MILLE=1000;
-const PHYSICAL_DEFENSE_WEIGHT_PER_LEVEL=20;
-const PHYSICAL_DEFENSE_LEVEL_OFFSET=3;
 export interface CombatConditionsState {
   buffs:[string,StoredBuff[]][];
   states:[string,StoredState[]][];
@@ -470,7 +467,7 @@ export class CombatConditions {
     const defenseRate=Math.max(0,value('defenseRate',base.defenseRate??0));
     const effectiveDefense=calculateEffectiveDefense(defense,defenseRate);
     const rawPhysicalResistance=base.defense===undefined?value('physicalResistanceBonus',base.physicalResistance):
-      Math.trunc(PER_MILLE*effectiveDefense/(effectiveDefense+PHYSICAL_DEFENSE_WEIGHT_PER_LEVEL*(base.level+PHYSICAL_DEFENSE_LEVEL_OFFSET)))+value('physicalResistanceBonus',base.physicalResistanceBonus??0);
+      physicalResistanceFor(effectiveDefense,base.level)+value('physicalResistanceBonus',base.physicalResistanceBonus??0);
     // 狂战士防御侧：只对非负减伤率扣自身比例，装备者因此承受更多物理伤害。
     const zealotRate=Math.max(0,value('zealotRate',base.zealotRate??0));
     const physicalResistance=rawPhysicalResistance-Math.trunc(Math.max(0,rawPhysicalResistance)*zealotRate/PER_MILLE);

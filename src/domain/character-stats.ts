@@ -3,7 +3,7 @@ import type { ItemNotice } from './item-application.ts';
 import { boundedHealth } from './status-hud.ts';
 import { Bag, type BagRules } from './bag.ts';
 import type { Equipment, EquipmentSlot, ItemCatalog, ItemInstance } from './items.ts';
-import { calculateEffectiveDefense,calculateMagicResistance,eligibleShieldBlock,type PhysicalFighter } from './physical-hit.ts';
+import { calculateEffectiveDefense,physicalResistanceFor,calculateMagicResistance,eligibleShieldBlock,type PhysicalFighter } from './physical-hit.ts';
 import { applyAttributeModifiers, type AttributeModifier } from './combat-operation.ts';
 import { chaosThreshold, doubleThreshold, enhancementOdds, ENHANCEMENT_ROLL_MAX } from './enhancement.ts';
 
@@ -94,8 +94,6 @@ const RATE_CAP=750;
 const DEFAULT_CRITICAL_RATE=30,DEFAULT_CRITICAL_DAMAGE=1000,DEFAULT_WEAPON_BLOCK=30;
 /** 命中显示 =（1000 × 命中基础 + 分子）/（命中基础 + 等级 + 偏移）+ 加成 + 常数项，千分比。 */
 const HIT_NUMERATOR=20000,HIT_LEVEL_OFFSET=35,HIT_DISPLAY_BONUS=100;
-/** 物理减伤 = 1000 × 防御 /（防御 + 每级权重 ×（等级 + 偏移）），千分比。 */
-const DEFENSE_WEIGHT_PER_LEVEL=20,DEFENSE_LEVEL_OFFSET=3;
 /** 回避显示 = min(750, 1000 + 加成 −（等级系数 × 等级 + 常数）/（每级除数 × 等级 + 敏捷 + 偏移））。 */
 const EVASION_LEVEL_FACTOR=5000,EVASION_CONSTANT=1000000,EVASION_LEVEL_DIVISOR=5,EVASION_DEXTERITY_OFFSET=1200;
 
@@ -110,9 +108,7 @@ const SOCKET_CHANCE_PERCENT=80,SOCKET_WEIGHTS=[35,30,20,15];
 function hitRateFor(hitBase:number,hitBonus:number,level:number):number {
   return trunc((hitBase*PER_MILLE+HIT_NUMERATOR)/(hitBase+level+HIT_LEVEL_OFFSET))+Math.max(0,hitBonus)+HIT_DISPLAY_BONUS;
 }
-function physicalResistanceFor(defense:number,level:number):number {
-  return trunc(PER_MILLE*defense/(defense+DEFENSE_WEIGHT_PER_LEVEL*(level+DEFENSE_LEVEL_OFFSET)));
-}
+
 function evasionRateFor(evasionBonus:number,dexterity:number,level:number):number {
   return Math.min(RATE_CAP,PER_MILLE+Math.max(0,Math.min(RATE_CAP,evasionBonus))
     -trunc((EVASION_LEVEL_FACTOR*level+EVASION_CONSTANT)/(EVASION_LEVEL_DIVISOR*level+dexterity+EVASION_DEXTERITY_OFFSET)));

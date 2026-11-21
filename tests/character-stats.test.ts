@@ -9,7 +9,7 @@ import { resolveBasicAttack } from '../src/domain/basic-attack.ts';
 
 const read=(name:string)=>JSON.parse(fs.readFileSync(new URL(`../public/content/${name}.json`,import.meta.url),'utf8'));
 const catalog=parseCharacterStats(read('character-stats')),items=parseItemCatalog(read('items')),battle=parseBattle(read('battle')),wardrobe=parseWardrobe(read('wardrobe'));
-const create=(id='dark-knight')=>{const hero=new BattleCharacter(id,catalog,items);for(const [id,item] of Object.entries(items.items))if(!item.pickup)hero.bag.add(id);return hero;};
+const create=(id='dark-knight')=>{const hero=new BattleCharacter(id,catalog,items);for(const [id,item] of Object.entries(items.items))if(!item.pickup&&!item.equipment?.locked)hero.bag.add(id);return hero;};
 const zero={strength:0,dexterity:0,vitality:0,intelligence:0,mentality:0};
 const find=(hero:BattleCharacter,predicate:(d:ItemDefinition)=>boolean)=>hero.bag.entries.find(e=>predicate(items.items[e.item]))!;
 
