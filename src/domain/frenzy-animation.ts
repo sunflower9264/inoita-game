@@ -13,6 +13,11 @@ export class FrenzyAnimationMemory {
   }
 
   removeActor(actorId:string):void { this.frames.delete(actorId); }
+
+  checkpointActor(actorId:string):()=>void {
+    const frames=this.frames.get(actorId);
+    return ()=>{if(frames===undefined)this.frames.delete(actorId);else this.frames.set(actorId,frames);};
+  }
   captureState():[string,number][] { return [...this.frames]; }
   restoreState(state:readonly (readonly [string,number])[]):void {
     this.frames.clear();

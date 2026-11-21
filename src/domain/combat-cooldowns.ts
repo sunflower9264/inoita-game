@@ -46,6 +46,14 @@ export class CombatCooldownStore {
   /** 角色离开队伍：连同开关一起清掉。 */
   removeActor(actorId:string):void {this.actors.delete(actorId);this.freeActors.delete(actorId);}
 
+  checkpointActor(actorId:string):()=>void {
+    const deadlines=new Map(this.actors.get(actorId)),free=this.isFree(actorId);
+    return ()=>{
+      if(deadlines.size)this.actors.set(actorId,deadlines);else this.actors.delete(actorId);
+      this.setFree(actorId,free);
+    };
+  }
+
   captureState():CombatCooldownState {
     return {actors:[...this.actors].map(([actorId,skills])=>[
       actorId,[...skills].map(([skillId,deadline])=>[skillId,{...deadline}]),

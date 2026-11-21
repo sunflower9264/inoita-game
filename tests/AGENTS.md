@@ -48,7 +48,7 @@ npm test -- tests/combat.test.ts
 npm run test:standalone
 ```
 
-- `session-cooldowns-party.test.ts` 验证放逐与预备队的冷却，以及放逐时清理掉落保底记录。
+- `session-cooldowns-party.test.ts` 验证放逐与预备队的冷却、放逐时清理掉落保底，以及剧情离队失败或撤销时恢复对应伙伴的战斗状态。
 
 - `world-skill-cache.test.ts` 验证共享技能贴图在原使用者离队后仍由后学会的主角持有，最后释放时回收；覆盖退队失败清理、迟到失败、自动反应等待资源，入队期间换装的重试，以及读档等待全队技能资源、准备失败保留原战斗现场。
 - `basic-attack-repeat.test.ts` 与 `world-runtime-review.test.ts` 验证手动对敌技能自然结束后接普攻，以及无目标、辅助技能和切人时的边界。

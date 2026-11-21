@@ -105,6 +105,7 @@ interface StoryCommandBaseline {
   hero?:BattleCharacterState;
   skills?:SkillConfigurationState;
   restoreParty?:()=>void;
+  departures?:Map<string,()=>void>;
   quests?:{checkpoint:QuestBookCheckpoint;factSequences:[string,number][]};
   world?:StoryWorldSnapshot;
   /** 完成遭遇被历史上限裁掉时，同一批次会删除它的一次性敌人状态；回滚必须一起恢复。 */
@@ -1254,7 +1255,6 @@ export class Session {
   }
   private applyActorCommand(command:StoryCommand,bag:Bag,hero:BattleCharacter|undefined,party:PartyRoster|undefined,fallback:StoryPlayerState|undefined):void {
     if(command.type==='party-join'){if(!party)throw new Error('剧情队伍能力尚未装配');party.joinStory(command.companion);this.lootPity.counters(`story-${command.companion}`);return;}
-    if(command.type==='party-leave'){if(!party)throw new Error('剧情队伍能力尚未装配');party.leaveStory(command.companion);this.lootPity.removeMember(`story-${command.companion}`);return;}
     if(command.type==='health'||command.type==='mana'){
       const actor=command.member==='player'?hero:party?.get(command.member);
       const player=actor?.player??(command.member==='player'?fallback:undefined);
@@ -1302,6 +1302,24 @@ export class Session {
       bag.equipForStory(entry.id,command.slot,command.member,classId,level);
     }
   }
+
+  private leaveStoryCompanion(companion:string,baseline:StoryCommandBaseline):void {
+    if(!this.party)throw new Error('剧情队伍能力尚未装配');
+    const actorId=`story-${companion}`;
+    if(this.party.get(actorId)){
+      const remember=(state:StoryCommandBaseline)=>{
+        const departures=state.departures??=new Map();
+        if(departures.has(actorId))return;
+        const cooldowns=this.cooldowns.checkpointActor(actorId);
+        const animation=this.frenzyAnimations.checkpointActor(actorId);
+        departures.set(actorId,()=>{cooldowns();animation();});
+      };
+      remember(baseline);
+      if(this.performanceLogging&&!this.storyCommandDepth)remember(this.performanceBaseline);
+    }
+    this.party.leaveStory(companion);
+    this.lootPity.removeMember(actorId);
+  }
   private captureStoryCommandBaseline(touched:ReadonlySet<AtomicSubsystem>):StoryCommandBaseline {
     const baseline:StoryCommandBaseline={};
     if(touched.has('bag'))baseline.bag=this.bag.captureState();
@@ -1331,6 +1349,7 @@ export class Session {
     if(touched.has('hero')&&baseline.hero)this.hero!.restoreState(baseline.hero);
     if(touched.has('skills'))this.skills.restoreState(baseline.skills!);
     if(touched.has('party'))baseline.restoreParty?.();
+    if(baseline.departures)for(const restore of baseline.departures.values())restore();
     if(touched.has('questBook')){
       this.questBook.rollbackTo(baseline.quests!.checkpoint);
       this.factSequences.clear();for(const[source,sequence]of baseline.quests!.factSequences)this.factSequences.set(source,sequence);
@@ -1463,7 +1482,8 @@ export class Session {
             }
             case 'travel':this.storyWorld.apply({kind:'travel',destination:command.destination});break;
             case 'encounter':this.storyWorld.apply({kind:'encounter',encounter:command.encounter});break;
-            case 'party-join':case 'party-leave':case 'party-control':case 'health':case 'mana':case 'equip':case 'unequip-destroy':
+            case 'party-leave':this.leaveStoryCompanion(command.companion,baseline);break;
+            case 'party-join':case 'party-control':case 'health':case 'mana':case 'equip':case 'unequip-destroy':
               this.applyActorCommand(command,this.bag,this.hero,this.party,playerState);break;
             default:throw new Error('未知剧情游戏命令');
           }

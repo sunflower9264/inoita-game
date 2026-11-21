@@ -47,6 +47,36 @@ test('reserving a member preserves cooldowns while dismissal removes only that m
   assert.ok(removedSnapshots.every(present=>!present));
 });
 
+for(const mode of ['failed batch','receipt rollback','performance rollback','finalize'] as const){
+  test('story departure preserves the affected combat state on '+mode,()=>{
+    const {session,party,second}=fixture();
+    const companion='mercenary-olaf',member=party.joinStory(companion);
+    const leave={type:'party-leave',companion} as const;
+    session.cooldowns.forActor(member.id).start('rush-of-anger',24);
+    session.cooldowns.setFree(member.id,true);
+    session.frenzyAnimations.select(member.id,6,1);
+    if(mode==='failed batch'){
+      assert.throws(()=>session.applyStoryCommands([leave,{type:'money-take',amount:session.money+1}]),/金币不足/);
+    }else if(mode==='performance rollback'){
+      session.beginPerformanceLog();
+      session.applyStoryCommands([leave]);
+      session.applyStoryCommands([{type:'party-join',companion},leave]);
+      session.rollbackPerformanceLog();
+    }else{
+      const receipt=session.applyStoryCommands([leave],undefined,{deferFinalize:true});
+      session.cooldowns.forActor(second.id).start('heal',13);
+      if(mode==='finalize')receipt.finalize();else receipt.rollback();
+      assert.equal(session.cooldowns.forActor(second.id).snapshot().heal!.durationMs,780);
+    }
+    const restored=mode!=='finalize';
+    assert.equal(!!party.get(member.id),restored);
+    assert.equal(session.cooldowns.isFree(member.id),restored);
+    session.cooldowns.setFree(member.id,false);
+    assert.equal(session.cooldowns.forActor(member.id).snapshot()['rush-of-anger']?.remainingMs,restored?1440:undefined);
+    assert.equal(session.frenzyAnimations.select(member.id,undefined,1),restored?6:1);
+  });
+}
+
 test('a rejected dismissal keeps the active member and every cooldown record',()=>{
   const {session,party,first}=fixture(),before=session.cooldowns.captureState();
   assert.throws(()=>party.dismiss(first.id),/移出队伍/);
