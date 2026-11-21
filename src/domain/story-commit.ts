@@ -32,7 +32,13 @@ export function storyCommitCommands(commit: StoryNodeCommit, world: StoryWorldSt
   // 舞台同时点名了队伍成员和人物编号，说明这个 NPC 已经由队伍系统接管。
   // 收尾时把同图的地图副本隐藏，否则回到正式地图会看到队伍成员和旧 NPC 两份。
   for (const member of stage?.cast ?? []) {
-    if (!member.memberId || !member.characterId || !hasPartyMember(member.memberId)) continue;
+    if (!member.memberId || !member.characterId) continue;
+    let inParty = hasPartyMember(member.memberId);
+    for (const command of commit.commands) {
+      if ((command.type === 'party-join' || command.type === 'party-leave') && `story-${command.companion}` === member.memberId)
+        inParty = command.type === 'party-join';
+    }
+    if (!inParty) continue;
     commands.push({type:'world',command:{kind:'remove-character',characterId:member.characterId,map:stage!.map,all:true}});
   }
   const bindings: StoryCommand[] = [];

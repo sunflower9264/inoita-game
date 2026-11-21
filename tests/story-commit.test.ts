@@ -38,6 +38,17 @@ test('a stage cast that also names a party member removes the map NPC copy', () 
     && command.command.characterId==='npc-249'), false, '尚未加入队伍时不隐藏地图 NPC');
 });
 
+test('回到兽人部落交接后，离队的奥尔夫留在长老屋', () => {
+  const { scripts }: { scripts: Record<string, StoryScript> } = JSON.parse(readFileSync(new URL('../public/content/campaign.json', import.meta.url), 'utf8'));
+  const handoff = scripts['event-113'].nodes.find(node => node.id === 'scene-2')!;
+  const declaration = handoff.presentation.find(action => action.type === 'stage')!;
+  const state = world();
+  const commands = storyCommitCommands(commit(handoff.commands, stageSnapshot(declaration)), state, [], () => true);
+  for (const command of commands) if (command.type === 'world') state.apply(command.command);
+  assert.equal(state.entity('quest-npc-located-npc-249')?.removed, false);
+  assert.equal(state.actorVisible(declaration.map, 'story-olaf-d48a31ff', 'npc-249'), true);
+});
+
 test('implicit stage bindings do not revive an entity the script removed', () => {
   const state = world();
   state.apply({ kind: 'remove', id: ENTITY.id });
