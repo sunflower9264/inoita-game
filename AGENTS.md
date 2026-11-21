@@ -36,7 +36,7 @@ Phaser 4.2.1 + TypeScript 的艾诺迪亚4重制版。源码、内容、素材�
 - **工程自包含**。运行、测试和普通构建只读取本目录的源码、`public/`、`asset-source/` 和测试。
 - **素材优先用原版**。素材缺失时先查 `../inoita` 工程的原版图集与切片表；没有就用该工程里的逆向技能从原版 APK 提取；确实没有时单独汇报缺口，不用临时生成图或职业图冒充。取到的素材复制进本仓库，构建仍只读本仓库。
 - **内容直接在本仓库维护**。`public/content/` 是剧情、任务、地图和战斗数据的唯一源文件。发现和原版不一致时，去 `../inoita` 对照原版实现和素材，然后把修正直接写进本仓库对应的 JSON、类型或代码；后续内容变更也以本仓库的 JSON 和代码为起点。增删物品定义时，同步核对剧情与掉落引用和背包分类统计。
-- **剧情独立创作**。`public/content/campaign.json` 是剧情、任务和角色摆放的源文件；新增字段先定义游戏含义、单位和消费方式，内容加载和构建共用校验器。多张地图共用同一种祭坛时，地点限定写进近身事件的 `map`，任务指引使用同一张图。
+- **剧情独立创作**。`public/content/campaign.json` 是剧情、任务和角色摆放的源文件；新增字段先定义游戏含义、单位和消费方式，内容加载和构建共用校验器。多张地图共用同一种祭坛时，地点限定写进近身事件的 `map`，任务指引使用同一张图。剧情改变地图人物的显隐时，沿用地图或剧情实际摆放的那个人物编号。
 - **名字用游戏里的概念**。动画叫 `walk-east`、`idle-south`，地图属性叫 `blocked`、`exits`、`entities`，剧情行为叫 `dialogue`、`choice`。
 - **首次发行的存档格式为 1**。默认从空槽开始，本地与云端均读写格式 1。更早的格式按空槽处理，更新的格式按不可读取处理。已有正式存档后，结构变化时升格式，同时保留上一版为可读并在读取入口迁移，补当前格式到新格式的迁移和旧档测试。读取范围在 `src/domain/save-game.ts`，读取校验在 `src/application/saved-game.ts`。
 - **服务地址分开发与部署**。网页始终同源，页面不写域名；Android 壳由内置内容服务在页面脚本前注入 `__inoitaEndpoints` 和原生桥。环境根地址只维护 `config/endpoints.json`：Android 调试用 `adb reverse` 指向本机 4003，发布和网页生产共用 `https://catgo.online`；云存档 `/__cloud`、诊断 `/__diagnostics/report` 路径固定。热更新检查地址从同一根地址派生 `/update/latest.json`，自测通道用 `/update/latest-staging.json`；下载走原生 HTTP，不需要 CORS。细则见 `config/AGENTS.md`、`src/application/AGENTS.md`、`android/AGENTS.md`。

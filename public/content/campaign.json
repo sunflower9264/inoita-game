@@ -65027,16 +65027,6 @@
             {
               "type": "world",
               "command": {
-                "kind": "actor-visibility",
-                "map": "bone-orc-district-2-33ebe13c",
-                "actor": "story-bone-orc-guard-21817694",
-                "characterId": "npc-317",
-                "visible": false
-              }
-            },
-            {
-              "type": "world",
-              "command": {
                 "kind": "remove",
                 "id": "quest-npc-located-npc-315"
               }
