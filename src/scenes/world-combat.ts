@@ -6,7 +6,7 @@ import {combatFollowUp,type CombatFollowUpPort} from '../domain/combat-follow-up
 import {combatActor,refreshCombatActors} from '../domain/combat-actor-lookup.ts';
 import {prepareCombatRestore,type WorldCombatState} from '../domain/combat-snapshot.ts';
 export type {WorldCombatState} from '../domain/combat-snapshot.ts';
-import {resolveHitReactionPipeline} from '../domain/combat-reaction-pipeline.ts';
+import {resolveHitReactionPipeline,resolveHolySacrifice} from '../domain/combat-reaction-pipeline.ts';
 import {CombatEffectExecutor} from '../domain/combat-effect-executor.ts';
 import {CombatRuntime} from '../domain/combat-runtime.ts';
 import {CombatSpatialIndex,type CombatQueryCircle} from '../domain/combat-spatial-index.ts';
@@ -1857,26 +1857,21 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
    */
   private holySacrificeTransfer(event:AttackContact,hit:PhysicalHit,damageKind:'physical'|'magic'):void {
     const rate=this.actorAttribute(event.targetId,'damageTransferPerThousand');
-    if(rate<=0)return;
-    const protector=this.conditions.snapshot(event.targetId)
-      .find(condition=>condition.kind==='buff'&&condition.id==='holy-sacrifice')?.sourceId;
-    if(!protector||this.fallen?.has(protector)||this.pendingDefeats?.has(protector))return;
-    const damage=hit.damage,transferred=Math.trunc(damage*rate/1000);
-    // 物理多一条「乘积至少 1000」门槛；两类都要求转移量严格小于主伤害，余量为 0 就整次不转移。
-    if(damageKind==='physical'&&damage*rate<1000)return;
-    if(transferred>=damage)return;
-    const target=this.fighterOf(protector);if(!target)return;
-    const resistance=damageKind==='physical'?target.physicalResistance:(target.magicResistance??0);
-    const damageToProtector=Math.trunc(transferred*(1000-resistance)/1000);
-    hit.damage=damage-transferred;
-    this.holySacrificeDamage(event.casterId,protector,damageToProtector);
+    const result=resolveHolySacrifice(hit.damage,damageKind,rate,()=>{
+      const id=this.conditions.snapshot(event.targetId).find(condition=>condition.kind==='buff'&&condition.id==='holy-sacrifice')?.sourceId;
+      const fighter=id?this.fighterOf(id):undefined;
+      if(!id||!fighter)return;
+      return {id,fallen:this.fallen.has(id),pendingDefeat:this.pendingDefeats.has(id),
+        canLoseHealth:this.conditions.canLoseHealth(id),physicalResistance:fighter.physicalResistance,magicResistance:fighter.magicResistance};
+    });
+    if(!result)return;
+    hit.damage=result.victimDamage;
+    if(result.protectorDamage>0){
+      const enemy=combatActor(this.arena,result.protectorId,actor=>actor.key);
+      this.settleHit({casterId:event.casterId,targetId:result.protectorId},{kind:'hit',damage:result.protectorDamage},this.hero,enemy,{style:'weapon',sound:true});
+    }
   }
-  /** 转移伤害的来源仍是原攻击者；保护者免伤时这次扣血被吞掉，受击者的余量照常结算。 */
-  private holySacrificeDamage(attackerId:string,protectorId:string,damage:number):void {
-    if(damage<=0||this.pendingDefeats.has(protectorId)||!this.conditions.canLoseHealth(protectorId))return;
-    const enemy=combatActor(this.arena,protectorId,actor=>actor.key);
-    this.settleHit({casterId:attackerId,targetId:protectorId},{kind:'hit',damage},this.hero,enemy,{style:'weapon',sound:true});
-  }
+
   private fighterOf(id:string):PhysicalFighter|undefined {
     if(this.memberOf(id))return this.partyFighter(id);
     const enemy=combatActor(this.arena,id,actor=>actor.key);

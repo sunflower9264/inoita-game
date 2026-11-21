@@ -9,6 +9,19 @@ import type {BuffReactionEvent} from './buff-reactions.ts';
 /** 血之 thirst 的触发率按千分比记录；低于 200‰（20%）时不参与抽取。 */
 const BLOOD_THIRST_MIN_CHANCE_PER_THOUSAND=200;
 
+export function resolveHolySacrifice(damage:number,kind:'physical'|'magic',rate:number,
+  protector:()=>{id:string;fallen:boolean;pendingDefeat:boolean;canLoseHealth:boolean;
+    physicalResistance:number;magicResistance?:number}|undefined) {
+  if(rate<=0)return;
+  const product=damage*rate,transferred=Math.trunc(product/1000);
+  if((kind==='physical'&&product<1000)||transferred>=damage)return;
+  const guard=protector();
+  if(!guard||guard.fallen||guard.pendingDefeat)return;
+  const resistance=kind==='physical'?guard.physicalResistance:(guard.magicResistance??0);
+  return {victimDamage:damage-transferred,protectorId:guard.id,
+    protectorDamage:guard.canLoseHealth?Math.max(0,Math.trunc(transferred*(1000-resistance)/1000)):0};
+}
+
 export interface HitReactionPort {
   conditions:CombatConditions;
   actorAttribute(id:string,key:BattleStatKey):number;

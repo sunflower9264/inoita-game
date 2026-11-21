@@ -1,5 +1,7 @@
 # src/domain
 
+「圣徒之牺牲」的资格、物理门槛、魔法抗性和伤害分摊由 `resolveHolySacrifice` 判定。
+
 `Session.openChest` 一次提交开启记录、箱中敌人、保底和掉落。地面物品由 `Session.placeGroundRewards` 按背包规则生成实例。
 
 剧情离队时，会话只记下离队伙伴原先的技能冷却、调试开关和狂暴动作帧数。撤销剧情时连同队伍一起还原。

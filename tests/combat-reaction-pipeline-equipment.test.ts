@@ -1,8 +1,22 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {CombatConditions} from '../src/domain/combat-conditions.ts';
-import {resolveHitReactionPipeline,type HitReactionPort} from '../src/domain/combat-reaction-pipeline.ts';
+import {resolveHitReactionPipeline,resolveHolySacrifice,type HitReactionPort} from '../src/domain/combat-reaction-pipeline.ts';
 import type {AttackContact} from '../src/domain/combat.ts';
+
+test('Holy Sacrifice computes damage and eligibility without a scene',()=>{
+  const guard={id:'guard',fallen:false,pendingDefeat:false,canLoseHealth:true,physicalResistance:277,magicResistance:-1000};
+  const run=(damage:number,kind:'physical'|'magic',overrides:Partial<typeof guard>={})=>
+    resolveHolySacrifice(damage,kind,275,()=>({...guard,...overrides}));
+  assert.deepEqual(run(100,'physical'),{victimDamage:73,protectorId:'guard',protectorDamage:19});
+  assert.deepEqual(run(100,'magic'),{victimDamage:73,protectorId:'guard',protectorDamage:54});
+  assert.equal(run(1,'physical'),undefined);
+  assert.equal(run(1,'magic')?.protectorDamage,0);
+  assert.equal(run(100,'magic',{pendingDefeat:true}),undefined);
+  assert.equal(run(100,'magic',{fallen:true}),undefined);
+  assert.deepEqual(run(100,'magic',{canLoseHealth:false}),{victimDamage:73,protectorId:'guard',protectorDamage:0});
+  assert.equal(resolveHolySacrifice(100,'physical',1000,()=>guard),undefined);
+});
 
 const event:AttackContact={casterId:'attacker',targetId:'target'};
 const port=(overrides:Partial<HitReactionPort>={}):HitReactionPort=>({
