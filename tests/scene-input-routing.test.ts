@@ -129,7 +129,12 @@ test('dialogue and choice text stays above its shade and hides during occlusion'
   const speaker=scene.domSpeaker.element as unknown as MenuElement,run=scene.dialogueDomRuns[0].element as unknown as MenuElement;
   assert.equal(scene.surface.mount.parentElement,overlay);assert.equal(speaker.parentElement,overlay);assert.equal(run.parentElement,overlay);
   assert.equal(speaker.hidden,false);assert.equal(run.hidden,false);
-  const frame=scene.surface.root.list.slice();
+  const frame:UiNode[]=scene.surface.root.list.slice();
+  ui.canSkip=true;scene.sync(ui);
+  ui.canSkip=false;ui.page='第二页';scene.sync(ui);
+  ui.canSkip=true;scene.sync(ui);
+  assert.ok(frame.every((part,index)=>scene.surface.root.list[index]===part),'翻到下一页仍沿用同一个对白框');
+  assert.equal(scene.dialogueDomRuns[0].element,run);assert.equal(run.textContent,'第二页');
   ui.dialogueLine.speaker='另一位';ui.dialogueLine.actor='other';ui.page='另一句';scene.sync(ui);
   assert.deepEqual(scene.surface.root.list,frame,'说话人变化时保留对白底框');
   assert.equal(scene.domSpeaker.element,speaker);assert.equal(scene.dialogueDomRuns[0].element,run);

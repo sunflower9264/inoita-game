@@ -237,14 +237,13 @@ export class FormalUiView implements GameUiView {
     const defeat=ui.defeatState;
     // 全屏遮罩出现时统一收起 world/hud/screen 的文字；加载页文字在 overlay 层，不受影响。
     this.app.domUi?.setOccluded(uiOcclusion(ui));
-    // 正文不进整屏签名：同一说话人的下一句只换正文，不重建框、立绘和控件。
-    // 外壳只由说话人、演员、立绘和呈现方式决定；文本变化交给 bodySignature。
+    // 翻页只更新文字。是否能接收本次点击由输入处理当场判断。
     const shell=ui.dialogueLine
       ?JSON.stringify([ui.dialogueLine.presentation??'box'])
       :null;
     const speakerSignature=JSON.stringify([ui.dialogueLine?.speaker,ui.dialogueLine?.actor,ui.portraitFile,ui.playerActor]);
     const bodySignature=JSON.stringify([ui.dialoguePageMarkup,ui.dialogueLine?.presentation,speakerSignature]);
-    const signature=JSON.stringify([ui.mode,ui.loadingState?.label,!!ui.loadingState?.retry,ui.failed,ui.suspended,portrait,cover,skipBackdrop,defeat,shell,ui.dialogueLine?null:ui.portraitFile,ui.canSkip,showSkip,ui.choices?.prompt,ui.choices?.description,ui.choices?.options,ui.quest?.definition.id,ui.quest?.kind]);
+    const signature=JSON.stringify([ui.mode,ui.loadingState?.label,!!ui.loadingState?.retry,ui.failed,ui.suspended,portrait,cover,skipBackdrop,defeat,shell,ui.dialogueLine?null:ui.portraitFile,showSkip,ui.choices?.prompt,ui.choices?.description,ui.choices?.options,ui.quest?.definition.id,ui.quest?.kind]);
     this.domToast?.setVisible(presentation.toastVisible);
     if(this.domToast&&presentation.toastVisible){const point=this.surfacePoint(480,164);this.domToast.setText(ui.toastMessage).setPosition(point.x,point.y);}
     if(signature===this.signature){
