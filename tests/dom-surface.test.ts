@@ -238,6 +238,22 @@ test('resident images remain owned by the new session after the old session ends
 });
 
 
+test('暂时挡住任务窗后回到原来读到的行，新打开的任务从头开始',t=>{
+  const f=fixture();t.after(f.cleanup);
+  const popup=new QuestPopup(f.scene,()=>true);t.after(()=>popup.destroy());
+  let confirmed=0;
+  const quest={kind:'start',definition:{title:'任务',description:'很长的任务说明。'.repeat(200)},confirm:()=>{confirmed++;}} as unknown as NonNullable<GameUI['quest']>;
+  const itemName=(id:string)=>id;
+  const assets={'quest-popup-window':'','quest-popup-rule':''};
+  popup.sync(quest,assets,itemName);
+  popup.surface.scrolls[0].scrollTop=80;
+  popup.sync(quest,assets,itemName,false);
+  popup.key({key:'Enter',preventDefault(){}} as KeyboardEvent);assert.equal(confirmed,0);
+  popup.sync(quest,assets,itemName,true);assert.equal(popup.surface.scrolls[0].scrollTop,80);
+  popup.sync(undefined,assets,itemName);
+  popup.sync({...quest},assets,itemName);assert.equal(popup.surface.scrolls[0].scrollTop,0);
+});
+
 test('quest confirmation stays above the input blocker and accepts one tap',t=>{
   const f=fixture();t.after(f.cleanup);
   const blocker=new UiNode(f.scene,uiMount(f.scene,'overlay')).setSize(1024,640).setDepth(999).setInteractive();

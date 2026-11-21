@@ -230,8 +230,7 @@ export class FormalUiView implements GameUiView {
     const cover=ui.worldRebuildCover;
     const skipBackdrop=ui.skipBackdrop;
     const presentation=formalPresentation(ui,portrait,!!this.app.director?.canSkip);
-    const quest=presentation.quest;
-    this.questPopup.sync(quest,this.app.storyInterface?.assets??{},id=>ui.questItemName?.(id)??id);
+    this.questPopup.sync(ui.quest,this.app.storyInterface?.assets??{},id=>ui.questItemName?.(id)??id,!!presentation.quest);
     this.modalView.sync(ui,portrait,cover);
     const showSkip=presentation.showSkip;
     const defeat=ui.defeatState;

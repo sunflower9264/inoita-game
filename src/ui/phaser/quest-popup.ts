@@ -63,11 +63,15 @@ export class QuestPopup {
     this.surface.visible(false);
   }
 
-  sync(quest: QuestPopupState | undefined, assets: Record<string, string>, itemName: (id: string) => string): void {
+  sync(quest: QuestPopupState | undefined, assets: Record<string, string>, itemName: (id: string) => string, visible = true): void {
     const v = this.surface, frame = frameRect(), safe = readSafeArea(), viewport = `${frame.width}:${frame.height}:${safe.left}:${safe.right}:${safe.top}:${safe.bottom}`;
-    this.shade.setVisible(!!quest).setSize(frame.width, frame.height);
+    this.shade.setVisible(!!quest && visible).setSize(frame.width, frame.height);
+    if (quest && !visible) {
+      if (v.root.visible) { v.visible(false); this.hideDom(); }
+      return;
+    }
     // 任务和屏幕尺寸、安全区都没变时不必重新测量与排版。
-    if (this.quest === quest && this.viewport === viewport) return;
+    if (this.quest === quest && this.viewport === viewport && v.root.visible === !!quest) return;
     const scrollTop = this.quest === quest ? v.scrolls[0]?.scrollTop ?? 0 : 0;
     this.quest = quest; this.viewport = viewport;
     v.clear(); v.visible(!!quest); v.layout(0);
@@ -103,7 +107,7 @@ export class QuestPopup {
   }
 
   key(event: KeyboardEvent): void {
-    if (!this.quest || !this.surface.enabled()) return;
+    if (!this.quest || !this.surface.root.visible || !this.surface.enabled()) return;
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault(); this.surface.scene.game.events.emit(UI_EVENTS.select); this.quest.confirm();
     } else this.surface.key(event);
