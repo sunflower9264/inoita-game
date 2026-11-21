@@ -41,6 +41,7 @@ export const DEFAULT_ENEMY_RESPAWN_MS = 60_000;
 export const OFFSCREEN_ENEMY_RESPAWN_MS = 20_000;
 
 type SessionListener = (session: Session) => void;
+type WaitingGoalEntry = {kind:'talk'|'interact';target:string;quest:CampaignQuest;goal:QuestGoal};
 type SnapshotSlot = 'questBook'|'storyWorld'|'bag'|'enemies'|'receipts'|'chests'|'groundLoot';
 
 export interface EnemyDefeatInput extends Pick<CombatRewardInput,'enemy'|'map'|'x'|'y'|'lootLevel'|'enemyLevel'|'elite'|'earnsExperience'|'pressureMode'|'drops'|'stats'|'random'> {
@@ -280,6 +281,7 @@ export class Session {
   private readonly questConditionInputs:{key:string;read:(context:StoryConditionContext)=>StoryWorldValue|undefined}[]=[];
   private questProjection?:{questVersion:number;bagVersion:number;owner:string;conditions:(StoryWorldValue|undefined)[]};
   /** `quests` 投影的缓存；只用任务簿版本做键，因为 `commit` 在没有真实变化时不推进版本。 */
+  private waitingGoalProjection?:{version:number;entries:readonly WaitingGoalEntry[]};
   private questsProjection?:{questVersion:number;value:ReadonlyMap<string,Readonly<QuestProgress&{count:number}>>};
   private readonly battle?:BattleCatalog;
   private readonly stats?:CharacterStatsCatalog;
@@ -1080,20 +1082,33 @@ export class Session {
    * `talk` 与 `interact` 两类目标导出后都落在 NPC 的 `actor` 上（与摆放点 `objective` 的写法同一口径），
    * 对玩家是同一件事：走过去跟它交互。
    */
-  private waitingGoalEntries(target:string,characterId?:string):{kind:'talk'|'interact';target:string;quest:CampaignQuest;goal:QuestGoal}[] {
-    const goals:{kind:'talk'|'interact';target:string;quest:CampaignQuest;goal:QuestGoal}[]=[];
+  private waitingGoalEntries(target:string,characterId?:string):WaitingGoalEntry[] {
+    const goals:WaitingGoalEntry[]=[];
+    for(const entry of this.waitingGoalIndex())
+      if(characterId!==undefined&&entry.goal.characterId!==undefined?entry.goal.characterId===characterId:entry.target===target)goals.push(entry);
+    return goals;
+  }
+  /**
+   * 进行中任务里还没记满的 `talk` / `interact` 目标，按任务簿版本复用。
+   * 玩家贴着 NPC 走动时每帧都会问能否交互；任务状态和目标进度只在版本推进时变化，不必每次扫全部任务。
+   * 顺序保持「任务定义顺序 → 目标顺序」，调用方按目标过滤后得到的列表与逐条扫描一致。
+   */
+  private waitingGoalIndex():readonly WaitingGoalEntry[] {
+    const version=this.questBook.version,cached=this.waitingGoalProjection;
+    if(cached?.version===version)return cached.entries;
+    const entries:WaitingGoalEntry[]=[];
     for(const quest of this.campaign.quests){
       if(this.status(quest.id)!=='active')continue;
       const progress=this.questBook.state(quest.id)?.goals;
       for(const goal of quest.goals){
         if(goal.kind!=='talk'&&goal.kind!=='interact')continue;
-        if(!(characterId!==undefined&&goal.characterId!==undefined?goal.characterId===characterId:goal.target===target))continue;
         // 已记满的目标不再进入候选：同一根号角不能重复触发，多数量目标则一直可交互到记满为止。
         if((progress?.[goal.id]??0)>=goal.quantity)continue;
-        goals.push({kind:goal.kind,target:goal.target,quest,goal});
+        entries.push({kind:goal.kind,target:goal.target,quest,goal});
       }
     }
-    return goals;
+    this.waitingGoalProjection={version,entries};
+    return entries;
   }
   private waitingGoals(target:string,characterId?:string):{kind:'talk'|'interact';target:string}[] {
     return this.waitingGoalEntries(target,characterId).map(({kind,target})=>({kind,target}));

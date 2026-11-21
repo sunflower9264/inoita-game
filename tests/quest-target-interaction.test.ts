@@ -255,3 +255,18 @@ test('native quest 466 settles at its menu NPC rather than the different NPC in 
   assert.equal(h.session.status(quest.id), 'completed');
   h.director.dispose();
 });
+
+test('interaction checks reuse the quest book version instead of rescanning every quest', () => {
+  const { quest, goals, placements, prerequisites } = elsewhereTargetQuest('interact');
+  const isolated = structuredClone(campaign), quests = isolated.quests;
+  let scans = 0;
+  Object.defineProperty(isolated, 'quests', { configurable: true, get() { scans++; return quests; } });
+  const session = new Session(isolated);
+  admit(session, quest, prerequisites);
+  const [goal] = goals, placement = placements[0];
+  assert.equal(session.canInteract(goal.target, placement.id), true);
+  const base = scans;
+  // 玩家贴着 NPC 走动时每帧都会问一次：任务簿版本不变就不再扫任务表。
+  for (let frame = 0; frame < 3; frame++) assert.equal(session.canInteract(goal.target, placement.id), true);
+  assert.equal(scans, base, '任务簿版本不变时不再扫描任务表');
+});
