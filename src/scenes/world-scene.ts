@@ -2034,7 +2034,7 @@ captureStoryScene(includeEnemyAppearance=true):SceneSnapshot {
     if(this.app.pressureMode)return {ok:false,reason:'pressure'};
     // 场景关闭时字段可能还没清完，不能把正在拆掉的世界当成可存档现场。
     if(!this.worldObjectsReady||this.destroyed)return {ok:false,reason:'not-ready'};
-    if(this.loadingWorld)return {ok:false,reason:'loading'};
+    if(this.loadingWorld || this.app.ui.loadingState)return {ok:false,reason:'loading'};
     if(!this.app.session.hasLivingMember){
       globalThis.storyDiagnostics?.record('save-refused-no-survivor',{map:this.map!.id});
       return {ok:false,reason:'no-survivors'};

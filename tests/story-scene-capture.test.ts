@@ -58,9 +58,12 @@ test('live capture includes the physical scene with equipped party, props, enemy
     captureStoryVisit:()=>({roster:{enemies:[],sequence:0,partySize:1},breakableRolls:[['wolf-1','wolf']]})});
   const host=Object.assign(Object.create(WorldScene.prototype),{map:{id:'camp'},player,movement,combat,facing:'north',
     characters:[gate,chest,spring,hidden],baseEntities:[],chestOpened:(value:unknown)=>value===chest,
-    app:{session:{hasLivingMember:true,storyWorld:{actorVisible:(_map:string,actor:string)=>actor!=='npc'},visible:()=>true}}});
+    app:{ui:{},session:{hasLivingMember:true,storyWorld:{actorVisible:(_map:string,actor:string)=>actor!=='npc'},visible:()=>true}}});
   const snapshot:SceneSnapshot=host.captureStoryScene();
   assert.deepEqual(host.captureStoryWorld().scene,snapshot,'rollback captures the same complete physical scene');
+  host.app.ui.loadingState={label:'正在准备进图剧情'};
+  assert.deepEqual(host.captureSaveWorld(),{ok:false,reason:'loading'},'进图事件登记前不能写进普通或后台自动存档');
+  delete host.app.ui.loadingState;
   const saved=host.captureSaveWorld();assert.equal(saved.ok,true);
   if(!saved.ok)throw new Error('无法捕获存档');
   const savedScene:SceneSnapshot=saved.world.scene!;
@@ -224,7 +227,7 @@ test('rollback restores physical prop positions and drained appearance while ret
     encounterResults:new Set<string>(),
     movement:{refreshShape(){},placeAll:(placements:{visual:typeof spring;position:{x:number;y:number}}[])=>{
       for(const placement of placements)Object.assign(placement.visual.physics,placement.position);
-    }},combat:{async restoreState(){restoredCombat=true;}},app:{},
+    }},combat:{discardPendingDefeats(){},async restoreState(){restoredCombat=true;}},app:{},
     async projectStoryWorld(){},setClip(){},syncControlledCharacter(){}});
   await host.restoreStoryWorld({location:{map:'camp',x:10,y:20,facing:'south'},world:{},generatedEntities:[],scene:{map:'camp',actors:[
     {id:'player',actor:'hero',memberId:'player',x:10,y:20,facing:'south',visible:true,appearance:appearance('hero','expired-outfit')},
