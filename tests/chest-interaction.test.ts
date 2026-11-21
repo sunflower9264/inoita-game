@@ -272,6 +272,23 @@ test('opening settles once, frees collision, spawns original rewards and pauses 
   tween.onComplete();assert.equal(f.chest.container.visible,false);assert.equal(f.state.chestFades.size,0);
 });
 
+test('an enclosing session rollback restores chest rewards already placed on the map',t=>{
+  t.mock.method(Math,'random',()=>0);
+  const {entity,map}=arena(),f=fixture(map,entity);
+  const store=groundLootFor(f.session);
+  store.add('untouched',8,8,[{kind:'money',amount:2}]);
+  const before=store.captureState();
+  assert.throws(()=>f.session.atomic(()=>{
+    f.session.placeGroundRewards('other-reward',8,8,[{kind:'money',amount:3}]);
+    assert.ok(f.session.openChest({map,entity:entity.id,kind:'ordinary',position:entity,catalog:drops,stats,landing:()=>entity}));
+    assert.equal(f.loot().length,6);
+    throw new Error('撤销整个结算');
+  },[]),/撤销整个结算/);
+  assert.equal(f.opened(),false);
+  assert.deepEqual(store.captureState(),before);
+  f.position(entity.x-24,entity.y);f.click();assert.equal(f.loot().length,6);
+});
+
 for(const fault of ['landing','partial drop'] as const){
   test('a failed chest '+fault+' restores the original box and all rewards for a retry',t=>{
     t.mock.method(Math,'random',()=>0);

@@ -126,7 +126,10 @@ interface StoryCommandBaseline {
 }
 /** `atomic` 能回滚的子系统：剧情命令会碰到的全集，再加上商店货架。 */
 type AtomicSubsystem = StorySubsystem | 'shops' | 'chests';
-interface AtomicFrame { touched:Set<AtomicSubsystem>; baseline:StoryCommandBaseline }
+interface AtomicFrame {
+  touched:Set<AtomicSubsystem>;baseline:StoryCommandBaseline;
+  groundMaps?:Map<string,()=>void>;
+}
 /** 命令静态会碰到的子系统；比运行时实际改动多抓是安全的，少抓会漏回滚。 */
 function storyCommandSubsystems(command:StoryCommand):readonly StorySubsystem[]{
   switch(command.type){
@@ -834,7 +837,6 @@ export class Session {
     const enemies=new Map<string,EnemyState|undefined>();
     const remember=(id:string)=>{if(!enemies.has(id))enemies.set(id,this.enemyStates.get(id));};
     if(input.spawn)remember(input.spawn.id);
-    let rollbackLoot:(()=>void)|undefined;
     this.deferredDefeats=defeats;this.notificationBatchDepth++;
     let settlement:CombatRewardSettlement,levelledIds:string[]=[];
     let living:readonly string[]=[];
@@ -860,7 +862,6 @@ export class Session {
           const add=(x:number,y:number,rewards:readonly DropReward[])=>{
             if(!rewards.length)return;
             const landing=input.landing(x,y);
-            rollbackLoot??=store.checkpointMap(input.map);
             this.placeGroundRewards(input.map,landing.x,landing.y,rewards);
           };
           if(result.breakable){
@@ -883,7 +884,6 @@ export class Session {
           this.emit();
           return result;
         }catch(error){
-          rollbackLoot?.();
           for(const [id,state]of enemies){if(state)this.enemyStates.set(id,state);else this.enemyStates.delete(id);}
           this.enemyRevisionValue++;this.enemySpawnRevisionValue++;
           throw error;
@@ -903,15 +903,23 @@ export class Session {
   }
 
   placeGroundRewards(map:string,x:number,y:number,rewards:readonly DropReward[]):void {
-    const prepared=rewards.map(reward=>{
-      if(reward.kind!=='item'||reward.instance)return reward;
-      if(this.bag.catalog.items[reward.item].stackable&&reward.lootLevel===undefined)return reward;
-      const instance=this.bag.prepareDrop(reward.item,{
-        ...(reward.roll?{grade:reward.roll,sockets:reward.roll.sockets}:{}),lootLevel:reward.lootLevel,
+    if(!rewards.length)return;
+    this.atomic(()=>{
+      const store=groundLootFor(this),frame=this.atomicFrames[0]!;
+      if(!frame.touched.has('groundLoot')){
+        const maps=frame.groundMaps??=new Map();
+        if(!maps.has(map))maps.set(map,store.checkpointMap(map));
+      }
+      const prepared=rewards.map(reward=>{
+        if(reward.kind!=='item'||reward.instance)return reward;
+        if(this.bag.catalog.items[reward.item].stackable&&reward.lootLevel===undefined)return reward;
+        const instance=this.bag.prepareDrop(reward.item,{
+          ...(reward.roll?{grade:reward.roll,sockets:reward.roll.sockets}:{}),lootLevel:reward.lootLevel,
+        });
+        return {...reward,instance};
       });
-      return {...reward,instance};
-    });
-    groundLootFor(this).add(map,x,y,prepared);
+      store.add(map,x,y,prepared);
+    },['bag']);
   }
 
   openChest(input:{
@@ -930,9 +938,8 @@ export class Session {
       },this.storyWorld.isPlaced(entity));
       if(!result)return false;
       if(result.rewards.length){
-        const landing=input.landing(),undoGround=groundLootFor(this).checkpointMap(map.id);
-        try { this.placeGroundRewards(map.id,landing.x,landing.y,result.rewards); }
-        catch(error){undoGround();throw error;}
+        const landing=input.landing();
+        this.placeGroundRewards(map.id,landing.x,landing.y,result.rewards);
       }
       return true;
     },['chests','lootPity','bag']);
@@ -970,7 +977,12 @@ export class Session {
       return this.batchNotifications(()=>{
         try{return operation();}
         catch(error){
-          if(outer){this.restoreStoryCommandBaseline(frame.touched,frame.baseline);this.pendingNotification=pending;}
+          if(outer){
+            this.restoreStoryCommandBaseline(frame.touched,frame.baseline);
+            // 地图共用掉落物编号，按首次写入的逆序恢复到结算开始时。
+            if(frame.groundMaps)for(const restore of [...frame.groundMaps.values()].reverse())restore();
+            this.pendingNotification=pending;
+          }
           throw error;
         }
       });
