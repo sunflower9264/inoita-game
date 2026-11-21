@@ -33,7 +33,8 @@ import { BattleCharacter, type BattleCharacterState, type CharacterStatsCatalog 
 import { PartyRoster, type CompanionCatalog } from './party.ts';
 import { LootPity, type LootPityState } from './loot-pity.ts';
 import { settleCombatRewards, type CombatRewardInput, type CombatRewardSettlement } from './combat-rewards.ts';
-import type { DropReward } from './drops.ts';
+import { rollChestLoot, type DropCatalog, type DropReward } from './drops.ts';
+import type {ChestKind} from './content.ts';
 
 interface EnemyState { health?:number; mana?:number; deadUntil?:number|'permanent'; offscreenRespawnAt?:number; capture?:{map:string;visit:number} }
 export const DEFAULT_ENEMY_RESPAWN_MS = 60_000;
@@ -860,11 +861,8 @@ export class Session {
           const add=(x:number,y:number,rewards:readonly DropReward[])=>{
             if(!rewards.length)return;
             const landing=input.landing(x,y);
-            const prepared=rewards.map(reward=>reward.kind==='item'&&!reward.instance&&
-              (!this.bag.catalog.items[reward.item].stackable||reward.lootLevel!==undefined)
-              ?{...reward,instance:this.bag.prepareDrop(reward.item,{...(reward.roll?{grade:reward.roll,sockets:reward.roll.sockets}:{}),lootLevel:reward.lootLevel})}:reward);
             rollbackLoot??=store.checkpointMap(input.map);
-            store.add(input.map,landing.x,landing.y,prepared);
+            this.placeGroundRewards(input.map,landing.x,landing.y,rewards);
           };
           if(result.breakable){
             add(input.x,input.y,result.breakable.rewards);
@@ -903,6 +901,42 @@ export class Session {
       for(const listener of this.listeners)report(()=>listener(this));
       for(const enemy of defeats)for(const listener of this.defeatListeners)report(()=>listener(enemy));
     }};
+  }
+
+  placeGroundRewards(map:string,x:number,y:number,rewards:readonly DropReward[]):void {
+    const prepared=rewards.map(reward=>{
+      if(reward.kind!=='item'||reward.instance)return reward;
+      if(this.bag.catalog.items[reward.item].stackable&&reward.lootLevel===undefined)return reward;
+      const instance=this.bag.prepareDrop(reward.item,{
+        ...(reward.roll?{grade:reward.roll,sockets:reward.roll.sockets}:{}),lootLevel:reward.lootLevel,
+      });
+      return {...reward,instance};
+    });
+    groundLootFor(this).add(map,x,y,prepared);
+  }
+
+  openChest(input:{
+    map:Pick<WorldMap,'id'|'lootLevel'|'chestLevel'>;entity:string;kind:ChestKind;position:{x:number;y:number};
+    catalog:DropCatalog;stats:CharacterStatsCatalog;landing:()=>{x:number;y:number};
+  }):boolean {
+    const {map,entity,kind,position,catalog,stats}=input;
+    if(map.lootLevel===undefined)throw new Error('宝箱缺少地图掉落数据');
+    const level=map.chestLevel??Math.max(1,map.lootLevel);
+    return this.atomic(()=>{
+      const result=this.chests.open(map.id,entity,position,()=>{
+        const equipmentBonus=catalog.pity?this.lootPity.chestEquipmentBonus(kind,catalog.pity):0;
+        const rolled=rollChestLoot(catalog,stats,kind,level,this.hero!.level,Math.random,this.party?.groupModifiers(),{equipmentBonus});
+        this.lootPity.recordChest(kind,{equipment:rolled.rewards.some(reward=>reward.kind==='item'&&!!reward.roll)});
+        return rolled;
+      },this.storyWorld.isPlaced(entity));
+      if(!result)return false;
+      if(result.rewards.length){
+        const landing=input.landing(),undoGround=groundLootFor(this).checkpointMap(map.id);
+        try { this.placeGroundRewards(map.id,landing.x,landing.y,result.rewards); }
+        catch(error){undoGround();throw error;}
+      }
+      return true;
+    },['chests','lootPity','bag']);
   }
   private deferredDefeats?:string[];
   private readonly defeatListeners = new Set<(enemy: string) => void>();

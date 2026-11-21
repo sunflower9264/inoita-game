@@ -68,6 +68,7 @@ interface Character {entity:EntityPlacement;actor:ActorDefinition;container:Disp
 interface SceneHooks {
   createActor(entity:EntityPlacement):Character;
   openChest(character:Character):void;
+  lootLanding(map:string,x:number,y:number):{x:number;y:number};
   attackKey():void;
   updateInteractionTarget():void;
   refreshState():void;
@@ -270,6 +271,32 @@ test('opening settles once, frees collision, spawns original rewards and pauses 
   f.state.app.locked=false;f.scene.syncHud();assert.equal(tween.paused,false);
   tween.onComplete();assert.equal(f.chest.container.visible,false);assert.equal(f.state.chestFades.size,0);
 });
+
+for(const fault of ['landing','partial drop'] as const){
+  test('a failed chest '+fault+' restores the original box and all rewards for a retry',t=>{
+    t.mock.method(Math,'random',()=>0);
+    const {map,entity}=arena(),f=fixture(map,entity);
+    f.position(entity.x-24,entity.y);
+    const store=groundLootFor(f.session);
+    const bag=f.session.bag.captureState(),pity=f.session.lootPity.captureState();
+    const chest=f.session.chests.captureState(),ground=store.captureState();
+    const original=store.add.bind(store);
+    const failure=fault==='landing'?t.mock.method(f.scene,'lootLanding',()=>{throw new Error('落点失败');}):
+      t.mock.method(store,'add',(...[mapId,x,y,rewards]:Parameters<typeof original>)=>{original(mapId,x,y,rewards.slice(0,1));throw new Error('写入失败');});
+    assert.throws(()=>f.click(),/失败/);
+    assert.deepEqual(f.session.chests.captureState(),chest);
+    assert.deepEqual(f.session.bag.captureState(),bag);
+    assert.deepEqual(f.session.lootPity.captureState(),pity);
+    assert.deepEqual(store.captureState(),ground);
+    assert.equal(f.chest.container.input!.enabled,true);
+    assert.equal(f.enabled.get(f.chest),true);
+    assert.equal(f.calls.includes('chestOpen'),false);
+    failure.mock.restore();
+    f.click();f.scene.openChest(f.chest);
+    assert.equal(f.loot().length,6);
+    assert.equal(f.calls.filter(call=>call==='chestOpen').length,1);
+  });
+}
 
 test('an empty random result still opens, sounds and removes the treasure',t=>{
   const {map,entity}=arena(),f=fixture(map,entity);f.position(entity.x-24,entity.y);

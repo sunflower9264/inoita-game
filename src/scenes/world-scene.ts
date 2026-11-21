@@ -34,7 +34,7 @@ import { WorldEnemyRoster } from '../domain/world-enemies.ts';
 import { WorldCombat, type WorldCombatState } from './world-combat.ts';
 import { InteractionTargetIndex } from './interaction-index.ts';
 import { QuestEnemyWatch } from '../domain/quest-enemies.ts';
-import { cachedDropCatalog, rollChestLoot, type DropCatalog, type DropReward } from '../domain/drops.ts';
+import { cachedDropCatalog, type DropCatalog, type DropReward } from '../domain/drops.ts';
 import { resolveInteraction } from '../domain/interaction.ts';
 import { faceTarget } from '../domain/basic-attack.ts';
 import { BODY_ADJACENT_GAP, canReachChest, CHEST_OPEN_MS, nearInteractable, nearInteractive, SHOP_COUNTER_GAP } from '../domain/chests.ts';
@@ -1672,23 +1672,15 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
     const kind = character.actor.chest, map = this.map;
     if (!this.canCombatControl || this.combat?.playerCannotAct() || !controlled || !kind || !map ||
       !character.container.visible || !canReachChest(controlled.container, character.container)) return;
-    if (map.lootLevel === undefined || !this.dropCatalog) throw new Error('宝箱缺少地图掉落数据');
-    const chestLevel = map.chestLevel ?? (map.lootLevel > 0 ? map.lootLevel : 1);
-    const session=this.app.session,pity=this.dropCatalog!.pity;
-    const chestKey=kind;
-    const oneTime=session.storyWorld.isPlaced(character.entity.id);
-    const equipmentBonus=pity?session.lootPity.chestEquipmentBonus(chestKey,pity):0;
-    const result = session.chests.open(map.id, character.entity.id, character.container,
-      () => {
-        const rolled=rollChestLoot(this.dropCatalog!, this.app.characterStats, kind, chestLevel, session.hero!.level, Math.random, session.party?.groupModifiers(),{equipmentBonus});
-        session.lootPity.recordChest(chestKey,{equipment:rolled.rewards.some(reward=>reward.kind==='item'&&!!reward.roll)});
-        return rolled;
-      }, oneTime);
-    if (!result) return;
+    if(!this.dropCatalog)throw new Error('宝箱缺少地图掉落数据');
+    const position=character.container;
+    const opened=this.app.session.openChest({map,entity:character.entity.id,kind,position,
+      catalog:this.dropCatalog,stats:this.app.characterStats,landing:()=>this.lootLanding(map.id,position.x,position.y)});
+    if(!opened)return;
     character.container.disableInteractive();
     this.movement!.setEnabled(character, false);
     this.app.audio?.ui('chestOpen');
-    this.spawnLoot(character.container.x, character.container.y, result.rewards);
+    this.refreshGroundLoot();
     this.combat?.syncChestEnemies();
     const tween = this.tweens.add({ targets: character.container, alpha: 0, duration: CHEST_OPEN_MS,
       ease: (value: number) => Math.floor(value * 10) / 10,
@@ -1776,11 +1768,7 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
   spawnLootOnMap(map:string,x:number,y:number,rewards:readonly DropReward[]):void {
     if(!rewards.length)return;
     const landing=this.lootLanding(map,x,y);
-    const store=groundLootFor(this.app.session);
-    store.add(map,landing.x,landing.y,rewards.map(reward=>reward.kind==='item'&&!reward.instance&&
-      (!this.app.items.items[reward.item].stackable||reward.lootLevel!==undefined)
-      ?{...reward,instance:this.app.session.bag.prepareDrop(reward.item,{...(reward.roll?{grade:reward.roll,sockets:reward.roll.sockets}:{}),lootLevel:reward.lootLevel})}
-      :reward));
+    this.app.session.placeGroundRewards(map,landing.x,landing.y,rewards);
     if(this.map?.id===map)this.refreshGroundLoot();
   }
   refreshGroundLoot():void {
