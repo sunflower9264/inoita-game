@@ -252,7 +252,7 @@ export class FormalUiView implements GameUiView {
       }
       return;
     }
-    this.signature=signature;this.dialogueShell=false;this.dialoguePortraitParent=undefined;this.dialoguePortrait=undefined;this.dialogueSpeakerSignature='';this.choiceView?.hide();
+    this.signature=signature;this.dialogueShell=false;this.dialoguePortraitParent=undefined;this.dialoguePortrait=undefined;this.dialogueSpeakerSignature='';this.choiceView?.hide(ui.choices);
     const v=this.surface;v.clear();v.layout(0);this.dialogueLayout=undefined;v.visible(true);
     // 跳过补画黑底只盖画面，不隐藏任务窗和选择框；跨图重建黑幕（cover）仍然按原规则隐藏它们。
     const {width,height}=frameRect();
@@ -271,7 +271,7 @@ export class FormalUiView implements GameUiView {
     }
     if(showSkip){const skin=this.app.controlSkin;v.button('',this.dialogueSafeEdges().right-168,16,136,62,()=>this.app.director?.skip(),{image:skin?.skip?skin.skip:undefined,pressed:skin?.['skip-pressed'],guard:()=>ui.ready&&!ui.suspended&&!!this.app.director?.canSkip}).setData('label','跳过');}
     this.dialogueBodySignature=bodySignature;
-    if(uiOcclusion(ui)){this.hideDialogueDom();this.choiceView?.hide();}
+    if(uiOcclusion(ui)){this.hideDialogueDom();this.choiceView?.hide(ui.choices);}
     v.layout(0);
   }
 }

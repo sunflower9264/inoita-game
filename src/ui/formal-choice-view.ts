@@ -18,9 +18,13 @@ export class FormalChoiceView {
   private readonly surface:UiSurface;
   private readonly domUi:DomUi|undefined;
   private choiceDom?:ChoiceDom;
+  private reading?:{choices:NonNullable<GameUI['choices']>;description?:ScrollArea;list:ScrollArea};
   private measureCanvas?:HTMLCanvasElement;
   constructor(scene:Phaser.Scene,domUi?:DomUi){this.surface=new UiSurface(scene,960,640,1000,'overlay');this.domUi=domUi;this.surface.visible(false);}
   render(choices:NonNullable<GameUI['choices']>):void{
+      const previous=this.reading?.choices===choices?this.reading:undefined;
+      const descriptionTop=previous?.description?.scrollTop??0,listTop=previous?.list.scrollTop??0;
+      let description:ScrollArea|undefined;
       const v=this.surface;v.clear();v.layout(0);v.visible(true);this.resetChoiceDom();
       // 选项竖排：整行宽度、按钮高度按标签实际换行后的高度算，文字不会压在按钮框外。
       const left=30,width=900,optionFontSize=22;
@@ -49,6 +53,7 @@ export class FormalChoiceView {
       if(descriptionLayout&&layout.descriptionY!==undefined&&layout.descriptionView!==undefined){
         const scroll=v.scroll(left,layout.descriptionY,width,layout.descriptionView);
         scroll.setHeight(descriptionLayout.lines.length*descriptionLayout.lineHeight);
+        scroll.scrollTop=descriptionTop;description=scroll;
         if(dom){
           const origin=this.surfacePoint(left,layout.descriptionY);
           dom.description.clip.setStyle({width:`${width*scale}px`,height:`${layout.descriptionView*scale}px`})
@@ -67,6 +72,7 @@ export class FormalChoiceView {
         }
       }
       const list=v.scroll(left,layout.listY,width,layout.listViewport);list.setHeight(layout.contentHeight);
+      list.scrollTop=listTop;this.reading={choices,description,list};
       if(dom){
         const origin=this.surfacePoint(left,layout.listY);
         dom.list.clip.setStyle({width:`${width*scale}px`,height:`${layout.listViewport*scale}px`})
@@ -93,7 +99,10 @@ export class FormalChoiceView {
     this.surface.layout(0);
   }
   key(event:KeyboardEvent):boolean{return this.surface.key(event);}
-  hide():void{this.surface.visible(false);this.resetChoiceDom();}
+  hide(current?:GameUI['choices']):void{
+    if(this.reading&&this.reading.choices!==current){this.reading=undefined;this.surface.clear();}
+    this.surface.visible(false);this.resetChoiceDom();
+  }
   destroy():void{this.surface.destroy();this.removeChoiceDom();}
   update():void{this.updateChoiceDomScroll();}
   private surfacePoint(x:number,y:number):{x:number;y:number;scale:number}{

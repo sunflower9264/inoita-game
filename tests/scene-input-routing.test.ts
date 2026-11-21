@@ -5,6 +5,7 @@ import { InputRouter } from '../src/application/input-router.ts';
 import { EventEmitter } from 'node:events';
 import { readFileSync } from 'node:fs';
 import { DomUi } from '../src/ui/dom/dom-ui.ts';
+import type { GameUI } from '../src/ui/game-ui.ts';
 import { UiNode } from '../src/ui/dom/node.ts';
 import { UiSurface } from '../src/ui/dom/surface.ts';
 import { installMenuDom, menuFrame, MenuElement } from './support/menu-dom.ts';
@@ -106,14 +107,14 @@ test('class selection plays live previews and retains the page when changing cla
 });
 
 test('dialogue and choice text stays above its shade and hides during occlusion',t=>{
-  const restore=installMenuDom();t.after(restore);
+  const restore=installMenuDom();
   const dom=new DomUi();
   dom.layer=name=>document.getElementById(`ui-${name}`) as HTMLDivElement;
   dom.setOccluded=()=>{};
   const ui={mode:'game',ready:true,suspended:false,worldRebuildCover:false,defeated:false,canSkip:false,toastMessage:'',
     dialogueLine:{speaker:'说话人',actor:'npc',text:'对白内容'},page:'对白内容',get dialoguePageMarkup(){return this.page;},revealed:4,
-    choices:undefined as undefined|{prompt:string;options:never[];choose:()=>void},quest:undefined,
-    pressDialogue:()=>{},releaseDialogue:()=>{},resetInput:()=>{}};
+    choices:undefined as GameUI['choices'],quest:undefined,
+    pressDialogue:()=>{},releaseDialogue:()=>{},resetInput:()=>{},reflowDialogue:()=>{}};
   const app={ui,domUi:dom,storyInterface:{assets:{}},director:{canSkip:false}};
   const host=new FormalUiScene(app as never) as any;
   const scene=new FormalUiView(host,app as never,{} as never) as any;
@@ -123,7 +124,7 @@ test('dialogue and choice text stays above its shade and hides during occlusion'
   scene.choiceView=new FormalChoiceView(host,dom);scene.modalView=new FormalModalView(host,app as never);
   scene.background=new UiNode(host,scene.surface.mount);scene.blocker=new UiNode(host,scene.surface.mount).setInteractive();
   scene.questPopup={sync:()=>{}};scene.domSpeaker=dom.label('overlay','dom-speaker');
-  t.after(()=>{scene.surface.destroy();scene.background.destroy();scene.blocker.destroy();scene.choiceView.destroy();scene.modalView.destroy();host.events.emit('shutdown');});
+  t.after(()=>{scene.surface.destroy();scene.background.destroy();scene.blocker.destroy();scene.choiceView.destroy();scene.modalView.destroy();host.events.emit('shutdown');restore();});
   scene.sync(ui);
   const overlay=document.getElementById('ui-overlay') as unknown as MenuElement;
   const speaker=scene.domSpeaker.element as unknown as MenuElement,run=scene.dialogueDomRuns[0].element as unknown as MenuElement;
@@ -144,15 +145,26 @@ test('dialogue and choice text stays above its shade and hides during occlusion'
   ui.suspended=false;scene.sync(ui);assert.equal(speaker.hidden,false);assert.equal(run.hidden,false);
   ui.worldRebuildCover=true;scene.sync(ui);assert.equal(speaker.hidden,true);assert.equal(run.hidden,true);
   ui.worldRebuildCover=false;scene.sync(ui);assert.equal(run.hidden,false);
-  ui.choices={prompt:'选择',options:[],choose:()=>{}};scene.sync(ui);
+  ui.choices={prompt:'选择',description:'一行说明&N'.repeat(30),
+    options:Array.from({length:30},(_,i)=>({label:'选项'+i,value:String(i)})),choose:()=>{}};scene.sync(ui);
   const choice=scene.choiceView.choiceDom.prompt[0].element as MenuElement;
   assert.equal(choice.parentElement,overlay);assert.equal(choice.hidden,false);assert.equal(run.hidden,true);
   const choiceNodes=scene.choiceView.surface.root.list.slice(),choiceScroll=scene.choiceView.choiceDom.list.scroll;
   ui.toastMessage='提示变化';scene.sync(ui);
   assert.deepEqual(scene.choiceView.surface.root.list,choiceNodes,'提示变化保留选项按钮');
   assert.equal(scene.choiceView.choiceDom.list.scroll,choiceScroll,'提示变化保留选项滚动区');
+  scene.choiceView.choiceDom.description.scroll.scrollTop=45;
+  choiceScroll.scrollTop=90;
   ui.suspended=true;scene.sync(ui);assert.equal(choice.hidden,true);
   ui.suspended=false;scene.sync(ui);assert.equal(choice.hidden,false);
+  scene.resize();
+  assert.equal(scene.choiceView.choiceDom.description.scroll.scrollTop,45);
+  assert.equal(scene.choiceView.choiceDom.list.scroll.scrollTop,90);
+  const nextChoices={...ui.choices};
+  ui.choices=undefined;scene.sync(ui);
+  ui.choices=nextChoices;scene.sync(ui);
+  assert.equal(scene.choiceView.choiceDom.description.scroll.scrollTop,0);
+  assert.equal(scene.choiceView.choiceDom.list.scroll.scrollTop,0);
 });
 
 interface FakeEvent { key: string; target?: { tagName: string }; prevented: number; preventDefault(): void }
