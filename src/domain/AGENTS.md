@@ -1,5 +1,7 @@
 # src/domain
 
+判断角色是否被剧情指定了外观使用 `StoryWorldState.hasAppearanceOverride`，直接查询当前角色。
+
 主角和伙伴用同一张经验表计算升级后的等级与剩余经验。队伍决定谁获得奖励，角色各自处理回血、技能和通知。
 
 `equipment-modifiers.ts` 按属性合计装备和宝石的词条，保留正负值。真实面板、宝石预览和战斗加成都读取这份计算。

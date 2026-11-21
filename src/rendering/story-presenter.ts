@@ -707,8 +707,7 @@ export class StoryPresenter implements StoryPresentationPort {
       case 'refresh-appearance': {
         const stage=this.captureStage();
         if(stage){
-          const changed = new Set((this.app.session.storyWorld.captureState().appearances ?? []).map(([actor]) => actor));
-          for(const actor of stage.scene.actors) if (actor.id === 'player' || actor.memberId || changed.has(actor.actor)) delete actor.appearance;
+          this.clearRefreshedAppearances(stage);
           await this.stage(stage,playback.signal,undefined,playback.skipSignal);
         }
         return;
@@ -855,11 +854,16 @@ export class StoryPresenter implements StoryPresentationPort {
   private refreshLogicalAppearance(): void {
     const stage = this.captureLogicalStage();
     if (!stage) return;
-    const changed = new Set((this.app.session.storyWorld.captureState().appearances ?? []).map(([actor]) => actor));
-    for (const actor of stage.scene.actors) if (actor.id === 'player' || actor.memberId || changed.has(actor.actor)) delete actor.appearance;
+    this.clearRefreshedAppearances(stage);
     this.state = stage;
     this.scenes.set(stage.map, structuredClone(stage.scene));
+  }
 
+  private clearRefreshedAppearances(stage:StoryStageSnapshot):void {
+    const world=this.app.session.storyWorld;
+    for(const actor of stage.scene.actors){
+      if(actor.id==='player'||actor.memberId||world.hasAppearanceOverride(actor.actor))delete actor.appearance;
+    }
   }
   async finish(completed: boolean, signal?: AbortSignal): Promise<void> {
     if (completed) {

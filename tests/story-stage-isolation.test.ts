@@ -12,6 +12,7 @@ import { WalkRoute } from '../src/domain/walk-route.ts';
 import type { Wardrobe } from '../src/rendering/wardrobe.ts';
 import { validateStoryStageSnapshot, type StoryStage, type StoryStageSnapshot } from '../src/domain/story-performance.ts';
 import { SCENE_KEYS } from '../src/application/scene-keys.ts';
+import {StoryWorldState} from '../src/domain/story-world.ts';
 import { stageSnapshot } from './helpers/story-stage.ts';
 import type { WorldScene } from '../src/scenes/world-scene.ts';
 import type { StoryStageScene as StageSceneType } from '../src/scenes/story-stage-scene.ts';
@@ -306,13 +307,14 @@ function harness(map = openStageMap('home'), playerAppearance = appearance) {
   let currentMusic:string|null=null;
   const audio={enterMap:(map:string)=>{currentMusic=map;},captureStoryAudio:()=>({music:currentMusic,ambience:null}),
     restoreStoryAudio:(state:{music:string|null})=>{currentMusic=state.music;}};
-  const app = { session:{storyWorld:{actorAppearance:(id:string)=>id}}, audio, world: { maps: ['hall', 'remote'].map(id => ({ id, file: id })),
+  const storyWorld=new StoryWorldState();
+  const app = { session:{storyWorld}, audio, world: { maps: ['hall', 'remote'].map(id => ({ id, file: id })),
     actors: { hero: playerAppearance, guard: { ...appearance, id: 'guard' }, saint: { ...appearance, id: 'saint' } } },
     content: { map: async (id: string) => openStageMap(id) }, campaign: { start: { actor: 'hero' } } } as unknown as StoryContext;
   const presenter = new StoryPresenter(app, () => world, () => stage);
   const prepared=(presenter as unknown as {scenes:Map<string,unknown>}).scenes;
   for(const map of ['hall','remote'])prepared.set(map,{map,actors:[{id:'player',actor:'hero',x:10,y:20,facing:'south',visible:true}]});
-  return { presenter, stage, world, released: () => released, rendered: () => rendered, refreshed: () => refreshed,
+  return { presenter, stage, world, storyWorld, released: () => released, rendered: () => rendered, refreshed: () => refreshed,
     placeAllGroups: () => placeAllGroups, audioMaps: () => audioMaps, music: () => currentMusic };
 }
 
@@ -882,6 +884,29 @@ test('最后的记忆1在四个铁门入口正常播放和跳过时都按实际�
     }
   }
 });
+
+for(const skip of [false,true]){
+  test('appearance refresh keeps unrelated actors when skip is '+skip,async t=>{
+    const run=harness(),skipRequest=new AbortController();
+    const actor={actor:'guard',x:8,y:8,visible:true,facing:'south' as const,appearance};
+    const snapshot=stageSnapshot({type:'stage',map:'home',x:8,y:8,playerVisible:true,facing:'south',cast:[]},[
+      {...actor,id:'partner',actor:'saint',memberId:'story-priest'},{...actor,id:'guard'},{...actor,id:'extra',actor:'extra'},
+    ]);
+    snapshot.scene.actors[0]!.appearance=appearance;
+    run.storyWorld.apply({kind:'actor-appearance',actor:'guard',appearance:'guard'});
+    t.mock.method(run.storyWorld,'captureState',()=>{throw new Error('刷新外观无需复制整个世界');});
+    t.mock.method(run.presenter,'captureStage',()=>structuredClone(snapshot));
+    const presenter=run.presenter as unknown as {state?:StoryStageSnapshot;stage(value:StoryStageSnapshot):Promise<void>};
+    let rendered:StoryStageSnapshot|undefined;
+    t.mock.method(presenter,'stage',async(value:StoryStageSnapshot)=>{rendered=value;});
+    if(skip)skipRequest.abort();
+    await run.presenter.execute({type:'refresh-appearance'},{signal:new AbortController().signal,skipSignal:skipRequest.signal});
+    const output=skip?presenter.state:rendered;
+    assert.deepEqual(output?.scene.actors.map(a=>[a.id,!!a.appearance]),[
+      ['player',false],['partner',false],['guard',false],['extra',true],
+    ]);
+  });
+}
 
 test('a dynamic stage keeps its walk fallback after rebuilding from a snapshot', async () => {
   const map = openStageMap('home');

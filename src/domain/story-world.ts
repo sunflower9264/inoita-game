@@ -108,6 +108,8 @@ export class StoryWorldState {
   enemySpawns(map:string){return [...this.enemyLocations.values()].filter(value=>value.map===map).map(value=>({...value}));}
   private appearances=new Map<string,string>();
   actorAppearance(actor:string):string{return this.appearances.get(actor)??actor;}
+
+  hasAppearanceOverride(actor:string):boolean { return this.appearances.has(actor); }
   private partyBuffs:{buff:BattleBuffKey;strength:number}[]=[];
   get pendingPartyBuffs(){return this.partyBuffs.map(value=>({...value}));}
   consumePartyBuffs(count:number):void{this.partyBuffs.splice(0,count);}
