@@ -97,7 +97,7 @@ export function createSessionLifecycle(app:StoryApp,hooks:SessionLifecycleHooks)
           installSession(session, candidate.map.file);
           recordSceneChange(SCENE_KEYS.world, { map: location.map, source: 'load' });
           game.scene.start(SCENE_KEYS.world,{map:location.map,x:location.x,y:location.y,facing:location.facing,
-            initialEntry:true,suppressEntry:true,resumeStory:true,signal:request.signal,checkpoint:world.world,generatedEntities:world.generatedEntities,preparedScene:world.scene,
+            initialEntry:true,suppressEntry:true,resumeStory:true,signal:request.signal,checkpoint:world.world,generatedEntities:world.generatedEntities,preparedScene:world.scene,triggerContacts:world.triggerContacts,
             onReady:()=>{
               if(request.signal.aborted)return;
               remeasureRefreshAfterStart?.();

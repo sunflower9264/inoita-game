@@ -24,6 +24,9 @@ export function prepareSavedGame(game:SaveGame<StoryWorldViewSnapshot>,content:S
     !['north','south','east','west'].includes(location.facing))throw new Error('存档记录的地图或位置无效');
   if(!Array.isArray(world.generatedEntities)||new Set(world.generatedEntities.map(entity=>entity.id)).size!==world.generatedEntities.length||
     world.generatedEntities.some(entity=>!content.world.actors[entity.actor]||!Number.isFinite(entity.x)||!Number.isFinite(entity.y)))throw new Error('存档记录的地图人物无效');
+  const contacts=world.triggerContacts;
+  if(contacts!==undefined&&(!contacts||[contacts.regions,contacts.characters,contacts.nearEvents].some(
+    ids=>!Array.isArray(ids)||ids.some(id=>typeof id!=='string'))))throw new Error('存档记录的剧情接触无效');
   // 缺场景快照时，位置由 `location` 与剧情世界状态重新投影。
   if(world.scene){
     validateSceneSnapshot(world.scene);

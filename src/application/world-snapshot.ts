@@ -8,6 +8,7 @@ export interface StoryWorldViewSnapshot {
   location:TravelDestination;
   world?:WorldCombatState;
   generatedEntities:EntityPlacement[];
+  triggerContacts?:{ regions:string[]; characters:string[]; nearEvents:string[] };
   scene?:SceneSnapshot;
   audio?:StoryAudioState;
 }

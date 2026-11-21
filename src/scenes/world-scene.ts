@@ -114,6 +114,7 @@ export interface SceneOptions {
   signal?:AbortSignal;
   generatedEntities?:EntityPlacement[];
   preparedScene?:SceneSnapshot;
+  triggerContacts?:StoryWorldViewSnapshot['triggerContacts'];
   map: string;
   x: number;
   y: number;
@@ -286,7 +287,8 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
     this.questStatuses.clear();this.questStatusVersion=undefined;this.questNoticesReady=false;
     this.prefetchTarget = undefined; this.prefetchTask = undefined;
     this.prefetchFailedTarget = undefined; this.prefetchRetryAt = 0;
-    this.baseEntities=[];this.occupiedTriggers=new Set();this.occupiedCharacters=new Set();this.occupiedNearEvents=new Set();this.encounterResults.clear();this.triggerIndex=undefined;this.refreshStateSignatureValue=undefined;this.lastInteractionScan=undefined;this.interactionRevision=0;this.charactersRevision=0;this.interactionIndex=undefined;this.interactionIndexRevision=undefined;this.interactionIndexCharactersRevision=undefined;
+    this.restoreTriggerContacts(options.triggerContacts);
+    this.baseEntities=[];this.encounterResults.clear();this.triggerIndex=undefined;this.refreshStateSignatureValue=undefined;this.lastInteractionScan=undefined;this.interactionRevision=0;this.charactersRevision=0;this.interactionIndex=undefined;this.interactionIndexRevision=undefined;this.interactionIndexCharactersRevision=undefined;
     this.projectedActorIds.clear();
   }
   create(): void {
@@ -2021,9 +2023,16 @@ captureStoryScene(includeEnemyAppearance=true):SceneSnapshot {
       ...(visit?{visit:{generatedEntities:structuredClone(this.baseEntities),...visit}}:{})};
   }
 
+  private restoreTriggerContacts(contacts:StoryWorldViewSnapshot['triggerContacts']):void {
+    this.occupiedTriggers=new Set(contacts?.regions);
+    this.occupiedCharacters=new Set(contacts?.characters);
+    this.occupiedNearEvents=new Set(contacts?.nearEvents);
+  }
   captureStoryWorld(includeEnemyAppearance=true):StoryWorldViewSnapshot {
     if(!this.worldReady())throw new Error('正式地图尚未就绪');
-    return {location:{map:this.map!.id,...this.movement!.position(this.player!),facing:this.facing},world:this.combat?.captureState(),generatedEntities:structuredClone(this.baseEntities),scene:this.captureStoryScene(includeEnemyAppearance),audio:this.app.audio?.captureStoryAudio()};
+    const triggerContacts = this.occupiedTriggers.size || this.occupiedCharacters.size || this.occupiedNearEvents.size
+      ? {regions:[...this.occupiedTriggers],characters:[...this.occupiedCharacters],nearEvents:[...this.occupiedNearEvents]} : undefined;
+    return {location:{map:this.map!.id,...this.movement!.position(this.player!),facing:this.facing},world:this.combat?.captureState(),generatedEntities:structuredClone(this.baseEntities),triggerContacts,scene:this.captureStoryScene(includeEnemyAppearance),audio:this.app.audio?.captureStoryAudio()};
   }
   /**
    * 存档要连世界一起带走。换图途中（`loadingWorld`）与还没进图时没有完整的落点，
@@ -2042,7 +2051,7 @@ captureStoryScene(includeEnemyAppearance=true):SceneSnapshot {
     this.combat?.settleForSave();
     return {ok:true,map:{id:this.map!.id,name:this.map!.name},world:this.captureStoryWorld(false)};
   }
-  private restartStoryWorld(location:TravelDestination,signal:AbortSignal,world?:WorldCombatState,generatedEntities?:EntityPlacement[],silent=false,preparedScene?:SceneSnapshot):Promise<void>{
+  private restartStoryWorld(location:TravelDestination,signal:AbortSignal,options:Pick<SceneOptions,'checkpoint'|'generatedEntities'|'silentEntry'|'preparedScene'|'triggerContacts'>):Promise<void>{
     signal.throwIfAborted();
     return new Promise((resolve,reject)=>{
       let finished=false,timer:ReturnType<typeof setTimeout>|undefined;
@@ -2058,7 +2067,7 @@ captureStoryScene(includeEnemyAppearance=true):SceneSnapshot {
       timer=setTimeout(()=>{const error=new Error('剧情世界切换超时');controller.abort(error);done(error);},STORY_WORLD_SWITCH_TIMEOUT_MS);
       this.loadingWorld=true;
       this.beginWorldSwitch();
-      this.scene.restart({...location,checkpoint:world,generatedEntities,preparedScene,suppressEntry:true,silentEntry:silent,signal:controller.signal,onReady:()=>done(),onError:(error:unknown)=>done(error)} satisfies SceneOptions);
+      this.scene.restart({...location,...options,suppressEntry:true,signal:controller.signal,onReady:()=>done(),onError:(error:unknown)=>done(error)} satisfies SceneOptions);
     });
   }
 private restoreScenePositions(snapshot:SceneSnapshot):void {
@@ -2094,9 +2103,10 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
       await this.projectStoryWorld(undefined,signal,state.location);
       if(state.world)await this.combat?.restoreState(state.world,signal);
       if(state.scene){this.restoreScenePositions(state.scene);await this.projectEquipment(signal);}
+      this.restoreTriggerContacts(state.triggerContacts);
       signal.throwIfAborted();if(state.audio)this.app.audio?.restoreStoryAudio(state.audio);this.syncControlledCharacter(true);return;
     }
-    await this.restartStoryWorld(state.location,signal,state.world,state.generatedEntities,false,state.scene);
+    await this.restartStoryWorld(state.location,signal,{checkpoint:state.world,generatedEntities:state.generatedEntities,preparedScene:state.scene,triggerContacts:state.triggerContacts});
     signal.throwIfAborted();if(state.audio)this.app.audio?.restoreStoryAudio(state.audio);
   }
   /**
@@ -2128,7 +2138,7 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
       try{
         this.combat?.finishMapVisit();
         // 剧情驱动的跨图一律静默；素材由这次静默重建自己加载，不退回加载页。
-        await this.restartStoryWorld(location,signal,undefined,undefined,true,prepared);
+        await this.restartStoryWorld(location,signal,{silentEntry:true,preparedScene:prepared});
       }catch(error){
         if(!covered)this.app.ui.setWorldRebuildCover(false);
         throw error;

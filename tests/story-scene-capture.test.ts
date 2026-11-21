@@ -14,6 +14,7 @@ import type {CompanionCatalog} from '../src/domain/party.ts';
 import {parseDrops} from '../src/domain/drops.ts';
 import {parseSprings} from '../src/domain/springs.ts';
 import {WorldEnemyRoster} from '../src/domain/world-enemies.ts';
+import {claimStoryTrigger} from '../src/domain/story-trigger-occupancy.ts';
 
 const hook=registerHooks({resolve(specifier,context,next){return specifier==='phaser'
   ?{url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}},Scenes:{Events:{SHUTDOWN:\'shutdown\'}}}',shortCircuit:true}
@@ -34,6 +35,26 @@ function visual(id:string,actor:ActorDefinition,x:number,y:number){
     container:{x:x+1000,y:y+1000,visible:false,alpha:1},
     physics:{x,y},clipName:'idle-south',layers:[] as {anims:{currentAnim:object|null;getProgress():number;isPlaying:boolean}}[]};
 }
+
+test('在拉宾斯身边读档保留已触发的邀请，走开后才可再触发', async () => {
+  const host=Object.assign(Object.create(WorldScene.prototype),{
+    map:{id:'berkel-capital'},player:{},movement:{position:()=>({x:424,y:216})},facing:'south',
+    app:{ui:{},session:{hasLivingMember:true}},baseEntities:[],encounterResults:new Set(),
+    captureStoryScene:()=>undefined,projectStoryWorld:async()=>{},syncControlledCharacter(){},
+  });
+  const robbins={id:'quest-npc-npc-362'};
+  const contacts={regions:['square'],characters:[robbins.id],nearEvents:['event-595']};
+  host.restoreTriggerContacts(contacts);
+  const saved=JSON.parse(JSON.stringify(host.captureSaveWorld().world));
+  host.restoreTriggerContacts(undefined);
+  await host.restoreStoryWorld(saved,new AbortController().signal);
+  assert.deepEqual([...host.occupiedTriggers],contacts.regions);
+  assert.deepEqual([...host.occupiedNearEvents],contacts.nearEvents);
+  const approach=(touching:boolean)=>claimStoryTrigger([robbins],host.occupiedCharacters,()=>touching,()=>true);
+  assert.equal(approach(true),null);
+  assert.equal(approach(false),null);
+  assert.equal(approach(true)?.event,robbins);
+});
 
 test('live capture includes the physical scene with equipped party, props, enemy instances and summons while world is covered',()=>{
   const player=visual('player',appearance('hero','equipped-sword'),12,18);
@@ -59,6 +80,7 @@ test('live capture includes the physical scene with equipped party, props, enemy
   const host=Object.assign(Object.create(WorldScene.prototype),{map:{id:'camp'},player,movement,combat,facing:'north',
     characters:[gate,chest,spring,hidden],baseEntities:[],chestOpened:(value:unknown)=>value===chest,
     app:{ui:{},session:{hasLivingMember:true,storyWorld:{actorVisible:(_map:string,actor:string)=>actor!=='npc'},visible:()=>true}}});
+  host.restoreTriggerContacts(undefined);
   const snapshot:SceneSnapshot=host.captureStoryScene();
   assert.deepEqual(host.captureStoryWorld().scene,snapshot,'rollback captures the same complete physical scene');
   host.app.ui.loadingState={label:'正在准备进图剧情'};
@@ -210,7 +232,7 @@ test('formal cross-map handoff adopts the matching prepared visit only',async()=
   let received:unknown;
   const host=Object.assign(Object.create(WorldScene.prototype),{
     map:{id:'origin'},app:{session:{storyWorld:{currentLocation:{map:'destination',x:1,y:2,facing:'south'}}},ui:{setWorldRebuildCover(){}}},
-    scene:{isActive:()=>true},prefetchStoryEntry:async()=>{},restartStoryWorld:async(...args:unknown[])=>{received=args[5];}
+    scene:{isActive:()=>true},prefetchStoryEntry:async()=>{},restartStoryWorld:async(_location:unknown,_signal:AbortSignal,options:{preparedScene?:SceneSnapshot})=>{received=options.preparedScene;}
   });
   await host.projectStoryWorld({scene},new AbortController().signal);
   assert.equal(received,scene);
