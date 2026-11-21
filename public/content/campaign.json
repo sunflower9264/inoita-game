@@ -289817,34 +289817,13 @@
       },
       "near": "sealed-altar-5a136b94",
       "nearCharacterId": "npc-477",
+      "map": "sealed-dungeon-1-3-3275afd4",
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "final-seal-s-center-93cc4231",
-            "x": 200,
-            "y": 168,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-dungeon-1-3-3275afd4",
-            "x": 216,
-            "y": 168,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-dungeon-2-3-cdbbbb1d",
-            "x": 168,
-            "y": 152,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-dungeon-3-3-11ff2101",
-            "x": 216,
-            "y": 136,
-            "source": "native-placement"
-          }
-        ]
+        "type": "fixed",
+        "map": "sealed-dungeon-1-3-3275afd4",
+        "x": 216,
+        "y": 168,
+        "source": "native-placement"
       }
     },
     {
@@ -289923,34 +289902,13 @@
       },
       "near": "sealed-altar-5a136b94",
       "nearCharacterId": "npc-477",
+      "map": "sealed-dungeon-2-3-cdbbbb1d",
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "final-seal-s-center-93cc4231",
-            "x": 200,
-            "y": 168,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-dungeon-1-3-3275afd4",
-            "x": 216,
-            "y": 168,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-dungeon-2-3-cdbbbb1d",
-            "x": 168,
-            "y": 152,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-dungeon-3-3-11ff2101",
-            "x": 216,
-            "y": 136,
-            "source": "native-placement"
-          }
-        ]
+        "type": "fixed",
+        "map": "sealed-dungeon-2-3-cdbbbb1d",
+        "x": 168,
+        "y": 152,
+        "source": "native-placement"
       }
     },
     {
@@ -290592,34 +290550,13 @@
       },
       "near": "sealed-altar-5a136b94",
       "nearCharacterId": "npc-477",
+      "map": "final-seal-s-center-93cc4231",
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "final-seal-s-center-93cc4231",
-            "x": 200,
-            "y": 168,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-dungeon-1-3-3275afd4",
-            "x": 216,
-            "y": 168,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-dungeon-2-3-cdbbbb1d",
-            "x": 168,
-            "y": 152,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-dungeon-3-3-11ff2101",
-            "x": 216,
-            "y": 136,
-            "source": "native-placement"
-          }
-        ]
+        "type": "fixed",
+        "map": "final-seal-s-center-93cc4231",
+        "x": 200,
+        "y": 168,
+        "source": "native-placement"
       }
     },
     {

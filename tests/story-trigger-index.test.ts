@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import {buildStoryTriggerIndex} from '../src/domain/story-trigger-index.ts';
 import type {StoryEvent, StoryGraph} from '../src/domain/story-graph.ts';
@@ -15,6 +16,20 @@ const campaign={events:[
 
 const character=(id:string,actor:string,characterId?:string,visible=true)=>({
   entity:{id,actor,characterId},container:{visible},
+});
+
+test('每个封印祭坛只办理自己所在洞穴的剧情', () => {
+  const story: StoryGraph = JSON.parse(readFileSync(new URL('../public/content/campaign.json', import.meta.url), 'utf8'));
+  const altar = character('altar', 'sealed-altar-5a136b94', 'npc-477');
+  for (const [map, expected] of [
+    ['sealed-dungeon-1-3-3275afd4', 'event-373'],
+    ['sealed-dungeon-2-3-cdbbbb1d', 'event-377'],
+    ['final-seal-s-center-93cc4231', 'event-401'],
+    ['sealed-dungeon-3-3-11ff2101', undefined],
+  ] as const) {
+    const { nearCharacters } = buildStoryTriggerIndex(story, map, [altar]);
+    assert.deepEqual(nearCharacters.flatMap(group => group.events.map(event => event.id)), expected ? [expected] : []);
+  }
 });
 
 test('trigger index groups the current map and preserves campaign order',()=>{
