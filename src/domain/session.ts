@@ -241,6 +241,8 @@ export class Session {
   /** 战斗目录只读访问：GM 拉满佣兵技能需要职业技能表与伙伴成长表的最高等级。 */
   get battleCatalog():BattleCatalog|undefined {return this.battle;}
   readonly campaign: Campaign;
+  /** 任务 id → 定义；`campaign` 只在构造时赋值，索引随会话一起建好，按 id 查找不再逐条比对。 */
+  private readonly questsById:ReadonlyMap<string,CampaignQuest>;
   readonly questBook:QuestBook;
   readonly storyWorld = new StoryWorldState();
   private runtimeSnapshot:StoryRuntimeSnapshot = {version:2,sequence:0,runs:[],completedEvents:[],handledOccurrences:[],encounterResults:[],pendingOccurrences:[],occurrenceSequences:[]};
@@ -436,6 +438,7 @@ export class Session {
   choiceWriteCounts():ReadonlyMap<string,number> { return this.choiceWrites; }
   constructor(campaign:Campaign, player?:StoryPlayerState, character?:{classId:string;appearance:ActorDefinition}, items?:ItemCatalog, hero?:BattleCharacter, battle?:BattleCatalog, stats?:CharacterStatsCatalog, companions?:CompanionCatalog) {
     this.campaign = campaign;
+    this.questsById = new Map(campaign.quests.map(quest => [quest.id, quest]));
     this.questGroupKinds = new Map(campaign.questGroups.flatMap(group =>
       group.questIds.map(id => [id, group.kind] as const)));
     this.playerState = player ? Object.freeze({...player}) : undefined;
@@ -1034,7 +1037,7 @@ export class Session {
     this.questProjection={questVersion:this.questBook.version,bagVersion:this.bag.revision,
       owner:this.party?.controlledId??'player',conditions:this.questConditionInputs.map(input=>input.read(context!))};
   }
-  definition(id:string):CampaignQuest|undefined{return this.campaign.quests.find(quest=>quest.id===id);}
+  definition(id:string):CampaignQuest|undefined{return this.questsById.get(id);}
   status(id:string):QuestStatus{return this.questBook?.status(id)??'locked';}
   /**
    * 任务已经待交付时，发布者/交付人不能被本次进图的临时剧情缺席挡住。
