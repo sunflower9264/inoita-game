@@ -14,7 +14,7 @@ import { controlViewport } from './phaser/control-layout-viewport.ts';
 import { drawNativeMessage, NATIVE_MESSAGE_EDGE, type NativeMessageBand } from './phaser/native-message.ts';
 import { centerModal } from './phaser/modal-placement.ts';
 import { CHANGELOG_LAYOUT, changelogMetrics, changelogVisibleRange } from './changelog-layout.ts';
-import { TextPrompt } from './text-prompt.ts';
+import {SaveSlotRename} from './save-slot-rename.ts';
 import { PasswordChangePrompt } from './password-change-prompt.ts';
 import { CloudCredentialsInput, type CredentialInputRect } from './cloud-credentials-input.ts';
 import { AUTO_SAVE_SLOT, MANUAL_SAVE_SLOT_COUNT, saveSlotLabel, type SaveSlotRef, type SlotSummaryReading } from '../domain/save-game.ts';
@@ -91,9 +91,7 @@ export class TitleMenuController {
   private challengeClicks=0;
   /** 改名输入与通用确认：标题页的存档管理与云存档覆盖确认共用。 */
   private slotBoard?:SaveBoardList;
-  private renameRef?:SaveSlotRef;
-  private renameSerial=0;
-  private prompt?:TextPrompt;
+  private readonly slotRename=new SaveSlotRename();
   private passwordPrompt?:PasswordChangePrompt;
   /** 云存档登录的账号/密码输入框：直接盖在面板行上，不是独立弹层。 */
   private credentials?:CloudCredentialsInput;
@@ -143,7 +141,7 @@ export class TitleMenuController {
       this.backdrop=new UiImage(this.scene,undefined,art('background')).setOrigin(.5);
       // 遮罩同时拦掉底层输入；弹层在它上面，按钮仍然先命中。
       this.popupMask=new UiNode(this.scene).setSize(1,1).setFillStyle(0,.65).setDepth(150).setVisible(false).setInteractive();
-      this.surface=new UiSurface(this.scene,1200,640);this.modal=new UiSurface(this.scene,1024,640,200);this.prompt=new TextPrompt();this.passwordPrompt=new PasswordChangePrompt();
+      this.surface=new UiSurface(this.scene,1200,640);this.modal=new UiSurface(this.scene,1024,640,200);this.passwordPrompt=new PasswordChangePrompt();
       const domUi=this.domUi;
       if(domUi){
         // 更新日志画在弹层画布上，文字定位跟着弹层根节点；其它页面仍用标题页画布。
@@ -174,8 +172,7 @@ export class TitleMenuController {
     this.disposed=true;
     this.releaseFullscreen?.();
     this.releaseFullscreen=undefined;
-    this.renameSerial++;
-    this.renameRef=undefined;
+    this.slotRename.cancel();
     this.cloudRenderedBranch=undefined;
     this.cloudControls=[];
     this.slotBoard=undefined;
@@ -190,7 +187,6 @@ export class TitleMenuController {
     this.changelogRequest=undefined;
     this.changelogOpen=false;
     this.app.releaseChangelog?.();
-    this.prompt?.close();
     this.passwordPrompt?.close();
     this.credentials?.destroy();
     this.credentials=undefined;
@@ -219,7 +215,7 @@ export class TitleMenuController {
     const target=event.target as HTMLElement|null;
     if(target&&(target.tagName==='INPUT'||target.tagName==='TEXTAREA'||target.isContentEditable))return true;
     // 改名、修改密码表单或云存档账号/密码框有焦点时键盘归输入框，场景不再处理按键。
-    if(this.renameRef!==undefined||this.prompt?.active||this.passwordPrompt?.active||this.credentials?.focused)return true;
+    if(this.slotRename.active||this.passwordPrompt?.active||this.credentials?.focused)return true;
     // 更新日志和确认框打开时 Escape 只关最上层，不退出页面。
     if(event.key==='Escape'&&this.changelogOpen){event.preventDefault();this.closeChangelog();return true;}
     if(event.key==='Escape'&&this.confirmAction!==undefined){event.preventDefault();this.confirmAction.cancel();return true;}
@@ -229,8 +225,7 @@ export class TitleMenuController {
   /** 挑战模式不显示可用状态，只叠一层透明热区接收连续点击。 */
   private countChallengeClick():void{
     if(!this.app.ui.ready||this.app.ui.suspended||!this.scene.sys.isActive())return;
-    if(this.page!=='home'||this.confirmAction!==undefined||this.changelogOpen||this.renameRef!==undefined
-      ||this.prompt?.active||this.passwordPrompt?.active||this.credentials?.focused)return;
+    if(this.page!=='home'||this.confirmAction!==undefined||this.changelogOpen||this.slotRename.active||this.passwordPrompt?.active||this.credentials?.focused)return;
     this.challengeClicks++;
     globalThis.storyDiagnostics?.record('pressure-click',{clicks:this.challengeClicks});
     if(this.challengeClicks>=CHALLENGE_CLICKS_REQUIRED){
@@ -556,7 +551,7 @@ export class TitleMenuController {
     this.cloudRenderedBranch=branch;view.clear();this.modal?.clear();
     // DOM 标签直接写屏幕坐标；先让根节点用当前窗口尺寸完成布局，避免首帧按旧变换闪一下。
     view.layout();
-    const guard=()=>this.app.ui.ready&&!this.app.ui.suspended&&this.scene.sys.isActive()&&this.confirmAction===undefined&&this.renameRef===undefined&&!this.changelogOpen;
+    const guard=()=>this.app.ui.ready&&!this.app.ui.suspended&&this.scene.sys.isActive()&&this.confirmAction===undefined&&!this.slotRename.active&&!this.changelogOpen;
     view.enabled=guard;
     const texts:MenuTextSpec[]=[];
     const buttonText=(key:string,label:string,x:number,y:number,width:number,height:number,size:number,
@@ -787,25 +782,13 @@ export class TitleMenuController {
     this.slotBoard.updateTitle(ref,title);if(spec)spec.text=title;
     this.menuText?.renderPage('slots');this.layout();
   }
-  private renameSlot(ref:SaveSlotRef):void{
-    if(ref===AUTO_SAVE_SLOT)return;
-    const reading=this.app.saves.peek(ref);
-    if(reading.kind!=='ok')return;
-    const serial=++this.renameSerial;this.renameRef=ref;
-    const apply=(value:string|undefined):void=>{
-      if(serial!==this.renameSerial||this.renameRef!==ref||this.page!=='slots'||!this.scene.sys.isActive())return;
-      if(value!==undefined){
-        try{this.app.saves.rename(ref,value);}
-        catch(error){console.warn('存档改名失败',error);}
-      }
-      this.renameRef=undefined;if(value!==undefined)this.updateSlotTitle(ref);else this.layout();
-    };
-    // 测试没有 DOM 输入框，直接注入一个返回值。
-    if(this.app.promptText){void this.app.promptText(reading.summary.name??'').then(apply,()=>apply(undefined));return;}
-    this.layout();
-    this.prompt?.show({title:'存档名称',initial:reading.summary.name??'',
+  private renameSlot(ref:SaveSlotRef):void {
+    this.slotRename.start(ref,this.app,{
+      current:()=>this.page==='slots'&&this.scene.sys.isActive(),
       scale:()=>this.surface?.root.getWorldTransformMatrix().scaleX??1,
-      onConfirm:value=>apply(value),onCancel:()=>apply(undefined)});
+      opened:()=>{if(!this.app.promptText)this.layout();},
+      finished:(slot,submitted)=>{if(submitted)this.updateSlotTitle(slot);else this.layout();},
+    });
   }
   private showConfirmation():void{
     const view=this.surface,modal=this.modal,action=this.confirmAction;
@@ -1149,8 +1132,7 @@ export class TitleMenuController {
   /** 离开页面或重进时收掉确认框、改名输入和密码输入，免得残留状态一直挡住输入。 */
   private closeDialogs():void {
     this.settleConfirm(false,false);
-    this.renameSerial++;this.renameRef=undefined;
-    this.prompt?.close();
+    this.slotRename.cancel();
     this.passwordPrompt?.close();
   }
   resize():void {
@@ -1186,8 +1168,7 @@ export class TitleMenuController {
       && !this.app.ui.suspended
       && this.scene.sys.isActive()
       && this.confirmAction===undefined
-      && this.renameRef===undefined
-      && !this.prompt?.active
+      && !this.slotRename.active
       && !this.passwordPrompt?.active;
   }
 

@@ -14,6 +14,7 @@ import {installMenuDom,menuFrame} from './support/menu-dom.ts';
 after(installMenuDom());
 menuFrame.width=1200;
 const hook=registerHooks({resolve(specifier,context,next){return specifier==='phaser'?{url:'data:text/javascript,export default {Scene:class{},Scenes:{Events:{RESUME:"resume",PAUSE:"pause"}},BlendModes:{}}',shortCircuit:true}:next(specifier,context);}});
+const {SaveSlotRename}=await import('../src/ui/save-slot-rename.ts');
 const {TitleMenuController}=await import('../src/ui/title-menu-controller.ts');
 const {UiSurface}=await import('../src/ui/phaser/widgets.ts');hook.deregister();
 class Button {
@@ -112,7 +113,7 @@ function fixture(gmMode?:MenuContext['gmMode'],cloud?:CloudSavePort){
     // 场景缩放通知与屏幕布局分别提供。
     scale:{width:1200,height:640,zoom:1,on(){},off(){}},
     cloudStatus:undefined,cloudCount:undefined,cloudRequest:undefined,cloudRenderedBranch:undefined,cloudControls:[],confirmAction:undefined,confirmResolve:undefined,
-    slotBoard:undefined,renameRef:undefined,renameSerial:0,slotRequest:undefined,slotPortraits:undefined,prompt:undefined,settingsScroll:0,backdrop:undefined,
+    slotBoard:undefined,slotRename:new SaveSlotRename(),slotRequest:undefined,slotPortraits:undefined,settingsScroll:0,backdrop:undefined,
     challengeClicks:0,challengeTimer:undefined,
     domSpecs:[] as MenuTextSpec[],menuText:undefined as MenuTextLayer|undefined,changelogBackgroundText:undefined as MenuTextLayer|undefined,modalLabels:[] as FakeDomLabel[],
     changelogVersionButtons:[] as Button[],changelogOpen:false,changelogState:'idle',changelogReleases:[] as {gameVersion:string;entries:string[]}[],changelogSelected:0,

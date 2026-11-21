@@ -12,7 +12,7 @@ import { drawNativeMessage, type NativeMessageBand } from './phaser/native-messa
 import { MENU_CANVAS_HEIGHT, MENU_CANVAS_WIDTH } from './phaser/modal-placement.ts';
 import type { ScrollArea, UiSurface } from './phaser/widgets.ts';
 import type { MenuTextWriter } from './dom/menu-text.ts';
-import { TextPrompt } from './text-prompt.ts';
+import {SaveSlotRename} from './save-slot-rename.ts';
 
 /** 存档结果与「不能存取」的提示文本，原版取文本表 35331／35332／35342 条。 */
 const SAVE_DONE = '保存成功', SAVE_FAILED = '保存失败', SAVE_UNAVAILABLE = '在当前的地图中无法进行存档。';
@@ -69,11 +69,9 @@ export class SavePage {
   private saveConfirm?: SaveSlotRef;
   private loadConfirm?: SaveSlotRef;
   private deleteConfirm?: SaveSlotRef;
-  private renameRef?: SaveSlotRef;
-  private renameSerial=0;
   private board?:SaveBoardList;
   private messageBand?: NativeMessageBand;
-  private readonly prompt = new TextPrompt();
+  private readonly slotRename=new SaveSlotRename();
   private readonly host: SavePageHost;
 
   constructor(host: SavePageHost) { this.host = host; }
@@ -81,7 +79,7 @@ export class SavePage {
   /** 页面自身有确认框或改名输入时，底层按钮不再接收输入。 */
   get blocksPage(): boolean {
     return this.isBusy || this.saveConfirm !== undefined || this.loadConfirm !== undefined
-      || this.deleteConfirm !== undefined || this.renameRef !== undefined;
+      || this.deleteConfirm !== undefined || this.slotRename.active;
   }
 
   /** 确认框会盖在页面之上，走菜单公共弹层。 */
@@ -95,7 +93,7 @@ export class SavePage {
   }
 
   get renaming(): boolean {
-    return this.renameRef !== undefined;
+    return this.slotRename.active;
   }
 
   render(view: UiSurface, loading: boolean): void {
@@ -163,21 +161,16 @@ export class SavePage {
   /** 切换页面或关闭菜单时清掉确认框和改名输入，并让在途保存结果失效。 */
   cancelPending(): void {
     this.loadRequest?.abort();this.loadRequest=undefined;
-    this.saveSerial++;this.renameSerial++;
+    this.saveSerial++;
     this.saving = false;
     this.saveConfirm = undefined;
     this.loadConfirm = undefined;
     this.deleteConfirm = undefined;
-    this.renameRef = undefined;
-    this.prompt.close();
+    this.slotRename.cancel();
   }
 
   /** 页面挂起时只收起系统输入框，保留当前页码。 */
-  closeInput(): void {
-    if (this.renameRef === undefined) return;
-    this.renameSerial++;this.prompt.close();
-    this.renameRef = undefined;
-  }
+  closeInput():void { this.slotRename.cancel(); }
 
   destroy(): void {
     this.cancelPending();
@@ -290,35 +283,21 @@ export class SavePage {
   }
 
   /** 改名：手机系统键盘输入，只收中文、英文、数字；确认后只改摘要里的名字。 */
-  private renameSlot(ref: SaveSlotRef): void {
-    if (ref === AUTO_SAVE_SLOT) return;
-    const reading = this.host.app.saves.peek(ref);
-    if (reading.kind !== 'ok') return;
-    const serial=++this.renameSerial;this.renameRef=ref;
-    const apply = (value: string | undefined): void => {
-      if(serial!==this.renameSerial||this.renameRef!==ref)return;
-      if (value !== undefined) {
-        try { this.host.app.saves.rename(ref, value); }
-        catch (error) { console.warn('存档改名失败', error); }
-      }
-      this.renameRef = undefined;
-      if(value!==undefined){
-        const title=saveRowTitle(ref,this.host.app.saves.peek(ref));
-        if(this.board&&this.host.updateSaveTitle&&typeof ref==='number'){this.board.updateTitle(ref,title);this.host.updateSaveTitle(`save-slot-${ref}-title`,title);}
-        else this.host.render();
-      }
-      this.host.sync();
-    };
-    // 测试没有 DOM 输入框，直接注入一个返回值。
-    if (this.host.app.promptText) {
-      this.host.sync();void this.host.app.promptText(reading.summary.name ?? '').then(apply,()=>apply(undefined));return;
-    }
-    this.host.sync();
-    this.prompt.show({ title: '存档名称', initial: reading.summary.name ?? '',
-      scale: () => this.host.uiScale?.() ?? 1,
-      onConfirm: value => apply(value), onCancel: () => apply(undefined) });
-    // 没有 DOM（测试或极端环境）时输入框起不来，别让菜单一直处于「让出输入」状态。
-    if (!this.prompt.active) { this.renameRef = undefined; this.host.sync(); }
+  private renameSlot(ref:SaveSlotRef):void {
+    const session=this.host.session();
+    this.slotRename.start(ref,this.host.app,{
+      current:()=>this.host.session()===session,scale:()=>this.host.uiScale?.()??1,
+      opened:()=>this.host.sync(),
+      finished:(slot,submitted)=>{
+        if(submitted){
+          const title=saveRowTitle(slot,this.host.app.saves.peek(slot));
+          if(this.board&&this.host.updateSaveTitle){
+            this.board.updateTitle(slot,title);this.host.updateSaveTitle(`save-slot-${slot}-title`,title);
+          }else this.host.render();
+        }
+        this.host.sync();
+      },
+    });
   }
 
 }

@@ -70,7 +70,7 @@ interface SavePageInternals {
   saveToSlot(ref: number): void;
   loadConfirm?: number;
   deleteConfirm?: number;
-  renameRef?: number;
+  renameSlot(ref:number):void;
   saving: boolean;
   requestLoad(ref: number): void;
   requestDelete(ref: number): void;
@@ -107,7 +107,11 @@ test('改名输入和确认框共同决定页面是否让出输入', () => {
   const f = fixture();
   const internals = f.page as unknown as SavePageInternals;
   assert.equal(f.page.blocksPage, false);
-  internals.renameRef = 1;
+  const captured=captureSessionSave(f.session,f.world,f.app);
+  assert.ok(captured.ok);
+  f.app.saves.peek=()=>({kind:'ok',summary:captured.record.summary});
+  f.app.promptText=()=>new Promise(()=>{});
+  internals.renameSlot(1);
   assert.equal(f.page.renaming, true);
   assert.equal(f.page.blocksPage, true);
   assert.equal(f.page.modalOpen, false, '改名输入不是弹层');
