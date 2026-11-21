@@ -360,7 +360,7 @@ test('drive, toward and followPath give a static actor temporary sampling until 
   }
 });
 
-test('nearestWalkable finds a reachable tile when the story target is blocked',t=>{
+test('story walks find a reachable tile when the dynamic map blocks the target',t=>{
   const events=new EventEmitter();
   const group={scene:{},add(){},remove(){},destroy(){}};
   const scene={sys:{scale:{width:640,height:480}},events,add:{group:()=>group}} as unknown as Phaser.Scene;
@@ -378,7 +378,7 @@ test('nearestWalkable finds a reachable tile when the story target is blocked',t
   })} as unknown as CharacterVisual;
   movement.register(visual,true);
   movement.place(visual,{x:40,y:40});
-  const result=movement.nearestWalkable(visual,{x:40,y:88});
+  const result=navigation.storyWalkDestination(movement.actor(visual).shape(),movement.position(visual),{x:40,y:88},true);
   assert.ok(result,'阻挡目标应能找到最近可站点');
   assert.ok(navigation.terrainFree(result),`兜底脚点不可站：${JSON.stringify(result)}`);
   assert.ok(navigation.bodyTerrainFree({collision},result),`兜底整盒压墙：${JSON.stringify(result)}`);

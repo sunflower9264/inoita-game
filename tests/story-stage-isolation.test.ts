@@ -1,10 +1,14 @@
 import assert from 'node:assert/strict';
 import { installTextureLoader } from '../src/rendering/scene-assets.ts';
 import { EventEmitter } from 'node:events';
+import { readFileSync } from 'node:fs';
 import { registerHooks } from 'node:module';
 import test from 'node:test';
 import type { StoryContext } from '../src/application/ports.ts';
-import type { ActorDefinition, WorldMap } from '../src/domain/content.ts';
+import type { ActorDefinition, WorldIndex, WorldMap } from '../src/domain/content.ts';
+import type { Campaign } from '../src/domain/campaign.ts';
+import { NavigationWorld } from '../src/domain/navigation-world.ts';
+import { WalkRoute } from '../src/domain/walk-route.ts';
 import { validateStoryStageSnapshot, type StoryStage, type StoryStageSnapshot } from '../src/domain/story-performance.ts';
 import { SCENE_KEYS } from '../src/application/scene-keys.ts';
 import { stageSnapshot } from './helpers/story-stage.ts';
@@ -198,7 +202,16 @@ test('a stage map draws static map entities and removes them with the map', asyn
   assert(containers.every(container => container.scene === undefined), '清理演出地图时一并销毁门');
 });
 
-function harness() {
+function readGameContent<T>(file: string): T {
+  return JSON.parse(readFileSync(new URL('../public/' + file, import.meta.url), 'utf8'));
+}
+
+function openStageMap(id: string): WorldMap {
+  return { id, name: id, width: 1024, height: 1024, tileSize: 16, columns: 64, rows: 64,
+    blocked: Array<boolean>(64 * 64).fill(false), ground: '', canopy: '', features: [], entities: [], exits: [] };
+}
+
+function harness(map = openStageMap('home'), playerAppearance = appearance) {
   const owner = {};
   const container = (x: number, y: number) => Object.assign(new EventEmitter(), {
     x, y, scene: owner as object | undefined, visible: true,
@@ -208,8 +221,8 @@ function harness() {
     setSize() { return this; }, setFillStyle() { return this; }, setAlpha() { return this; },
     destroy() { this.scene = undefined; }
   });
-  const visual = (x: number, y: number) => ({ actor: appearance, entity: { id: 'player', actor: 'hero', x, y }, container: container(x, y), layers: [], clipName: null });
-  const world = { map: { id: 'home' }, player: visual(10, 20), facing: 'south', characters: [], worldReady: () => true,
+  const visual = (x: number, y: number) => ({ actor: playerAppearance, entity: { id: 'player', actor: 'hero', x, y }, container: container(x, y), layers: [], clipName: null });
+  const world = { map, player: visual(10, 20), facing: 'south', characters: [], worldReady: () => true,
     cameras: { main: { scrollX: 5, scrollY: 6 } },
     scene: { launch() { throw new Error('active stage must be reused'); }, restart() { throw new Error('formal world must be retained'); } },
     captureStoryScene(this: WorldScene){return {map:this.map!.id,actors:[
@@ -241,16 +254,19 @@ function harness() {
         if (value.enabled !== undefined) value.visual.container.visible = value.enabled; }
     }
   };
-  const events = new EventEmitter();
+  const events = new EventEmitter(), cameraEvents = new EventEmitter();
   let refreshed = 0;
   const stage = { characters: new Map(), map: undefined as { id: string } | undefined, player: visual(10, 20), facing: 'south', movement,
     cameras: { main: { scrollX: 0, scrollY: 0, width: 960, height: 640, zoom: 1, stopFollow() {},
+      getScroll(x: number, y: number) { return { x: x - 480, y: y - 320 }; },
+      once: cameraEvents.once.bind(cameraEvents), off: cameraEvents.off.bind(cameraEvents),
+      pan() { cameraEvents.emit('pancomplete'); }, panEffect: { reset() {} },
       setScroll(this: { scrollX: number; scrollY: number }, x: number, y: number) { this.scrollX = x; this.scrollY = y; },
       centerOn(this: { scrollX: number; scrollY: number }, x: number, y: number) { this.scrollX = x - 480; this.scrollY = y - 320; }
     } }, sys: { isActive: () => true, isPaused: () => false },
     add: { container, rectangle: () => container(0, 0) }, scale: { width: 960, height: 640 },
     async showStage(this: { map?: { id: string }; player: ReturnType<typeof visual>; characters: Map<string, ReturnType<typeof visual>> }, value: StoryStageSnapshot, signal: AbortSignal) {
-      signal.throwIfAborted(); this.map = { id: value.map }; rendered++;
+      signal.throwIfAborted(); this.map = value.map === map.id ? map : openStageMap(value.map); rendered++;
       this.characters.clear();
       for(const actor of value.scene.actors){
         const character=visual(actor.x,actor.y);character.entity={id:actor.id,actor:actor.actor,x:actor.x,y:actor.y};
@@ -270,6 +286,9 @@ function harness() {
       refreshed++;
       return character;
     },
+    appearanceFor(actor: StoryStageSnapshot['scene']['actors'][number]) {
+      return actor.appearance ?? (actor.id === 'player' ? playerAppearance : appearance);
+    },
     ensureActors(this:{characters:Map<string,ReturnType<typeof visual>>},value:StoryStageSnapshot){
       for(const actor of value.scene.actors)if(!this.characters.has(actor.id)){
         const character=visual(actor.x,actor.y);character.entity={id:actor.id,actor:actor.actor,x:actor.x,y:actor.y};
@@ -286,7 +305,9 @@ function harness() {
   let currentMusic:string|null=null;
   const audio={enterMap:(map:string)=>{currentMusic=map;},captureStoryAudio:()=>({music:currentMusic,ambience:null}),
     restoreStoryAudio:(state:{music:string|null})=>{currentMusic=state.music;}};
-  const app = { session:{storyWorld:{actorAppearance:(id:string)=>id}}, audio, world: { actors: { hero: appearance, guard: { ...appearance, id: 'guard' }, saint: { ...appearance, id: 'saint' } } }, campaign: { start: { actor: 'hero' } } } as unknown as StoryContext;
+  const app = { session:{storyWorld:{actorAppearance:(id:string)=>id}}, audio, world: { maps: ['hall', 'remote'].map(id => ({ id, file: id })),
+    actors: { hero: playerAppearance, guard: { ...appearance, id: 'guard' }, saint: { ...appearance, id: 'saint' } } },
+    content: { map: async (id: string) => openStageMap(id) }, campaign: { start: { actor: 'hero' } } } as unknown as StoryContext;
   const presenter = new StoryPresenter(app, () => world, () => stage);
   const prepared=(presenter as unknown as {scenes:Map<string,unknown>}).scenes;
   for(const map of ['hall','remote'])prepared.set(map,{map,actors:[{id:'player',actor:'hero',x:10,y:20,facing:'south',visible:true}]});
@@ -807,22 +828,85 @@ test('skipping keeps logical positions without rebuilding the stage and flush pa
   assert.equal(run.music(),'remote','补画后保持目标地图音乐');
 });
 
+test('最后的记忆1在四个铁门入口正常播放和跳过时都按实际地形落位并取景', async () => {
+  const campaign = readGameContent<Campaign>('content/campaign.json');
+  const world = readGameContent<WorldIndex>('content/world.json');
+  const event = campaign.events.find(event => event.id === 'event-563')!;
+  assert.ok(event.place?.type === 'alternatives');
+  assert.equal(event.place.spots.length, 4);
+  const actions = campaign.scripts[event.script].nodes[0].presentation;
+  const stage = actions.find(action => action.type === 'stage')!;
+  const entrance = actions.filter(action => action.type === 'appear').find(action => action.target === 'player')!;
+  const walks = actions.filter(action => action.type === 'walk').filter(action => action.target === 'player');
+  const camera = actions.filter(action => action.type === 'camera').filter(action => action.target === 'player').at(-1)!;
+  const hero = { ...appearance, collision: world.actors[campaign.start.actor].collision };
+
+  for (const spot of event.place.spots) {
+    const map = readGameContent<WorldMap>(world.maps.find(map => map.id === spot.map)!.file);
+    const navigation = new NavigationWorld(map);
+    const expected = map.id === 'blackhoods-stronghold-2-4dc049d1' ? { x: 100, y: 148 } : { x: 120, y: 152 };
+    for (const mode of ['开场跳过', '播放', '走到一半跳过']) {
+      const run = harness(map, hero), skip = new AbortController();
+      const playback = { signal: new AbortController().signal, skipSignal: skip.signal };
+      if (mode === '开场跳过') skip.abort();
+      await run.presenter.begin(playback.signal, stage, undefined, true, skip.signal);
+      await run.presenter.execute(stage, playback);
+      await run.presenter.execute(entrance, playback);
+      for (const walk of walks) {
+        if (mode === '走到一半跳过' && walk === walks.at(-1)) {
+          let start!: () => void;
+          const started = new Promise<void>(resolve => { start = resolve; });
+          const movement = run.stage.movement!;
+          movement.walkTo = (visual, destination, speed) => {
+            const route = new WalkRoute(navigation, { shape: () => hero, position: () => movement.position(visual),
+              enabled: () => true }, destination, speed);
+            start();
+            return route;
+          };
+          const walking = run.presenter.execute(walk, playback);
+          await started;
+          skip.abort();
+          await walking;
+        } else await run.presenter.execute(walk, playback);
+      }
+      await run.presenter.execute(camera, playback);
+      if (mode === '开场跳过') assert.equal(run.rendered(), 0);
+      const snapshot = run.presenter.captureStage()!;
+      assert.deepEqual({ x: snapshot.x, y: snapshot.y }, expected, map.name + mode);
+      assert.deepEqual(snapshot.camera, expected);
+      await run.presenter.flushStage(playback.signal);
+      assert.deepEqual(run.stage.movement!.position(run.stage.player!), expected);
+      assert.deepEqual(run.presenter.captureStage()!.camera, expected);
+      await run.presenter.release();
+    }
+  }
+});
+
 test('a dynamic stage keeps its walk fallback after rebuilding from a snapshot', async () => {
-  const run = harness(), signal = new AbortController().signal, playback = { signal, skipSignal: signal };
+  const map = openStageMap('home');
+  map.blocked[5 * map.columns + 5] = true;
+  const hero = { ...appearance, collision: { x: -8, y: -8, width: 16, height: 16 } };
+  const run = harness(map, hero);
+  const signal = new AbortController().signal, playback = { signal, skipSignal: signal };
   await run.presenter.begin(signal);
   await run.presenter.execute({ type: 'stage', mapFromWorld: true, map: 'home', x: 10, y: 20,
     facing: 'south', playerVisible: true, cast: [] }, playback);
   // 按快照重建（town-pose / refresh-appearance 走这条路）；快照里没有 mapFromWorld。
-  await run.presenter.execute(run.presenter.captureStage()!, playback);
-  const movement = run.stage.movement as unknown as {
-    walkTo(): { state: string; error?: Error };
-    nearestWalkable(): { x: number; y: number } | undefined;
-  };
+  const checkpoint = run.presenter.captureStage()!;
+  await run.presenter.execute(checkpoint, playback);
+  const movement = run.stage.movement as unknown as { walkTo(): { state: string; error?: Error } };
   movement.walkTo = () => ({ state: 'failed', error: new Error('道路不可达') });
-  movement.nearestWalkable = () => ({ x: 56, y: 72 });
-  await run.presenter.execute({ type: 'walk', target: 'player', x: 400, y: 400, speedPxPerSecond: 60 }, playback);
+  const walk = { type: 'walk' as const, target: 'player', x: 88, y: 88, speedPxPerSecond: 60 };
+  await run.presenter.execute(walk, playback);
   const player = run.presenter.captureStage()!.scene.actors.find(actor => actor.id === 'player')!;
-  assert.deepEqual({ x: player.x, y: player.y }, { x: 56, y: 72 }, '兜底落点同时写进逻辑快照，不能写回阻挡目标');
+  assert.deepEqual({ x: player.x, y: player.y }, { x: 84, y: 68 }, '动作中断仍应写回开走时选定的可达落点');
+  await run.presenter.release();
+  const restored = harness(map, hero), skipSignal = AbortSignal.abort();
+  await restored.presenter.begin(signal, checkpoint, undefined, false, skipSignal);
+  await restored.presenter.execute(walk, { signal, skipSignal });
+  const skipped = restored.presenter.captureStage()!;
+  assert.deepEqual([skipped.x, skipped.y], [player.x, player.y]);
+  await restored.presenter.release();
 });
 
 test('skipped camera actions and camera-following walks update the restored view', async () => {

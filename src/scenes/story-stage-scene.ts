@@ -98,7 +98,7 @@ export class StoryStageScene extends Phaser.Scene {
    * 舞台优先用剧情外观绘制敌人；剧情外观缺失时使用快照或战斗目录里的外观。
    * 玩家、队员和手写演员仍按原来的顺序选外观。
    */
-  private appearanceFor(actor: SceneActorState, stage: StoryStageSnapshot, playerAppearance?: ActorDefinition): ActorDefinition | undefined {
+  appearanceFor(actor: SceneActorState, stage: StoryStageSnapshot, playerAppearance?: ActorDefinition): ActorDefinition | undefined {
     const storyAppearance = () => this.app.world.actors[this.app.session.storyWorld.actorAppearance(actor.actor)];
     if (this.isWorldEnemy(actor, stage)) return storyAppearance() ?? actor.appearance
       ?? this.app.battleCatalog.enemies.find(enemy => enemy.id === actor.enemyId)?.actor;

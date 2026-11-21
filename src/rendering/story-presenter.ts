@@ -1,4 +1,5 @@
-import { applyStorySceneAction, hidePendingEntrances, hideUnboundStageActors, resolveStoryScene, syncStoryScene } from '../domain/story-scene.ts';
+import { applyStorySceneAction, boundSceneActor, hidePendingEntrances, hideUnboundStageActors, resolveStoryScene, syncStoryScene } from '../domain/story-scene.ts';
+import { mirroredCollision, NavigationWorld } from '../domain/navigation-world.ts';
 import { prepareSceneVisit } from '../domain/scene-visit.ts';
 import { assertScenePlan, planScene } from '../domain/scene-plan.ts';
 import { diffSceneActors } from '../domain/scene-delta.ts';
@@ -7,7 +8,7 @@ import type { SceneSnapshot } from '../domain/scene-snapshot.ts';
 import { SCENE_KEYS } from '../application/scene-keys.ts';
 import Phaser from 'phaser';
 import type { StoryContext } from '../application/ports.ts';
-import type { ActorDefinition, Facing, TravelDestination } from '../domain/content.ts';
+import type { ActorDefinition, Facing, TravelDestination, WorldMap } from '../domain/content.ts';
 import type { PerformanceAction, PerformancePlayback, StoryCurtain, StoryPresentationPort, StoryStage, StoryStageSnapshot } from '../domain/story-performance.ts';
 import { cameraDuration, mapEffectTone } from '../domain/story-performance.ts';
 import { faceTarget } from '../domain/basic-attack.ts';
@@ -31,6 +32,7 @@ const STORY_CURTAIN_COVERAGE_SCALE = 3;
 
 interface Performer { visual: CharacterVisual; facing: Facing; worldEntityId?: string; unpositioned?:boolean; storyPoseHold?: boolean; clearPose?: () => void }
 type VisualAction = Exclude<PerformanceAction, { type: 'parallel' }>;
+type WalkAction = Extract<VisualAction, { type: 'walk' }>;
 /** 跳过时只需要改逻辑舞台状态的演员动作。 */
 type LogicalSceneAction = Extract<VisualAction, { type: 'town-pose' | 'world-object' | 'appear' | 'show' | 'leave' | 'face' | 'pose' | 'walk' }>;
 
@@ -49,8 +51,9 @@ export class StoryPresenter implements StoryPresentationPort {
   private scenes = new Map<string, SceneSnapshot>();
   private committedScenes = new Map<string, SceneSnapshot>();
   private epoch = 0;
-  /** 当前舞台是否使用动态地图；动态地图的固定走位可能落在别的图上不存在的格子。 */
-  private dynamicStage = false;
+  /** 从正式世界或独立快照接手时用实际地形选点；指定地图的分镜使用已校验的脚本落点。 */
+  private dynamicStage = true;
+  private walkTerrain?: { map: string; navigation: NavigationWorld };
   private closing?: Promise<void>;
   private opening?: Promise<void>;
   private curtain?: Phaser.GameObjects.Rectangle;
@@ -318,20 +321,60 @@ export class StoryPresenter implements StoryPresentationPort {
     this.toneFilter.setActive(enabled);
   }
   private async stage(declaration: StoryStage | StoryStageSnapshot, signal: AbortSignal, pendingEntrances?: readonly string[], skipSignal?: AbortSignal): Promise<void> {
-    // `resolveStoryScene` 会在快照里剥掉 `mapFromWorld`；按快照重建（换姿态、刷新外观）
-    // 仍是同一张动态舞台，不能把来源丢掉，否则后面的走位兜底会失效。
-    this.dynamicStage = 'scene' in declaration ? this.dynamicStage : declaration.mapFromWorld === true;
     const epoch = ++this.epoch;
     const snapshot = await this.resolveStage(declaration, signal, pendingEntrances, !!skipSignal?.aborted);
     signal.throwIfAborted();
     if (epoch !== this.epoch) throw new DOMException('演出实例已更新', 'AbortError');
+    if (this.walkTerrain?.map !== snapshot.map) this.walkTerrain = undefined;
     const rendered = await this.prepareVisual(signal, skipSignal, visualSignal => this.renderStage(snapshot, visualSignal, epoch));
     if (!rendered) {
       if (epoch !== this.epoch) throw new DOMException('演出实例已更新', 'AbortError');
       this.applyLogicalStage(snapshot);
     }
   }
+  private loadStageMap(id: string, signal: AbortSignal): Promise<WorldMap> {
+    const reference = this.app.world.maps.find(map => map.id === id);
+    if (!reference) throw new Error('这片区域的资源尚未准备好');
+    return this.app.content.map(reference.file, signal);
+  }
+
+  private async navigationForWalk(map: string, signal: AbortSignal): Promise<NavigationWorld> {
+    const stage = this.scene(), world = this.requireWorld();
+    const owner = stage.map?.id === map ? stage : world.map?.id === map ? world : undefined;
+    if (owner?.movement?.navigation) return owner.movement.navigation;
+    if (this.walkTerrain?.map === map) return this.walkTerrain.navigation;
+    const epoch = this.epoch;
+    const terrain = owner?.map ?? await this.loadStageMap(map, signal);
+    signal.throwIfAborted();
+    if (epoch !== this.epoch) throw new DOMException('演出实例已更新', 'AbortError');
+    // 尚未画出的舞台只持有本图的地形，并行走位共用同一份查询。
+    if (this.walkTerrain?.map !== map) this.walkTerrain = { map, navigation: new NavigationWorld(terrain) };
+    return this.walkTerrain.navigation;
+  }
+
+  private async resolveWalk(action: WalkAction, signal: AbortSignal): Promise<WalkAction | undefined> {
+    const stage = this.state;
+    const actor = stage && boundSceneActor(stage, action.target);
+    if (!stage || !actor) throw new Error('剧情没有声明对象：' + action.target);
+    if (actor.unpositioned || actor.removed) return undefined;
+    const scene = this.scene();
+    const visual = this.skipping ? undefined : this.actors.get(actor.id)?.visual;
+    const from = visual ? scene.movement!.position(visual) : { x: actor.x, y: actor.y };
+    const appearance = visual?.actor ?? scene.appearanceFor(actor, stage, this.appearance);
+    const shape = { collision: mirroredCollision(appearance?.collision, actor.flip) };
+    const navigation = await this.navigationForWalk(stage.map, signal);
+    signal.throwIfAborted();
+    const destination = navigation.storyWalkDestination(shape, from, action, this.dynamicStage);
+    if (!destination) throw new Error(`剧情道路不可达：${action.target} → (${action.x}, ${action.y})`);
+    if (destination.x === action.x && destination.y === action.y) return action;
+    globalThis.storyDiagnostics?.record('story-walk-fallback', { map: stage.map, target: action.target, from,
+      wanted: { x: action.x, y: action.y }, used: destination }, false);
+    return { ...action, x: destination.x, y: destination.y };
+  }
+
   private async resolveStage(declaration: StoryStage | StoryStageSnapshot, signal: AbortSignal, pendingEntrances?: readonly string[], skipPrefetch = false): Promise<StoryStageSnapshot> {
+    if (!('scene' in declaration)) this.dynamicStage = declaration.mapFromWorld === true;
+    else if (this.state?.map !== declaration.map) this.dynamicStage = true;
     const current = this.captureStage() ?? this.baseline;
     if (current) this.scenes.set(current.map, structuredClone(current.scene));
     const map = declaration.mapFromWorld ? current?.map ?? this.requireWorld().map!.id : declaration.map;
@@ -348,10 +391,8 @@ export class StoryPresenter implements StoryPresentationPort {
         source = this.requireWorld().captureStoryScene();
       if (!source && map === this.requireWorld().map?.id && !declaration.resetActors) source = this.requireWorld().captureStoryScene();
       if (!source) {
-        const reference = this.app.world.maps.find(reference => reference.id === map);
-        if (!reference) throw new Error('这片区域的资源尚未准备好');
         const [worldMap, drops, springs] = await Promise.all([
-          this.app.content.map(reference.file, signal), this.app.content.drops(), this.app.content.springs()
+          this.loadStageMap(map, signal), this.app.content.drops(), this.app.content.springs()
         ]);
         signal.throwIfAborted();
         const player = current?.scene.actors.find(actor => actor.id === 'player')
@@ -381,6 +422,7 @@ export class StoryPresenter implements StoryPresentationPort {
     await this.scene().showStage(snapshot, signal, this.appearance);
     signal.throwIfAborted();
     if (epoch !== this.epoch) throw new DOMException('演出实例已更新', 'AbortError');
+    this.walkTerrain = undefined;
     this.scene().clearEarlyCurtain();
     this.resetActors(true);
     this.state = snapshot;
@@ -488,40 +530,28 @@ export class StoryPresenter implements StoryPresentationPort {
       return () => { camera.off(Phaser.Cameras.Scene2D.Events.PAN_COMPLETE, complete); camera.panEffect.reset(); };
     }, () => camera.centerOn(x, y));
   }
-  /** 返回兜底实际使用的落点；正常走到目标时返回 undefined，调用方沿用原动作坐标。 */
-  private async walk(action: Extract<VisualAction, {type:'walk'}>, playback: PerformancePlayback, batch = false): Promise<{x:number;y:number}|undefined> {
-    const scene = this.scene(), actor = this.actor(action.target), visual = actor.visual, movement = scene.movement!;
+  private async walk(action: WalkAction, playback: PerformancePlayback): Promise<void> {
+    const scene = this.scene(), movement = scene.movement!;
+    const actor = this.actor(action.target), visual = actor.visual;
     actor.clearPose?.(); delete actor.storyPoseHold;
-    if(actor.unpositioned)return;
-    let destination = { x: action.x, y: action.y };
-    let finalFacing = faceTarget(movement.position(visual), destination);
-    // 停用的角色不会被移动世界推进：`MovementBody.update` 在 `!actor.enabled()` 时提前返回，而
-    // `WalkRoute` 的状态只在 `next()` 里推进，等它到站就是永远等——演出卡在这一条上，只能靠玩家
-    // 跳过解开。看不见的角色走位只影响位置（原版照走，只是没画出来），所以落点照写、过程省略。
-    if (!movement.actor(visual).enabled()) {
-      if (!batch) movement.place(visual, destination);
-      this.face(actor, finalFacing);
-      if (action.followCamera) scene.cameras.main.centerOn(destination.x, destination.y);
-      return;
-    }
-    const body = movement.body(visual);
-    const immovable = body.immovable;
-    if (action.followCamera) scene.cameras.main.startFollow(visual.container, true, 1, 1);
-    const settle = () => {
-      movement.stop(visual); body.setImmovable(immovable);
-      if (!batch || !playback.skipSignal.aborted) movement.place(visual, destination);
-      this.face(actor, playback.skipSignal.aborted ? finalFacing : actor.facing);
-      if (action.followCamera) { scene.cameras.main.stopFollow(); scene.cameras.main.centerOn(destination.x, destination.y); }
+    const from = movement.position(visual);
+    const destination = { x: action.x, y: action.y };
+    const facing = from.x === action.x && from.y === action.y ? actor.facing : faceTarget(from, action);
+    const land = () => {
+      movement.place(visual, destination);
+      this.face(actor, facing);
+      if (action.followCamera) scene.cameras.main.centerOn(action.x, action.y);
     };
-    if (playback.skipSignal.aborted) { settle(); return; }
-    body.setImmovable(false);
-    const route = movement.walkTo(visual, destination, action.speedPxPerSecond);
-    let failed = route.state === 'failed';
+    // 隐藏演员没有物理更新，直接写入已经确定的落点。
+    if (!movement.actor(visual).enabled()) { land(); return; }
+    const body = movement.body(visual), immovable = body.immovable;
+    if (action.followCamera) scene.cameras.main.startFollow(visual.container, true, 1, 1);
     try {
+      body.setImmovable(false);
+      const route = movement.walkTo(visual, destination, action.speedPxPerSecond);
       await this.wait(playback, complete => {
         const update = () => {
-          if (route.state === 'failed') { failed = true; complete(); return; }
-          if (route.state === 'arrived') { complete(); return; }
+          if (route.state === 'failed' || route.state === 'arrived') { complete(); return; }
           const dx = body.velocity.x, dy = body.velocity.y;
           if (Math.hypot(dx, dy) > .01) {
             actor.facing = Math.abs(dx) > Math.abs(dy) ? dx < 0 ? 'west' : 'east' : dy < 0 ? 'north' : 'south';
@@ -529,24 +559,16 @@ export class StoryPresenter implements StoryPresentationPort {
           } else this.face(actor, actor.facing);
         };
         scene.events.on(Phaser.Scenes.Events.POST_UPDATE, update); update();
-        return () => { scene.events.off(Phaser.Scenes.Events.POST_UPDATE, update); movement.stop(visual); body.setImmovable(immovable); };
-      }, () => { if (!failed) settle(); });
-      if (failed) {
-        const from = movement.position(visual);
-        const fallback = this.dynamicStage ? movement.nearestWalkable(visual, destination) : undefined;
-        if (fallback && (fallback.x !== destination.x || fallback.y !== destination.y)) {
-          destination = fallback;
-          finalFacing = faceTarget(movement.position(visual), destination);
-          settle();
-          globalThis.storyDiagnostics?.record('story-walk-fallback', { target: action.target,
-            from, wanted: { x: action.x, y: action.y }, used: movement.position(visual),
-            error: route.error?.message, map: this.scene().map?.id }, false);
-          return destination;
-        }
-        throw new Error(`剧情${route.error?.message ?? '道路不可达'}：${action.target} → (${action.x}, ${action.y})`);
-      }
-    } finally { movement.stop(visual); body.setImmovable(immovable); }
-    return undefined;
+        return () => scene.events.off(Phaser.Scenes.Events.POST_UPDATE, update);
+      }, () => {
+        if (route.state === 'failed' && !this.dynamicStage)
+          throw new Error(`剧情${route.error?.message ?? '道路不可达'}：${action.target} → (${action.x}, ${action.y})`);
+        land();
+      });
+    } finally {
+      movement.stop(visual); body.setImmovable(immovable);
+      if (action.followCamera) scene.cameras.main.stopFollow();
+    }
   }
   async parallel(actions: PerformanceAction[], playback: PerformancePlayback): Promise<void> {
     const flatten = (action: PerformanceAction): VisualAction[] => action.type === 'parallel' ? action.actions.flatMap(flatten) : [action];
@@ -607,11 +629,17 @@ export class StoryPresenter implements StoryPresentationPort {
     } else if (placements.length) scene.movement!.placeAll(placements);
   }
   async execute(action: VisualAction, playback: PerformancePlayback, pendingEntrances?: readonly string[]): Promise<void> {
-    await this.executeAction(action, playback, false, pendingEntrances);
+    await this.executeAction(action, playback, pendingEntrances);
   }
-  private async executeAction(action: VisualAction, playback: PerformancePlayback, batch = false,
+  private async executeAction(action: VisualAction, playback: PerformancePlayback,
     pendingEntrances?: readonly string[]): Promise<void> {
     playback.signal.throwIfAborted();
+    if (action.type === 'walk') {
+      const resolved = await this.resolveWalk(action, playback.signal);
+      playback.signal.throwIfAborted();
+      if (!resolved) return;
+      action = resolved;
+    }
     if (playback.skipSignal.aborted && !this.skipping) {
       const current = this.captureStage();
       if (current) this.applyLogicalStage(current); else this.skipping = true;
@@ -731,15 +759,8 @@ export class StoryPresenter implements StoryPresentationPort {
         this.applySceneAction(action); return;
       }
       case 'walk': {
-        const actor=this.actor(action.target);
-        const facing=faceTarget(scene.movement!.position(actor.visual),action);
-        const landed=await this.walk(action, playback, batch);
-        // 走位用了兜底落点时，逻辑坐标也要写兜底点；否则后面的落位会按原阻挡目标
-        // 重新找“最近可站点”，把角色送到不可达的位置。
-        if (!actor.unpositioned) {
-          this.applySceneAction(landed ? { ...action, x: landed.x, y: landed.y } : action);
-          this.face(actor,facing);
-        }
+        await this.walk(action, playback);
+        this.applySceneAction(action);
         return;
       }
       case 'pose': await this.poseAction(action, playback); return;
@@ -868,7 +889,8 @@ export class StoryPresenter implements StoryPresentationPort {
     this.skipping = false;
     this.epoch++;
     this.resetActors(); this.opacity = 0; this.finalStage = undefined; this.baseline = undefined;
-    this.state = undefined;  this.scenes.clear(); this.committedScenes.clear();
+    this.state = undefined; this.walkTerrain = undefined; this.dynamicStage = true;
+    this.scenes.clear(); this.committedScenes.clear();
     this.groundEffects = undefined; this.topEffects = undefined; this.toneFilter = undefined; this.mapEffect = false;
     const scene = this.scene();
     if (scene.sys.isActive() || scene.sys.isPaused() || scene.sys.isSleeping?.()) {

@@ -35,6 +35,7 @@
 - `dom-components.test.ts` 同时覆盖 DOM 小地图、电脑技能行、SVG 冷却、四向移动、触摸取消和改键；`control-settings.test.ts` 覆盖操作模式的持久化与通知。
 
 - `story-stage-isolation.test.ts` 验证加载途中跳过、迟到画面清理、共享启动与真实坐标保留；`story-skip.test.ts` 验证流程阶段及解锁顺序。
+- 「最后的记忆1」的四处铁门入口覆盖正常走位、开场跳过和走位途中跳过，核对实际地图上的落点、镜头和弹窗前补出的画面。
 - `scene-assets.test.ts` 验证已齐全的资源不等待无关下载，以及缺帧修复仍按队列执行。
 - `wardrobe.test.ts` 验证跨场景合成外观复用、独立取消、无外观变化的换装、大动作分批绘制、缓存上限、会话清理及图形上下文恢复；`composition-budget.test.ts` 验证工作预算排除等待时间及中途取消。
 - `warrior-viewer.test.ts` 覆盖独立素材展示器的狂战士主副手组合、四向动作与图集切片、独立外观覆盖、镜像基准点、播放控制和姿势拆包加载。
