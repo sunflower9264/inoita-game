@@ -1,3 +1,4 @@
+import type {MenuContext} from './application/ports.ts';
 import type {CraftingCatalog} from './domain/crafting.ts';
 import { type RecoveryResult } from './domain/recovery-items.ts';
 import type { StatusHudSkin } from './domain/status-hud.ts';
@@ -159,6 +160,7 @@ export class StoryApp {
   syncLifecycle?: () => void;
   /** 标题页与游戏内设置共用的读档入口，装配点在 `main.ts`。 */
   resumeSlot?: (slot:import('./domain/save-game.ts').SaveSlotRef,signal?:AbortSignal) => Promise<void>;
+  validateCloudSave!: MenuContext['validateCloudSave'];
   /** 取当前地图与世界的存档快照；地图、战斗还没就绪时返回 undefined。 */
   captureSaveWorld?: () => SaveWorldResult;
   /** 保存时截当前游戏画面作为存档缩略图。 */

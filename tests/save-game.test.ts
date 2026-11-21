@@ -136,6 +136,15 @@ test('renaming only rewrites the summary name and keeps the saved state untouche
   assert.throws(()=>slots.rename(0,'第二章'),/没有可以改名的存档/);
 });
 
+test('slot summaries, local loads and cloud reads reject the same malformed state',()=>{
+  const slots=new SaveSlots(memory());
+  const game={...record(createSession()),session:[]} as unknown as ReturnType<typeof record>;
+  slots.write(0,game);
+  assert.equal(slots.peek(0).kind,'unreadable');
+  assert.equal(slots.inspect(0).kind,'unreadable');
+  assert.equal(slots.readRaw(0).kind,'unreadable');
+});
+
 test('save names keep only Chinese, English and digits',()=>{
   assert.equal(sanitizeSaveName('第一章 Abc 123！？'),'第一章Abc123');
   assert.equal(sanitizeSaveName('刺杀-格里普顿'),'刺杀格里普顿');

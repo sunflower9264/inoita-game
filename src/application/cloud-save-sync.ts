@@ -2,6 +2,8 @@ import {
   AUTO_SAVE_SLOT,
   MANUAL_SAVE_SLOT_COUNT,
   saveFormatStatus,
+  readSaveRecord,
+  type SaveGame,
   type SaveRawReading,
   type SaveSlotRef,
   type SaveSlots,
@@ -106,7 +108,10 @@ export async function backupLocalSaves<World>(ports: CloudSaveSyncPorts<World>):
  * 把云端存档恢复到本机。下载前先按格式预检；本机同号非空槽覆盖前由 `confirm` 询问。
  * 逐槽下载并写入，网络/鉴权/额度错误停止；已写入的槽位保留，玩家可重试补齐。
  */
-export async function restoreCloudSaves<World>(ports: CloudSaveSyncPorts<World>): Promise<CloudSyncResult> {
+export async function restoreCloudSaves<World>(ports: CloudSaveSyncPorts<World> & {
+  validate(game:SaveGame<World>,signal:AbortSignal):Promise<void>;
+}): Promise<CloudSyncResult> {
+  const signal=ports.signal??new AbortController().signal;
   const listed = await ports.cloud.list(ports.signal);
   if (!listed.ok) return { ok: false, total: 0, completed: 0, failures: [], error: listed.error.message };
   const entries = listed.value;
@@ -149,9 +154,15 @@ export async function restoreCloudSaves<World>(ports: CloudSaveSyncPorts<World>)
       continue;
     }
     try {
-      ports.saves.writeRaw(entry.slot, JSON.stringify(result.value));
+      signal.throwIfAborted();
+      const reading=readSaveRecord<World>(result.value);
+      if(reading.kind!=='ok')throw new Error(reading.reason);
+      await ports.validate(reading.game,signal);
+      signal.throwIfAborted();
+      ports.saves.writeRaw(entry.slot, JSON.stringify(reading.game));
       completed += 1;
     } catch (error) {
+      if(signal.aborted)return {ok:false,total:entries.length,completed,failures,aborted:true};
       failures.push({ slot: entry.slot, reason: error instanceof Error ? error.message : '本机存档写入失败' });
       if (isQuotaError(error)) break;
     }

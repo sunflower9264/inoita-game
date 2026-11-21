@@ -1073,7 +1073,7 @@ export class TitleMenuController {
     let result:CloudSyncResult;
     try{
       result=await restoreCloudSaves({
-        cloud,
+        cloud,validate:this.app.validateCloudSave,
         saves:this.app.saves,
         confirm:message=>this.confirmCloud(message),
         progress:message=>{

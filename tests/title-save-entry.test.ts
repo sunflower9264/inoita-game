@@ -103,7 +103,7 @@ function fixture(gmMode?:MenuContext['gmMode'],cloud?:CloudSavePort){
   const domUi={label:()=>{const label=new FakeDomLabel();domLabels.push(label);return label;}};
   const app:MenuContext={inputRouter:new InputRouter({textInputFocused:()=>false}),saves,gmMode,cloud,ui:{ready:true,suspended:false,setMode:()=>{},loading:()=>{},menuLoaded:()=>{},error:()=>{}},
     loadChangelog:async()=>({version:2,releases:[]}),
-    enterGame:async()=>{events.push('new');},resumeSlot:async(slot,signal)=>{events.push(`load:${slot}`);if(signal)signals.push(signal);}};
+    validateCloudSave:async()=>{},enterGame:async()=>{events.push('new');},resumeSlot:async(slot,signal)=>{events.push(`load:${slot}`);if(signal)signals.push(signal);}};
   Object.defineProperty(app,'domUi',{value:domUi});
   const view=fakeView(1200,640),modal=fakeView(1024,640);
   // 直接借用 TitleMenuController.prototype 的假场景不会跑字段初始化；这里补上新加的私有状态，

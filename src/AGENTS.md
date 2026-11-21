@@ -1,5 +1,7 @@
 # src
 
+本机读档和云档恢复共用 `session-lifecycle.ts` 的候选准备步骤。正式读档在准备成功后安装会话。
+
 游戏源码的家：`app.ts` 负责装配，`main.ts` 创建 Phaser 游戏并注册场景。
 
 ## 文件

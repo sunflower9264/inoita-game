@@ -16,6 +16,26 @@ export function saveFormatStatus(format: unknown): SaveFormatStatus {
   return format > SAVE_FORMAT ? 'future' : 'obsolete';
 }
 
+function isRecord(value:unknown):value is Record<string,unknown> {
+  return value!==null&&typeof value==='object'&&!Array.isArray(value);
+}
+
+/** 读取槽位、备份与导入时共用的存档外层结构。游戏内的引用由正式读档入口校验。 */
+export function readSaveRecord<World>(value:unknown):
+  {kind:'ok';game:SaveGame<World>} | Exclude<SaveRawReading,{kind:'empty'|'ok'}> {
+  if(!isRecord(value))return {kind:'unreadable',reason:'存档内容不是对象'};
+  switch(saveFormatStatus(value.format)){
+    case 'obsolete':return {kind:'obsolete',reason:`存档版本 ${value.format} 过旧`};
+    case 'future':return {kind:'future',reason:`存档版本 ${value.format} 比当前游戏新`};
+    case 'unknown':return {kind:'unreadable',reason:'存档缺少有效版本'};
+  }
+  if(!isRecord(value.session)||!isRecord(value.world))return {kind:'unreadable',reason:'存档缺少会话或世界状态'};
+  const summary=value.summary;
+  if(!isRecord(summary)||typeof summary.classId!=='string'||typeof summary.mapId!=='string'||!Number.isFinite(summary.level))
+    return {kind:'unreadable',reason:'存档摘要无效'};
+  return {kind:'ok',game:value as unknown as SaveGame<World>};
+}
+
 /** 存档写给谁：手动槽用序号（0..9），唯一的自动槽用 `'auto'`。 */
 export type SaveSlotRef = number | typeof AUTO_SAVE_SLOT;
 export const AUTO_SAVE_SLOT = 'auto';
@@ -163,16 +183,11 @@ export class SaveSlots<World = unknown> {
     return this.summaryReadingOf(parsed as Partial<SaveGame<World>>);
   }
   /** 已解析记录的摘要判定；peek、inspect 和写档回填缓存共用，避免三处条件分叉。 */
-  private summaryReadingOf(record:Partial<SaveGame<World>>):SlotSummaryReading {
-    if(!record||typeof record!=='object')return {kind:'unreadable',reason:'存档内容不是对象'};
-    if(typeof record.format==='number'&&!isReadableSaveFormat(record.format))
-      return record.format>SAVE_FORMAT?{kind:'unreadable',reason:'存档版本比当前游戏新'}:{kind:'empty'};
-    if(!isReadableSaveFormat(record.format))return {kind:'unreadable',reason:'存档缺少有效版本'};
-    if(!record.session||!record.world)return {kind:'unreadable',reason:'存档缺少会话或世界状态'};
-    const summary=record.summary;
-    if(!summary||typeof summary.classId!=='string'||typeof summary.mapId!=='string'||!Number.isFinite(summary.level))
-      return {kind:'unreadable',reason:'存档摘要无效'};
-    return {kind:'ok',summary};
+  private summaryReadingOf(record:unknown):SlotSummaryReading {
+    const reading=readSaveRecord<World>(record);
+    if(reading.kind==='ok')return {kind:'ok',summary:reading.game.summary};
+    if(reading.kind==='obsolete')return {kind:'empty'};
+    return {kind:'unreadable',reason:reading.reason};
   }
   inspect(ref:SaveSlotRef):SlotReading<World> {
     const key=this.key(ref);
@@ -203,20 +218,9 @@ export class SaveSlots<World = unknown> {
     let parsed:unknown;
     try { parsed=JSON.parse(raw); }
     catch { return {kind:'unreadable',reason:'存档内容不是有效 JSON'}; }
-    if(!parsed||typeof parsed!=='object'||Array.isArray(parsed))
-      return {kind:'unreadable',reason:'存档内容不是对象'};
-    const record=parsed as Partial<SaveGame<World>>;
-    const status=saveFormatStatus(record.format);
-    if(status==='future')return {kind:'future',reason:`存档版本 ${String(record.format)} 比当前游戏新`};
-    if(status==='obsolete')return {kind:'obsolete',reason:`存档版本 ${String(record.format)} 过旧`};
-    if(status==='unknown')return {kind:'unreadable',reason:'存档缺少有效版本'};
-    if(!record.session||typeof record.session!=='object'||Array.isArray(record.session)||
-      !record.world||typeof record.world!=='object'||Array.isArray(record.world))
-      return {kind:'unreadable',reason:'存档缺少会话或世界状态'};
-    const summary=record.summary;
-    if(!summary||typeof summary.classId!=='string'||typeof summary.mapId!=='string'||!Number.isFinite(summary.level))
-      return {kind:'unreadable',reason:'存档摘要无效'};
-    return {kind:'ok',raw,summary,format:record.format as number};
+    const reading=readSaveRecord<World>(parsed);
+    if(reading.kind!=='ok')return reading;
+    return {kind:'ok',raw,summary:reading.game.summary,format:reading.game.format};
   }
   /**
    * 写入云端下载的原始 JSON。只接受 `readRaw` 判为有效的档；未来/过旧/损坏不落地。

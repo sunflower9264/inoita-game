@@ -8,7 +8,7 @@ import type {AutoSaver} from './application/auto-save.ts';
 import type {StoryWorldViewSnapshot} from './application/world-snapshot.ts';
 import {SavedGameLoader} from './application/saved-game-loader.ts';
 import {prepareSavedGame} from './application/saved-game.ts';
-import {AUTO_SAVE_SLOT,type SaveSlotRef} from './domain/save-game.ts';
+import {AUTO_SAVE_SLOT,type SaveGame,type SaveSlotRef} from './domain/save-game.ts';
 import {SCENE_KEYS} from './application/scene-keys.ts';
 import {nextStoryMap} from './domain/story-preparation.ts';
 import {StoryPresenter} from './rendering/story-presenter.ts';
@@ -50,6 +50,24 @@ export function createSessionLifecycle(app:StoryApp,hooks:SessionLifecycleHooks)
     app.gm=undefined;delete globalThis.gm;
     app.clearMapPrefetch();app.clearStoryPrefetch();ui.resetInput();
   }
+  async function prepareCandidate(game:SaveGame<StoryWorldViewSnapshot>,request:AbortSignal,slot?:SaveSlotRef) {
+    request.throwIfAborted();
+    app.storyClasses=await app.content.storyClasses(request);
+    request.throwIfAborted();
+    await prepareStory(request);
+    request.throwIfAborted();
+    let candidate:ReturnType<typeof prepareSavedGame>;
+    try { candidate=prepareSavedGame(game,app); }
+    catch(error){
+      if(slot===undefined)throw error;
+      globalThis.storyDiagnostics?.record('load-validation-failed',{slot,
+        reason:error instanceof Error?error.message:String(error)},false);
+      throw new Error('游戏存档出错。无法正常进行游戏。');
+    }
+    await app.content.map(candidate.map.file,request);
+    request.throwIfAborted();
+    return candidate;
+  }
   async function resumeSlot(slot:SaveSlotRef,signal?:AbortSignal):Promise<void> {
     // 压测不读写存档；要读档先返回标题，避免把压测会话和存档会话混在一起。
     if(app.pressureMode)return;
@@ -67,16 +85,7 @@ export function createSessionLifecycle(app:StoryApp,hooks:SessionLifecycleHooks)
           const reading=app.saves.inspect(selectedSlot);
           if(reading.kind!=='ok')throw new Error(reading.kind==='empty'?'没有可以载入的存档。':'游戏存档出错。无法正常进行游戏。');
           ui.loading('正在读取存档…');
-          app.storyClasses=await app.content.storyClasses(request);request.throwIfAborted();
-          await prepareStory(request);request.throwIfAborted();
-          let candidate:ReturnType<typeof prepareSavedGame>;
-          try { candidate=prepareSavedGame(reading.game,app); }
-          catch(error){
-            globalThis.storyDiagnostics?.record('load-validation-failed',{slot:selectedSlot,
-              reason:error instanceof Error?error.message:String(error)},false);
-            throw new Error('游戏存档出错。无法正常进行游戏。');
-          }
-          await app.content.map(candidate.map.file,request);request.throwIfAborted();
+          const candidate=await prepareCandidate(reading.game,request,selectedSlot);
           ui.loading('正在准备游戏菜单…',0.15);
           await prepareMenuCore(request,value=>ui.loading('正在准备游戏菜单…',0.15+0.35*value));
           refreshMenuWhenReady(request);
@@ -350,6 +359,6 @@ export function createSessionLifecycle(app:StoryApp,hooks:SessionLifecycleHooks)
     recordSceneChange(SCENE_KEYS.menu, { source: 'return' });
     app.audio?.enterMenu();
   }
-  return {install:installSession,load:resumeSlot,exit:returnToMenu,stopCurrentWork,
+  return {install:installSession,load:resumeSlot,prepareCandidate,exit:returnToMenu,stopCurrentWork,
     get busy(){return savedGameLoader.busy;}};
 }

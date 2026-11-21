@@ -35,7 +35,7 @@ interface CloudHarness {
 function cloudStub(options:{
   entries?:CloudSaveEntry[];
   uploadError?:(slot:SaveSlotRef)=>CloudSaveError|undefined;
-  download?:()=>unknown;
+  download?:(slot:SaveSlotRef)=>unknown;
 }={}):CloudHarness {
   const uploads:{slot:SaveSlotRef;game:unknown}[]=[];
   const downloads:SaveSlotRef[]=[];
@@ -56,7 +56,7 @@ function cloudStub(options:{
     },
     download:async(slot)=>{
       downloads.push(slot);
-      return {ok:true,value:options.download?.()??JSON.parse(save())};
+      return {ok:true,value:options.download?.(slot)??JSON.parse(save())};
     },
     forget(){},
   };
@@ -102,7 +102,7 @@ test('backup stops on a network error but keeps the already uploaded slots',asyn
 test('restore skips incompatible cloud formats and writes the valid slots',async()=>{
   const s=storage(),slots=new SaveSlots(s);
   const cloud=cloudStub({entries:[entry(0),entry(1,SAVE_FORMAT+1)]});
-  const result=await restoreCloudSaves({cloud:cloud.port,saves:slots,confirm:async()=>true});
+  const result=await restoreCloudSaves({cloud:cloud.port,saves:slots,confirm:async()=>true,validate:async()=>{}});
   assert.equal(result.total,2);
   assert.equal(result.completed,1);
   assert.deepEqual(result.failures.map(item=>item.slot),[1]);
@@ -115,7 +115,7 @@ test('restore asks before overwriting local slots and does nothing when cancelle
   const s=storage({'inotia4.story.v1.slot0':save()});
   const slots=new SaveSlots(s),cloud=cloudStub({entries:[entry(0)]});
   let asked=0;
-  const result=await restoreCloudSaves({cloud:cloud.port,saves:slots,confirm:async()=>{asked+=1;return false;}});
+  const result=await restoreCloudSaves({cloud:cloud.port,saves:slots,confirm:async()=>{asked+=1;return false;},validate:async()=>{}});
   assert.equal(asked,1);
   assert.equal(result.cancelled,true);
   assert.equal(cloud.downloads.length,0);
@@ -130,10 +130,34 @@ test('restore stops when the local storage is full and reports the failure',asyn
   };
   const slots=new SaveSlots(full);
   const cloud=cloudStub({entries:[entry(0),entry(1)]});
-  const result=await restoreCloudSaves({cloud:cloud.port,saves:slots,confirm:async()=>true});
+  const result=await restoreCloudSaves({cloud:cloud.port,saves:slots,confirm:async()=>true,validate:async()=>{}});
   assert.equal(result.completed,0);
   assert.deepEqual(result.failures.map(item=>item.slot),[0]);
   assert.deepEqual(cloud.downloads,[0],'配额失败后不再继续下载');
+});
+
+test('a rejected candidate keeps the original slot and a later valid download is restored',async()=>{
+  const original=save(SAVE_FORMAT,'original');
+  const memory=storage({'inotia4.story.v1.slot0':original}),slots=new SaveSlots<{location:{map:string}}>(memory);
+  const cloud=cloudStub({entries:[entry(0),entry(1)],download:slot=>{
+    const game=JSON.parse(save());if(slot===0)game.world.location.map='retired-map';return game;
+  }});
+  const result=await restoreCloudSaves({cloud:cloud.port,saves:slots,confirm:async()=>true,
+    validate:async game=>{if(game.world.location.map!=='camp')throw new Error('存档记录的地图或位置无效');}});
+  assert.equal(memory.entries.get('inotia4.story.v1.slot0'),original);
+  assert.deepEqual(result.failures,[{slot:0,reason:'存档记录的地图或位置无效'}]);
+  assert.equal(result.completed,1);
+  assert.equal(slots.peek(1).kind,'ok');
+});
+
+test('leaving during candidate validation prevents the downloaded slot from being written',async()=>{
+  const slots=new SaveSlots(storage()),controller=new AbortController();
+  const cloud=cloudStub({entries:[entry(0)]});
+  const result=await restoreCloudSaves({cloud:cloud.port,saves:slots,signal:controller.signal,
+    confirm:async()=>true,validate:async()=>{controller.abort();}});
+  assert.equal(result.aborted,true);
+  assert.equal(result.completed,0);
+  assert.equal(slots.peek(0).kind,'empty');
 });
 
 test('an aborted signal stops the batch before the first write',async()=>{
