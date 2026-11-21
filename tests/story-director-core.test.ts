@@ -160,6 +160,32 @@ test('a quest completion popup finishes before the follow-up story starts',async
   assert.ok(log.indexOf('popup:complete:grafton-mission')<log.indexOf('begin'),'弹窗先结束，演出才开演');
 });
 
+test('手动剧情或收尾报错时，任务变化要等重试成功后才开演一次',async()=>{
+  for(const failure of ['popup','cleanup']){
+    const campaign:Campaign={...base,quests:[quest('gift')],scripts:{follow:{entry:'after',nodes:[node('after')]}},
+      events:[{id:'follow',source:'quest',key:'gift',script:'follow'}]};
+    const session=new Session(campaign);
+    const ui:StoryUI={async dialogue(){},async choice(_prompt,options){return options[0];},async questPopup(){},toast(){},closeDialogue(){},skipDialogue(){}};
+    let fail=true,played=0;
+    const director=new StoryDirector(campaign,session,ui,()=>{},{begin(){},async execute(){},async finish(){},
+      async release(){if(fail&&failure==='cleanup')throw new Error(failure);}});
+    director.onEventCompleted=()=>{played++;};
+    await assert.rejects(director.run(async()=>{
+      session.accept('gift');await tick();
+      if(failure==='popup')throw new Error(failure);
+    }),new RegExp(failure));
+    await tick();assert.equal(director.runtime.eventStatus('follow'),'idle');
+    if(failure==='cleanup'){
+      await assert.rejects(director.retry(),/cleanup/);
+      assert.equal(played,0);
+    }
+    fail=false;await director.retry();await tick();
+    assert.equal(director.runtime.eventStatus('follow'),'completed');
+    await director.retry();assert.equal(played,1);
+    director.dispose();
+  }
+});
+
 test('the presentation-start hook fires once, after the first stage is drawn',async()=>{
   const play=node('play');play.presentation=[stage,{type:'wait',durationMs:0}];
   const order:string[]=[];

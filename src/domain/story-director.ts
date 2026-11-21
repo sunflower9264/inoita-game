@@ -47,6 +47,7 @@ export class StoryDirector {
   private readonly world?: StoryWorldPort;
   readonly runtime: StoryRuntime;
   private manualBusy = false;
+  private deferManualTriggers = false;
   private manual = new AbortController();
   private skipping = false;
   private choosing = false;
@@ -180,6 +181,7 @@ export class StoryDirector {
       if (this.restoring || this.restorationVersion !== session.restorationVersion) {
         if (!this.restoring) {
           this.restorationVersion = session.restorationVersion;
+          this.deferredTriggers.length = 0; this.deferManualTriggers = false;
           this.runtime.restore(session.runtimeState); this.recovery = undefined; this.completedEventPending = undefined; this.projectionPending = true;
           this.projectionStage = undefined; this.travelPending = undefined; this.travelApplied = false;
         }
@@ -281,6 +283,7 @@ export class StoryDirector {
   }
   cancel(): void {
     this.onSkipProgress?.('cancelled');
+    this.deferredTriggers.length = 0; this.deferManualTriggers = false;
     this.manual.abort(); this.runtime.cancel(); this.ui.closeDialogue();
     if (!this.runtime.busy && !this.manualBusy) this.release();
   }
@@ -573,10 +576,11 @@ export class StoryDirector {
    * 演出等于在弹窗背后跑完。排到这次手动播放完全收起之后再派发。
    */
   private triggerAfterManual(run: () => void): void {
-    if (!this.manualBusy) { run(); return; }
+    if (!this.manualBusy && !this.deferManualTriggers) { run(); return; }
     this.deferredTriggers.push(run);
   }
   private flushDeferredTriggers(): void {
+    this.deferManualTriggers = false;
     for (const run of this.deferredTriggers.splice(0)) run();
   }
   /**
@@ -601,7 +605,13 @@ export class StoryDirector {
     return this.notify('near', event.id, map, entity.id);
   }
   enterRegion(id: string, map: string): Promise<boolean> { return this.notify('region', this.campaign.events.find(event=>event.id===id)?.key ?? id, map); }
-  retry(): Promise<boolean> { return this.request(this.runtime.resume()); }
+  async retry(): Promise<boolean> {
+    const retryManual = this.deferManualTriggers && !this.manualBusy;
+    if (retryManual) await this.cleanup.catch(() => { this.release(); return this.cleanup; });
+    const played = await this.request(this.runtime.resume());
+    if (retryManual) this.flushDeferredTriggers();
+    return played;
+  }
   encounterResult(id: string, outcome: string, resultId: string): Promise<boolean> {
     const waiting = this.runtime.snapshot().runs.some(run=>run.status==='waiting'&&run.waiting?.encounter===id);
     if (waiting) return this.request(this.runtime.encounterResult(id, outcome, resultId));
@@ -620,16 +630,20 @@ export class StoryDirector {
     return name ? this.request(this.runtime.start(name)) : false;
   }
   async run(work: () => Promise<unknown>): Promise<boolean> {
-    if (this.busy || this.disposed) return false;
-    this.manual = new AbortController(); this.manualBusy = true; this.resetPlayback(); this.setLocked(true);
-    try { await work(); this.manual.signal.throwIfAborted(); return true; }
-    catch (error) { if (this.manual.signal.aborted || error instanceof DOMException && error.name === 'AbortError') return false; throw error; }
-    finally {
-      this.manualBusy = false; this.release();
-      try { await this.cleanup; }
-      // 即使收尾报错，排队的触发也要落地：它的错误走 onError，而不是留一个永远不演的队列。
-      finally { this.flushDeferredTriggers(); }
+    if (this.busy || this.disposed || this.deferManualTriggers) return false;
+    this.manual = new AbortController(); this.manualBusy = true; this.deferManualTriggers = true;
+    this.resetPlayback(); this.setLocked(true);
+    try {
+      try { await work(); this.manual.signal.throwIfAborted(); }
+      finally { this.manualBusy = false; this.release(); await this.cleanup; }
+    } catch (error) {
+      if (this.manual.signal.aborted || error instanceof DOMException && error.name === 'AbortError') {
+        this.flushDeferredTriggers(); return false;
+      }
+      throw error;
     }
+    this.flushDeferredTriggers();
+    return true;
   }
   visitHealer(actor: ActorDefinition, revive: () => void): Promise<boolean> {
     return this.run(async () => {
