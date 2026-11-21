@@ -677,7 +677,7 @@ export class QuestBook {
    * 来源簿的状态。提交侧用 `adopt` 把沙盒的结果拿回去。
    */
   /** 接管另一个（同一份任务定义）任务簿的状态根；对方此后的提交与本次接管互不影响。 */
-  prepareRestore(input: QuestBookState): QuestRestorePlan {
+  prepareRestore(input: QuestBookState, sessionSequences?:readonly (readonly [string,number])[]): QuestRestorePlan {
     const next = structuredClone(input);
     if (next.version !== QUEST_BOOK_STATE_VERSION) throw new Error('任务快照版本不支持');
     if (new Set(next.quests.map(([id]) => id)).size !== next.quests.length) throw new Error('任务快照标识重复');
@@ -702,8 +702,22 @@ export class QuestBook {
       throw new Error(`任务运行池引用无效：${id}`);
     for (const [id, state] of states) if (['active', 'ready'].includes(state.status) && !running.has(id))
       throw new Error(`任务运行池缺少任务：${id}`);
-    if (new Set(next.factSequences.map(([source]) => source)).size !== next.factSequences.length) throw new Error('任务事实来源重复');
-    for (const [source, sequence] of next.factSequences) { if (!source) throw new Error('任务事实来源为空'); integer(sequence, 1, '事实序号'); }
+    const sequences=new Map<string,number>();
+    const merge=(entries:readonly (readonly [string,number])[],minimum:number)=>{
+      if(!Array.isArray(entries))throw new Error('任务事实序号无效');
+      const seen=new Set<string>();
+      for(const entry of entries){
+        if(!Array.isArray(entry)||entry.length!==2)throw new Error('任务事实序号无效');
+        const [source,sequence]=entry;
+        if(typeof source!=='string'||!source)throw new Error('任务事实来源为空');
+        if(seen.has(source))throw new Error('任务事实来源重复');
+        seen.add(source);integer(sequence,minimum,'事实序号');
+        if(sequence>(sequences.get(source)??0))sequences.set(source,sequence);
+      }
+    };
+    merge(next.factSequences,1);
+    if(sessionSequences!==undefined)merge(sessionSequences,0);
+    next.factSequences=[...sequences];
     next.quests = [...states];
     // `next` 已经是入参的私有克隆，`freeze` 会连它一起冻住，不必再克隆一次。
     const plan: QuestRestorePlan = freeze({ baseRevision: this.revision, nextState: next });

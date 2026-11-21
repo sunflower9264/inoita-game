@@ -1,5 +1,7 @@
 # src/domain
 
+任务簿为对话、击杀等每种来源记录最近的任务事件序号。格式 1 存档保留两处序号，读取时对每个来源取较大值。
+
 「圣徒之牺牲」的资格、物理门槛、魔法抗性和伤害分摊由 `resolveHolySacrifice` 判定。
 
 `Session.openChest` 一次提交开启记录、箱中敌人、保底和掉落。地面物品由 `Session.placeGroundRewards` 按背包规则生成实例。

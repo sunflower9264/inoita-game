@@ -19,6 +19,26 @@ function quest(id:string,patch:Partial<CampaignQuest>={}):CampaignQuest {
     progressText:'continue',completeText:'thanks',...patch};
 }
 
+test('format one resumes each fact source at its highest saved sequence',()=>{
+  const session=new Session(campaign([])),state=structuredClone(session.captureState());
+  state.factSequences=[['talk',7],['combat',2],['unused',0]];
+  state.questBook.factSequences=[['talk',3],['combat',5],['recruit',4]];
+  session.restoreState(state);
+  assert.equal(session.nextQuestFact('talk','guard','talk').occurrence.sequence,8);
+  assert.equal(session.questBook.factSequence('talk'),7);
+  const before=session.captureState();
+  assert.deepEqual(before.factSequences,before.questBook.factSequences);
+  assert.equal(session.questBook.factSequence('combat'),5);
+  assert.equal(session.questBook.factSequence('recruit'),4);
+  const receipt=session.applyStoryCommands([{type:'talk',target:'guard'}],undefined,{deferFinalize:true});
+  assert.equal(session.questBook.factSequence('talk'),8);
+  receipt.rollback();assert.deepEqual(session.captureState().factSequences,before.factSequences);
+  for(const invalid of [ [['talk',-1]], [['talk',0],['talk',2]] ] as [string,number][][]){
+    assert.throws(()=>session.restoreState({...state,factSequences:invalid}),/序号|重复/);
+  }
+  assert.throws(()=>session.restoreState({...state,questBook:{...state.questBook,factSequences:[['talk',0]]}}),/序号/);
+});
+
 test('explicit re-admission starts a fresh settlement cycle while duplicate completion stays idempotent',()=>{
   const session=new Session(campaign([quest('again',{rewards:{experience:0,money:5,items:[]}})]));
   for(const type of ['accept','accept','script-ready'] as const){

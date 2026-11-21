@@ -107,7 +107,7 @@ interface StoryCommandBaseline {
   skills?:SkillConfigurationState;
   restoreParty?:()=>void;
   departures?:Map<string,()=>void>;
-  quests?:{checkpoint:QuestBookCheckpoint;factSequences:[string,number][]};
+  quests?:QuestBookCheckpoint;
   world?:StoryWorldSnapshot;
   /** 完成遭遇被历史上限裁掉时，同一批次会删除它的一次性敌人状态；回滚必须一起恢复。 */
   enemies?:[string,EnemyState][];
@@ -244,7 +244,6 @@ export class Session {
   private runtimeValidator?:StoryRuntime;
   /** 任务 id → 最新一张奖励收据；可重复任务跨周期只保留当前轮。 */
   private readonly receipts = new Map<string,QuestSettlement>();
-  private readonly factSequences = new Map<string,number>();
   /**
    * 每个选择标识被写入的次数，值相同也加一。剧情选择事件靠它判断“玩家又选了一次”，
    * 不能只看选择值有没有变化，否则重复选同一个选项会被当成没发生。
@@ -564,7 +563,7 @@ export class Session {
     return {classId:this.hero?.classId??this.character?.classId,
       questBook:questBookState,storyWorld,runtime:this.runtimeSnapshot,
       receipts,
-      factSequences:[...this.factSequences],trackedQuest:this.trackedQuest,player:this.playerState,money:this.coins,gameTimeMs:this.gameTimeMs,
+      factSequences:questBookState.factSequences.map(([source,value])=>[source,value]),trackedQuest:this.trackedQuest,player:this.playerState,money:this.coins,gameTimeMs:this.gameTimeMs,
       enemies,bag,hero:this.hero?.captureState(),skills:this.skills.captureState(),
       party:this.party?.captureState(),recovery:this.recovery.captureState(),resourceRecovery:this.resourceRecovery.captureState(),
       combatClock:this.combatClock.captureState(),cooldowns:this.cooldowns.captureState(),frenzyAnimations:this.frenzyAnimations.captureState(),chests,springs:this.springs.captureState(),legendaryWeapons:this.legendaryWeapons.captureState(),shops:this.shops.captureState(),
@@ -588,7 +587,6 @@ export class Session {
     // 外部恢复已在 `prepareRuntime` 校验过；回滚拿到的是本项目刚产出的不可变快照。
     this.runtimeSnapshot=restored.runtime;
     this.restoreReceipts(restored.receipts);
-    this.factSequences.clear();for(const [source,sequence]of restored.factSequences)this.factSequences.set(source,sequence);
     this.enemyStates.clear();for(const [id,enemy] of restored.enemies)this.enemyStates.set(id,enemy);this.enemyRevisionValue++;this.enemySpawnRevisionValue++;
     this.trackedQuest=restored.trackedQuest;this.playerState=restored.player?Object.freeze({...restored.player}):undefined;
     this.coins=restored.money;this.gameTimeMs=restored.gameTimeMs;
@@ -681,7 +679,9 @@ export class Session {
     this.performanceLogging=false;this.performanceTouched=new Set();this.performanceBaseline={};
     const restored=structuredClone(state);
     if(restored.classId!==(this.hero?.classId??this.character?.classId)||!!restored.hero!==!!this.hero||!!restored.party!==!!this.party)throw new Error('检查点与当前游戏角色不一致');
-    this.questBook.prepareRestore(restored.questBook);this.storyWorld.prepareRestore(restored.storyWorld);this.prepareRuntime(restored.runtime);
+    if(!Array.isArray(restored.factSequences))throw new Error('检查点任务事实序号无效');
+    restored.questBook=this.questBook.prepareRestore(restored.questBook,restored.factSequences).nextState;
+    this.storyWorld.prepareRestore(restored.storyWorld);this.prepareRuntime(restored.runtime);
     this.validateInventoryState(restored);this.validateSkillState(restored);
     const ground=new GroundLootStore();ground.restoreState(restored.groundLoot);
     new QuestItemGenerators().restoreState(restored.questItemGeneration,ground);
@@ -704,7 +704,6 @@ export class Session {
       (!Number.isFinite(enemy.offscreenRespawnAt)||enemy.offscreenRespawnAt<0||typeof enemy.deadUntil!=='number'||enemy.offscreenRespawnAt>enemy.deadUntil||!!enemy.capture)))throw new Error('检查点敌人刷新时间无效');
     if(restored.enemies.some(([,enemy])=>enemy.capture!==undefined&&(!enemy.capture||typeof enemy.capture.map!=='string'||!enemy.capture.map||
       !Number.isSafeInteger(enemy.capture.visit)||enemy.capture.visit<0||enemy.capture.visit>restored.storyWorld.mapVisit||enemy.deadUntil!=='permanent')))throw new Error('检查点捕捉来源无效');
-    if(new Set(restored.factSequences.map(([id])=>id)).size!==restored.factSequences.length||restored.factSequences.some(([id,value])=>!id||!Number.isSafeInteger(value)||value<0))throw new Error('检查点任务事实序号无效');
     const before=this.captureState(),pending=this.pendingNotification;
     this.batchNotifications(()=>{
       try{this.restoreUnchecked(restored);this.refresh();this.releaseReadyQuestActors();this.restoreRevision++;this.emit();}
@@ -1135,8 +1134,7 @@ export class Session {
     return this.interactWithFeedback(target,instance,characterId).advanced;
   }
   nextQuestFact(kind:QuestFact['kind'],target:string,source:string=kind):QuestFact {
-    // 两个来源都要看：会话级 `factSequences` 是提交时同步的镜像，任务簿里那份才是权威。
-    const prior=Math.max(this.factSequences.get(source)??0,this.questBook.factSequence(source));
+    const prior=this.questBook.factSequence(source);
     return {kind,target,occurrence:{source,sequence:prior+1}};
   }
   recordQuestFact(kind:QuestFact['kind'],target:string,source:string=kind):void {
@@ -1360,7 +1358,7 @@ export class Session {
     if(touched.has('hero')&&this.hero)baseline.hero=this.hero.captureState();
     if(touched.has('skills'))baseline.skills=this.skills.captureState();
     if(touched.has('party')&&this.party)baseline.restoreParty=this.party.checkpoint();
-    if(touched.has('questBook'))baseline.quests={checkpoint:this.questBook.checkpoint(),factSequences:[...this.factSequences]};
+    if(touched.has('questBook'))baseline.quests=this.questBook.checkpoint();
     if(touched.has('storyWorld')){
       baseline.world=this.storyWorld.captureState();
       baseline.choiceWrites=[...this.choiceWrites];
@@ -1385,8 +1383,7 @@ export class Session {
     if(touched.has('party'))baseline.restoreParty?.();
     if(baseline.departures)for(const restore of baseline.departures.values())restore();
     if(touched.has('questBook')){
-      this.questBook.rollbackTo(baseline.quests!.checkpoint);
-      this.factSequences.clear();for(const[source,sequence]of baseline.quests!.factSequences)this.factSequences.set(source,sequence);
+      this.questBook.rollbackTo(baseline.quests!);
       this.questProjection=undefined;this.questsProjection=undefined;
     }
     if(touched.has('storyWorld')){
@@ -1432,8 +1429,6 @@ export class Session {
       this.receipts.set(receipt.quest,structuredClone(receipt));this.receiptRevisionValue++;
     }
     this.questBook.commit(plan);
-    // `fact` 也走任务命令；会话级事实序号是提交侧的镜像。
-    if(command.type==='fact')this.factSequences.set(command.fact.occurrence.source,this.questBook.factSequence(command.fact.occurrence.source));
     this.recordQuestProjection();
   }
   /**
