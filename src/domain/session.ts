@@ -557,7 +557,7 @@ export class Session {
     const captureEnemies=():SessionState['enemies']=>[...this.enemyStates].map(([id,enemy])=>[id,structuredClone(enemy)]);
     const captureReceipts=():SessionState['receipts']=>[...this.receipts.values()].map(receipt=>structuredClone(receipt));
     const questBookState=reuse
-      ?this.cachedSnapshot('questBook',this.questBook.version,()=>this.questBook.captureState())
+      ?this.cachedSnapshot('questBook',this.questBook.stateVersion,()=>this.questBook.captureState())
       :(questBook??this.questBook.captureState());
     const storyWorld=reuse
       ?this.cachedSnapshot('storyWorld',this.storyWorld.revision,()=>this.storyWorld.captureState())
