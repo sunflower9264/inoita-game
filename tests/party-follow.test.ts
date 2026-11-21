@@ -21,11 +21,13 @@ function setup(blocked=(_p:Point)=>false){
   return {actor,leader,follower,port,step,rescues:()=>rescues};
 }
 
-function setupOccupiedFollow(blockerBounds={x:-8,y:-8,width:16,height:16}){
+function setupOccupiedFollow(
+  blockerBounds={x:-8,y:-8,width:16,height:16},
+  navigation=new NavigationWorld({name:'occupied follow route',bounds:{x:0,y:0,width:320,height:240}}),
+){
   const run=setup();
   run.actor.position={x:40,y:120};
   run.leader.position={x:220,y:120};
-  const navigation=new NavigationWorld({name:'occupied follow route',bounds:{x:0,y:0,width:320,height:240}});
   const self={
     position:()=>run.actor.position,
     shape:()=>({collision:run.actor.bounds}),
@@ -208,4 +210,36 @@ test('a genuinely closed passage still permits rescue after repeated failed rout
   for(let frame=0;frame<180;frame++)run.step();
   assert.equal(run.rescues(),1);
   assert(run.follower.diagnostics.recoveries>=2);
+});
+
+test('a follower resumes around the corner when a doorway opens during an occupied-route retry',()=>{
+  const columns=50,rows=50;
+  const blocked=Array.from({length:columns*rows},(_,index)=>index%columns===24&&Math.floor(index/columns)!==8);
+  const navigation=new NavigationWorld({name:'room with narrow doorway',tileSize:16,columns,rows,blocked});
+  const run=setupOccupiedFollow(undefined,navigation);
+  run.actor.position={x:360,y:136};
+  run.leader.position={x:520,y:136};
+  run.blocker.position={x:392,y:136};
+  const capture=run.port.navigationSnapshot!;
+  let snapshots=0,rescues=0;
+  run.port.navigationSnapshot=()=>{
+    snapshots++;
+    return capture();
+  };
+  run.port.regroup=()=>{rescues++;return false;};
+  // 大房间需要跨多帧搜索；等第一次确认门被堵住，再在重试期间放行。
+  for(let frame=0;frame<300&&snapshots<2;frame++)run.step();
+  assert.equal(snapshots,2);
+  const stopped={...run.actor.position},goal={x:468,y:110};
+  run.blocker.position.y=-100;
+  assert.equal(canTraverse(stopped,goal,run.port.canStand),false,'出门后还需转弯，不能只检查到终点的直线');
+  for(let frame=0;frame<2;frame++)run.step();
+  assert(Math.hypot(run.actor.position.x-stopped.x,run.actor.position.y-stopped.y)>4,'门打开后应在下一次决策前恢复行走');
+  for(let frame=0;frame<80;frame++){
+    const previous={...run.actor.position};
+    run.step();
+    assert(canTraverse(previous,run.actor.position,run.port.canStand));
+  }
+  assert(Math.hypot(run.actor.position.x-goal.x,run.actor.position.y-goal.y)<=12);
+  assert.equal(rescues,0);
 });

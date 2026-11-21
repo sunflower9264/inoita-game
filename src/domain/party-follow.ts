@@ -167,7 +167,8 @@ export class PartyFollow {
           if(result.status==='found'){let closest=0;for(let i=1;i<result.path.length;i++){if(distance(actor.position,result.path[i]!)>=distance(actor.position,result.path[closest]!))break;closest=i;}this.path=result.path.slice(closest);}
           else{
             this.failures++;
-            this.path=[];
+            // 人物占位只属于这次搜索；旧路线仍逐步查实时碰撞，挡路者移开后可以继续走。
+            if(!this.routeAroundActors)this.path=[];
             this.attemptStalled=0;
             this.nextRetry=this.clock+600;
             this.diagnostics.recoveries++;
