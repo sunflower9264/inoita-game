@@ -1,7 +1,5 @@
 # 游戏架构与修改入口
 
-剧情离队由会话负责。离队成功会清除该伙伴的战斗记忆，批次失败或演出撤销会恢复原先的冷却截止时间、无冷却开关和狂暴动作帧数。
-
 本目录是 Phaser 4.2.1 + TypeScript 独立工程。游戏运行、测试和构建只使用本目录的源码、内容和资源；`public/` 是随游戏版本管理的素材与内容。
 
 本页提供修改入口和必须保持的状态边界。剧情字段写法见 [剧情与任务创作](story-content.md)，音频生命周期见 [音频](audio.md)，手机报错收集见 [诊断说明](diagnostics.md)，掉落判定见 [物品掉落](drops.md)。规则以根 [AGENTS.md](../AGENTS.md) 为准；具体行为以表中源码及相应内容为准。
@@ -27,6 +25,30 @@
 | 音效和背景音乐 | `application/game-audio.ts` | `scenes/audio-scene.ts`、`content/audio.json` | `game-audio` |
 | 存档和安全检查点 | `save-game.ts`、`session-checkpoint.ts`、`session.ts`、`combat-snapshot.ts` | `application/saved-game*.ts`、`world-scene.ts`、`ui/phaser/save-board.ts` | `save-game`、`saved-game`、`checkpoint`、`combat-snapshot` |
 | 云存档与账号 | `domain/cloud-save.ts` | `application/cloud-save.ts`、`cloud-save-sync.ts`、`scenes/menu-scene.ts`、`ui/cloud-save-layout.ts`、`ui/phaser/cloud-save-panel.ts`、`../tools/cloud-save-store.ts`、`../tools/cloud-save-service.ts` | `cloud-save`、`cloud-save-store`、`cloud-save-service`、`cloud-save-client`、`cloud-save-sync`、`cloud-save-offline` |
+
+## 跨模块职责清单
+
+| 玩家操作 | 谁负责改游戏状态 | 其他模块负责什么 |
+|---|---|---|
+| 下载云存档 | 云存档同步逐槽处理。每个档先经过正式读档检查，再加载目标地图，成功后才覆盖本机原档。 | 标题页询问覆盖意愿、显示各槽结果。玩家点读档后才切换到下载的进度。见[存档准备](../src/session-lifecycle.ts)和[云存档同步](../src/application/cloud-save-sync.ts)。 |
+| 剧情伙伴离队 | 游戏会话记录队伍、装备、掉落保底计数（连续未掉好装备的次数），以及离队伙伴的技能冷却和狂暴动作。撤销时恢复离队前的状态。 | 队伍管理器移除伙伴并归还装备。其他成员在此期间产生的冷却继续计时。见[游戏会话](../src/domain/session.ts)。 |
+| 开宝箱 | 游戏会话一起结算开箱记录、箱中敌人、保底和掉落物。生成落点或写入物品失败时，宝箱和已有物品都回到原状。 | 地图判断角色够不够近并提供落点。成功后才释放碰撞、显示掉落、播放声音和淡出。见[地图交互](../src/scenes/world-scene.ts)。 |
+| 手动与自动保存 | 应用层从此次保存绑定的会话和地图现场生成正文与摘要，职业、立绘和可选截图共用同一套取值规则。 | 手动页选择槽位并等待截图。自动保存决定保存时机，切换会话后会丢弃迟到的截图。见[存档记录](../src/application/saved-game.ts)。 |
+| 圣徒之牺牲分担伤害 | 战斗规则判断保护者是否有效，算出受击者和保护者各自承担的伤害。 | 地图提供保护者当前状态，并用已有命中和阵亡流程扣血。见[伤害反应](../src/domain/combat-reaction-pipeline.ts)。 |
+
+## 多个入口共用的规则
+
+| 需要改的规则 | 哪些入口受影响 | 维护位置 |
+|---|---|---|
+| 存档格式和外层字段 | 本机槽列表、完整读档、原始备份与云档导入 | [readSaveRecord](../src/domain/save-game.ts) |
+| 掉落物何时生成独立物品，品级、插槽和等级怎样保留 | 击杀、开箱、场景生成掉落 | [Session.placeGroundRewards](../src/domain/session.ts) |
+| 怎样判断一次对话或击杀已经计过数 | 剧情命令、任务交互、撤销和格式 1 读写 | [任务簿](../src/domain/quest-book.ts) |
+| 有效防御怎样换算为物理减伤 | 角色面板、战斗状态、敌人、盾牌格挡 | [physicalResistanceFor](../src/domain/physical-hit.ts) |
+| 装备自身和已镶宝石的属性怎样相加 | 实际面板、宝石预览、攻击特效、受击效果、恢复、免疫和仇恨 | [equipmentModifierTotals](../src/domain/equipment-modifiers.ts) |
+| 加经验后升几级、余下多少经验 | 主角和伙伴，队伍另行决定谁获得奖励 | [experienceAfterReward](../src/domain/character-stats.ts) |
+| 剧情换装时哪些人物需要刷新外观 | 正常播放与跳过剧情 | [剧情舞台表现](../src/rendering/story-presenter.ts) |
+| 一个剧情最多可以连续调用多少层子剧情 | 播放、恢复、地图预取和内容校验 | [MAX_STORY_CALL_DEPTH](../src/domain/story-graph.ts) |
+| 哪些槽位能改名，什么时候输入结果仍有效 | 标题页和游戏内存档页 | [SaveSlotRename](../src/ui/save-slot-rename.ts) |
 
 ## 状态由谁持有
 
