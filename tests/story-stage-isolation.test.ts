@@ -928,6 +928,7 @@ test('skipping applies persistent audio commands', async () => {
   const calls:string[]=[];
   Object.assign((run.presenter as unknown as {app: object}).app,{audio:{
     captureStoryAudio:()=>({music:null,ambience:null}),
+    restoreStoryAudio:()=>{},
     stopStoryAudio:()=>calls.push('stop'), setStoryMusic:(sound:string|null)=>calls.push(String(sound))
   }});
   await run.presenter.begin(signal);skip.abort();
@@ -974,12 +975,16 @@ test('restoring a scene on map B retains prepared map A objects and positions fo
   await run.presenter.execute({type:'stage',map:'remote',x:10,y:20,facing:'south',playerVisible:true,cast:[]},{signal,skipSignal:signal});
   const saved=JSON.parse(JSON.stringify(run.presenter.captureStage()!)) as StoryStageSnapshot;
   assert.ok(saved.scenes?.some(scene=>scene.map==='hall'));
-  const restored=harness();
-  await restored.presenter.begin(signal,saved);
-  await restored.presenter.execute({...declaration,cast:declaration.cast.map(member=>({...member,binding:'world'}))},{signal,skipSignal:signal});
-  const returned=restored.presenter.captureStage()!.scene;
-  const objects=(scene:typeof returned)=>scene.actors.filter(actor=>actor.id!=='player').map(actor=>[actor.id,actor.worldEntityId,actor.x,actor.y,actor.visible]);
-  assert.deepEqual(objects(returned),objects(sceneA));
+  saved.audio={music:null,ambience:null};
+  const objects=(scene:typeof sceneA)=>scene.actors.filter(actor=>actor.id!=='player').map(actor=>[actor.id,actor.worldEntityId,actor.x,actor.y,actor.visible]);
+  for(const skipImmediately of [false,true]){
+    const restored=harness(),skip=new AbortController();
+    if(skipImmediately)skip.abort();
+    await restored.presenter.begin(signal,saved,undefined,false,skip.signal);
+    assert.equal(restored.music(),null,'读回静音的舞台');
+    await restored.presenter.execute({...declaration,cast:declaration.cast.map(member=>({...member,binding:'world'}))},{signal,skipSignal:skip.signal});
+    assert.deepEqual(objects(restored.presenter.captureStage()!.scene),objects(sceneA));
+  }
 });
 
 test('skipping an in-flight stage load continues logically and ignores the late picture', async () => {

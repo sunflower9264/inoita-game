@@ -92,16 +92,9 @@ export class StoryPresenter implements StoryPresentationPort {
     this.rememberScene(current.scene);
     const curtain = initialCurtain ?? (stage.map !== mapId ? { opacity: 1, color: 0 } : undefined);
     if (curtain) { this.opacity = curtain.opacity; this.color = curtain.color; }
-    if (this.skipping) {
-      const logical = deferFirstStage ? current
-        : 'scene' in stage ? structuredClone(stage as StoryStageSnapshot) : await this.resolveStage(stage, signal, undefined, true);
-      this.applyLogicalStage(logical);
-      return;
-    }
-    const ready = await this.prepareVisual(signal, skipSignal, visualSignal => this.ready(visualSignal, curtain));
+    const ready = !this.skipping && await this.prepareVisual(signal, skipSignal, visualSignal => this.ready(visualSignal, curtain));
     if (!ready) {
-      const logical = deferFirstStage ? current
-        : 'scene' in stage ? structuredClone(stage as StoryStageSnapshot) : await this.resolveStage(stage, signal, undefined, true);
+      const logical = deferFirstStage ? current : await this.resolveStage(stage, signal, undefined, true);
       this.applyLogicalStage(logical); return;
     }
     if (deferFirstStage) return;
@@ -219,7 +212,7 @@ export class StoryPresenter implements StoryPresentationPort {
     this.scenes.set(snapshot.map, structuredClone(snapshot.scene));
     // 跳过的舞台不经过 showStage，地图音乐和环境音要在这里跟着逻辑场景切换。
     this.app.audio?.enterMap?.(snapshot.map);
-
+    if (snapshot.audio) this.app.audio?.restoreStoryAudio(snapshot.audio);
   }
   /** 选择或任务弹窗前把逻辑舞台真正画一次；素材走正常加载，缺什么补什么。 */
   setBackdrop(covered: boolean): void { this.app.ui.setSkipBackdrop(covered); }
