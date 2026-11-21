@@ -682,29 +682,33 @@ export class StoryPresenter implements StoryPresentationPort {
       case 'instant-message': this.app.ui.showInstant(action.text);return;
       case 'town-pose': {
         const current = this.captureStage();
-        if (current) {
-          const next = applyStorySceneAction(current, action);
-          const player = next.scene.actors.find(actor => actor.id === 'player');
-          const scene = this.scene();
-          let refreshed: CharacterVisual | undefined;
-          try {
-            refreshed = player
-              ? await scene.refreshActorAppearance(player, next, this.appearance, playback.signal)
-              : undefined;
-          } catch (error) {
-            // 轻量刷新失败时退回完整重建，不能因为只换贴图丢掉整幕演出。
-            if (playback.signal.aborted) throw error;
-            refreshed = undefined;
-          }
-          if (refreshed) {
-            const performer = this.actors.get('player');
-            if (performer) performer.visual = refreshed;
-            this.state = next;
-            this.scenes.set(next.map, structuredClone(next.scene));
+        if (!current) return;
+        const next = applyStorySceneAction(current, action);
+        const player = next.scene.actors.find(actor => actor.id === 'player');
+        const scene = this.scene();
+        let refreshed: CharacterVisual | undefined;
+        if (player) {
+          const completed = await this.prepareVisual(playback.signal, playback.skipSignal, async signal => {
+            try {
+              refreshed = await scene.refreshActorAppearance(player, next, this.appearance, signal);
+            } catch {
+              // 外观加载失败时由下方的完整舞台重建接手。
+              signal.throwIfAborted();
+            }
+          });
+          if (!completed) {
+            this.applyLogicalStage(next);
             return;
           }
-          await this.stage(next, playback.signal, undefined, playback.skipSignal);
         }
+        if (refreshed) {
+          const performer = this.actors.get('player');
+          if (performer) performer.visual = refreshed;
+          this.state = next;
+          this.scenes.set(next.map, structuredClone(next.scene));
+          return;
+        }
+        await this.stage(next, playback.signal, undefined, playback.skipSignal);
         return;
       }
       case 'refresh-appearance': {

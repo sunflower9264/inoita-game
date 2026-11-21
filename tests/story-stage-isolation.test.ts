@@ -9,6 +9,7 @@ import type { ActorDefinition, WorldIndex, WorldMap } from '../src/domain/conten
 import type { Campaign } from '../src/domain/campaign.ts';
 import { NavigationWorld } from '../src/domain/navigation-world.ts';
 import { WalkRoute } from '../src/domain/walk-route.ts';
+import type { Wardrobe } from '../src/rendering/wardrobe.ts';
 import { validateStoryStageSnapshot, type StoryStage, type StoryStageSnapshot } from '../src/domain/story-performance.ts';
 import { SCENE_KEYS } from '../src/application/scene-keys.ts';
 import { stageSnapshot } from './helpers/story-stage.ts';
@@ -1070,6 +1071,67 @@ test('entering skip mode captures the actual current actor position and camera b
   assert.equal(snapshot.scene.actors.find(actor => actor.id === 'player')!.x, 77);
   assert.equal(snapshot.camera!.x, 123 + run.stage.cameras.main.width / 2);
 });
+
+for (const end of ['跳过', '取消整段剧情'] as const) {
+  test(`消失的圣女1收起武器时${end}会立即结束等待，迟到的外观不会覆盖当前人物`, async () => {
+    const campaign = readGameContent<Campaign>('content/campaign.json');
+    const camp = campaign.scripts['event-20'].nodes.find(node => node.id === 'scene-2')!;
+    const pose = camp.presentation.find(action => action.type === 'town-pose' && action.enabled);
+    assert.ok(pose?.type === 'town-pose');
+    const run = harness(), story = new AbortController(), skip = new AbortController();
+    const playback = { signal: story.signal, skipSignal: skip.signal };
+    await run.presenter.begin(story.signal);
+    const painted = run.rendered();
+    let finish!: () => void, loading: AbortSignal | undefined, activations = 0;
+    const outfitReady = new Promise<void>(resolve => { finish = resolve; });
+    const wardrobe = {
+      async prepare(actor, _equipment, _classId, options) {
+        loading = options?.signal;
+        await outfitReady;
+        return { actor, textures: [], users: 0, redraw() {} };
+      },
+      activate() { activations++; }
+    } satisfies Pick<Wardrobe, 'prepare' | 'activate'>;
+    Object.assign(run.stage, {
+      app: { session: { bag: { equipmentItems: () => ({}) } } },
+      wardrobes: new Map([['player', wardrobe]]),
+      refreshActorAppearance: StoryStageScene.prototype.refreshActorAppearance
+    });
+    const reason = new DOMException(end, 'AbortError');
+    let settled = false;
+    const playing = run.presenter.execute(pose, playback).then(() =>
+      run.presenter.execute({ type: 'face', target: 'player', facing: 'east' }, playback));
+    const outcome = (end === '跳过' ? playing : assert.rejects(playing, error => error === reason))
+      .then(() => { settled = true; });
+    try {
+      await new Promise(resolve => setImmediate(resolve));
+      assert.ok(loading);
+      (end === '跳过' ? skip : story).abort(reason);
+      await new Promise(resolve => setImmediate(resolve));
+      assert.equal(settled, true, '外观还在准备，剧情已响应操作');
+      assert.equal(loading.aborted, true);
+      assert.equal(run.rendered(), painted);
+      const player = run.presenter.captureStage()!.scene.actors.find(actor => actor.id === 'player')!;
+      if (end === '跳过') {
+        assert.equal(player.townPose, true);
+        assert.equal(player.facing, 'east');
+        await run.presenter.flushStage(story.signal);
+      } else {
+        assert.equal(player.townPose, undefined);
+        assert.equal(player.facing, 'south');
+      }
+      const current = run.stage.player;
+      finish();
+      await new Promise(resolve => setImmediate(resolve));
+      assert.equal(activations, 0);
+      assert.equal(run.stage.player, current);
+    } finally {
+      finish();
+      await outcome;
+      await run.presenter.release();
+    }
+  });
+}
 
 test('normal and skipped town pose commands persist across scenes and reset on travel', async () => {
   for (const skipped of [false, true]) {
