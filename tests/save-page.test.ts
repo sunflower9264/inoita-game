@@ -1,3 +1,4 @@
+import {captureSessionSave} from '../src/application/saved-game.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
@@ -60,7 +61,7 @@ function fixture() {
     scroll: () => { throw new Error('测试不画滚动区'); },
     finishScroll: () => {}
   };
-  return { page: new SavePage(host), session, app, written, savedRefs,
+  return { page: new SavePage(host), session, world, app, written, savedRefs,
     renders: () => renders, confirmations:()=>confirmations, syncs: () => syncs, notice: () => notice };
 }
 
@@ -144,7 +145,7 @@ test('保存截图等待期间存档页不接受删除或读取确认', () => {
 
 test('存档快照与摘要仍由同一入口生成', () => {
   const f = fixture();
-  const captured = f.page.captureSaveRecord();
+  const captured = captureSessionSave(f.session,f.world,f.app);
   assert.equal(captured.ok, true);
   if (!captured.ok) return;
   assert.equal(captured.record.summary.className, '暗骑士');

@@ -1,11 +1,12 @@
 import {
-  AUTO_SAVE_SLOT, MANUAL_SAVE_SLOT_COUNT, captureSaveGame, saveSlotLabel, saveSummary, sessionClassId,
+  AUTO_SAVE_SLOT, MANUAL_SAVE_SLOT_COUNT, saveSlotLabel,
   type SaveGame, type SaveSlotRef
 } from '../domain/save-game.ts';
 import type { Session } from '../domain/session.ts';
 import type { WorldIndex } from '../domain/content.ts';
 import type { StoryUIContext } from '../application/ports.ts';
-import type { SaveWorldReason, StoryWorldViewSnapshot } from '../scenes/world-scene.ts';
+import {captureSessionSave} from '../application/saved-game.ts';
+import type { SaveWorldReason, StoryWorldViewSnapshot } from '../application/world-snapshot.ts';
 import { SAVE_BOARD, SAVE_BOARD_LAYOUT, SaveBoardList, drawSaveBoardRow, emitSaveBoardTexts, newestFirstSlots, saveBoardOrigin, saveRowTitle, type SaveBoardRow, type SaveBoardTextSpec } from './phaser/save-board.ts';
 import { drawNativeMessage, type NativeMessageBand } from './phaser/native-message.ts';
 import { MENU_CANVAS_HEIGHT, MENU_CANVAS_WIDTH } from './phaser/modal-placement.ts';
@@ -182,15 +183,6 @@ export class SavePage {
     this.cancelPending();
   }
 
-  /** 摘要与快照的唯一捕获口：手动保存与自动存档共用。 */
-  captureSaveRecord(screenshot?: string): { ok: true; record: SaveGame<StoryWorldViewSnapshot> } | { ok: false; reason: SaveWorldReason } {
-    const session = this.host.session();
-    if (!session) return { ok: false, reason: 'not-ready' };
-    const capture = this.host.app.captureSaveWorld?.();
-    if (!capture || !capture.ok) return { ok: false, reason: capture?.reason ?? 'not-ready' };
-    return { ok: true, record: captureSaveGame(session, capture.world, this.saveSummaryOf(session, capture.map, screenshot)) };
-  }
-
   /** 一行存档的读数、动作与行内控件；自动槽在存档页没有动作。 */
   private saveRow(ref: SaveSlotRef, loading: boolean): SaveBoardRow {
     const app = this.host.app;
@@ -240,7 +232,7 @@ export class SavePage {
 
   private saveToSlot(ref: SaveSlotRef): void {
     if (ref === AUTO_SAVE_SLOT || this.saving) return;
-    const captured = this.captureSaveRecord();
+    const captured = captureSessionSave(this.host.session(),this.host.world(),this.host.app);
     if (!captured.ok) { this.host.setItemNotice(saveUnavailableNotice(captured.reason));if(this.host.updateNotice)this.host.updateNotice();else this.host.render();return; }
     // 没有截图能力时保持同步写档；有截图能力时等下一帧截完再写，失败仍写无图存档。
     if (!this.host.app.captureSaveThumbnail) { this.writeSlot(ref, captured.record); return; }
@@ -329,18 +321,4 @@ export class SavePage {
     if (!this.prompt.active) { this.renameRef = undefined; this.host.sync(); }
   }
 
-  /** 摘要里的职业名和缩略图在存档时就展开，标题页读档不必再加载职业目录。 */
-  private saveSummaryOf(session: Session, map: { id: string; name: string }, screenshot?: string) {
-    const app = this.host.app;
-    const classId = sessionClassId(session) ?? '';
-    return saveSummary(session, map, { name: app.storyClasses.classes.find(value => value.id === classId)?.name ?? classId, portrait: this.playerPortrait().image }, screenshot);
-  }
-
-  /** 主角的立绘：存档槽里画的是他，与菜单当前选中的队员无关。 */
-  private playerPortrait() {
-    const session = this.host.session()!;
-    const actor = this.host.world()!.actors[session.campaign.start.actor];
-    const portraits = this.host.app.menuPanels.character.portraits;
-    return portraits[actor.portrait ?? 'kiyan'] ?? portraits.kiyan;
-  }
 }

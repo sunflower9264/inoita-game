@@ -50,9 +50,7 @@ import { setSaveBoardTextSink, type SaveBoardTextSpec } from './phaser/save-boar
 import { descriptionTitleOverflow, drawDescriptionClose, drawDescriptionPanel, drawDescriptionRows, drawDescriptionTitle } from './phaser/description-panel.ts';
 import { drawNativeMessage, NATIVE_MESSAGE_EDGE, type NativeMessageBand } from './phaser/native-message.ts';
 
-import type { SaveGame } from '../domain/save-game.ts';
 import { SavePage } from './save-page.ts';
-import type { SaveWorldReason, StoryWorldViewSnapshot } from '../scenes/world-scene.ts';
 
 import { SkillBookPanel } from './phaser/skill-book-panel.ts';
 
@@ -1166,10 +1164,7 @@ export class StoryUI {
     };
     return label as unknown as UiText;
   }
-  /** 摘要与快照的唯一捕获口：手动保存与自动存档共用。 */
-  captureSaveRecord(screenshot?:string):{ok:true;record:SaveGame<StoryWorldViewSnapshot>}|{ok:false;reason:SaveWorldReason}{
-    return this.savePage.captureSaveRecord(screenshot);
-  }
+
 
   /** 说明正文的色块统一落成 DOM 规格；技能页和背包说明只是收进不同的数组。 */
   /** 说明正文的断行和行高仍在布局阶段算完；测量用的 Phaser 文字当场销毁，不参与显示。 */

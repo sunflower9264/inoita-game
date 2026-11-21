@@ -21,6 +21,7 @@ import type { Session } from './domain/session.ts';
 import { newStorySession } from './domain/story-class.ts';
 import { StoryClassScene } from './scenes/story-class-scene.ts';
 import { StoryStageScene } from './scenes/story-stage-scene.ts';
+import {captureSessionSave} from './application/saved-game.ts';
 import type { StoryWorldViewSnapshot } from './application/world-snapshot.ts';
 import { FormalUiScene } from './scenes/formal-ui-scene.ts';
 import { MenuScene } from './scenes/menu-scene.ts';
@@ -152,7 +153,7 @@ function startAutoSave(session:Session):void {
     enabled:()=>app.mode==='game'&&!app.suspended&&!!app.session&&!app.pressureMode&&!app.storyJumpActive,
     // 演出与菜单锁着时不抢写：等解锁后再写，免得存到一半的状态。
     locked:()=>app.locked||!!app.director?.busy,
-    capture:()=>{const captured=app.storyUI.captureSaveRecord(lastSaveThumbnail);return captured.ok?captured.record:undefined;},
+    capture:()=>{const captured=captureSessionSave(session,app.world,app,lastSaveThumbnail);return captured.ok?captured.record:undefined;},
     write:game=>{
       if(generation===autoSaveGeneration&&app.session===session&&app.mode==='game'){
         const started=performance.now();

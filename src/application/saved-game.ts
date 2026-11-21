@@ -1,5 +1,5 @@
 import {newStorySession,type StoryClassCatalog} from '../domain/story-class.ts';
-import {isReadableSaveFormat,restoreSaveGame,type SaveGame} from '../domain/save-game.ts';
+import {captureSaveGame,isReadableSaveFormat,restoreSaveGame,saveSummary,sessionClassId,type SaveGame} from '../domain/save-game.ts';
 import {prepareCombatRestore} from '../domain/combat-snapshot.ts';
 import type {Campaign} from '../domain/campaign.ts';
 import type {WorldIndex} from '../domain/content.ts';
@@ -7,12 +7,30 @@ import type {ItemCatalog} from '../domain/items.ts';
 import type {CharacterStatsCatalog} from '../domain/character-stats.ts';
 import type {BattleCatalog} from '../domain/battle.ts';
 import type {CompanionCatalog} from '../domain/party.ts';
-import type {StoryWorldViewSnapshot} from './world-snapshot.ts';
+import type {SaveWorldReason,SaveWorldResult,StoryWorldViewSnapshot} from './world-snapshot.ts';
+import type {Session} from '../domain/session.ts';
+import type {MenuPanels} from '../domain/menu-panels.ts';
 import {validateSceneSnapshot} from '../domain/scene-snapshot.ts';
 
 export interface SavedGameContent {
   campaign:Campaign;world:WorldIndex;storyClasses:StoryClassCatalog;items:ItemCatalog;
   characterStats:CharacterStatsCatalog;battleCatalog:BattleCatalog;companions:CompanionCatalog;
+}
+
+/** 从此次保存绑定的会话和世界现场生成一条完整的记录。 */
+export function captureSessionSave(session:Session|undefined,world:WorldIndex|undefined,source:{
+  storyClasses:StoryClassCatalog;menuPanels:Pick<MenuPanels,'character'>;captureSaveWorld?():SaveWorldResult;
+},screenshot?:string):{ok:true;record:SaveGame<StoryWorldViewSnapshot>}|{ok:false;reason:SaveWorldReason} {
+  if(!session||!world)return {ok:false,reason:'not-ready'};
+  const capture=source.captureSaveWorld?.();
+  if(!capture?.ok)return {ok:false,reason:capture?.reason??'not-ready'};
+  const classId=sessionClassId(session)??'';
+  const name=source.storyClasses.classes.find(value=>value.id===classId)?.name??classId;
+  const actor=world.actors[session.campaign.start.actor];
+  const portraits=source.menuPanels.character.portraits;
+  const portrait=(portraits[actor.portrait??'kiyan']??portraits.kiyan).image;
+  const summary=saveSummary(session,capture.map,{name,portrait},screenshot);
+  return {ok:true,record:captureSaveGame(session,capture.world,summary)};
 }
 export function prepareSavedGame(game:SaveGame<StoryWorldViewSnapshot>,content:SavedGameContent){
   if(!isReadableSaveFormat(game.format))throw new Error('存档版本不受支持');
