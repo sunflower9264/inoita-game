@@ -1,6 +1,20 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { headlessContent, playthrough } from './helpers/story-playthrough.ts';
+import { Session } from '../src/domain/session.ts';
+
+test('哥布林监狱2的钥匙直接进入背包时，同图交付人立即出现', () => {
+  const session = new Session(headlessContent.campaign);
+  const map = 'goblin-prison-2-27ab25e1', characterId = 'npc-170';
+  session.applyStoryCommands([{type:'travel',destination:{map,x:40,y:40,facing:'south'}}]);
+  assert.ok(session.accept('quest-33'));
+  session.applyStoryCommands([{type:'world',command:{kind:'remove-character',map,characterId,all:false}}]);
+  assert.equal(session.storyWorld.actorVisible(map,characterId),false);
+  session.bag.add('prison-key-2',1);
+  session.emit();
+  assert.equal(session.status('quest-33'),'ready');
+  assert.equal(session.storyWorld.actorVisible(map,characterId),true);
+});
 
 test('取消让任务首次进入待交付的剧情时，恢复交付人原先的临时缺席', () => {
   const h = playthrough();

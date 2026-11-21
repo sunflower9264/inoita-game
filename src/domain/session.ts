@@ -966,15 +966,20 @@ export class Session {
       conditions.every((value,index)=>Object.is(value,previous.conditions[index])))return;
     // 没有上一份投影（启动、读档/检查点恢复）时做一次全量刷新，
     // 把新装进来的任务和当前条件对齐；常规刷新只找这次变化会影响的任务。
-    if(!previous){this.recordPerformance(['questBook']);this.questBook.commit(this.questBook.plan({type:'refresh'}));this.recordQuestProjection();return;}
-    const keys:string[]=[];
-    for(const [index,input] of this.questConditionInputs.entries())
-      if(!Object.is(conditions[index],previous.conditions[index]))keys.push(input.key);
-    const bagChanged=previous.bagVersion!==bagVersion,ownerChanged=previous.owner!==owner;
-    if(keys.length||bagChanged||ownerChanged){
+    if(!previous){
       this.recordPerformance(['questBook']);
-      this.questBook.refreshChanges({keys,bagChanged,ownerChanged});
+      this.questBook.commit(this.questBook.plan({type:'refresh'}));
+    }else{
+      const keys:string[]=[];
+      for(const [index,input] of this.questConditionInputs.entries())
+        if(!Object.is(conditions[index],previous.conditions[index]))keys.push(input.key);
+      const bagChanged=previous.bagVersion!==bagVersion,ownerChanged=previous.owner!==owner;
+      if(keys.length||bagChanged||ownerChanged){
+        this.recordPerformance(['questBook']);
+        this.questBook.refreshChanges({keys,bagChanged,ownerChanged});
+      }
     }
+    if(this.questBook.version!==questVersion)this.releaseReadyQuestActors();
     this.recordQuestProjection();
   }
   /** 记下这次任务投影的输入，供 `refresh` 判断结果能不能复用。 */
@@ -992,6 +997,7 @@ export class Session {
    */
   private releaseReadyQuestActors():void{
     if(!this.storyWorld.hasVisitAbsences)return;
+    this.recordPerformance(['storyWorld']);
     const placements=this.campaign.placements;
     for(const id of this.questBook.runningQuestIds){
       if(this.questBook.status(id)!=='ready')continue;
