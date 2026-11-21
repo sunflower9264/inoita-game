@@ -45,7 +45,7 @@ function fixture(targets:Combatant[],stance='dagger:empty'){
   const hits:{event:AttackContact;hit:PhysicalHit}[]=[],drops:{id:string;damage:number}[]=[],styles:(string|undefined)[]=[];
   let afterHit:(event:AttackContact,hit:PhysicalHit)=>void=()=>{};
   const host=Object.setPrototypeOf({hero:member,conditions,hitResolution:resolution,fallen,pendingDefeats:new Set<string>(),
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentRecoveryCache:new Map(),combatProcsCache:new Map(),
+    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
     aiSkillCostCache:new Map(),
     arena:targets.filter(actor=>actor.team==='enemy').map(actor=>({key:actor.id,definition:catalog.enemies[0]})),allies:[],
     app:{battleCatalog:catalog,items,wardrobe,session:{skills,isOneHitKill:()=>false,party:{activeIds:['player'],controlledId:'player'}}},

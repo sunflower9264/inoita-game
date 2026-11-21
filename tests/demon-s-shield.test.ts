@@ -42,7 +42,7 @@ function fixture(){
     recoveryPulseDue:true,advanceRecoveryClock:()=>{},
     recoverCombatResources:(actors:Parameters<CombatResourceRecovery['advanceToFrame']>[1])=>clock.advanceToFrame(frames.currentFrame,actors)}},activeParty:[...members.keys()],
     arena:[],pendingDefeats:new Set(),fallen:new Set(),closed:false,defeated:false,
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentRecoveryCache:new Map(),combatProcsCache:new Map(),
+    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
     aiSkillCostCache:new Map(),
     memberOf:(id:string)=>members.get(id),partyPassives:()=>[],partyFighter:()=>({}),
     equipmentRecovery:()=>({manaRecoveryPerPulse:equipmentManaRecovery,manaCostReductionRate:0,lifeDrainPerThousand:0}),

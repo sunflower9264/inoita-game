@@ -71,7 +71,7 @@ function fixture(){
     movement:{position:()=>({x:0,y:0}),actor:()=>({shape:()=>({collision:{}})}),stop:()=>{},setEnabled:()=>{}},
     scene:{facing:'south',events:{emit:()=>order.push('contact')},map:{id:'test'},refreshCombatTarget:()=>{}},
     app:{audio:{monsterDeath:()=>order.push('enemy-death-sound')},session:{enemyVitals:()=>({}),isOneHitKill:()=>false,questDropRequirements:()=>[]}},
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentRecoveryCache:new Map(),combatProcsCache:new Map(),
+    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
     aiSkillCostCache:new Map(),drops:{enemies:{},questItems:{}},
     roster:{isPresent:()=>true,enemySnapshot:()=>({...enemyState}),setEnemyHealth:(_id:string,value:number)=>{enemyState.health=Math.max(0,Math.min(100,value));},source:()=>undefined,
       refresh:()=>({added:[],removed:[]})},

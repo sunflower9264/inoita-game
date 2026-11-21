@@ -25,7 +25,7 @@ function fixture(magicResistance=200){
   Object.assign(ally,{skills:configuration(()=>allyRank)});
   const conditions=new CombatConditions();let hit:PhysicalHit|undefined;
   const host=Object.setPrototypeOf({hero,conditions,hitResolution:new CombatHitResolution(),arena:[],pendingDefeats:new Set(),fallen:new Set(),
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentRecoveryCache:new Map(),combatProcsCache:new Map(),
+    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
     aiSkillCostCache:new Map(),
     app:{battleCatalog:catalog,items,session:{skills:configuration(()=>rank),party:{groupModifiers:()=>({})}}},memberOf:(id:string)=>id==='player'?hero:ally,
     combatant:(id:string)=>({id,position:{x:0,y:0},bounds:{x:-4,y:-4,width:8,height:8}}),

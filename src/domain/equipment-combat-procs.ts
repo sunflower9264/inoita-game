@@ -1,18 +1,18 @@
 import type {ItemInstance} from './items.ts';
-
-const optionAttributes={
-  pendulum:'pendulumStunChance',frost:'frostRetaliationChance',healingEnergy:'healingEnergyChance',
-  zealot:'zealotRate',instantRecovery:'instantRecoveryPerThousand',
-} as const;
-type EquipmentCombatProcRates=Record<typeof optionAttributes[keyof typeof optionAttributes],number>;
+import {equipmentAttackProcs} from './equipment-attack-procs.ts';
+import {equipmentRecoveryModifiers} from './equipment-recovery.ts';
+import {equipmentThreatReduction} from './equipment-threat.ts';
+import {equipmentModifierTotals,type EquipmentModifierSource} from './equipment-modifiers.ts';
 
 /** 使用已生成的实例和宝石词条；有符号阈值由宿主合并其它来源后钳位。 */
-export function equipmentCombatProcs(equipped:readonly ItemInstance[]):EquipmentCombatProcRates {
-  const rates:EquipmentCombatProcRates={pendulumStunChance:0,frostRetaliationChance:0,healingEnergyChance:0,
-    zealotRate:0,instantRecoveryPerThousand:0};
-  for(const item of equipped)for(const modifier of [...item.numbers?.modifiers??[],...item.numbers?.gemModifiers??[]]){
-    if(!Object.hasOwn(optionAttributes,modifier.stat))continue;
-    rates[optionAttributes[modifier.stat as keyof typeof optionAttributes]]+=modifier.value;
-  }
-  return rates;
+export function equipmentCombatProcs(source:EquipmentModifierSource) {
+  const totals=equipmentModifierTotals(source),get=(stat:string)=>totals.get(stat)??0;
+  return {pendulumStunChance:get('pendulum'),frostRetaliationChance:get('frost'),healingEnergyChance:get('healingEnergy'),
+    zealotRate:get('zealot'),instantRecoveryPerThousand:get('instantRecovery')};
+}
+
+export function combatEquipmentEffects(equipped:readonly ItemInstance[]) {
+  const totals=equipmentModifierTotals(equipped);
+  return {totals,attack:equipmentAttackProcs(totals),combat:equipmentCombatProcs(totals),
+    recovery:equipmentRecoveryModifiers(totals),threat:equipmentThreatReduction(totals)};
 }

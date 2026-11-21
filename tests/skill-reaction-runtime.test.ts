@@ -82,7 +82,7 @@ test('blood sword combines the caster equipment rate and learned rank before hea
   const hero={classId,panel:{maxHealth:100,maxMana:0},player:{health:20,maxHealth:100,maxMana:0},setCombatResourceCapacity(key:'maxHealth'|'maxMana',value:number){this.player[key]=value;},setHealth(value:number){this.player.health=Math.min(value,100);},
     bag:{equipmentFor:()=>({'main-hand':'sword'}),get:()=>({numbers:{modifiers:[{stat:'lifeSteal',value:50}],gemModifiers:[]}})}};
   const host=Object.setPrototypeOf({app:{battleCatalog:data,session:{skills:{draft:()=>({levels:{'blood-sword':1}})}}},
-    equipmentRecoveryCache:new Map(),physicalSuccessEquipmentProcs:()=>{},
+    equipmentEffectsCache:new Map(),physicalSuccessEquipmentProcs:()=>{},
     memberOf:(id:string)=>id==='player'?hero:undefined,partyPassives:()=>[],conditions,hero,arena:[],
     presenterFor:()=>({showEffects:(_id:string,list:{effect:string}[])=>effects.push(...list.map(entry=>entry.effect))}),
     actorAttribute:()=>0,attackProc:()=>{},pendingDefeats:new Set()},WorldCombat.prototype);

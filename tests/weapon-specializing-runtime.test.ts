@@ -26,7 +26,7 @@ function fixture(){
     bag:{get revision(){return bagRevision;},equipmentFor:()=>equipment,get:()=>undefined,equipmentItems:(keys:Record<string,string>)=>keys}});
   const hero=member(()=>heroRank),ally=member(()=>allyRank),conditions=new CombatConditions();
   const host=Object.setPrototypeOf({hero,conditions,arena:[],passivesCache:new Map(),skillTableCache:new Map(),
-    equipmentRecoveryCache:new Map(),combatProcsCache:new Map(),aiSkillCostCache:new Map(),
+    equipmentEffectsCache:new Map(),aiSkillCostCache:new Map(),
     app:{battleCatalog:catalog,items,wardrobe,
     session:{skills:configuration(()=>heroRank),party:{groupModifiers:()=>({})}}},memberOf:(id:string)=>id==='player'?hero:ally},WorldCombat.prototype);
   const call=(name:string,...args:unknown[])=>method(name).call(host,...args);

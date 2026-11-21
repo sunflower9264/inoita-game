@@ -17,7 +17,7 @@ test('wrath of darkness uses each rank chance and immediately stacks on physical
   const defender={classId:'dark-knight',skills:{draft:()=>({levels:{'wrath-of-darkness':rank}})},
     bag:{revision:0,equipmentFor:()=>({}),get:()=>undefined}};
   const host=Object.setPrototypeOf({app:{battleCatalog:catalog},conditions,arena:[],
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentRecoveryCache:new Map(),combatProcsCache:new Map(),
+    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
     aiSkillCostCache:new Map(),
     memberOf:(id:string)=>id==='defender'?defender:undefined,equipmentRecovery:()=>({lifeDrainPerThousand:0}),
     actorAttribute:()=>0,attackProc:()=>{},syncCombatResourceLimits:()=>{},interruptDisabled:()=>{},applyStateConsequences:()=>{}},WorldCombat.prototype);

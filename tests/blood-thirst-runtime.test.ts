@@ -33,7 +33,7 @@ function fixture(){
   const player=member('warrior'),target=member('dark-knight'),members=new Map([['player',player],['target',target]]);
   const host=Object.setPrototypeOf({hero:player,app:{battleCatalog:catalog,session:{skills:config,party:{controlledId:'player'}},
     audio:{effect:(name:string)=>order.push(`sound:${name}`)}},conditions,hitResolution,pendingDefeats:new Set(),arena:[],allies:[],
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentRecoveryCache:new Map(),combatProcsCache:new Map(),
+    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
     aiSkillCostCache:new Map(),
     memberOf:(id:string)=>members.get(id),partyPassives:()=>[],syncCombatResourceLimits:()=>{},applyStateConsequences:()=>{},
     equipmentRecovery:()=>({lifeDrainPerThousand:lifeDrain}),

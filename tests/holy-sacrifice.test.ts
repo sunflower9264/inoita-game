@@ -84,7 +84,7 @@ function fixture({rate=275,protector=true,health=1000}={}){
   const host=Object.setPrototypeOf({
     conditions,arena:[],hero:{level:10},fallen:new Set<string>(),pendingDefeats:new Set<string>(),
     hitResolution:new CombatHitResolution(),
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentRecoveryCache:new Map(),combatProcsCache:new Map(),
+    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
     aiSkillCostCache:new Map(),
     memberOf:(id:string)=>members.get(id),partyPassives:()=>[],
     actorAttribute:(id:string,key:string)=>id==='target'&&key==='damageTransferPerThousand'?rate:0,

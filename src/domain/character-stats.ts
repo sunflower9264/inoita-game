@@ -1,5 +1,6 @@
 import { equipmentLevel, type EquipmentChaos } from './chaos-equipment.ts';
 import type { ItemNotice } from './item-application.ts';
+import {equipmentModifierTotals} from './equipment-modifiers.ts';
 import { boundedHealth } from './status-hud.ts';
 import { Bag, type BagRules } from './bag.ts';
 import type { Equipment, EquipmentSlot, ItemCatalog, ItemInstance } from './items.ts';
@@ -167,7 +168,9 @@ export function equipmentPower(definition:EquipmentNumbers, entry:ItemInstance) 
 export function calculateCharacter(catalog:CharacterStatsCatalog, items:ItemCatalog, classId:string, level:number,
   allocated:PrimaryAttributes, equipped:Partial<Record<string,ItemInstance>>):CharacterPanel {
   const base=catalog.classes[classId];if(!base)throw new Error('职业数值不存在');
-  const attributes=emptyAttributes();for(const key of PRIMARY_STATS)attributes[key]=base[key]+allocated[key];
+  const modifiers=equipmentModifierTotals(Object.values(equipped));
+  const attributes=emptyAttributes();
+  for(const key of PRIMARY_STATS)attributes[key]=base[key]+allocated[key]+(modifiers.get(key)??0);
   const bonuses:Record<string,number>={};let attack=0,magic=0,defense=0;
   const add=(key:string,value:number)=>{bonuses[key]=(bonuses[key]??0)+value;};
   for(const [slot,entry] of Object.entries(equipped)) {
@@ -177,16 +180,12 @@ export function calculateCharacter(catalog:CharacterStatsCatalog, items:ItemCata
     if(slot==='main-hand'){attack+=power.attack;magic+=power.magicAttack;}
     defense+=power.defense;
     for(const key of ['criticalRate','hitBonus','magicAttackRate','shieldBlock'] as const)add(key,definition[key]);
-    for(const modifier of [...entry.numbers?.modifiers??[],...entry.numbers?.gemModifiers??[]]) {
-      if(PRIMARY_STATS.includes(modifier.stat as PrimaryStat))attributes[modifier.stat as PrimaryStat]+=modifier.value;
-      else add(modifier.stat,modifier.value);
-    }
   }
   const main=equipped['main-hand'],weapon=main?items.items[main.item].kind:'unarmed';
   const strengthRate=weapon==='two-handed'?STRENGTH_RATE_TWO_HANDED:['longsword','axe','mace'].includes(weapon)?STRENGTH_RATE_MARTIAL:STRENGTH_RATE_OTHER;
   const intelligenceRate=weapon==='unarmed'?0:weapon==='staff'?INTELLIGENCE_RATE_STAFF:weapon==='orb'?INTELLIGENCE_RATE_ORB:PER_MILLE;
   const mentalityRate=weapon==='unarmed'?0:['staff','orb'].includes(weapon)?MENTALITY_RATE_CASTING:PER_MILLE;
-  const bonusOf=(key:string)=>bonuses[key]??0;
+  const bonusOf=(key:string)=>(bonuses[key]??0)+(modifiers.get(key)??0);
   const physicalAttack=Math.max(0,trunc((attack+trunc(attributes.strength*strengthRate/PER_MILLE)+trunc(attributes.dexterity/DEXTERITY_ATTACK_DIVISOR))*(PER_MILLE+bonusOf('physicalAttackRate'))/PER_MILLE));
   const magicAttack=Math.max(0,trunc((magic+trunc(attributes.intelligence*intelligenceRate/PER_MILLE)+trunc(attributes.mentality*mentalityRate/PER_MILLE))*(PER_MILLE+bonusOf('magicAttackRate'))/PER_MILLE));
   const baseDefense=defense+attributes.vitality,defenseRate=bonusOf('defenseRate');

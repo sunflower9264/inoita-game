@@ -39,7 +39,7 @@ function fixture(){
   const order:string[]=[],attempts:SkillUnitHit[]=[];let passives:PassiveModifier[]=[];
   const host=Object.setPrototypeOf({app:{session:{party,combatTick:0}},hero:members.get('player'),conditions,hitResolution,
     roster:{presenceRevision:0,isPresent:()=>true},
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentRecoveryCache:new Map(),combatProcsCache:new Map(),
+    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
     aiSkillCostCache:new Map(),
     scene:{facing:'east',tweens:{add:()=>({})}},pendingDefeats:new Set(),fallen:new Set(),
     partyControllers:new Map(),deathTweens:new Map(),

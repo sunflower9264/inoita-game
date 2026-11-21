@@ -51,7 +51,7 @@ function fixture(){
     {id,team:members.has(id)?'party':'enemy',position:{x:index*8,y:0},bounds:{x:-4,y:-4,width:8,height:8}}]));
   const conditions=new CombatConditions(),hits:{event:AttackContact;hit:PhysicalHit}[]=[],order:string[]=[];
   const host=Object.setPrototypeOf({hero:player,conditions,hitResolution:new CombatHitResolution(),
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentRecoveryCache:new Map(),combatProcsCache:new Map(),
+    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
     aiSkillCostCache:new Map(),
     pendingDefeats:new Set<string>(),fallen:new Set<string>(),allies:[],
     arena:[...stats.keys()].map(key=>({key,definition:catalog.enemies[0]})),

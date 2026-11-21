@@ -31,7 +31,7 @@ function fixture(memory=new FrenzyAnimationMemory()){
     bag:{get revision(){return revision;},equipmentFor:()=>gear,equipmentItems:(gear:Record<string,string>)=>gear,get:()=>undefined}});
   const hero=member(equipment),ally=member(allyEquipment),conditions=new CombatConditions();
   const host=Object.setPrototypeOf({hero,conditions,arena:[],partyControllers:new Map(),
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentRecoveryCache:new Map(),combatProcsCache:new Map(),
+    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
     aiSkillCostCache:new Map(),
     app:{battleCatalog:catalog,items,wardrobe,session:{skills,frenzyAnimations:memory,party:{groupModifiers:()=>({})}}},
     memberOf:(id:string)=>id==='player'?hero:id==='ally'?ally:undefined},WorldCombat.prototype);

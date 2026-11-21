@@ -44,7 +44,7 @@ function fixture(){
   const ids=['player','near','far','fourth'];
   const host=Object.setPrototypeOf({hero:player,app:{battleCatalog:catalog,items,wardrobe,characterStats:read('character-stats'),
     session:{skills,party:{activeIds:ids,controlledId:'player'}}},conditions,hitResolution,fallen:new Set(),pendingDefeats:new Set(),arena:[],allies:[],
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentRecoveryCache:new Map(),combatProcsCache:new Map(),
+    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
     aiSkillCostCache:new Map(),
     roster:{isPresent:()=>true},
     scene:{events:{emit:()=>{}}},memberOf:(id:string)=>members.get(id),partyPassives:()=>[],syncCombatResourceLimits:()=>{},applyStateConsequences:()=>{},

@@ -25,7 +25,7 @@ function fixture(){
   const presenter={showEffects:(_id:string,entries:{effect:string}[])=>{for(const entry of entries)order.push(entry.effect);}};
   const host=Object.setPrototypeOf({hero,conditions,hitResolution:new CombatHitResolution(),arena:[],
     pendingDefeats:new Set(),fallen:new Set(),allies:[{id:'ally',presenter}],presenter,
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentRecoveryCache:new Map(),combatProcsCache:new Map(),
+    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
     aiSkillCostCache:new Map(),
     app:{battleCatalog:catalog,items,session:{skills:configuration(()=>rank,()=>rankVersion),party:{groupModifiers:()=>({})}}},
     memberOf:(id:string)=>id==='player'?hero:ally,attackProc:()=>{},

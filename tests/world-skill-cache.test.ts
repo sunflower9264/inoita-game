@@ -28,7 +28,7 @@ function fixture(){
   const session=new Session(read<Campaign>('campaign'),undefined,undefined,items,hero,battle);
   const host=Object.assign(Object.create(WorldCombat.prototype),{
     app:{battleCatalog:battle,items,session},hero,
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentRecoveryCache:new Map(),combatProcsCache:new Map(),
+    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
     aiSkillCostCache:new Map(),
     closed:false,
     playerSkillSignature:'',playerSkillGate:'',allySkillSignatures:new Map(),allySkillGates:new Map(),
@@ -61,6 +61,22 @@ test('mercenary skill reset cancels only its actor and refreshes prepared skills
   invoke('onPartyChanged');assert.deepEqual(cancelled,[first.id],'同一初始化只清理一次');
   session.skills.reset();invoke('onPartyChanged');assert.deepEqual(cancelled,[first.id,'player']);
   assert.equal(refreshed,4);
+});
+
+test('equipment effects share one read per member and follow changes to socketed gems',t=>{
+  const {host,invoke}=fixture(),bag=host.hero.bag as BattleCharacter['bag'];
+  const weapon=bag.equipment['main-hand']!;
+  const reads=t.mock.method(bag,'equipmentFor');
+  const first=invoke('equipmentEffects','player');
+  assert.equal(invoke('combatProcs','player'),first.combat);
+  assert.equal(invoke('equipmentRecovery','player'),first.recovery);
+  assert.equal(reads.mock.callCount(),1);
+  const state=bag.captureState(),entry=state.instances.find(item=>item.id===weapon)!;
+  entry.numbers!.gemModifiers=[...entry.numbers!.gemModifiers,{stat:'fire',value:7}];
+  bag.restoreUnchecked(state);
+  const next=invoke('equipmentEffects','player');
+  assert.equal(next.attack.fireSplashChance,first.attack.fireSplashChance+7);
+  assert.equal(invoke('equipmentEffects','player'),next);
 });
 
 test('party passives are reused until a real input changes',t=>{

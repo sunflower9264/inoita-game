@@ -15,7 +15,7 @@ import {executeSkillUnits} from '../domain/combat-unit-execution.ts';
 import {runActionDispatch as executeActionDispatch} from '../domain/action-dispatch.ts';
 import {MAX_SKILL_TARGETS,type SkillUnitOutcome} from '../domain/skill-unit-sequence.ts';
 import {CombatThreatSystem,type CombatThreatActor,type CombatThreatRole} from '../domain/combat-threat-system.ts';
-import {equipmentThreatReduction} from '../domain/equipment-threat.ts';
+import type {Bag} from '../domain/bag.ts';
 import {BuffLoopRenderer} from '../rendering/buff-loop-renderer.ts';
 import {StateMarkers} from '../rendering/state-markers.ts';
 import { CombatFeedback } from '../rendering/combat-feedback.ts';
@@ -47,14 +47,12 @@ import type { ResourceCapacityKey, ResourceCapacities, ConditionAppearance } fro
 import type { ItemResult } from '../domain/items.ts';
 import { calculateMagicResistance, rollMagicHit, rollPhysicalHit, type PhysicalFighter, type PhysicalHit } from '../domain/physical-hit.ts';
 import {AttackProcExecutor} from '../domain/attack-proc.ts';
-import {equipmentAttackProcs} from '../domain/equipment-attack-procs.ts';
-import {equipmentCombatProcs} from '../domain/equipment-combat-procs.ts';
+import {combatEquipmentEffects} from '../domain/equipment-combat-procs.ts';
 import {selectAttackSplashCenter,attackSplashTargets} from '../domain/attack-splash.ts';
 import {applyCombatOperation} from '../domain/combat-operation.ts';
 import { actionDamage, prepareActionDamage, type PreparedActionDamage } from '../domain/action-damage.ts';
 import { actionDamageSource,bestNormalDamage,normalDamageForClass,physicalNormalDamage,magicNormalDamage, type CombatActorAttributes } from '../domain/combat-damage-source.ts';
 import { calculateManaCost,defaultResourceAttributes } from '../domain/combat-resources.ts';
-import { equipmentRecoveryModifiers } from '../domain/equipment-recovery.ts';
 import { learnedSkillReactions,resolveSkillReactions,executeBloodThirstReaction,type SkillReactionEvent,type SkillReactionBuff,type SkillReaction,type SkillReactionCommand,type LearnedReactionSkill } from '../domain/skill-reactions.ts';
 import { resolveBuffReactions,type BuffReactionEvent } from '../domain/buff-reactions.ts';
 import { resolvePeriodicEffect } from '../domain/combat-periodic.ts';
@@ -129,6 +127,7 @@ interface MapEnemy {
   summonedBySkill?:string;
 }
 
+const UNEQUIPPED_EFFECTS=combatEquipmentEffects([]);
 const TAP_FACINGS:readonly Facing[]=['north','south','east','west'];
 
 /** 观察名单只是兜底；真正的接战由 engaged 事件即时上报。 */
@@ -248,8 +247,7 @@ export class WorldCombat {
     classId:string;growth:ReturnType<typeof memberSkillGrowth>;prepared:ReadonlySet<string>|undefined;requiresAssets:boolean;
     loadout:SkillLoadout;reactions:readonly SkillReaction[];
   }>;
-  private readonly equipmentRecoveryCache=new Map<string,{revision:number;value:ReturnType<typeof equipmentRecoveryModifiers>}>();
-  private readonly combatProcsCache=new Map<string,{revision:number;value:ReturnType<typeof equipmentCombatProcs>}>();
+  private readonly equipmentEffectsCache=new Map<string,{bag:Bag;revision:number;value:ReturnType<typeof combatEquipmentEffects>}>();
   /** 队友 AI 的蓝耗只随技能等级、装备、状态和队伍加成变化；同一组输入下复用上一次结果。 */
   private readonly aiSkillCostCache=new Map<string,{key:string;costs:Map<string,number|undefined>}>();
   private readonly pendingAllies=new Set<string>();
@@ -1645,26 +1643,21 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
     for(const id of this.activePartySlots())
       this.react({kind:'blood-revenge',ownerId:id,opponentId:attackerId,damageKind,outcome});
   }
-  private equipmentRecovery(id:string):ReturnType<typeof equipmentRecoveryModifiers> {
-    const member=this.memberOf(id);
-    const revision=member?.bag.revision??-1;
-    const cached=this.equipmentRecoveryCache.get(id);
-    if(cached?.revision===revision)return cached.value;
-    const equipped=member?Object.values(member.bag.equipmentFor(id)).flatMap(item=>{const entry=member.bag.get(item!);return entry?[entry]:[];}):[];
-    const value=equipmentRecoveryModifiers(equipped);
-    this.equipmentRecoveryCache.set(id,{revision,value});
+  private equipmentRecovery(id:string) { return this.equipmentEffects(id).recovery; }
+
+  private equipmentEffects(id:string):ReturnType<typeof combatEquipmentEffects> {
+    const bag=this.memberOf(id)?.bag;
+    if(!bag)return UNEQUIPPED_EFFECTS;
+    const cached=this.equipmentEffectsCache.get(id);
+    if(cached?.bag===bag&&cached.revision===bag.revision)return cached.value;
+    const equipped=Object.values(bag.equipmentFor(id)).flatMap(item=>{
+      const entry=bag.get(item!);return entry?[entry]:[];
+    });
+    const value=combatEquipmentEffects(equipped);
+    this.equipmentEffectsCache.set(id,{bag,revision:bag.revision,value});
     return value;
   }
-  private combatProcs(id:string):ReturnType<typeof equipmentCombatProcs> {
-    const member=this.memberOf(id);
-    const revision=member?.bag.revision??-1;
-    const cached=this.combatProcsCache.get(id);
-    if(cached?.revision===revision)return cached.value;
-    const equipped=member?Object.values(member.bag.equipmentFor(id)).flatMap(item=>{const entry=member.bag.get(item!);return entry?[entry]:[];}):[];
-    const value=equipmentCombatProcs(equipped);
-    this.combatProcsCache.set(id,{revision,value});
-    return value;
-  }
+  private combatProcs(id:string) { return this.equipmentEffects(id).combat; }
   /** 原版物理成功链：重力摆 -> 冰霜 -> 治愈气息，均在主伤害提交前结算。 */
   private physicalSuccessEquipmentProcs(event:AttackContact,_hit:PhysicalHit,random:()=>number=Math.random):void {
     const caster=this.combatProcs(event.casterId),target=this.combatProcs(event.targetId);
@@ -1772,9 +1765,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
     const sourceMember=this.memberOf(casterId);
     const sourceParty=!!(sourceMember||this.memberOf(sourceEnemy?.summonedBy??''));
     const targetParty=!!(member||this.memberOf(enemy?.summonedBy??''));
-    const equipped=member?Object.values(member.bag.equipmentFor(targetId)).flatMap(id=>{
-      const item=member.bag.get(id!);return item?[item]:[];}):[];
-    const immunity=equipmentStateImmunity(equipped,state);
+    const immunity=equipmentStateImmunity(this.equipmentEffects(targetId).totals,state);
     const immunityAttribute=state==='sleep'?'sleepImmunity':state==='stun'?'stunImmunity':undefined;
     const passives=member?this.partyPassives(targetId):[];
     return {state,sourceRelation:!sourceMember&&!sourceEnemy?'none':sourceParty===targetParty?'friendly':'hostile',
@@ -1927,7 +1918,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
   private forgetMemberCaches(id:string):void{
     this.passivesCache.delete(id);this.skillTableCache.delete(id);
     this.reactionSkillCache?.delete(id);
-    this.equipmentRecoveryCache.delete(id);this.combatProcsCache.delete(id);
+    this.equipmentEffectsCache.delete(id);
     this.aiSkillCostCache?.delete(id);
   }
   private enemyFighter(key:string,definition:EnemyDefinition,playerLevel:number):PhysicalFighter|undefined {
@@ -1994,13 +1985,13 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
     const attackProcAttribute=['windStrikeChance','fireSplashChance','frostStrikeChance','divineStrikeChance','darknessStrikeChance','poisonStrikeChance'].includes(key);
     const equipmentCombatAttribute=['pendulumStunChance','frostRetaliationChance','healingEnergyChance','zealotRate','instantRecoveryPerThousand'].includes(key);
     if(attackProcAttribute){
-      const equipped=member?Object.values(member.bag.equipmentFor(id)).flatMap(item=>{const entry=member.bag.get(item!);return entry?[entry]:[];}):[];
-      original=equipmentAttackProcs(equipped)[key as keyof ReturnType<typeof equipmentAttackProcs>];
+      const rates=this.equipmentEffects(id).attack;
+      original=rates[key as keyof typeof rates];
     }else if(equipmentCombatAttribute){
-      original=this.combatProcs(id)[key as keyof ReturnType<typeof equipmentCombatProcs>];
+      const rates=this.combatProcs(id);
+      original=rates[key as keyof typeof rates];
     }else if(key==='threatReductionRate'){
-      const equipped=member?Object.values(member.bag.equipmentFor(id)).flatMap(item=>{const entry=member.bag.get(item!);return entry?[entry]:[];}):[];
-      original=equipmentThreatReduction(equipped);
+      original=this.equipmentEffects(id).threat;
     }else if(key==='offhandAttackChance'){
       const equipped=member?.bag.equipmentItems(member.bag.equipmentFor(id));
       const offhand=equipped?.['off-hand'],armor=equipped?.body;
@@ -3452,7 +3443,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
     this.stateMarkers.clear();this.conditionVisuals?.clear();
     for(const ally of [...this.allies]){ally.ai.dispose();ally.overhead.destroy();this.movement.remove(ally.visual);ally.visual.container.destroy();ally.assets?.release();}
     this.allies=[];this.partyControllers.clear();this.partySkills.clear();this.lastSkillResets.clear();
-    this.passivesCache.clear();this.skillTableCache.clear();this.equipmentRecoveryCache.clear();this.combatProcsCache.clear();this.aiSkillCostCache?.clear();this.combatantsCache=undefined;this.combatantsSpatialCache=undefined;
+    this.passivesCache.clear();this.skillTableCache.clear();this.equipmentEffectsCache.clear();this.aiSkillCostCache?.clear();this.combatantsCache=undefined;this.combatantsSpatialCache=undefined;
     this.reactionSkillCache?.clear();
     this.combat=undefined;
     this.focusRings?.destroy();this.focusRings=undefined;

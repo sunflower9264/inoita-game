@@ -160,7 +160,7 @@ test('combat destruction releases pending defeats without applying rewards',()=>
     allyWaiters:new Set(),deathTweens:new Map(),fallen:new Set(),pendingDefeats:pending,
     outcomes:empty,feedback:empty,hero:{clearCombatResourceLimits(){}},allies:[],
     stateMarkers:empty,partyControllers:new Map(),partySkills:new Map(),lastSkillResets:new Map(),
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentRecoveryCache:new Map(),combatProcsCache:new Map(),
+    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
     combatEffects:empty,buffLoops:empty,clearEnemies(){cleared++;},conditions:empty,summons:empty,
     extraSkillLeases:new Map(),preparedSkillIds:new Set(),allySkillSignatures:new Map(),
     allySkillGates:new Map(),skillAssetFailures:new Map()

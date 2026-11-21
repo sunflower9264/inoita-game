@@ -21,7 +21,7 @@ function fixture(){
   Object.assign(ally,{skills:configuration(()=>allyRank)});
   const conditions=new CombatConditions(),order:string[]=[];
   const host=Object.setPrototypeOf({hero,conditions,hitResolution:new CombatHitResolution(),arena:[],allies:[],
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentRecoveryCache:new Map(),combatProcsCache:new Map(),
+    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
     aiSkillCostCache:new Map(),
     pendingDefeats:new Set(),fallen:new Set(),
     app:{battleCatalog:catalog,items,session:{skills:configuration(()=>rank),

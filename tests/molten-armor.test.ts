@@ -109,7 +109,7 @@ function fixture(){
     hero:defender,app:{battleCatalog:{...catalog,basicAttacks:{...catalog.basicAttacks,
       [enemyDefinition.basicAttack!.profileId]:{...catalog.basicAttacks[enemyDefinition.basicAttack!.profileId],damage}}},
       audio:{monsterDeath:()=>order.push('death-sound')},session:{isOneHitKill:()=>false,questDropRequirements:()=>[]}},
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentRecoveryCache:new Map(),combatProcsCache:new Map(),
+    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
     aiSkillCostCache:new Map(),drops:{enemies:{},questItems:{}},
     conditions,arena:enemies,allies:[],partyControllers:new Map([['player',controller]]),
     pendingDefeats:new PendingEnemyDefeats(),hitResolution:new CombatHitResolution(),

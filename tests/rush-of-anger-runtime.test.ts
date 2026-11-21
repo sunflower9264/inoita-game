@@ -51,7 +51,7 @@ function fixture(entry:Entry,weapon:Weapon,canStand:(position:{x:number;y:number
     player:{health:10000,maxHealth:10000,mana:100,maxMana:100}};
   // The AI member owns its attributes; the controlled hero has deliberately different damage.
   const hero=entry==='manual'?member:{...member,panel:{...member.panel,physicalAttack:999,attributes:{...primary,strength:99}}};
-  const host=Object.setPrototypeOf({hero,conditions,hitResolution:resolution,pendingDefeats:new Set(),fallen:new Set(),equipmentRecoveryCache:new Map(),combatProcsCache:new Map(),aiSkillCostCache:new Map(),manualOffensiveSkills:new Map(),skillTableCache:new Map(),passivesCache:new Map(),partySkills:new Map(),controlRevision:0,
+  const host=Object.setPrototypeOf({hero,conditions,hitResolution:resolution,pendingDefeats:new Set(),fallen:new Set(),equipmentEffectsCache:new Map(),aiSkillCostCache:new Map(),manualOffensiveSkills:new Map(),skillTableCache:new Map(),passivesCache:new Map(),partySkills:new Map(),controlRevision:0,
     scene:{canCombatControl:true},app:{battleCatalog:catalog,wardrobe,items,
       session:{skills:configuration,party:{controlledId:'player',groupModifiers:()=>({})}},
       audio:{effect:(name:string)=>{sounds.push(name);events.push(`sound:${name}`);}},

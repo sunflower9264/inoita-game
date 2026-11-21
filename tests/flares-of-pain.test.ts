@@ -82,7 +82,7 @@ test('both armored combatants ignite each other through the actual physical hit 
   assert.equal(armor.effect,'buff');if(armor.effect!=='buff')return;
   for(const id of members.keys())conditions.applyBuff(id,armor.buff,armor.ranks[0].strength,armor.ranks[0].effect,id);
   const host=Object.setPrototypeOf({app:{battleCatalog:catalog},arena:[],conditions,
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentRecoveryCache:new Map(),combatProcsCache:new Map(),
+    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
     aiSkillCostCache:new Map(),
     memberOf:(id:string)=>members.get(id),equipmentRecovery:()=>({lifeDrainPerThousand:0}),
     actorAttribute:(id:string,key:BattleStatKey)=>conditions.attribute(id,key,0),

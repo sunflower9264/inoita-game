@@ -32,7 +32,7 @@ function fixture(){
     {id,team:id==='target'?'enemy':'party',position:{x:index*8,y:0},bounds:{x:-4,y:-4,width:8,height:8}}]));
   const conditions=new CombatConditions(),hits:PhysicalHit[]=[];
   const host=Object.setPrototypeOf({hero:player,conditions,hitResolution:new CombatHitResolution(),
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentRecoveryCache:new Map(),combatProcsCache:new Map(),
+    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
     aiSkillCostCache:new Map(),
     pendingDefeats:new Set<string>(),fallen:new Set<string>(),allies:[],arena:[{key:'target',definition:catalog.enemies[0]}],
     app:{battleCatalog:catalog,items:{items:{}},session:{skills:configuration('player'),party:{controlledId:'player',groupModifiers:()=>({})}},audio:{effect:()=>{}}},

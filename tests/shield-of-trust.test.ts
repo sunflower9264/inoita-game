@@ -47,7 +47,7 @@ function fixture(rank=1){
     skills:{get version(){return revision;},draft:()=>({levels:{'shield-of-trust':rank}})}});
   const host=Object.setPrototypeOf({app:{battleCatalog:catalog,session:{skills:member('player').skills}},
     conditions,arena:[],activeParty:['player','ally','third','extra'],fallen:new Set(['fallen-one']),
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentRecoveryCache:new Map(),combatProcsCache:new Map(),
+    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
     aiSkillCostCache:new Map(),
     pendingDefeats:new Set(),
     // 第三名同链角色血量 0 但还没结算完，仍算 active；第四名不在固定三槽里。

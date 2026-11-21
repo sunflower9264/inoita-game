@@ -54,7 +54,7 @@ function fixture(flareRank:number,whistRank:number){
   const applied:{targetId:string;key:string;sourceId:string;priority:number;effect:BattleBuffEffect}[]=[];
   const effects:{targetId:string;effects:unknown[]}[]=[];
   const host=Object.setPrototypeOf({hero:members.get('player'),conditions,hitResolution:new CombatHitResolution(),
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentRecoveryCache:new Map(),combatProcsCache:new Map(),
+    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
     pendingDefeats:new Set<string>(),fallen:new Set<string>(),allies:[],arena:[],
     app:{battleCatalog:catalog,items:{items:{}},session:{skills:{draft:()=>({levels:{flare:flareRank,whist:whistRank}})},
       party:{activeIds:['player','ally'],controlledId:'player',groupModifiers:()=>({})}}},

@@ -35,7 +35,7 @@ function fixture(id='player',rank=1){
     layers:[{alpha:1,setAlpha(value:number){this.alpha=value;return this;}}]});
   const visuals=new Map([['player',visual()],['ally',visual()]]),controllers=new Map<string,CombatController>();
   const host=Object.setPrototypeOf({hero:player,conditions,hitResolution:new CombatHitResolution(),
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentRecoveryCache:new Map(),combatProcsCache:new Map(),
+    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
     aiSkillCostCache:new Map(),
     pendingDefeats:new Set<string>(),fallen:new Set<string>(),arena:[],allies:[{id:'ally',ai:{disable:()=>{},targetRemoved:()=>forgot.push('ally')}}],
     partyControllers:controllers,heroAi:{disable:()=>{},targetRemoved:()=>forgot.push('player')},

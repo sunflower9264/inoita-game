@@ -51,7 +51,7 @@ function fixture(){
   const conditions=new CombatConditions(),applied:{targetId:string;key:string;sourceId:string}[]=[];
   const host=Object.setPrototypeOf({hero:members.get('player'),conditions,hitResolution:new CombatHitResolution(),
     pendingDefeats:new Set<string>(),fallen:new Set<string>(),allies:[],arena:[],
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentRecoveryCache:new Map(),combatProcsCache:new Map(),
+    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
     aiSkillCostCache:new Map(),
     app:{battleCatalog:catalog,items:{items:{}},session:{skills:{draft:()=>({levels:{}})},
       party:{activeIds:['player','ally'],controlledId:'player',groupModifiers:()=>({})}}},

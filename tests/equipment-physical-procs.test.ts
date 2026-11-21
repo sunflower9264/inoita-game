@@ -24,7 +24,7 @@ function fixture(){
   const enemies=[{key:'enemy-0',definition:{acceptsBuffs:true},visual:{container:{active:true}}}];
   const host=Object.setPrototypeOf({
     hero,conditions,arena:enemies,app:{battleCatalog:catalog,session:{}},
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentRecoveryCache:new Map(),combatProcsCache:new Map(),
+    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
     aiSkillCostCache:new Map(),
     memberOf:(id:string)=>members.get(id),
     partyPassives:()=>[],applyStateConsequences:(_id:string,states:readonly string[])=>{for(const state of states)order.push(state);},

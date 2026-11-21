@@ -55,7 +55,7 @@ function fixture(){
   const members=new Map([['first',member(1)],['second',member(8)],['idle',member(0)]]);
   const host=Object.setPrototypeOf({app:{battleCatalog:catalog,session:{skills:{draft:()=>({levels:{}})}}},
     conditions,arena:[{key:'pawn',summonedBy:'first'},{key:'enemy'}],activeParty:['first','second','idle','extra'],
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentRecoveryCache:new Map(),combatProcsCache:new Map(),
+    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
     aiSkillCostCache:new Map(),
     fallen:new Set(),pendingDefeats:new Set(),
     memberOf:(id:string)=>id==='pawn'?undefined:members.get(id),

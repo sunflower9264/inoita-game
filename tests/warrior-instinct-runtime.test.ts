@@ -33,7 +33,7 @@ function fixture(){
   recovery.advanceToFrame(25,[]);
   const host=Object.setPrototypeOf({hero,conditions,hitResolution:new CombatHitResolution(),arena:[],allies:[],
     partyControllers:new Map<string,CombatController>(),pendingDefeats:new Set(),fallen:new Set(),
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentRecoveryCache:new Map(),combatProcsCache:new Map(),
+    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
     aiSkillCostCache:new Map(),
     app:{battleCatalog:catalog,items,session:{skills:configuration(()=>rank),cooldowns,resourceRecovery:recovery,
       party:{groupModifiers:()=>({})}}},memberOf:(id:string)=>id==='player'?hero:id==='ally'?ally:undefined,

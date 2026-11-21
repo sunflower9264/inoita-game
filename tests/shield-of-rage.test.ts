@@ -17,7 +17,7 @@ function fixture(){
   const defender={classId:'dark-knight',player:{health:100},skills:{draft:()=>({levels:{'shield-of-rage':rank}})},
     bag:{revision:0,equipmentFor:()=>({}),get:()=>undefined}};
   const host=Object.setPrototypeOf({app:{battleCatalog:catalog,session:{skills:defender.skills}},conditions,arena:[],
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentRecoveryCache:new Map(),combatProcsCache:new Map(),
+    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
     aiSkillCostCache:new Map(),
     memberOf:(id:string)=>id==='player'?defender:undefined,equipmentRecovery:()=>({lifeDrainPerThousand:0}),
     actorAttribute:()=>0,attackProc:()=>{},syncCombatResourceLimits:()=>{},interruptDisabled:()=>{},applyStateConsequences:()=>{}},WorldCombat.prototype);

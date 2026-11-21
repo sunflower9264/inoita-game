@@ -39,7 +39,7 @@ function fixture(targets:Combatant[]=[]){
     layers:[{setAlpha:()=>{}}]}]));
   let afterHit:(event:SkillUnitHit,hit:PhysicalHit)=>void=()=>{};
   const host=Object.setPrototypeOf({hero:member,conditions,hitResolution:resolution,fallen,pendingDefeats:new Set<string>(),
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentRecoveryCache:new Map(),combatProcsCache:new Map(),
+    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
     aiSkillCostCache:new Map(),drops:{enemies:{},questItems:{}},
     arena:targets.filter(value=>value.team==='enemy').map(value=>({key:value.id,definition:enemyDefinition})),
     app:{battleCatalog:catalog,session:{combatTick:0,party:{controlledId:'player'},isOneHitKill:()=>false,questDropRequirements:()=>[]},

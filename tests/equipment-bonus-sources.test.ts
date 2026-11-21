@@ -167,13 +167,13 @@ test('content exposes the complete equipment, gem, scroll and modifier tables', 
 
 test('all 662 equipment entries expose their class, slot and dual-wield rules', () => {
   const hero = heroAt('dark-knight', MAX_LEVEL);
-  for (const id of EQUIPMENT_IDS) hero.bag.add(id);
+  for (const id of EQUIPMENT_IDS) if(!items.items[id]!.equipment!.locked)hero.bag.add(id);
   const instanceIds = new Map(hero.bag.entries.map(entry => [entry.item, entry.id]));
   let checks = 0;
   for (const id of EQUIPMENT_IDS) {
     const definition = items.items[id]!;
     const rule = definition.equipment!;
-    const entryId = instanceIds.get(id)!;
+    const entryId = rule.locked?hero.bag.addEquipped(id,rule.slot,id,allowedClass(definition),MAX_LEVEL):instanceIds.get(id)!;
     for (const classId of CLASS_IDS) {
       const expected = expectedSlots(definition, classId);
       assert.deepEqual(hero.bag.slotsFor(entryId, classId), expected, `${id} / ${classId}`);
@@ -251,22 +251,20 @@ test('all 636 player-equippable equipment pieces keep every rolled value across 
   assert.equal(checked, 662 - 26);
 });
 
-test('locked equipment cannot be player-equipped but a forced wear keeps its rolls', () => {
+test('story equipment keeps its rolls while worn and leaves with the scripted removal', () => {
   const locked = EQUIPMENT_IDS.filter(id => items.items[id]!.equipment!.locked);
   assert.equal(locked.length, 26);
   const hero = heroAt('dark-knight', MAX_LEVEL);
   for (const id of locked) {
     const rule = items.items[id]!.equipment!;
-    hero.bag.add(id);
-    const loose = lastEntry(hero, id);
-    assert.deepEqual(hero.bag.slotsFor(loose.id, hero.classId), [], id);
-    assert.throws(() => hero.bag.equip(loose.id, rule.slot), /不能装备在此位置/, id);
-    hero.bag.remove(id, 1);
-    const wornId = hero.bag.addEquipped(id, rule.slot, 'player', hero.classId, MAX_LEVEL);
+    assert.throws(()=>hero.bag.add(id),/剧情专属装备/,id);
+    const wornId=hero.bag.addEquipped(id,rule.slot,id,allowedClass(items.items[id]!),MAX_LEVEL);
     const before = hero.bag.get(wornId);
     assert.ok(before?.numbers, `${id} 应该有随机数值`);
-    hero.bag.unequip(rule.slot);
-    assert.deepEqual(hero.bag.get(wornId), before, `${id} 卸下后数值不应变化`);
+    assert.throws(()=>hero.bag.unequip(rule.slot,id),/剧情专属装备/,id);
+    assert.deepEqual(hero.bag.get(wornId),before);
+    hero.bag.unequipForStory(rule.slot,id);
+    assert.equal(hero.bag.get(wornId),undefined);
   }
 });
 
@@ -289,13 +287,14 @@ test('equipmentLevel applies signed chaos offsets and clamps at the 100 and 105 
 
 test('equipment never merges by item id and stackable items merge only while they hold no instance state', () => {
   const hero = heroAt('dark-knight', 1);
-  for (const id of EQUIPMENT_IDS) {
+  const looseIds=EQUIPMENT_IDS.filter(id=>!items.items[id]!.equipment!.locked);
+  for (const id of looseIds) {
     hero.bag.add(id);
     hero.bag.add(id);
   }
   const copiesByItem = new Map<string, ItemInstance[]>();
   for (const entry of hero.bag.entries) copiesByItem.set(entry.item, [...(copiesByItem.get(entry.item) ?? []), entry]);
-  for (const id of EQUIPMENT_IDS) {
+  for (const id of looseIds) {
     const copies = copiesByItem.get(id)!;
     assert.equal(copies.length, 2, `${id} 的两份实例应该分开`);
     assert.notEqual(copies[0]!.id, copies[1]!.id, id);
