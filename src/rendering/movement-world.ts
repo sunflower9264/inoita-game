@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
-import { NavigationWorld, blocksActor, mirroredCollision, type NavigationFaction, type Placement } from '../domain/navigation-world.ts';
-import type { Point } from '../domain/navigation.ts';
+import { NavigationWorld, blocksActor, mirroredCollision, type NavigationFaction, type NavigationShape, type Placement } from '../domain/navigation-world.ts';
+import type { GameRectangle, Point } from '../domain/navigation.ts';
 import type { CharacterVisual } from './characters.ts';
 import { CHARACTER_FOOT_DEPTH_OFFSET } from './depths.ts';
 import { DEFAULT_FOOT_COLLISION, movementBodyClass, type MovementBody } from './arcade-movement.ts';
@@ -89,9 +89,21 @@ export class MovementWorld {
     const body = new Body(this.scene.physics.world, visual.container);
     visual.container.body = body;
     const ghost={value:false};
+    // 通行查询每个物理步要问很多次形状；碰撞盒和翻转没变就交回同一个对象，不再每次新建两层对象。
+    // 外观替换会换掉 `visual.actor`，字段也一起比较，原地改值同样能察觉。
+    let shapeSource:GameRectangle|undefined, shapeFlip:boolean|undefined, shapeKey:readonly number[]|undefined, shapeValue:NavigationShape|undefined;
+    const currentShape = (): NavigationShape => {
+      const source = visual.actor.collision, flip = visual.entity.flip;
+      if (shapeValue && source === shapeSource && flip === shapeFlip
+        && (!source || source.x === shapeKey![0] && source.y === shapeKey![1] && source.width === shapeKey![2] && source.height === shapeKey![3]))
+        return shapeValue;
+      shapeSource = source; shapeFlip = flip; shapeKey = source ? [source.x, source.y, source.width, source.height] : [];
+      return shapeValue = { collision: mirroredCollision(source, flip) };
+    };
     const actor = {
-      shape: () => ({ collision: mirroredCollision(visual.actor.collision, visual.entity.flip) }),
+      shape: currentShape,
       position: () => body.footPosition(),
+      positionInto: (out: Point) => body.footPositionInto(out),
       enabled: () => body.enable && visual.container.active && visual.container.visible,
       faction: faction ? () => faction : undefined,
       ghost: () => ghost.value,
