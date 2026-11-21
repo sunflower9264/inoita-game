@@ -281,6 +281,8 @@ export class Session {
   private readonly questConditionInputs:{key:string;read:(context:StoryConditionContext)=>StoryWorldValue|undefined}[]=[];
   private questProjection?:{questVersion:number;bagVersion:number;owner:string;conditions:(StoryWorldValue|undefined)[]};
   /** `quests` 投影的缓存；只用任务簿版本做键，因为 `commit` 在没有真实变化时不推进版本。 */
+  private storyConditionContext?:StoryConditionContext;
+  private completedEventsProjection?:{events:readonly string[];set:ReadonlySet<string>};
   private waitingGoalProjection?:{version:number;entries:readonly WaitingGoalEntry[]};
   private questsProjection?:{questVersion:number;value:ReadonlyMap<string,Readonly<QuestProgress&{count:number}>>};
   private readonly battle?:BattleCatalog;
@@ -482,12 +484,31 @@ export class Session {
     return {...this.conditionContext(),classId:this.hero?.classId??this.character?.classId,itemCount:(id:string)=>this.itemCount(id),
       equippedItemCount:(item:string)=>Object.values(this.bag.equipmentItems(this.bag.equipmentFor(this.party?.controlledId??'player'))).filter(id=>id===item).length};
   }
+  /**
+   * 剧情条件的读取入口。每个成员都是实时读取会话状态的函数，所以整份上下文只建一次反复交出；
+   * 地图触发、实体显隐和任务条件在玩家走动时每帧都会求值，不再每次新建对象和闭包。
+   */
   conditionContext():StoryConditionContext {
-    return {questStatus:id=>this.status(id),questCompletedCycles:id=>this.questBook?.completedCycles(id)??0,
+    return this.storyConditionContext??={questStatus:id=>this.status(id),questCompletedCycles:id=>this.questBook?.completedCycles(id)??0,
       eventStatus:id=>{
-        const run=[...this.runtimeSnapshot.runs].reverse().find(run=>run.eventId===id&&['running','waiting'].includes(run.status));
-        return run?.status==='running'?'running':run?.status==='waiting'?'waiting':this.runtimeSnapshot.completedEvents.includes(id)?'completed':'idle';
+        // 从最近的运行记录往前找，取第一条进行中或等待中的；不复制整份运行列表。
+        const runs=this.runtimeSnapshot.runs;
+        for(let index=runs.length-1;index>=0;index--){
+          const run=runs[index]!;
+          if(run.eventId!==id)continue;
+          if(run.status==='running')return 'running';
+          if(run.status==='waiting')return 'waiting';
+        }
+        return this.completedEventSet().has(id)?'completed':'idle';
       },choice:id=>this.storyWorld.choice(id),flag:id=>this.storyWorld.hasFlag(id),world:key=>this.worldValue(this.storyWorld,key)};
+  }
+  /** 已完成事件的集合；运行时快照不可变，按 `completedEvents` 数组身份复用，数组换了才重建。 */
+  private completedEventSet():ReadonlySet<string> {
+    const events=this.runtimeSnapshot.completedEvents,cached=this.completedEventsProjection;
+    if(cached?.events===events)return cached.set;
+    const set=new Set(events);
+    this.completedEventsProjection={events,set};
+    return set;
   }
   private worldValue(world:StoryWorldState,key:string):StoryWorldValue|undefined {
     return key==='map'?world.currentLocation?.map??this.worldContext()[key]:this.worldContext()[key];
