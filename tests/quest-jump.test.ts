@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { headlessContent, playthrough } from './helpers/story-playthrough.ts';
 import { applyQuestStartPlan, planQuestStart } from '../src/debug/quest-jump.ts';
+import { questJumpHistory } from '../src/debug/quest-jump-history.ts';
 import { validateStoryProgression } from '../src/application/content-validation.ts';
 import { parseDrops } from '../src/domain/drops.ts';
 import { prepareSceneVisit } from '../src/domain/scene-visit.ts';
@@ -16,6 +17,14 @@ const contentJson = (name: string) =>
 const testDrops = parseDrops(contentJson('drops'), headlessContent.items,
   headlessContent.battle.enemies.map(enemy => enemy.id));
 const testSprings = parseSprings(contentJson('springs'));
+
+test('跳到《无耻的强盗》时已经接取《追击圣女3》，向前跳则保留支线',()=>{
+  const campaign=headlessContent.campaign;
+  const before=questJumpHistory(campaign,'quest-195','available');
+  assert.equal(before.progress.has('quest-225'),false);
+  const sideQuest=questJumpHistory(campaign,'quest-225','available');
+  assert.equal(sideQuest.progress.get('quest-195'),'active');
+});
 
 /** 用正式进图与舞台解析流程预演接取演出。 */
 function resolveAcceptStage(session: Session, stage: StoryStage) {
