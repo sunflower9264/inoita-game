@@ -311,6 +311,23 @@ test('an experience error restores already-added ground rewards and hero progres
   assert.deepEqual(run.defeated,[]);
 });
 
+test('a failed kill settlement restores a quest actor released by the same kill',t=>{
+  t.mock.method(Math,'random',()=>0);
+  const run=harness({enemyId:'enemy-purification-cave-watcher-1'}),session=run.session;
+  const map='snow-fey-village-b6acd59c',characterId='npc-574';
+  session.applyStoryCommands([{type:'travel',destination:{map,x:552,y:528,facing:'north'}}]);
+  assert.ok(session.accept('quest-351'));
+  for(const enemy of ['enemy-frost-werewolf-1','enemy-iceshell-turtle-1'])session.recordQuestFact('defeat',enemy);
+  session.applyStoryCommands([{type:'world',command:{kind:'remove-character',map,characterId,all:false}}]);
+  assert.equal(session.storyWorld.actorVisible(map,characterId),false);
+  const add=session.party!.addExperience.bind(session.party);
+  t.mock.method(session.party!,'addExperience',(amount:number)=>{add(amount);throw new Error('injected experience failure');});
+  assert.throws(()=>run.settle(),/injected experience/);
+  // 任务和交付人一起退回：不能任务还在进行中，人物却已经出现。
+  assert.equal(session.status('quest-351'),'active');
+  assert.equal(session.storyWorld.actorVisible(map,characterId),false);
+});
+
 test('quest drop requirements are queried after this kill updates its quest',()=>{
   const run=harness({enemyId:'enemy-earl-grafton-1'});
   run.session.accept('grafton-mission');

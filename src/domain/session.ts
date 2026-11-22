@@ -888,7 +888,7 @@ export class Session {
           this.enemyRevisionValue++;this.enemySpawnRevisionValue++;
           throw error;
         }
-      },['bag','hero','skills','party','questBook','lootPity','reservedDrops']);
+      },['bag','hero','skills','party','questBook','storyWorld','lootPity','reservedDrops']);
     }finally{
       this.notificationBatchDepth--;this.pendingNotification=pending;this.deferredDefeats=previousDefeats;
     }
@@ -1044,6 +1044,10 @@ export class Session {
   private releaseReadyQuestActors():void{
     if(!this.storyWorld.hasVisitAbsences)return;
     this.recordPerformance(['storyWorld']);
+    // 释放可能由任意事务内部的刷新间接触发；和任务进度一起回滚，
+    // 避免任务退回进行中、交付人却提前现身。
+    const frame=this.atomicFrames[0];
+    if(frame)this.touchAtomic(frame,['storyWorld']);
     const placements=this.campaign.placements;
     for(const id of this.questBook.runningQuestIds){
       if(this.questBook.status(id)!=='ready')continue;
