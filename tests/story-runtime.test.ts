@@ -43,6 +43,30 @@ function harness(data: StoryGraph) {
   return { runtime, port, played, commits, locks, balance: () => balance, earn: (value: number) => { balance += value; },
     captured: () => captured, rolledBack: () => rolledBack, checkpoint: () => checkpoint };
 }
+test('收尾动作节点接空结束节点时，事件在同一轮执行里完成并能从旧检查点续播', async () => {
+  const data = graph([
+    node('action', { type: 'next', target: { script: 'main', node: 'done' } }, 6),
+    node('done', { type: 'end' }),
+  ]);
+  const h = harness(data);
+  assert.equal(await h.runtime.start('main', 'intro'), true);
+  assert.equal(h.balance(), 6);
+  assert.equal(h.runtime.eventStatus('intro'), 'completed');
+  // 旧存档可能停在「动作已提交、空结束节点还没执行」的检查点。
+  const interrupted = harness(data);
+  interrupted.port.present = async action => {
+    if (action.id === 'done') throw new Error('interrupted');
+    interrupted.played.push(action.id);
+    return {};
+  };
+  await assert.rejects(interrupted.runtime.start('main', 'intro'), /interrupted/);
+  assert.equal(interrupted.runtime.eventStatus('intro'), 'running');
+  const resumed = harness(data);
+  resumed.runtime.restore(interrupted.checkpoint()!);
+  assert.equal(await resumed.runtime.resume(), true);
+  assert.equal(resumed.runtime.eventStatus('intro'), 'completed');
+});
+
 test('failed finish leaves the event incomplete and resumes without rechecking its trigger', async () => {
   const h = harness(graph([node('one', { type: 'end' }, 3)]));
   h.port.finish = async () => { throw new Error('finish failed'); };
