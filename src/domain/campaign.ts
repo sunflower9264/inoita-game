@@ -53,7 +53,8 @@ export interface Campaign extends StoryGraph {
   start:StartPlacement;
   quests:CampaignQuest[];
   questGroups:QuestGroupDefinition[];
-  storyProgression:{steps:StoryProgressionStep[];ongoing:string[]};
+  /** 调试跳转用的游玩顺序；正式游玩不读取，缺失时调试跳转退化为按任务条件补进度。 */
+  storyProgression?:{steps:StoryProgressionStep[];ongoing:string[]};
   placements:CampaignPlacement[];
   /** 条件在本次进图时采样；已出现的角色保留到离开这张地图。 */
   mapEntryPlacements?:CampaignPlacement[];

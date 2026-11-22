@@ -128,7 +128,7 @@ function historyIndex(campaign: Campaign): HistoryIndex {
     eventStatus: id => past.has(id) ? 'completed' : 'idle', world: () => undefined,
   };
   let map = campaign.start.map;
-  for (const definition of campaign.storyProgression.steps) {
+  for (const definition of campaign.storyProgression?.steps ?? []) {
     const index = steps.length, event = definition.event ? events.get(definition.event) : undefined;
     const source = event?.script ?? definition.script;
     const at = quests.get(definition.deliver?.[0] ?? '')?.places?.ready

@@ -84,7 +84,7 @@ try {
 
   // 构建期清单：版本来自编译后目录，必需顶层键必须真的存在。
   const manifest = await buildContentManifest(contentDir, hashTree(contentDir));
-  assert.deepEqual(manifest.required['content/campaign.json'], ['version', 'start', 'scripts', 'quests', 'storyProgression']);
+  assert.deepEqual(manifest.required['content/campaign.json'], ['version', 'start', 'scripts', 'quests']);
   assert.deepEqual(manifest.required['content/battle.json'], ['classes', 'skills', 'enemies']);
   assert.ok(campaign.scripts && campaign.start && campaign.quests);
 

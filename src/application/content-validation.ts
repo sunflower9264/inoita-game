@@ -699,9 +699,9 @@ const storyPlace=variant('type',{
 
 const campaign=shape<Campaign>({version:(v,p)=>requireValue(v===2,p,'剧情内容需要版本 2'),contentVersion:count,
   start:object({map:text,x:number,y:number,actor:text,facing,script:text}),
-  storyProgression:object({ongoing:strings,steps:array(object({event:optional(text),script:optional(text),
+  storyProgression:optional(object({ongoing:strings,steps:array(object({event:optional(text),script:optional(text),
     accept:optional(strings),ready:optional(strings),deliver:optional(strings),choices:optional(record(text)),
-    map:optional(text),resumeAfterStage:optional(text)}))}),
+    map:optional(text),resumeAfterStage:optional(text)}))})),
   scripts:record(object({entry:text,nodes:array(object({id:text,presentation:array(presentation),commands:array(storyCommand),stage:optional(performanceChecks.stage),exit:nodeExit}))})),
   questGroups:array(object({id:text,title:text,kind:oneOf('main','side'),questIds:strings})),
   quests:array(object({id:text,title:text,description:text,giver:optional(text),giverCharacterId:optional(text),delivery:optional(text),deliveryCharacterId:optional(text),places:optional(object({available:optional(storyPlace),active:optional(storyPlace),ready:optional(storyPlace)})),guidance:object({available:text,active:text,counterLabel:optional(text)}),
@@ -940,6 +940,8 @@ export function parseMap(value:unknown):WorldMap{
   return result;
 }
 export function validateStoryProgression(content:Campaign):void {
+  // 游玩顺序只服务调试跳转；内容可以不携带，携带时才校验，避免调试数据阻塞正式构建。
+  if (!content.storyProgression) return;
   const opened = new Set<string>(), delivered = new Set<string>(), ready = new Set<string>();
   const events = new Map(content.events.map(event => [event.id, event]));
   const quests = new Map(content.quests.map(quest => [quest.id, quest])), seen = new Set<string>();

@@ -4,7 +4,7 @@ import test from 'node:test';
 import { headlessContent, playthrough } from './helpers/story-playthrough.ts';
 import { applyQuestStartPlan, planQuestStart } from '../src/debug/quest-jump.ts';
 import { questJumpHistory } from '../src/debug/quest-jump-history.ts';
-import { validateStoryProgression } from '../src/application/content-validation.ts';
+import { parseCampaign, validateStoryProgression } from '../src/application/content-validation.ts';
 import { parseDrops } from '../src/domain/drops.ts';
 import { prepareSceneVisit } from '../src/domain/scene-visit.ts';
 import type { Session } from '../src/domain/session.ts';
@@ -465,7 +465,7 @@ test('全部任务都有可用的跳转现场，颠倒任务目录得到同一�
 });
 
 test('剧情顺序校验发现漏掉的区域战斗、接取、交付、分支选择和跨图地点', () => {
-  const campaign = headlessContent.campaign, { steps, ongoing } = campaign.storyProgression;
+  const campaign = headlessContent.campaign, { steps, ongoing } = campaign.storyProgression!;
   const validate = (replacement: typeof steps) => validateStoryProgression({
     ...campaign, storyProgression: { steps: replacement, ongoing } });
   validate(steps);
@@ -491,6 +491,13 @@ test('历史交付保留重复任务的下一轮，按所进记忆分支恢复�
     assert.equal(session.status('quest-499'), 'available');
     assert.equal(session.questBook.completedCycles('quest-499'), 1);
   } finally { h.director.dispose(); }
+});
+
+test('正式内容可以不带调试游玩顺序，带了才校验', () => {
+  const raw = contentJson('campaign') as Record<string, unknown>;
+  delete raw.storyProgression;
+  assert.doesNotThrow(() => parseCampaign(raw));
+  assert.doesNotThrow(() => validateStoryProgression({ ...headlessContent.campaign, storyProgression: undefined }));
 });
 
 test('潜入骨之兽人部落时恢复同行的沃尔达克和伪装，重复跳转沿用同一件面具', () => {

@@ -12,7 +12,7 @@ const CONTENT_MANIFEST_FILENAME = 'content-manifest.json';
 
 /** 运行时按文件路径读取的必需顶层键；只列廉价、缺了就一定晚失败的那几个。 */
 const CONTENT_REQUIRED_KEYS: Readonly<Record<string, readonly string[]>> = {
-  'content/campaign.json': ['version', 'start', 'scripts', 'quests', 'storyProgression'],
+  'content/campaign.json': ['version', 'start', 'scripts', 'quests'],
   'content/battle.json': ['classes', 'skills', 'enemies'],
 };
 
