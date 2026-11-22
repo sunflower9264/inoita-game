@@ -408,6 +408,16 @@ export class StoryRuntime {
     this.port.commit(commit);
     this.install(commit.checkpoint);
   }
+  /**
+   * 空结束节点只有出口：没有表现、命令和舞台，执行它唯一的结果就是把事件记为完成。
+   * 内容里大量把最后一段人物动作写成 `next → 空 done`；把空节点折进前一个节点的提交，
+   * 人物入队/退场和事件完成才不会落在两次提交之间、被中途存档切成两半。
+   */
+  private emptyEndNode(ref: StoryNodeRef): boolean {
+    const node = this.nodes.get(StoryRuntime.nodeKey(ref));
+    return node !== undefined && node.exit.type === 'end' && !node.stage
+      && node.presentation.length === 0 && node.commands.length === 0;
+  }
   private async execute(id: string, signal: AbortSignal, epoch: number): Promise<boolean> {
     let run = this.state.runs.find(candidate => candidate.id === id)!;
     const recent: StoryNodeRef[] = [];
@@ -446,7 +456,12 @@ export class StoryRuntime {
       // 只替换这一条 run，其余运行和顶层字段保持引用；快照不再整份深拷贝。
       let nextRun: StoryRun = { ...run, stage: result.stage ?? run.stage };
       switch (node.exit.type) {
-        case 'next': nextRun.cursor = node.exit.target; break;
+        case 'next': {
+          nextRun.cursor = node.exit.target;
+          // 有调用栈时下一节点可能只是弹栈返回，不能当作事件结束。
+          if (!nextRun.stack?.length && this.emptyEndNode(node.exit.target)) nextRun.status = 'completed';
+          break;
+        }
         case 'call': {
           const stack = [...nextRun.stack ?? [], node.exit.then];
           if (stack.length > MAX_STORY_CALL_DEPTH) throw new Error('剧情调用层级超过限制');
@@ -476,7 +491,8 @@ export class StoryRuntime {
         }
       }
       let completedEvents = this.state.completedEvents;
-      if (node.exit.type === 'end' && nextRun.status === 'completed' && run.eventId && !this.completedEvents().has(run.eventId))
+      // 空结束节点已经折进这一提交，完成条件只看最终状态，不再要求出口类型是 `end`。
+      if (nextRun.status === 'completed' && run.eventId && !this.completedEvents().has(run.eventId))
         completedEvents = [...completedEvents, run.eventId];
       let handledOccurrences = this.state.handledOccurrences;
       if (run.eventId && nextRun.status !== 'running' && !handledOccurrences.some(([event, occurrence]) => event === run.eventId && occurrence === run.occurrence))

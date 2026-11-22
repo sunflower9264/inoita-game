@@ -43,7 +43,7 @@ function harness(data: StoryGraph) {
   return { runtime, port, played, commits, locks, balance: () => balance, earn: (value: number) => { balance += value; },
     captured: () => captured, rolledBack: () => rolledBack, checkpoint: () => checkpoint };
 }
-test('收尾动作节点接空结束节点时，事件在同一轮执行里完成并能从旧检查点续播', async () => {
+test('收尾动作节点接空结束节点时，动作和事件完成在同一次提交里', async () => {
   const data = graph([
     node('action', { type: 'next', target: { script: 'main', node: 'done' } }, 6),
     node('done', { type: 'end' }),
@@ -52,19 +52,54 @@ test('收尾动作节点接空结束节点时，事件在同一轮执行里完�
   assert.equal(await h.runtime.start('main', 'intro'), true);
   assert.equal(h.balance(), 6);
   assert.equal(h.runtime.eventStatus('intro'), 'completed');
-  // 旧存档可能停在「动作已提交、空结束节点还没执行」的检查点。
-  const interrupted = harness(data);
-  interrupted.port.present = async action => {
-    if (action.id === 'done') throw new Error('interrupted');
-    interrupted.played.push(action.id);
-    return {};
-  };
-  await assert.rejects(interrupted.runtime.start('main', 'intro'), /interrupted/);
-  assert.equal(interrupted.runtime.eventStatus('intro'), 'running');
-  const resumed = harness(data);
-  resumed.runtime.restore(interrupted.checkpoint()!);
-  assert.equal(await resumed.runtime.resume(), true);
-  assert.equal(resumed.runtime.eventStatus('intro'), 'completed');
+  // 空结束节点没有表现，不单独播放，也不再单独提交。
+  assert.deepEqual(h.played, ['action']);
+  assert.equal(h.commits.length, 1);
+  assert.deepEqual(h.commits[0]!.commands, [{ type: 'item-give', item: 'coin', quantity: 6 }]);
+  assert.deepEqual(h.commits[0]!.checkpoint.completedEvents, ['intro']);
+  assert.equal(h.commits[0]!.checkpoint.runs.find(run => run.id === h.commits[0]!.runId)?.status, 'completed');
+});
+
+test('收尾的人物入队和退场与事件完成在同一次提交里', async () => {
+  for (const type of ['party-join', 'party-leave'] as const) {
+    const action = node('action', { type: 'next', target: { script: 'main', node: 'done' } });
+    action.commands = [{ type, companion: 'story-mercenary-olaf' }];
+    const h = harness(graph([action, node('done')]));
+    const party = new Set<string>(type === 'party-leave' ? ['story-mercenary-olaf'] : []);
+    let completedWithCommand = false;
+    h.port.apply = commit => {
+      for (const command of commit.commands) {
+        if (command.type === 'party-join') party.add(command.companion);
+        else if (command.type === 'party-leave') party.delete(command.companion);
+      }
+      const run = commit.checkpoint.runs.find(candidate => candidate.id === commit.runId);
+      completedWithCommand = run?.status === 'completed' && commit.checkpoint.completedEvents.includes('intro');
+    };
+    assert.equal(await h.runtime.start('main', 'intro'), true);
+    assert.equal(party.has('story-mercenary-olaf'), type === 'party-join', `${type} 命令已生效`);
+    assert.equal(completedWithCommand, true, `${type} 落地时事件已经完成`);
+    assert.deepEqual(h.played, ['action'], '空结束节点不再单独播放');
+    assert.equal(h.commits.length, 1);
+    assert.deepEqual(h.commits[0]!.checkpoint.completedEvents, ['intro']);
+  }
+});
+
+test('旧检查点停在空结束节点时仍能完成事件', async () => {
+  const data = graph([
+    node('action', { type: 'next', target: { script: 'main', node: 'done' } }),
+    node('done', { type: 'end' }),
+  ]);
+  const h = harness(data);
+  const empty = h.runtime.snapshot();
+  h.runtime.restore({
+    ...empty,
+    sequence: 1,
+    runs: [{ id: 'story:1', script: 'main', eventId: 'intro', occurrence: 'manual:1',
+      cursor: { script: 'main', node: 'done' }, status: 'running' }],
+  });
+  assert.equal(await h.runtime.resume(), true);
+  assert.equal(h.runtime.eventStatus('intro'), 'completed');
+  assert.deepEqual(h.played, ['done']);
 });
 
 test('failed finish leaves the event incomplete and resumes without rechecking its trigger', async () => {
@@ -76,7 +111,9 @@ test('failed finish leaves the event incomplete and resumes without rechecking i
   assert.equal(await h.runtime.resume(), true); assert.equal(h.balance(), 3); assert.equal(h.runtime.eventStatus('intro'), 'completed');
 });
 test('committed rewards survive a failed following popup and are not granted again', async () => {
-  const h = harness(graph([node('award', { type: 'next', target: { script: 'main', node: 'popup' } }, 9), node('popup')]));
+  const popup = node('popup');
+  popup.presentation = [{ type: 'dialogue', speaker: '', actor: null, text: '奖励' }];
+  const h = harness(graph([node('award', { type: 'next', target: { script: 'main', node: 'popup' } }, 9), popup]));
   h.port.present = async action => { h.played.push(action.id); if (action.id === 'popup') throw new Error('popup failed'); return {}; };
   await assert.rejects(h.runtime.start('main'), /popup failed/); assert.equal(h.balance(), 9);
   assert.equal(h.runtime.snapshot().runs[0].cursor.node, 'popup');
@@ -232,7 +269,9 @@ test('repeated events keep one finished run and one occurrence record per event'
   assert.equal(state.runs.length, 1); assert.equal(state.handledOccurrences.length, 1); assert.equal(state.completedEvents.length, 1);
 });
 test('a committed semantic stage is supplied when restoring the following node', async () => {
-  const h = harness(graph([node('setup', { type: 'next', target: { script: 'main', node: 'continue' } }), node('continue')]));
+  const continuation = node('continue');
+  continuation.presentation = [{ type: 'dialogue', speaker: '', actor: null, text: '继续' }];
+  const h = harness(graph([node('setup', { type: 'next', target: { script: 'main', node: 'continue' } }), continuation]));
   const stage = stageSnapshot({ type: 'stage' as const, map: 'camp', x: 3, y: 4, facing: 'east' as const, playerVisible: true,
     cast: [{ id: 'guard', actor: 'soldier', x: 5, y: 6, facing: 'west' as const, visible: true }] },
     [{ id: 'entity:portal', actor: 'portal', worldEntityId: 'portal', x: 90, y: 20, facing: 'south', visible: true }]);
@@ -346,7 +385,9 @@ test('a cancelled playback clears the port once and the next drain notifies agai
 test('authored stage declarations are never persisted as runtime scene checkpoints', async () => {
   const first = node('declaration', { type: 'next', target: { script: 'main', node: 'after' } });
   first.stage = { type: 'stage', map: 'camp', x: 0, y: 0, facing: 'south', playerVisible: true, cast: [] };
-  const h = harness(graph([first, node('after')]));
+  const after = node('after');
+  after.presentation = [{ type: 'dialogue', speaker: '', actor: null, text: '之后' }];
+  const h = harness(graph([first, after]));
   h.port.prepare = async (action, context) => {
     if (action.id === 'declaration') assert.deepEqual(context.stage, first.stage);
     else assert.equal(context.stage, undefined);
@@ -382,7 +423,9 @@ test('invalid complete scene snapshots cannot be committed or restored', async (
 });
 
 test('cancel preserves every background object at the last stable node and ignores late scene results', async () => {
-  const h = harness(graph([node('first', { type: 'next', target: { script: 'main', node: 'second' } }), node('second')]));
+  const second = node('second');
+  second.presentation = [{ type: 'dialogue', speaker: '', actor: null, text: '第二幕' }];
+  const h = harness(graph([node('first', { type: 'next', target: { script: 'main', node: 'second' } }), second]));
   const stage = stageSnapshot({ type: 'stage', map: 'camp', x: 3, y: 4, facing: 'east', playerVisible: true, cast: [] }, [
     { id: 'entity:open-chest', actor: 'chest', x: 12, y: 16, facing: 'south', visible: true },
     { id: 'enemy:a', actor: 'enemy', enemyKey: 'a', enemyId: 'wolf', x: 32, y: 48, facing: 'west', visible: true },
