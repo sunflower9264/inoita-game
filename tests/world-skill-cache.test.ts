@@ -38,6 +38,7 @@ function fixture(){
     skillConfiguration:(id:string,member:{skills:unknown})=>id==='player'?session.skills:member.skills,
     conditions:{hasState:()=>false},
   });
+  host.scene.phaserScene=host.scene;
   const invoke=(name:string,...args:unknown[])=>Reflect.get(WorldCombat.prototype,name).call(host,...args);
   return {session,host,invoke};
 }

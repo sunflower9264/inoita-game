@@ -25,9 +25,12 @@ function harness(moving: boolean, actionState = 'idle') {
     controller: { actionState: () => actionState },
   };
   const host: any = Object.create(WorldCombat.prototype);
+  const scene: any = {};
+  scene.phaserScene = scene;
   for (const [key, value] of Object.entries({
     hero: { player: { health: 100 } },
     app: { session: { party: { controlledId: 'player' } } },
+    scene,
     partyControllers: new Map(),
     allies: [ally],
     arena: [],
