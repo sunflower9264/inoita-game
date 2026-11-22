@@ -109,7 +109,7 @@ export async function backupLocalSaves<World>(ports: CloudSaveSyncPorts<World>):
  * 逐槽下载并写入，网络/鉴权/额度错误停止；已写入的槽位保留，玩家可重试补齐。
  */
 export async function restoreCloudSaves<World>(ports: CloudSaveSyncPorts<World> & {
-  validate(game:SaveGame<World>,signal:AbortSignal):Promise<void>;
+  validate(game:SaveGame<World>,signal:AbortSignal,slot:SaveSlotRef):Promise<void>;
 }): Promise<CloudSyncResult> {
   const signal=ports.signal??new AbortController().signal;
   const listed = await ports.cloud.list(ports.signal);
@@ -157,7 +157,7 @@ export async function restoreCloudSaves<World>(ports: CloudSaveSyncPorts<World> 
       signal.throwIfAborted();
       const reading=readSaveRecord<World>(result.value);
       if(reading.kind!=='ok')throw new Error(reading.reason);
-      await ports.validate(reading.game,signal);
+      await ports.validate(reading.game,signal,entry.slot);
       signal.throwIfAborted();
       ports.saves.writeRaw(entry.slot, JSON.stringify(reading.game));
       completed += 1;

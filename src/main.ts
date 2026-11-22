@@ -725,7 +725,7 @@ function boot(): void {
   app.changePressureClass = changePressureClass;
   app.pausePressure = paused => { const scene=worldScene(); if(!scene)return; if(paused)scene.scene.pause(); else if(!app.suspended)scene.scene.resume(); };
   app.resumeSlot = resumeSlot;
-  app.validateCloudSave=async(game,signal)=>{await sessionLifecycle.prepareCandidate(game,signal);};
+  app.validateCloudSave=async(game,signal,slot)=>{await sessionLifecycle.prepareCandidate(game,signal,slot);};
   app.prefetchCommon = prefetchCommon;
   app.captureSaveWorld = () => app.pressureMode ? {ok:false,reason:'pressure'}
     : worldScene()?.captureSaveWorld() ?? {ok:false,reason:'not-ready'};

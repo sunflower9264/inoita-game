@@ -40,8 +40,9 @@ test('cloud restore checks a real session and map before replacing each local sl
   t.mock.method(cloud,'list',async()=>({ok:true,value:[0,1,2].map(slot=>({slot,format:game.format,bytes:1,updatedAt:1,summary:game.summary}))}));
   t.mock.method(cloud,'download',async(slot:SaveSlotRef)=>({ok:true,value:slot===0?broken:game}));
   const result=await restoreCloudSaves({cloud,saves:slots,confirm:async()=>true,
-    validate:async(candidate,signal)=>{await lifecycle.prepareCandidate(candidate,signal);}});
-  assert.deepEqual(result.failures.map(failure=>failure.slot),[0,1]);
+    validate:async(candidate,signal,slot)=>{await lifecycle.prepareCandidate(candidate,signal,slot);}});
+  assert.deepEqual(result.failures,[{slot:0,reason:'游戏存档出错。无法正常进行游戏。'},
+    {slot:1,reason:'游戏存档出错。无法正常进行游戏。'}]);
   assert.equal(result.completed,1);assert.deepEqual(files,[map.file,map.file]);
   for(const slot of [0,1,2]){
     const reading=slots.readRaw(slot);assert.ok(reading.kind==='ok');

@@ -165,7 +165,7 @@ export interface MenuContext {
   resumeSlot?:(slot:import('../domain/save-game.ts').SaveSlotRef,signal?:AbortSignal)=>Promise<void>;
   /** 文本输入：默认弹系统键盘输入框；测试注入一个直接返回内容的实现。 */
   promptText?: (initial:string)=>Promise<string|undefined>;
-  validateCloudSave(game:import('../domain/save-game.ts').SaveGame<import('./world-snapshot.ts').StoryWorldViewSnapshot>,signal:AbortSignal):Promise<void>;
+  validateCloudSave(game:import('../domain/save-game.ts').SaveGame<import('./world-snapshot.ts').StoryWorldViewSnapshot>,signal:AbortSignal,slot:import('../domain/save-game.ts').SaveSlotRef):Promise<void>;
   /** 修改密码：默认弹三项密码表单；测试注入一个直接返回当前/新密码的实现。 */
   promptPasswordChange?: ()=>Promise<{currentPassword:string;newPassword:string}|undefined>;
   syncLifecycle?:()=>void;

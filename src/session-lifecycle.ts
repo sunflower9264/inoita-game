@@ -57,14 +57,17 @@ export function createSessionLifecycle(app:StoryApp,hooks:SessionLifecycleHooks)
     await prepareStory(request);
     request.throwIfAborted();
     let candidate:ReturnType<typeof prepareSavedGame>;
-    try { candidate=prepareSavedGame(game,app); }
+    try {
+      candidate=prepareSavedGame(game,app);
+      await app.content.map(candidate.map.file,request);
+    }
     catch(error){
-      if(slot===undefined)throw error;
+      // 取消不是存档损坏；保留原错误让读档入口记录取消，不弹存档出错。
+      if(slot===undefined||request.aborted)throw error;
       globalThis.storyDiagnostics?.record('load-validation-failed',{slot,
         reason:error instanceof Error?error.message:String(error)},false);
       throw new Error('游戏存档出错。无法正常进行游戏。');
     }
-    await app.content.map(candidate.map.file,request);
     request.throwIfAborted();
     return candidate;
   }
