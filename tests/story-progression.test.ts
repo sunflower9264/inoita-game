@@ -34,6 +34,7 @@ for (const [title, event, previous, quest, destination] of [
       if (phase === 'quest-popup' && h.session.status(quest) === 'active') saved = h.session.capturePersistentState();
     };
     assert.equal(await h.director.enterRegion(event, plan.destination.map), true);
+    await h.idle();
     assert.deepEqual(h.popups, ['complete:' + previous, 'start:' + quest]);
     assert.deepEqual([...closingStatuses], ['completed'], '收尾人物变化和事件完成同时可见');
     assert.ok(saved);
@@ -41,6 +42,7 @@ for (const [title, event, previous, quest, destination] of [
     const restored = playthrough(saved);
     t.after(() => restored.director.dispose());
     assert.equal(await restored.director.retry(), true);
+    await restored.idle();
     assert.deepEqual(restored.popups, ['start:' + quest]);
     for (const game of [h, restored]) {
       assert.equal(game.director.runtime.eventStatus(event), 'completed');

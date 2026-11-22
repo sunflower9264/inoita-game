@@ -35,26 +35,11 @@ export interface CampaignPlacement extends EntityPlacement {
   /** 必填：常显写成 `{type:'always',value:true}`，漏写会在校验阶段报错，不再静默变成常显。 */
   condition:StoryCondition;
 }
-/** 正常游玩的一步。接取与交付可以相隔多个地点，也可以在同一段演出里交接。 */
-export interface StoryProgressionStep {
-  event?:string;
-  script?:string;
-  accept?:string[];
-  ready?:string[];
-  deliver?:string[];
-  choices?:Record<string,string>;
-  /** 同一角色或机关出现在多张地图时，这一步实际发生的地图。 */
-  map?:string;
-  /** 此任务的待交付起点使用刚结束的演出落点。 */
-  resumeAfterStage?:string;
-}
 export interface Campaign extends StoryGraph {
   contentVersion:number;
   start:StartPlacement;
   quests:CampaignQuest[];
   questGroups:QuestGroupDefinition[];
-  /** 调试跳转用的游玩顺序；正式游玩不读取，缺失时调试跳转退化为按任务条件补进度。 */
-  storyProgression?:{steps:StoryProgressionStep[];ongoing:string[]};
   placements:CampaignPlacement[];
   /** 条件在本次进图时采样；已出现的角色保留到离开这张地图。 */
   mapEntryPlacements?:CampaignPlacement[];

@@ -27,7 +27,7 @@
 - 改动构建、校验或打包逻辑后运行对应命令验证：`npm run build`、`npm run validate:content`、`npm run test:standalone`，APK 改动用 `npm run apk` 和 `npm run verify:apk`。发版内容门禁用 `npm run release:story`（内容校验 + 剧情审计 + 存档测试 + 构建）。
 - 生成物 `dist/`、`src/generated/*`、`tools/character-atlas-aliases.ts` 由脚本产出，内容变化后重跑对应生成命令。
 - **图集源图归档在 `asset-source/`。** 图集生成、内容构建去重、逐像素测试只从 `asset-source/` 读原图；`public/assets` 只放运行时图集页、地图、音频和明确未进图集的例外图片。别名表 `tools/character-atlas-aliases.ts` 只给工具判断覆盖，不进入运行时包。
-- 构建在 `dist/content-manifest.json` 写生产内容哨兵：记录编译后内容的 `contentVersion` 和 `campaign.json`/`battle.json` 的必需顶层键。剧情内容可以携带调试跳转用的游玩顺序 `storyProgression`，存在时校验，缺失不阻塞构建。清单放在 `content/` 外，不参与 `hashTree(content)`；运行时只读清单，不重算 34MB 内容哈希。
+- 构建在 `dist/content-manifest.json` 写生产内容哨兵：记录编译后内容的 `contentVersion` 和 `campaign.json`/`battle.json` 的必需顶层键。调试跳转历史在运行时按目标任务推导，内容不再携带游玩顺序字段。清单放在 `content/` 外，不参与 `hashTree(content)`；运行时只读清单，不重算 34MB 内容哈希。
 - 用 `npm run test:content-build` 跑真实内容的编译烟雾测试（一次最小战斗和一个剧情节点）；它不进入每次单元测试。
 - **构建会裁剪未引用素材。** `build.mjs` 在 Vite 输出后调用 `prune-assets.ts`，把 `dist/assets` 里没有被运行时引用的文件移到仓库根目录的 `asset-archive/`（不进 Git），并写 `asset-archive/report.json`。
 - 保留集由 `asset-keep.ts` 从三处求并集：编译后内容 JSON 里的 `assets/...`、代码里固定的界面路径、运行时真正交给 Phaser 的 `PendingAsset`；被 UI/图标/特效/物件/角色图集替代的原图只保留图集页。任何被引用但磁盘上不存在的路径会让构建直接失败。

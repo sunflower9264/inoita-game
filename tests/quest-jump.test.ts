@@ -4,7 +4,7 @@ import test from 'node:test';
 import { headlessContent, playthrough } from './helpers/story-playthrough.ts';
 import { applyQuestStartPlan, planQuestStart } from '../src/debug/quest-jump.ts';
 import { questJumpHistory } from '../src/debug/quest-jump-history.ts';
-import { parseCampaign, validateStoryProgression } from '../src/application/content-validation.ts';
+import { parseCampaign } from '../src/application/content-validation.ts';
 import { parseDrops } from '../src/domain/drops.ts';
 import { prepareSceneVisit } from '../src/domain/scene-visit.ts';
 import type { Session } from '../src/domain/session.ts';
@@ -418,7 +418,8 @@ test('rewinding the knight pursuit reopens its recorded followups through succes
     for (const id of ['event-178', 'event-179', 'event-180', 'event-181', 'event-182', 'event-183'])
       assert.ok(!h.session.runtimeState.completedEvents.includes(id), id);
     assert.equal(h.session.runtimeState.occurrenceSequences.length, 0);
-    assert.ok(h.session.runtimeState.completedEvents.includes('event-19'));
+    // 因果历史只保留到达目标所必需的事件；与目标无关的旧记录一并清掉。
+    assert.ok(!h.session.runtimeState.completedEvents.includes('event-19'));
     assert.equal(h.session.status('quest-148'), 'available');
     assert.equal(h.session.status('quest-149'), 'available');
   } finally { h.director.dispose(); }
@@ -464,40 +465,24 @@ test('全部任务都有可用的跳转现场，颠倒任务目录得到同一�
   } finally { h.director.dispose(); }
 });
 
-test('剧情顺序校验发现漏掉的区域战斗、接取、交付、分支选择和跨图地点', () => {
-  const campaign = headlessContent.campaign, { steps, ongoing } = campaign.storyProgression!;
-  const validate = (replacement: typeof steps) => validateStoryProgression({
-    ...campaign, storyProgression: { steps: replacement, ongoing } });
-  validate(steps);
-  assert.throws(() => validate(steps.filter(step => step.event !== 'event-27')), /quest-31|event-27/);
-  assert.throws(() => validate(steps.filter(step => step.event !== 'event-11')), /event-11/);
-  assert.throws(() => validate(steps.filter(step => !step.deliver?.includes('quest-18'))), /quest-18/);
-  assert.throws(() => validate([...steps, {accept:['quest-18']}]), /quest-18/);
-  assert.throws(() => validate(steps.map(step => step.event === 'event-6' ? {...step, choices: {}} : step)), /选择/);
-  assert.throws(() => validate(steps.map(step => step.event === 'event-57' ? {...step, map:'shadow-camp'} : step)), /地图/);
-});
 
-test('历史交付保留重复任务的下一轮，按所进记忆分支恢复选择', () => {
+test('记忆分支按目标接取条件固定选择，不追溯与目标无关的旧任务', () => {
   const h = playthrough();
   try {
     const {session} = h;
     applyQuestStartPlan(session, planQuestStart(session.campaign, session, 'quest-416', 'active'));
     assert.equal(session.storyWorld.choice('choice-21'), 'option-0');
+    assert.equal(session.status('quest-416'), 'active');
     assert.equal(session.status('quest-353'), 'available');
-    assert.equal(session.questBook.completedCycles('quest-353'), 1);
-    assert.equal(session.rewardReceiptFor('quest-353'), undefined);
-    assert.ok(session.accept('quest-353'));
-    assert.equal(session.status('quest-353'), 'active');
+    assert.equal(session.questBook.completedCycles('quest-353'), 0);
     assert.equal(session.status('quest-499'), 'available');
-    assert.equal(session.questBook.completedCycles('quest-499'), 1);
   } finally { h.director.dispose(); }
 });
 
-test('正式内容可以不带调试游玩顺序，带了才校验', () => {
+test('正式内容不再携带调试游玩顺序', () => {
   const raw = contentJson('campaign') as Record<string, unknown>;
-  delete raw.storyProgression;
+  assert.equal('storyProgression' in raw, false);
   assert.doesNotThrow(() => parseCampaign(raw));
-  assert.doesNotThrow(() => validateStoryProgression({ ...headlessContent.campaign, storyProgression: undefined }));
 });
 
 test('潜入骨之兽人部落时恢复同行的沃尔达克和伪装，重复跳转沿用同一件面具', () => {

@@ -1,4 +1,4 @@
-import { prepareIntakeCast, questJumpHistory } from './quest-jump-history.ts';
+import { prepareIntakeCast, questJumpHistory, type ReplayedPlacement } from './quest-jump-history.ts';
 import type { Campaign, CampaignQuest } from '../domain/campaign.ts';
 import type { Facing, QuestStatus, TravelDestination } from '../domain/content.ts';
 import type { QuestBookState, QuestProgress, QuestRules } from '../domain/quest-book.ts';
@@ -96,10 +96,45 @@ function placementCovers(placement: Campaign['placements'][number], quest: Campa
 }
 
 /** 发布者/交付者可能出现的地图；任务地点有多个候选时优先能放下 NPC 的那张。 */
-function npcMaps(campaign: Campaign, quest: CampaignQuest): ReadonlySet<string> {
-  return new Set(campaign.placements
+function npcMaps(campaign: Campaign, quest: CampaignQuest,
+  placements?: readonly ReplayedPlacement[]): ReadonlySet<string> {
+  const maps = new Set(campaign.placements
     .filter(placement => placementCovers(placement, quest))
     .map(placement => placement.map));
+  for (const placement of placements ?? []) if (replayedPlacementCovers(placement, quest)) maps.add(placement.map);
+  return maps;
+}
+
+function replayedPlacementCovers(placement: ReplayedPlacement, quest: CampaignQuest): boolean {
+  return (placement.characterId !== undefined
+    && (placement.characterId === quest.giverCharacterId || placement.characterId === quest.deliveryCharacterId))
+    || (placement.actor !== undefined && (placement.actor === quest.giver || placement.actor === quest.delivery))
+    || (quest.giverCharacterId !== undefined && placement.entityId === quest.giverCharacterId)
+    || (quest.deliveryCharacterId !== undefined && placement.entityId === quest.deliveryCharacterId);
+}
+
+/** 多候选地点里，历史重放出现过任何摆放的地图优先。 */
+function replayedAlternativeSpot(placements: readonly ReplayedPlacement[] | undefined,
+  place: Extract<StoryPlace, { type: 'alternatives' }>): Spot | undefined {
+  for (let index = (placements?.length ?? 0) - 1; index >= 0; index--) {
+    const spot = place.spots.find(candidate => candidate.map === placements![index].map);
+    if (spot) return { map: spot.map, x: spot.x, y: spot.y };
+  }
+  return undefined;
+}
+
+/** 历史重放后发布者/交付者最后所在的位置。 */
+function replayedSpotFor(placements: readonly ReplayedPlacement[] | undefined,
+  quest: CampaignQuest): Spot | undefined {
+  if (!placements?.length) return undefined;
+  const identities = [quest.deliveryCharacterId, quest.delivery, quest.giverCharacterId, quest.giver]
+    .filter((value): value is string => !!value);
+  for (let index = placements.length - 1; index >= 0; index--) {
+    const placement = placements[index];
+    if (identities.some(id => placement.characterId === id || placement.actor === id || placement.entityId === id))
+      return { map: placement.map, x: placement.x, y: placement.y, facing: placement.facing };
+  }
+  return undefined;
 }
 
 function questOf(campaign: Campaign, questId: string): CampaignQuest | undefined {
@@ -274,14 +309,18 @@ function spotOf(place: StoryPlace | undefined,
   return undefined;
 }
 
-function giverSpot(campaign: Campaign, session: Session, quest: CampaignQuest): Spot | undefined {
-  const placements = campaign.placements.filter(placement => placementCovers(placement, quest));
-  const visible = placements.find(placement => session.evaluateCondition(placement.condition)) ?? placements[0];
+function giverSpot(campaign: Campaign, session: Session, quest: CampaignQuest,
+  placements?: readonly ReplayedPlacement[]): Spot | undefined {
+  const replayed = replayedSpotFor(placements, quest);
+  if (replayed) return replayed;
+  const candidates = campaign.placements.filter(placement => placementCovers(placement, quest));
+  const visible = candidates.find(placement => session.evaluateCondition(placement.condition)) ?? candidates[0];
   return visible ? { map: visible.map, x: visible.x, y: visible.y, facing: visible.facing } : undefined;
 }
 
 function resolveDestination(campaign: Campaign, session: Session, quest: CampaignQuest,
-  accept: AcceptCandidate | undefined, mode: QuestStartMode, stageMap?: string): TravelDestination | undefined {
+  accept: AcceptCandidate | undefined, mode: QuestStartMode, stageMap?: string,
+  placements?: readonly ReplayedPlacement[]): TravelDestination | undefined {
   const current = session.storyWorld.currentLocation;
   const place = accept?.event?.place;
   const location = current ? { ...current } : undefined;
@@ -292,10 +331,21 @@ function resolveDestination(campaign: Campaign, session: Session, quest: Campaig
   const stagePlace = mode === 'available'
     ? quest.places?.available
     : mode === 'ready' ? quest.places?.ready ?? quest.places?.active : quest.places?.active;
+  const maps = npcMaps(campaign, quest, placements);
+  const replayed = replayedSpotFor(placements, quest);
+  const replayedFitsStage = replayed && stagePlace && (
+    stagePlace.type === 'alternatives' ? stagePlace.spots.some(spot => spot.map === replayed.map)
+      : stagePlace.type === 'fixed' ? stagePlace.map === replayed.map : false);
+  const alternativeFromPlacements = stagePlace?.type === 'alternatives'
+    ? replayedAlternativeSpot(placements, stagePlace) : undefined;
   const stageSpot = (stagePlace?.type === 'alternatives' ? stagePlace.spots.find(spot => spot.map === stageMap) : undefined)
-    ?? spotOf(stagePlace, stagePlace?.type === 'current' ? location : undefined, npcMaps(campaign, quest));
-  const spot: Spot | undefined = eventSpot ?? stageSpot ?? (place?.type === 'current' ? location : undefined)
-    ?? giverSpot(campaign, session, quest);
+    ?? spotOf(stagePlace, stagePlace?.type === 'current' ? location : undefined, maps);
+  const spot: Spot | undefined = eventSpot
+    ?? (replayedFitsStage ? replayed : undefined)
+    ?? alternativeFromPlacements
+    ?? stageSpot
+    ?? (place?.type === 'current' ? location : undefined)
+    ?? giverSpot(campaign, session, quest, placements);
   if (!spot) {
     // `places.available.type === 'current'`：留在当前地图。
     if (current) return { map: current.map, x: current.x, y: current.y, facing: current.facing };
@@ -329,7 +379,8 @@ export function planQuestStart(campaign: Campaign, session: Session, questId: st
   const intake = candidates.find(entry => history.intake.event ? entry.eventId === history.intake.event
     : entry.script === history.intake.script);
   const accept = mode === 'available' ? intake : undefined;
-  const destination = history.destination ?? resolveDestination(campaign, session, quest, accept, mode, history.stageMap);
+  const destination = history.destination
+    ?? resolveDestination(campaign, session, quest, accept, mode, history.stageMap, history.placements);
   if (accept) prepareIntakeCast(campaign, accept.script, destination, history);
   const conditionPatch = emptyPatch();
   conditionPatch.completedQuests = [...history.completedQuests];
@@ -351,7 +402,7 @@ export function planQuestStart(campaign: Campaign, session: Session, questId: st
     satisfyCondition(accept?.event?.condition, session, conditionPatch);
   }
   satisfyNpcPlacements(campaign, session, quest, destination, conditionPatch);
-  const warnings: string[] = [];
+  const warnings: string[] = history.warnings.map(warning => '跳转历史：' + warning);
   if (mode === 'available') {
     const final = clonePatch(conditionPatch);
     pushQuestPatch(final, questId, 'available');

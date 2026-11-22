@@ -34,7 +34,7 @@ test('同一个选择值连续出现两次时，重复事件执行两次，一�
   const content: Campaign = {
     version: 2, contentVersion: 1,
     start: { map: 'demo', x: 0, y: 0, actor: 'hero', facing: 'south', script: 'teach' },
-    quests: [], questGroups: [], placements: [], storyProgression: { steps: [{event:'once-choice'}], ongoing: [] },
+    quests: [], questGroups: [], placements: [],
     scripts: {
       teach: { entry: 'done', nodes: [{ id: 'done', presentation: [], commands: [], exit: { type: 'end' } }] },
       once: { entry: 'done', nodes: [{ id: 'done', presentation: [], commands: [], exit: { type: 'end' } }] },
@@ -125,7 +125,7 @@ test('选择命令所在批次失败并回滚后，不会留下假的选择事�
   const content: Campaign = {
     version: 2, contentVersion: 1,
     start: { map: 'demo', x: 0, y: 0, actor: 'hero', facing: 'south', script: 'teach' },
-    quests: [], questGroups: [], placements: [], storyProgression: { steps: [], ongoing: [] },
+    quests: [], questGroups: [], placements: [],
     scripts: { teach: { entry: 'done', nodes: [{ id: 'done', presentation: [], commands: [], exit: { type: 'end' } }] } },
     events: [{ id: 'repeat-choice', source: 'choice', key: 'lesson', script: 'teach', repeat: true, place: { type: 'current' },
       condition: { type: 'choice', choice: 'lesson', value: 'same' } }],

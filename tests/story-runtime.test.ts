@@ -200,8 +200,7 @@ test('playback, prefetch and content validation agree at 32 and 33 nested calls'
     const destination={map:'B',x:1,y:1,facing:'south'} as const;
     const graphData=graph([...calls,{...node(String(depth)),commands:[{type:'travel',destination}]},node('end')]);
     const campaign:Campaign={...graphData,events:[],contentVersion:1,
-      start:{...destination,map:'A',actor:'hero',script:'main'},quests:[],placements:[],questGroups:[],
-      storyProgression:{steps:[],ongoing:[]}};
+      start:{...destination,map:'A',actor:'hero',script:'main'},quests:[],placements:[],questGroups:[]};
     const check=()=>validateStoryPerformance({version:1,maps:[],actors:{},portraits:{},props:[]},campaign);
     assert.equal(nextStoryMap(campaign,{node:ref(0),stack:[]},'A'),depth===32?'B':undefined);
     if(depth===32){check();assert.equal(await harness(campaign).runtime.start('main'),true);}

@@ -5,15 +5,16 @@
 ## 文件
 
 - `gm-actions.ts`：GM 动作的唯一实现，面板、`globalThis.gm` 和控制台都调它。
-- `quest-jump-history.ts` 读取剧情内容中的正式游玩顺序，计算所选任务开始前或待交付时已经发生的交接、战斗和人物摆放。
+- `quest-jump-history.ts` 按目标任务推导历史现场，计算所选任务开始前或待交付时已经发生的交接、战斗和人物摆放。
+- `quest-jump-derivation.ts` 建立剧情内容索引，解析到达目标任务阶段所需的接取、完成、选择和世界摆放，按因果依赖重放并选择目的地。
 - `gm-mode.ts`：GM 模式开关的本地持久化，默认关闭。
 
 ## 规则
 
 - GM 动作只在 `gm-actions.ts` 实现一次；Phaser 面板、控制台和测试都调用同一入口，不各写一份。
 - GM 任务页从 `quest-catalog.ts` 取得分组、显示顺序和当前状态。跳转在 `quest-jump.ts` 按正式接取条件、已经发生的任务交接和所选阶段准备现场。界面预览和存档后的执行使用同一阶段计划。
-- 「圣女救援行动」沿游戏里的演出顺序准备进度。向前跳时只补已发生的任务交接和跨地图的摆放，往回跳时重新开放后续演出的触发。「单独潜入」的返回阶段从救出圣女后的正式落点开始，保留打开的机关，玩家可步行回去与莱曼汇合。
-- 每个可选任务有明确的接取和交付步骤。跨过目标时点的任务保留当时的阶段，一次性区域、近身和战后演出随历史一起恢复。同阶段自由支线使用内容指定的默认顺序。《无耻的强盗》排在《追击圣女3》接取之后，跳到支线时主线已在进行中。
+- 「圣女救援行动」按因果关系准备进度。向前跳时只补到达所选阶段必需的任务交接、持久摆放和选择；与目标无关的区域/进图/近身/战斗事件保持未发生，不按「当前条件已满足」吸收。往回跳时重新开放后续演出的触发。「单独潜入」的返回阶段从救出圣女后的正式落点开始，保留打开的机关，玩家可步行回去与莱曼汇合。
+- 每个可选任务有明确的接取和交付入口。历史重放持久 `place` 和 flag；目的地优先使用重放后的发布者/交付者实际摆放，再回退任务阶段地点和静态 placement。`mapFromWorld` 舞台沿用当前地图。story 任务的待交付阶段先满足完成事件的前置状态，再把目标任务合成 ready，完成事件本身保持 idle。
 - 向前跳时准备历史交接所需的剧情道具。往回跳时清除后续主支线的交付收据、演出和战斗实例，让玩家按正式流程重新接取和交付。历史进度不结算经验、金币和普通装备。
 - 剧情跳转期间 `QuestBook.forcedAvailable` 让目标任务保持可接取，`forcedProgress` 钉住接取条件里要求 ready/active 的前置任务；两者都不进入状态快照或存档，跳转交接（接取剧情播完）和会话关闭时用 `clearDebugOverrides()` 一起清空。
 - 起点状态由任务自己的完成方式决定：`completion: 'talk'` 的零目标任务只能从 `ready` 开始，规划结果归一成 `ready`，目的地取 `places.ready`；应用计划时先放成可接取，再走真实的 `quest accept` 命令，让任务簿自己写 ready、周期、运行池和接取物品。内部任务放成锁定，接取命令带 `source: 'script'`。
@@ -40,7 +41,7 @@
 
 ```bash
 npm run typecheck
-npm test -- tests/gm-scene.test.ts tests/gm-actions.test.ts tests/gm-quest-jump.test.ts tests/gm-complete-golem.test.ts tests/quest-catalog.test.ts tests/quest-jump.test.ts tests/story-director-event-filter.test.ts
+npm test -- tests/gm-scene.test.ts tests/gm-actions.test.ts tests/gm-quest-jump.test.ts tests/gm-complete-golem.test.ts tests/quest-catalog.test.ts tests/quest-jump.test.ts tests/quest-jump-history.test.ts tests/story-director-event-filter.test.ts
 ```
 
 - `tests/gm-complete-golem.test.ts` 覆盖状态页完成任务先结算石魔遭遇、推进后续任务，以及等待中的战斗已卡住时优先结算且不误完成无关任务。

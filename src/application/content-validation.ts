@@ -699,9 +699,6 @@ const storyPlace=variant('type',{
 
 const campaign=shape<Campaign>({version:(v,p)=>requireValue(v===2,p,'剧情内容需要版本 2'),contentVersion:count,
   start:object({map:text,x:number,y:number,actor:text,facing,script:text}),
-  storyProgression:optional(object({ongoing:strings,steps:array(object({event:optional(text),script:optional(text),
-    accept:optional(strings),ready:optional(strings),deliver:optional(strings),choices:optional(record(text)),
-    map:optional(text),resumeAfterStage:optional(text)}))})),
   scripts:record(object({entry:text,nodes:array(object({id:text,presentation:array(presentation),commands:array(storyCommand),stage:optional(performanceChecks.stage),exit:nodeExit}))})),
   questGroups:array(object({id:text,title:text,kind:oneOf('main','side'),questIds:strings})),
   quests:array(object({id:text,title:text,description:text,giver:optional(text),giverCharacterId:optional(text),delivery:optional(text),deliveryCharacterId:optional(text),places:optional(object({available:optional(storyPlace),active:optional(storyPlace),ready:optional(storyPlace)})),guidance:object({available:text,active:text,counterLabel:optional(text)}),
@@ -939,63 +936,6 @@ export function parseMap(value:unknown):WorldMap{
     requireValue(spawn.x>=0&&spawn.x<result.width&&spawn.y>=0&&spawn.y<result.height,spawn.id,'任务物品生成点超出地图');
   return result;
 }
-export function validateStoryProgression(content:Campaign):void {
-  // 游玩顺序只服务调试跳转；内容可以不携带，携带时才校验，避免调试数据阻塞正式构建。
-  if (!content.storyProgression) return;
-  const opened = new Set<string>(), delivered = new Set<string>(), ready = new Set<string>();
-  const events = new Map(content.events.map(event => [event.id, event]));
-  const quests = new Map(content.quests.map(quest => [quest.id, quest])), seen = new Set<string>();
-  for (const [i, step] of content.storyProgression.steps.entries()) {
-    const path = 'storyProgression.steps[' + i + ']';
-    requireValue(step.event || step.script || step.accept?.length || step.ready?.length || step.deliver?.length, path, '剧情步骤为空');
-    const event = step.event ? events.get(step.event) : undefined;
-    if (step.event) {
-      requireValue(event && !step.script && !seen.has(step.event), path, '剧情事件缺失或重复 ' + step.event);
-      seen.add(step.event);
-    }
-    const source = event?.script ?? step.script;
-    const script = source ? content.scripts[source] : undefined;
-    if (source) requireValue(script, path, '剧情脚本缺失 ' + source);
-    const places = event?.place?.type === 'alternatives' ? [event.place] : [
-      ...(step.accept ?? []).map(id => quests.get(id)?.places?.available),
-      ...(step.deliver ?? []).map(id => quests.get(id)?.places?.ready),
-    ];
-    const alternatives = places.filter(place => place?.type === 'alternatives')
-      .map(place => new Set(place!.spots.map(spot => spot.map)));
-    if (!event?.map && event?.place?.type !== 'fixed' && alternatives.some(maps => maps.size > 1))
-      requireValue(step.map && alternatives.every(maps => maps.has(step.map!)), path, '接取或交付有多个地点，需要选定实际地图');
-    if (step.map) requireValue(step.map === event?.map || (event?.place?.type === 'fixed' && step.map === event.place.map)
-      || alternatives.some(maps => maps.has(step.map!)), path, '选定的地图不在剧情地点中 ' + step.map);
-    for (const node of script?.nodes ?? []) if (node.exit.type === 'choice')
-      requireValue(step.choices?.[node.exit.choice], path, '剧情顺序缺少选择 ' + node.exit.choice);
-    for (const [choice, value] of Object.entries(step.choices ?? {}))
-      requireValue(script?.nodes.some(node => node.exit.type === 'choice' && node.exit.choice === choice && node.exit.cases[value]),
-        path, '剧情选择没有对应出口 ' + choice);
-    for (const id of step.accept ?? []) {
-      requireValue(quests.has(id) && !opened.has(id), path, '任务接取缺失或重复 ' + id);
-      if (script) requireValue(script.nodes.some(node => node.commands.some(action => action.type === 'quest'
-        && action.command.type === 'accept' && action.command.quest === id)), path, '演出没有接取任务 ' + id);
-      opened.add(id);
-    }
-    for (const id of step.ready ?? []) {
-      requireValue(opened.has(id) && !ready.has(id) && !delivered.has(id), path, '任务待交付顺序错误 ' + id);
-      ready.add(id);
-    }
-    if (step.resumeAfterStage) requireValue(step.ready?.includes(step.resumeAfterStage)
-      && script?.nodes.some(node => node.presentation.some(action => action.type === 'stage' && action.map)),
-      path, '待交付起点缺少演出落点 ' + step.resumeAfterStage);
-    for (const id of step.deliver ?? []) {
-      requireValue(opened.has(id) && !delivered.has(id), path, '任务交付顺序错误 ' + id);
-      delivered.add(id);
-    }
-  }
-  const ongoing = new Set(content.storyProgression.ongoing);
-  unique(content.storyProgression.ongoing, 'storyProgression.ongoing');
-  for (const id of ongoing) requireValue(opened.has(id) && !delivered.has(id), id, '持续中的剧情任务需要接取且没有交付');
-  for (const id of quests.keys()) requireValue(opened.has(id) && (delivered.has(id) || ongoing.has(id)), id, '剧情顺序缺少任务接取或交付');
-  for (const event of events.values()) requireValue(event.repeat || seen.has(event.id), event.id, '剧情顺序缺少一次性事件');
-}
-
 export function parseCampaign(value:unknown):Campaign {
   campaign(value,'campaign'); const result=structuredClone(value) as Campaign;
   validateStoryGraph(result);
@@ -1086,7 +1026,6 @@ export function parseCampaign(value:unknown):Campaign {
   for(const entity of [...result.placements,...result.mapEntryPlacements??[]]) entity.authority??=placementAuthority(entity);
   for(const script of Object.values(result.scripts))for(const node of script.nodes)for(const command of node.commands)
     if(command.type==='world'&&command.command.kind==='place')command.command.entity.authority??=placementAuthority(command.command.entity);
-  validateStoryProgression(result);
   return result;
 }
 function unique(ids:string[],path:string):void{requireValue(new Set(ids).size===ids.length,path,'标识重复');}

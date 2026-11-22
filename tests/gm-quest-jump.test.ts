@@ -339,7 +339,7 @@ test('前往卡姆兰秘密基地从正式接取演出进入', async () => {
   } finally { h.director.dispose(); }
 });
 
-test('分毫之差读档折返哈肯沙漠，消失的圣女保持交付后的进度', async () => {
+test('分毫之差读档折返哈肯沙漠，往返跳转只恢复因果现场', async () => {
   const { h, gm } = harness();
   let restored: ReturnType<typeof harness> | undefined;
   try {
@@ -349,22 +349,25 @@ test('分毫之差读档折返哈肯沙漠，消失的圣女保持交付后的�
     await h.idle();
     restored = harness({}, reloadState(h));
     const game = restored.h;
-    assert.equal(game.session.status('quest-18'), 'completed');
-    assert.equal(game.session.status('quest-24'), 'completed');
-    assert.equal(game.session.status('quest-26'), 'active');
+    // 因果历史只恢复到达 quest-28 必需的事件；没有因果关系的旧任务保持未完成。
+    assert.equal(game.session.status('quest-18'), 'available');
+    assert.equal(game.session.status('quest-24'), 'available');
+    assert.equal(game.session.status('quest-26'), 'available');
     await game.travel('hakan-desert-2-95444e0c');
-    assert.equal(await game.director.enterRegion('event-20', 'hakan-desert-2-95444e0c'), false);
-    assert.equal(game.session.status('quest-24'), 'completed');
+    assert.equal(await game.director.enterRegion('event-20', 'hakan-desert-2-95444e0c'), true,
+      'event-20 没有被旧时间线提前完成，会按正式条件开演');
+    await game.idle();
+    assert.equal(game.session.status('quest-24'), 'active');
     const back = await restored.gm.startStoryJump('quest-24');
     assert.ok(back.ok, back.reason);
     assert.equal(game.session.status('quest-24'), 'active');
     assert.equal(game.director.runtime.eventStatus('event-21'), 'idle');
     assert.equal(game.director.runtime.eventStatus('event-23'), 'idle');
-    assert.equal(game.session.status('quest-18'), 'completed');
+    assert.equal(game.session.status('quest-18'), 'available');
   } finally { restored?.h.director.dispose(); h.director.dispose(); }
 });
 
-test('跳到消失的圣女3后读档折返蜘蛛巢穴，往回跳才能再次迎战蜘蛛女王', async () => {
+test('跳到消失的圣女3后读档，蜘蛛女王按因果现场重打，回跳可再次迎战', async () => {
   const first = harness();
   let restored: ReturnType<typeof harness> | undefined;
   try {
@@ -376,10 +379,14 @@ test('跳到消失的圣女3后读档折返蜘蛛巢穴，往回跳才能再次�
     const spiderMap = 'spider-s-lair-2-ba4a24b9';
     await h.travel(spiderMap);
     await h.region('event-27');
+    assert.equal(h.session.storyWorld.activeEncounters.length, 1,
+      '因果历史没有提前清掉蜘蛛女王，进图后按正式流程出现');
+    await h.updateWorld(await h.defeat('enemy-queen-spider-1'));
     assert.equal(h.session.storyWorld.activeEncounters.length, 0);
+    assert.equal(h.director.runtime.eventStatus('event-27'), 'completed');
     assert.equal(h.director.runtime.eventStatus('event-28'), 'completed');
-    for (const id of ['quest-18', 'quest-30', 'quest-31', 'quest-33'])
-      assert.equal(h.session.status(id), 'completed', id);
+    assert.equal(h.session.status('quest-30'), 'completed');
+    assert.equal(h.session.status('quest-31'), 'completed');
     assert.equal(h.session.status('quest-35'), 'active');
     await h.travel('goblin-s-lair-2-49c1710f');
     await h.region('event-35');
@@ -410,7 +417,7 @@ test('跳到消失的圣女3后读档折返蜘蛛巢穴，往回跳才能再次�
   } finally { restored?.h.director.dispose(); first.h.director.dispose(); }
 });
 
-test('调试传送离开未打完的蜘蛛战后向前跳，战斗和任务一起推进', async () => {
+test('调试传送离开未打完的蜘蛛战后向前跳，只清理遭遇并落到目标剧情', async () => {
   const {h, gm} = harness();
   try {
     assert.ok((await gm.startStoryJump('quest-30')).ok);
@@ -424,9 +431,11 @@ test('调试传送离开未打完的蜘蛛战后向前跳，战斗和任务一�
     const jump = await gm.startStoryJump('quest-35');
     assert.ok(jump.ok, jump.reason);
     assert.equal(h.session.storyWorld.activeEncounters.length, 0);
-    assert.equal(h.director.runtime.eventStatus('event-27'), 'completed');
-    assert.equal(h.director.runtime.eventStatus('event-28'), 'completed');
-    assert.equal(h.session.status('quest-30'), 'completed');
+    assert.equal(h.director.runtime.eventStatus('event-27'), 'idle');
+    assert.equal(h.director.runtime.eventStatus('event-28'), 'idle');
+    assert.equal(h.session.status('quest-30'), 'available',
+      '没有打完的蜘蛛战不会随前跳伪造完成');
+    assert.equal(h.session.status('quest-35'), 'active');
   } finally { h.director.dispose(); }
 });
 
@@ -435,9 +444,13 @@ test('序幕战斗折返回影营地时沿用刺杀任务，跳回刺杀则可�
   try {
     const later = await gm.startStoryJump('quest-381');
     assert.ok(later.ok, later.reason);
-    assert.equal(h.session.status('grafton-mission'), 'active');
+    assert.equal(h.session.status('grafton-mission'), 'available',
+      '因果历史不伪造刺杀任务的接取');
+    assert.equal(h.session.status('quest-381'), 'ready');
     await h.travel('shadow-camp');
-    assert.equal(await h.director.enterRegion('event-1', 'shadow-camp'), false);
+    assert.equal(await h.director.enterRegion('event-1', 'shadow-camp'), true);
+    await h.idle();
+    assert.equal(h.session.status('grafton-mission'), 'active');
     const first = await gm.startStoryJump('grafton-mission');
     assert.ok(first.ok, first.reason);
     assert.equal(h.session.status('grafton-mission'), 'active');

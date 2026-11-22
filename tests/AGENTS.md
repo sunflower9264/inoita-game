@@ -28,7 +28,7 @@
 - `story-preparation.test.ts` 覆盖确定路径与调用返回、预测边界；`story-asset-preparation.test.ts` 覆盖跨场景请求复用、目标替换、取消和失败重试；入口测试验证恢复游戏不等待后续剧情素材。
 - `story-equipment.test.ts` 覆盖剧情装备发放与拾取拦截、手动穿脱与连带替换保护、剧情移除与离队销毁、正常装备退回；`story-disguise.test.ts` 验证剧情伪装穿脱；`story-scene`、`story-stage-isolation` 与 `saved-game` 覆盖主角收放武器、同图保留、换图恢复默认和存档读回；「消失的圣女1」在外观未准备好时分别跳过和取消整段剧情，核对姿态与迟到外观。
 - 剧情动作测试检查等待结束时仍在播放、自然完成后的保持或待机、跳过后的最终姿势；`story-playthrough-rewards.test.ts` 验证剧情奖励。
-- 剧情跳转回归遍历全部菜单任务并颠倒显示顺序，用正式进图、行走、战斗、交付和存读档验证蜘蛛巢穴前跳回跳，以及接取演出里赢得首领战后的跳转；`gm-quest-jump.test.ts` 用「圣女救援行动」逐个验证跳转现场，序幕与哈肯沙漠折返验证旧演出结束与主动回跳。
+- 剧情跳转回归遍历全部菜单任务并颠倒显示顺序，用正式进图、行走、战斗、交付和存读档验证蜘蛛巢穴前跳回跳，以及接取演出里赢得首领战后的跳转；`quest-jump-history.test.ts` 验证 quest-21/23/84/168/83 的因果历史、`place` 重放和无关区域事件隔离；`gm-quest-jump.test.ts` 用「圣女救援行动」逐个验证跳转现场，序幕与哈肯沙漠折返验证旧演出结束与主动回跳。
 - `quest-actor-visibility.test.ts` 覆盖交付人在同一次进图现身、取消剧情后恢复缺席；`quest-drops.test.ts` 覆盖任务物品来源；`quest-item-generation.test.ts` 验证掉落满额后读档与任务拾取。
 - `audit:story:full` 跑主线开场、门口触发、近身剧情、专属任务交付、跨图收集、狼人战后接取交付和战斗失败恢复的代表性流程。
 

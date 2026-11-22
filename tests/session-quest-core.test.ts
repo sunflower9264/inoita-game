@@ -86,7 +86,6 @@ test('repeat settlement rollback and checkpoint restore keep the current cycle r
 });
 function campaign(quests:CampaignQuest[]):Campaign {
   return {version:2,contentVersion:1,start:{map:'camp',actor:'player',x:16,y:16,facing:'south',script:'opening'},quests,placements:[],questGroups:[],events:[],
-    storyProgression: { steps: quests.flatMap(q => [{ accept: [q.id] }, { deliver: [q.id] }]), ongoing: [] },
     scripts:{opening:{entry:'entry',nodes:[{id:'entry',presentation:[],commands:[],exit:{type:'end'}}]}}};
 }
 
