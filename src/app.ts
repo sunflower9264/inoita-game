@@ -42,7 +42,7 @@ import { InputRouter } from './application/input-router.ts';
  * 运行上下文：启动时先建界面，资源取回来之后再补上内容、状态和 Phaser 实例。
  * 场景和界面通过各自的能力接口访问已装配的依赖。
  *
- * **成员不是同时有值的**，按装配时机分六组。排查「这个能力为什么是空的」时先看这里：
+ * **成员不是同时有值的**，按装配时机分五组。排查「这个能力为什么是空的」时先看这里：
  * 可选成员在 `?.` 下会静默跳过，不问一句是哪个阶段，很容易往错的方向查。
  *
  * 1. 构造时就有：`ui`（构造参数）、`content`、`checkpoint`、`saves`、`cloud`。
@@ -51,13 +51,13 @@ import { InputRouter } from './application/input-router.ts';
  *    `statusHud`、`controlSkin`、`shops`、`companions`、`crafting`。
  *    `storyClasses` 早一步，在 `enterGame()` 里选职业之前单独加载。
  * 3. `boot()`（Phaser 就绪）里接线：`game`、`enterGame`、`returnToMenu`、`startStory`、
- *    `prefetchStory`、`prefetchCommon`、`storyUI`、`syncLifecycle`。
- * 4. `finishStoryStart()`（选定职业、进入世界）里接线：`session`、`storySignal`、`director`、
- *    `changeEquipment`、`equipmentAppearance`、`preparePartyMember`、`releasePartyPreview`、
- *    `revivePartyMember`、`openCrafting`、`openShop`。
+ *    `prefetchStory`、`prefetchCommon`、`storyUI`、`openCrafting`、`openShop`、`syncLifecycle`。
+ * 4. `session-lifecycle.installSession()`（新游戏、读档、压测共用）里接线：`session`、
+ *    `storySignal`、`director`、`summonLampMerchant`、`changeEquipment`、`equipmentAppearance`、
+ *    `previewAppearance`、`useRecoveryItem`、`preparePartyMember`、`releasePartyPreview`、
+ *    `combatAttribute`、`combatStealthed`、`revivePartyMember`；GM 动作层也在这里按开关创建。
  * 5. **由场景填、不由 main.ts 填**：`audio` 由音效场景启动时写入；`uiAssets` 由正式界面场景
- *    登记；`useRecoveryItem` 由 `WorldCombat` 进入战斗时写入，
- *    **战斗结束时清回 `undefined`**——有值与否不是单调的。
+ *    登记；常驻战斗资源和地图素材租约由世界场景取得并释放。
  */
 export class StoryApp {
   /** 全局键盘路由。场景只在启动时桥接一次原始事件，按键按作用域只交给一层。 */
