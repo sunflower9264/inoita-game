@@ -109,6 +109,8 @@ interface StoryCommandBaseline {
   departures?:Map<string,()=>void>;
   quests?:QuestBookCheckpoint;
   world?:StoryWorldSnapshot;
+  /** 交付人可见性版本；随世界快照一起回滚，避免失败事务留下领先的投影信号。 */
+  visitorReleaseRevision?:number;
   /** 完成遭遇被历史上限裁掉时，同一批次会删除它的一次性敌人状态；回滚必须一起恢复。 */
   enemies?:[string,EnemyState][];
   /** 选择标识的写入次数；和世界快照一起回滚，避免取消演出后留下假的“又选了一次”。 */
@@ -1383,6 +1385,7 @@ export class Session {
     if(touched.has('storyWorld')){
       baseline.world=this.storyWorld.captureState();
       baseline.choiceWrites=[...this.choiceWrites];
+      baseline.visitorReleaseRevision=this.visitorReleaseRevisionValue;
     }
     if(touched.has('enemies'))baseline.enemies=[...this.enemyStates].map(([id,state])=>[id,structuredClone(state)]);
     if(touched.has('groundLoot'))baseline.loot=groundLootFor(this).captureState();
@@ -1411,6 +1414,7 @@ export class Session {
       this.storyWorld.restoreState(baseline.world!);
       this.choiceWrites.clear();for(const[id,count]of baseline.choiceWrites??[])this.choiceWrites.set(id,count);
       this.choiceWriteRevisionValue++;
+      if(baseline.visitorReleaseRevision!==undefined)this.visitorReleaseRevisionValue=baseline.visitorReleaseRevision;
     }
     if(touched.has('enemies')){
       this.enemyStates.clear();for(const [id,state] of baseline.enemies!)this.enemyStates.set(id,state);

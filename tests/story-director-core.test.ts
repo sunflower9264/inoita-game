@@ -58,6 +58,28 @@ test('任务就绪恢复交付人后请求一次世界投影',async()=>{
   }finally{h.director.dispose();}
 });
 
+test('演出进行中恢复交付人时，等交还操作权后再投影',async()=>{
+  let projects=0;
+  const h=harness([node('noop')],undefined,{
+    capture:()=>undefined,restore:async()=>{},checkpoint:()=>{},project:async()=>{projects++;}
+  });
+  try{
+    const {session}=h,map='snow-fey-village-b6acd59c',characterId='npc-574';
+    assert.ok(session.accept('quest-351'));
+    session.applyStoryCommands([{type:'world',command:{kind:'remove-character',map,characterId,all:false}}]);
+    for(const enemy of ['enemy-frost-werewolf-1','enemy-iceshell-turtle-1'])session.recordQuestFact('defeat',enemy);
+    let duringPlayback=0;
+    const played=await h.director.run(async()=>{
+      session.recordQuestFact('defeat','enemy-purification-cave-watcher-1');
+      duringPlayback=projects;
+    });
+    assert.equal(played,true);
+    for(let i=0;i<5;i++)await tick();
+    assert.equal(duringPlayback,0,'演出中不打断当前画面');
+    assert.equal(projects,1,'交还操作权后补一次世界投影');
+  }finally{h.director.dispose();}
+});
+
 test('a failed world projection retries only the projection after travel was applied',async()=>{
   const travel={map:'shadow-camp',x:1,y:2,facing:'south' as const};
   const play=node('play',[{type:'travel',destination:travel}],{type:'end'});

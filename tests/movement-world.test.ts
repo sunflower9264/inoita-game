@@ -386,6 +386,15 @@ test('story walks find a reachable tile when the dynamic map blocks the target',
   assert.notDeepEqual(result,{x:40,y:88},'兜底不能回到被挡的目标格');
 });
 
+test('story walk origin repairs a standable cell occupied by another actor',()=>{
+  const navigation=new NavigationWorld({name:'arena',bounds:{x:0,y:0,width:200,height:200}});
+  const from={x:100,y:100},shape={collision:{x:-8,y:-8,width:16,height:16}};
+  navigation.register({position:()=>from,shape:()=>shape,enabled:()=>true,faction:()=>'hostile' as const});
+  const origin=navigation.storyWalkOrigin(shape,from);
+  assert.notDeepEqual(origin,from,'被其他角色占住时也要修正起点');
+  assert.equal(navigation.canPlace(shape,origin),true);
+});
+
 test('re-registering a walking actor as static keeps temporary sampling until stop',t=>{
   const h=harness();
   t.after(()=>{h.movement.destroy();h.world.destroy();});

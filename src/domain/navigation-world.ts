@@ -382,8 +382,9 @@ export class NavigationWorld {
    * 避免同一个起点因为「在墙里」与「已被修正」走进两套不同的兜底约束。
    */
   storyWalkOrigin(shape: NavigationShape, from: Point): Point {
-    if (this.terrainFree(from)) return from;
-    const landing = this.scanNearest(point => this.terrainFree(point) && this.canPlace(shape, point), from);
+    // 与 placeAll 的非 strict 落位同口径：地形可站但压住其他单位时也要就近修正。
+    if (this.canPlace(shape, from)) return from;
+    const landing = this.scanNearest(point => this.canPlace(shape, point), from);
     return landing ?? from;
   }
   /** 整盒版就近落点：整个碰撞盒站得住，且不与现有实体重叠；地图上没有这样的位置时返回 undefined。 */

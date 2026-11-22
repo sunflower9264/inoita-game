@@ -326,6 +326,7 @@ test('a failed kill settlement restores a quest actor released by the same kill'
   // 任务和交付人一起退回：不能任务还在进行中，人物却已经出现。
   assert.equal(session.status('quest-351'),'active');
   assert.equal(session.storyWorld.actorVisible(map,characterId),false);
+  assert.equal(session.visitorReleaseRevision,0,'回滚后投影信号不能领先真实状态');
 });
 
 test('quest drop requirements are queried after this kill updates its quest',()=>{

@@ -90,7 +90,7 @@ export class PartyFollow {
     if(this.leaderTowardsAlly&&!this.returning){
       this.routeAroundActors=false;
       this.attemptStalled=0;
-      this.progress=undefined;this.stalled=0;this.path=[];this.search=undefined;this.goal=undefined;this.port.stop();return;
+      this.progress=undefined;this.stalled=0;this.path=[];this.search=undefined;this.searchSince=undefined;this.goal=undefined;this.port.stop();return;
     }
     const free=(p:Point)=>(this.port.followCanStand??this.port.canStand)(p);
     if(!this.progress||distance(actor.position,this.progress)>=4){
@@ -98,6 +98,8 @@ export class PartyFollow {
       this.stalled=0;
       this.attemptStalled=0;
       this.failures=0;
+      // 搜索期间一旦真的走动，走过的这段就不算无进展；失败时只补最后停住的一段。
+      if(this.search)this.searchSince=this.clock;
     }else if(!this.search){
       this.stalled+=delta;
       this.attemptStalled+=delta;
@@ -132,7 +134,7 @@ export class PartyFollow {
       if(gap<=stop||this.settled&&gap<=24){
         this.routeAroundActors=false;
         this.attemptStalled=0;
-        this.settled=true;this.path=[];this.search=undefined;this.progress=undefined;this.stalled=0;this.port.stop();return;
+        this.settled=true;this.path=[];this.search=undefined;this.searchSince=undefined;this.progress=undefined;this.stalled=0;this.port.stop();return;
       }
       this.settled=false;
       if(!this.search&&this.clock>=this.nextRetry){

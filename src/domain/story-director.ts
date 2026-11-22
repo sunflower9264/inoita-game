@@ -73,6 +73,8 @@ export class StoryDirector {
   private restorationVersion: number;
   /** 会话恢复交付人可见性的版本；变化后需要重新投影世界人物。 */
   private observedVisitorReleaseRevision = 0;
+  /** 演出进行中恢复了交付人；等演出结束、操作权交还后再补投影。 */
+  private visitorProjectionPending = false;
   private disposed = false;
   private unsubscribe: () => void;
   private projectionPending = false;
@@ -192,9 +194,11 @@ export class StoryDirector {
       }
       this.observeChanges(true);
       // 任务就绪会恢复被剧情清场删掉的交付人；让世界按最新状态重建一次人物。
-      if (!this.busy && session.visitorReleaseRevision !== this.observedVisitorReleaseRevision) {
+      // 演出进行中先记下，等收尾交还操作权后再投影，避免打断正在播放的剧情。
+      if (session.visitorReleaseRevision !== this.observedVisitorReleaseRevision) {
         this.observedVisitorReleaseRevision = session.visitorReleaseRevision;
-        if (!this.projectionPending) this.queueProjection();
+        if (this.busy || this.projectionPending) this.visitorProjectionPending = true;
+        else this.queueProjection();
       }
     });
   }
@@ -282,6 +286,10 @@ export class StoryDirector {
           if (!this.runtime.busy && !this.manualBusy) {
             this.context = undefined; this.choosing = false; this.confirming = false;
             this.ui.closeDialogue(); this.setLocked(false); this.onSkipProgress?.('released');
+            if (this.visitorProjectionPending && !this.disposed) {
+              this.visitorProjectionPending = false;
+              this.queueProjection();
+            }
           }
         }
       }
