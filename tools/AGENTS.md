@@ -4,7 +4,7 @@
 
 ## 文件
 
-- 构建/校验：`build.mjs` 打包入口，`content-build.ts` 把内容 JSON 编译成运行时数据，`content-manifest.ts` 生成生产内容哨兵清单，`validate-content.mjs` 校验内容，`validate-spritesheet.ts` 校验精灵表，`build-version.ts` 计算资源与内容版本，`deploy.ts` 构建后核对 HTTPS 入口版本，`patch-phaser.mjs` 把 Phaser PR #7420 的动态缓冲补丁应用到 4.2.1 运行时包。
+- 构建/校验：`build.mjs` 打包入口，`content-build.ts` 把内容 JSON 编译成运行时数据，`content-manifest.ts` 生成生产内容哨兵清单，`validate-content.mjs` 校验内容，`story-progression.ts` 从正式剧情生成并核对调试跳转顺序，`validate-spritesheet.ts` 校验精灵表，`build-version.ts` 计算资源与内容版本，`deploy.ts` 构建后核对 HTTPS 入口版本，`patch-phaser.mjs` 把 Phaser PR #7420 的动态缓冲补丁应用到 4.2.1 运行时包。
 - 服务/诊断：`serve-built.ts` 提供打包后的静态服务，`diagnostic-collector.mjs` 是诊断上报中间件（按错误/会话拆成两个 JSONL 流，分别轮转；同一会话同一地图的重复检查点诊断 60 秒内只留一条；按 `id` 去重），`diagnostic-collector.d.mts` 是它的类型声明，`diagnostics-report.mjs` 按会话汇总和查看时间线。
 - 云存档：`cloud-save-store.ts` 负责账号、会话、续期、改密和存档落盘（scrypt、单会话、锁定、配额、原子写），`cloud-save-service.ts` 把 `/__cloud` HTTP 路由、CORS、限流和请求体上限接到静态服务上。
 - 图集/资源：`build-icon-atlas.ts`、`build-prop-atlas.ts`、`build-effect-atlas.ts`、`build-ui-atlas.ts`、`build-character-atlas.ts` 生成图集，`atlas-pack.ts` 提供按加载块装箱的共用实现，`asset-source.ts` 解析 `asset-source/` 源图，`build-slot-frames.ts` 生成装备槽帧，`character-atlas-aliases.ts` 是生成的图集别名表（只给工具判断覆盖，不进入运行时包），`asset-report.ts` 输出源素材重复与生产构建后的运行时素材口径，`asset-keep.ts` 计算运行时保留集，`prune-assets.ts` 把未引用素材移进归档目录。
@@ -24,7 +24,7 @@
 - 改动构建、校验或打包逻辑后运行对应命令验证：`npm run build`、`npm run validate:content`、`npm run test:standalone`，APK 改动用 `npm run apk` 和 `npm run verify:apk`。发版内容门禁用 `npm run release:story`（内容校验 + 剧情审计 + 存档测试 + 构建）。
 - 生成物 `dist/`、`src/generated/*`、`tools/character-atlas-aliases.ts` 由脚本产出，内容变化后重跑对应生成命令。
 - **图集源图归档在 `asset-source/`。** 图集生成、内容构建去重、逐像素测试只从 `asset-source/` 读原图；`public/assets` 只放运行时图集页、地图、音频和明确未进图集的例外图片。别名表 `tools/character-atlas-aliases.ts` 只给工具判断覆盖，不进入运行时包。
-- 构建在 `dist/content-manifest.json` 写生产内容哨兵：记录编译后内容的 `contentVersion` 和 `campaign.json`/`battle.json` 的必需顶层键。剧情内容可以携带调试跳转用的游玩顺序 `storyProgression`，存在时校验，缺失不阻塞构建。清单放在 `content/` 外，不参与 `hashTree(content)`；运行时只读清单，不重算 34MB 内容哈希。
+- 构建在 `dist/content-manifest.json` 写生产内容哨兵：记录编译后内容的 `contentVersion` 和 `campaign.json`/`battle.json` 的必需顶层键。`campaign.json` 的 `storyProgression` 是 `story-progression.ts` 从 `scripts`／`events`／`quests` 推导出的派生产物，只服务调试跳转；`npm run validate:content` 会重新推导并核对，内容改动后运行 `npm run generate:story-progression` 更新。清单放在 `content/` 外，不参与 `hashTree(content)`；运行时只读清单，不重算 34MB 内容哈希。
 - 用 `npm run test:content-build` 跑真实内容的编译烟雾测试（一次最小战斗和一个剧情节点）；它不进入每次单元测试。
 - **构建会裁剪未引用素材。** `build.mjs` 在 Vite 输出后调用 `prune-assets.ts`，把 `dist/assets` 里没有被运行时引用的文件移到仓库根目录的 `asset-archive/`（不进 Git），并写 `asset-archive/report.json`。
 - 保留集由 `asset-keep.ts` 从三处求并集：编译后内容 JSON 里的 `assets/...`、代码里固定的界面路径、运行时真正交给 Phaser 的 `PendingAsset`；被 UI/图标/特效/物件/角色图集替代的原图只保留图集页。任何被引用但磁盘上不存在的路径会让构建直接失败。

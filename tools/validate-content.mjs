@@ -24,6 +24,7 @@ import {propSourceDigest} from './build-prop-atlas.ts';
 import {residentCombatAssets} from '../src/rendering/resident-combat-assets.ts';
 import {residentCombatCoverageGaps} from '../src/rendering/combat-visual-coverage.ts';
 import {sourceAssetPath} from './asset-source.ts';
+import {checkStoryProgression} from './story-progression.ts';
 /** PNG 文件头：读到 IHDR 宽高需要 24 字节，宽高分别位于 +16 和 +20。 */
 const PNG_HEADER_BYTES=24;
 const PNG_WIDTH_OFFSET=16;
@@ -31,10 +32,11 @@ const PNG_HEIGHT_OFFSET=20;
 /** 错误信息里最多列出 20 个缺口，避免刷屏。 */
 const MAX_REPORTED_GAPS=20;
 
-export function validateContent(root=fileURLToPath(new URL('../public/',import.meta.url))){
+export function validateContent(root=fileURLToPath(new URL('../public/',import.meta.url)),{checkProgression=false}={}){
  const read=file=>JSON.parse(fs.readFileSync(path.join(root,file),'utf8'));
  const world=parseWorld(read('content/world.json')),battle=parseBattle(read('content/battle.json'));
  const campaignJson=read('content/campaign.json'),campaign=parseCampaign(campaignJson);
+ if(checkProgression)checkStoryProgression(JSON.stringify(campaignJson));
  const itemsJson=read('content/items.json'),items=parseItemCatalog(itemsJson);
  const audio=read('content/audio.json');const companions=parseCompanions(read('content/companions.json'));
  // 菜单图标走构建期图集；内容新增图标后必须重新生成，否则运行时会缺帧。
@@ -229,4 +231,4 @@ export function validateContent(root=fileURLToPath(new URL('../public/',import.m
  }
  return {maps:world.maps.length,assets:assets.size};
 }
-if(process.argv[1]===fileURLToPath(import.meta.url))console.log(validateContent(process.argv[2]));
+if(process.argv[1]===fileURLToPath(import.meta.url))console.log(validateContent(process.argv[2],{checkProgression:true}));

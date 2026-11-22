@@ -442,6 +442,21 @@ export function applyQuestStartPlan(session: Session, plan: QuestStartPlan): voi
     ...conditionPatch.choices.map(entry => ({ type: 'choice' as const, choice: entry.choice, value: entry.value })),
   ];
   if (commands.length) session.applyStoryCommands(commands);
+  // 重放出来的历史里，条件已经满足的自动事件视为当时已经演过。
+  // 否则跳转后会补演这些旧事件（例如直接把人传去另一张图），和正式进度不一致。
+  const automatic = new Set(session.runtimeState.completedEvents);
+  let absorbed = true;
+  while (absorbed) {
+    absorbed = false;
+    for (const event of session.campaign.events) {
+      if (event.repeat || automatic.has(event.id) || event.id === plan.accept?.eventId) continue;
+      if (event.source !== 'event' && event.source !== 'quest' && event.source !== 'choice') continue;
+      if (!event.condition || !session.evaluateCondition(event.condition)) continue;
+      automatic.add(event.id);
+      absorbed = true;
+    }
+  }
+  session.runtimeState = { ...session.runtimeState, completedEvents: [...automatic] };
   if (mode !== 'available') {
     session.applyStoryCommands([{ type: 'quest', command: { type: 'accept', quest: quest.id,
       ...(quest.completion === 'internal' ? { source: 'script' as const } : {}) } }]);

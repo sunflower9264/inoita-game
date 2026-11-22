@@ -14,7 +14,7 @@ const noPrune=args.includes('--no-prune');
 const unknown=args.filter(arg=>arg!=='--no-prune');
 if(unknown.length)throw new Error(`未知构建参数：${unknown.join(' ')}`);
 const publicDir=path.join(root,'public');
-validateContent(publicDir);
+validateContent(publicDir,{checkProgression:true});
 // 图集由 `npm run build` 的 prebuild 在独立进程里重新生成；这里不再写图集，
 // 否则本进程启动时静态导入的 generated 映射会停留在生成前的旧值。
 // 源 content 的原始哈希：构建期间若被改动，产物与源会不一致，直接失败。
@@ -46,7 +46,7 @@ try{
  await fs.writeFile(path.join(output,BUILD_META_FILENAME),JSON.stringify({
    schema:1,builtAt,...versions,
  })+'\n');
- validateContent(output);
+ validateContent(output,{checkProgression:false});
  // 版本号按源素材算；裁剪只移动未引用的文件，保留文件内容不变，所以不需要重算。
  const assetKeep=await pruneAssets({
    contentDir:path.join(output,'content'),
