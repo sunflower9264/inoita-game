@@ -44,6 +44,12 @@ export function createSessionLifecycle(app:StoryApp,hooks:SessionLifecycleHooks)
     remeasureRefreshAfterStart,startAutoSave,stopAutoSave}=hooks;
   const savedGameLoader=new SavedGameLoader();
   const AUDIO_READY_DIAGNOSTIC_DELAY_MS=4000;
+  /** 开始一次新的入口流程：旧代次立即失效，后续内容加载绑定到新信号。 */
+  function beginEntry():AbortSignal {
+    lifetime.current.abort();
+    lifetime.current=new AbortController();
+    return lifetime.current.signal;
+  }
   function stopCurrentWork():void {
     worldScene()?.discardWorldWork();
     stopAutoSave();app.gm?.dispose();lifetime.current.abort();app.director?.dispose();
@@ -362,6 +368,6 @@ export function createSessionLifecycle(app:StoryApp,hooks:SessionLifecycleHooks)
     recordSceneChange(SCENE_KEYS.menu, { source: 'return' });
     app.audio?.enterMenu();
   }
-  return {install:installSession,load:resumeSlot,prepareCandidate,exit:returnToMenu,stopCurrentWork,
+  return {install:installSession,load:resumeSlot,prepareCandidate,beginEntry,exit:returnToMenu,stopCurrentWork,
     get busy(){return savedGameLoader.busy;}};
 }

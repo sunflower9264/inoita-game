@@ -373,8 +373,7 @@ async function preloadCommon(signal: AbortSignal): Promise<void> {
 async function enterGame(slot?:number): Promise<void> {
   if (app.mode !== 'menu' || app.suspended || !app.game?.scene.isActive('menu')) return;
   app.saveSlot=slot;
-  modeRequest.abort(); modeRequest = new AbortController();
-  const signal = modeRequest.signal;
+  const signal = sessionLifecycle.beginEntry();
   app.mode = 'class-select'; ui.setMode('class-select'); ui.loading('正在加载资源…');
   recordSceneChange(SCENE_KEYS.classSelect, { source: 'menu' });
   try {
@@ -409,8 +408,7 @@ async function startPressureTest(): Promise<void> {
   if (app.pressureMode) return;
   if (app.mode !== 'menu' || app.suspended || !ui.ready || !app.game?.scene.isActive(SCENE_KEYS.menu)
     || sessionLifecycle.busy) return;
-  modeRequest.abort(); modeRequest = new AbortController();
-  const signal = modeRequest.signal;
+  const signal = sessionLifecycle.beginEntry();
   app.pressureMode = true;
   ui.loading('正在准备压测…');
   const fail = (error: unknown): void => {
@@ -490,7 +488,7 @@ async function changePressureClass(classId:string):Promise<void> {
   if(!app.pressureMode||!selected||!scene||!game||scene.loadingWorld)return;
   const oldSession=app.session;
   ui.loading('正在进入压测战场…');
-  sessionLifecycle.stopCurrentWork();modeRequest=new AbortController();
+  sessionLifecycle.stopCurrentWork();sessionLifecycle.beginEntry();
   const stopped=new Promise<void>(resolve=>scene.events.once(Phaser.Scenes.Events.SHUTDOWN,()=>resolve()));
   game.scene.stop(SCENE_KEYS.world);await stopped;
   app.releaseSession(oldSession);
