@@ -10,6 +10,7 @@ import { BattleCharacter, type CharacterStatsCatalog } from '../src/domain/chara
 import type { CompanionCatalog } from '../src/domain/party.ts';
 import { moneyGain } from '../src/domain/economy.ts';
 import { StoryRuntime } from '../src/domain/story-runtime.ts';
+import type { QuestProgress } from '../src/domain/quest-book.ts';
 import type { StoryCommand } from '../src/domain/story-graph.ts';
 
 const read=<T>(file:string):T=>JSON.parse(readFileSync(new URL(`../public/content/${file}.json`,import.meta.url),'utf8')) as T;
@@ -37,6 +38,24 @@ test('format one resumes each fact source at its highest saved sequence',()=>{
     assert.throws(()=>session.restoreState({...state,factSequences:invalid}),/序号|重复/);
   }
   assert.throws(()=>session.restoreState({...state,questBook:{...state.questBook,factSequences:[['talk',0]]}}),/序号/);
+});
+
+test('a save written before a quest was removed still loads its remaining progress',()=>{
+  const session=new Session(campaign([quest('keep')]));
+  session.applyStoryCommands([{type:'quest',command:{type:'accept',quest:'keep',source:'script'}}]);
+  const state=structuredClone(session.captureState());
+  const removed:QuestProgress={status:'active',cycle:1,completedCycles:0,goals:{}};
+  state.questBook.quests.push(['removed-quest',removed]);
+  state.questBook.runningQuestIds.push('removed-quest');
+  state.trackedQuest='removed-quest';
+  state.receipts.push({quest:'removed-quest',cycle:1,reward:{experience:0,money:5,items:[]}});
+  session.restoreState(state);
+  const restored=session.captureState();
+  assert.notEqual(session.status('keep'),'locked','仍然存在的任务进度保留');
+  assert.equal(restored.questBook.quests.some(([id])=>id==='removed-quest'),false,'已删除任务的状态被丢弃');
+  assert.equal(restored.questBook.runningQuestIds.includes('removed-quest'),false,'运行池丢弃已删除任务');
+  assert.equal(restored.trackedQuest,undefined,'悬空的追踪任务被清空');
+  assert.equal(restored.receipts.some(receipt=>receipt.quest==='removed-quest'),false,'已删除任务的奖励收据被丢弃');
 });
 
 test('explicit re-admission starts a fresh settlement cycle while duplicate completion stays idempotent',()=>{
