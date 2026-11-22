@@ -195,7 +195,7 @@ test('a story checkpoint records a fallback when a story encounter is waiting an
 });
 
 test('saving refuses a party whose active members are all down',()=>{
-  const scene=Object.setPrototypeOf({app:{session:{hasLivingMember:false}},map:{id:'home'},player:{},movement:{}},WorldScene.prototype) as unknown as InstanceType<typeof WorldScene>;
+  const scene=Object.setPrototypeOf({app:{session:{hasLivingMember:false},ui:{}},map:{id:'home'},player:{},movement:{}},WorldScene.prototype) as unknown as InstanceType<typeof WorldScene>;
   assert.deepEqual(scene.captureSaveWorld(),{ok:false,reason:'no-survivors'});
 });
 
