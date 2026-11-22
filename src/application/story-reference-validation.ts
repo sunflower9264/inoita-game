@@ -74,7 +74,12 @@ export function validateStoryReferences(campaign:Campaign,world:WorldIndex,battl
     const goal=quest.goals.find(goal=>goal.id===change.goal);
     if(goal?.characterId)characters.add(goal.characterId);
   }
-  for(const command of commands)if(command.type==='world'&&command.command.kind==='place')entities.add(command.command.entity.id);
+  for(const command of commands){
+    if(command.type==='world'&&command.command.kind==='place')entities.add(command.command.entity.id);
+    // 显隐只应指向真实存在的人物身份；写错编号时让内容校验直接报错，而不是静默无效。
+    if(command.type==='world'&&command.command.kind==='actor-visibility'&&command.command.characterId)
+      ensure(characters.has(command.command.characterId),'显隐人物身份不存在 '+command.command.characterId);
+  }
   for(const action of storyActions(campaign))if(action.type==='appear'&&action.worldEntityId)
     ensure(entities.has(action.worldEntityId),'出场实体不存在 '+action.worldEntityId);
   const point=(mapId:string,x:number,y:number,owner:string):void=>{const map=maps.get(mapId);ensure(map&&x>=0&&x<map.width&&y>=0&&y<map.height,'位置超出地图 '+owner);};

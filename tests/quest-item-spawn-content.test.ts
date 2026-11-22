@@ -52,4 +52,10 @@ test('shared content reference validation checks map quest item and quest identi
   const missingQuest = structuredClone(mine);
   missingQuest.questItemSpawns![0].quest = 'missing-quest';
   assert.throws(() => validateStoryReferences(campaign, world, battle, new Map(maps).set(mine.id, missingQuest), items), /地图任务物品引用任务不存在 missing-quest/);
+  const broken = structuredClone(campaign);
+  const visibility = Object.values(broken.scripts).flatMap(script => script.nodes).flatMap(node => node.commands)
+    .find(command => command.type === 'world' && command.command.kind === 'actor-visibility' && command.command.characterId);
+  assert.ok(visibility && visibility.type === 'world' && visibility.command.kind === 'actor-visibility');
+  if (visibility.type === 'world' && visibility.command.kind === 'actor-visibility') visibility.command.characterId = 'missing-character';
+  assert.throws(() => validateStoryReferences(broken, world, battle, maps, items), /显隐人物身份不存在 missing-character/);
 });
