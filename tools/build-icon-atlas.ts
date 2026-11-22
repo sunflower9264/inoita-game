@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { PNG } from 'pngjs';
 import { sourceAssetPath } from './asset-source.ts';
+import { encodeRows, rowsSource, ROWS_DECODER } from './atlas-codegen.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PUBLIC = path.join(ROOT, 'public');
@@ -140,13 +141,19 @@ export function writeIconAtlas(): { width: number; height: number; icons: number
     meta: { image: path.basename(ATLAS_IMAGE), format: 'RGBA8888', size: { w: packed.width, h: packed.height }, scale: '1' }
   }));
   fs.mkdirSync(path.dirname(GENERATED), { recursive: true });
-  const mapping = Object.fromEntries([...packed.canonical].map(([file, source]) => [file, source]));
+  // 帧名与文件名相同的只写名字；去重后指向别的源图时，第二个字段写完整帧名。
+  const rows = [...packed.canonical].map(([file, source]) => [file, source === file ? [] : [source]] as const);
   fs.writeFileSync(GENERATED, `// 由 npm run atlas:icons 生成，勿手改。
 export const UI_ICON_ATLAS_FILE = ${JSON.stringify(ATLAS_IMAGE)};
 export const UI_ICON_ATLAS_DATA = ${JSON.stringify(ATLAS_DATA)};
 export const UI_ICON_ATLAS_KEY = ${JSON.stringify(ATLAS_KEY)};
 export const UI_ICON_SOURCE_DIGEST = ${JSON.stringify(iconSourceDigest())};
-export const UI_ICON_FRAMES: Readonly<Record<string, string>> = ${JSON.stringify(mapping, null, 2)};
+${ROWS_DECODER}
+// 每行：目录|名字[,帧名]；省略帧名时帧名就是文件路径
+const FRAME_ROWS: readonly string[] = ${rowsSource(encodeRows(rows))};
+const frames: Record<string, string> = {};
+eachRow(FRAME_ROWS, (file, [frame]) => { frames[file] = frame ?? file; });
+export const UI_ICON_FRAMES: Readonly<Record<string, string>> = frames;
 `);
   return { width: packed.width, height: packed.height, icons: iconFiles().length, unique: packed.frames.size, bytes: bytes.byteLength };
 }

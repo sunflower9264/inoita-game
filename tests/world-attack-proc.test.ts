@@ -18,13 +18,13 @@ function fixture(count=1){
   const conditions=new CombatConditions(),order:string[]=[];
   const actors=[actor('player',0,'party'),...Array.from({length:count},(_,i)=>actor(`enemy-${i}`,8+i))];
   const equipment={numbers:{modifiers:[] as {stat:string;value:number}[],gemModifiers:[]}};
-  const hero={classId:'dark-knight',level:1,bag:{equipmentFor:()=>({'main-hand':'weapon'}),get:()=>equipment},
+  const hero={classId:'dark-knight',level:1,bag:{revision:0,equipmentFor:()=>({'main-hand':'weapon'}),get:()=>equipment},
     panel:{physicalAttack:101,magicAttack:30},player:{health:1000,maxHealth:1000}};
   const states=new Map(actors.slice(1).map(value=>[value.id,{health:10000,maxHealth:10000,level:1}]));
   const enemies=actors.slice(1).map(value=>({key:value.id,definition:{acceptsBuffs:true},visual:{container:{active:true}}}));
   let current:string|undefined='enemy-0';
   const host=Object.setPrototypeOf({hero,conditions,arena:enemies,app:{battleCatalog:catalog,session:{isOneHitKill:()=>false}},
-    pendingDefeats:new PendingEnemyDefeats(),hitResolution:new CombatHitResolution(),
+    pendingDefeats:new PendingEnemyDefeats(),hitResolution:new CombatHitResolution(),equipmentEffectsCache:new Map(),
     partyControllers:new Map([['player',{snapshot:()=>({targetId:current}),selectedTargetId:()=>current,
       actionState:()=> 'idle',setReactionTarget:(id:string)=>{current=id;}}]]),
     memberOf:(id:string)=>id==='player'?hero:undefined,partyPassives:()=>[],partyFighter:()=>({}),partyAttackProc:()=>{},
@@ -48,7 +48,7 @@ test('actual temporary skill units cache equipment plus buffs and clear to the l
     modifiers:[{attribute:'fireSplashChance',operation:{kind:'add',amount:56}}]});
   const event={casterId:'player',targetId:'player',cueIndex:0,skill:{id:'firestorm',level:1,action:catalog.skills.firestorm.action!}};
   assert.equal(f.call('skillUnit',event),'success');assert.equal(f.call('actorAttribute','player','fireSplashChance'),212);
-  f.equipment.numbers.modifiers[0].value=200;
+  f.equipment.numbers.modifiers[0].value=200;f.hero.bag.revision++;
   assert.equal(f.call('actorAttribute','player','fireSplashChance'),212);
   assert.equal(f.call('skillUnit',{...event,cueIndex:2}),'success');
   assert.equal(f.call('actorAttribute','player','fireSplashChance'),256);

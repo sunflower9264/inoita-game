@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { PNG } from 'pngjs';
 import { sourceAssetPath } from './asset-source.ts';
+import { pagesSource } from './atlas-codegen.ts';
 import { contentDigest } from '../src/application/content-hash.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -187,6 +188,18 @@ export function packPropAtlas(): PropAtlas {
   return { pages, byKey, digest: propSourceDigest(), layoutDigest, props: props.length, unique: unique.size };
 }
 
+const FRAME_DIR = 'assets/props';
+
+/** 按 prop 原顺序编码成 `键,页号[,帧名]|...`；帧名与键相同的省略。 */
+function propRows(atlas: { pages: readonly { key: string }[]; byKey: Record<string, { key: string; frame: string }> }): string {
+  return Object.entries(atlas.byKey).map(([key, entry]) => {
+    const page = atlas.pages.findIndex(candidate => candidate.key === entry.key);
+    const match = new RegExp(`^${FRAME_DIR}/([^/|,]+)\\.png$`).exec(entry.frame);
+    if (page < 0 || !match || /[|,]/.test(key)) throw new Error(`prop 图集紧凑编码无法表示：${key} -> ${entry.key} ${entry.frame}`);
+    return match[1] === key ? `${key},${page}` : `${key},${page},${match[1]}`;
+  }).join('|');
+}
+
 export function writePropAtlas(): { pages: number; props: number; unique: number; width: number; height: number; bytes: number } {
   const atlas = packPropAtlas();
   fs.mkdirSync(path.join(PUBLIC, ATLAS_DIR), { recursive: true });
@@ -196,8 +209,17 @@ export function writePropAtlas(): { pages: number; props: number; unique: number
   }
   fs.mkdirSync(path.dirname(GENERATED), { recursive: true });
   fs.writeFileSync(GENERATED, `// 由 npm run atlas:props 生成，勿手改。
-export const PROP_ATLAS_PAGES = ${JSON.stringify(atlas.pages.map(({ key, file, data, frame, width, height }) => ({ key, file, data, frame, width, height })), null, 2)} as const;
-export const PROP_ATLAS_BY_KEY: Readonly<Record<string, { key: string; frame: string }>> = ${JSON.stringify(atlas.byKey, null, 2)};
+export interface PropAtlasPage { key: string; file: string; data: string; frame: string; width: number; height: number }
+export const PROP_ATLAS_PAGES: readonly PropAtlasPage[] = ${pagesSource(atlas.pages,
+    ['key', 'file', 'data', 'frame', 'width', 'height'], ['key', 'file', 'data'])};
+// 每项：prop 键,页号[,帧名]；帧都在 ${FRAME_DIR}/ 下，省略帧名时帧名就是 prop 键
+const BY_KEY_ROWS = ${JSON.stringify(propRows(atlas))};
+const byKey: Record<string, { key: string; frame: string }> = {};
+for (const row of BY_KEY_ROWS.split('|')) {
+  const [key, page, frame] = row.split(',') as [string, string, string | undefined];
+  byKey[key] = { key: PROP_ATLAS_PAGES[Number(page)]!.key, frame: \`${FRAME_DIR}/\${frame ?? key}.png\` };
+}
+export const PROP_ATLAS_BY_KEY: Readonly<Record<string, { key: string; frame: string }>> = byKey;
 export const PROP_ATLAS_SOURCE_DIGEST = ${JSON.stringify(atlas.digest)};
 export const PROP_ATLAS_LAYOUT_DIGEST = ${JSON.stringify(atlas.layoutDigest)};
 `);

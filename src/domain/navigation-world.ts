@@ -18,6 +18,8 @@ export type NavigationFaction = 'party' | 'hostile' | 'neutral';
 export interface NavigationActor {
   shape(): NavigationShape;
   position(): Point;
+  /** 把当前位置写进调用方给的点；高频通行查询用它避免每次新建坐标对象。 */
+  positionInto?(out: Point): Point;
   enabled(): boolean;
   faction?(): NavigationFaction;
   /** 演出角色按脚本走位：只受地形约束，不被其他人物或机关的占位挡住。 */
@@ -78,6 +80,8 @@ function overlapsAt(shape: GameRectangle, point: Point, other: GameRectangle): b
   return x < other.x + other.width - COLLISION_EPSILON && x + shape.width > other.x + COLLISION_EPSILON &&
     y < other.y + other.height - COLLISION_EPSILON && y + shape.height > other.y + COLLISION_EPSILON;
 }
+/** `blockedByActors` 的临时坐标：只在一次比较内读写，不交给外部，也不跨调用保留。 */
+const actorPositionScratch: Point = { x: 0, y: 0 };
 function occupancyCellKey(column: number, row: number): number {
   return column * OCCUPANCY_CELL_STRIDE + row;
 }
@@ -246,14 +250,19 @@ export class NavigationWorld {
   private blockedByActors(box: GameRectangle, ignore?: NavigationActor, placements: readonly Placement[] = []): boolean {
     // 绝大多数查询没有瞬移/落位覆盖；空 placements 时别为每个查询建一张 Map。
     const replacements = placements.length ? new Map(placements.map(p => [p.actor, p])) : undefined;
+    // 发起者是演出幽灵时谁也挡不住它；这一条与被查对象无关，循环外判一次即可。
+    if (ignore?.ghost?.()) return false;
     for (const actor of this.actors) {
       if (actor === ignore) continue;
-      if (ignore?.ghost?.() || actor.ghost?.()) continue;
+      if (actor.ghost?.()) continue;
       if (ignore && !blocksActor(ignore, actor)) continue;
       const replacement = replacements?.get(actor);
       if (!(replacement?.enabled ?? actor.enabled())) continue;
       const other = actor.shape().collision;
-      if (other && overlapsAt(other, replacement?.position ?? actor.position(), box)) return true;
+      if (!other) continue;
+      const position = replacement?.position
+        ?? (actor.positionInto ? actor.positionInto(actorPositionScratch) : actor.position());
+      if (overlapsAt(other, position, box)) return true;
     }
     return false;
   }

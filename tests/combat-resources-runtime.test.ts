@@ -174,7 +174,7 @@ test('the controlled skill slot reads the live mana cost after resource changes'
     combat:{controlledId:'ally',controlledMember:member,
       skillShortcutState:(skill:string,level:number)=>{
         assert.deepEqual([skill,level],['dark-strike',1]);return {cost,enabled:true};}},
-    controls:{setShortcutPage:(slots:unknown[])=>shown.push(slots[0] as {entry:unknown;enabled:boolean})}};
+    worldHud:{ready:true,setShortcutPage:(slots:unknown[])=>shown.push(slots[0] as {entry:unknown;enabled:boolean})}};
   // 刷新会顺路问场景当前操控者是谁，所以桩要挂在 WorldScene 的原型上。
   Object.setPrototypeOf(scene,WorldScene.prototype);
   const refresh=Reflect.get(WorldScene.prototype,'refreshCombatHud');refresh.call(scene);

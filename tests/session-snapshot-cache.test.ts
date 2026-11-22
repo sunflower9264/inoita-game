@@ -54,3 +54,16 @@ test('restoring a snapshot clears the cache so the next capture is fresh',()=>{
   assert.notEqual(after.storyWorld,before.storyWorld);
   assert.notEqual(after.enemies,before.enemies);
 });
+
+test('a kill that changes no quest still refreshes the saved fact sequence',()=>{
+  const {session}=fixture();
+  const before=session.capturePersistentState(),questVersion=session.questBook.version;
+  // 与进行中任务无关的击杀：任务进度版本不动，但新的事件序号必须进存档，否则读档后同一序号会被重复计数。
+  session.recordQuestFact('defeat','enemy-wolf-1','combat');
+  assert.equal(session.questBook.version,questVersion,'任务没变时进度版本不推进');
+  const after=session.capturePersistentState();
+  assert.notEqual(after.questBook,before.questBook,'事件序号变化后重新克隆任务簿');
+  const sequence=new Map(after.questBook.factSequences).get('combat');
+  assert.equal(sequence,session.questBook.factSequence('combat'));
+  assert.ok((sequence??0)>(new Map(before.questBook.factSequences).get('combat')??0));
+});

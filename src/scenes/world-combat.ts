@@ -3340,7 +3340,9 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
     if(this.shouldSyncParty(this.scene.time.now))
       void this.syncAllies().catch(error=>this.app.ui.toast((error as Error).message));
     if(this.controlledId!==this.syncedControlledId&&this.partyControllers.has(this.controlledId))this.syncControlled(false);
-    this.app.session.advanceCombatFrames(delta,frame=>{
+    // 一个渲染帧里的全部战斗逻辑帧共用一次会话通知：每次命中、回复、扣蓝都会改血蓝，
+    // 逐次通知会让快捷栏、状态栏、剧情观察和自动存档在同一帧里重复跑很多遍。帧末统一发一次。
+    this.app.session.batchNotifications(()=>this.app.session.advanceCombatFrames(delta,frame=>{
       this.combatantsCache=undefined;
       // 名册按逻辑帧刷新；最多晚一帧（约 60ms）出现，不再每渲染帧全量扫描生成点。
       this.consumeRosterChanges(this.roster.refresh(this.scene.cameras?.main?.worldView));
@@ -3367,7 +3369,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
       if(this.defeated||this.closed||!this.scene.canCombatControl){this.combatantsCache=undefined;return false;}
       this.recoverResources();
       this.combatantsCache=undefined;
-    });
+    }));
     // 快捷栏和冷却由 WorldScene 在每个逻辑帧变化后统一绘制；这里不再重复取快照。
     this.syncBuffLoops();
   }

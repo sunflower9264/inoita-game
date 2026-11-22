@@ -41,6 +41,7 @@ export const DEFAULT_ENEMY_RESPAWN_MS = 60_000;
 export const OFFSCREEN_ENEMY_RESPAWN_MS = 20_000;
 
 type SessionListener = (session: Session) => void;
+type WaitingGoalEntry = {kind:'talk'|'interact';target:string;quest:CampaignQuest;goal:QuestGoal};
 type SnapshotSlot = 'questBook'|'storyWorld'|'bag'|'enemies'|'receipts'|'chests'|'groundLoot';
 
 export interface EnemyDefeatInput extends Pick<CombatRewardInput,'enemy'|'map'|'x'|'y'|'lootLevel'|'enemyLevel'|'elite'|'earnsExperience'|'pressureMode'|'drops'|'stats'|'random'> {
@@ -243,6 +244,8 @@ export class Session {
   /** 战斗目录只读访问：GM 拉满佣兵技能需要职业技能表与伙伴成长表的最高等级。 */
   get battleCatalog():BattleCatalog|undefined {return this.battle;}
   readonly campaign: Campaign;
+  /** 任务 id → 定义；`campaign` 只在构造时赋值，索引随会话一起建好，按 id 查找不再逐条比对。 */
+  private readonly questsById:ReadonlyMap<string,CampaignQuest>;
   readonly questBook:QuestBook;
   readonly storyWorld = new StoryWorldState();
   private runtimeSnapshot:StoryRuntimeSnapshot = {version:2,sequence:0,runs:[],completedEvents:[],handledOccurrences:[],encounterResults:[],pendingOccurrences:[],occurrenceSequences:[]};
@@ -280,6 +283,9 @@ export class Session {
   private readonly questConditionInputs:{key:string;read:(context:StoryConditionContext)=>StoryWorldValue|undefined}[]=[];
   private questProjection?:{questVersion:number;bagVersion:number;owner:string;conditions:(StoryWorldValue|undefined)[]};
   /** `quests` 投影的缓存；只用任务簿版本做键，因为 `commit` 在没有真实变化时不推进版本。 */
+  private storyConditionContext?:StoryConditionContext;
+  private completedEventsProjection?:{events:readonly string[];set:ReadonlySet<string>};
+  private waitingGoalProjection?:{version:number;entries:readonly WaitingGoalEntry[]};
   private questsProjection?:{questVersion:number;value:ReadonlyMap<string,Readonly<QuestProgress&{count:number}>>};
   private readonly battle?:BattleCatalog;
   private readonly stats?:CharacterStatsCatalog;
@@ -440,6 +446,7 @@ export class Session {
   choiceWriteCounts():ReadonlyMap<string,number> { return this.choiceWrites; }
   constructor(campaign:Campaign, player?:StoryPlayerState, character?:{classId:string;appearance:ActorDefinition}, items?:ItemCatalog, hero?:BattleCharacter, battle?:BattleCatalog, stats?:CharacterStatsCatalog, companions?:CompanionCatalog) {
     this.campaign = campaign;
+    this.questsById = new Map(campaign.quests.map(quest => [quest.id, quest]));
     this.questGroupKinds = new Map(campaign.questGroups.flatMap(group =>
       group.questIds.map(id => [id, group.kind] as const)));
     this.playerState = player ? Object.freeze({...player}) : undefined;
@@ -481,12 +488,31 @@ export class Session {
     return {...this.conditionContext(),classId:this.hero?.classId??this.character?.classId,itemCount:(id:string)=>this.itemCount(id),
       equippedItemCount:(item:string)=>Object.values(this.bag.equipmentItems(this.bag.equipmentFor(this.party?.controlledId??'player'))).filter(id=>id===item).length};
   }
+  /**
+   * 剧情条件的读取入口。每个成员都是实时读取会话状态的函数，所以整份上下文只建一次反复交出；
+   * 地图触发、实体显隐和任务条件在玩家走动时每帧都会求值，不再每次新建对象和闭包。
+   */
   conditionContext():StoryConditionContext {
-    return {questStatus:id=>this.status(id),questCompletedCycles:id=>this.questBook?.completedCycles(id)??0,
+    return this.storyConditionContext??={questStatus:id=>this.status(id),questCompletedCycles:id=>this.questBook?.completedCycles(id)??0,
       eventStatus:id=>{
-        const run=[...this.runtimeSnapshot.runs].reverse().find(run=>run.eventId===id&&['running','waiting'].includes(run.status));
-        return run?.status==='running'?'running':run?.status==='waiting'?'waiting':this.runtimeSnapshot.completedEvents.includes(id)?'completed':'idle';
+        // 从最近的运行记录往前找，取第一条进行中或等待中的；不复制整份运行列表。
+        const runs=this.runtimeSnapshot.runs;
+        for(let index=runs.length-1;index>=0;index--){
+          const run=runs[index]!;
+          if(run.eventId!==id)continue;
+          if(run.status==='running')return 'running';
+          if(run.status==='waiting')return 'waiting';
+        }
+        return this.completedEventSet().has(id)?'completed':'idle';
       },choice:id=>this.storyWorld.choice(id),flag:id=>this.storyWorld.hasFlag(id),world:key=>this.worldValue(this.storyWorld,key)};
+  }
+  /** 已完成事件的集合；运行时快照不可变，按 `completedEvents` 数组身份复用，数组换了才重建。 */
+  private completedEventSet():ReadonlySet<string> {
+    const events=this.runtimeSnapshot.completedEvents,cached=this.completedEventsProjection;
+    if(cached?.events===events)return cached.set;
+    const set=new Set(events);
+    this.completedEventsProjection={events,set};
+    return set;
   }
   private worldValue(world:StoryWorldState,key:string):StoryWorldValue|undefined {
     return key==='map'?world.currentLocation?.map??this.worldContext()[key]:this.worldContext()[key];
@@ -556,7 +582,7 @@ export class Session {
     const captureEnemies=():SessionState['enemies']=>[...this.enemyStates].map(([id,enemy])=>[id,structuredClone(enemy)]);
     const captureReceipts=():SessionState['receipts']=>[...this.receipts.values()].map(receipt=>structuredClone(receipt));
     const questBookState=reuse
-      ?this.cachedSnapshot('questBook',this.questBook.version,()=>this.questBook.captureState())
+      ?this.cachedSnapshot('questBook',this.questBook.stateVersion,()=>this.questBook.captureState())
       :(questBook??this.questBook.captureState());
     const storyWorld=reuse
       ?this.cachedSnapshot('storyWorld',this.storyWorld.revision,()=>this.storyWorld.captureState())
@@ -1038,7 +1064,7 @@ export class Session {
     this.questProjection={questVersion:this.questBook.version,bagVersion:this.bag.revision,
       owner:this.party?.controlledId??'player',conditions:this.questConditionInputs.map(input=>input.read(context!))};
   }
-  definition(id:string):CampaignQuest|undefined{return this.campaign.quests.find(quest=>quest.id===id);}
+  definition(id:string):CampaignQuest|undefined{return this.questsById.get(id);}
   status(id:string):QuestStatus{return this.questBook?.status(id)??'locked';}
   /**
    * 任务已经待交付时，发布者/交付人不能被本次进图的临时剧情缺席挡住。
@@ -1088,20 +1114,33 @@ export class Session {
    * `talk` 与 `interact` 两类目标导出后都落在 NPC 的 `actor` 上（与摆放点 `objective` 的写法同一口径），
    * 对玩家是同一件事：走过去跟它交互。
    */
-  private waitingGoalEntries(target:string,characterId?:string):{kind:'talk'|'interact';target:string;quest:CampaignQuest;goal:QuestGoal}[] {
-    const goals:{kind:'talk'|'interact';target:string;quest:CampaignQuest;goal:QuestGoal}[]=[];
+  private waitingGoalEntries(target:string,characterId?:string):WaitingGoalEntry[] {
+    const goals:WaitingGoalEntry[]=[];
+    for(const entry of this.waitingGoalIndex())
+      if(characterId!==undefined&&entry.goal.characterId!==undefined?entry.goal.characterId===characterId:entry.target===target)goals.push(entry);
+    return goals;
+  }
+  /**
+   * 进行中任务里还没记满的 `talk` / `interact` 目标，按任务簿版本复用。
+   * 玩家贴着 NPC 走动时每帧都会问能否交互；任务状态和目标进度只在版本推进时变化，不必每次扫全部任务。
+   * 顺序保持「任务定义顺序 → 目标顺序」，调用方按目标过滤后得到的列表与逐条扫描一致。
+   */
+  private waitingGoalIndex():readonly WaitingGoalEntry[] {
+    const version=this.questBook.version,cached=this.waitingGoalProjection;
+    if(cached?.version===version)return cached.entries;
+    const entries:WaitingGoalEntry[]=[];
     for(const quest of this.campaign.quests){
       if(this.status(quest.id)!=='active')continue;
       const progress=this.questBook.state(quest.id)?.goals;
       for(const goal of quest.goals){
         if(goal.kind!=='talk'&&goal.kind!=='interact')continue;
-        if(!(characterId!==undefined&&goal.characterId!==undefined?goal.characterId===characterId:goal.target===target))continue;
         // 已记满的目标不再进入候选：同一根号角不能重复触发，多数量目标则一直可交互到记满为止。
         if((progress?.[goal.id]??0)>=goal.quantity)continue;
-        goals.push({kind:goal.kind,target:goal.target,quest,goal});
+        entries.push({kind:goal.kind,target:goal.target,quest,goal});
       }
     }
-    return goals;
+    this.waitingGoalProjection={version,entries};
+    return entries;
   }
   private waitingGoals(target:string,characterId?:string):{kind:'talk'|'interact';target:string}[] {
     return this.waitingGoalEntries(target,characterId).map(({kind,target})=>({kind,target}));

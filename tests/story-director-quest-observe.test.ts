@@ -25,9 +25,14 @@ test('quest observation reuses the quest book version instead of re-reading ever
   // 与任务无关的通知（血量、金币、位置……频率远高于任务变化）不该重新采集任务状态。
   for (let index = 0; index < 10; index++) session.emit();
   assert.equal(reads(), base);
-  // 任务真的变了必须重新采集，否则剧情事件会漏触发（`recordQuestFact` 自己会发一次通知）。
+  // 与进行中任务无关的击杀只记下新的事件序号，任务状态没变，同样不该重新采集。
   session.recordQuestFact('defeat', 'enemy-wolf-1', 'combat');
-  assert.ok(reads() > base, '任务变化后应当重新采集');
+  assert.equal(reads(), base, '只推进事件序号时不重新采集任务');
+  // 任务真的变了必须重新采集，否则剧情事件会漏触发（`recordQuestFact` 自己会发一次通知）。
+  assert.equal(session.accept('grafton-mission'), true);
+  const accepted = reads();
+  session.recordQuestFact('defeat', 'enemy-earl-grafton-1', 'combat');
+  assert.ok(reads() > accepted, '任务变化后应当重新采集');
   director.dispose();
 });
 

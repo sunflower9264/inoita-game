@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { PNG } from 'pngjs';
 import { packAtlasBlocks, type AtlasPackBlock, type AtlasPackingItem } from './atlas-pack.ts';
 import { sourceAssetPath } from './asset-source.ts';
+import { encodeRows, encodeRuns, pagesSource, rowsSource, ROWS_DECODER, RUNS_DECODER } from './atlas-codegen.ts';
 import { walkClips } from './content-build.ts';
 
 /**
@@ -460,15 +461,22 @@ export function writeCharacterAtlas(): CharacterAtlasWriteResult {
     if (!entry || entry.pages.length < group.frames)
       throw new Error(`角色图集帧数不足：${group.paths.join(', ')}（映射 ${entry?.pages.length ?? 0} / 引用 ${group.frames}）`);
   }
-  const sortedEntries = Object.fromEntries(Object.entries(entries).sort(([a], [b]) => compareText(a, b)));
+  const sortedRows = Object.entries(entries).sort(([a], [b]) => compareText(a, b))
+    .map(([file, entry]) => [file, [entry.prefix, encodeRuns(entry.pages)]] as const);
   const digest = digestSource(source);
   fs.mkdirSync(path.dirname(GENERATED), { recursive: true });
   fs.writeFileSync(GENERATED, `// 由 npm run atlas:characters 生成，勿手改。
 export interface CharacterAtlasPage { key: string; file: string; data: string; frame: string; width: number; height: number }
-export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = ${JSON.stringify(written.map(
-    ({ key, file, data, frame, width, height }) => ({ key, file, data, frame, width, height })), null, 2)};
+export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = ${pagesSource(written,
+    ['key', 'file', 'data', 'frame', 'width', 'height'], ['key', 'file', 'data'])};
 export interface CharacterAtlasEntry { pages: readonly number[]; prefix: string }
-export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntry>> = ${JSON.stringify(sortedEntries, null, 2)};
+${RUNS_DECODER}
+${ROWS_DECODER}
+// 每行：目录|名字,帧名前缀,逐帧页号（页号*连续帧数，段间用点）
+const BY_FILE_ROWS: readonly string[] = ${rowsSource(encodeRows(sortedRows))};
+const byFile: Record<string, CharacterAtlasEntry> = {};
+eachRow(BY_FILE_ROWS, (file, [prefix, pages]) => { byFile[file] = { pages: runs(pages!), prefix: prefix! }; });
+export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntry>> = byFile;
 export const CHARACTER_ATLAS_SOURCE_DIGEST = ${JSON.stringify(digest)};
 `);
   fs.writeFileSync(TOOL_ALIASES, `// 由 npm run atlas:characters 生成，勿手改。
@@ -499,7 +507,7 @@ export const CHARACTER_ATLAS_ALIASES: Readonly<Record<string, string>> = ${JSON.
 
   return {
     pages: written.length,
-    files: Object.keys(sortedEntries).length,
+    files: sortedRows.length,
     frames: source.groups.reduce((sum, group) => sum + group.frames, 0),
     source: source.groups.reduce((sum, group) => sum + group.width * group.height, 0),
     packed: written.reduce((sum, page) => sum + page.width * page.height, 0),

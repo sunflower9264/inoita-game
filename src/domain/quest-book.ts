@@ -194,6 +194,8 @@ interface PlanEntry {
   runningIds: string[];
   factSequences: Map<string, number>;
   changed: boolean;
+  /** 任务状态或运行池有变化；只推进了事件序号时为假。 */
+  progressChanged: boolean;
   /** 本批任务命令显式写过的任务；提交后释放这些任务的调试进度钉住。 */
   releasedForced: string[];
   snapshot?: QuestBookState;
@@ -291,7 +293,10 @@ export class QuestBook {
   private states: Map<string, QuestProgress>;
   private runningIds: string[] = [];
   private factSequences = new Map<string, number>();
+  /** 任何写入都推进（含事件序号）：计划失效判断和持久快照复用以它为准。 */
   private revision = 0;
+  /** 只在任务状态或运行池变化时推进；击杀、对话只记下新的事件序号时不动。 */
+  private progressRevision = 0;
   /** 计划内部的私有状态，提交时由 `commit` 接管；`nextState` 从这里按需物化。 */
   private readonly plans = new WeakMap<QuestPlan, PlanEntry>();
   private readonly restores = new WeakMap<QuestRestorePlan, QuestBookState>();
@@ -312,13 +317,19 @@ export class QuestBook {
     this.questDependents = prepared.dependents;
     // 派生沙盒：与来源共享同一份不可变状态根，不克隆、也不跑初始 refresh。
     const source = options?.shareFrom;
-    if (source) { this.states = source.states; this.runningIds = [...source.runningIds]; this.factSequences = new Map(source.factSequences); this.revision = source.revision; return; }
+    if (source) { this.states = source.states; this.runningIds = [...source.runningIds]; this.factSequences = new Map(source.factSequences); this.revision = source.revision; this.progressRevision = source.progressRevision; return; }
     this.states = new Map([...this.definitions].map(([id, quest]) => [id, initialProgress(quest)]));
     // 已知初态时直接安装：调用方（预演沙盒）拿的就是本类产出的状态，不必再刷新一遍。
     if (options?.state) { this.installTrustedState(options.state); return; }
     this.commit(this.plan({ type: 'refresh' }));
   }
-  get version(): number { return this.revision; }
+  /**
+   * 任务进度版本：任务状态、目标进度或运行池变了才推进。任务日志、标记、交互候选、提示这些读取方按它复用。
+   * 每次击杀、对话都会记一个新的事件序号，但多数时候不改变任何任务；那种写入只推进 `stateVersion`。
+   */
+  get version(): number { return this.progressRevision; }
+  /** 整份任务簿状态的版本（含事件序号）。存档/检查点复用快照必须用它，否则会漏存新的事件序号。 */
+  get stateVersion(): number { return this.revision; }
   definition(id: string): QuestRules | undefined { return this.definitions.get(id); }
   /** 单条进度；条目本身已冻结，直接交出去即可，不必克隆。 */
   state(id: string): Readonly<QuestProgress> | undefined { return this.states.get(id); }
@@ -367,7 +378,7 @@ export class QuestBook {
    */
   rollbackTo(checkpoint: QuestBookCheckpoint): void {
     this.states = new Map(checkpoint.states); this.runningIds = [...checkpoint.runningIds];
-    this.factSequences = new Map(checkpoint.factSequences); this.revision++;
+    this.factSequences = new Map(checkpoint.factSequences); this.revision++; this.progressRevision++;
   }
 
   /** 一条变化键对应的任务集合；空集合时不建临时 Set。 */
@@ -417,7 +428,7 @@ export class QuestBook {
         for (const dependent of this.questDependents.get(id) ?? [])
           if (!queued.has(dependent)) { queued.add(dependent); queue.push(dependent); }
     }
-    if (next) { this.states = next; this.revision++; }
+    if (next) { this.states = next; this.revision++; this.progressRevision++; }
   }
   /** 按一组进度容器构造条件上下文；`plan` 的沙盒与真实簿共用同一口径。 */
   private conditionContextFor(context: QuestContext, states: { get(id: string): QuestProgress | undefined }): StoryConditionContext {
@@ -646,10 +657,11 @@ export class QuestBook {
     }
     // 变更判断改为结构比较：只逐字段比「被写过的条目」，不做全量序列化。
     // 写成 no-op 的条目（同批先改后改回）最终与批前相等，所以这里仍会判成没变。
-    const changed = !sameList(runningIds, this.runningIds) || !sameNumbers(factSequences, this.factSequences)
+    const progressChanged = !sameList(runningIds, this.runningIds)
       || [...dirty].some(id => !sameProgress(states.get(id)!, this.states.get(id)!));
+    const changed = progressChanged || !sameNumbers(factSequences, this.factSequences);
     const delta = new Map([...new Set([...grants.keys(), ...removals.keys()])].map(item => [item, (grants.get(item) ?? 0) - (removals.get(item) ?? 0)]));
-    const entry: PlanEntry = { states, runningIds, factSequences, changed, releasedForced: [...releasedForced] };
+    const entry: PlanEntry = { states, runningIds, factSequences, changed, progressChanged, releasedForced: [...releasedForced] };
     // 计划对象浅冻即可：条目自己已冻结，`nextState` 是 getter，递归冻结会把它提前物化。
     const plan: QuestPlan = Object.freeze({ baseRevision: this.revision, changed,
       itemGrants: Object.freeze([...delta].filter(([, quantity]) => quantity > 0).map(([item, quantity]) => Object.freeze({ item, quantity }))),
@@ -668,6 +680,7 @@ export class QuestBook {
     // 直接接管计划那份容器：条目不可变，所以没有「谁还会再写它」的问题，连浅拷贝都不用做。
     this.states = entry.states; this.runningIds = entry.runningIds;
     this.factSequences = entry.factSequences; this.revision++;
+    if (entry.progressChanged) this.progressRevision++;
     for (const id of entry.releasedForced) this.forcedProgress.delete(id);
   }
   /**
@@ -739,7 +752,7 @@ export class QuestBook {
     // 就地把条目冻上：安装进来的对象此后归本对象所有，冻结是「共享而非别名」这条不变量的闭合点。
     for (const progress of states.values()) freeze(progress);
     this.states = states; this.runningIds = [...state.runningQuestIds];
-    this.factSequences = new Map(state.factSequences); this.revision++;
+    this.factSequences = new Map(state.factSequences); this.revision++; this.progressRevision++;
   }
   commitRestore(plan: QuestRestorePlan): void {
     const next = this.restores.get(plan);
@@ -748,7 +761,7 @@ export class QuestBook {
     const states = new Map(structuredClone(next.quests));
     for (const progress of states.values()) freeze(progress);
     this.states = states; this.runningIds = [...next.runningQuestIds];
-    this.factSequences = new Map(next.factSequences); this.revision++;
+    this.factSequences = new Map(next.factSequences); this.revision++; this.progressRevision++;
   }
   restoreState(state: QuestBookState): void { this.commitRestore(this.prepareRestore(state)); }
 }

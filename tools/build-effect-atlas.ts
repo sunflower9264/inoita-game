@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { PNG } from 'pngjs';
 import { packAtlasBlocks, type AtlasPackBlock, type AtlasPackingItem, type AtlasPackedPage } from './atlas-pack.ts';
 import { sourceAssetPath } from './asset-source.ts';
+import { encodeRows, encodeRuns, pagesSource, rowsSource, ROWS_DECODER, RUNS_DECODER } from './atlas-codegen.ts';
 
 /**
  * 把战斗特效的每一帧裁到非透明包围盒，再按特效分块装箱成图集。
@@ -362,12 +363,26 @@ export function writeEffectAtlas(): { pages: number; files: number; frames: numb
     fs.writeFileSync(path.join(PUBLIC, page.data), page.json);
   }
   fs.mkdirSync(path.dirname(GENERATED), { recursive: true });
-  const pages = atlas.pages.map(({ key, file, data, frame, width, height }) => ({ key, file, data, frame, width, height }));
+  const rows = Object.entries(atlas.byFile).map(([file, frames]) => {
+    const base = frames[0]?.frame.replace(/-0$/, '');
+    if (!base || frames.some((frame, index) => frame.frame !== `${base}-${index}`))
+      throw new Error(`特效图集帧名不是 前缀-序号 的连续序列，紧凑编码无法表示：${file}`);
+    return [file, [base, encodeRuns(frames.map(frame => frame.page))]] as const;
+  });
   fs.writeFileSync(GENERATED, `// 由 npm run atlas:effects 生成，勿手改。
 export interface EffectAtlasPage { key: string; file: string; data: string; frame: string; width: number; height: number }
-export const EFFECT_ATLAS_PAGES: readonly EffectAtlasPage[] = ${JSON.stringify(pages, null, 2)};
+export const EFFECT_ATLAS_PAGES: readonly EffectAtlasPage[] = ${pagesSource(atlas.pages,
+    ['key', 'file', 'data', 'frame', 'width', 'height'], ['key', 'file', 'data'])};
 export interface EffectAtlasFrame { page: number; frame: string }
-export const EFFECT_ATLAS_BY_FILE: Readonly<Record<string, readonly EffectAtlasFrame[]>> = ${JSON.stringify(atlas.byFile, null, 2)};
+${RUNS_DECODER}
+${ROWS_DECODER}
+// 每行：目录|名字,帧名前缀,逐帧页号（页号*连续帧数，段间用点）；第 n 帧名为「前缀-n」
+const BY_FILE_ROWS: readonly string[] = ${rowsSource(encodeRows(rows))};
+const byFile: Record<string, readonly EffectAtlasFrame[]> = {};
+eachRow(BY_FILE_ROWS, (file, [base, pages]) => {
+  byFile[file] = runs(pages!).map((page, index) => ({ page, frame: \`\${base}-\${index}\` }));
+});
+export const EFFECT_ATLAS_BY_FILE: Readonly<Record<string, readonly EffectAtlasFrame[]>> = byFile;
 export const EFFECT_ATLAS_SOURCE_DIGEST = ${JSON.stringify(atlas.digest)};
 `);
   return { pages: atlas.pages.length, files: Object.keys(atlas.byFile).length,
