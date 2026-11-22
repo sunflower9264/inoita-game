@@ -7,7 +7,7 @@ export const UI_ATLAS_PAGES: readonly UiAtlasPage[] = ([
   ["assets/ui/story-classes/panel-left.png",1832,248,"story/portraits"],
   ["assets/ui/status/player-portrait-down.png",2048,275,"hud/status/minimap"],
   ["assets/ui/menus/edge-vertical.png",1828,415,"title"]
-] as readonly (readonly [string, number, number, string])[]).map((row, i) => ({ key: `interface:assets/ui/menu-ui-${i}.png`, file: `assets/ui/menu-ui-${i}.png`, data: `assets/ui/menu-ui-${i}.json`, frame: row[0], width: row[1], height: row[2], group: row[3] }));
+] as readonly (readonly [string, number, number, string])[]).map((row, i) => ({ key: `interface:assets/ui/menu-ui-${i}.webp`, file: `assets/ui/menu-ui-${i}.webp`, data: `assets/ui/menu-ui-${i}.json`, frame: row[0], width: row[1], height: row[2], group: row[3] }));
 const eachRow = (groups: readonly string[], visit: (file: string, fields: string[]) => void): void => {
   for (const group of groups) {
     const [dir, ...rows] = group.split('|');

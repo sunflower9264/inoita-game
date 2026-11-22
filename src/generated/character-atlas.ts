@@ -127,7 +127,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = ([
   ["9cc1efb11a-000",1021,1015],
   ["e6cebe1300-000",1022,1019],
   ["ebb0e94472-000",1022,454]
-] as readonly (readonly [string, number, number])[]).map((row, i) => ({ key: `characters-atlas:${i}`, file: `assets/character-atlas/characters-${i}.png`, data: `assets/character-atlas/characters-${i}.json`, frame: row[0], width: row[1], height: row[2] }));
+] as readonly (readonly [string, number, number])[]).map((row, i) => ({ key: `characters-atlas:${i}`, file: `assets/character-atlas/characters-${i}.webp`, data: `assets/character-atlas/characters-${i}.json`, frame: row[0], width: row[1], height: row[2] }));
 export interface CharacterAtlasEntry { pages: readonly number[]; prefix: string }
 const runs = (text: string): number[] => {
   const out: number[] = [];
@@ -631,4 +631,4 @@ const BY_FILE_ROWS: readonly string[] = [
 const byFile: Record<string, CharacterAtlasEntry> = {};
 eachRow(BY_FILE_ROWS, (file, [prefix, pages]) => { byFile[file] = { pages: runs(pages!), prefix: prefix! }; });
 export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntry>> = byFile;
-export const CHARACTER_ATLAS_SOURCE_DIGEST = "183ed1180886e835710a834f7a61af033d6e20e853957e49185b469cb7a2a935";
+export const CHARACTER_ATLAS_SOURCE_DIGEST = "b2c22f559dadb09d209474c397355f872655eca7a3627323f567c9dcdbb951ac";

@@ -7,6 +7,7 @@ import { UI_ICON_FRAMES } from '../src/generated/icon-atlas.ts';
 import { COMMON_BUTTON_IMAGES } from '../src/ui/common-button.ts';
 import { TITLE_MESSAGE_ASSETS, titleMenuImages } from '../src/application/menu-images.ts';
 import { sourceAssetPath } from '../tools/asset-source.ts';
+import { atlasImageSize } from './support/atlas-image.ts';
 
 const content = (file: string): any => JSON.parse(fs.readFileSync(`public/content/${file}`, 'utf8'));
 
@@ -23,7 +24,7 @@ test('every menu UI image has an atlas frame and the atlas metadata matches the 
       frames: Record<string, { frame: { x: number; y: number; w: number; h: number }; trimmed?: boolean; rotated?: boolean }>;
       meta: { size: { w: number; h: number } };
     },
-    size: pngSize(`public/${page.file}`)
+    size: atlasImageSize(`public/${page.file}`)
   }]));
   for (const page of UI_ATLAS_PAGES) {
     const value = pages.get(page.key)!;

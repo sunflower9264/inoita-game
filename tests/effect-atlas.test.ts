@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import { readFileSync } from 'node:fs';
 import { registerHooks } from 'node:module';
+import { atlasImageSize } from './support/atlas-image.ts';
 import test from 'node:test';
 import { EFFECT_ATLAS_BY_FILE, EFFECT_ATLAS_PAGES, EFFECT_ATLAS_SOURCE_DIGEST } from '../src/generated/effect-atlas.ts';
 import { effectAtlasSourceDigest, EFFECT_ATLAS_TARGETS, STORY_EFFECT_TARGETS } from '../tools/build-effect-atlas.ts';
@@ -62,7 +63,8 @@ test('特效裁边图集的页面、帧边界和裁剪信息一致', () => {
   assert.ok(EFFECT_ATLAS_PAGES.length > 0, '至少生成一页');
   for (const [index, page] of EFFECT_ATLAS_PAGES.entries()) {
     assert.equal(page.key, `effects-atlas:${index}`, `${page.key} 使用稳定的页 key`);
-    assert.equal(page.file, `assets/effect-atlas/effects-${index}.png`, `${page.key} 图片路径`);
+    assert.equal(page.file, `assets/effect-atlas/effects-${index}.webp`, `${page.key} 图片路径`);
+    assert.deepEqual(atlasImageSize(`public/${page.file}`), { w: page.width, h: page.height }, `${page.key} 图片尺寸`);
     assert.equal(page.data, `assets/effect-atlas/effects-${index}.json`, `${page.key} 数据路径`);
     assert.ok(page.width > 0 && page.width <= 2048 && page.height > 0 && page.height <= 2048, `${page.key} 在单页尺寸内`);
     const json = pageJson(index);

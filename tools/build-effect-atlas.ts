@@ -6,6 +6,7 @@ import { PNG } from 'pngjs';
 import { packAtlasBlocks, type AtlasPackBlock, type AtlasPackingItem, type AtlasPackedPage } from './atlas-pack.ts';
 import { sourceAssetPath } from './asset-source.ts';
 import { encodeRows, encodeRuns, pagesSource, rowsSource, ROWS_DECODER, RUNS_DECODER } from './atlas-codegen.ts';
+import { ATLAS_IMAGE_EXTENSION, AtlasImageQueue } from './atlas-image.ts';
 
 /**
  * 把战斗特效的每一帧裁到非透明包围盒，再按特效分块装箱成图集。
@@ -24,7 +25,6 @@ const PAGE_KEY_PREFIX = 'effects-atlas:';
 const PNG_WIDTH_OFFSET = 16;
 const PNG_HEIGHT_OFFSET = 20;
 /** pngjs 的 colorType 6 = RGBA，图集必须保留透明通道。 */
-const PNG_COLOR_TYPE_RGBA = 6;
 /** 帧名前缀取内容哈希前 12 位，避免不同特效的帧名撞车。 */
 const FRAME_HASH_PREFIX_LENGTH = 12;
 const MAX_SIZE = 2048;
@@ -93,8 +93,8 @@ interface AtlasPage {
   frame: string;
   width: number;
   height: number;
-  /** 只在生成器内部用于写文件，不进入 generated TS。 */
-  png: Buffer;
+  /** 页图片（无损 WebP），只在生成器内部用于写文件，不进入 generated TS。 */
+  image: Buffer;
   json: string;
   frames: Record<string, unknown>;
 }
@@ -242,10 +242,12 @@ function trimFrames(file: UniqueFile): TrimmedFrame[] {
   return frames;
 }
 
-/** 把打包结果画进页 PNG 与 JSON，并把页坐标回填到原始帧对象。 */
-function writePages(plans: readonly AtlasPackedPage<TrimmedFrame>[], byId: ReadonlyMap<string, TrimmedFrame>): AtlasPage[] {
-  const pages: AtlasPage[] = [];
+/** 把打包结果画进页图片与 JSON，并把页坐标回填到原始帧对象。 */
+async function writePages(plans: readonly AtlasPackedPage<TrimmedFrame>[], byId: ReadonlyMap<string, TrimmedFrame>): Promise<AtlasPage[]> {
+  const pages: (Omit<AtlasPage, 'image'> & { image: Promise<Buffer> })[] = [];
+  const queue = new AtlasImageQueue();
   for (const [pageIndex, plan] of plans.entries()) {
+    await queue.ready();
     const width = Math.min(MAX_SIZE, Math.max(1, plan.width));
     const height = Math.min(MAX_SIZE, Math.max(1, plan.height));
     const png = new PNG({ width, height });
@@ -276,16 +278,16 @@ function writePages(plans: readonly AtlasPackedPage<TrimmedFrame>[], byId: Reado
       if (!sample) sample = frame.name;
     }
     const key = `${PAGE_KEY_PREFIX}${pageIndex}`;
-    const file = `${ATLAS_DIR}/effects-${pageIndex}.png`;
+    const file = `${ATLAS_DIR}/effects-${pageIndex}.${ATLAS_IMAGE_EXTENSION}`;
     const data = `${ATLAS_DIR}/effects-${pageIndex}.json`;
     const json = JSON.stringify({
       frames,
-      meta: { image: `effects-${pageIndex}.png`, format: 'RGBA8888', size: { w: width, h: height }, scale: '1' }
+      meta: { image: `effects-${pageIndex}.${ATLAS_IMAGE_EXTENSION}`, format: 'RGBA8888', size: { w: width, h: height }, scale: '1' }
     });
     pages.push({ key, file, data, frame: sample, width, height,
-      png: PNG.sync.write(png, { colorType: PNG_COLOR_TYPE_RGBA }), json, frames });
+      image: queue.encode(png.data, width, height), json, frames });
   }
-  return pages;
+  return Promise.all(pages.map(async page => ({ ...page, image: await page.image })));
 }
 
 export function effectAtlasSourceDigest(): string {
@@ -307,7 +309,7 @@ export function effectAtlasSourceDigest(): string {
   return hash.digest('hex');
 }
 
-export function packEffectAtlas(): AtlasResult {
+export async function packEffectAtlas(): Promise<AtlasResult> {
   const uses = effectUses();
   const { unique, hashes } = collectUniqueFiles(uses);
   const files = [...unique.values()].sort((a, b) => compareText(a.file, b.file));
@@ -339,7 +341,7 @@ export function packEffectAtlas(): AtlasResult {
   const plans = packAtlasBlocks(blocks, { maxSize: MAX_SIZE, padding: PADDING });
   const byId = new Map<string, TrimmedFrame>();
   for (const frames of framesByHash.values()) for (const frame of frames) byId.set(frame.id, frame);
-  const pages = writePages(plans, byId);
+  const pages = await writePages(plans, byId);
 
   // 映射按原始帧序号生成，和装箱结果里的页内顺序无关。
   const byFile: Record<string, { page: number; frame: string }[]> = {};
@@ -353,13 +355,13 @@ export function packEffectAtlas(): AtlasResult {
   return { pages, byFile, digest: effectAtlasSourceDigest(), sourceBytes, pageBytes };
 }
 
-export function writeEffectAtlas(): { pages: number; files: number; frames: number; source: number; packed: number; bytes: number } {
-  const atlas = packEffectAtlas();
+export async function writeEffectAtlas(): Promise<{ pages: number; files: number; frames: number; source: number; packed: number; bytes: number }> {
+  const atlas = await packEffectAtlas();
   fs.mkdirSync(path.join(PUBLIC, ATLAS_DIR), { recursive: true });
   for (const file of fs.readdirSync(path.join(PUBLIC, ATLAS_DIR)))
-    if (/^effects-\d+\.(png|json)$/.test(file)) fs.unlinkSync(path.join(PUBLIC, ATLAS_DIR, file));
+    if (/^effects-\d+\.(png|webp|json)$/.test(file)) fs.unlinkSync(path.join(PUBLIC, ATLAS_DIR, file));
   for (const page of atlas.pages) {
-    fs.writeFileSync(path.join(PUBLIC, page.file), page.png);
+    fs.writeFileSync(path.join(PUBLIC, page.file), page.image);
     fs.writeFileSync(path.join(PUBLIC, page.data), page.json);
   }
   fs.mkdirSync(path.dirname(GENERATED), { recursive: true });
@@ -388,11 +390,11 @@ export const EFFECT_ATLAS_SOURCE_DIGEST = ${JSON.stringify(atlas.digest)};
   return { pages: atlas.pages.length, files: Object.keys(atlas.byFile).length,
     frames: atlas.pages.reduce((sum, page) => sum + Object.keys(page.frames).length, 0),
     source: atlas.sourceBytes, packed: atlas.pageBytes,
-    bytes: atlas.pages.reduce((sum, page) => sum + page.png.byteLength, 0) };
+    bytes: atlas.pages.reduce((sum, page) => sum + page.image.byteLength, 0) };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const result = writeEffectAtlas();
+  const result = await writeEffectAtlas();
   console.log(`技能特效图集：${result.files} 个文件 / ${result.frames} 帧 / ${result.pages} 页，` +
     `${(result.source / 1048576).toFixed(1)} MB 解码 → ${(result.packed / 1048576).toFixed(1)} MB，` +
     `${(result.bytes / 1048576).toFixed(2)} MB 磁盘`);

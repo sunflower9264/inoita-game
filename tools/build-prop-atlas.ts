@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { PNG } from 'pngjs';
 import { sourceAssetPath } from './asset-source.ts';
 import { pagesSource } from './atlas-codegen.ts';
+import { ATLAS_IMAGE_EXTENSION, encodeAtlasImage } from './atlas-image.ts';
 import { contentDigest } from '../src/application/content-hash.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -14,7 +15,6 @@ const ATLAS_DIR = 'assets/props/atlas';
 const GENERATED = path.join(ROOT, 'src', 'generated', 'prop-atlas.ts');
 const PAGE_KEY_PREFIX = 'props-atlas:';
 /** pngjs 的 colorType 6 = RGBA，图集必须保留透明通道。 */
-const PNG_COLOR_TYPE_RGBA = 6;
 const MAX_SIZE = 2048;
 const PADDING = 2;
 const PACKER_VERSION = 1;
@@ -27,8 +27,8 @@ interface PropPage {
   frame: string;
   width: number;
   height: number;
-  /** 只在生成器内部用于写文件，不进入 generated TS。 */
-  png: Buffer;
+  /** 页的原始 RGBA 像素，写文件时编码成无损 WebP；不进入 generated TS。 */
+  pixels: Buffer;
   json: string;
   frames: Record<string, unknown>;
 }
@@ -163,13 +163,12 @@ export function packPropAtlas(): PropAtlas {
       };
     }
     const key = `${PAGE_KEY_PREFIX}${pageIndex}`;
-    const file = `${ATLAS_DIR}/props-${pageIndex}.png`;
+    const file = `${ATLAS_DIR}/props-${pageIndex}.${ATLAS_IMAGE_EXTENSION}`;
     const data = `${ATLAS_DIR}/props-${pageIndex}.json`;
     const json = JSON.stringify({
-      frames, meta: { image: `props-${pageIndex}.png`, format: 'RGBA8888', size: { w: width, h: height }, scale: '1' }
+      frames, meta: { image: `props-${pageIndex}.${ATLAS_IMAGE_EXTENSION}`, format: 'RGBA8888', size: { w: width, h: height }, scale: '1' }
     });
-    pages.push({ key, file, data, frame: sample, width, height,
-      png: PNG.sync.write(png, { colorType: PNG_COLOR_TYPE_RGBA }), json, frames });
+    pages.push({ key, file, data, frame: sample, width, height, pixels: png.data, json, frames });
   }
   const byKey: Record<string, { key: string; frame: string }> = {};
   const canonical = new Map<string, string>();
@@ -200,11 +199,15 @@ function propRows(atlas: { pages: readonly { key: string }[]; byKey: Record<stri
   }).join('|');
 }
 
-export function writePropAtlas(): { pages: number; props: number; unique: number; width: number; height: number; bytes: number } {
+export async function writePropAtlas(): Promise<{ pages: number; props: number; unique: number; width: number; height: number; bytes: number }> {
   const atlas = packPropAtlas();
-  fs.mkdirSync(path.join(PUBLIC, ATLAS_DIR), { recursive: true });
-  for (const page of atlas.pages) {
-    fs.writeFileSync(path.join(PUBLIC, page.file), page.png);
+  const dir = path.join(PUBLIC, ATLAS_DIR);
+  fs.mkdirSync(dir, { recursive: true });
+  for (const file of fs.readdirSync(dir))
+    if (/^props-\d+\.(png|webp|json)$/.test(file)) fs.unlinkSync(path.join(dir, file));
+  const images = await Promise.all(atlas.pages.map(page => encodeAtlasImage(page.pixels, page.width, page.height)));
+  for (const [index, page] of atlas.pages.entries()) {
+    fs.writeFileSync(path.join(PUBLIC, page.file), images[index]!);
     fs.writeFileSync(path.join(PUBLIC, page.data), page.json);
   }
   fs.mkdirSync(path.dirname(GENERATED), { recursive: true });
@@ -223,12 +226,12 @@ export const PROP_ATLAS_BY_KEY: Readonly<Record<string, { key: string; frame: st
 export const PROP_ATLAS_SOURCE_DIGEST = ${JSON.stringify(atlas.digest)};
 export const PROP_ATLAS_LAYOUT_DIGEST = ${JSON.stringify(atlas.layoutDigest)};
 `);
-  const bytes = atlas.pages.reduce((sum, page) => sum + page.png.byteLength, 0);
+  const bytes = images.reduce((sum, image) => sum + image.byteLength, 0);
   return { pages: atlas.pages.length, props: atlas.props, unique: atlas.unique,
     width: atlas.pages[0]!.width, height: atlas.pages[0]!.height, bytes };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const result = writePropAtlas();
+  const result = await writePropAtlas();
   console.log(`地图 prop 图集：${result.props} 个 prop → ${result.unique} 帧 / ${result.pages} 页，${result.width}x${result.height}，${(result.bytes / 1024 / 1024).toFixed(2)} MB`);
 }

@@ -1,7 +1,7 @@
 // 由 npm run atlas:icons 生成，勿手改。
-export const UI_ICON_ATLAS_FILE = "assets/ui/menu-icons.png";
+export const UI_ICON_ATLAS_FILE = "assets/ui/menu-icons.webp";
 export const UI_ICON_ATLAS_DATA = "assets/ui/menu-icons.json";
-export const UI_ICON_ATLAS_KEY = "interface:assets/ui/menu-icons.png";
+export const UI_ICON_ATLAS_KEY = "interface:assets/ui/menu-icons.webp";
 export const UI_ICON_SOURCE_DIGEST = "d794a2144984bea532b1ca83198a8772a2a1534f6eb74fb4f0337f7e6901f584";
 const eachRow = (groups: readonly string[], visit: (file: string, fields: string[]) => void): void => {
   for (const group of groups) {

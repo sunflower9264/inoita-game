@@ -26,7 +26,7 @@ export const EFFECT_ATLAS_PAGES: readonly EffectAtlasPage[] = ([
   ["0b7c57ece62b-0",2046,1943],
   ["8a166525a20c-0",2045,1973],
   ["408a0840d1ef-4",2046,1752]
-] as readonly (readonly [string, number, number])[]).map((row, i) => ({ key: `effects-atlas:${i}`, file: `assets/effect-atlas/effects-${i}.png`, data: `assets/effect-atlas/effects-${i}.json`, frame: row[0], width: row[1], height: row[2] }));
+] as readonly (readonly [string, number, number])[]).map((row, i) => ({ key: `effects-atlas:${i}`, file: `assets/effect-atlas/effects-${i}.webp`, data: `assets/effect-atlas/effects-${i}.json`, frame: row[0], width: row[1], height: row[2] }));
 export interface EffectAtlasFrame { page: number; frame: string }
 const runs = (text: string): number[] => {
   const out: number[] = [];
@@ -237,4 +237,4 @@ eachRow(BY_FILE_ROWS, (file, [base, pages]) => {
   byFile[file] = runs(pages!).map((page, index) => ({ page, frame: `${base}-${index}` }));
 });
 export const EFFECT_ATLAS_BY_FILE: Readonly<Record<string, readonly EffectAtlasFrame[]>> = byFile;
-export const EFFECT_ATLAS_SOURCE_DIGEST = "91ab11c6c270bf38aaca977d8f2c9c59e8a4ed645bd4c83c6803ea5a7f028add";
+export const EFFECT_ATLAS_SOURCE_DIGEST = "375c41b048024467ed3a8996b252c76f4778972808cc3f17a0e6908b1eb329a7";
