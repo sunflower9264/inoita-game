@@ -41,12 +41,30 @@ function encodeThumbnail(image: HTMLImageElement | Phaser.Display.Color): string
 export class SaveThumbnails {
   private pending?: { promise: Promise<string | undefined>; cancel(): void };
   private screenshot?: string;
+  /** 已排定、还没到渲染回调的 Phaser 快照；换局时连同它一起取消。 */
+  private queued?: {
+    renderer: Phaser.Renderer.WebGL.WebGLRenderer | Phaser.Renderer.Canvas.CanvasRenderer;
+    callback: Phaser.Types.Renderer.Snapshot.SnapshotCallback;
+  };
 
   get latest(): string | undefined { return this.screenshot; }
 
   reset(): void {
     this.pending?.cancel();
     this.screenshot = undefined;
+  }
+
+  /** 清掉还在等下一帧的那次快照，避免换局后仍回读旧画布像素。 */
+  private releaseQueuedSnapshot(): void {
+    const queued = this.queued;
+    this.queued = undefined;
+    if (!queued) return;
+    // Phaser 的类型把 callback 写成必有函数，运行时初始值是 null；
+    // 渲染器在 postRender 里也按 null 表示没有待处理快照。
+    const state = queued.renderer.snapshotState as unknown as {
+      callback: Phaser.Types.Renderer.Snapshot.SnapshotCallback | null;
+    };
+    if (state.callback === queued.callback) state.callback = null;
   }
 
   capture(game: Phaser.Game | undefined, timeoutMs = SNAPSHOT_TIMEOUT_MS): Promise<string | undefined> {
@@ -61,20 +79,23 @@ export class SaveThumbnails {
       this.pending = undefined;
       clearTimeout(timer);
       if (value) this.screenshot = value;
+      this.releaseQueuedSnapshot();
       resolve(value);
     };
     const cancel = () => finish();
     const timer = setTimeout(cancel, timeoutMs);
     this.pending = { promise, cancel };
+    const callback = (image: HTMLImageElement | Phaser.Display.Color): void => {
+      if (this.pending?.promise !== promise) return;
+      try {
+        finish(encodeThumbnail(image));
+      } catch {
+        cancel();
+      }
+    };
+    this.queued = { renderer, callback };
     try {
-      renderer.snapshot(image => {
-        if (this.pending?.promise !== promise) return;
-        try {
-          finish(encodeThumbnail(image));
-        } catch {
-          cancel();
-        }
-      }, 'image/jpeg', SNAPSHOT_QUALITY);
+      renderer.snapshot(callback, 'image/jpeg', SNAPSHOT_QUALITY);
     } catch {
       cancel();
     }

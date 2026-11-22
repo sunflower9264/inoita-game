@@ -33,17 +33,26 @@ test('换局后只接收本局的截图，后台保存只读取本局最近的�
     t.after(() => previous ? Object.defineProperty(globalThis, key, previous) : Reflect.deleteProperty(globalThis, key));
   }
   const frames: ((image: Frame) => void)[] = [];
-  const game = { renderer: { snapshot: (callback: (image: Frame) => void) => frames.push(callback) } } as unknown as Phaser.Game;
+  const renderer = {
+    snapshotState: { callback: null as ((image: Frame) => void) | null },
+    snapshot(callback: (image: Frame) => void) { renderer.snapshotState.callback = callback; frames.push(callback); },
+  };
+  const game = { renderer } as unknown as Phaser.Game;
   const photos = new SaveThumbnails();
   const old = new Frame('data:image/jpeg;base64,AQ==');
   const current = new Frame('data:image/jpeg;base64,Ag==');
 
   const first = photos.capture(game);
+  assert.equal(renderer.snapshotState.callback, frames[0], '截图请求挂在渲染器的一次性回调上');
   frames[0](old);
   assert.equal(await first, old.url);
+  assert.equal(renderer.snapshotState.callback, null, '完成的快照清掉渲染器回调');
   const previous = photos.capture(game);
+  assert.equal(renderer.snapshotState.callback, frames[1]);
   photos.reset();
+  assert.equal(renderer.snapshotState.callback, null, '换局时清掉渲染器里还没执行的快照回调');
   const next = photos.capture(game);
+  assert.equal(renderer.snapshotState.callback, frames[2], '新的一局重新挂自己的回调');
   assert.equal(await previous, undefined);
   assert.equal(photos.capture(game), next);
   assert.equal(frames.length, 3);
