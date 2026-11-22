@@ -39,7 +39,7 @@ Phaser 4.2.1 + TypeScript 的艾诺迪亚4重制版。源码、内容、素材�
 - **剧情独立创作**。`public/content/campaign.json` 是剧情、任务和角色摆放的源文件；新增字段先定义游戏含义、单位和消费方式，内容加载和构建共用校验器。多张地图共用同一种祭坛时，地点限定写进近身事件的 `map`，任务指引使用同一张图。剧情改变地图人物的显隐时，沿用地图或剧情实际摆放的那个人物编号。
 - **名字用游戏里的概念**。动画叫 `walk-east`、`idle-south`，地图属性叫 `blocked`、`exits`、`entities`，剧情行为叫 `dialogue`、`choice`。
 - 演出以伙伴入队或人物退场收尾、之后就交还操作时，在执行这个动作的节点结束剧情，让存档同时记住人物变化和事件完成。
-- **首次发行的存档格式为 1**。默认从空槽开始，本地与云端均读写格式 1。更早的格式按空槽处理，更新的格式按不可读取处理。已有正式存档后，结构变化时升格式，同时保留上一版为可读并在读取入口迁移，补当前格式到新格式的迁移和旧档测试。读取范围在 `src/domain/save-game.ts`，读取校验在 `src/application/saved-game.ts`。
+- **首次发行的存档格式为 1，正式版不兼容任何旧存档**。默认从空槽开始，本地与云端均读写格式 1。更早的格式按空槽处理，更新的格式按不可读取处理；内容变更使旧存档引用不存在的任务或事件时，整份存档按无效处理。已有正式存档后，结构变化时升格式，旧格式不再读取，不写迁移或兼容代码。读取范围在 `src/domain/save-game.ts`，读取校验在 `src/application/saved-game.ts`。
 - **服务地址分开发与部署**。网页始终同源，页面不写域名；Android 壳由内置内容服务在页面脚本前注入 `__inoitaEndpoints` 和原生桥。环境根地址只维护 `config/endpoints.json`：网页根地址为空，Android 发布写 `https://catgo.online`；调试约定用 `adb reverse` 指向本机 4003，当前 Gradle 尚未按 buildType 切换，接线见 `config/AGENTS.md`。云存档 `/__cloud`、诊断 `/__diagnostics/report` 路径固定。热更新检查地址从同一根地址派生 `/update/latest.json`，自测通道用 `/update/latest-staging.json`；下载走原生 HTTP，不需要 CORS。细则见 `config/AGENTS.md`、`src/application/AGENTS.md`、`android/AGENTS.md`。
 
 ## 3. 测试与验证
