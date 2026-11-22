@@ -7,7 +7,7 @@ import test from 'node:test';
 import type { StoryContext } from '../src/application/ports.ts';
 import type { ActorDefinition, WorldIndex, WorldMap } from '../src/domain/content.ts';
 import type { Campaign } from '../src/domain/campaign.ts';
-import { NavigationWorld } from '../src/domain/navigation-world.ts';
+import { mirroredCollision, NavigationWorld } from '../src/domain/navigation-world.ts';
 import { WalkRoute } from '../src/domain/walk-route.ts';
 import type { Wardrobe } from '../src/rendering/wardrobe.ts';
 import { validateStoryStageSnapshot, type StoryStage, type StoryStageSnapshot } from '../src/domain/story-performance.ts';
@@ -235,6 +235,7 @@ function harness(map = openStageMap('home'), playerAppearance = appearance) {
   } as unknown as WorldScene;
   let released = 0, rendered = 0;
   const placeAllGroups: number[] = [], audioMaps: string[] = [];
+  const navigation = new NavigationWorld(map);
   const movement = {
     stop() {}, remove() {}, register() {}, setEnabled() {}, setGhost() {},
     position(target: ReturnType<typeof visual>) { return { x: target.container.x, y: target.container.y }; },
@@ -248,12 +249,20 @@ function harness(map = openStageMap('home'), playerAppearance = appearance) {
       this.placeAll([{ visual: target, position, enabled: target.container.visible }]);
     },
     placeContent(target: ReturnType<typeof visual>, position: { x: number; y: number }, enabled?:boolean) {
-      this.placeAll([{ visual: target, position, enabled }]);
+      placeAllGroups.push(1);
+      target.container.x = position.x; target.container.y = position.y;
+      if (enabled !== undefined) target.container.visible = enabled;
     },
     placeAll(values: { visual: ReturnType<typeof visual>; position: { x: number; y: number }; enabled?: boolean }[]) {
       placeAllGroups.push(values.length);
-      for (const value of values) { value.visual.container.x = value.position.x; value.visual.container.y = value.position.y;
-        if (value.enabled !== undefined) value.visual.container.visible = value.enabled; }
+      for (const value of values) {
+        // 与 MovementWorld.placeAll 一样：真正移动过的角色落在阻挡格时就近修正。
+        const current = { x: value.visual.container.x, y: value.visual.container.y };
+        const position = current.x === value.position.x && current.y === value.position.y
+          ? value.position : navigation.nearest({ collision: mirroredCollision(value.visual.actor.collision) }, value.position);
+        value.visual.container.x = position.x; value.visual.container.y = position.y;
+        if (value.enabled !== undefined) value.visual.container.visible = value.enabled;
+      }
     }
   };
   const events = new EventEmitter(), cameraEvents = new EventEmitter();
@@ -933,6 +942,40 @@ test('a dynamic stage keeps its walk fallback after rebuilding from a snapshot',
   const skipped = restored.presenter.captureStage()!;
   assert.deepEqual([skipped.x, skipped.y], [player.x, player.y]);
   await restored.presenter.release();
+});
+
+test('appear repaired out of a blocked cell resolves the same walk destination when skipping', async () => {
+  const map = openStageMap('home');
+  map.blocked[2 * map.columns + 2] = true;
+  for (let row = 0; row < map.rows; row++) map.blocked[row * map.columns + 10] = true;
+  const hero = { ...appearance, collision: { x: -8, y: -8, width: 16, height: 16 } };
+  const stage: StoryStage = { type: 'stage', mapFromWorld: true, map: 'home', x: 10, y: 20,
+    facing: 'south', playerVisible: true, cast: [] };
+  const appear = { type: 'appear' as const, target: 'player', x: 40, y: 40, facing: 'south' as const };
+  const walk = { type: 'walk' as const, target: 'player', x: 200, y: 40, speedPxPerSecond: 100 };
+
+  const run = async (skipping: boolean) => {
+    const instance = harness(map, hero), skip = new AbortController();
+    const playback = { signal: new AbortController().signal, skipSignal: skip.signal };
+    if (skipping) skip.abort();
+    await instance.presenter.begin(playback.signal, undefined, undefined, true, skip.signal);
+    await instance.presenter.execute(stage, playback);
+    await instance.presenter.execute(appear, playback);
+    const painted = instance.stage.movement!.position(instance.stage.player!);
+    await instance.presenter.execute(walk, playback);
+    const player = instance.presenter.captureStage()!.scene.actors.find(actor => actor.id === 'player')!;
+    const result = { x: player.x, y: player.y };
+    await instance.presenter.release();
+    return { painted, result };
+  };
+
+  const normal = await run(false), skipped = await run(true);
+  const terrain = new NavigationWorld(map);
+  assert.equal(terrain.terrainFree(normal.painted), true, '正常播放的画面被 placeAll 就近修正到可站点');
+  assert.notDeepEqual(normal.painted, { x: appear.x, y: appear.y }, '出场落点本身在阻挡格');
+  assert.notDeepEqual(skipped.painted, normal.painted, '跳过没有重画舞台，画面仍停在原处');
+  assert.deepEqual(normal.result, skipped.result, '正常播放与跳过解析出同一个走位落点');
+  assert.ok(normal.result.x < 160 && terrain.terrainFree(normal.result), '落点留在起点这一侧的可达区域，不能穿过墙');
 });
 
 test('skipped camera actions and camera-following walks update the restored view', async () => {

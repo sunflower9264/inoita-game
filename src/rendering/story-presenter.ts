@@ -352,11 +352,14 @@ export class StoryPresenter implements StoryPresentationPort {
     if (actor.unpositioned || actor.removed) return undefined;
     const scene = this.scene();
     const visual = this.skipping ? undefined : this.actors.get(actor.id)?.visual;
-    const from = visual ? scene.movement!.position(visual) : { x: actor.x, y: actor.y };
     const appearance = visual?.actor ?? scene.appearanceFor(actor, stage, this.appearance);
     const shape = { collision: mirroredCollision(appearance?.collision, actor.flip) };
     const navigation = await this.navigationForWalk(stage.map, signal);
     signal.throwIfAborted();
+    // 正常播放读画面上的实际坐标；跳过没有画面，按同一套落位修正还原逻辑坐标，
+    // 两边才能从同一个可站点解析落点。
+    const from = visual ? scene.movement!.position(visual)
+      : navigation.storyWalkOrigin(shape, { x: actor.x, y: actor.y });
     const destination = navigation.storyWalkDestination(shape, from, action, this.dynamicStage);
     if (!destination) throw new Error(`剧情道路不可达：${action.target} → (${action.x}, ${action.y})`);
     if (destination.x === action.x && destination.y === action.y) return action;

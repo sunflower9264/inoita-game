@@ -375,6 +375,17 @@ export class NavigationWorld {
     // 沿用当前地图时连出场坐标也可能在墙里，此时从目标附近恢复到能放下角色的位置。
     return this.scanNearest(canLand, target);
   }
+
+  /**
+   * 正常播放从画面上的实际坐标开始走位；跳过时没有画面，用这里把逻辑坐标还原成
+   * 正常落位会站上的位置。修正口径与 `placeAll` 对非 strict 角色的就近落位一致，
+   * 避免同一个起点因为「在墙里」与「已被修正」走进两套不同的兜底约束。
+   */
+  storyWalkOrigin(shape: NavigationShape, from: Point): Point {
+    if (this.terrainFree(from)) return from;
+    const landing = this.scanNearest(point => this.terrainFree(point) && this.canPlace(shape, point), from);
+    return landing ?? from;
+  }
   /** 整盒版就近落点：整个碰撞盒站得住，且不与现有实体重叠；地图上没有这样的位置时返回 undefined。 */
   nearestBody(shape: NavigationShape, point: Point, ignore?: NavigationActor, placements: readonly Placement[] = [],
     extra?: (point: Point) => boolean): Point | undefined {
