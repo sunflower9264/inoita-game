@@ -14,7 +14,7 @@ import {nextStoryMap} from './domain/story-preparation.ts';
 import {StoryPresenter} from './rendering/story-presenter.ts';
 import {OutfitPool} from './rendering/outfit-pool.ts';
 import {StoryDirector} from './domain/story-director.ts';
-import {installStorySkipDiagnostics} from './application/game-diagnostics.ts';
+import {installStorySkipDiagnostics,startLoadResourceMeter} from './application/game-diagnostics.ts';
 import {createGmActions, type GmStoryJumpPort, type GmStoryJumpSnapshot} from './debug/gm-actions.ts';
 import type {CheckpointSnapshot} from './domain/session-checkpoint.ts';
 
@@ -86,6 +86,8 @@ export function createSessionLifecycle(app:StoryApp,hooks:SessionLifecycleHooks)
     const isCurrent=()=>lifetime.current===sourceLifetime&&app.mode===sourceMode&&currentScene()===sourceScene&&app.session===sourceSession&&
       (sourceScene.sys.isActive()||sourceScene.sys.isPaused());
     const loadStarted=performance.now();
+    // 从点读档到地图可操作，统计下载了多少字节、主线程被长任务占了多久；`load-ready` 记录带上它。
+    const stopResourceMeter=startLoadResourceMeter();
     globalThis.storyDiagnostics?.record('load-start',{slot,from:sourceMode},false);
     try{
       await savedGameLoader.load(slot,{
@@ -109,6 +111,7 @@ export function createSessionLifecycle(app:StoryApp,hooks:SessionLifecycleHooks)
         },
         install:(candidate,request)=>{
           lifetime.current=request;const {session,world}=candidate,location=world.location;
+          request.signal.addEventListener('abort',()=>stopResourceMeter(),{once:true});
           app.mode='game';ui.setMode('game');ui.loading('正在读取存档…');
           // 自动槽不是玩家手动选择的槽，所以这里留空。
           app.saveSlot=slot===AUTO_SAVE_SLOT?undefined:slot;
@@ -118,6 +121,8 @@ export function createSessionLifecycle(app:StoryApp,hooks:SessionLifecycleHooks)
             initialEntry:true,suppressEntry:true,resumeStory:true,signal:request.signal,checkpoint:world.world,generatedEntities:world.generatedEntities,preparedScene:world.scene,triggerContacts:world.triggerContacts,
             onReady:()=>{
               if(request.signal.aborted)return;
+              globalThis.storyDiagnostics?.record('load-ready',{slot,map:location.map,
+                readyMs:Math.round((performance.now()-loadStarted)*10)/10,...stopResourceMeter()},false);
               remeasureRefreshAfterStart?.();
               if(world.audio)app.audio?.restoreStoryAudio(world.audio);
               window.setTimeout(()=>{if(!request.signal.aborted)globalThis.storyDiagnostics?.record('load-audio-ready',{map:location.map});},AUDIO_READY_DIAGNOSTIC_DELAY_MS);
@@ -130,6 +135,7 @@ export function createSessionLifecycle(app:StoryApp,hooks:SessionLifecycleHooks)
       // 玩家返回、切槽或换会话会让 loader 抛 AbortError；取消不是读档失败，不能写进错误流。
       const cancelled=!!signal?.aborted||(typeof error==='object'&&error!==null
         &&(error as {name?:string}).name==='AbortError');
+      stopResourceMeter();
       if(cancelled){
         globalThis.storyDiagnostics?.record('load-cancel',{slot},false);
       }else{

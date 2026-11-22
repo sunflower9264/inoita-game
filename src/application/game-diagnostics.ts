@@ -172,3 +172,80 @@ export function installDiagnosticMetrics(metrics: () => unknown): () => void {
   collector.setMetrics(metrics);
   return () => collector.setMetrics(() => null);
 }
+
+/** 读档期间的下载量与主线程占用，用来对比图集格式、页大小等改动对加载的影响。 */
+export interface LoadResourceSummary {
+  /** 本次加载请求的图片：数量、按格式计数、网络传输字节（命中缓存为 0）、文件体字节、首个请求到最后一个响应的跨度。 */
+  images: { count: number; png: number; webp: number; other: number; transferBytes: number; bodyBytes: number; networkMs: number };
+  /** 全部资源（含内容 JSON、音频、图集 JSON）。 */
+  resources: { count: number; transferBytes: number; bodyBytes: number };
+  /** 超过 50 ms 的主线程任务：图片解码上传、内容解析都会落在这里。浏览器不支持时为 null。 */
+  longTasks: { count: number; totalMs: number } | null;
+}
+
+interface MeterEntry {
+  name: string; entryType: string; startTime: number; duration: number;
+  transferSize?: number; encodedBodySize?: number; responseEnd?: number;
+}
+interface MeterObserver {
+  observe(options: { type: string; buffered?: boolean }): void;
+  disconnect(): void;
+  takeRecords?(): MeterEntry[];
+}
+export type LoadMeterObserverConstructor = new (callback: (list: { getEntries(): MeterEntry[] }) => void) => MeterObserver;
+
+const IMAGE_FORMAT = /\.(png|webp|jpe?g|gif|avif)(?:[?#]|$)/i;
+const roundMs = (value: number): number => Math.round(value * 10) / 10;
+
+/**
+ * 从现在开始计量资源下载和长任务，返回的函数停止计量并给出摘要；重复调用返回同一份摘要。
+ * 用观察者而不是读资源缓冲区：缓冲区默认只存 250 条，进图时很容易溢出。
+ * 只在读档这类一次性流程里使用，不进帧循环。
+ */
+export function startLoadResourceMeter(
+  Observer: LoadMeterObserverConstructor | undefined =
+    globalThis.PerformanceObserver as unknown as LoadMeterObserverConstructor | undefined,
+  supportedTypes: readonly string[] = globalThis.PerformanceObserver?.supportedEntryTypes ?? []
+): () => LoadResourceSummary {
+  const images = { count: 0, png: 0, webp: 0, other: 0, transferBytes: 0, bodyBytes: 0, networkMs: 0 };
+  const resources = { count: 0, transferBytes: 0, bodyBytes: 0 };
+  const watchLongTasks = supportedTypes.includes('longtask');
+  const longTasks = watchLongTasks ? { count: 0, totalMs: 0 } : null;
+  let firstImageStart = Infinity, lastImageEnd = -Infinity;
+  const take = (entries: readonly MeterEntry[]): void => {
+    for (const entry of entries) {
+      if (entry.entryType === 'longtask') {
+        if (longTasks) { longTasks.count++; longTasks.totalMs += entry.duration; }
+        continue;
+      }
+      if (entry.entryType !== 'resource') continue;
+      const transfer = entry.transferSize ?? 0, body = entry.encodedBodySize ?? 0;
+      resources.count++; resources.transferBytes += transfer; resources.bodyBytes += body;
+      const format = IMAGE_FORMAT.exec(entry.name)?.[1]?.toLowerCase();
+      if (!format) continue;
+      images.count++; images.transferBytes += transfer; images.bodyBytes += body;
+      if (format === 'png') images.png++; else if (format === 'webp') images.webp++; else images.other++;
+      firstImageStart = Math.min(firstImageStart, entry.startTime);
+      lastImageEnd = Math.max(lastImageEnd, entry.responseEnd ?? entry.startTime + entry.duration);
+    }
+  };
+  let observer: MeterObserver | undefined;
+  if (Observer) {
+    try {
+      observer = new Observer(list => take(list.getEntries()));
+      observer.observe({ type: 'resource' });
+      if (watchLongTasks) observer.observe({ type: 'longtask' });
+    } catch { observer = undefined; }
+  }
+  let summary: LoadResourceSummary | undefined;
+  return () => {
+    if (summary) return summary;
+    if (observer) {
+      take(observer.takeRecords?.() ?? []);
+      observer.disconnect();
+    }
+    if (images.count) images.networkMs = roundMs(Math.max(0, lastImageEnd - firstImageStart));
+    summary = { images, resources, longTasks: longTasks && { count: longTasks.count, totalMs: roundMs(longTasks.totalMs) } };
+    return summary;
+  };
+}
