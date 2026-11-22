@@ -6,7 +6,7 @@ import {captureSessionSave,prepareSavedGame,type SavedGameContent} from '../src/
 import type {MenuPanels} from '../src/domain/menu-panels.ts';
 import {newStorySession} from '../src/domain/story-class.ts';
 import {captureSaveGame,saveSummary} from '../src/domain/save-game.ts';
-import type {StoryWorldViewSnapshot} from '../src/scenes/world-scene.ts';
+import type {StoryWorldViewSnapshot} from '../src/application/world-snapshot.ts';
 const read=<T>(name:string):T=>JSON.parse(readFileSync(new URL(`../public/content/${name}.json`,import.meta.url),'utf8')) as T;
 const content:SavedGameContent={campaign:read('campaign'),world:read('world'),storyClasses:read('story-classes'),
   items:read('items'),characterStats:read('character-stats'),battleCatalog:read('battle'),companions:read('companions')};

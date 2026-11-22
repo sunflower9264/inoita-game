@@ -55,7 +55,6 @@ import { hasLivingParty } from '../domain/session-checkpoint.ts';
 import { freezeSnapshot, storyDevMode } from '../domain/dev-mode.ts';
 import type { TravelDestination } from '../domain/content.ts';
 import type { StoryWorldViewSnapshot, SaveWorldResult } from '../application/world-snapshot.ts';
-export type { StoryWorldViewSnapshot, SaveWorldResult, SaveWorldReason } from '../application/world-snapshot.ts';
 import type { CombatWorldHost } from './world-combat-host.ts';
 import type { RecoveryResult } from '../domain/recovery-items.ts';
 

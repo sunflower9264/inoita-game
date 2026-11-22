@@ -3,7 +3,7 @@ import test, {after} from 'node:test';
 import {registerHooks} from 'node:module';
 import {SaveSlots,SAVE_FORMAT,type SaveSlotRef} from '../src/domain/save-game.ts';
 import type {MenuContext} from '../src/application/ports.ts';
-import type {StoryWorldViewSnapshot} from '../src/scenes/world-scene.ts';
+import type {StoryWorldViewSnapshot} from '../src/application/world-snapshot.ts';
 import type {CloudSaveEntry,CloudSavePort,CloudSession} from '../src/application/cloud-save.ts';
 import {CLOUD_PAGE} from '../src/ui/cloud-save-layout.ts';
 import {EventEmitter} from 'node:events';

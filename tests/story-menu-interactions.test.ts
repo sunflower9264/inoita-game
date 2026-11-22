@@ -20,7 +20,7 @@ import { USE_LABELS, type ItemCatalog, type EquipmentSlot } from '../src/domain/
 import type { CompanionCatalog } from '../src/domain/party.ts';
 import { Session } from '../src/domain/session.ts';
 import { SaveSlots, captureSaveGame, restoreSaveGame, saveSummary } from '../src/domain/save-game.ts';
-import type { StoryWorldViewSnapshot } from '../src/scenes/world-scene.ts';
+import type { StoryWorldViewSnapshot } from '../src/application/world-snapshot.ts';
 import type { MenuPanels } from '../src/domain/menu-panels.ts';
 import type { ControlSkin } from '../src/domain/control-skin.ts';
 import type { ShopCatalog, Storefront } from '../src/domain/shop.ts';

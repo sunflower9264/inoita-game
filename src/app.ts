@@ -22,7 +22,7 @@ import { SessionCheckpoint } from './domain/session-checkpoint.ts';
 import { SaveSlots } from './domain/save-game.ts';
 import { CloudSaveClient } from './application/cloud-save.ts';
 import { cloudBaseUrl } from './application/endpoints.ts';
-import type { SaveWorldResult, StoryWorldViewSnapshot } from './scenes/world-scene.ts';
+import type { SaveWorldResult, StoryWorldViewSnapshot } from './application/world-snapshot.ts';
 import type { WardrobeCatalog } from './domain/wardrobe.ts';
 import type { GameAudio } from './application/game-audio.ts';
 import type { ShopCatalog } from './domain/shop.ts';
