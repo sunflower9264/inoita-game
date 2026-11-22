@@ -32,6 +32,7 @@ function fixture(targets:Combatant[]=[]){
   const member={level:10,bag:{equipmentFor:()=>({}),get:()=>undefined},panel:{...base,attributes:{...primary}},player:{health:10000,maxHealth:10000,mana:100,maxMana:100}};
   let afterHit:((event:SkillUnitHit)=>void)|undefined;
   const host=Object.setPrototypeOf({hero:member,conditions,pendingDefeats:new Set(),
+    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),aiSkillCostCache:new Map(),
     arena:targets.map(actor=>({key:actor.id,definition:{}})),
     memberOf:(id:string)=>id==='caster'?member:undefined,partyPassives:()=>[],
     partyFighter:()=>conditions.fighter('caster',member.panel),enemyFighter:(id:string)=>conditions.fighter(id,stats.get(id)!),

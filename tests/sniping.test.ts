@@ -46,6 +46,7 @@ function fixture(rank=1,increment=0){
     skills:{draft:()=>({levels:rank?{'sniping':rank}:{}})}};
   const host=Object.setPrototypeOf({app:{battleCatalog:catalog,session:{skills:member.skills}},
     conditions,arena:[],activeParty:['player'],fallen:new Set(),pendingDefeats:new Set(),
+    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),aiSkillCostCache:new Map(),
     memberOf:(id:string)=>id==='player'?member:undefined,applyStateConsequences:()=>{},partyPassives:()=>[],
     syncCombatResourceLimits:()=>{},showBuffApplication:()=>{},actorAttribute:()=>increment,
     applyAcceptedEffects:(function(this:unknown,...args:unknown[]){

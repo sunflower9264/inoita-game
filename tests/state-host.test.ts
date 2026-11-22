@@ -22,6 +22,7 @@ function fixture(){
   const enemies:{key:string;definition:Pick<EnemyDefinition,'stateRules'|'acceptsBuffs'>}[]=[{key:'enemy',definition:{}}];
   const conditions=new CombatConditions(),consequences:string[][]=[];
   const host=Object.setPrototypeOf({hero:member,arena:enemies,conditions,pendingDefeats:new Set(),fallen:new Set(),
+    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),aiSkillCostCache:new Map(),
     roster:{isPresent:()=>true},
     app:{battleCatalog:catalog,session:{party:{groupModifiers:()=>({})}}},
     memberOf:(id:string)=>id==='player'?member:undefined,partyPassives:()=>[],partyFighter:()=>({}),enemyFighter:()=>({}),

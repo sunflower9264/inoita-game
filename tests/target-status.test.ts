@@ -16,7 +16,7 @@ function host(controlledTarget?:string,companionTarget?:string){
   return Object.setPrototypeOf({
     combat:{snapshot:()=>({targetId:controlledTarget}),selectedTargetId:()=>controlledTarget},
     arena:[{key:'enemy',definition}],
-    roster:{enemyStatus:(key:string)=>key==='enemy'?status:undefined},
+    roster:{isPresent:(key:string)=>key==='enemy',enemyStatus:(key:string)=>key==='enemy'?status:undefined},
     pendingDefeats:new Set<string>(),
     partyControllers:new Map([
       ['player',{snapshot:()=>({targetId:controlledTarget}),selectedTargetId:()=>controlledTarget}],

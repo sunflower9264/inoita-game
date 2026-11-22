@@ -273,7 +273,7 @@ test('same-map appearance loading stays silent during a performance',async()=>{
   f.state.characters=[{entity:{id:'extra',actor:'extra-actor',x:1,y:2},actor:extraActor,container:{active:true,x:1,y:2},clipName:'idle-south'}];
   f.projected([{id:'extra',actor:'extra-actor',x:1,y:2}]);
   await f.scene.projectStoryWorld(undefined,new AbortController().signal);
-  assert.equal(f.restarts(),0);assert.equal(f.assetLoads.length,1);assert.equal(f.assetLoads[0][3],true);
+  assert.equal(f.restarts(),0);assert.equal(f.assetLoads.length,1);assert.deepEqual(f.coverCalls(),[],'同图演出中的外观加载不覆盖世界');
 });
 
 test('defeat checkpoint recovery keeps the ordinary loading screen',async()=>{
