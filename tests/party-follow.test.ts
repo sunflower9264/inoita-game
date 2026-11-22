@@ -243,3 +243,17 @@ test('a follower resumes around the corner when a doorway opens during an occupi
   assert(Math.hypot(run.actor.position.x-goal.x,run.actor.position.y-goal.y)<=12);
   assert.equal(rescues,0);
 });
+
+test('a large room with a permanently blocked doorway still rescues within the stall window',()=>{
+  const columns=50,rows=50;
+  const blocked=Array.from({length:columns*rows},(_,index)=>index%columns===24&&Math.floor(index/columns)!==8);
+  const navigation=new NavigationWorld({name:'large room with permanently blocked doorway',tileSize:16,columns,rows,blocked});
+  const run=setupOccupiedFollow(undefined,navigation);
+  run.actor.position={x:360,y:136};
+  run.leader.position={x:520,y:136};
+  run.blocker.position={x:392,y:136};
+  let frames=0;
+  for(;frames<400&&run.rescues()===0;frames++)run.step();
+  assert.equal(run.rescues(),1,`门口一直堵住时应在 400 帧内拉回，实际 ${frames} 帧内没有拉回`);
+  assert(frames<400);
+});

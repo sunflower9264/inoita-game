@@ -12,6 +12,8 @@ export class PartyFollow {
   private clock=0;
   private nextDecision=0;
   private search?:ReturnType<typeof createPathSearch>;
+  /** 本次跨帧搜索已经花掉的时间起点；暂停等待不累计。 */
+  private searchSince?:number;
   private path:Point[]=[];
   private routeAroundActors=false;
   private goal?:Point;
@@ -37,7 +39,7 @@ export class PartyFollow {
   get destination():Point|undefined{return this.goal?{...this.goal}:undefined;}
   get leader():string|undefined{return this.goal?this.lastLeader:undefined;}
   reset():void {
-    this.path=[];this.search=undefined;this.goal=undefined;this.progress=undefined;this.stalled=0;
+    this.path=[];this.search=undefined;this.searchSince=undefined;this.goal=undefined;this.progress=undefined;this.stalled=0;
     this.routeAroundActors=false;
     this.attemptStalled=0;
     this.failures=0;this.returning=false;this.softSince=this.hardSince=this.nearSince=undefined;
@@ -50,7 +52,7 @@ export class PartyFollow {
       if(jumped&&this.lastLeader===leader.id&&distance(actor.position,leader.position)>320&&this.port.regroup?.()===true){
         this.diagnostics.rescues++;this.diagnostics.reason='leader-relocated';
       }
-      this.path=[];this.search=undefined;this.goal=undefined;this.nextDecision=0;this.stalled=0;
+      this.path=[];this.search=undefined;this.searchSince=undefined;this.goal=undefined;this.nextDecision=0;this.stalled=0;
       this.routeAroundActors=false;
       this.attemptStalled=0;
       this.returning=false;this.softSince=this.hardSince=this.nearSince=undefined;this.leaderTowardsAlly=false;
@@ -80,6 +82,8 @@ export class PartyFollow {
     this.progress=undefined;
     this.stalled=0;
     this.attemptStalled=0;
+    // 暂停或不能移动期间的等待不算无进展；下次继续搜索时重新计时。
+    this.searchSince=undefined;
   }
   move(actor:Combatant,leader:Combatant,stance:CompanionStance,delta:number):void {
     // 队长朝伙伴走来时原地等待；该让路的是队长，伙伴不迎上去也不重新找站位。
@@ -159,16 +163,23 @@ export class PartyFollow {
       }
     }
     if(this.search){
+      // 搜索仍在进行时算“等待寻路”，不累计无进展；第一次推进时开始计时。
+      this.searchSince??=this.clock;
       const allowance=this.port.pathBudget?.take(this.id,48)??384;
       if(allowance>0){
         const result=this.search.step(allowance);this.diagnostics.expanded+=result.expanded;
         if(result.status!=='pending'){
           this.search=undefined;
+          const elapsed=this.searchSince===undefined?0:this.clock-this.searchSince;
+          this.searchSince=undefined;
           if(result.status==='found'){let closest=0;for(let i=1;i<result.path.length;i++){if(distance(actor.position,result.path[i]!)>=distance(actor.position,result.path[closest]!))break;closest=i;}this.path=result.path.slice(closest);}
           else{
             this.failures++;
             // 人物占位只属于这次搜索；旧路线仍逐步查实时碰撞，挡路者移开后可以继续走。
             if(!this.routeAroundActors)this.path=[];
+            // 失败前的搜索时间同样是没走动的真实时间，计入累计无进展；
+            // 本次恢复仍从零开始，旧路线保留到真正迈不动时再清理。
+            this.stalled+=elapsed;
             this.attemptStalled=0;
             this.nextRetry=this.clock+600;
             this.diagnostics.recoveries++;
