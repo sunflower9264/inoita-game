@@ -8,6 +8,7 @@ import { COMMON_BUTTON_IMAGES } from '../src/ui/common-button.ts';
 import { MINIMAP_ASSETS } from '../src/domain/story-interface.ts';
 import { UI_ICON_FRAMES } from '../src/generated/icon-atlas.ts';
 import { sourceAssetPath } from './asset-source.ts';
+import { encodeRows, pagesSource, rowsSource, ROWS_DECODER } from './atlas-codegen.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PUBLIC = path.join(ROOT, 'public');
@@ -336,8 +337,17 @@ export function writeUiAtlas(): UiAtlasWriteResult {
   fs.mkdirSync(path.dirname(GENERATED), { recursive: true });
   fs.writeFileSync(GENERATED, `// 由 npm run atlas:ui 生成，勿手改。
 export interface UiAtlasPage { key: string; file: string; data: string; frame: string; width: number; height: number; group: string }
-export const UI_ATLAS_PAGES: readonly UiAtlasPage[] = ${JSON.stringify(pageInfo.map(({ bytes: _bytes, ...page }) => page), null, 2)};
-export const UI_ATLAS_FRAMES: Readonly<Record<string, { key: string; frame: string; page: number }>> = ${JSON.stringify(mapping, null, 2)};
+export const UI_ATLAS_PAGES: readonly UiAtlasPage[] = ${pagesSource(pageInfo,
+    ['key', 'file', 'data', 'frame', 'width', 'height', 'group'], ['key', 'file', 'data'])};
+${ROWS_DECODER}
+// 每行：目录|名字,页号[,帧名]；省略帧名时帧名就是文件路径，纹理键取该页的 key
+const FRAME_ROWS: readonly string[] = ${rowsSource(encodeRows(Object.entries(mapping).map(([file, entry]) =>
+    [file, entry.frame === file ? [String(entry.page)] : [String(entry.page), entry.frame]] as const)))};
+const frames: Record<string, { key: string; frame: string; page: number }> = {};
+eachRow(FRAME_ROWS, (file, [page, frame]) => {
+  frames[file] = { key: UI_ATLAS_PAGES[Number(page)]!.key, frame: frame ?? file, page: Number(page) };
+});
+export const UI_ATLAS_FRAMES: Readonly<Record<string, { key: string; frame: string; page: number }>> = frames;
 export const UI_ATLAS_SOURCE_DIGEST = ${JSON.stringify(uiAtlasSourceDigest())};
 `);
   return {
