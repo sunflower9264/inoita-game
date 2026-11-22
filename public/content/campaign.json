@@ -290267,28 +290267,13 @@
       },
       "near": "sealed-altar-40c37439",
       "nearCharacterId": "npc-484",
+      "map": "sealed-room-east-eeb848fc",
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "eternal-world-3-9676ac48",
-            "x": 232,
-            "y": 104,
-            "source": "native-placement"
-          },
-          {
-            "map": "mist-village-deserted-house-2-cfd8b6d3",
-            "x": 104,
-            "y": 152,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-room-east-eeb848fc",
-            "x": 312,
-            "y": 200,
-            "source": "native-placement"
-          }
-        ]
+        "type": "fixed",
+        "map": "sealed-room-east-eeb848fc",
+        "x": 312,
+        "y": 200,
+        "source": "native-placement"
       }
     },
     {
@@ -290307,28 +290292,13 @@
       },
       "near": "sealed-altar-d775d77f",
       "nearCharacterId": "npc-485",
+      "map": "sealed-room-south-52aee6b4",
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "dark-woods-3-2bda69eb",
-            "x": 152,
-            "y": 248,
-            "source": "native-placement"
-          },
-          {
-            "map": "mist-village-deserted-house-2-cfd8b6d3",
-            "x": 104,
-            "y": 408,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-room-south-52aee6b4",
-            "x": 200,
-            "y": 296,
-            "source": "native-placement"
-          }
-        ]
+        "type": "fixed",
+        "map": "sealed-room-south-52aee6b4",
+        "x": 200,
+        "y": 296,
+        "source": "native-placement"
       }
     },
     {
@@ -290347,28 +290317,13 @@
       },
       "near": "sealed-altar-b6f9cbc1",
       "nearCharacterId": "npc-486",
+      "map": "sealed-room-west-a0be4dae",
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "goblin-s-lair-3-c47d6e5f",
-            "x": 248,
-            "y": 136,
-            "source": "native-placement"
-          },
-          {
-            "map": "mist-village-deserted-house-2-cfd8b6d3",
-            "x": 680,
-            "y": 152,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-room-west-a0be4dae",
-            "x": 72,
-            "y": 200,
-            "source": "native-placement"
-          }
-        ]
+        "type": "fixed",
+        "map": "sealed-room-west-a0be4dae",
+        "x": 72,
+        "y": 200,
+        "source": "native-placement"
       }
     },
     {
@@ -290387,28 +290342,13 @@
       },
       "near": "sealed-altar-4bc5d7a9",
       "nearCharacterId": "npc-487",
+      "map": "sealed-room-north-83f01435",
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "abandoned-mines-3-219fbb39",
-            "x": 184,
-            "y": 136,
-            "source": "native-placement"
-          },
-          {
-            "map": "mist-village-deserted-house-2-cfd8b6d3",
-            "x": 680,
-            "y": 408,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-room-north-83f01435",
-            "x": 200,
-            "y": 104,
-            "source": "native-placement"
-          }
-        ]
+        "type": "fixed",
+        "map": "sealed-room-north-83f01435",
+        "x": 200,
+        "y": 104,
+        "source": "native-placement"
       }
     },
     {
@@ -291922,28 +291862,13 @@
       "near": "sealed-altar-40c37439",
       "nearCharacterId": "npc-484",
       "repeat": true,
+      "map": "eternal-world-3-9676ac48",
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "eternal-world-3-9676ac48",
-            "x": 232,
-            "y": 104,
-            "source": "native-placement"
-          },
-          {
-            "map": "mist-village-deserted-house-2-cfd8b6d3",
-            "x": 104,
-            "y": 152,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-room-east-eeb848fc",
-            "x": 312,
-            "y": 200,
-            "source": "native-placement"
-          }
-        ]
+        "type": "fixed",
+        "map": "eternal-world-3-9676ac48",
+        "x": 232,
+        "y": 104,
+        "source": "native-placement"
       }
     },
     {
@@ -291968,28 +291893,13 @@
       "near": "sealed-altar-d775d77f",
       "nearCharacterId": "npc-485",
       "repeat": true,
+      "map": "dark-woods-3-2bda69eb",
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "dark-woods-3-2bda69eb",
-            "x": 152,
-            "y": 248,
-            "source": "native-placement"
-          },
-          {
-            "map": "mist-village-deserted-house-2-cfd8b6d3",
-            "x": 104,
-            "y": 408,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-room-south-52aee6b4",
-            "x": 200,
-            "y": 296,
-            "source": "native-placement"
-          }
-        ]
+        "type": "fixed",
+        "map": "dark-woods-3-2bda69eb",
+        "x": 152,
+        "y": 248,
+        "source": "native-placement"
       }
     },
     {
@@ -292014,28 +291924,13 @@
       "near": "sealed-altar-b6f9cbc1",
       "nearCharacterId": "npc-486",
       "repeat": true,
+      "map": "goblin-s-lair-3-c47d6e5f",
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "goblin-s-lair-3-c47d6e5f",
-            "x": 248,
-            "y": 136,
-            "source": "native-placement"
-          },
-          {
-            "map": "mist-village-deserted-house-2-cfd8b6d3",
-            "x": 680,
-            "y": 152,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-room-west-a0be4dae",
-            "x": 72,
-            "y": 200,
-            "source": "native-placement"
-          }
-        ]
+        "type": "fixed",
+        "map": "goblin-s-lair-3-c47d6e5f",
+        "x": 248,
+        "y": 136,
+        "source": "native-placement"
       }
     },
     {
@@ -292500,28 +292395,13 @@
       "near": "sealed-altar-4bc5d7a9",
       "nearCharacterId": "npc-487",
       "repeat": true,
+      "map": "abandoned-mines-3-219fbb39",
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "abandoned-mines-3-219fbb39",
-            "x": 184,
-            "y": 136,
-            "source": "native-placement"
-          },
-          {
-            "map": "mist-village-deserted-house-2-cfd8b6d3",
-            "x": 680,
-            "y": 408,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-room-north-83f01435",
-            "x": 200,
-            "y": 104,
-            "source": "native-placement"
-          }
-        ]
+        "type": "fixed",
+        "map": "abandoned-mines-3-219fbb39",
+        "x": 184,
+        "y": 136,
+        "source": "native-placement"
       }
     },
     {
@@ -294581,28 +294461,13 @@
       "near": "sealed-altar-40c37439",
       "nearCharacterId": "npc-484",
       "repeat": true,
+      "map": "mist-village-deserted-house-2-cfd8b6d3",
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "eternal-world-3-9676ac48",
-            "x": 232,
-            "y": 104,
-            "source": "native-placement"
-          },
-          {
-            "map": "mist-village-deserted-house-2-cfd8b6d3",
-            "x": 104,
-            "y": 152,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-room-east-eeb848fc",
-            "x": 312,
-            "y": 200,
-            "source": "native-placement"
-          }
-        ]
+        "type": "fixed",
+        "map": "mist-village-deserted-house-2-cfd8b6d3",
+        "x": 104,
+        "y": 152,
+        "source": "native-placement"
       }
     },
     {
@@ -294622,28 +294487,13 @@
       "near": "sealed-altar-d775d77f",
       "nearCharacterId": "npc-485",
       "repeat": true,
+      "map": "mist-village-deserted-house-2-cfd8b6d3",
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "dark-woods-3-2bda69eb",
-            "x": 152,
-            "y": 248,
-            "source": "native-placement"
-          },
-          {
-            "map": "mist-village-deserted-house-2-cfd8b6d3",
-            "x": 104,
-            "y": 408,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-room-south-52aee6b4",
-            "x": 200,
-            "y": 296,
-            "source": "native-placement"
-          }
-        ]
+        "type": "fixed",
+        "map": "mist-village-deserted-house-2-cfd8b6d3",
+        "x": 104,
+        "y": 408,
+        "source": "native-placement"
       }
     },
     {
@@ -294663,28 +294513,13 @@
       "near": "sealed-altar-b6f9cbc1",
       "nearCharacterId": "npc-486",
       "repeat": true,
+      "map": "mist-village-deserted-house-2-cfd8b6d3",
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "goblin-s-lair-3-c47d6e5f",
-            "x": 248,
-            "y": 136,
-            "source": "native-placement"
-          },
-          {
-            "map": "mist-village-deserted-house-2-cfd8b6d3",
-            "x": 680,
-            "y": 152,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-room-west-a0be4dae",
-            "x": 72,
-            "y": 200,
-            "source": "native-placement"
-          }
-        ]
+        "type": "fixed",
+        "map": "mist-village-deserted-house-2-cfd8b6d3",
+        "x": 680,
+        "y": 152,
+        "source": "native-placement"
       }
     },
     {
@@ -294704,28 +294539,13 @@
       "near": "sealed-altar-4bc5d7a9",
       "nearCharacterId": "npc-487",
       "repeat": true,
+      "map": "mist-village-deserted-house-2-cfd8b6d3",
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "abandoned-mines-3-219fbb39",
-            "x": 184,
-            "y": 136,
-            "source": "native-placement"
-          },
-          {
-            "map": "mist-village-deserted-house-2-cfd8b6d3",
-            "x": 680,
-            "y": 408,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-room-north-83f01435",
-            "x": 200,
-            "y": 104,
-            "source": "native-placement"
-          }
-        ]
+        "type": "fixed",
+        "map": "mist-village-deserted-house-2-cfd8b6d3",
+        "x": 680,
+        "y": 408,
+        "source": "native-placement"
       }
     },
     {

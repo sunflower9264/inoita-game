@@ -32,6 +32,40 @@ test('每个封印祭坛只办理自己所在洞穴的剧情', () => {
   }
 });
 
+test('另外四类封印祭坛也只在自己的洞穴触发', () => {
+  const story: StoryGraph = JSON.parse(readFileSync(new URL('../public/content/campaign.json', import.meta.url), 'utf8'));
+  const groups = [
+    ['npc-484', 'sealed-altar-40c37439', {
+      'sealed-room-east-eeb848fc': 'event-392',
+      'eternal-world-3-9676ac48': 'event-459',
+      'mist-village-deserted-house-2-cfd8b6d3': 'event-573',
+    }],
+    ['npc-485', 'sealed-altar-d775d77f', {
+      'sealed-room-south-52aee6b4': 'event-393',
+      'dark-woods-3-2bda69eb': 'event-460',
+      'mist-village-deserted-house-2-cfd8b6d3': 'event-574',
+    }],
+    ['npc-486', 'sealed-altar-b6f9cbc1', {
+      'sealed-room-west-a0be4dae': 'event-394',
+      'goblin-s-lair-3-c47d6e5f': 'event-461',
+      'mist-village-deserted-house-2-cfd8b6d3': 'event-575',
+    }],
+    ['npc-487', 'sealed-altar-4bc5d7a9', {
+      'sealed-room-north-83f01435': 'event-395',
+      'abandoned-mines-3-219fbb39': 'event-482',
+      'mist-village-deserted-house-2-cfd8b6d3': 'event-576',
+    }],
+  ] as const;
+  for (const [characterId, actor, byMap] of groups) {
+    const altar = character('altar', actor, characterId);
+    for (const [map, expected] of Object.entries(byMap)) {
+      const { nearCharacters } = buildStoryTriggerIndex(story, map, [altar]);
+      assert.deepEqual(nearCharacters.flatMap(group => group.events.map(event => event.id)), [expected],
+        `${characterId} 在 ${map} 只应触发 ${expected}`);
+    }
+  }
+});
+
 test('trigger index groups the current map and preserves campaign order',()=>{
   const first=character('npc-1','npc'), second=character('npc-2','npc','npc-2'), hidden=character('npc-3','npc',undefined,false);
   const index=buildStoryTriggerIndex(campaign,'a',[first,second,hidden]);
