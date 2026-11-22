@@ -420,7 +420,6 @@ interface ReservedDropRollResult {
   rewards:DropReward[];
   unlockMisses:number;
   forced:boolean;
-  item?:string;
 }
 
 /**
@@ -470,7 +469,7 @@ export function rollReservedDrops(catalog:DropCatalog,stats:CharacterStatsCatalo
   const grade=equipment?staticGrade(stats,equipment):undefined;
   const lootLevel=catalog.itemCatalog?.items[entry.item]?.use?.kind==='box'?level:undefined;
   const reward:DropReward={kind:'item',item:entry.item,quantity:1,...(grade?{roll:{...grade,sockets:false}}:{}),...(lootLevel?{lootLevel}:{})};
-  return {rewards:[reward],unlockMisses:nextMisses,forced,item:entry.item};
+  return {rewards:[reward],unlockMisses:nextMisses,forced};
 }
 
 interface SpecialDropEligibility { cap:number; withinWindow:boolean; unique:boolean; epic:boolean }
@@ -514,7 +513,7 @@ function containerScaleLevel(level:number,playerLevel:number):number {
 }
 
 export function rollBreakableLoot(catalog:DropCatalog,stats:CharacterStatsCatalog,kind:BreakableKind,level:number,
-  playerLevel:number,random:()=>number=Math.random,modifiers:DropModifiers={},options:{equipmentBonus?:number}={}):ChestOpenResult {
+  playerLevel:number,random:()=>number=Math.random,modifiers:DropModifiers={}):ChestOpenResult {
   if(!Number.isSafeInteger(level)||level<0||level>255)throw new Error('景物掉落等级无效');
   const selected=kind==='box'&&modifiers['chest-quality']&&draw(random,NATIVE_PERCENT_ROLL_MAX)+1<=FORTUNATE_BOX_MAX_ROLL?'fortunate-box':kind;
   const rule=catalog.breakables?.[selected];
@@ -524,7 +523,6 @@ export function rollBreakableLoot(catalog:DropCatalog,stats:CharacterStatsCatalo
   return rollDropRule(catalog,{...rule,level,chances:{...rule.chances,
     unique:Math.floor(rule.uniqueChance.numerator/(level+rule.uniqueChance.levelOffset))}},containerScaleLevel(level,playerLevel),random,rule.spawn,modifiers,
     {stats,profile:profileFor(catalog,band,'normal',rule.minRarity,rule.rarityProfile),maxItemLevel:band?.maxItemLevel,
-      equipmentBonus:options.equipmentBonus,
       epic:selected==='fortunate-box'&&eligibility.epic&&catalog.epicDrops?{chance:catalog.epicDrops.chestChance}:undefined,
       epicCap:eligibility.cap});
 }

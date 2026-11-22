@@ -19,7 +19,7 @@ export class LegendaryWeapons {
   markPulled(mapId:string,entityId:string):void { this.used.add(this.key(mapId,entityId)); this.revisionValue++; }
 }
 
-interface LegendaryPullResult { success:boolean; message:string; item?:ItemInstance; unique?:boolean; }
+interface LegendaryPullResult { success:boolean; message:string; unique?:boolean; }
 
 const LEGENDARY_STATS=['strength','dexterity','intelligence'] as const;
 
@@ -60,5 +60,5 @@ export function pullLegendaryWeapon(session:Session,stats:CharacterStatsCatalog,
     if(prepared)groundLootFor(session).add(mapId,position.x,position.y,[{kind:'item',item:reward.item,quantity:1,instance:prepared}]);
     else return {success:false,message:'能力不足，无法获得武器。'};
   }
-  return {success:true,message:reward.unique?'获得了传说中的武器。':'成功获得武器。',item:prepared,unique:reward.unique};
+  return {success:true,message:reward.unique?'获得了传说中的武器。':'成功获得武器。',unique:reward.unique};
 }

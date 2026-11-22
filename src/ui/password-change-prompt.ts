@@ -8,8 +8,6 @@ import {
 interface PasswordChangePromptOptions {
   onConfirm(currentPassword: string, newPassword: string): void;
   onCancel(): void;
-  /** 覆盖默认提示。 */
-  hint?: string;
   /** 当前菜单画布的屏幕倍率；确认/取消据此和同屏菜单按钮同尺寸。 */
   scale?:()=>number;
 }
@@ -60,7 +58,7 @@ export class PasswordChangePrompt {
     title.textContent = '修改云存档密码';
     const hint = document.createElement('p');
     hint.className = 'text-prompt-hint';
-    hint.textContent = options.hint ?? '当前密码用于确认身份；新密码 6–64 位，区分大小写。';
+    hint.textContent = '当前密码用于确认身份；新密码 6–64 位，区分大小写。';
     const current = field('当前密码', 'current-password');
     const next = field('新密码', 'new-password');
     const confirm = field('确认新密码', 'new-password');

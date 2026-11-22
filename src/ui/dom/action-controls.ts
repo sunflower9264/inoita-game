@@ -107,8 +107,8 @@ export class DomActionControls extends DomComponent {
   private cooldown(slot: ShortcutSlot): Cooldown | undefined {
     return slot.cooldown ?? (slot.entry?.kind === 'skill' ? this.cooldowns[slot.entry.id] : undefined);
   }
-  setAttack(enabled: boolean, dimUnavailable = true): void {
-    this.attack.usable = enabled; this.attack.button.element.style.opacity = enabled || !dimUnavailable ? '1' : '.4';
+  setAttack(enabled: boolean): void {
+    this.attack.usable = enabled; this.attack.button.element.style.opacity = enabled ? '1' : '.4';
   }
   private paint(): void {
     this.slots.forEach((control, index) => {

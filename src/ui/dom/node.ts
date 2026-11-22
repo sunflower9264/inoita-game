@@ -12,7 +12,7 @@ function rgbChannels(color: number): [number, number, number] {
   return [color >> 16 & 255, color >> 8 & 255, color & 255];
 }
 
-export interface UiPointer { id:number; x:number; y:number; isDown:boolean; event:PointerEvent }
+export interface UiPointer { id:number; x:number; y:number; isDown:boolean }
 type Listener = (...args:any[])=>void;
 export interface UiMatrix { tx:number; ty:number; scaleX:number; scaleY:number; transformPoint(x:number,y:number):{x:number;y:number} }
 export interface UiBounds { x:number;y:number;width:number;height:number;contains(x:number,y:number):boolean }
@@ -58,8 +58,8 @@ function frameBounds(scene:Phaser.Scene):{left:number;top:number;width:number;he
 export function uiPointer(scene:Phaser.Scene,event:PointerEvent):UiPointer {
   const bounds=frameBounds(scene);
   let table=pointers.get(scene);if(!table){table=new Map();pointers.set(scene,table);}
-  let pointer=table.get(event.pointerId);if(!pointer){pointer={id:event.pointerId,x:0,y:0,isDown:false,event};table.set(event.pointerId,pointer);}
-  Object.assign(pointer,{x:event.clientX-bounds.left,y:event.clientY-bounds.top,isDown:event.type!=='pointercancel'&&event.type!=='pointerup'&&event.buttons!==0,event});
+  let pointer=table.get(event.pointerId);if(!pointer){pointer={id:event.pointerId,x:0,y:0,isDown:false};table.set(event.pointerId,pointer);}
+  Object.assign(pointer,{x:event.clientX-bounds.left,y:event.clientY-bounds.top,isDown:event.type!=='pointercancel'&&event.type!=='pointerup'&&event.buttons!==0});
   if(!pointer.isDown)table.delete(event.pointerId);
   return pointer;
 }
@@ -236,13 +236,12 @@ export class UiImage extends UiNode {
 let measureCanvas:HTMLCanvasElement|undefined;
 export class UiText extends UiNode {
   readonly context:CanvasRenderingContext2D;
-  private value='';private size:number;private wrapWidth:number;private align='left';
+  private size:number;private wrapWidth:number;private align='left';
   constructor(scene:Phaser.Scene,parent:UiNode,value:string,x:number,y:number,width:number,size:number,color:string){
     super(scene,parent);this.size=size;this.wrapWidth=width;
     measureCanvas??=document.createElement('canvas');this.context=measureCanvas.getContext('2d')!;
     Object.assign(this.element.style,{fontFamily:FONT,fontSize:`${size}px`,color,whiteSpace:'pre',lineHeight:`${size+5}px`});this.setPosition(x,y);this.setText(value);
   }
-  setText(value:string):this{this.value=value;this.context.font=`${this.size}px ${FONT}`;const lines=this.wrapWidth?wrapText(value,this.wrapWidth,text=>this.context.measureText(text).width):value.split('\n');this.element.textContent=lines.join('\n');const width=Math.max(0,...lines.map(line=>this.context.measureText(line).width));super.setSize(width,Math.max(1,lines.length)*(this.size+5)-5);this.element.style.textAlign=this.align;return this;}
-  get text():string{return this.value;}
+  setText(value:string):this{this.context.font=`${this.size}px ${FONT}`;const lines=this.wrapWidth?wrapText(value,this.wrapWidth,text=>this.context.measureText(text).width):value.split('\n');this.element.textContent=lines.join('\n');const width=Math.max(0,...lines.map(line=>this.context.measureText(line).width));super.setSize(width,Math.max(1,lines.length)*(this.size+5)-5);this.element.style.textAlign=this.align;return this;}
   setAlign(value:string):this{this.align=value;this.element.style.textAlign=value;return this;}
 }

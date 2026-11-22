@@ -4,7 +4,7 @@ import { SHORTCUT_ENTRY_COUNT, dedupeSkillShortcuts, type ShortcutRow } from './
 import { INVENTORY_POUCHES, INVENTORY_SIDE_FILTERS, organizedCells, organizedInventory, pouchFor, type InventoryPouch, type InventoryView } from './inventory.ts';
 import type { StoryItem } from './story-interface.ts';
 import type { EnhancementOdds } from './enhancement.ts';
-import { EQUIPMENT_SLOTS, USE_LABELS, USE_HANDLING, USE_INTERFACE_ONLY, USE_NOT_IMPLEMENTED, unimplementedItemUse, type Equipment, type EquipmentSlot, type ItemCatalog, type ItemInstance, type ItemResult } from './items.ts';
+import { EQUIPMENT_SLOTS, USE_HANDLING, USE_INTERFACE_ONLY, USE_NOT_IMPLEMENTED, unimplementedItemUse, type Equipment, type EquipmentSlot, type ItemCatalog, type ItemInstance, type ItemResult } from './items.ts';
 
 const emptyCatalog: ItemCatalog = { items: {}, startingEquipment: {}, startingInventory: [], startingShortcut: '', dualWieldClasses: [], merchantItems: [], classSkills: {}, recipes: {} };
 /** 混沌合成写入的比例上限；等级偏移沿用原版有符号字节的存储范围。 */
@@ -189,7 +189,7 @@ export class Bag {
     return unlocks.atomic(()=>{
       const message=unlocks.unlock(skill);
       this.consume(source.id);
-      const result:ItemResult={kind:'unseal',title:'技能已永久解锁',message,rewards:[],item:source.item,classId,skill};
+      const result:ItemResult={kind:'unseal',message,rewards:[],classId,skill};
       this.lastResult=result;this.notify();return result;
     });
   }
@@ -630,7 +630,7 @@ export class Bag {
     };
     const learnedSkill=source.skill||skill;
     if(use.kind==='learn'&&(!learnedSkill||(!memberId&&!this.catalog.classSkills[this.classId]?.includes(learnedSkill))))throw new Error('请选择本职业的技能');
-    const result:ItemResult={kind:use.kind,title:USE_LABELS[use.kind],message:`已使用${definition.name}`,rewards:[],target,item:source.item};
+    const result:ItemResult={kind:use.kind,message:`已使用${definition.name}`,rewards:[]};
     const enchantOutcome=use.kind==='enchant'?this.rules?.enchant?.(source,this.instances.get(target!)!,random):undefined;
     const useMessage=this.rules?.applyUse(source,target?this.instances.get(target):undefined,learnedSkill,memberId);
     if(useMessage)result.message=useMessage;
@@ -640,7 +640,7 @@ export class Bag {
       case 'consume': case 'merchant': break;
       case 'enchant': {
         const entry=this.instances.get(target!)!,outcome=enchantOutcome;
-        if(outcome){entry.enhancement=outcome.level;result.message=outcome.message;result.notice=outcome.notice;}
+        if(outcome){entry.enhancement=outcome.level;result.message=outcome.message;}
         else{entry.enhancement++;result.message=`${this.catalog.items[entry.item].name} 强化 +${entry.enhancement}`;}
         break;
       }

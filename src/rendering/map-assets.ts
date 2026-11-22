@@ -201,11 +201,7 @@ export function potentialMapEnemyIds(map: WorldMap, input: WorldAssetInputs, opt
   return [...ids];
 }
 
-interface MapCombatOptions extends EnemyPlanOptions {
-  enemyIds?: Iterable<string>;
-  partyIds?: Iterable<string>;
-  joinCompanionIds?: Iterable<string>;
-}
+type MapCombatOptions = EnemyPlanOptions;
 
 /** 目标图的完整战斗素材：主角、当前队伍、剧情会加入的伙伴、可能出现的敌人。 */
 export function planMapCombat(map: WorldMap, input: WorldAssetInputs, options: MapCombatOptions = {}): PendingAsset[] {
@@ -216,7 +212,7 @@ export function planMapCombat(map: WorldMap, input: WorldAssetInputs, options: M
       learnedSkills: heroLearned }),
     ...sharedCombatAssets(input.battle, input.wardrobe)
   ];
-  const partyIds = options.partyIds ?? input.party?.activeIds ?? [];
+  const partyIds = input.party?.activeIds ?? [];
   for (const id of partyIds) {
     if (id === 'player') continue;
     const member = input.party?.get(id);
@@ -226,21 +222,19 @@ export function planMapCombat(map: WorldMap, input: WorldAssetInputs, options: M
       learnedSkillIds(input.battle, member.classId, member.skills),
       { items: input.items, equipment: input.hero.bag.equipmentItems(input.hero.bag.equipmentFor(id)) }));
   }
-  const joins = new Set(options.joinCompanionIds ?? []);
-  if (!options.joinCompanionIds) {
-    for (const name of options.scripts ?? Object.keys(input.campaign.scripts)) {
-      const script = input.campaign.scripts[name];
-      if (!script) continue;
-      for (const node of script.nodes) for (const command of node.commands)
-        if (command.type === 'party-join') joins.add(command.companion);
-    }
+  const joins = new Set<string>();
+  for (const name of options.scripts ?? Object.keys(input.campaign.scripts)) {
+    const script = input.campaign.scripts[name];
+    if (!script) continue;
+    for (const node of script.nodes) for (const command of node.commands)
+      if (command.type === 'party-join') joins.add(command.companion);
   }
   for (const id of joins) {
     const definition = input.companions.definitions[id];
     const actor = definition ? input.world.actors[definition.actor] : undefined;
     if (definition && actor) assets.push(...partyMemberCombatAssets(input.battle, input.wardrobe, definition.classId, actor));
   }
-  for (const id of options.enemyIds ?? potentialMapEnemyIds(map, input, options)) {
+  for (const id of potentialMapEnemyIds(map, input, options)) {
     const definition = input.battle.enemies.find(enemy => enemy.id === id);
     if (!definition) throw new Error(`敌人定义缺失：${id}`);
     assets.push(...enemyCombatAssets(input.battle, definition));

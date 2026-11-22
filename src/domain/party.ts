@@ -2,7 +2,7 @@ import { boundedHealth } from './status-hud.ts';
 import { calculateCharacter, experienceAfterReward, previewGemPanel, PRIMARY_STATS, primaryAttributesFrom, type CharacterPanel, type CharacterStatsCatalog, type Modifier, type PrimaryAttributes, type BattleCharacter } from './character-stats.ts';
 import type { SkillConfigurationState } from './skill-configuration.ts';
 import { CompanionSkillProgression, generateCompanion, MERCENARY_CLASS_ORDER, randomInteger, weightedIndex, type CompanionGenerationRules, type CompanionGroupEffect, type CompanionGroupSkill, type GeneratedCompanion, type MercenarySkillPoints } from './companion-progression.ts';
-export type { CompanionGroupEffect, CompanionGroupSkill } from './companion-progression.ts';
+export type { CompanionGroupEffect } from './companion-progression.ts';
 const MERCENARY_SLOT_COUNT=18;
 /** 普通复活卷轴只恢复一成生命和法力。 */
 const REVIVE_RECOVERY_RATE=0.1;
@@ -394,7 +394,7 @@ export class PartyRoster {
     const member=this.create(definition,'mercenary',`companion-${this.serial+1}`,generated);this.serial++;
     this.bag.take(itemInstanceId,1);
     this.onRecruited?.(entry.item,member.id);
-    const result:ItemResult={kind:'recruit',title:'招募成功',message:`${member.definition.name}加入队伍`,rewards:[],classId:definition.classId};
+    const result:ItemResult={kind:'recruit',message:`${member.definition.name}加入队伍`,rewards:[],classId:definition.classId};
     this.changed();return {member,result};
   }
   revive(id:string,itemInstanceId:string):ItemResult{
@@ -408,7 +408,7 @@ export class PartyRoster {
     member.setHealth(Math.floor(member.player.maxHealth*(full?1:REVIVE_RECOVERY_RATE)));
     member.setMana(Math.floor(member.player.maxMana*(full?1:REVIVE_RECOVERY_RATE)));
     this.bag.take(itemInstanceId,1);this.changed();
-    return {kind:'revive',title:'复活成功',message:`${id==='player'?'主角':this.owned.get(id)!.definition.name}已复活`,rewards:[]};
+    return {kind:'revive',message:`${id==='player'?'主角':this.owned.get(id)!.definition.name}已复活`,rewards:[]};
   }
   joinStory(definitionId:string):CompanionMember{
     const definition=this.catalog.definitions[definitionId];

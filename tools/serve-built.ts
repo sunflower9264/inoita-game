@@ -100,7 +100,7 @@ export function parseRange(header: string | undefined, size: number): RangeResul
   return { start, end: Math.min(end, size - 1) };
 }
 
-interface ParsedPath { segments: string[]; pathname: string }
+interface ParsedPath { segments: string[] }
 
 /** 逐段解码并拒绝点文件、父目录和编码后的分隔符。 */
 function parseRequestPath(pathname: string): ParsedPath | undefined {
@@ -110,7 +110,7 @@ function parseRequestPath(pathname: string): ParsedPath | undefined {
   const segments = decoded.split('/').filter(segment => segment !== '');
   for (const segment of segments)
     if (segment === '.' || segment === '..' || segment.startsWith('.') || /[\\/]/.test(segment)) return undefined;
-  return { segments, pathname: decoded };
+  return { segments };
 }
 
 interface FileInfo {
@@ -135,7 +135,7 @@ function notModifiedSince(header: string | undefined, mtimeMs: number): boolean 
   return Number.isFinite(time) && Math.floor(mtimeMs / 1000) * 1000 <= time;
 }
 
-interface CompressionEntry { key: string; buffer: Buffer }
+interface CompressionEntry { buffer: Buffer }
 
 interface GameServerOptions {
   projectRoot: string;
@@ -197,7 +197,7 @@ export function createGameServer(options: GameServerOptions): Server {
     const cached = compressed.get(key);
     if (cached) return cached.buffer;
     const buffer = await gzipAsync(body);
-    compressed.set(key, { key, buffer });
+    compressed.set(key, { buffer });
     compressedBytes += buffer.length;
     while (compressedBytes > COMPRESSION_LIMIT && compressed.size > 1) {
       const oldest = compressed.keys().next().value;
@@ -376,7 +376,7 @@ export function createGameServer(options: GameServerOptions): Server {
   return server;
 }
 
-interface StartedServer { server: Server; port: number }
+interface StartedServer { server: Server }
 
 async function startGameServer(options: GameServerOptions & { port?: number; host?: string }): Promise<StartedServer> {
   const server = createGameServer(options);
@@ -389,7 +389,7 @@ async function startGameServer(options: GameServerOptions & { port?: number; hos
       resolve();
     });
   });
-  return { server, port };
+  return { server };
 }
 
 function cliOptions(argv: string[]): { port: number; host: string; cloudDataDir?: string } {

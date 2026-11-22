@@ -307,20 +307,14 @@ export class QuestBook {
   /** 跳转接取条件要求的精确任务进度；只活在内存里，不进状态快照、不进存档。 */
   private readonly forcedProgress = new Map<string, QuestProgress>();
 
-  constructor(definitions: readonly QuestRules[], context: () => QuestContext, sideQuests: ReadonlySet<string>,
-    options?: { state?: QuestBookState; shareFrom?: QuestBook }) {
+  constructor(definitions: readonly QuestRules[], context: () => QuestContext, sideQuests: ReadonlySet<string>) {
     this.context = context;
     this.sideQuests = sideQuests;
     const prepared = preparedDefinitions(definitions);
     this.definitions = prepared.definitions;
     this.conditionUsers = prepared.conditionUsers;
     this.questDependents = prepared.dependents;
-    // 派生沙盒：与来源共享同一份不可变状态根，不克隆、也不跑初始 refresh。
-    const source = options?.shareFrom;
-    if (source) { this.states = source.states; this.runningIds = [...source.runningIds]; this.factSequences = new Map(source.factSequences); this.revision = source.revision; this.progressRevision = source.progressRevision; return; }
     this.states = new Map([...this.definitions].map(([id, quest]) => [id, initialProgress(quest)]));
-    // 已知初态时直接安装：调用方（预演沙盒）拿的就是本类产出的状态，不必再刷新一遍。
-    if (options?.state) { this.installTrustedState(options.state); return; }
     this.commit(this.plan({ type: 'refresh' }));
   }
   /**

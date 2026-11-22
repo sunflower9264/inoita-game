@@ -30,7 +30,7 @@ const STORY_CURTAIN_DEPTH = 20000;
 /** 幕布按视口三倍铺开，镜头缩放时四边仍能盖住画面。 */
 const STORY_CURTAIN_COVERAGE_SCALE = 3;
 
-interface Performer { visual: CharacterVisual; facing: Facing; worldEntityId?: string; unpositioned?:boolean; storyPoseHold?: boolean; clearPose?: () => void }
+interface Performer { visual: CharacterVisual; facing: Facing; unpositioned?:boolean; storyPoseHold?: boolean; clearPose?: () => void }
 type VisualAction = Exclude<PerformanceAction, { type: 'parallel' }>;
 type WalkAction = Extract<VisualAction, { type: 'walk' }>;
 /** 跳过时只需要改逻辑舞台状态的演员动作。 */
@@ -429,7 +429,7 @@ export class StoryPresenter implements StoryPresentationPort {
       const visual = scene.characters.get(actor.id);
       if (!visual) throw new Error('剧情场景对象未绘制：' + actor.id);
       this.actors.set(actor.id, { visual, facing: actor.facing,
-        worldEntityId: actor.worldEntityId, unpositioned: actor.unpositioned, storyPoseHold: actor.storyPoseHold });
+        unpositioned: actor.unpositioned, storyPoseHold: actor.storyPoseHold });
       const performer = this.actors.get(actor.id)!;
       if (actor.storyPoseHold !== undefined && actor.animationPlaying !== false) this.watchPose(performer);
     }
@@ -607,10 +607,10 @@ export class StoryPresenter implements StoryPresentationPort {
       const before = previous.scene.actors.find(candidate => candidate.id === actor.id);
       let performer = this.actors.get(actor.id);
       if (!performer || performer.visual !== visual) {
-        performer = {visual, facing:actor.facing,worldEntityId:actor.worldEntityId,unpositioned:actor.unpositioned};
+        performer = {visual, facing:actor.facing,unpositioned:actor.unpositioned};
         this.actors.set(actor.id, performer);
       }
-      performer.worldEntityId = actor.worldEntityId; performer.unpositioned = actor.unpositioned;
+      performer.unpositioned = actor.unpositioned;
       if (!before || actor.x !== before.x || actor.y !== before.y || actor.visible !== before.visible) {
         placements.push({visual, position:actor, enabled:actor.visible && !actor.unpositioned});
         visual.container.setVisible(actor.visible && !actor.unpositioned);

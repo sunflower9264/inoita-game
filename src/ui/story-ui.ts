@@ -782,12 +782,12 @@ export class StoryUI {
     return{left:start.x,top:start.y,right:end.x,bottom:end.y};
   }
   /** 弹层在整页表面坐标里的覆盖矩形；存档/读档页的页面文字用这一份。 */
-  private modalSurfaceOcclusion(pad=0):MenuTextOcclude|undefined {
+  private modalSurfaceOcclusion():MenuTextOcclude|undefined {
     if(!this.modal||!this.surface)return undefined;
     const matrix=this.surface.root.getWorldTransformMatrix(),origin=matrix.transformPoint(0,0),
       point=(x:number,y:number)=>{const world=this.modal!.root.getWorldTransformMatrix().transformPoint(x,y);
         return{x:(world.x-origin.x)/matrix.scaleX,y:(world.y-origin.y)/matrix.scaleY};},
-      start=point(-pad,-pad),end=point(this.modalBox.width+pad,this.modalBox.height+pad);
+      start=point(0,0),end=point(this.modalBox.width,this.modalBox.height);
     return{left:start.x,top:start.y,right:end.x,bottom:end.y};
   }
   private bandSurfaceOcclusion(band?:NativeMessageBand):MenuTextOcclude|undefined {
@@ -871,7 +871,7 @@ export class StoryUI {
     if(this.page==='bag'&&this.bagPage?.cached&&this.bagPage?.hasGrid&&!this.bagOverlayOpen()){
       this.bagPage?.updateBagPage();
       const signature=this.sessionDataSignature();
-      if(signature!==undefined){if(this.page==='bag')this.bagPage?.rememberSignature(signature);else this.sessionSignature=signature;}
+      if(signature!==undefined)this.bagPage?.rememberSignature(signature);
       return;
     }
     this.renderNow();
@@ -1149,7 +1149,7 @@ export class StoryUI {
   /** 槽位文字（页面坐标）→ DOM 文字；有换行宽度时按词断行。 */
   private saveBoardText(spec:SaveBoardTextSpec):MenuTextSpec{
     return {key:spec.key,text:spec.text,x:spec.x,y:spec.y,scroll:spec.scroll,clip:spec.clip,
-      style:{size:spec.size,color:spec.color,anchorX:spec.anchorX,anchorY:spec.anchorY,align:spec.align,
+      style:{size:spec.size,color:spec.color,anchorX:spec.anchorX,anchorY:spec.anchorY,
         width:spec.width,wrap:spec.width?'word':undefined}};
   }
   /** 一段只用于收集的文字：controller 的 `setOrigin/Align/Position` 改的是 DOM 规格。 */

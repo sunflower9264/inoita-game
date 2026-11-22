@@ -77,7 +77,7 @@ interface SaveBoardAssets { frame:string; empty:string }
 /** 一段槽位文字；坐标是页面坐标，滚动区的行由宿主按 `scroll`/`clip` 跟随。 */
 export interface SaveBoardTextSpec {
   key:string; text:string; x:number; y:number; size:number; color?:string; width?:number;
-  anchorX?:number; anchorY?:number; align?:'left'|'center'|'right';
+  anchorX?:number; anchorY?:number;
   scroll?:string; clip?:{ top:number; bottom:number };
 }
 interface SaveBoardTextSink { add(spec:SaveBoardTextSpec):void }

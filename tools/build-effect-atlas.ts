@@ -66,8 +66,6 @@ interface UniqueFile {
   frames: number;
   width: number;
   height: number;
-  /** 所有指向同一文件内容的源路径。 */
-  paths: Set<string>;
   /** 引用这份内容的所有特效。 */
   effects: Set<string>;
 }
@@ -185,7 +183,6 @@ function collectUniqueFiles(uses: readonly FileUse[]): { unique: Map<string, Uni
       if (existing.frameWidth !== use.frameWidth || existing.frameHeight !== use.frameHeight)
         throw new Error(`同一个特效文件出现不同帧尺寸：${use.file}（${existing.frameWidth}x${existing.frameHeight} 与 ${use.frameWidth}x${use.frameHeight}）`);
       existing.frames = Math.max(existing.frames, use.frames);
-      existing.paths.add(use.file);
       existing.effects.add(use.effect);
       if (compareText(use.file, existing.file) < 0) existing.file = use.file;
       continue;
@@ -194,7 +191,7 @@ function collectUniqueFiles(uses: readonly FileUse[]): { unique: Map<string, Uni
     unique.set(hash, { hash, file: use.file,
       frameWidth: use.frameWidth, frameHeight: use.frameHeight,
       frames: use.frames, width: bytes.readUInt32BE(PNG_WIDTH_OFFSET), height: bytes.readUInt32BE(PNG_HEIGHT_OFFSET),
-      paths: new Set([use.file]), effects: new Set([use.effect]) });
+      effects: new Set([use.effect]) });
   }
   return { unique, hashes };
 }

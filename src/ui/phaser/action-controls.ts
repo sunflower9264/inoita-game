@@ -39,7 +39,7 @@ export class ActionControls {
   readonly resetInput = (): void => { this.view.resetInput(); };
   setShortcutPage(slots: readonly ShortcutSlot[]): void { this.view.setShortcutPage(slots); }
   snapshot(): readonly ShortcutSlot[] { return this.view.snapshot(); }
-  setAttack(enabled: boolean, dimUnavailable = true): void { this.view.setAttack(enabled, dimUnavailable); }
+  setAttack(enabled: boolean): void { this.view.setAttack(enabled); }
   layout(): void {
     this.view.layout(controlViewport(), this.preferences?.snapshot());
   }

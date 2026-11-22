@@ -52,7 +52,7 @@
 - **快捷键登记屏画出攻击按钮。** 游戏内控件在菜单打开时整层收起，登记屏要与控件共用同一份布局：先按 `positions.attack`（含用户倍率）画攻击按钮，再画六个圆槽和换组键，轮盘中心不会空一块。登记快捷键或换组时保留控件，只更新变化的槽位图标。
 - 控件尺寸从 `control-layout.ts` 的 `CONTROL_SIZES` 取；D-pad 视觉与布局用 `moveDpad` 274×274，摇杆用 `move` 210×210。
 - **长按按钮用 `UiSurface.button` 的 `hold` 选项。** 按住超过 `delayMs` 后每 `intervalMs` 执行一次，松手不再补一次点击；按钮禁用时立刻停。商店数量箭头用 350ms/80ms。
-- **摇杆的指针状态必须能自愈。** 新的 `pointerdown` 接管旧指针；`pointercancel`、`gameout`、以及 `isDown=false` 的移动事件都要回中，避免丢失 `pointerup` 后一直朝某个方向走。
+- **摇杆的指针状态必须能自愈。** 新的 `pointerdown` 接管旧指针；`pointerup`、`pointercancel`、`lostpointercapture`，以及移动事件里 `event.buttons === 0` 都要回中，避免丢失 `pointerup` 后一直朝某个方向走。
 - 用户调过的控件大小按控件位置保存成倍率（`scale`，0.6–2.0），解析时与屏幕适配缩放分开乘。倍率跟着 `slot-0`…`slot-5` 这些位置走，切换技能组或换成技能/物品内容都不改变它。
 - 字体、字号和颜色取 `text-style.ts`，新面板不再另建一套字体栈。
 - 说明面板底部动作 1–3 个排一横排；4 个用 2×2，5–6 个用 2×3，几何由 `descriptionActionLayout` 统一给出。动作文字按按钮中间可用宽度缩小字号并居中，完整文案保持在按钮内部。

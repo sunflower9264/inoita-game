@@ -28,7 +28,6 @@ class FakeLabel {
   setPosition(): this { return this; }
   setAnchor(): this { return this; }
   setVisible(visible: boolean): this { this.visible = visible; return this; }
-  setClassName(): this { return this; }
   setStyle(style: Partial<CSSStyleDeclaration>): this {
     if (style.opacity !== undefined) this.opacities.push(style.opacity);
     return this;

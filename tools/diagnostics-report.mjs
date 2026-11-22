@@ -117,7 +117,6 @@ function summarize(session, entries) {
     lowFps: entries.filter(entry => entry.kind === 'performance-low-fps').length,
     maps: [...maps],
     build: first?.build ?? null,
-    firstKind: first?.kind ?? null,
     lastKind: last?.kind ?? null,
     ended,
   };

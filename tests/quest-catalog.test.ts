@@ -128,7 +128,7 @@ test('projecting new statuses updates entries and summaries without changing ord
   const lockedOpening = lockedCatalog.find(group => group.definition.id === 'native-group-2')!;
   assert.equal(lockedOpening.entries[0].status, 'locked');
   assert.equal(lockedOpening.entries[0].progress.goals.objective, 0);
-  assert.equal(lockedOpening.completed, 0);
+  assert.equal(lockedOpening.summary.completed, 0);
   assert.equal(lockedOpening.ready, false);
   assert.equal(lockedOpening.current, false);
 
@@ -141,7 +141,7 @@ test('projecting new statuses updates entries and summaries without changing ord
   const activeOpening = activeCatalog.find(group => group.definition.id === 'native-group-2')!;
   assert.equal(activeOpening.entries[0].status, 'active');
   assert.equal(activeOpening.summary.active, 1);
-  assert.equal(activeOpening.completed, 0);
+  assert.equal(activeOpening.summary.completed, 0);
   assert.equal(activeOpening.current, true);
 
   const activeRescue = activeCatalog.find(group => group.definition.id === 'native-group-7')!;
@@ -165,7 +165,6 @@ test('projecting new statuses updates entries and summaries without changing ord
   const completedOpening = completedCatalog.find(group => group.definition.id === 'native-group-2')!;
   assert.equal(completedOpening.entries[0].status, 'completed');
   assert.equal(completedOpening.summary.completed, 1);
-  assert.equal(completedOpening.completed, 1);
   assert.equal(completedOpening.ready, false);
   assert.equal(completedOpening.current, false);
 });

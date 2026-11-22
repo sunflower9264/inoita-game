@@ -50,7 +50,7 @@ interface ClipLike {
   frameWidth: number; frameHeight: number; frames: number; frameRate: number;
   layers: ClipLayerLike[]; [field: string]: unknown;
 }
-interface ClipRecord { clip: ClipLike; name: string; layer: ClipLayerLike }
+interface ClipRecord { clip: ClipLike; layer: ClipLayerLike }
 interface ClipDedupe {
   docs: Map<string, unknown>;
   dedupedLayers: number;
@@ -58,13 +58,13 @@ interface ClipDedupe {
   clipKeysAfter: number;
 }
 
-export function walkClips(value: unknown, visit: (clip: ClipLike, name: string) => void): void {
+export function walkClips(value: unknown, visit: (clip: ClipLike) => void): void {
   if (!value || typeof value !== 'object') return;
   if (Array.isArray(value)) { for (const item of value) walkClips(item, visit); return; }
   const record = value as Record<string, unknown>;
   if (record.clips && typeof record.clips === 'object' && !Array.isArray(record.clips)) {
-    for (const [name, clip] of Object.entries(record.clips as Record<string, unknown>)) {
-      if (clip && typeof clip === 'object' && Array.isArray((clip as ClipLike).layers)) visit(clip as ClipLike, name);
+    for (const clip of Object.values(record.clips as Record<string, unknown>)) {
+      if (clip && typeof clip === 'object' && Array.isArray((clip as ClipLike).layers)) visit(clip as ClipLike);
     }
   }
   for (const child of Object.values(record)) walkClips(child, visit);
@@ -85,7 +85,7 @@ function assetKindOf(file: string): string {
  * 漏掉它就会让角色请求已归档的原图。去重只改编译输出，不改源文件；
  * 地图 JSON 用 prop 键，不在这里处理。
  */
-async function dedupeClipLayers(_sourceDir: string, files: SourceFile[], assetRoot = SOURCE_ASSETS): Promise<ClipDedupe> {
+async function dedupeClipLayers(files: SourceFile[], assetRoot = SOURCE_ASSETS): Promise<ClipDedupe> {
   const docs = new Map<string, unknown>();
   for (const relative of ['battle.json', 'world.json', 'story-classes.json']) {
     const source = files.find(file => file.relative === relative);
@@ -93,8 +93,8 @@ async function dedupeClipLayers(_sourceDir: string, files: SourceFile[], assetRo
   }
   const records: ClipRecord[] = [];
   for (const document of docs.values()) {
-    walkClips(document, (clip, name) => {
-      for (const layer of clip.layers) if (layer.file) records.push({ clip, name, layer });
+    walkClips(document, clip => {
+      for (const layer of clip.layers) if (layer.file) records.push({ clip, layer });
     });
   }
   const hashes = new Map<string, string>();
@@ -155,7 +155,7 @@ async function dedupeClipLayers(_sourceDir: string, files: SourceFile[], assetRo
 
 /** 只读磁盘内容，按生产构建同一套规则计算动画图层合并结果。 */
 export async function planClipDedupe(sourceDir: string, assetRoot = SOURCE_ASSETS): Promise<ClipDedupe> {
-  return dedupeClipLayers(sourceDir, await filesUnder(sourceDir), assetRoot);
+  return dedupeClipLayers(await filesUnder(sourceDir), assetRoot);
 }
 
 async function filesUnder(directory: string, relative = ''): Promise<SourceFile[]> {
@@ -180,7 +180,7 @@ async function filesUnder(directory: string, relative = ''): Promise<SourceFile[
  */
 export async function buildContent(sourceDir: string, outputDir: string, assetRoot = SOURCE_ASSETS): Promise<ContentBuildStats> {
   const files = await filesUnder(sourceDir);
-  const dedupe = await dedupeClipLayers(sourceDir, files, assetRoot);
+  const dedupe = await dedupeClipLayers(files, assetRoot);
   let sourceBytes = 0, outputBytes = 0, wardrobePoses = 0;
   for (const file of files) {
     const target = path.join(outputDir, file.relative);

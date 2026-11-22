@@ -800,11 +800,8 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
     const completed=this.app.session.runtimeState.completedEvents;
     return this.app.campaign.events.some(event=>event.source==='start'&&!completed.includes(event.id));
   }
-  /** @param silent 演出中的世界重建：不显示加载进度，舞台画面保持可见。 */
-  loadAssets(needed: PendingAsset[], label: string, initialEntry=false, silent=false): Promise<AssetLease> {
-    return loadSceneAssets(this, needed, { progress: value => {
-      if (!silent) this.app.ui.loading(`正在加载 · ${label}`, initialEntry ? 0.5 + value * 0.5 : value);
-    }, lifetime: 'manual' });
+  loadAssets(needed: PendingAsset[]): Promise<AssetLease> {
+    return loadSceneAssets(this, needed, { lifetime: 'manual' });
   }
   /** 正式世界、入口计划和运行时兜底共用的素材输入。 */
   private assetInputs(): WorldAssetInputs {
@@ -1128,7 +1125,7 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
     if(!map||!movement||!this.player||this.destroyed)throw new Error('当前地图无法召唤商人');
     const actor=this.app.world.actors[this.app.shops.lampShop];
     if(!actor)throw new Error('神灯商人素材缺失');
-    const lease=await this.loadAssets(characterAssets(actor,characterSceneClips(actor)),map.name,false,true);
+    const lease=await this.loadAssets(characterAssets(actor,characterSceneClips(actor)));
     let character:Character|undefined;
     try{
       signal.throwIfAborted();
@@ -1763,15 +1760,6 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
       corrections: movement?.terrainCorrections ?? [],
       combat: this.combat?.diagnostics() ?? null };
   }
-  spawnLoot(x:number,y:number,rewards:readonly DropReward[]):void {
-    if(this.map)this.spawnLootOnMap(this.map.id,x,y,rewards);
-  }
-  spawnLootOnMap(map:string,x:number,y:number,rewards:readonly DropReward[]):void {
-    if(!rewards.length)return;
-    const landing=this.lootLanding(map,x,y);
-    this.app.session.placeGroundRewards(map,landing.x,landing.y,rewards);
-    if(this.map?.id===map)this.refreshGroundLoot();
-  }
   refreshGroundLoot():void {
     if(this.destroyed||!this.map)return;
     const store=groundLootFor(this.app.session);
@@ -2146,7 +2134,7 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
     if(needed.length){
       const lease=await this.loadAssets(needed.flatMap(id=>{
         const actor=this.app.world.actors[id];if(!actor)throw new Error(`剧情角色资源缺失：${id}`);return characterAssets(actor,characterSceneClips(actor));
-      }),this.map!.name,false,true);
+      }));
       if(signal.aborted||this.destroyed){lease.release();signal.throwIfAborted();throw new Error('正式地图已经关闭');}
       this.storyEntityAssets.push(lease);for(const id of needed)this.projectedActorIds.add(id);
     }

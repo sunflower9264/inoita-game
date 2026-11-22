@@ -8,8 +8,6 @@ interface NumberPromptOptions {
   maximum:number;
   /** 超过上限时的提示；默认「最多 N」。 */
   overMessage?(maximum:number):string;
-  /** 低于下限时的提示；默认「最少 N」。 */
-  underMessage?(minimum:number):string;
   /** 当前菜单画布的屏幕倍率；确认/取消据此和同屏菜单按钮同尺寸。 */
   scale?:()=>number;
   onConfirm(value:number):void;
@@ -147,7 +145,7 @@ export class NumberPrompt {
     if(!options)return '输入已关闭';
     if(!Number.isFinite(value))return '请输入数字';
     if(!Number.isSafeInteger(value))return '请输入整数';
-    if(value<options.minimum)return options.underMessage?.(options.minimum)??`最少 ${options.minimum}`;
+    if(value<options.minimum)return `最少 ${options.minimum}`;
     if(value>options.maximum)return options.overMessage?.(options.maximum)??`最多 ${options.maximum}`;
     return undefined;
   }

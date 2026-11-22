@@ -24,7 +24,6 @@ export interface QuestCatalogIndexGroup {
 /** 内容派生的任务目录索引：组顺序、组内顺序和支线锚点都已完成。 */
 export interface QuestCatalogIndex {
   groups: readonly QuestCatalogIndexGroup[];
-  quests: ReadonlyMap<string, CampaignQuest>;
 }
 
 /** 当前状态投影后的一行任务。 */
@@ -41,8 +40,6 @@ export interface QuestCatalogSummary {
   total: number;
   journalVisible: number;
   hidden: number;
-  internal: number;
-  locked: number;
   available: number;
   active: number;
   ready: number;
@@ -55,8 +52,6 @@ export interface QuestCatalogGroup {
   kind: QuestGroupDefinition['kind'];
   entries: QuestCatalogEntry[];
   summary: QuestCatalogSummary;
-  /** 已完成的任务数，等于 `summary.completed`。 */
-  completed: number;
   /** 组内任意任务待交付。 */
   ready: boolean;
   /** 组内任意任务进行中或待交付。 */
@@ -122,7 +117,6 @@ export function buildQuestCatalog(campaign: Campaign): QuestCatalogIndex {
       quests: group.quests,
       anchorMainGroupTitle: group.anchorMainGroupTitle,
     })),
-    quests,
   };
 }
 
@@ -150,7 +144,6 @@ export function projectQuestCatalog(
       kind: group.kind,
       entries,
       summary,
-      completed: summary.completed,
       ready: summary.ready > 0,
       current: summary.active > 0 || summary.ready > 0,
       anchorMainGroupTitle: group.anchorMainGroupTitle,
@@ -198,8 +191,6 @@ function summarize(entries: readonly QuestCatalogEntry[]): QuestCatalogSummary {
     total: entries.length,
     journalVisible: 0,
     hidden: 0,
-    internal: 0,
-    locked: 0,
     available: 0,
     active: 0,
     ready: 0,
@@ -208,9 +199,8 @@ function summarize(entries: readonly QuestCatalogEntry[]): QuestCatalogSummary {
   for (const entry of entries) {
     if (!entry.hidden && !entry.internal) summary.journalVisible++;
     if (entry.hidden) summary.hidden++;
-    if (entry.internal) summary.internal++;
     switch (entry.status) {
-      case 'locked': summary.locked++; break;
+      case 'locked': break;
       case 'available': summary.available++; break;
       case 'active': summary.active++; break;
       case 'ready': summary.ready++; break;

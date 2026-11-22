@@ -1410,7 +1410,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
       if(settlement.isBreakable)this.syncChestEnemies();
       if(render&&!this.closed){
         this.scene.refreshGroundLoot();
-        if(settlement.killSound)this.app.audio?.monsterDeath(targetEnemy.definition.id);
+        this.app.audio?.monsterDeath(targetEnemy.definition.id);
         for(const id of levelledIds){
           const visual=this.visualOf(id);
           if(visual?.container.active){this.outcomes.levelUp(visual);this.app.audio?.playerLevelUp();}

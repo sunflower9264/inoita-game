@@ -46,7 +46,6 @@ interface NavigationQuerySnapshot {
   readonly terrain?:CollisionMap;
   canStand(point:Point):boolean;
   canStandXY?(x:number,y:number):boolean;
-  terrainFree(point:Point):boolean;
 }
 
 function terrainFreeAtXY(bounds:GameRectangle,terrain:CollisionMap|undefined,x:number,y:number):boolean {
@@ -220,7 +219,7 @@ export class NavigationWorld {
     const terrainFree=(point:Point)=>terrainFreeAt(bounds,terrain,point);
     const canStandXY=(x:number,y:number)=>terrainFreeAtXY(bounds,terrain,x,y)
       &&(!collision||!blockedInOccupancyXY(occupied,collision,x,y));
-    return {bounds,start,terrain,terrainFree,canStandXY,canStand(point){
+    return {bounds,start,terrain,canStandXY,canStand(point){
       // 与 `canStand()` 同口径：地形和地图边界对所有角色都生效；没有碰撞盒只表示不查人物占位。
       return contentOnly?canStandXY(point.x,point.y):terrainFree(point)&&(!collision||!blockedInOccupancy(occupied,collision,point));
     }};

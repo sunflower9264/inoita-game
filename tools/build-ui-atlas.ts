@@ -27,13 +27,13 @@ const PADDING = 2;
 
 const read = (file: string): any => JSON.parse(fs.readFileSync(path.join(CONTENT, file), 'utf8'));
 
-interface PngInfo { w: number; h: number; hash: string; bytes: Buffer }
+interface PngInfo { w: number; h: number; hash: string }
 function pngInfo(file: string): PngInfo {
   const bytes = fs.readFileSync(sourceAssetPath(file));
   if (bytes.toString('ascii', PNG_SIGNATURE_TEXT_OFFSET, PNG_SIGNATURE_TEXT_END) !== PNG_SIGNATURE_TEXT)
     throw new Error(`UI 图集只接受 PNG：${file}`);
   return { w: bytes.readUInt32BE(PNG_WIDTH_OFFSET), h: bytes.readUInt32BE(PNG_HEIGHT_OFFSET),
-    hash: createHash('sha256').update(bytes).digest('hex'), bytes };
+    hash: createHash('sha256').update(bytes).digest('hex') };
 }
 
 /** 内容里的路径统一成 `assets/...`；不是素材路径时返回 undefined。 */

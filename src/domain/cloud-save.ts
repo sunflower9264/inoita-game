@@ -80,8 +80,7 @@ export function cloudSlotLabel(ref: SaveSlotRef): string {
 export function cloudLockedMessage(retryAfterSeconds: number): string {
   const seconds = Math.max(1, Math.ceil(retryAfterSeconds));
   const minutes = Math.ceil(seconds / 60);
-  const wait = minutes >= 1 ? `${minutes} 分钟` : `${seconds} 秒`;
-  return `密码连续输错 ${CLOUD_LOGIN_MAX_FAILURES} 次，账号已锁定，请 ${wait}后再试。`;
+  return `密码连续输错 ${CLOUD_LOGIN_MAX_FAILURES} 次，账号已锁定，请 ${minutes} 分钟后再试。`;
 }
 
 export function cloudWrongPasswordMessage(remainingAttempts: number): string {

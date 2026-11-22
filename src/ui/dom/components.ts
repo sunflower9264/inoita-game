@@ -118,14 +118,11 @@ export interface DomPressOptions {
   release?(pointer: number): void;
   trigger: 'down' | 'up';
   action(): void;
-  hold?: { delayMs: number; intervalMs: number };
 }
 
 /** 只管理一次手势；全局动作互斥由调用方共享的 ActionPressGate 决定。 */
 export class DomButton extends DomComponent {
   private pointer?: number;
-  private timer?: ReturnType<typeof setTimeout>;
-  private repeated = false;
   private readonly options: DomPressOptions;
   constructor(parent: HTMLElement | DomComponent, options: DomPressOptions) {
     super(parent, 'button'); this.options = options;
@@ -151,30 +148,21 @@ export class DomButton extends DomComponent {
     event.stopPropagation(); event.preventDefault();
     if (event.button !== 0 || this.pointer !== undefined || !this.options.enabled() || this.options.hitTest?.(event) === false) return;
     if (this.options.press && !this.options.press(event.pointerId)) return;
-    this.pointer = event.pointerId; this.repeated = false;
+    this.pointer = event.pointerId;
     this.element.setPointerCapture(event.pointerId);
     this.element.dataset.pressed = 'true';
     if (this.options.trigger === 'down') this.options.action();
-    const hold = this.options.hold;
-    if (hold) this.timer = setTimeout(() => this.repeat(), hold.delayMs);
-  }
-  private repeat(): void {
-    if (this.pointer === undefined || !this.options.enabled()) { this.reset(); return; }
-    this.repeated = true; this.options.action();
-    if (this.pointer !== undefined && this.options.hold) this.timer = setTimeout(() => this.repeat(), this.options.hold!.intervalMs);
   }
   private up(event: PointerEvent): void {
     event.stopPropagation(); event.preventDefault();
     if (event.pointerId !== this.pointer) return;
     const bounds = this.element.getBoundingClientRect();
     const inside = event.clientX >= bounds.left && event.clientX < bounds.right && event.clientY >= bounds.top && event.clientY < bounds.bottom;
-    const activate = inside && !this.repeated && this.options.trigger === 'up' && this.options.enabled();
+    const activate = inside && this.options.trigger === 'up' && this.options.enabled();
     this.reset();
     if (activate) this.options.action();
   }
   reset(): void {
-    if (this.timer !== undefined) clearTimeout(this.timer);
-    this.timer = undefined;
     const pointer = this.pointer; this.pointer = undefined;
     delete this.element.dataset.pressed;
     if (pointer !== undefined) {

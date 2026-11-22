@@ -4,9 +4,9 @@
 
 ## 文件
 
-- 面板：`forge-panel.ts`（强化台）、`skill-book-panel.ts`（技能书页）、`crafting-panel.ts`（合成台）、`shop-panel.ts`（商店）、`quest-panel.ts`（任务阅读）、`party-panel.ts`（佣兵队伍）、`description-panel.ts`（说明框）、`save-board.ts`（存档槽）、`cloud-save-panel.ts`（云存档账号与同步页）、`gm-panel.ts`（GM 面板）、`popup-panel.ts`（通用弹层）、`quest-popup.ts`（任务窗）、`volume-slider.ts`（音量条）。
+- 面板：`forge-panel.ts`（强化台）、`skill-book-panel.ts`（技能书页）、`crafting-panel.ts`（合成台）、`shop-panel.ts`（商店）、`quest-panel.ts`（任务阅读）、`party-panel.ts`（佣兵队伍）、`description-panel.ts`（说明框）、`save-board.ts`（存档槽）、`cloud-save-panel.ts`（云存档账号与同步页）、`gm-panel.ts`（GM 面板）、`popup-panel.ts`（通用弹层）、`quest-popup.ts`（任务窗）。
 - 控件与输入：`action-controls.ts`（DOM 动作按钮的场景生命周期适配）、`keyboard-actions.ts`（键盘派发）、`move-stick.ts`（DOM 移动控件的键盘与场景接线）、`key-binding-editor.ts`（键位编辑）、`control-layout-editor.ts`（布局编辑）、`control-layout-viewport.ts`（统一屏幕 CSS 宽高与安全区）。
-- 绘制与组件：`bag-rail.ts`（背包侧栏与选中底色）、`widgets.ts`（导出 DOM 菜单表面并预载图片）、`solid-border.ts`（实心边框）、`round-band.ts`（圆角带）、`cooldown-fan.ts`（冷却比例与秒数计算）、`native-message.ts`（原生提示）、`ui-asset-host.ts`（菜单图片预载）、`status-hud.ts`（DOM 状态栏的场景接线）、`computer-skill-hud.ts`（电脑模式技能行）、`quest-text.ts`（任务文本）、`description-text.ts`（说明文本）、`modal-placement.ts`（弹层定位）、`game-thumbnail.ts`（同一局共享画布截图）。
+- 绘制与组件：`bag-rail.ts`（背包侧栏与选中底色）、`widgets.ts`（导出 DOM 菜单表面并预载图片）、`solid-border.ts`（实心边框）、`round-band.ts`（圆角带）、`native-message.ts`（原生提示）、`ui-asset-host.ts`（菜单图片预载）、`status-hud.ts`（DOM 状态栏的场景接线）、`computer-skill-hud.ts`（电脑模式技能行）、`quest-text.ts`（任务文本）、`description-text.ts`（说明文本）、`modal-placement.ts`（弹层定位）、`game-thumbnail.ts`（同一局共享画布截图）。
 - 视图适配：`class-selection-view.ts`（职业选择页的背景、纹理过滤和加色选中层）、`live-character-preview.ts`（菜单角色预览的画布换算与外观持有）。
 
 ## 规则

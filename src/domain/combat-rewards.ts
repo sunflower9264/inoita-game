@@ -94,8 +94,6 @@ export interface CombatRewardSettlement {
   pityRecords: CombatRewardPityRecord[];
   /** 推进后的付费道具解锁保底计数；调用方写回会话。 */
   reservedUnlockMisses: number;
-  /** 击杀音效提示；场景决定播放哪个音效。 */
-  killSound: boolean;
 }
 
 /**
@@ -114,7 +112,6 @@ export function settleCombatRewards(input: CombatRewardInput): CombatRewardSettl
     isBreakable: !!breakable,
     owners: [], reserved: [], quest: [], pityRecords: [],
     reservedUnlockMisses: input.reserved.misses,
-    killSound: true,
   };
   if (!input.hasSpawn && !input.pressureMode) return settlement;
 

@@ -1,6 +1,5 @@
 import type { EffectClip } from './content.ts';
 import type { StoryItem } from './story-interface.ts';
-import type { ItemNotice } from './item-application.ts';
 import type { ItemNumbers } from './character-stats.ts';
 import type { DescriptionTextPart } from './description-text.ts';
 
@@ -187,16 +186,12 @@ export interface ItemInstance {
 }
 export type Equipment = Partial<Record<EquipmentSlot, string>>;
 export interface ItemResult {
-  notice?: ItemNotice;
   kind: ItemUseKind | 'discard';
-  title: string;
   message: string;
   rewards: ItemReward[];
-  target?: string;
   classId?: string;
   skill?: string;
   recipe?: string;
-  item?: string;
 }
 
 export const USE_LABELS: Record<ItemUseKind, string> = {

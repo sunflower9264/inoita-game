@@ -237,4 +237,4 @@ eachRow(BY_FILE_ROWS, (file, [base, pages]) => {
   byFile[file] = runs(pages!).map((page, index) => ({ page, frame: `${base}-${index}` }));
 });
 export const EFFECT_ATLAS_BY_FILE: Readonly<Record<string, readonly EffectAtlasFrame[]>> = byFile;
-export const EFFECT_ATLAS_SOURCE_DIGEST = "375c41b048024467ed3a8996b252c76f4778972808cc3f17a0e6908b1eb329a7";
+export const EFFECT_ATLAS_SOURCE_DIGEST = "3ca63e6b5f0ab6dee5e63d59e0d6b58c8d269952970ec15688463f1fa72aeab8";

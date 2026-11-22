@@ -133,21 +133,6 @@ export function tradeMessageScrollLayout(contentHeight:number, hasMoney:boolean)
   };
 }
 
-/**
- * 物品说明面板。原版点商品先经 `UIStore_MakeDesc @0x166920` 弹这一层，在面板上点
- * "购买／出售"才进数量框。面板由通用的 `UIDesc_*` 系统画，所以矩形与子件跟背包那份是同一套
- * （见 `bag-layout.ts` 的 `DESCRIPTION_PANEL` 与 `work/findings/desc-panel-2026-10-12.md`）。
- *
- * 落点分两个方向：
- *
- * - **横向落对面那一栏**。`UIDesc_SetItemDescControlRect @0x145fe4` 用 mode 在左右两组常量间选，
- *   商店把买入记成 mode 1、卖出记成 mode 0，所以**买入落背包栏、卖出落货架栏**，正好挡住你没在点
- *   的那一栏。x 因此不写死，由调用方取当前 `shopLayout()` 的 `bagFrame.x` 或 `leftFrame.x`。
- * - **纵向与那一栏的顶边对齐**（原版恒为 133，就是内容框顶边），所以这里没有本作的纵向适配。
- */
-/** 商店那份说明面板与背包共用一套矩形：按它盖住的那一栏取宽，见 `bag-layout.ts` 的 `descriptionPanel`。 */
-export { descriptionPanel } from './bag-layout.ts';
-
 /** 武器与防具商店多一条 88 宽的九类分类栏，左框也更宽。 */
 export function shopLayout(classified:boolean):ShopLayout {
   const leftFrame = classified ? {x:18, y:0, width:462, height:431} : {x:85, y:0, width:395, height:431};

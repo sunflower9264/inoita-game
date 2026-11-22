@@ -63,11 +63,10 @@ export class CombatRuntime {
     this.controllers.set(id,controller);
   }
   removeActor(id:string):void{this.controllers.get(id)?.cancel(true);this.cancel(id);this.controllers.delete(id);}
-  request(command:{actorId:string;skill?:ActionPlayback['skill'];targetId?:string;mode?:'manual'|'normal'|'triggered'}):CombatRequestResult {
+  request(command:{actorId:string;skill?:ActionPlayback['skill'];targetId?:string;mode?:'manual'|'normal'}):CombatRequestResult {
     if(this.paused||this.closed)return {kind:'rejected',reason:'busy'};
     const actor=this.controllers.get(command.actorId);if(!actor)return {kind:'rejected',reason:'no-target'};
-    const result=command.skill&&command.mode==='manual'?actor.requestManualSkill(command.skill,command.targetId):
-      command.skill&&command.mode==='triggered'?actor.requestTriggeredAction(command.skill,command.targetId):actor.request(command.skill,command.targetId);
+    const result=command.skill&&command.mode==='manual'?actor.requestManualSkill(command.skill,command.targetId):actor.request(command.skill,command.targetId);
     return result==='started'?{kind:actor.actionState()==='approaching'?'approaching':'started'}:{kind:'rejected',reason:result};
   }
   schedule(ownerId:string,delayFrames:number,work:()=>void):()=>void {

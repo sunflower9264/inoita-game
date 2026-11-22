@@ -22,7 +22,6 @@ interface FriendlySummonNavigationSnapshot {
   start?: Point;
   canStand(point:Point):boolean;
   canStandXY?(x:number,y:number):boolean;
-  terrainFree?(point:Point):boolean;
 }
 export interface FriendlySummonPort extends EnemyPort {
   /** 世界只提供已经接战的敌人；点选和接近本身不构成接战。 */
@@ -102,7 +101,6 @@ function routeLength(start:Point,path:readonly Point[]):number {
 
 /** 玩家侧召唤物只决定战术和路径，攻击周期仍由共用战斗控制器执行。 */
 export class FriendlySummonController {
-  readonly kind='friendly-summon' as const;
   readonly combatController:CombatController;
   private state:SummonState='idle';
   private targetId?:string;
@@ -148,8 +146,8 @@ export class FriendlySummonController {
   }
   actionState():SummonState{return this.state;}
   currentTargetId():string|undefined{return this.targetId;}
-  snapshot(){return {kind:this.kind,state:this.state,targetId:this.targetId,
-    cooldowns:this.combatController.snapshot().cooldowns,searchPending:!!this.search,expandedNodes:this.expandedNodes};}
+  snapshot(){return {state:this.state,targetId:this.targetId,
+    searchPending:!!this.search,expandedNodes:this.expandedNodes};}
   captureState():FriendlySummonState {
     return structuredClone({ownerId:this.ownerId,role:this.role,state:this.state,targetId:this.targetId,returning:this.returning,
       clock:this.clock,accumulator:this.accumulator,nextDecisionAt:this.nextDecisionAt,nextSearchAt:this.nextSearchAt,nextRecallAt:this.nextRecallAt,nextFollowSearchAt:this.nextFollowSearchAt,

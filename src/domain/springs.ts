@@ -65,15 +65,15 @@ export function springBuffScope(key: BattleBuffKey): SpringBuffScope {
 
 /**
  * 按每名上阵队员自己的上限结算回血或回蓝，数值夹在 0 到上限之间。
- * 默认跳过已经倒下的成员，返回这次资源确实增加过的成员 id。
+ * 跳过已经倒下的成员，返回这次资源确实增加过的成员 id。
  */
-export function applySpringRecovery(effect: { kind: SpringKind; percent?: number }, members: readonly SpringPartyResources[], includeFallen = false): string[] {
+export function applySpringRecovery(effect: { kind: SpringKind; percent?: number }, members: readonly SpringPartyResources[]): string[] {
   if (effect.kind !== 'heal' && effect.kind !== 'heal-mana') return [];
   const percent = effect.percent ?? 0;
   if (!(percent > 0)) return [];
   const recovered: string[] = [];
   for (const member of members) {
-    if (!includeFallen && member.player.health <= 0) continue;
+    if (member.player.health <= 0) continue;
     if (effect.kind === 'heal') {
       const before = member.player.health, max = member.player.maxHealth;
       const target = Math.max(0, Math.min(max, before + Math.round(max * percent / 100)));

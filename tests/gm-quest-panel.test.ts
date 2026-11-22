@@ -109,14 +109,14 @@ const progress = (status: QuestStatus, current = 0): QuestProgress =>
 
 function summary(entries: QuestCatalogEntry[]): QuestCatalogSummary {
   const value: QuestCatalogSummary = {
-    total: entries.length, journalVisible: 0, hidden: 0, internal: 0,
-    locked: 0, available: 0, active: 0, ready: 0, completed: 0,
+    total: entries.length, journalVisible: 0, hidden: 0,
+    available: 0, active: 0, ready: 0, completed: 0,
   };
   for (const entry of entries) {
     if (!entry.hidden && !entry.internal) value.journalVisible++;
     if (entry.hidden) value.hidden++;
-    if (entry.internal) value.internal++;
-    value[entry.status]++;
+    if (entry.status === 'available' || entry.status === 'active'
+      || entry.status === 'ready' || entry.status === 'completed') value[entry.status]++;
   }
   return value;
 }
@@ -126,7 +126,7 @@ function catalogGroup(
 ): QuestCatalogGroup {
   const counts = summary(entries);
   return {
-    definition: group, kind: group.kind, entries, summary: counts, completed: counts.completed,
+    definition: group, kind: group.kind, entries, summary: counts,
     ready: counts.ready > 0, current: counts.active > 0 || counts.ready > 0,
     anchorMainGroupTitle: anchor,
   };

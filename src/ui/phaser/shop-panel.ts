@@ -418,13 +418,13 @@ export class ShopPanel {
     this.modalText.push({key,text,x,y,style:{size,color,anchorX,anchorY,...style}});
   }
   private addDetail(key:string,text:string,x:number,y:number,size:number,color?:string,
-    anchorX=0,anchorY=0,style:Partial<MenuTextSpec['style']>={},extras:Pick<MenuTextSpec,'scroll'|'clip'>={}):void{
-    this.detailText.push(this.pageTextSpec(key,text,x,y,size,color,anchorX,anchorY,style,extras));
+    anchorX=0,anchorY=0):void{
+    this.detailText.push(this.pageTextSpec(key,text,x,y,size,color,anchorX,anchorY));
   }
   private buttonText(key:string,label:string,x:number,y:number,width:number,height:number,
-    modal=false,size=Math.min(22,height*.42),extras:Pick<MenuTextSpec,'scroll'|'clip'>={}):void{
+    modal=false,size=Math.min(22,height*.42)):void{
     if(modal)this.addModal(key,label,x+width/2,y+height/2,size,undefined,.5,.5);
-    else this.addPage(key,label,x+width/2,y+height/2,size,undefined,.5,.5,{},extras);
+    else this.addPage(key,label,x+width/2,y+height/2,size,undefined,.5,.5);
   }
   private detailButtonText(key:string,label:string,x:number,y:number,width:number,height:number):void{
     this.addDetail(key,label,x+width/2,y+height/2,Math.min(22,height*.42),undefined,.5,.5);

@@ -14,9 +14,7 @@ export interface EnemyPort extends CombatPort {
   /** 物理系统每步读取下一个路径点；行为决策仍按原版逻辑帧执行。 */
   followPath(nextWaypoint: () => Point | undefined): void;
   home(): Point;
-  followDistancePx?:number;
   focusTarget?():string|undefined;
-  counterattack?():boolean;
   /** 按脚点圆查询附近候选；结果去重并保持原候选顺序。省略时调用方回退全量扫描。 */
   nearbyCandidates?(circles: readonly CombatQueryCircle[]): Combatant[];
   /** 锁定目标时上报一次，供召唤物立刻知道这里开战了；目标清空后可再次上报。 */
@@ -207,7 +205,7 @@ export class EnemyController {
       if(!this.disposed&&event.targetId===this.id&&this.port.threat.has(event.casterId))this.onThreatAdded();
       return;
     }
-    if(this.disposed||event.targetId!==this.id||this.state==='returning'||this.pendingReturn||this.behavior.aggression==='none'||!this.combat||this.port.counterattack?.()===false)return;
+    if(this.disposed||event.targetId!==this.id||this.state==='returning'||this.pendingReturn||this.behavior.aggression==='none'||!this.combat)return;
     const actor=this.port.actor(this.id),source=this.port.actor(event.casterId);
     if(!actor||!source||source.id===actor.id||source.team===actor.team||this.targetId||!canTargetCombatant(actor,source))return;
     this.targetId=source.id;this.state='chasing';
@@ -306,10 +304,10 @@ export class EnemyController {
     }
     if(this.state==='returning'){
       const home=this.port.home();
-      if(!this.behavior.canMove||Math.hypot(actor.position.x-home.x,actor.position.y-home.y)<=(this.port.followDistancePx??ARRIVAL_DISTANCE_PX)){
+      if(!this.behavior.canMove||Math.hypot(actor.position.x-home.x,actor.position.y-home.y)<=ARRIVAL_DISTANCE_PX){
         this.state='idle';this.path=[];this.destination=undefined;this.search=undefined;this.idleElapsed=0;this.port.stop();return;
       }
-      this.navigate(actor,home,undefined,this.port.followDistancePx??0);return;
+      this.navigate(actor,home,undefined,0);return;
     }
     if(this.port.threat){
       // 每个决策点扫描候选：接战后召唤物中途登场，也能在下一次决策点抢到仇恨。
@@ -348,11 +346,7 @@ export class EnemyController {
     if(lost||this.pendingReturn){this.returnHome();return;}
     if(!target){
       if(this.mapWide){this.awaitTarget();return;}
-      if(this.port.followDistancePx){
-        this.state='idle';const home=this.port.home();
-        if(Math.hypot(actor.position.x-home.x,actor.position.y-home.y)>this.port.followDistancePx)this.navigate(actor,home,undefined,this.port.followDistancePx);
-        else this.port.stop();
-      }else this.wander(actor);
+      this.wander(actor);
       return;
     }
     this.idleElapsed=0;

@@ -479,7 +479,7 @@ export class TitleMenuController {
   /** 存档槽绘制的文字规格转成菜单文字规格。 */
   private saveBoardSpec(spec:SaveBoardTextSpec):MenuTextSpec {
     return {key:spec.key,text:spec.text,x:spec.x,y:spec.y,scroll:spec.scroll,clip:spec.clip,
-      style:{size:spec.size,color:spec.color,anchorX:spec.anchorX,anchorY:spec.anchorY,align:spec.align,
+      style:{size:spec.size,color:spec.color,anchorX:spec.anchorX,anchorY:spec.anchorY,
         width:spec.width,wrap:spec.width?'word':undefined}};
   }
   /**

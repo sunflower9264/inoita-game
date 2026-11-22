@@ -1,9 +1,7 @@
 import type {SceneActorState,SceneSnapshot} from './scene-snapshot.ts';
-import {actorRefFromState,actorRefKey,type ActorRef} from './actor-ref.ts';
+import {actorRefFromState,actorRefKey} from './actor-ref.ts';
 
 interface PlannedActor {
-  /** 稳定实例引用；alias 不在这里。 */
-  ref:ActorRef;
   refKey:string;
   /** 本次场景快照里的演员 id；只用于兼容旧数据和调试。 */
   actorId:string;
@@ -13,7 +11,6 @@ interface PlannedActor {
 }
 
 interface ScenePlan {
-  map:string;
   actors:PlannedActor[];
   /** 可见实例按 refKey 分组；每份状态必须只有一个可见演员。 */
   visible:Map<string,PlannedActor[]>;
@@ -31,7 +28,7 @@ export function planScene(snapshot:SceneSnapshot,bindings:readonly (readonly [st
   }
   const actors=snapshot.actors.map(actor=>{
     const ref=actorRefFromState(actor,{map:snapshot.map,runId});
-    return {ref,refKey:actorRefKey(ref),actorId:actor.id,actor,aliases:[...(aliasesByActor.get(actor.id)??[])]};
+    return {refKey:actorRefKey(ref),actorId:actor.id,actor,aliases:[...(aliasesByActor.get(actor.id)??[])]};
   });
   const visible=new Map<string,PlannedActor[]>();
   for(const planned of actors){
@@ -39,7 +36,7 @@ export function planScene(snapshot:SceneSnapshot,bindings:readonly (readonly [st
     const same=visible.get(planned.refKey);
     if(same)same.push(planned);else visible.set(planned.refKey,[planned]);
   }
-  return {map:snapshot.map,actors,visible,bindings:bindingMap};
+  return {actors,visible,bindings:bindingMap};
 }
 
 export function assertScenePlan(plan:ScenePlan):void {

@@ -11,7 +11,6 @@ export interface DomLabel {
   setPosition(x: number, y: number): DomLabel;
   setAnchor(x: number, y: number): DomLabel;
   setVisible(visible: boolean): DomLabel;
-  setClassName(className: string): DomLabel;
   setStyle(style: Partial<CSSStyleDeclaration>): DomLabel;
   remove(): void;
 }
@@ -113,13 +112,6 @@ export class DomUi {
         if (shown === visible) return label;
         shown = visible;
         element.hidden = !visible;
-        return label;
-      },
-      setClassName(className: string): DomLabel {
-        const classes = className.split(/\s+/).filter(Boolean);
-        if (!classes.includes('dom-label')) classes.unshift('dom-label');
-        const name = classes.join(' ');
-        if (element.className !== name) element.className = name;
         return label;
       },
       setStyle(style: Partial<CSSStyleDeclaration>): DomLabel {

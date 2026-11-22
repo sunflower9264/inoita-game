@@ -6,7 +6,7 @@ interface ManaMember {
   player:Readonly<{health:number;mana:number;maxMana:number}>;
   setMana(value:number):void;
 }
-export function recoverManaPickup(pickup:ManaPickup,members:readonly ManaMember[],collectorId:string):{amount:number;effects:string[];restored:string[]}|undefined {
+export function recoverManaPickup(pickup:ManaPickup,members:readonly ManaMember[],collectorId:string):{amount:number;effects:string[]}|undefined {
   const collector=members.find(member=>member.id===collectorId);
   // 结算失败只表示这枚宝石暂时收不了；不能从帧回调和剧情准备里抛异常。
   if(!collector||collector.player.health<=0)return;
@@ -19,7 +19,7 @@ export function recoverManaPickup(pickup:ManaPickup,members:readonly ManaMember[
     if(restored.length)effects.push(member.id);
   }
   if(!effects.length)effects.push(collectorId);
-  return {amount,restored,effects};
+  return {amount,effects};
 }
 
 /** One roll per damaging contact; ongoing conditions and secondary procs do not call this. */

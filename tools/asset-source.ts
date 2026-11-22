@@ -3,7 +3,6 @@ import { fileURLToPath } from 'node:url';
 
 /** 仓库根目录。 */
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-export const PUBLIC = path.join(ROOT, 'public');
 /**
  * 源素材归档目录：图集生成、内容构建去重和逐像素测试只从这里读原图。
  *

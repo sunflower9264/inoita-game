@@ -36,7 +36,6 @@ interface UpdateBuildInput {
   builtAt: string;
   assetVersion: string;
   contentVersion: string;
-  minShell?: number;
 }
 interface UpdateBuildResult {
   buildId: string;
@@ -206,7 +205,7 @@ export async function writeUpdateArtifacts(rootDir: string, input: UpdateBuildIn
   await writeFile(manifestPath, manifestBytes);
 
   const privateKey = tryReadUpdateKey();
-  const pointerBytes = Buffer.from(serialize(pointerFor(manifest, manifestBytes, input.builtAt, input.minShell)));
+  const pointerBytes = Buffer.from(serialize(pointerFor(manifest, manifestBytes, input.builtAt)));
   if (privateKey) {
     writePublicKey(privateKey);
     await writeFile(`${manifestPath}.sig`, signBytes(manifestBytes, privateKey));

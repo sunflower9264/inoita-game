@@ -9,11 +9,11 @@ export class VolumeSlider {
   private press?:number;
   constructor(scene:Phaser.Scene,parent:UiNode,label:string,x:number,y:number,width:number,value:number,onChange:(value:number)=>void,enabled=()=>true){
     this.scene=scene;this.label=label;this.width=width;this.current=clamp(value);this.changed=onChange;
-    this.root=new UiNode(scene,parent).setPosition(x,y).setData('volumeSlider',label);
+    this.root=new UiNode(scene,parent).setPosition(x,y);
     new UiNode(scene,this.root).setSize(width,10).setOrigin(0,.5).setFillStyle(0x4a3b28);
     this.fill=new UiNode(scene,this.root).setSize(width*this.current,10).setOrigin(0,.5).setFillStyle(0xc9ad78);
     this.knob=new UiNode(scene,this.root).setSize(18,26).setOrigin(.5).setFillStyle(0xf3deb0);
-    const zone=new UiNode(scene,this.root).setPosition(-12,-20).setSize(width+24,40).setInteractive(undefined,enabled).setData('volumeSlider',label);
+    const zone=new UiNode(scene,this.root).setPosition(-12,-20).setSize(width+24,40).setInteractive(undefined,enabled);
     const apply=(pointer:UiPointer)=>{const m=this.root.getWorldTransformMatrix();this.setValue((pointer.x-m.tx)/(m.scaleX*width));};
     zone.on('pointerdown',(pointer:UiPointer)=>{this.press=pointer.id;apply(pointer);});zone.on('pointermove',(pointer:UiPointer)=>{if(this.press===pointer.id&&enabled())apply(pointer);else this.cancel();});zone.on('pointerup',this.cancel).on('pointerupoutside',this.cancel);
     scene.game.events.on(UI_EVENTS.cancelInput,this.cancel);this.apply();

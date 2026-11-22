@@ -38,7 +38,6 @@ interface CloudSaveSyncPorts<World = unknown> {
 function reasonOf(reading: SaveRawReading): string {
   switch (reading.kind) {
     case 'future': return '本机存档版本比当前游戏新，无法上传';
-    case 'obsolete': return '本机存档版本过旧，无法上传';
     case 'unreadable': return reading.reason;
     default: return '';
   }

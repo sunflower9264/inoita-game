@@ -17,7 +17,7 @@ import { KeyboardActions } from './phaser/keyboard-actions.ts';
 import type { DomUi, DomLabel } from './dom/dom-ui.ts';
 import type { WorldMap } from '../domain/content.ts';
 
-type HudContext = Pick<StoryContext, 'session'|'statusHud'|'world'|'menuPanels'|'controlSkin'|'controlLayout'|'keyBindings'|'inputRouter'|'storyInterface'|'domUi'>;
+type HudContext = Pick<StoryContext, 'session'|'statusHud'|'world'|'menuPanels'|'controlSkin'|'controlLayout'|'keyBindings'|'inputRouter'|'storyInterface'>;
 interface HudActions {
   attack(): void;
   skill(key: string): void;
@@ -126,7 +126,7 @@ export class WorldHud {
     const signature = `${enabled}|${state.hasTarget}|${state.hostile}|${target ? `${target.id}|${target.name}|${target.level}|${target.health}/${target.maxHealth}|${target.sceneLevel}` : ''}`;
     if (signature === this.signature) return;
     this.signature = signature;
-    this.controls?.setAttack(enabled && (state.hasTarget || state.hostile), false);
+    this.controls?.setAttack(enabled && (state.hasTarget || state.hostile));
     this.statusHud?.setTarget(target);
   }
   setShortcutPage(slots: readonly ShortcutSlot[]): void { this.skillHud?.setPage(slots); this.controls?.setShortcutPage(slots); }

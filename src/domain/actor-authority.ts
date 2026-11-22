@@ -2,8 +2,6 @@ import type { EntityPlacement, PlacementAuthority } from './content.ts';
 import type { SceneActorState } from './scene-snapshot.ts';
 import type { StoryEntityState } from './story-world.ts';
 
-export type { PlacementAuthority };
-
 /**
  * 一个可见对象是谁放下的，而不是它叫什么。
  *

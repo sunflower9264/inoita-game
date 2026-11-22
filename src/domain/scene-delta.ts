@@ -9,7 +9,6 @@ interface SceneActorDelta {
 }
 
 interface SceneDelta {
-  map:string;
   changes:SceneActorDelta[];
 }
 
@@ -43,5 +42,5 @@ export function diffSceneActors(before:SceneSnapshot|undefined,after:SceneSnapsh
     else if(changed(old,actor))changes.push({ref,kind:'update',before:old,after:actor});
   }
   for(const [key,actor] of previous)if(!current.has(key))changes.push({ref:actorRefFromState(actor,{map:before!.map,runId}),kind:'remove',before:actor});
-  return {map:after.map,changes};
+  return {changes};
 }

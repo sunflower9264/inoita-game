@@ -52,7 +52,6 @@ export function playthrough(saved?:SessionState){
   const scenes=new Map<string,SceneSnapshot>(),committedScenes=new Map<string,SceneSnapshot>();
   const remember=()=>{if(stage)scenes.set(stage.map,structuredClone(stage.scene));};
   const lines:string[]=[],popups:string[]=[],actions:PerformanceAction[]=[],errors:unknown[]=[];
-  let stageRecords:StoryStageSnapshot[]|undefined;
   const entities=():EntityPlacement[]=>{
     const map=maps.get(session.storyWorld.currentLocation!.map)!;
     const authored=authoredPlacements(map,campaign);
@@ -95,7 +94,6 @@ export function playthrough(saved?:SessionState){
         assertUniqueActorInstances(stage.scene.actors,`剧情舞台 ${stage.map}/${action.type}`);
         assertScenePlan(planScene(stage.scene,stage.bindings));
       }
-      if(stage&&stageRecords)stageRecords.push(structuredClone(stage));
     },
     // 失败重试与读档恢复共用这条入口：与真实 presenter 一样，用快照重建已访问地图清单，
     // 而不是只把演员名单塞回去。以前缺少这一项，重试会静默跳过场景恢复。
@@ -257,7 +255,7 @@ export function playthrough(saved?:SessionState){
     // 这一帧放行哪些触发由调用方决定：辅助器的 walk 只负责把玩家带到某处，
     // 让半路的戏把脚本化走位截走会让每个用例的时序都不可预期。
     // `region` 要验的是门口竞争，用 all；`approach` 要验的是走近就起演，用 near；
-    // 其余（travel／useExit／pickup）只走出口触发，用 none。
+    // 其余（travel／pickup）只走出口触发，用 none。
     // only 用来把放行范围收窄到某一个事件：走到它的区域不该顺手点燃沿途别的戏。
     const wanted=typeof only==='string'?[only]:only;
     const events=wanted?campaign.events.filter(event=>wanted.includes(event.id))
@@ -455,12 +453,6 @@ export function playthrough(saved?:SessionState){
     // 那样「走位时先碰出口还是先进区域」这类缺陷就测不出来。
     assert.notEqual(director.runtime.eventStatus(id),'idle',id+' 由场景触发');
   };
-  const useExit=async(index:number)=>{
-    const map=maps.get(session.storyWorld.currentLocation!.map)!,exit=map.exits[index];
-    assert.ok(exit,'当前地图出口 '+index);assert.ok(session.storyWorld.exitEnabled(map.id,exit),'出口开放 '+index);
-    await approachExit(exit);
-    await idle();
-  };
   const travel=async(target:string)=>{
     // 只有导出的出口能切图；演出带的转场仍由导演负责。切图本身由场景的出口触发完成。
     const trace:string[]=[];
@@ -593,22 +585,6 @@ export function playthrough(saved?:SessionState){
     const handled=director.healthChanged(enemyId,snapshot.health,after,snapshot.maxHealth,{id:placed.key,map:map.id,x:placed.x,y:placed.y});
     roster.setEnemyHealth(placed.key,handled?Math.max(1,after):after,definition);await idle();return handled;
   };
-  /** 把当前地图上一只活着的敌人标记为已击败，让它走死亡刷新。
-      采集类目标交互后会被移除，必须有下一只才有得采；等价于玩家自己把这只打死。 */
-  const clearEnemy=(enemyId:string):boolean=>{
-    const map=maps.get(session.storyWorld.currentLocation!.map)!;
-    const roster=new WorldEnemyRoster(session,map,[],session.hero!.level,questEnemies);
-    const placed=roster.enemies.find(enemy=>enemy.enemyId===enemyId);
-    if(!placed)return false;
-    const spawn=roster.source(placed.key);
-    if(!spawn)return false;
-    const defeated=session.enemyDefeated(spawn);
-    session.emit();
-    return defeated;
-  };
-  /** 地面掉落查询：验收工具用它核对某个生成点有没有产出。 */
-  const groundDrops=(map:string)=>groundLootFor(session).forMap(map);
-  return {session,director,region,travel,useExit,approach,talk,defeat,damage,wait,pickup,idle,landPlayer,entities,lines,popups,actions,groundDrops,clearEnemy,frame:afterMovement,updateWorld,
-    recordStages:()=>{stageRecords=[];},stageRecords:()=>stageRecords??[],
+  return {session,director,region,travel,approach,talk,defeat,damage,wait,pickup,idle,landPlayer,entities,lines,popups,actions,frame:afterMovement,updateWorld,
     choices:(values:string[])=>{choiceQueue=values;}};
 }
