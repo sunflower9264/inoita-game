@@ -110,7 +110,7 @@ asset-archive/         构建裁剪出的运行时旧图副本（不进 Git）
 tests/                 单元测试（AGENTS.md；helpers、support、fixtures 另有）
 tools/                 构建、校验、图集、素材、静态服务、诊断、云存档、热更新与 APK 打包（AGENTS.md）
 deploy/                nginx 站点等部署配置（当前入口 `catgo.online-web.conf`）
-docs/                  架构、模块原理、剧情创作、音频、掉落、云存档、部署、服务地址、热更新、调试、诊断与补丁管理；已知问题与未完成设计见 `docs/known-issues.md`
+docs/                  架构、模块原理、剧情创作、音频、掉落、云存档、部署、服务地址、热更新、调试、诊断与补丁管理
 android/               Android 自带 Chromium 156 的壳（minSdk 29，规则见 AGENTS.md）
 .agents/skills/        Phaser 4 开发技能
 .claude/skills         指向 ../.agents/skills 的符号链接
