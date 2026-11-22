@@ -7,7 +7,7 @@ import path from 'node:path';
 import { EventEmitter } from 'node:events';
 
 const source = await readFile(new URL('../public/diagnostics.js', import.meta.url), 'utf8');
-const { installDiagnosticSnapshot, installStorySkipDiagnostics, FrameStats } = await import('../src/application/game-diagnostics.ts');
+const { installDiagnosticSnapshot, installStorySkipDiagnostics, FrameStats, startLoadResourceMeter } = await import('../src/application/game-diagnostics.ts');
 const middlewareUrl = new URL('../tools/diagnostic-collector.mjs', import.meta.url).href;
 type Middleware = (req: EventEmitter & { url: string; method: string; headers: Record<string, string> }, res: {
   setHeader(key: string, value: string): void; writeHead(status: number): void; end(): void; writableEnded: boolean;
@@ -556,4 +556,62 @@ test('skip diagnostics report logical completion, world readiness and actual unl
   assert.equal(records.length, 2); assert.deepEqual(records[1].details, { outcome: 'choice', logicMs: 10, worldReadyMs: 30, unlockedMs: null, elapsedMs: 30 });
   director.onSkipProgress!('requested'); director.onSkipProgress!('cancelled'); now = 905; director.onSkipProgress!('released');
   assert.deepEqual(records[2].details, { outcome: 'cancelled', logicMs: null, worldReadyMs: null, unlockedMs: 5, elapsedMs: 5 });
+});
+
+type MeterEntryInput = { name: string; entryType: string; startTime: number; duration: number;
+  transferSize?: number; encodedBodySize?: number; responseEnd?: number };
+function fakeObserver() {
+  const observers: { types: string[]; pending: MeterEntryInput[]; disconnected: boolean; deliver(entries: MeterEntryInput[]): void }[] = [];
+  class Observer {
+    readonly state: (typeof observers)[number];
+    constructor(callback: (list: { getEntries(): MeterEntryInput[] }) => void) {
+      this.state = { types: [], pending: [], disconnected: false,
+        deliver: entries => { if (!this.state.disconnected) callback({ getEntries: () => entries }); } };
+      observers.push(this.state);
+    }
+    observe(options: { type: string }): void { this.state.types.push(options.type); }
+    disconnect(): void { this.state.disconnected = true; }
+    takeRecords(): MeterEntryInput[] { const taken = this.state.pending; this.state.pending = []; return taken; }
+  }
+  return { Observer, observers };
+}
+
+test('读档资源计量按格式统计图片字节、网络跨度和长任务，停止后不再累计', () => {
+  const { Observer, observers } = fakeObserver();
+  const stop = startLoadResourceMeter(Observer, ['resource', 'longtask']);
+  assert.deepEqual(observers[0]!.types, ['resource', 'longtask']);
+  observers[0]!.deliver([
+    { name: 'https://x/assets/character-atlas/characters-0.webp?v=1', entryType: 'resource', startTime: 100, duration: 40,
+      transferSize: 20_300, encodedBodySize: 20_000, responseEnd: 140 },
+    { name: 'https://x/assets/ui/menus/bag.png', entryType: 'resource', startTime: 120, duration: 10,
+      transferSize: 0, encodedBodySize: 5_000, responseEnd: 130 },
+    { name: 'https://x/content/world.json', entryType: 'resource', startTime: 90, duration: 5,
+      transferSize: 1_000, encodedBodySize: 900, responseEnd: 95 },
+    { name: 'self', entryType: 'longtask', startTime: 150, duration: 61.26 }
+  ]);
+  // 观察者回调是异步投递的；停止时要把还没投递的记录取出来。
+  observers[0]!.pending.push({ name: 'https://x/assets/effect-atlas/effects-1.webp', entryType: 'resource',
+    startTime: 200, duration: 55.55, transferSize: 7_100, encodedBodySize: 7_000, responseEnd: 255.55 });
+  const summary = stop();
+  assert.deepEqual(summary, {
+    images: { count: 3, png: 1, webp: 2, other: 0, transferBytes: 27_400, bodyBytes: 32_000, networkMs: 155.6 },
+    resources: { count: 4, transferBytes: 28_400, bodyBytes: 32_900 },
+    longTasks: { count: 1, totalMs: 61.3 }
+  });
+  assert.equal(observers[0]!.disconnected, true);
+  observers[0]!.deliver([{ name: 'late.webp', entryType: 'resource', startTime: 300, duration: 1, transferSize: 9 }]);
+  assert.equal(stop(), summary, '重复停止返回同一份摘要，停止后的记录不计入');
+  assert.equal(summary.images.count, 3);
+});
+
+test('读档资源计量在浏览器不支持长任务或观察者时仍给出摘要', () => {
+  const { Observer, observers } = fakeObserver();
+  const noLongTask = startLoadResourceMeter(Observer, ['resource'])();
+  assert.deepEqual(observers[0]!.types, ['resource']);
+  assert.equal(noLongTask.longTasks, null);
+  assert.deepEqual(noLongTask.images, { count: 0, png: 0, webp: 0, other: 0, transferBytes: 0, bodyBytes: 0, networkMs: 0 });
+  const unsupported = startLoadResourceMeter(undefined, [])();
+  assert.deepEqual(unsupported.resources, { count: 0, transferBytes: 0, bodyBytes: 0 });
+  class Throwing { constructor() { throw new Error('not allowed'); } observe(): void {} disconnect(): void {} }
+  assert.equal(startLoadResourceMeter(Throwing as never, ['resource'])().images.count, 0);
 });
