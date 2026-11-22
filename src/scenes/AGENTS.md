@@ -79,6 +79,7 @@ Phaser 场景层：驱动生命周期、转发输入，把 domain、rendering、
 - **战斗候选和名册按逻辑帧复用。** `combatants()` 在同一逻辑帧和状态版本内共享快照，状态变化时重取，帧结束清空；名册刷新放在逻辑帧，最多晚约 60ms 生成。敌人名册按 key 建 Map 索引，属性快照分稳定属性和当前血蓝两层缓存；AI 候选按控制器分别使用附近索引，map-wide、协同技能和 partyIds 收集保留全量。
 - 选敌、候选、普通攻击、技能及伤害结算通过 `WorldEnemyRoster.isPresent` 检查敌人是否有效在场；候选缓存同时跟随名册的 `presenceRevision`。任务与剧情在同一逻辑帧改变资格后，迟到命中立即按新状态处理；伤害免疫和死亡单继续由战斗规则判定。
 - `WorldCombat.update` 在可推进战斗的逻辑帧把主镜头 `worldView` 的地图坐标范围传给名册，供视野外提前刷新使用；屏幕尺寸与画面采样精度由镜头换算，刷新规则留在领域层。暂停时既不推进游戏时间，也不触发提前刷新。
+- **一个渲染帧里的战斗逻辑帧共用一次会话通知。** `WorldCombat.update` 把整个 `advanceCombatFrames` 包进一次 `Session.batchNotifications`，命中、回复和扣蓝在帧末只通知一次；逻辑帧循环本身和战斗状态仍按帧推进。
 - **快捷栏冷却和快捷页在同一逻辑帧只绘制一次。** WorldScene 的统一入口取一次冷却快照和快捷页数据，再更新触摸栏与键盘 HUD；换人、换页、背包变化等事件仍立即刷新。
 - **进图兜底检查点抓取成功即清除待抓。** 只有捕获失败才保留 `checkpointPending` 重试；剧情导演在剧情结束后仍抓一次检查点。
 - **剧情接管的输入、显隐和暂停分别由 `canControl`、`director.busy`、`stageOccluded`、`partyActionsSuspended` 承担。**

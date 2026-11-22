@@ -25,7 +25,7 @@
 
 ## 旧战斗测试的既有基线失败
 
-**状态**：17 个用例失败，是本批修复（`33fccfbe`）之前就存在的测试替身缺口，不是当前运行时代码的行为错误。
+**状态**：8 个用例失败，都是测试替身缺口，不是当前运行时代码的行为错误。
 
 **复现**：
 
@@ -33,16 +33,13 @@
 node --test $(grep -l "world-combat.ts" tests/*.test.ts)
 ```
 
-当前结果：797 项中 780 通过、17 失败。失败分布在：
+当前结果：799 项中 791 通过、8 失败。失败分布在：
 
-- `tests/combat-clock-runtime.test.ts`
-- `tests/combat-resources-runtime.test.ts`
 - `tests/firestorm.test.ts`
 - `tests/sniping.test.ts`
 - `tests/state-host.test.ts`
 - `tests/target-status.test.ts`
-- `tests/world-attack-proc.test.ts`
 
-**原因**：这些测试的假场景没有实现 `WorldCombat` 构造函数后来新增的实例字段或方法，例如 `equipmentEffectsCache`、`roster.isPresent`、`releaseEnemyState`。对应引入提交是 `65368bc6`、`456a5c67`、`394d2d3e`，都在本批修复之前；这些测试文件在本批中没有改动。
+**原因**：这些测试的假场景没有实现 `WorldCombat` 构造函数后来新增的实例字段或方法，例如 `equipmentEffectsCache`、`roster.isPresent`、`releaseEnemyState`。对应引入提交是 `65368bc6`、`456a5c67`、`394d2d3e`。
 
 **处理方向**：按共享接口变化同步补齐假场景的字段和方法，不改断言。修好后删除本节。
