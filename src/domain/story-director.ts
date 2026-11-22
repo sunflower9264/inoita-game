@@ -71,6 +71,8 @@ export class StoryDirector {
   /** 当前已落地、还没被 `commit` 确认的命令回执；分支求值失败时用它回滚。 */
   private applied?: { runId: string; receipt: StoryCommitReceipt };
   private restorationVersion: number;
+  /** 会话恢复交付人可见性的版本；变化后需要重新投影世界人物。 */
+  private observedVisitorReleaseRevision = 0;
   private disposed = false;
   private unsubscribe: () => void;
   private projectionPending = false;
@@ -114,6 +116,7 @@ export class StoryDirector {
     onLock: (locked: boolean) => void, presentation?: StoryPresentationPort, world?: StoryWorldPort) {
     this.campaign = campaign; this.session = session; this.ui = ui; this.onLock = onLock; this.presentation = presentation; this.world = world;
     this.restorationVersion = session.restorationVersion;
+    this.observedVisitorReleaseRevision = session.visitorReleaseRevision;
     this.runtime = new StoryRuntime(campaign, {
       currentMap:()=>this.session.storyWorld.currentLocation?.map,
       executionContext: () => ({ mapVisit: this.session.storyWorld.visit, skipping: this.skipping }),
@@ -185,9 +188,14 @@ export class StoryDirector {
           this.runtime.restore(session.runtimeState); this.recovery = undefined; this.completedEventPending = undefined; this.projectionPending = true;
           this.projectionStage = undefined; this.travelPending = undefined; this.travelApplied = false;
         }
-        this.observeChanges(false); return;
+        this.observeChanges(false); this.observedVisitorReleaseRevision = session.visitorReleaseRevision; return;
       }
       this.observeChanges(true);
+      // 任务就绪会恢复被剧情清场删掉的交付人；让世界按最新状态重建一次人物。
+      if (!this.busy && session.visitorReleaseRevision !== this.observedVisitorReleaseRevision) {
+        this.observedVisitorReleaseRevision = session.visitorReleaseRevision;
+        if (!this.projectionPending) this.queueProjection();
+      }
     });
   }
   private observeChanges(dispatch: boolean): void {
@@ -517,6 +525,13 @@ export class StoryDirector {
     if(applied){this.applied=undefined;applied.receipt.finalize();}
     this.session.commitPerformanceLog();
   }
+  /** 把一次世界投影排到当前清理链后面；任务释放交付人后也要重建场景人物。 */
+  private queueProjection(): void {
+    this.projectionPending = true;
+    if (this.manual.signal.aborted) this.manual = new AbortController();
+    this.cleanup = this.cleanup.catch(() => {}).then(() => this.project(this.manual.signal));
+    void this.cleanup.catch(error => { if (this.onError) this.onError(error, () => this.retry()); else console.error(error); });
+  }
   private async project(signal: AbortSignal): Promise<void> {
     if (!this.projectionPending && !this.travelPending) return;
     signal.throwIfAborted();
@@ -549,10 +564,7 @@ export class StoryDirector {
     // 只认「跨过 30%」会让这一击直接打死它，任务目标从此没有可交互对象。
     const capture=after<=0||(before>threshold&&after<=threshold);
     if(source&&capture&&this.session.weakenQuestTarget(enemy,source)){
-      this.projectionPending=true;
-      if(this.manual.signal.aborted)this.manual=new AbortController();
-      this.cleanup=this.cleanup.catch(()=>{}).then(()=>this.project(this.manual.signal));
-      void this.cleanup.catch(error=>{if(this.onError)this.onError(error,()=>this.retry());else console.error(error);});
+      this.queueProjection();
       return true;
     }
     const key = 'health-below-30:' + enemy;

@@ -39,6 +39,25 @@ test('director preserves a settled quest and resumes the popup after its present
   assert.equal(h.session.flags.has('demo-event'),true);assert.deepEqual(h.locks,[true,false,true,false]);
 });
 
+test('任务就绪恢复交付人后请求一次世界投影',async()=>{
+  let projects=0;
+  const h=harness([node('noop')],undefined,{
+    capture:()=>undefined,restore:async()=>{},checkpoint:()=>{},project:async()=>{projects++;}
+  });
+  try{
+    const {session}=h,map='snow-fey-village-b6acd59c',characterId='npc-574';
+    assert.ok(session.accept('quest-351'));
+    session.applyStoryCommands([{type:'world',command:{kind:'remove-character',map,characterId,all:false}}]);
+    for(const enemy of ['enemy-frost-werewolf-1','enemy-iceshell-turtle-1'])session.recordQuestFact('defeat',enemy);
+    assert.equal(session.storyWorld.actorVisible(map,characterId),false);
+    session.recordQuestFact('defeat','enemy-purification-cave-watcher-1');
+    assert.equal(session.status('quest-351'),'ready');
+    assert.equal(session.storyWorld.actorVisible(map,characterId),true);
+    for(let i=0;i<5;i++)await tick();
+    assert.equal(projects,1,'恢复交付人后需要重建场景人物');
+  }finally{h.director.dispose();}
+});
+
 test('a failed world projection retries only the projection after travel was applied',async()=>{
   const travel={map:'shadow-camp',x:1,y:2,facing:'south' as const};
   const play=node('play',[{type:'travel',destination:travel}],{type:'end'});

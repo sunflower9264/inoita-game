@@ -350,6 +350,8 @@ export class Session {
     if(this.enemyStates.delete(id))this.enemyRevisionValue++;
   }
   private trackedQuest?: string;
+  /** 任务就绪时释放交付人造成的可见性变化；场景据此请求一次世界投影。 */
+  private visitorReleaseRevisionValue = 0;
   /** 任务组的主线／支线归属；NPC 任务槽按原版先主线后支线的顺序取。 */
   private readonly questGroupKinds: ReadonlyMap<string, 'main' | 'side'>;
   private questSlotProjection?: { version: number; values: Map<string, CampaignQuest | undefined> };
@@ -1052,16 +1054,19 @@ export class Session {
     const frame=this.atomicFrames[0];
     if(frame)this.touchAtomic(frame,['storyWorld']);
     const placements=this.campaign.placements;
+    let released=false;
     for(const id of this.questBook.runningQuestIds){
       if(this.questBook.status(id)!=='ready')continue;
       const quest=this.definition(id);if(!quest)continue;
       for(const [actor,characterId] of [[quest.giver,quest.giverCharacterId],[quest.delivery,quest.deliveryCharacterId]] as const){
         if(!characterId)continue;
         for(const placement of placements)if(placement.characterId===characterId)
-          this.storyWorld.clearVisitAbsence(placement.map,actor??characterId,characterId);
+          released=this.storyWorld.clearVisitAbsence(placement.map,actor??characterId,characterId)||released;
       }
     }
+    if(released)this.visitorReleaseRevisionValue++;
   }
+  get visitorReleaseRevision():number{return this.visitorReleaseRevisionValue;}
 
   rewardReceiptFor(id:string):QuestRewardReceipt|undefined {
     const receipt=this.receipts.get(id);
