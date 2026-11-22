@@ -40,9 +40,9 @@ test('collectAssetKeep keeps every runtime reference it can resolve', async () =
     'assets/ui/app-icon-192.png',
     'assets/ui/app-icon-512.png',
     'assets/ui/loading-background.webp',
-    'assets/ui/menu-ui-0.png',
+    'assets/ui/menu-ui-0.webp',
     'assets/ui/menu-ui-0.json',
-    'assets/ui/menu-icons.png',
+    'assets/ui/menu-icons.webp',
     'assets/ui/menu-icons.json',
     'assets/ui/story-classes/background.png',
     'assets/ui/items/money-ground.png',
@@ -54,8 +54,8 @@ test('collectAssetKeep keeps every runtime reference it can resolve', async () =
     'assets/ui/minimap/ready.png',
     'assets/wardrobe/parts-0.png',
     'assets/wardrobe/parts-1.png',
-    'assets/effect-atlas/effects-0.png',
-    'assets/props/atlas/props-0.png',
+    'assets/effect-atlas/effects-0.webp',
+    'assets/props/atlas/props-0.webp',
   ];
   for (const file of required) assert.ok(report.keep.has(file), `缺少关键素材：${file}`);
 

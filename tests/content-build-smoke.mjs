@@ -77,8 +77,15 @@ try {
   assert.ok(avoided.length > 0, '对白仍应避开陨石独占的页');
   for (const asset of avoided) assert.ok(!dialogue.has(asset.key), '黑暗空间对白提前持有陨石动作');
   let avoidedBytes = 0;
-  for (const file of new Set(avoided.map(asset => asset.file))) {
-    const header = await headerFor(file); avoidedBytes += header.readUInt32BE(16) * header.readUInt32BE(20) * 4;
+  // 图集页（WebP）按图集 JSON 的页尺寸算解码后的纹理量；单独的 PNG 读文件头。
+  const avoidedFiles = new Map(avoided.map(asset => [asset.file, asset]));
+  for (const asset of avoidedFiles.values()) {
+    if (asset.kind === 'atlas') {
+      const { meta } = JSON.parse(await fs.readFile(path.join(root, 'public', asset.atlas), 'utf8'));
+      avoidedBytes += meta.size.w * meta.size.h * 4;
+    } else {
+      const header = await headerFor(asset.file); avoidedBytes += header.readUInt32BE(16) * header.readUInt32BE(20) * 4;
+    }
   }
   console.log(`Six classes: files and atlas frames verified; dark-space dialogue avoids ${(avoidedBytes / 1048576).toFixed(2)} MiB meteor textures`);
 

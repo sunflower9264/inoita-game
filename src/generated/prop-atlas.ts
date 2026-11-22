@@ -2,7 +2,7 @@
 export const PROP_ATLAS_PAGES = [
   {
     "key": "props-atlas:0",
-    "file": "assets/props/atlas/props-0.png",
+    "file": "assets/props/atlas/props-0.webp",
     "data": "assets/props/atlas/props-0.json",
     "frame": "assets/props/scenery-1d0e9b0d.png",
     "width": 2048,
@@ -3063,5 +3063,5 @@ export const PROP_ATLAS_BY_KEY: Readonly<Record<string, { key: string; frame: st
     "frame": "assets/props/scenery-24a4db00.png"
   }
 };
-export const PROP_ATLAS_SOURCE_DIGEST = "55d6741316466e3778d3274bbbd60ab8e476986f48357ab218c5eadf7c651979";
-export const PROP_ATLAS_LAYOUT_DIGEST = "209efec4b126e424";
+export const PROP_ATLAS_SOURCE_DIGEST = "d9fb27821e9d8964473d190f8c3cec64e770c077484bb96e86f3fe8bf9f217d2";
+export const PROP_ATLAS_LAYOUT_DIGEST = "76d93199f79f4b09";

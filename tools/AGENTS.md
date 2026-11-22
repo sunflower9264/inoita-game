@@ -7,7 +7,9 @@
 - 构建/校验：`build.mjs` 打包入口，`content-build.ts` 把内容 JSON 编译成运行时数据，`content-manifest.ts` 生成生产内容哨兵清单，`validate-content.mjs` 校验内容，`validate-spritesheet.ts` 校验精灵表，`build-version.ts` 计算资源与内容版本，`deploy.ts` 构建后核对 HTTPS 入口版本，`patch-phaser.mjs` 把 Phaser PR #7420 的动态缓冲补丁应用到 4.2.1 运行时包。
 - 服务/诊断：`serve-built.ts` 提供打包后的静态服务，`diagnostic-collector.mjs` 是诊断上报中间件（按错误/会话拆成两个 JSONL 流，分别轮转；同一会话同一地图的重复检查点诊断 60 秒内只留一条；按 `id` 去重），`diagnostic-collector.d.mts` 是它的类型声明，`diagnostics-report.mjs` 按会话汇总和查看时间线。
 - 云存档：`cloud-save-store.ts` 负责账号、会话、续期、改密和存档落盘（scrypt、单会话、锁定、配额、原子写），`cloud-save-service.ts` 把 `/__cloud` HTTP 路由、CORS、限流和请求体上限接到静态服务上。
-- 图集/资源：`build-icon-atlas.ts`、`build-prop-atlas.ts`、`build-effect-atlas.ts`、`build-ui-atlas.ts`、`build-character-atlas.ts` 生成图集，`atlas-pack.ts` 提供按加载块装箱的共用实现，`asset-source.ts` 解析 `asset-source/` 源图，`build-slot-frames.ts` 生成装备槽帧，`character-atlas-aliases.ts` 是生成的图集别名表（只给工具判断覆盖，不进入运行时包），`asset-report.ts` 输出源素材重复与生产构建后的运行时素材口径，`asset-keep.ts` 计算运行时保留集，`prune-assets.ts` 把未引用素材移进归档目录。
+- 图集/资源：`build-icon-atlas.ts`、`build-prop-atlas.ts`、`build-effect-atlas.ts`、`build-ui-atlas.ts`、`build-character-atlas.ts` 生成图集，`atlas-pack.ts` 提供按加载块装箱的共用实现，`atlas-image.ts` 把图集页编码成无损 WebP（sharp），`asset-source.ts` 解析 `asset-source/` 源图，`build-slot-frames.ts` 生成装备槽帧，`character-atlas-aliases.ts` 是生成的图集别名表（只给工具判断覆盖，不进入运行时包），`asset-report.ts` 输出源素材重复与生产构建后的运行时素材口径，`asset-keep.ts` 计算运行时保留集，`prune-assets.ts` 把未引用素材移进归档目录。
+- **图集页是无损 WebP。** 五个图集脚本在内存里拼原始 RGBA，写盘时经 `atlas-image.ts` 用 sharp 编码成无损 WebP（保留透明像素 RGB，强度 6），页文件是 `*.webp`，页 JSON 的 `meta.image` 同步；UI 页纹理键沿用 `interface:<页文件>`，随扩展名变化。sharp 是开发依赖，只在 `tools/` 使用，不进运行时包；它自带固定版本 libwebp，不依赖系统 cwebp，同版本重复生成字节不变。改编码参数后跑 `npm run atlas:all`，并用 `tests/prop-atlas.test.ts` 的逐像素对照确认仍然无损。
+- 角色/特效图集用 `AtlasImageQueue` 限制同时编码的页数（CPU 核数），避免整套页的原始像素同时驻留内存。
 - 角色图集按 1024 页装箱，并在生成时打印「最差 10 个 actor」的页占用；新增大型 actor 或大技能帧后先看这份报告，避免单个小角色被装进大页后一次拉起几十 MB 纹理。
 - 测试/审计/APK：`test.ts` 是测试入口，`audit-story-actors.ts` 审计剧情角色摆放，`build-apk.mjs` 与 `verify-apk.mjs` 打包并校验 APK。
 - 素材查看：`warrior-viewer/` 是独立 HTML 开发页面，检查狂战士全部可用动作、部件换装与逐帧切片；入口与验证见 `warrior-viewer/AGENTS.md`。

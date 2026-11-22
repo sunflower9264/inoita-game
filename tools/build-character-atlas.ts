@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { PNG } from 'pngjs';
 import { packAtlasBlocks, type AtlasPackBlock, type AtlasPackingItem } from './atlas-pack.ts';
 import { sourceAssetPath } from './asset-source.ts';
+import { ATLAS_IMAGE_EXTENSION, AtlasImageQueue } from './atlas-image.ts';
 import { walkClips } from './content-build.ts';
 
 /**
@@ -14,8 +15,7 @@ import { walkClips } from './content-build.ts';
  * 每个 actor 是一个装箱块，块内项目是「单个帧」；被多个 actor 共用的文件放进
  * 单独的 shared 块，只装一次。一个长条图的帧可能跨页，所以映射按帧记录页号。
  *
- * `build.mjs` 同步调用 `writeCharacterAtlas()`，而 `planClipDedupe()` 是异步的。
- * 这里同步复刻 `content-build.ts` 的合并规则（同样按内容哈希、帧尺寸、帧数和
+ * 收集源图时不走异步的 `planClipDedupe()`，这里同步复刻 `content-build.ts` 的合并规则（同样按内容哈希、帧尺寸、帧数和
  * 素材目录分组，规范路径取字典序最小的文件和键），保证图集键与运行时内容一致。
  * 生成脚本会把每个出现过的路径都写进映射，即使未来出现重新编码的同内容文件，
  * 运行时也不会因为规范路径不同而漏掉映射。
@@ -35,7 +35,6 @@ const PNG_MIN_HEADER_BYTES = 24;
 const PNG_WIDTH_OFFSET = 16;
 const PNG_HEIGHT_OFFSET = 20;
 /** pngjs 的 colorType 6 = RGBA，图集必须保留透明通道。 */
-const PNG_COLOR_TYPE_RGBA = 6;
 /** 帧名前缀取内容哈希前 10 位，帧号补零到 3 位；运行时按同一格式找帧。 */
 const FRAME_PREFIX_HEX_LENGTH = 10;
 const FRAME_INDEX_DIGITS = 3;
@@ -341,14 +340,16 @@ function packSource(source: CharacterAtlasSource): Array<PackedFrameItem[]> {
 }
 
 interface WrittenPage extends CharacterAtlasPage {
-  png: Buffer;
+  image: Buffer;
   json: string;
 }
 
-function writePages(source: CharacterAtlasSource, pages: PackedFrameItem[][]): WrittenPage[] {
+async function writePages(source: CharacterAtlasSource, pages: PackedFrameItem[][]): Promise<WrittenPage[]> {
   const groupById = new Map(source.groups.map(group => [group.id, group]));
-  const written: WrittenPage[] = [];
+  const written: (Omit<WrittenPage, 'image'> & { image: Promise<Buffer> })[] = [];
+  const queue = new AtlasImageQueue();
   for (const [pageIndex, items] of pages.entries()) {
+    await queue.ready();
     const width = Math.max(1, ...items.map(item => item.x + item.width + PADDING));
     const height = Math.max(1, ...items.map(item => item.y + item.height + PADDING));
     if (width > MAX_SIZE || height > MAX_SIZE)
@@ -386,17 +387,17 @@ function writePages(source: CharacterAtlasSource, pages: PackedFrameItem[][]): W
       }
     }
     const key = `${PAGE_KEY_PREFIX}${pageIndex}`;
-    const file = `${ATLAS_DIR}/characters-${pageIndex}.png`;
+    const file = `${ATLAS_DIR}/characters-${pageIndex}.${ATLAS_IMAGE_EXTENSION}`;
     const data = `${ATLAS_DIR}/characters-${pageIndex}.json`;
     const json = JSON.stringify({
       frames,
-      meta: { image: `characters-${pageIndex}.png`, format: 'RGBA8888',
+      meta: { image: `characters-${pageIndex}.${ATLAS_IMAGE_EXTENSION}`, format: 'RGBA8888',
         size: { w: width, h: height }, scale: '1' }
     });
     written.push({ key, file, data, frame: items[0]!.id, width, height,
-      png: PNG.sync.write(png, { colorType: PNG_COLOR_TYPE_RGBA }), json });
+      image: queue.encode(png.data, width, height), json });
   }
-  return written;
+  return Promise.all(written.map(async page => ({ ...page, image: await page.image })));
 }
 
 function digestSource(source: CharacterAtlasSource): string {
@@ -427,16 +428,16 @@ export function characterAtlasSourceDigest(source: CharacterAtlasSource = collec
   return digestSource(source);
 }
 
-export function writeCharacterAtlas(): CharacterAtlasWriteResult {
+export async function writeCharacterAtlas(): Promise<CharacterAtlasWriteResult> {
   const source = collectCharacterAtlasSource();
   const pages = packSource(source);
-  const written = writePages(source, pages);
+  const written = await writePages(source, pages);
   fs.mkdirSync(path.join(PUBLIC, ATLAS_DIR), { recursive: true });
   const atlasDir = path.join(PUBLIC, ATLAS_DIR);
   for (const file of fs.readdirSync(atlasDir))
-    if (/^characters-\d+\.(png|json)$/.test(file)) fs.unlinkSync(path.join(atlasDir, file));
+    if (/^characters-\d+\.(png|webp|json)$/.test(file)) fs.unlinkSync(path.join(atlasDir, file));
   for (const page of written) {
-    fs.writeFileSync(path.join(PUBLIC, page.file), page.png);
+    fs.writeFileSync(path.join(PUBLIC, page.file), page.image);
     fs.writeFileSync(path.join(PUBLIC, page.data), page.json);
   }
   // 自检：每个运行时引用到的文件都有映射，且每个 clip 的帧数都被映射覆盖。
@@ -503,12 +504,12 @@ export const CHARACTER_ATLAS_ALIASES: Readonly<Record<string, string>> = ${JSON.
     frames: source.groups.reduce((sum, group) => sum + group.frames, 0),
     source: source.groups.reduce((sum, group) => sum + group.width * group.height, 0),
     packed: written.reduce((sum, page) => sum + page.width * page.height, 0),
-    bytes: written.reduce((sum, page) => sum + page.png.byteLength, 0)
+    bytes: written.reduce((sum, page) => sum + page.image.byteLength, 0)
   };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const result = writeCharacterAtlas();
+  const result = await writeCharacterAtlas();
   console.log(`角色图集：${result.files} 个文件 / ${result.frames} 帧 / ${result.pages} 页，` +
     `${(result.source / 1048576).toFixed(1)} MB 源图 -> ${(result.packed / 1048576).toFixed(1)} MB 页，` +
     `${(result.bytes / 1048576).toFixed(2)} MB 磁盘`);

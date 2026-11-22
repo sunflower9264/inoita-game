@@ -3,7 +3,7 @@ export interface CharacterAtlasPage { key: string; file: string; data: string; f
 export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   {
     "key": "characters-atlas:0",
-    "file": "assets/character-atlas/characters-0.png",
+    "file": "assets/character-atlas/characters-0.webp",
     "data": "assets/character-atlas/characters-0.json",
     "frame": "6e4c6d6683-000",
     "width": 906,
@@ -11,7 +11,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:1",
-    "file": "assets/character-atlas/characters-1.png",
+    "file": "assets/character-atlas/characters-1.webp",
     "data": "assets/character-atlas/characters-1.json",
     "frame": "6e4c6d6683-009",
     "width": 906,
@@ -19,7 +19,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:2",
-    "file": "assets/character-atlas/characters-2.png",
+    "file": "assets/character-atlas/characters-2.webp",
     "data": "assets/character-atlas/characters-2.json",
     "frame": "e43f39d0df-002",
     "width": 906,
@@ -27,7 +27,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:3",
-    "file": "assets/character-atlas/characters-3.png",
+    "file": "assets/character-atlas/characters-3.webp",
     "data": "assets/character-atlas/characters-3.json",
     "frame": "e43f39d0df-011",
     "width": 906,
@@ -35,7 +35,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:4",
-    "file": "assets/character-atlas/characters-4.png",
+    "file": "assets/character-atlas/characters-4.webp",
     "data": "assets/character-atlas/characters-4.json",
     "frame": "e43f39d0df-020",
     "width": 906,
@@ -43,7 +43,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:5",
-    "file": "assets/character-atlas/characters-5.png",
+    "file": "assets/character-atlas/characters-5.webp",
     "data": "assets/character-atlas/characters-5.json",
     "frame": "0e957aabff-008",
     "width": 906,
@@ -51,7 +51,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:6",
-    "file": "assets/character-atlas/characters-6.png",
+    "file": "assets/character-atlas/characters-6.webp",
     "data": "assets/character-atlas/characters-6.json",
     "frame": "0e957aabff-017",
     "width": 906,
@@ -59,7 +59,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:7",
-    "file": "assets/character-atlas/characters-7.png",
+    "file": "assets/character-atlas/characters-7.webp",
     "data": "assets/character-atlas/characters-7.json",
     "frame": "0e957aabff-026",
     "width": 906,
@@ -67,7 +67,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:8",
-    "file": "assets/character-atlas/characters-8.png",
+    "file": "assets/character-atlas/characters-8.webp",
     "data": "assets/character-atlas/characters-8.json",
     "frame": "e6cc49e37e-000",
     "width": 906,
@@ -75,7 +75,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:9",
-    "file": "assets/character-atlas/characters-9.png",
+    "file": "assets/character-atlas/characters-9.webp",
     "data": "assets/character-atlas/characters-9.json",
     "frame": "e6cc49e37e-009",
     "width": 906,
@@ -83,7 +83,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:10",
-    "file": "assets/character-atlas/characters-10.png",
+    "file": "assets/character-atlas/characters-10.webp",
     "data": "assets/character-atlas/characters-10.json",
     "frame": "e6cc49e37e-018",
     "width": 906,
@@ -91,7 +91,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:11",
-    "file": "assets/character-atlas/characters-11.png",
+    "file": "assets/character-atlas/characters-11.webp",
     "data": "assets/character-atlas/characters-11.json",
     "frame": "e6cc49e37e-027",
     "width": 906,
@@ -99,7 +99,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:12",
-    "file": "assets/character-atlas/characters-12.png",
+    "file": "assets/character-atlas/characters-12.webp",
     "data": "assets/character-atlas/characters-12.json",
     "frame": "64443f7866-006",
     "width": 903,
@@ -107,7 +107,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:13",
-    "file": "assets/character-atlas/characters-13.png",
+    "file": "assets/character-atlas/characters-13.webp",
     "data": "assets/character-atlas/characters-13.json",
     "frame": "64443f7866-015",
     "width": 903,
@@ -115,7 +115,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:14",
-    "file": "assets/character-atlas/characters-14.png",
+    "file": "assets/character-atlas/characters-14.webp",
     "data": "assets/character-atlas/characters-14.json",
     "frame": "64443f7866-024",
     "width": 903,
@@ -123,7 +123,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:15",
-    "file": "assets/character-atlas/characters-15.png",
+    "file": "assets/character-atlas/characters-15.webp",
     "data": "assets/character-atlas/characters-15.json",
     "frame": "64443f7866-033",
     "width": 903,
@@ -131,7 +131,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:16",
-    "file": "assets/character-atlas/characters-16.png",
+    "file": "assets/character-atlas/characters-16.webp",
     "data": "assets/character-atlas/characters-16.json",
     "frame": "64443f7866-042",
     "width": 903,
@@ -139,7 +139,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:17",
-    "file": "assets/character-atlas/characters-17.png",
+    "file": "assets/character-atlas/characters-17.webp",
     "data": "assets/character-atlas/characters-17.json",
     "frame": "8417f6aad8-005",
     "width": 903,
@@ -147,7 +147,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:18",
-    "file": "assets/character-atlas/characters-18.png",
+    "file": "assets/character-atlas/characters-18.webp",
     "data": "assets/character-atlas/characters-18.json",
     "frame": "8417f6aad8-014",
     "width": 903,
@@ -155,7 +155,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:19",
-    "file": "assets/character-atlas/characters-19.png",
+    "file": "assets/character-atlas/characters-19.webp",
     "data": "assets/character-atlas/characters-19.json",
     "frame": "8417f6aad8-023",
     "width": 903,
@@ -163,7 +163,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:20",
-    "file": "assets/character-atlas/characters-20.png",
+    "file": "assets/character-atlas/characters-20.webp",
     "data": "assets/character-atlas/characters-20.json",
     "frame": "8417f6aad8-032",
     "width": 903,
@@ -171,7 +171,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:21",
-    "file": "assets/character-atlas/characters-21.png",
+    "file": "assets/character-atlas/characters-21.webp",
     "data": "assets/character-atlas/characters-21.json",
     "frame": "8417f6aad8-041",
     "width": 903,
@@ -179,7 +179,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:22",
-    "file": "assets/character-atlas/characters-22.png",
+    "file": "assets/character-atlas/characters-22.webp",
     "data": "assets/character-atlas/characters-22.json",
     "frame": "a6c1955f03-004",
     "width": 903,
@@ -187,7 +187,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:23",
-    "file": "assets/character-atlas/characters-23.png",
+    "file": "assets/character-atlas/characters-23.webp",
     "data": "assets/character-atlas/characters-23.json",
     "frame": "a6c1955f03-013",
     "width": 903,
@@ -195,7 +195,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:24",
-    "file": "assets/character-atlas/characters-24.png",
+    "file": "assets/character-atlas/characters-24.webp",
     "data": "assets/character-atlas/characters-24.json",
     "frame": "cd414c7f64-000",
     "width": 758,
@@ -203,7 +203,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:25",
-    "file": "assets/character-atlas/characters-25.png",
+    "file": "assets/character-atlas/characters-25.webp",
     "data": "assets/character-atlas/characters-25.json",
     "frame": "cd414c7f64-008",
     "width": 758,
@@ -211,7 +211,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:26",
-    "file": "assets/character-atlas/characters-26.png",
+    "file": "assets/character-atlas/characters-26.webp",
     "data": "assets/character-atlas/characters-26.json",
     "frame": "cd414c7f64-016",
     "width": 758,
@@ -219,7 +219,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:27",
-    "file": "assets/character-atlas/characters-27.png",
+    "file": "assets/character-atlas/characters-27.webp",
     "data": "assets/character-atlas/characters-27.json",
     "frame": "cd414c7f64-024",
     "width": 758,
@@ -227,7 +227,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:28",
-    "file": "assets/character-atlas/characters-28.png",
+    "file": "assets/character-atlas/characters-28.webp",
     "data": "assets/character-atlas/characters-28.json",
     "frame": "cd414c7f64-032",
     "width": 758,
@@ -235,7 +235,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:29",
-    "file": "assets/character-atlas/characters-29.png",
+    "file": "assets/character-atlas/characters-29.webp",
     "data": "assets/character-atlas/characters-29.json",
     "frame": "cd414c7f64-040",
     "width": 758,
@@ -243,7 +243,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:30",
-    "file": "assets/character-atlas/characters-30.png",
+    "file": "assets/character-atlas/characters-30.webp",
     "data": "assets/character-atlas/characters-30.json",
     "frame": "cd414c7f64-048",
     "width": 758,
@@ -251,7 +251,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:31",
-    "file": "assets/character-atlas/characters-31.png",
+    "file": "assets/character-atlas/characters-31.webp",
     "data": "assets/character-atlas/characters-31.json",
     "frame": "15c71de5c3-003",
     "width": 758,
@@ -259,7 +259,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:32",
-    "file": "assets/character-atlas/characters-32.png",
+    "file": "assets/character-atlas/characters-32.webp",
     "data": "assets/character-atlas/characters-32.json",
     "frame": "15c71de5c3-011",
     "width": 758,
@@ -267,7 +267,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:33",
-    "file": "assets/character-atlas/characters-33.png",
+    "file": "assets/character-atlas/characters-33.webp",
     "data": "assets/character-atlas/characters-33.json",
     "frame": "51a6304023-007",
     "width": 758,
@@ -275,7 +275,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:34",
-    "file": "assets/character-atlas/characters-34.png",
+    "file": "assets/character-atlas/characters-34.webp",
     "data": "assets/character-atlas/characters-34.json",
     "frame": "51a6304023-015",
     "width": 758,
@@ -283,7 +283,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:35",
-    "file": "assets/character-atlas/characters-35.png",
+    "file": "assets/character-atlas/characters-35.webp",
     "data": "assets/character-atlas/characters-35.json",
     "frame": "64db06a97c-004",
     "width": 758,
@@ -291,7 +291,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:36",
-    "file": "assets/character-atlas/characters-36.png",
+    "file": "assets/character-atlas/characters-36.webp",
     "data": "assets/character-atlas/characters-36.json",
     "frame": "64db06a97c-012",
     "width": 758,
@@ -299,7 +299,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:37",
-    "file": "assets/character-atlas/characters-37.png",
+    "file": "assets/character-atlas/characters-37.webp",
     "data": "assets/character-atlas/characters-37.json",
     "frame": "a48e7fe179-006",
     "width": 758,
@@ -307,7 +307,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:38",
-    "file": "assets/character-atlas/characters-38.png",
+    "file": "assets/character-atlas/characters-38.webp",
     "data": "assets/character-atlas/characters-38.json",
     "frame": "a48e7fe179-014",
     "width": 758,
@@ -315,7 +315,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:39",
-    "file": "assets/character-atlas/characters-39.png",
+    "file": "assets/character-atlas/characters-39.webp",
     "data": "assets/character-atlas/characters-39.json",
     "frame": "7c12570df0-000",
     "width": 1022,
@@ -323,7 +323,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:40",
-    "file": "assets/character-atlas/characters-40.png",
+    "file": "assets/character-atlas/characters-40.webp",
     "data": "assets/character-atlas/characters-40.json",
     "frame": "77f35e0ec7-007",
     "width": 1022,
@@ -331,7 +331,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:41",
-    "file": "assets/character-atlas/characters-41.png",
+    "file": "assets/character-atlas/characters-41.webp",
     "data": "assets/character-atlas/characters-41.json",
     "frame": "a7f6691a8a-006",
     "width": 1013,
@@ -339,7 +339,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:42",
-    "file": "assets/character-atlas/characters-42.png",
+    "file": "assets/character-atlas/characters-42.webp",
     "data": "assets/character-atlas/characters-42.json",
     "frame": "ce5fc371ff-000",
     "width": 1008,
@@ -347,7 +347,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:43",
-    "file": "assets/character-atlas/characters-43.png",
+    "file": "assets/character-atlas/characters-43.webp",
     "data": "assets/character-atlas/characters-43.json",
     "frame": "2d9788d018-011",
     "width": 1020,
@@ -355,7 +355,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:44",
-    "file": "assets/character-atlas/characters-44.png",
+    "file": "assets/character-atlas/characters-44.webp",
     "data": "assets/character-atlas/characters-44.json",
     "frame": "17cb6097af-000",
     "width": 1008,
@@ -363,7 +363,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:45",
-    "file": "assets/character-atlas/characters-45.png",
+    "file": "assets/character-atlas/characters-45.webp",
     "data": "assets/character-atlas/characters-45.json",
     "frame": "1d4e1a6f98-021",
     "width": 1022,
@@ -371,7 +371,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:46",
-    "file": "assets/character-atlas/characters-46.png",
+    "file": "assets/character-atlas/characters-46.webp",
     "data": "assets/character-atlas/characters-46.json",
     "frame": "09606efd93-000",
     "width": 1022,
@@ -379,7 +379,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:47",
-    "file": "assets/character-atlas/characters-47.png",
+    "file": "assets/character-atlas/characters-47.webp",
     "data": "assets/character-atlas/characters-47.json",
     "frame": "ae0147e20e-021",
     "width": 1019,
@@ -387,7 +387,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:48",
-    "file": "assets/character-atlas/characters-48.png",
+    "file": "assets/character-atlas/characters-48.webp",
     "data": "assets/character-atlas/characters-48.json",
     "frame": "9dd6b4a104-000",
     "width": 1011,
@@ -395,7 +395,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:49",
-    "file": "assets/character-atlas/characters-49.png",
+    "file": "assets/character-atlas/characters-49.webp",
     "data": "assets/character-atlas/characters-49.json",
     "frame": "8c4904ed48-013",
     "width": 980,
@@ -403,7 +403,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:50",
-    "file": "assets/character-atlas/characters-50.png",
+    "file": "assets/character-atlas/characters-50.webp",
     "data": "assets/character-atlas/characters-50.json",
     "frame": "2711008d91-000",
     "width": 1022,
@@ -411,7 +411,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:51",
-    "file": "assets/character-atlas/characters-51.png",
+    "file": "assets/character-atlas/characters-51.webp",
     "data": "assets/character-atlas/characters-51.json",
     "frame": "5f3bb209d8-012",
     "width": 1012,
@@ -419,7 +419,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:52",
-    "file": "assets/character-atlas/characters-52.png",
+    "file": "assets/character-atlas/characters-52.webp",
     "data": "assets/character-atlas/characters-52.json",
     "frame": "02b65626c3-000",
     "width": 1022,
@@ -427,7 +427,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:53",
-    "file": "assets/character-atlas/characters-53.png",
+    "file": "assets/character-atlas/characters-53.webp",
     "data": "assets/character-atlas/characters-53.json",
     "frame": "a1b19f7c15-005",
     "width": 1020,
@@ -435,7 +435,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:54",
-    "file": "assets/character-atlas/characters-54.png",
+    "file": "assets/character-atlas/characters-54.webp",
     "data": "assets/character-atlas/characters-54.json",
     "frame": "872bc67bef-000",
     "width": 1021,
@@ -443,7 +443,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:55",
-    "file": "assets/character-atlas/characters-55.png",
+    "file": "assets/character-atlas/characters-55.webp",
     "data": "assets/character-atlas/characters-55.json",
     "frame": "c3aff58c8b-001",
     "width": 1017,
@@ -451,7 +451,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:56",
-    "file": "assets/character-atlas/characters-56.png",
+    "file": "assets/character-atlas/characters-56.webp",
     "data": "assets/character-atlas/characters-56.json",
     "frame": "89bf243051-000",
     "width": 1022,
@@ -459,7 +459,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:57",
-    "file": "assets/character-atlas/characters-57.png",
+    "file": "assets/character-atlas/characters-57.webp",
     "data": "assets/character-atlas/characters-57.json",
     "frame": "71d0da0700-013",
     "width": 717,
@@ -467,7 +467,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:58",
-    "file": "assets/character-atlas/characters-58.png",
+    "file": "assets/character-atlas/characters-58.webp",
     "data": "assets/character-atlas/characters-58.json",
     "frame": "478fc29b61-000",
     "width": 1022,
@@ -475,7 +475,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:59",
-    "file": "assets/character-atlas/characters-59.png",
+    "file": "assets/character-atlas/characters-59.webp",
     "data": "assets/character-atlas/characters-59.json",
     "frame": "563eca30e7-000",
     "width": 1022,
@@ -483,7 +483,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:60",
-    "file": "assets/character-atlas/characters-60.png",
+    "file": "assets/character-atlas/characters-60.webp",
     "data": "assets/character-atlas/characters-60.json",
     "frame": "1c05e8f818-000",
     "width": 1022,
@@ -491,7 +491,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:61",
-    "file": "assets/character-atlas/characters-61.png",
+    "file": "assets/character-atlas/characters-61.webp",
     "data": "assets/character-atlas/characters-61.json",
     "frame": "35613df4fe-000",
     "width": 1018,
@@ -499,7 +499,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:62",
-    "file": "assets/character-atlas/characters-62.png",
+    "file": "assets/character-atlas/characters-62.webp",
     "data": "assets/character-atlas/characters-62.json",
     "frame": "c9317ad5f8-000",
     "width": 1022,
@@ -507,7 +507,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:63",
-    "file": "assets/character-atlas/characters-63.png",
+    "file": "assets/character-atlas/characters-63.webp",
     "data": "assets/character-atlas/characters-63.json",
     "frame": "224c430974-000",
     "width": 1022,
@@ -515,7 +515,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:64",
-    "file": "assets/character-atlas/characters-64.png",
+    "file": "assets/character-atlas/characters-64.webp",
     "data": "assets/character-atlas/characters-64.json",
     "frame": "7ff1bfb3a0-000",
     "width": 1019,
@@ -523,7 +523,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:65",
-    "file": "assets/character-atlas/characters-65.png",
+    "file": "assets/character-atlas/characters-65.webp",
     "data": "assets/character-atlas/characters-65.json",
     "frame": "55e676fc90-000",
     "width": 990,
@@ -531,7 +531,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:66",
-    "file": "assets/character-atlas/characters-66.png",
+    "file": "assets/character-atlas/characters-66.webp",
     "data": "assets/character-atlas/characters-66.json",
     "frame": "4491b54a33-000",
     "width": 988,
@@ -539,7 +539,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:67",
-    "file": "assets/character-atlas/characters-67.png",
+    "file": "assets/character-atlas/characters-67.webp",
     "data": "assets/character-atlas/characters-67.json",
     "frame": "11329a0c4a-000",
     "width": 1018,
@@ -547,7 +547,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:68",
-    "file": "assets/character-atlas/characters-68.png",
+    "file": "assets/character-atlas/characters-68.webp",
     "data": "assets/character-atlas/characters-68.json",
     "frame": "d7209dd1a7-000",
     "width": 1018,
@@ -555,7 +555,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:69",
-    "file": "assets/character-atlas/characters-69.png",
+    "file": "assets/character-atlas/characters-69.webp",
     "data": "assets/character-atlas/characters-69.json",
     "frame": "283ae46b22-000",
     "width": 1021,
@@ -563,7 +563,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:70",
-    "file": "assets/character-atlas/characters-70.png",
+    "file": "assets/character-atlas/characters-70.webp",
     "data": "assets/character-atlas/characters-70.json",
     "frame": "b28ce7904b-000",
     "width": 1019,
@@ -571,7 +571,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:71",
-    "file": "assets/character-atlas/characters-71.png",
+    "file": "assets/character-atlas/characters-71.webp",
     "data": "assets/character-atlas/characters-71.json",
     "frame": "30c3b53058-000",
     "width": 1022,
@@ -579,7 +579,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:72",
-    "file": "assets/character-atlas/characters-72.png",
+    "file": "assets/character-atlas/characters-72.webp",
     "data": "assets/character-atlas/characters-72.json",
     "frame": "c7849a1870-000",
     "width": 1021,
@@ -587,7 +587,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:73",
-    "file": "assets/character-atlas/characters-73.png",
+    "file": "assets/character-atlas/characters-73.webp",
     "data": "assets/character-atlas/characters-73.json",
     "frame": "692689a4e3-000",
     "width": 1008,
@@ -595,7 +595,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:74",
-    "file": "assets/character-atlas/characters-74.png",
+    "file": "assets/character-atlas/characters-74.webp",
     "data": "assets/character-atlas/characters-74.json",
     "frame": "f130fc4f6b-000",
     "width": 1018,
@@ -603,7 +603,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:75",
-    "file": "assets/character-atlas/characters-75.png",
+    "file": "assets/character-atlas/characters-75.webp",
     "data": "assets/character-atlas/characters-75.json",
     "frame": "642e325188-000",
     "width": 1022,
@@ -611,7 +611,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:76",
-    "file": "assets/character-atlas/characters-76.png",
+    "file": "assets/character-atlas/characters-76.webp",
     "data": "assets/character-atlas/characters-76.json",
     "frame": "566f43b294-000",
     "width": 1010,
@@ -619,7 +619,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:77",
-    "file": "assets/character-atlas/characters-77.png",
+    "file": "assets/character-atlas/characters-77.webp",
     "data": "assets/character-atlas/characters-77.json",
     "frame": "29021b8bb7-000",
     "width": 1022,
@@ -627,7 +627,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:78",
-    "file": "assets/character-atlas/characters-78.png",
+    "file": "assets/character-atlas/characters-78.webp",
     "data": "assets/character-atlas/characters-78.json",
     "frame": "840ca4664a-000",
     "width": 1017,
@@ -635,7 +635,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:79",
-    "file": "assets/character-atlas/characters-79.png",
+    "file": "assets/character-atlas/characters-79.webp",
     "data": "assets/character-atlas/characters-79.json",
     "frame": "d2a21889d8-000",
     "width": 1020,
@@ -643,7 +643,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:80",
-    "file": "assets/character-atlas/characters-80.png",
+    "file": "assets/character-atlas/characters-80.webp",
     "data": "assets/character-atlas/characters-80.json",
     "frame": "ca34d216f6-000",
     "width": 1020,
@@ -651,7 +651,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:81",
-    "file": "assets/character-atlas/characters-81.png",
+    "file": "assets/character-atlas/characters-81.webp",
     "data": "assets/character-atlas/characters-81.json",
     "frame": "c78ea745f0-000",
     "width": 1019,
@@ -659,7 +659,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:82",
-    "file": "assets/character-atlas/characters-82.png",
+    "file": "assets/character-atlas/characters-82.webp",
     "data": "assets/character-atlas/characters-82.json",
     "frame": "4fde0ad1a1-000",
     "width": 1022,
@@ -667,7 +667,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:83",
-    "file": "assets/character-atlas/characters-83.png",
+    "file": "assets/character-atlas/characters-83.webp",
     "data": "assets/character-atlas/characters-83.json",
     "frame": "a403252ebb-000",
     "width": 1016,
@@ -675,7 +675,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:84",
-    "file": "assets/character-atlas/characters-84.png",
+    "file": "assets/character-atlas/characters-84.webp",
     "data": "assets/character-atlas/characters-84.json",
     "frame": "97e6865aa3-000",
     "width": 1014,
@@ -683,7 +683,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:85",
-    "file": "assets/character-atlas/characters-85.png",
+    "file": "assets/character-atlas/characters-85.webp",
     "data": "assets/character-atlas/characters-85.json",
     "frame": "a0f66c69a8-000",
     "width": 1018,
@@ -691,7 +691,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:86",
-    "file": "assets/character-atlas/characters-86.png",
+    "file": "assets/character-atlas/characters-86.webp",
     "data": "assets/character-atlas/characters-86.json",
     "frame": "1e6b2b188a-000",
     "width": 1022,
@@ -699,7 +699,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:87",
-    "file": "assets/character-atlas/characters-87.png",
+    "file": "assets/character-atlas/characters-87.webp",
     "data": "assets/character-atlas/characters-87.json",
     "frame": "f9b1b99d6d-000",
     "width": 1022,
@@ -707,7 +707,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:88",
-    "file": "assets/character-atlas/characters-88.png",
+    "file": "assets/character-atlas/characters-88.webp",
     "data": "assets/character-atlas/characters-88.json",
     "frame": "60396ef652-000",
     "width": 1022,
@@ -715,7 +715,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:89",
-    "file": "assets/character-atlas/characters-89.png",
+    "file": "assets/character-atlas/characters-89.webp",
     "data": "assets/character-atlas/characters-89.json",
     "frame": "2c9ffe1a17-000",
     "width": 1022,
@@ -723,7 +723,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:90",
-    "file": "assets/character-atlas/characters-90.png",
+    "file": "assets/character-atlas/characters-90.webp",
     "data": "assets/character-atlas/characters-90.json",
     "frame": "bd945c7f32-000",
     "width": 1022,
@@ -731,7 +731,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:91",
-    "file": "assets/character-atlas/characters-91.png",
+    "file": "assets/character-atlas/characters-91.webp",
     "data": "assets/character-atlas/characters-91.json",
     "frame": "83d28815b9-000",
     "width": 1022,
@@ -739,7 +739,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:92",
-    "file": "assets/character-atlas/characters-92.png",
+    "file": "assets/character-atlas/characters-92.webp",
     "data": "assets/character-atlas/characters-92.json",
     "frame": "b7bc752b60-000",
     "width": 1022,
@@ -747,7 +747,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:93",
-    "file": "assets/character-atlas/characters-93.png",
+    "file": "assets/character-atlas/characters-93.webp",
     "data": "assets/character-atlas/characters-93.json",
     "frame": "70a1a6e680-000",
     "width": 1022,
@@ -755,7 +755,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:94",
-    "file": "assets/character-atlas/characters-94.png",
+    "file": "assets/character-atlas/characters-94.webp",
     "data": "assets/character-atlas/characters-94.json",
     "frame": "3102f5af28-000",
     "width": 1022,
@@ -763,7 +763,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:95",
-    "file": "assets/character-atlas/characters-95.png",
+    "file": "assets/character-atlas/characters-95.webp",
     "data": "assets/character-atlas/characters-95.json",
     "frame": "1118275a85-000",
     "width": 1022,
@@ -771,7 +771,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:96",
-    "file": "assets/character-atlas/characters-96.png",
+    "file": "assets/character-atlas/characters-96.webp",
     "data": "assets/character-atlas/characters-96.json",
     "frame": "402cc10862-000",
     "width": 1022,
@@ -779,7 +779,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:97",
-    "file": "assets/character-atlas/characters-97.png",
+    "file": "assets/character-atlas/characters-97.webp",
     "data": "assets/character-atlas/characters-97.json",
     "frame": "e0685ddb52-000",
     "width": 1021,
@@ -787,7 +787,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:98",
-    "file": "assets/character-atlas/characters-98.png",
+    "file": "assets/character-atlas/characters-98.webp",
     "data": "assets/character-atlas/characters-98.json",
     "frame": "a048184fe1-000",
     "width": 1019,
@@ -795,7 +795,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:99",
-    "file": "assets/character-atlas/characters-99.png",
+    "file": "assets/character-atlas/characters-99.webp",
     "data": "assets/character-atlas/characters-99.json",
     "frame": "7ae48d991d-000",
     "width": 1022,
@@ -803,7 +803,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:100",
-    "file": "assets/character-atlas/characters-100.png",
+    "file": "assets/character-atlas/characters-100.webp",
     "data": "assets/character-atlas/characters-100.json",
     "frame": "3696753cdb-000",
     "width": 1017,
@@ -811,7 +811,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:101",
-    "file": "assets/character-atlas/characters-101.png",
+    "file": "assets/character-atlas/characters-101.webp",
     "data": "assets/character-atlas/characters-101.json",
     "frame": "5ff2d69c96-000",
     "width": 1021,
@@ -819,7 +819,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:102",
-    "file": "assets/character-atlas/characters-102.png",
+    "file": "assets/character-atlas/characters-102.webp",
     "data": "assets/character-atlas/characters-102.json",
     "frame": "c919712dc7-000",
     "width": 1021,
@@ -827,7 +827,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:103",
-    "file": "assets/character-atlas/characters-103.png",
+    "file": "assets/character-atlas/characters-103.webp",
     "data": "assets/character-atlas/characters-103.json",
     "frame": "5d503f2904-000",
     "width": 1018,
@@ -835,7 +835,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:104",
-    "file": "assets/character-atlas/characters-104.png",
+    "file": "assets/character-atlas/characters-104.webp",
     "data": "assets/character-atlas/characters-104.json",
     "frame": "0ca1303e0a-000",
     "width": 1018,
@@ -843,7 +843,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:105",
-    "file": "assets/character-atlas/characters-105.png",
+    "file": "assets/character-atlas/characters-105.webp",
     "data": "assets/character-atlas/characters-105.json",
     "frame": "32d5847dbd-000",
     "width": 1022,
@@ -851,7 +851,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:106",
-    "file": "assets/character-atlas/characters-106.png",
+    "file": "assets/character-atlas/characters-106.webp",
     "data": "assets/character-atlas/characters-106.json",
     "frame": "7d31020ac2-000",
     "width": 1022,
@@ -859,7 +859,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:107",
-    "file": "assets/character-atlas/characters-107.png",
+    "file": "assets/character-atlas/characters-107.webp",
     "data": "assets/character-atlas/characters-107.json",
     "frame": "40e54a1456-000",
     "width": 1022,
@@ -867,7 +867,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:108",
-    "file": "assets/character-atlas/characters-108.png",
+    "file": "assets/character-atlas/characters-108.webp",
     "data": "assets/character-atlas/characters-108.json",
     "frame": "f85a15f2c0-000",
     "width": 1022,
@@ -875,7 +875,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:109",
-    "file": "assets/character-atlas/characters-109.png",
+    "file": "assets/character-atlas/characters-109.webp",
     "data": "assets/character-atlas/characters-109.json",
     "frame": "0ec7f68c69-000",
     "width": 1021,
@@ -883,7 +883,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:110",
-    "file": "assets/character-atlas/characters-110.png",
+    "file": "assets/character-atlas/characters-110.webp",
     "data": "assets/character-atlas/characters-110.json",
     "frame": "40b7cea11e-000",
     "width": 1020,
@@ -891,7 +891,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:111",
-    "file": "assets/character-atlas/characters-111.png",
+    "file": "assets/character-atlas/characters-111.webp",
     "data": "assets/character-atlas/characters-111.json",
     "frame": "32b69a279f-000",
     "width": 1022,
@@ -899,7 +899,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:112",
-    "file": "assets/character-atlas/characters-112.png",
+    "file": "assets/character-atlas/characters-112.webp",
     "data": "assets/character-atlas/characters-112.json",
     "frame": "c6a33fb916-000",
     "width": 1020,
@@ -907,7 +907,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:113",
-    "file": "assets/character-atlas/characters-113.png",
+    "file": "assets/character-atlas/characters-113.webp",
     "data": "assets/character-atlas/characters-113.json",
     "frame": "763e50a278-000",
     "width": 1022,
@@ -915,7 +915,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:114",
-    "file": "assets/character-atlas/characters-114.png",
+    "file": "assets/character-atlas/characters-114.webp",
     "data": "assets/character-atlas/characters-114.json",
     "frame": "35bfb0298d-000",
     "width": 1022,
@@ -923,7 +923,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:115",
-    "file": "assets/character-atlas/characters-115.png",
+    "file": "assets/character-atlas/characters-115.webp",
     "data": "assets/character-atlas/characters-115.json",
     "frame": "84177f6a2e-000",
     "width": 1018,
@@ -931,7 +931,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:116",
-    "file": "assets/character-atlas/characters-116.png",
+    "file": "assets/character-atlas/characters-116.webp",
     "data": "assets/character-atlas/characters-116.json",
     "frame": "46c4fe0057-000",
     "width": 1022,
@@ -939,7 +939,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:117",
-    "file": "assets/character-atlas/characters-117.png",
+    "file": "assets/character-atlas/characters-117.webp",
     "data": "assets/character-atlas/characters-117.json",
     "frame": "646d57c5d6-000",
     "width": 1022,
@@ -947,7 +947,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:118",
-    "file": "assets/character-atlas/characters-118.png",
+    "file": "assets/character-atlas/characters-118.webp",
     "data": "assets/character-atlas/characters-118.json",
     "frame": "aedb4c0ede-000",
     "width": 1022,
@@ -955,7 +955,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:119",
-    "file": "assets/character-atlas/characters-119.png",
+    "file": "assets/character-atlas/characters-119.webp",
     "data": "assets/character-atlas/characters-119.json",
     "frame": "ecbb7eb5ad-000",
     "width": 1022,
@@ -963,7 +963,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:120",
-    "file": "assets/character-atlas/characters-120.png",
+    "file": "assets/character-atlas/characters-120.webp",
     "data": "assets/character-atlas/characters-120.json",
     "frame": "2f7518f994-000",
     "width": 1021,
@@ -971,7 +971,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:121",
-    "file": "assets/character-atlas/characters-121.png",
+    "file": "assets/character-atlas/characters-121.webp",
     "data": "assets/character-atlas/characters-121.json",
     "frame": "0cc1f3495e-000",
     "width": 1022,
@@ -979,7 +979,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:122",
-    "file": "assets/character-atlas/characters-122.png",
+    "file": "assets/character-atlas/characters-122.webp",
     "data": "assets/character-atlas/characters-122.json",
     "frame": "24ea0aa16a-000",
     "width": 1022,
@@ -987,7 +987,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:123",
-    "file": "assets/character-atlas/characters-123.png",
+    "file": "assets/character-atlas/characters-123.webp",
     "data": "assets/character-atlas/characters-123.json",
     "frame": "9cc1efb11a-000",
     "width": 1021,
@@ -995,7 +995,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:124",
-    "file": "assets/character-atlas/characters-124.png",
+    "file": "assets/character-atlas/characters-124.webp",
     "data": "assets/character-atlas/characters-124.json",
     "frame": "e6cebe1300-000",
     "width": 1022,
@@ -1003,7 +1003,7 @@ export const CHARACTER_ATLAS_PAGES: readonly CharacterAtlasPage[] = [
   },
   {
     "key": "characters-atlas:125",
-    "file": "assets/character-atlas/characters-125.png",
+    "file": "assets/character-atlas/characters-125.webp",
     "data": "assets/character-atlas/characters-125.json",
     "frame": "ebb0e94472-000",
     "width": 1022,
@@ -37747,4 +37747,4 @@ export const CHARACTER_ATLAS_BY_FILE: Readonly<Record<string, CharacterAtlasEntr
     "prefix": "8dfa733f8d"
   }
 };
-export const CHARACTER_ATLAS_SOURCE_DIGEST = "475252da77abfdf0ea5f942c993a8fc4275e1a0635257e902c5774d25aea5e5f";
+export const CHARACTER_ATLAS_SOURCE_DIGEST = "a10f4026db681d2250f77b3ba3dd47f1fb4193bdf22ed296334dafddd511235a";

@@ -2,11 +2,13 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 import { PNG } from 'pngjs';
+import sharp from 'sharp';
 import { contentDigest } from '../src/application/content-hash.ts';
 import { PROP_ATLAS_BY_KEY, PROP_ATLAS_LAYOUT_DIGEST, PROP_ATLAS_PAGES, PROP_ATLAS_SOURCE_DIGEST } from '../src/generated/prop-atlas.ts';
 import { propAtlasAssets, propRef } from '../src/rendering/prop-atlas.ts';
 import { packPropAtlas, propFiles, propSourceDigest } from '../tools/build-prop-atlas.ts';
 import { sourceAssetPath } from '../tools/asset-source.ts';
+import { atlasImageSize } from './support/atlas-image.ts';
 
 const read = (file: string): any => JSON.parse(fs.readFileSync(new URL(`../public/${file}`, import.meta.url), 'utf8'));
 const pngSize = (file: string | URL) => {
@@ -18,7 +20,7 @@ const props = propFiles();
 const world = read('content/world.json');
 const pages = new Map<string, any>(PROP_ATLAS_PAGES.map(page => [page.key, read(page.data)]));
 
-test('every map prop and feature resolves to a complete, untrimmed atlas frame', () => {
+test('every map prop and feature resolves to a complete, untrimmed atlas frame', async () => {
   assert.equal(props.length, 763);
   assert.equal(new Set(props.map(prop => prop.key)).size, props.length);
   assert.equal(propSourceDigest(), PROP_ATLAS_SOURCE_DIGEST);
@@ -35,11 +37,13 @@ test('every map prop and feature resolves to a complete, untrimmed atlas frame',
   assert.equal(contentDigest(layout), PROP_ATLAS_LAYOUT_DIGEST);
   for (const page of PROP_ATLAS_PAGES) {
     const atlas = pages.get(page.key)!;
-    const size = pngSize(new URL(`../public/${page.file}`, import.meta.url));
-    assert.deepEqual(atlas.meta.size, { w: size.width, h: size.height });
-    assert.ok(size.width <= 2048 && size.height <= 2048);
+    const pageFile = new URL(`../public/${page.file}`, import.meta.url);
+    const size = atlasImageSize(pageFile);
+    assert.deepEqual(atlas.meta.size, size);
+    assert.ok(size.w <= 2048 && size.h <= 2048);
     assert.ok(atlas.frames[page.frame], `missing sample frame ${page.frame}`);
-    const atlasPng = PNG.sync.read(fs.readFileSync(new URL(`../public/${page.file}`, import.meta.url)));
+    // 解码无损 WebP 后逐像素对照源图，证明编码没有改动任何像素。
+    const atlasImage = await sharp(fs.readFileSync(pageFile)).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
     const rects = Object.entries(atlas.frames).map(([name, value]: [string, any]) => ({ name, ...value.frame }));
     for (let first = 0; first < rects.length; first++) for (let second = first + 1; second < rects.length; second++) {
       const a = rects[first]!, b = rects[second]!;
@@ -51,8 +55,8 @@ test('every map prop and feature resolves to a complete, untrimmed atlas frame',
       assert.deepEqual({ w: value.frame.w, h: value.frame.h }, { w: source.width, h: source.height });
       for (let row = 0; row < value.frame.h; row++) {
         const from = row * value.frame.w * 4;
-        const to = ((value.frame.y + row) * atlasPng.width + value.frame.x) * 4;
-        assert.deepEqual(atlasPng.data.subarray(to, to + value.frame.w * 4),
+        const to = ((value.frame.y + row) * atlasImage.info.width + value.frame.x) * 4;
+        assert.deepEqual(atlasImage.data.subarray(to, to + value.frame.w * 4),
           source.data.subarray(from, from + value.frame.w * 4), `frame pixels differ: ${name}`);
       }
     }

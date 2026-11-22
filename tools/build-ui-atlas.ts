@@ -8,6 +8,7 @@ import { COMMON_BUTTON_IMAGES } from '../src/ui/common-button.ts';
 import { MINIMAP_ASSETS } from '../src/domain/story-interface.ts';
 import { UI_ICON_FRAMES } from '../src/generated/icon-atlas.ts';
 import { sourceAssetPath } from './asset-source.ts';
+import { ATLAS_IMAGE_EXTENSION, encodeAtlasImage } from './atlas-image.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PUBLIC = path.join(ROOT, 'public');
@@ -20,8 +21,6 @@ const PNG_SIGNATURE_TEXT_END = 4;
 const PNG_SIGNATURE_TEXT = 'PNG';
 const PNG_WIDTH_OFFSET = 16;
 const PNG_HEIGHT_OFFSET = 20;
-/** pngjs 的 colorType 6 = RGBA，图集必须保留透明通道。 */
-const PNG_COLOR_TYPE_RGBA = 6;
 const MAX_SIZE = 2048;
 const PADDING = 2;
 
@@ -267,11 +266,12 @@ interface UiAtlasWriteResult {
   groups: { name: string; files: number; pages: number; bytes: number }[];
 }
 
-export function writeUiAtlas(): UiAtlasWriteResult {
+export async function writeUiAtlas(): Promise<UiAtlasWriteResult> {
   const groups = uiAtlasGroups();
   const packed = packUiAtlas();
-  const pageInfo = packed.pages.map((page, index) => {
-    const image = `${PREFIX}-${index}.png`, data = `${PREFIX}-${index}.json`;
+  // 6 页左右，解码后同时驻留约 80 MB，直接并发编码。
+  const pageInfo = await Promise.all(packed.pages.map(async (page, index) => {
+    const image = `${PREFIX}-${index}.${ATLAS_IMAGE_EXTENSION}`, data = `${PREFIX}-${index}.json`;
     const atlas = new PNG({ width: page.width, height: page.height });
     atlas.data.fill(0);
     for (const [file, frame] of page.frames) {
@@ -298,7 +298,7 @@ export function writeUiAtlas(): UiAtlasWriteResult {
       }
     }
     fs.mkdirSync(path.dirname(path.join(PUBLIC, image)), { recursive: true });
-    const bytes = PNG.sync.write(atlas, { colorType: PNG_COLOR_TYPE_RGBA });
+    const bytes = await encodeAtlasImage(atlas.data, page.width, page.height);
     fs.writeFileSync(path.join(PUBLIC, image), bytes);
     const frames: Record<string, unknown> = {};
     for (const [file, frame] of page.frames) {
@@ -314,13 +314,13 @@ export function writeUiAtlas(): UiAtlasWriteResult {
     }));
     return { key: `interface:${image}`, file: image, data, frame: page.sentinel!, width: page.width, height: page.height,
       group: page.group, bytes: bytes.byteLength };
-  });
+  }));
 
   // 页数变少时删掉上一轮的页，避免 public 里留下不会再被引用的旧图集。
   const directory = path.join(PUBLIC, path.dirname(PREFIX));
   const keep = new Set(pageInfo.flatMap(page => [page.file, page.data]).map(file => path.basename(file)));
   for (const name of fs.readdirSync(directory)) {
-    if (/^menu-ui-\d+\.(?:png|json)$/.test(name) && !keep.has(name)) fs.rmSync(path.join(directory, name));
+    if (/^menu-ui-\d+\.(?:png|webp|json)$/.test(name) && !keep.has(name)) fs.rmSync(path.join(directory, name));
   }
 
   const mapping: Record<string, { key: string; frame: string; page: number }> = {};
@@ -350,7 +350,7 @@ export const UI_ATLAS_SOURCE_DIGEST = ${JSON.stringify(uiAtlasSourceDigest())};
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const result = writeUiAtlas();
+  const result = await writeUiAtlas();
   for (const group of result.groups) {
     console.log(`${group.name}：${group.files} 张图 → ${group.pages} 页，${(group.bytes / 1024 / 1024).toFixed(2)} MB`);
   }

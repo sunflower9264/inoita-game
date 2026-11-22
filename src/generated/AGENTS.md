@@ -16,7 +16,7 @@
 - `npm run atlas:all` 按 icons → props → ui → effects → characters 的顺序全部重生成；`npm run build` 的 `prebuild` 会自动执行它。
 - 素材或图集 JSON 变化后重新运行对应脚本，再提交生成结果。
 - `npm run typecheck` 保证生成文件的类型与引用可编译；图集新鲜度、哨兵帧和内容引用由 `npm run validate:content` 检查，帧映射由对应 atlas 测试覆盖。
-- 消费方使用导出的常量和映射取纹理键，不自己拼资源路径。
+- 消费方使用导出的常量和映射取纹理键，不自己拼资源路径。图集页 `file` 是无损 WebP（`*.webp`），扩展名由 `tools/atlas-image.ts` 决定，消费方不假设 `.png`。
 - 新增图集先改 `tools/` 里的生成脚本，再由脚本产出本目录文件。
 - 剧情职业演员的 `previewActor`/`playerActor` 及其全部 `clips`（含默认攻击）随 `sourceActors` 收集，四向动画按演员自身的原版动画行生成。
 

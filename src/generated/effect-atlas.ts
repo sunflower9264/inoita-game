@@ -3,7 +3,7 @@ export interface EffectAtlasPage { key: string; file: string; data: string; fram
 export const EFFECT_ATLAS_PAGES: readonly EffectAtlasPage[] = [
   {
     "key": "effects-atlas:0",
-    "file": "assets/effect-atlas/effects-0.png",
+    "file": "assets/effect-atlas/effects-0.webp",
     "data": "assets/effect-atlas/effects-0.json",
     "frame": "01c608c231b6-0",
     "width": 1872,
@@ -11,7 +11,7 @@ export const EFFECT_ATLAS_PAGES: readonly EffectAtlasPage[] = [
   },
   {
     "key": "effects-atlas:1",
-    "file": "assets/effect-atlas/effects-1.png",
+    "file": "assets/effect-atlas/effects-1.webp",
     "data": "assets/effect-atlas/effects-1.json",
     "frame": "01c608c231b6-6",
     "width": 1872,
@@ -19,7 +19,7 @@ export const EFFECT_ATLAS_PAGES: readonly EffectAtlasPage[] = [
   },
   {
     "key": "effects-atlas:2",
-    "file": "assets/effect-atlas/effects-2.png",
+    "file": "assets/effect-atlas/effects-2.webp",
     "data": "assets/effect-atlas/effects-2.json",
     "frame": "18b17d1a157f-2",
     "width": 1872,
@@ -27,7 +27,7 @@ export const EFFECT_ATLAS_PAGES: readonly EffectAtlasPage[] = [
   },
   {
     "key": "effects-atlas:3",
-    "file": "assets/effect-atlas/effects-3.png",
+    "file": "assets/effect-atlas/effects-3.webp",
     "data": "assets/effect-atlas/effects-3.json",
     "frame": "1e7342b9dfd3-16",
     "width": 1872,
@@ -35,7 +35,7 @@ export const EFFECT_ATLAS_PAGES: readonly EffectAtlasPage[] = [
   },
   {
     "key": "effects-atlas:4",
-    "file": "assets/effect-atlas/effects-4.png",
+    "file": "assets/effect-atlas/effects-4.webp",
     "data": "assets/effect-atlas/effects-4.json",
     "frame": "f3d44e7daecc-12",
     "width": 1872,
@@ -43,7 +43,7 @@ export const EFFECT_ATLAS_PAGES: readonly EffectAtlasPage[] = [
   },
   {
     "key": "effects-atlas:5",
-    "file": "assets/effect-atlas/effects-5.png",
+    "file": "assets/effect-atlas/effects-5.webp",
     "data": "assets/effect-atlas/effects-5.json",
     "frame": "27337fea8188-0",
     "width": 2045,
@@ -51,7 +51,7 @@ export const EFFECT_ATLAS_PAGES: readonly EffectAtlasPage[] = [
   },
   {
     "key": "effects-atlas:6",
-    "file": "assets/effect-atlas/effects-6.png",
+    "file": "assets/effect-atlas/effects-6.webp",
     "data": "assets/effect-atlas/effects-6.json",
     "frame": "49f240f16ace-0",
     "width": 2010,
@@ -59,7 +59,7 @@ export const EFFECT_ATLAS_PAGES: readonly EffectAtlasPage[] = [
   },
   {
     "key": "effects-atlas:7",
-    "file": "assets/effect-atlas/effects-7.png",
+    "file": "assets/effect-atlas/effects-7.webp",
     "data": "assets/effect-atlas/effects-7.json",
     "frame": "49f240f16ace-6",
     "width": 2010,
@@ -67,7 +67,7 @@ export const EFFECT_ATLAS_PAGES: readonly EffectAtlasPage[] = [
   },
   {
     "key": "effects-atlas:8",
-    "file": "assets/effect-atlas/effects-8.png",
+    "file": "assets/effect-atlas/effects-8.webp",
     "data": "assets/effect-atlas/effects-8.json",
     "frame": "5b6d503edd32-2",
     "width": 2010,
@@ -75,7 +75,7 @@ export const EFFECT_ATLAS_PAGES: readonly EffectAtlasPage[] = [
   },
   {
     "key": "effects-atlas:9",
-    "file": "assets/effect-atlas/effects-9.png",
+    "file": "assets/effect-atlas/effects-9.webp",
     "data": "assets/effect-atlas/effects-9.json",
     "frame": "0c09fbbeb824-3",
     "width": 1438,
@@ -83,7 +83,7 @@ export const EFFECT_ATLAS_PAGES: readonly EffectAtlasPage[] = [
   },
   {
     "key": "effects-atlas:10",
-    "file": "assets/effect-atlas/effects-10.png",
+    "file": "assets/effect-atlas/effects-10.webp",
     "data": "assets/effect-atlas/effects-10.json",
     "frame": "0bcba466598b-0",
     "width": 2028,
@@ -91,7 +91,7 @@ export const EFFECT_ATLAS_PAGES: readonly EffectAtlasPage[] = [
   },
   {
     "key": "effects-atlas:11",
-    "file": "assets/effect-atlas/effects-11.png",
+    "file": "assets/effect-atlas/effects-11.webp",
     "data": "assets/effect-atlas/effects-11.json",
     "frame": "5ee7d3f510a9-0",
     "width": 1968,
@@ -99,7 +99,7 @@ export const EFFECT_ATLAS_PAGES: readonly EffectAtlasPage[] = [
   },
   {
     "key": "effects-atlas:12",
-    "file": "assets/effect-atlas/effects-12.png",
+    "file": "assets/effect-atlas/effects-12.webp",
     "data": "assets/effect-atlas/effects-12.json",
     "frame": "1e6fde74bda3-0",
     "width": 1840,
@@ -107,7 +107,7 @@ export const EFFECT_ATLAS_PAGES: readonly EffectAtlasPage[] = [
   },
   {
     "key": "effects-atlas:13",
-    "file": "assets/effect-atlas/effects-13.png",
+    "file": "assets/effect-atlas/effects-13.webp",
     "data": "assets/effect-atlas/effects-13.json",
     "frame": "96e63948ceba-4",
     "width": 2000,
@@ -115,7 +115,7 @@ export const EFFECT_ATLAS_PAGES: readonly EffectAtlasPage[] = [
   },
   {
     "key": "effects-atlas:14",
-    "file": "assets/effect-atlas/effects-14.png",
+    "file": "assets/effect-atlas/effects-14.webp",
     "data": "assets/effect-atlas/effects-14.json",
     "frame": "104a14d034a0-0",
     "width": 1911,
@@ -123,7 +123,7 @@ export const EFFECT_ATLAS_PAGES: readonly EffectAtlasPage[] = [
   },
   {
     "key": "effects-atlas:15",
-    "file": "assets/effect-atlas/effects-15.png",
+    "file": "assets/effect-atlas/effects-15.webp",
     "data": "assets/effect-atlas/effects-15.json",
     "frame": "fe1a73c63749-4",
     "width": 2026,
@@ -131,7 +131,7 @@ export const EFFECT_ATLAS_PAGES: readonly EffectAtlasPage[] = [
   },
   {
     "key": "effects-atlas:16",
-    "file": "assets/effect-atlas/effects-16.png",
+    "file": "assets/effect-atlas/effects-16.webp",
     "data": "assets/effect-atlas/effects-16.json",
     "frame": "0f6aeae24142-0",
     "width": 2044,
@@ -139,7 +139,7 @@ export const EFFECT_ATLAS_PAGES: readonly EffectAtlasPage[] = [
   },
   {
     "key": "effects-atlas:17",
-    "file": "assets/effect-atlas/effects-17.png",
+    "file": "assets/effect-atlas/effects-17.webp",
     "data": "assets/effect-atlas/effects-17.json",
     "frame": "07382fb3e2b1-0",
     "width": 2041,
@@ -147,7 +147,7 @@ export const EFFECT_ATLAS_PAGES: readonly EffectAtlasPage[] = [
   },
   {
     "key": "effects-atlas:18",
-    "file": "assets/effect-atlas/effects-18.png",
+    "file": "assets/effect-atlas/effects-18.webp",
     "data": "assets/effect-atlas/effects-18.json",
     "frame": "cdbd75230b1c-0",
     "width": 2034,
@@ -155,7 +155,7 @@ export const EFFECT_ATLAS_PAGES: readonly EffectAtlasPage[] = [
   },
   {
     "key": "effects-atlas:19",
-    "file": "assets/effect-atlas/effects-19.png",
+    "file": "assets/effect-atlas/effects-19.webp",
     "data": "assets/effect-atlas/effects-19.json",
     "frame": "07d6d2cdeaec-0",
     "width": 2043,
@@ -163,7 +163,7 @@ export const EFFECT_ATLAS_PAGES: readonly EffectAtlasPage[] = [
   },
   {
     "key": "effects-atlas:20",
-    "file": "assets/effect-atlas/effects-20.png",
+    "file": "assets/effect-atlas/effects-20.webp",
     "data": "assets/effect-atlas/effects-20.json",
     "frame": "25bb7f3fac62-0",
     "width": 2043,
@@ -171,7 +171,7 @@ export const EFFECT_ATLAS_PAGES: readonly EffectAtlasPage[] = [
   },
   {
     "key": "effects-atlas:21",
-    "file": "assets/effect-atlas/effects-21.png",
+    "file": "assets/effect-atlas/effects-21.webp",
     "data": "assets/effect-atlas/effects-21.json",
     "frame": "c4c485458892-0",
     "width": 2044,
@@ -179,7 +179,7 @@ export const EFFECT_ATLAS_PAGES: readonly EffectAtlasPage[] = [
   },
   {
     "key": "effects-atlas:22",
-    "file": "assets/effect-atlas/effects-22.png",
+    "file": "assets/effect-atlas/effects-22.webp",
     "data": "assets/effect-atlas/effects-22.json",
     "frame": "0b7c57ece62b-0",
     "width": 2046,
@@ -187,7 +187,7 @@ export const EFFECT_ATLAS_PAGES: readonly EffectAtlasPage[] = [
   },
   {
     "key": "effects-atlas:23",
-    "file": "assets/effect-atlas/effects-23.png",
+    "file": "assets/effect-atlas/effects-23.webp",
     "data": "assets/effect-atlas/effects-23.json",
     "frame": "8a166525a20c-0",
     "width": 2045,
@@ -195,7 +195,7 @@ export const EFFECT_ATLAS_PAGES: readonly EffectAtlasPage[] = [
   },
   {
     "key": "effects-atlas:24",
-    "file": "assets/effect-atlas/effects-24.png",
+    "file": "assets/effect-atlas/effects-24.webp",
     "data": "assets/effect-atlas/effects-24.json",
     "frame": "408a0840d1ef-4",
     "width": 2046,
@@ -30047,4 +30047,4 @@ export const EFFECT_ATLAS_BY_FILE: Readonly<Record<string, readonly EffectAtlasF
     }
   ]
 };
-export const EFFECT_ATLAS_SOURCE_DIGEST = "bab3dc5d311302dba69c81755de008882d155b17ee8ec0572ccd33096cafe829";
+export const EFFECT_ATLAS_SOURCE_DIGEST = "9520430e38809f7f13ec1f60cd95cf94a75d3e003b61997b93338649a4eeaf07";

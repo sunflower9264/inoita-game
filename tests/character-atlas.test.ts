@@ -7,6 +7,7 @@ import test from 'node:test';
 import type Phaser from 'phaser';
 import type { ActorDefinition, AnimationClip } from '../src/domain/content.ts';
 import { sourceAssetPath } from '../tools/asset-source.ts';
+import { atlasImageSize } from './support/atlas-image.ts';
 import {
   CHARACTER_ATLAS_BY_FILE, CHARACTER_ATLAS_PAGES, CHARACTER_ATLAS_SOURCE_DIGEST
 } from '../src/generated/character-atlas.ts';
@@ -63,12 +64,11 @@ test('角色图集生成物与当前内容一致', () => {
   assert.equal(characterAtlasSourceDigest(source), CHARACTER_ATLAS_SOURCE_DIGEST, '运行 npm run atlas:characters');
 });
 
-test('每个图集页的 PNG 尺寸、帧边界和 JSON 信息一致且帧不重叠', () => {
+test('每个图集页的图片尺寸、帧边界和 JSON 信息一致且帧不重叠', () => {
   assert.ok(CHARACTER_ATLAS_PAGES.length > 0, '至少生成一页');
   for (const [index, page] of CHARACTER_ATLAS_PAGES.entries()) {
-    const bytes = readFileSync(new URL(`../public/${page.file}`, import.meta.url));
-    assert.equal(bytes.readUInt32BE(16), page.width, `${index}: PNG 宽`);
-    assert.equal(bytes.readUInt32BE(20), page.height, `${index}: PNG 高`);
+    assert.deepEqual(atlasImageSize(new URL(`../public/${page.file}`, import.meta.url)),
+      { w: page.width, h: page.height }, `${index}: 图片尺寸`);
     const json = pageJson(index);
     assert.deepEqual(json.meta.size, { w: page.width, h: page.height }, `${index}: meta 尺寸`);
     const rects: { x: number; y: number; w: number; h: number; name: string }[] = [];
