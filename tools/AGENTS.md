@@ -31,9 +31,9 @@
 - `npm run audit:assets` 只检查、不移动；`npm run build -- --no-prune` 保留全部素材但仍执行引用检查，用于对比排查。
 - `content-build.ts` 按解码后的像素、图片尺寸和切帧合并角色图片，帧率、镜像与循环由各自的动画保留。真实内容构建验收逐一检查六职业的技能、召唤物图片与图集帧，并按图集页核对黑暗空间对白避开的陨石纹理量。
 - 新增脚本在根目录 `package.json` 挂成命令，沿用现有命令命名。
-- 云存档数据目录：生产 `.cloud-save/`，开发 `.cloud-save-dev/`；两者都不进 Git。云服务初始化失败只能让 `/__cloud` 返回 503，不能让 4004 的静态服务起不来。
+- 云存档数据目录：生产 `.cloud-save/`，开发 `.cloud-save-dev/`；两者都不进 Git。云服务初始化失败只能让 `/__cloud` 返回 503，不能让静态服务起不来（生产 4014，本地 4004）。
 - 诊断日志目录 `.diagnostics/` 不进 Git；错误流 2 MiB × 8，会话流 8 MiB × 11，查看时统一用 `npm run diag:list` 和 `npm run diag:session -- <id>` 汇总时间线。
-- 改 `serve-built.ts` 或云存档服务后需要重启 4004；只改客户端/内容时普通构建即可。
+- 改 `serve-built.ts` 或云存档服务后需要重启运行中的静态服务（生产 `inoita-game-v2.service` / 4014，本地 4004）；只改客户端/内容时普通构建即可。
 - 热更新清单的 `buildId` 只由文件内容决定；`builtAt`、`minShell` 只放指针，清单保持字节稳定。私钥在 `~/.config/inoita/update-signing.pem`，公钥写 `android/update-public-key.txt`；私钥丢失后老客户端只能重装 APK。
 
 ## 验证

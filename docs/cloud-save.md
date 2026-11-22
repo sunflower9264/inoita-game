@@ -107,12 +107,12 @@ node tools/serve-built.ts --port 4104 --host 127.0.0.1 --cloud-data /tmp/inoita-
 
 部署顺序：
 
-1. 上线 `tools/serve-built.ts` 和 `tools/cloud-save-*.ts`，创建可写的 `.cloud-save/`，重启 4004。
+1. 上线 `tools/serve-built.ts` 和 `tools/cloud-save-*.ts`，创建可写的 `.cloud-save/`，重启 `inoita-game-v2.service`（生产静态服务在 4014，由 443 入口反代）。
 2. nginx 加 `client_max_body_size 4m`，`nginx -t` 后 reload。
 3. `npm run build` 部署客户端。
 4. 需要 APK 时再 `npm run apk` 并 `npm run verify:apk`。
 
-旧客户端不会调用 `/__cloud`，先服务端后客户端最安全。云接口在 `serve-built.ts` 里，不能只替换静态产物；必须重启 `inoita-game.service`。
+旧客户端不会调用 `/__cloud`，先服务端后客户端最安全。云接口在 `serve-built.ts` 里，不能只替换静态产物；必须重启 `inoita-game-v2.service`。
 
 ## 备份与恢复
 
