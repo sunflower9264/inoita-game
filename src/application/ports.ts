@@ -20,7 +20,7 @@ import type { ShopCatalog } from '../domain/shop.ts';
 import type { ControlLayoutPreferences } from '../ui/control-layout.ts';
 import type { KeyBindingPreferences } from './key-bindings.ts';
 import type { InputRouter } from './input-router.ts';
-import type { SaveWorldResult } from './world-snapshot.ts';
+import type { SaveWorldResult, StoryWorldViewSnapshot } from './world-snapshot.ts';
 import type { DomUi } from '../ui/dom/dom-ui.ts';
 
 export interface StoryClassContext {
@@ -32,6 +32,18 @@ export interface StoryClassContext {
   prefetchStory?: () => void;
   returnToMenu?: () => void;
   syncLifecycle?: () => void;
+}
+
+/** 正式对白、选项和弹窗视图需要的能力；UI 只依赖这份端口，不依赖 StoryApp。 */
+export interface FormalUiContext {
+  readonly ui: GameUI;
+  readonly domUi?: DomUi;
+  readonly storyInterface: StoryInterface;
+  readonly director?: StoryDirector;
+  readonly storyUI?: { readonly menuOpen: boolean };
+  readonly controlSkin: ControlSkin;
+  readonly checkpoint: import('../domain/session-checkpoint.ts').SessionCheckpoint<StoryWorldViewSnapshot>;
+  resumeSlot?: (slot: import('../domain/save-game.ts').SaveSlotRef, signal?: AbortSignal) => Promise<void>;
 }
 
 type SceneUI = Pick<GameUI,'ready'|'locked'|'mode'|'loading'|'loaded'|'error'|'toast'|'showInstant'|'resetInput'|'setMode'|'showDefeat'|'closeDefeat'|'controlLayoutEditing'|'keyBindingEditing'|'preloadPortraits'|'setWorldRebuildCover'|'setSkipBackdrop'>;

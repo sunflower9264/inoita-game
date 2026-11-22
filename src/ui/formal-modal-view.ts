@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import type { StoryApp } from '../app.ts';
+import type { FormalUiContext } from '../application/ports.ts';
 import type { GameUI } from './game-ui.ts';
 import { UiSurface, GOLD } from './phaser/widgets.ts';
 import { UiNode, UiImage, uiMount } from './dom/node.ts';
@@ -9,7 +9,7 @@ import { frameRect } from './viewport.ts';
 /** 加载、阵亡和横屏提示共用互斥显示层，持有自己的节点与文字。 */
 export class FormalModalView {
   private readonly scene:Phaser.Scene;
-  private readonly app:Pick<StoryApp,'domUi'|'storyInterface'|'checkpoint'|'resumeSlot'>;
+  private readonly app:FormalUiContext;
   private readonly surface:UiSurface;
   private signature='';
   private progressBar?:UiNode;

@@ -3,8 +3,8 @@ import { domAssets } from './dom/assets.ts';
 import { uiMount, type UiPointer } from './dom/node.ts';
 import { UiNode, UiImage } from './dom/node.ts';
 import { UI_EVENTS } from '../application/ui-events.ts';
+import type { FormalUiContext } from '../application/ports.ts';
 import type Phaser from 'phaser';
-import type { StoryApp } from '../app.ts';
 import { uiOcclusion, type GameUI, type GameUiView } from './game-ui.ts';
 import { UiSurface,loadUiImages,GOLD } from './phaser/widgets.ts';
 import { TEXT_COLORS } from './text-style.ts';
@@ -24,7 +24,7 @@ const DIALOGUE_TEXT_COLOR='#f5eedf';
 
 /** 协调对白、选项和全屏提示；剧情动作的完成仍由 GameUI 负责。 */
 export class FormalUiView implements GameUiView {
-  private readonly app:Pick<StoryApp,'ui'|'domUi'|'storyInterface'|'director'|'storyUI'|'controlSkin'|'checkpoint'|'resumeSlot'>;
+  private readonly app:FormalUiContext;
   private surface!:UiSurface;
   private questPopup!:QuestPopup;
   private signature='';
