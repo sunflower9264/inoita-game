@@ -681,12 +681,10 @@ export class QuestBook {
     const next = structuredClone(input);
     if (next.version !== QUEST_BOOK_STATE_VERSION) throw new Error('任务快照版本不支持');
     if (new Set(next.quests.map(([id]) => id)).size !== next.quests.length) throw new Error('任务快照标识重复');
-    const states = new Map<string, QuestProgress>();
-    for (const [id, state] of next.quests) {
+    const states = new Map(next.quests);
+    for (const [id, state] of states) {
       const quest = this.definitions.get(id);
-      // 旧存档会保存全部任务状态，包括后来从内容里删掉的任务。
-      // 这些任务已经不可达，读取时丢弃状态比让整份存档失效安全。
-      if (!quest) continue;
+      if (!quest) throw new Error(`任务快照引用未知任务 ${id}`);
       if (!['locked', 'available', 'active', 'ready', 'completed'].includes(state.status)) throw new Error('任务快照状态无效');
       integer(state.cycle, 0, '任务周期'); integer(state.completedCycles, 0, '任务完成周期');
       for (const goal of Object.keys(state.goals)) if (!quest.goals.some(value => value.id === goal)) throw new Error(`任务快照引用未知目标 ${goal}`);
@@ -695,14 +693,11 @@ export class QuestBook {
         if (count === undefined) throw new Error(`任务快照缺少目标 ${goal.id}`);
         integer(count, 0, '任务目标进度'); if (count > goal.quantity) throw new Error('任务目标进度超出数量');
       }
-      states.set(id, state);
     }
     for (const [id, quest] of this.definitions) if (!states.has(id)) states.set(id, initialProgress(quest));
     if (!Array.isArray(next.runningQuestIds) || new Set(next.runningQuestIds).size !== next.runningQuestIds.length)
       throw new Error('任务运行池标识重复或结构无效');
     const running = new Set(next.runningQuestIds);
-    // 运行池同样只保留当前内容里仍存在的任务。
-    for (const id of [...running]) if (!this.definitions.has(id)) running.delete(id);
     for (const id of running) if (!states.has(id) || !['active', 'ready'].includes(states.get(id)!.status))
       throw new Error(`任务运行池引用无效：${id}`);
     for (const [id, state] of states) if (['active', 'ready'].includes(state.status) && !running.has(id))
@@ -724,7 +719,6 @@ export class QuestBook {
     if(sessionSequences!==undefined)merge(sessionSequences,0);
     next.factSequences=[...sequences];
     next.quests = [...states];
-    next.runningQuestIds = [...running];
     // `next` 已经是入参的私有克隆，`freeze` 会连它一起冻住，不必再克隆一次。
     const plan: QuestRestorePlan = freeze({ baseRevision: this.revision, nextState: next });
     this.restores.set(plan, next); return plan;

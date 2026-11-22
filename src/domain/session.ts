@@ -691,10 +691,7 @@ export class Session {
     const ground=new GroundLootStore();ground.restoreState(restored.groundLoot);
     new QuestItemGenerators().restoreState(restored.questItemGeneration,ground);
     this.validateStoryLinks(restored.storyWorld,restored.runtime);
-    // 旧存档可能追踪或领过后来从内容里删掉的任务；丢弃这些悬空引用，
-    // 不影响其余任务进度和存档字段的严格校验。
-    if(restored.trackedQuest&&!this.definition(restored.trackedQuest))restored.trackedQuest=undefined;
-    restored.receipts=restored.receipts.filter(receipt=>!!this.definition(receipt.quest));
+    if(restored.trackedQuest&&!this.definition(restored.trackedQuest))throw new Error('检查点追踪未知任务');
     const rewardKeys=new Set<string>();
     const questProgress=new Map(restored.questBook.quests);
     for(const receipt of restored.receipts){
