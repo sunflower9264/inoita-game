@@ -126,6 +126,8 @@ interface Character extends CharacterVisual {
 }
 
 export class WorldScene extends Phaser.Scene implements CombatWorldHost {
+  /** 战斗渲染组件需要完整场景；世界协作仍走 `CombatWorldHost` 的其余成员。 */
+  get phaserScene(): Phaser.Scene { return this; }
   private readonly chestFades = new Map<string, Phaser.Tweens.Tween>();
   private wardrobe?: Wardrobe;
   private readonly companionWardrobes=new Map<string,Wardrobe>();

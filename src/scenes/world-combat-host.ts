@@ -4,8 +4,18 @@ import type { Cooldown } from '../domain/combat.ts';
 import type { CharacterVisual } from '../rendering/characters.ts';
 import type { MovementWorld } from '../rendering/movement-world.ts';
 
-/** 战斗使用引擎场景绘制，世界协作只通过这里列出的能力。 */
-export interface CombatWorldHost extends Phaser.Scene {
+/**
+ * 战斗的世界协作能力。世界场景另外把完整 Phaser.Scene 交给渲染组件，
+ * 引擎服务则按实际使用列出，避免把整个场景当成战斗接口。
+ */
+export interface CombatWorldHost {
+  /** 渲染组件和 Phaser 系统需要的完整场景；不属于世界协作接口。 */
+  readonly phaserScene: Phaser.Scene;
+  readonly cameras: Phaser.Scene['cameras'];
+  readonly events: Phaser.Scene['events'];
+  readonly time: Phaser.Scene['time'];
+  readonly tweens: Phaser.Scene['tweens'];
+  readonly game: Phaser.Scene['game'];
   readonly canCombatControl:boolean;
   readonly map?:WorldMap;
   readonly entities:readonly EntityPlacement[];

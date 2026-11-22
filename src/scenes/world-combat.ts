@@ -351,11 +351,11 @@ export class WorldCombat {
       get pressureMode(){return app.pressureMode;},get gmSpeedMultiplier(){return app.gmSpeedMultiplier;}};
     this.roster=roster;this.hero=hero;this.drops=drops;
     this.threat=this.createThreatSystem();
-    this.outcomes=new CombatOutcomes(scene,app.battleCatalog);
-    this.buffLoops=new BuffLoopRenderer(scene,app.battleCatalog);
-    this.stateMarkers=new StateMarkers(scene,app.battleCatalog);
-    this.feedback=new CombatFeedback(scene,app.battleCatalog);
-    this.combatEffects=new CombatEffects(scene);
+    this.outcomes=new CombatOutcomes(scene.phaserScene,app.battleCatalog);
+    this.buffLoops=new BuffLoopRenderer(scene.phaserScene,app.battleCatalog);
+    this.stateMarkers=new StateMarkers(scene.phaserScene,app.battleCatalog);
+    this.feedback=new CombatFeedback(scene.phaserScene,app.battleCatalog);
+    this.combatEffects=new CombatEffects(scene.phaserScene);
   }
   private createConditions():CombatConditions {
     return new CombatConditions({
@@ -537,7 +537,7 @@ adoptStoryPositions(actors:readonly SceneActorState[]):void {
       if(!visual)continue;
       if(ally&&!ally.member.alive||enemy&&(!this.isActorAlive(enemy.key)||this.pendingDefeats.has(enemy.key)))continue;
       if(ally)ally.facing=actor.facing;if(enemy)enemy.facing=actor.facing;
-      setCharacterClip(this.scene,visual,`idle-${actor.facing}`);
+      setCharacterClip(this.scene.phaserScene,visual,`idle-${actor.facing}`);
       placements.push({visual,position:{x:actor.x,y:actor.y},enabled:actor.visible});
     }
     this.movement.placeAll(placements,{evictOccupied:true,displaceable:[this.player]});
@@ -604,7 +604,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
       state=prepareCombatRestore(state,this.app.battleCatalog,this.app.session.party?.activeIds??[]);
       await this.prepareRestoredSkills(signal);
       const definitions=[...new Set(state.roster.enemies.map(enemy=>enemy.enemyId))].map(id=>this.app.battleCatalog.enemies.find(enemy=>enemy.id===id)!);
-      const lease=await loadSceneAssets(this.scene,definitions.flatMap(definition=>this.enemyAssets(definition)),{});
+      const lease=await loadSceneAssets(this.scene.phaserScene,definitions.flatMap(definition=>this.enemyAssets(definition)),{});
       if(this.closed||signal?.aborted){lease.release();signal?.throwIfAborted();return;}
       this.restoredAssets?.release();this.restoredAssets=lease;
       // 旧现场可能还有正在消散的死亡单；先取消对应的 tween，再清空队列。
@@ -631,7 +631,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
         this.relocateVisual(visual,saved.position);this.partyControllers.get(saved.id)?.restoreState(saved.combat);
         if(saved.ai)(saved.id==='player'?this.heroAi:combatActor(this.allies,saved.id,actor=>actor.id)?.ai)?.restoreState(saved.ai);
         if(saved.id==='player')this.scene.facing=saved.facing;else combatActor(this.allies,saved.id,actor=>actor.id)!.facing=saved.facing;
-        if(this.memberOf(saved.id)?.player.health)setCharacterClip(this.scene,visual,`idle-${saved.facing}`,true);else this.markAlreadyFallen(saved.id);
+        if(this.memberOf(saved.id)?.player.health)setCharacterClip(this.scene.phaserScene,visual,`idle-${saved.facing}`,true);else this.markAlreadyFallen(saved.id);
       }
       for(const placed of this.roster.enemies)this.spawnEnemy(placed);
       for(const saved of state.enemies){const enemy=combatActor(this.arena,saved.id,actor=>actor.key);if(!enemy)continue;
@@ -700,15 +700,15 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
     const position = this.movement!.navigation.nearestBody({ collision: box }, placed)
       ?? this.movement!.navigation.nearest({ collision: box }, placed);
     const home=this.enemyHome(placed,position,{collision:box});
-    const visual = createCharacter(this.scene, actor, { id: placed.key, actor: actor.id, ...position });
+    const visual = createCharacter(this.scene.phaserScene, actor, { id: placed.key, actor: actor.id, ...position });
     // 友方召唤物与队伍同属 party，彼此不占位；可移动的召唤物和主角、佣兵一样允许地形自愈，
     // 避免被物理分离推进墙里后只能等召回。
     const friendly = !!placed.summonedBy && !!this.memberOf(placed.summonedBy);
     const faction = friendly ? 'party' : 'hostile';
     const body = this.movement!.register(visual, definition.behavior.canMove, friendly && definition.behavior.canMove, faction);
-    const presenter = new CombatPresenter(this.scene, this.app.battleCatalog, id => this.visualOf(id), () => this.combatants(), this.combatEffects);
+    const presenter = new CombatPresenter(this.scene.phaserScene, this.app.battleCatalog, id => this.visualOf(id), () => this.combatants(), this.combatEffects);
     // 生成前就锁定这只敌人用到的全部纹理；缺任何一项都在这里失败，而不是等到播放动画时。
-    const assets = retainLoadedSceneAssets(this.scene, this.enemyAssets(definition));
+    const assets = retainLoadedSceneAssets(this.scene.phaserScene, this.enemyAssets(definition));
     const enemy: MapEnemy = { key: placed.key, definition, visual, body, facing: 'south', presenter, assets,summonedBy:placed.summonedBy,
       summonTauntChance:placed.summonTauntChance,summonedBySkill:placed.summonedBySkill };
     if (position.x !== placed.x || position.y !== placed.y) this.roster.moveEnemy(placed.key, position.x, position.y);
@@ -1099,7 +1099,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
       // 取消或收尾时直接接回待机，不再依赖后续帧的 afterMovement；
       // 动作已经被别的表现接手时让接手者继续画。
       const idle=`idle-${action.facing}` as ClipName;
-      if(visual.container.active&&visual.layers===layers&&visual.actor.clips[idle])setCharacterClip(this.scene,visual,idle,true);
+      if(visual.container.active&&visual.layers===layers&&visual.actor.clips[idle])setCharacterClip(this.scene.phaserScene,visual,idle,true);
     };
   }
   private presentActionFrame(presenter:CombatPresenter,...args:Parameters<CombatActionDispatcher['frame']>):void {
@@ -2121,7 +2121,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
     const selection=selectFeedbackAssets(feedback,this.app.battleCatalog.feedback,Math.random,displaySettings.criticalDecorations,plan);
     const visual=this.visualOf(event.targetId);if(!visual?.container.active)return;
     this.feedback.show(feedback,visual,selection,plan,{decorationGroup:event.casterId});
-    if(plan.flash)this.statusColors.flash(visual,this.scene);
+    if(plan.flash)this.statusColors.flash(visual,this.scene.phaserScene);
     if(options.sound){
       // 普攻命中音效对所有玩家阵营成员生效；武器类型按出手者自己的装备取。
       if(this.memberOf(event.casterId)&&this.claimHitFeedback(event.casterId,`weapon:${hit.kind}`)){
@@ -2423,7 +2423,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
       try{
       const learned=learnedSkillIds(this.app.battleCatalog,member.classId,member.skills);
       const signature=this.allySkillSignatureNow(member),gate=this.allySkillGateNow(member);
-      lease=await loadSceneAssets(this.scene,partyMemberCombatAssets(this.app.battleCatalog,this.app.wardrobe,member.classId,actor,
+      lease=await loadSceneAssets(this.scene.phaserScene,partyMemberCombatAssets(this.app.battleCatalog,this.app.wardrobe,member.classId,actor,
         learned,{items:this.app.items,equipment:this.hero.bag.equipmentItems(this.hero.bag.equipmentFor(id))}),{});
       if(this.closed||party.get(id)!==member||!party.activeIds.includes(id)){lease.release();continue;}
       if(this.allySkillSignatureNow(member)!==signature){
@@ -2441,11 +2441,11 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
       const landing=this.partyLanding({collision:actor.collision});
       if(!landing)globalThis.storyDiagnostics?.record('party-landing-fallback',{map:this.scene.map?.id,id});
       const position=landing??this.movement.position(this.player);
-      const visual=createCharacter(this.scene,actor,{id,actor:actor.id,...position});
+      const visual=createCharacter(this.scene.phaserScene,actor,{id,actor:actor.id,...position});
       const body=this.movement.register(visual,true,true,'party');
-      const presenter=new CombatPresenter(this.scene,this.app.battleCatalog,key=>this.visualOf(key),()=>this.combatants(),
+      const presenter=new CombatPresenter(this.scene.phaserScene,this.app.battleCatalog,key=>this.visualOf(key),()=>this.combatants(),
         this.combatEffects);
-      const overhead=new OverheadStatus(this.scene,visual,this.app.statusHud,()=>member.player,listener=>this.app.session.subscribe(listener));
+      const overhead=new OverheadStatus(this.scene.phaserScene,visual,this.app.statusHud,()=>member.player,listener=>this.app.session.subscribe(listener));
       overhead.setVisible(true);
       const attack=this.equipmentAttack(actor,id);
       const ally={} as MapAlly;ally.id=id;ally.member=member;ally.visual=visual;ally.body=body;ally.facing='south';ally.presenter=presenter;ally.overhead=overhead;ally.assets=lease;
@@ -2509,7 +2509,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
       const landing=this.partyLanding(actor.shape(),actor,id);
       if(!landing)continue;
       this.movement.place(ally.visual,landing);
-      setCharacterClip(this.scene,ally.visual,`idle-${ally.facing}`,true);
+      setCharacterClip(this.scene.phaserScene,ally.visual,`idle-${ally.facing}`,true);
     }
   }
   /** 是否该在剧情收尾时把单位拉回主角身边：太远、整盒不合法，或已经和队友叠在一起。 */
@@ -2545,7 +2545,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
       const landing=this.partyLanding(actor.shape(),actor,id);
       if(!landing)continue;
       ally.ai.cancel();this.movement.place(ally.visual,landing);
-      setCharacterClip(this.scene,ally.visual,`idle-${ally.facing}`,true);
+      setCharacterClip(this.scene.phaserScene,ally.visual,`idle-${ally.facing}`,true);
     }
     for(const enemy of this.arena){
       if(!enemy.summonedBy||!this.memberOf(enemy.summonedBy)||this.pendingDefeats.has(enemy.key)
@@ -2557,7 +2557,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
       const landing=this.partyLanding(actor.shape(),actor);
       if(!landing)continue;
       enemy.controller?.cancel();this.movement.place(enemy.visual,landing);
-      setCharacterClip(this.scene,enemy.visual,`idle-${enemy.facing}`,true);
+      setCharacterClip(this.scene.phaserScene,enemy.visual,`idle-${enemy.facing}`,true);
     }
   }
   /**
@@ -2576,7 +2576,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
     const actor=this.movement.actor(visual),landing=this.partyLanding(actor.shape(),actor,id,leader);
     if(!landing)return false;
     ai.cancel();this.movement.place(visual,landing);this.regroupCooldowns.set(id,now+REGROUP_COOLDOWN_MS);
-    setCharacterClip(this.scene,visual,`idle-${id==='player'?this.scene.facing:ally!.facing}`,true);
+    setCharacterClip(this.scene.phaserScene,visual,`idle-${id==='player'?this.scene.facing:ally!.facing}`,true);
     this.followerCatchUps++;return true;
   }
 
@@ -2639,18 +2639,18 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
     // 音效与画面并行准备，不参与战斗入口的等待：音频加载失败不该挡住战斗。
     this.prepareCombatSounds();
     const generation=++this.generation;
-    const lease=await loadSceneAssets(this.scene,needed,{});
+    const lease=await loadSceneAssets(this.scene.phaserScene,needed,{});
     if(this.closed||generation!==this.generation){lease.release();return;}
     this.playerAssets=lease;
     this.focusRings?.destroy();
-    this.focusRings=new TargetFocus(this.scene);
+    this.focusRings=new TargetFocus(this.scene.phaserScene);
     // 结算特效素材已在共享包里；这里先把容器、精灵和动画建好，升级时只重播。
     this.outcomes.warm();
     this.feedback.warm();
     await this.refreshSkillAssets(this.playerSkillSignatureNow(),this.playerSkillGateNow(),[]);
     if(this.closed||generation!==this.generation)return;
     if(!this.extraSkillLeases.has('player'))throw new Error('主角战斗素材准备失败，请重试');
-    this.presenter=new CombatPresenter(this.scene,catalog,id=>this.visualOf(id),()=>this.combatants(),
+    this.presenter=new CombatPresenter(this.scene.phaserScene,catalog,id=>this.visualOf(id),()=>this.combatants(),
       this.combatEffects);
     const heroController=this.createPartyController('player',this.player,this.presenter,attack);
     this.combat=heroController.controller;
@@ -2704,7 +2704,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
   updateMemberAppearance(id:string,actor:ActorDefinition):void {
     const ally=combatActor(this.allies,id,actor=>actor.id);if(!ally)return;
     ally.controller.cancel(true);ally.visual.actor=actor;this.movement.refreshShape(ally.visual);
-    setCharacterClip(this.scene,ally.visual,`idle-${ally.facing}`,true);
+    setCharacterClip(this.scene.phaserScene,ally.visual,`idle-${ally.facing}`,true);
   }
   updateEquipment(id='player'):void{
     const member=this.memberOf(id);
@@ -2739,7 +2739,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
     });
     const buffs=this.app.session.storyWorld.pendingPartyBuffs;
     const effects=Object.fromEntries(buffs.flatMap(value=>{const effect=this.app.battleCatalog.statusAttackBuffs?.[value.buff]?.applicationEffect;return effect?[[effect,this.app.battleCatalog.attackEffects[effect]]]:[];}));
-    const lease=await loadSceneAssets(this.scene,[...definitions.flatMap(definition=>this.enemyAssets(definition)),...effectAssets(effects)],{});
+    const lease=await loadSceneAssets(this.scene.phaserScene,[...definitions.flatMap(definition=>this.enemyAssets(definition)),...effectAssets(effects)],{});
     if(this.closed||signal.aborted){lease.release();signal.throwIfAborted();return;}
     this.storyAssets?.release();this.storyAssets=lease;
     applyStoryEnemyRemovals(this.app.session,this.scene.map!.id,this.arena.map(enemy=>({key:enemy.key,enemyId:enemy.definition.id})),key=>{this.conditions.remove(key);this.removeEnemy(key);});
@@ -2914,7 +2914,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
       const visual=this.visualOf(id);if(visual)this.movement.stop(visual);
     }
   }
-  stopMoving():void{this.movement.stop(this.controlledVisual);if(this.controlledMember.player.health&&this.attackState!=='attacking')setCharacterClip(this.scene,this.controlledVisual,`idle-${this.facing}`);}
+  stopMoving():void{this.movement.stop(this.controlledVisual);if(this.controlledMember.player.health&&this.attackState!=='attacking')setCharacterClip(this.scene.phaserScene,this.controlledVisual,`idle-${this.facing}`);}
   movementSpeedForPlayer():number{return this.movementSpeed(this.controlledId,PLAYER_MOVE_SPEED);}
   playerCannotMove():boolean{return !this.conditions.canMove(this.controlledId)||this.defeated||!this.controlledMember.player.health;}
   /** 玩家真正给出方向输入：先解除埋伏与狙击，再挂上逐段恢复的移动斜坡。 */
@@ -3103,7 +3103,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
         const learned=learnedSkillIds(catalog,this.hero.classId,this.app.session.skills);
         const plan=playerCombatAssets({catalog,wardrobe:this.app.wardrobe,items:this.app.items,
           hero:this.hero,actor:this.player.actor,learnedSkills:learned});
-        const lease=await loadSceneAssets(this.scene,plan,{});
+        const lease=await loadSceneAssets(this.scene.phaserScene,plan,{});
         try { await this.scene.preparePlayerAppearance?.(); } catch(error) { lease.release(); throw error; }
         if(this.closed){lease.release();return;}
         if(this.playerSkillSignatureNow()===playerSignature){
@@ -3122,7 +3122,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
         const learned=learnedSkillIds(catalog,member.classId,member.skills);
         const plan=partyMemberCombatAssets(catalog,this.app.wardrobe,member.classId,actor,learned,
           {items:this.app.items,equipment:this.hero.bag.equipmentItems(this.hero.bag.equipmentFor(id))});
-        const lease=await loadSceneAssets(this.scene,plan,{});
+        const lease=await loadSceneAssets(this.scene.phaserScene,plan,{});
         if(this.closed){lease.release();return;}
         if(this.app.session.party?.get(id)!==member||!this.app.session.party?.activeIds.includes(id)){lease.release();continue;}
         if(this.allySkillSignatureNow(member)===signature){
@@ -3170,7 +3170,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
     };
     const facing=id==='player'?this.scene.facing:combatActor(this.allies,id,actor=>actor.id)!.facing;
     const deathClip=`die-${facing}` as const,clip=id==='player'?undefined:visual.actor.clips[deathClip];
-    if(clip)setCharacterClip(this.scene,visual,deathClip,true);
+    if(clip)setCharacterClip(this.scene.phaserScene,visual,deathClip,true);
     else for(const sprite of visual.layers)sprite.anims.stop();
     const deathTween=this.scene.tweens.add({targets:visual.container,alpha:0,
       delay:clip?clip.frames*1000/clip.frameRate:0,duration:10*LOGIC_FRAME_MS});
@@ -3205,7 +3205,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
     if(this.closed)return false;
     const definition=this.app.battleCatalog.enemies.find(enemy=>enemy.id===enemyId);
     if(!definition)return false;
-    const lease=await loadSceneAssets(this.scene,this.enemyAssets(definition),{ lifetime: 'manual', signal });
+    const lease=await loadSceneAssets(this.scene.phaserScene,this.enemyAssets(definition),{ lifetime: 'manual', signal });
     if(this.closed||signal?.aborted){lease.release();return false;}
     this.pressureAssets?.release();this.pressureAssets=lease;
     // 音效不参与等待；缺声音不影响刷怪。
@@ -3266,7 +3266,7 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
       ??this.movement.navigation.nearestBody(actor.shape(),origin,actor)
       ??this.movement.navigation.nearest(actor.shape(),origin,actor);
     this.relocateVisual(visual,landing);this.movement.setEnabled(visual,true);
-    visual.container.setAlpha(1).setVisible(true);setCharacterClip(this.scene,visual,'idle-south',true);
+    visual.container.setAlpha(1).setVisible(true);setCharacterClip(this.scene.phaserScene,visual,'idle-south',true);
     this.outcomes.recover(visual);
   }
   revive(id:string,item:string):ItemResult {
@@ -3414,18 +3414,18 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
   afterMovement():void{
     if(this.hero.player.health>0&&this.controlledId!=='player'&&this.partyControllers.get('player')?.actionState()!=='attacking'){
       const moving=isBodyWalking(this.movement.body(this.player));
-      setCharacterClip(this.scene,this.player,`${moving?'walk':'idle'}-${this.scene.facing}`);
+      setCharacterClip(this.scene.phaserScene,this.player,`${moving?'walk':'idle'}-${this.scene.facing}`);
     }
     for(const ally of this.allies){if(!ally.member.alive||ally.id===this.controlledId||ally.controller.actionState()==='attacking')continue;
       const moving=isBodyWalking(ally.body);
-      setCharacterClip(this.scene,ally.visual,`${moving?'walk':'idle'}-${ally.facing}`);
+      setCharacterClip(this.scene.phaserScene,ally.visual,`${moving?'walk':'idle'}-${ally.facing}`);
     }
     for(const enemy of this.arena){
       if(this.pendingDefeats.has(enemy.key))continue;
       if(enemy.controller?.actionState()==='attacking')continue;
       const moving=isBodyWalking(enemy.body);
       const clip=`${moving?'walk':'idle'}-${enemy.facing}` as const;
-      setCharacterClip(this.scene,enemy.visual,enemy.definition.actor.clips[clip]?clip:'idle-south');
+      setCharacterClip(this.scene.phaserScene,enemy.visual,enemy.definition.actor.clips[clip]?clip:'idle-south');
     }
   }
   destroy():void{

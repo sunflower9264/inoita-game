@@ -110,6 +110,7 @@ test('combat entry creates enemies once when loading a checkpoint',async()=>{
     const scene:any={player:{actor:{}},combatEnemyIds:()=>[],entities:[],refreshCombatTarget(){},
       textures:{exists:()=>true,get:()=>({has:()=>true}),on(){},remove(){}},anims:{exists:()=>false},
       events:{once(){},off(){}},add:{image:()=>ring}};
+    scene.phaserScene=scene;
     const host:any=Object.assign(Object.create(WorldCombat.prototype),{
       scene,app:{battleCatalog:battle,wardrobe,world:{actors:{}},session:{skills:{resetVersion:0},subscribe:()=>()=>{},party:{activeSize:3,activeIds:['player','ally','ally2'],activeRevision:5,get:()=>undefined}}},lastSkillResets:new Map(),
       roster:{spawns:[],enemies:[{key:'one'},{key:'two'}],enemy(key:string){return this.enemies.find((enemy:any)=>enemy.key===key);}},drops:{chests:{}},
