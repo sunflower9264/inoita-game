@@ -25,7 +25,6 @@
 ## 文件
 
 - 内容类型：`content.ts`（世界、地图、剧情动作、任务与奖励类型）。
-- 调试顺序：`story-progression.ts` 从 `scripts`／`events`／`quests` 推导 `storyProgression`，只服务调试跳转；正式游玩不读取，内容校验会核对派生产物。
 - 会话/剧情：`session.ts`、`story-director.ts`、`story-runtime.ts`、`story-graph.ts`、`story-condition.ts`、`story-scene.ts`、`story-script.ts`、`campaign.ts`、`scene-plan.ts`，以及同前缀的 `story-*.ts`、`scene-*.ts`；开发/测试模式开关与快照冻结在 `dev-mode.ts`，存档检查点的写时复制在 `playback-checkpoint.ts`。
 - 挑战刷怪：`pressure-enemies.ts` 按主角等级筛选普通战斗怪并随机选择。
 - 战斗：`combat-*.ts`、`battle.ts`、`action-*.ts`、`attack-*.ts`、`buff-*.ts`、`skill-*.ts`、`enemy-*.ts`；击杀奖励结算在 `combat-rewards.ts`。
