@@ -25,6 +25,7 @@
 - `story-native-triggers.test.ts` 检查《最后的记忆2》前三次交付各播一段对白、各发一次奖励并开放下一轮；`story-trigger-occupancy.test.ts` 逐帧验证原地只播一次、走开再靠近可重播、过滤解除后补播；`story-trigger-index.test.ts` 验证五类封印祭坛只在各自洞穴和剧情阶段触发，不会在候选地图上抢占一次性事件。
 - `story-stage-isolation.test.ts` 验证加载途中跳过、迟到画面清理、共享启动与真实坐标保留；`story-skip.test.ts` 验证流程阶段与解锁顺序。「最后的记忆1」四处铁门入口覆盖正常走位、开场跳过和途中跳过，核对落点、镜头与弹窗前补画。
 - `story-progression.test.ts` 验证「前往钢之兽人部落」与「被绑架的兽人长老」整段跳过和接取窗口读档续播，核对任务交付、沃尔达克入队及收尾地图。
+- `quest-trigger-flow.test.ts` 用不加载正式内容的合成场景验证区域事件接取、击杀推进到待交付、NPC 交付奖励、近身剧情结算交付，以及快照恢复后触发不重播、交付不重复结算；场景驱动在 `tests/support/quest-scenario.ts`。
 - `story-preparation.test.ts` 覆盖确定路径与调用返回、预测边界；`story-asset-preparation.test.ts` 覆盖跨场景请求复用、目标替换、取消和失败重试；入口测试验证恢复游戏不等待后续剧情素材。
 - `story-equipment.test.ts` 覆盖剧情装备发放与拾取拦截、手动穿脱与连带替换保护、剧情移除与离队销毁、正常装备退回；`story-disguise.test.ts` 验证剧情伪装穿脱；`story-scene`、`story-stage-isolation` 与 `saved-game` 覆盖主角收放武器、同图保留、换图恢复默认和存档读回；「消失的圣女1」在外观未准备好时分别跳过和取消整段剧情，核对姿态与迟到外观。
 - 剧情动作测试检查等待结束时仍在播放、自然完成后的保持或待机、跳过后的最终姿势；`story-playthrough-rewards.test.ts` 验证剧情奖励。
