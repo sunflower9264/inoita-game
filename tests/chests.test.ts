@@ -111,13 +111,14 @@ test('opening is claimed before rolling; repeated and reentrant clicks cannot pa
   assert.deepEqual(chests.spawns[0],{id:'chest:1:forest:box:0',enemyId:mimic,x:10,y:20,respawn:false});
 });
 
-test('same-map rebuild preserves opened state; another map and returning create fresh visits',()=>{
+test('an opened chest stays opened after leaving and returning; the same id on another map is independent',()=>{
   const chests=new ChestVisits();chests.enterMap('forest');chests.open('forest','box',{x:0,y:0},empty);
-  chests.enterMap('forest');assert.equal(chests.isOpened('forest','box'),true);
-  assert.equal(chests.open('cave','box',{x:0,y:0},empty),undefined);
-  chests.enterMap('cave');assert.equal(chests.isOpened('cave','box'),false);
+  chests.enterMap('forest');assert.equal(chests.isOpened('forest','box'),true,'同图重建保持已开启');
+  assert.equal(chests.open('cave','box',{x:0,y:0},empty),undefined,'不在当前地图时不能开别的图的箱子');
+  chests.enterMap('cave');assert.equal(chests.isOpened('cave','box'),false,'另一张地图的同名摆放点不受影响');
   assert.ok(chests.open('cave','box',{x:0,y:0},empty));
-  chests.enterMap('forest');assert.ok(chests.open('forest','box',{x:0,y:0},empty));
+  chests.enterMap('forest');assert.equal(chests.isOpened('forest','box'),true,'回到森林时仍是已开启');
+  assert.equal(chests.open('forest','box',{x:0,y:0},()=>{throw new Error('已开启的宝箱不能再掷奖励')}),undefined);
   assert.equal(new ChestVisits().isOpened('forest','box'),false);
 });
 
@@ -130,11 +131,11 @@ test('a story-placed one-time chest stays consumed after leaving and returning',
   assert.equal(chests.isOpened('boss-room','story-object-1-2',true),true,'回来时仍是已开启');
   assert.equal(chests.open('boss-room','story-object-1-2',{x:0,y:0},
     ()=>{throw new Error('已开启的一次性宝箱不能再掷奖励')},true),undefined);
-  // 普通地图宝箱仍按每次访问重掷。
+  // 普通地图宝箱同样跨访问保留。
   chests.enterMap('village');chests.enterMap('forest');
   chests.open('forest','box',{x:0,y:0},empty);
   chests.enterMap('village');chests.enterMap('forest');
-  assert.equal(chests.isOpened('forest','box'),false);
+  assert.equal(chests.isOpened('forest','box'),true,'普通宝箱离开再回来也仍是已开启');
 });
 
 test('failed reward preparation releases the claim without spawning a monster',()=>{
@@ -157,7 +158,10 @@ test('mimic survives scene rebuild with vitals and never joins timed respawns',(
   assert.equal(new WorldEnemyRoster(session,map,[],1).enemies.some(enemy=>enemy.key===spawn.id),false);
   session.enterMap('elsewhere');assert.deepEqual(session.enemyVitals(spawn.id),{});
   new WorldEnemyRoster(session,map,[],1);
-  session.chests.open(map.id,'box',{x:504,y:104},()=>({rewards:[],enemies:[mimic]}));
+  // 同一个摆放点已经开过，换图回来也不会再开；换一个摆放点验证新访问仍会生成新的宝箱怪记录。
+  assert.equal(session.chests.open(map.id,'box',{x:504,y:104},
+    ()=>{throw new Error('已开启的宝箱不能再掷奖励')}),undefined);
+  session.chests.open(map.id,'box-2',{x:520,y:104},()=>({rewards:[],enemies:[mimic]}));
   assert.notEqual(session.chests.spawns[0].id,spawn.id);
 });
 

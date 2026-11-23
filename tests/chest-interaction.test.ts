@@ -323,7 +323,7 @@ test('an empty random result still opens, sounds and removes the treasure',t=>{
   f.tweens[0].onComplete();assert.equal(f.chest.container.visible,false);
 });
 
-test('rebuilding and restoring an opened chest keeps it hidden; visiting another map restores a fresh chest',t=>{
+test('rebuilding, restoring and revisiting keep an opened chest hidden',t=>{
   const {map,entity}=arena(),f=fixture(map,entity);f.position(entity.x-24,entity.y);
   t.mock.method(Math,'random',()=>.9999);f.click();f.tweens[0].onComplete();
   const snapshot=f.session.chests.captureState(),rebuilt=fixture(map,entity,f.session);
@@ -332,6 +332,7 @@ test('rebuilding and restoring an opened chest keeps it hidden; visiting another
   const restored=fixture(map,entity);restored.session.chests.restoreState(snapshot);restored.scene.refreshState();
   assert.equal(restored.chest.container.visible,false);assert.equal(restored.enabled.get(restored.chest),false);
   f.session.chests.enterMap('another-map');const returned=fixture(map,entity,f.session);
-  returned.scene.refreshState();assert.equal(returned.chest.container.visible,true);assert.equal(returned.enabled.get(returned.chest),true);
-  returned.position(entity.x-24,entity.y);assert(returned.click());assert(returned.opened());
+  returned.scene.refreshState();assert.equal(returned.chest.container.visible,false,'换图回来仍隐藏');
+  assert.equal(returned.enabled.get(returned.chest),false);
+  returned.position(entity.x-24,entity.y);assert.equal(returned.click(),false,'已开启的宝箱不能再点开');
 });

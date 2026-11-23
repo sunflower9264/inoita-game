@@ -15,12 +15,13 @@ export const SHOP_COUNTER_GAP = 32;
 
 export interface ChestVisitsState { map?:string; visit:number; opened:string[]; consumed:string[]; enemies:EnemySpawn[] }
 
-/** 开启记录和宝箱怪属于一次地图访问；同图场景重建继续使用这份记录。 */
+/** 开启记录跨地图访问保留；宝箱怪只属于一次地图访问，同图场景重建继续使用这份记录。 */
 export class ChestVisits {
   private map?: string;
   private visit = 0;
+  /** 普通地图宝箱：键为 `地图:实体`，开启后离开地图再回来也不会重新出现。 */
   private readonly opened = new Set<string>();
-  /** 剧情摆放的一次性宝箱：开启后跨地图访问保持已消耗，不能反复领取。 */
+  /** 剧情摆放的一次性宝箱：同样按 `地图:实体` 持久保存，不能反复领取。 */
   private readonly consumed = new Set<string>();
   private readonly enemies: EnemySpawn[] = [];
   /** 生成记录或本次访问变化时递增；只读投影可以据此复用上一次的结果。 */
@@ -46,12 +47,11 @@ export class ChestVisits {
     if (map === this.map) return;
     this.revisionValue++;
     this.map = map; this.visit++;
-    this.opened.clear(); this.enemies.length = 0;
+    this.enemies.length = 0;
   }
   private persistentKey(map:string,entity:string):string { return `${map}:${entity}`; }
   isOpened(map: string, entity: string, oneTime = false): boolean {
-    if (oneTime) return this.consumed.has(this.persistentKey(map, entity));
-    return this.map === map && this.opened.has(entity);
+    return (oneTime ? this.consumed : this.opened).has(this.persistentKey(map, entity));
   }
   /** 泉水喝出怪物：和宝箱怪走同一份生成记录，随本次地图访问一起重建。 */
   spawnEnemy(map: string, key: string, enemyId: string, position: {x:number;y:number}): void {
@@ -78,9 +78,10 @@ export class ChestVisits {
   open(map: string, entity: string, position: {x:number;y:number}, roll: () => ChestOpenResult, oneTime = false): ChestOpenResult | undefined {
     if (map !== this.map) return;
     const key = this.persistentKey(map, entity);
-    if (oneTime ? this.consumed.has(key) : this.opened.has(entity)) return;
+    const records = oneTime ? this.consumed : this.opened;
+    if (records.has(key)) return;
     this.revisionValue++;
-    if (oneTime) this.consumed.add(key); else this.opened.add(entity);
+    records.add(key);
     try {
       const result = roll();
       result.enemies.forEach((enemyId, index) => this.enemies.push({
@@ -88,14 +89,15 @@ export class ChestVisits {
       }));
       return result;
     } catch (error) {
-      if (oneTime) this.consumed.delete(key); else this.opened.delete(entity);
+      records.delete(key);
       throw error;
     }
   }
 }
 
 /**
- * 原版 `MAP_AddNPCItemLocation` 对宝箱的判定：每次进图重掷一次。
+ * 原版 `MAP_AddNPCItemLocation` 对宝箱的判定：每次进图重掷一次；已开启的摆放点
+ * 由 `ChestVisits.isOpened` 过滤，不会重新出现。
  *
  * 普通宝箱掷 1..99，不超过 29 才出现（约 29%）；优质宝箱先过同一道关，再过一道
  * 「1..99 达到 60」的关——过了才是优质宝箱，没过就降级成普通宝箱，所以优质宝箱
