@@ -7,7 +7,7 @@ import { StoryWorldState, type StoryWorldSnapshot } from '../src/domain/story-wo
 import type { StoryNodeCommit, StoryRuntimeSnapshot } from '../src/domain/story-runtime.ts';
 import type { StoryCommand, StoryScript } from '../src/domain/story-graph.ts';
 import { applyStorySceneAction, resolveStoryScene } from '../src/domain/story-scene.ts';
-import type { StoryStage } from '../src/domain/story-performance.ts';
+import { validateStoryStageSnapshot, type StoryStage } from '../src/domain/story-performance.ts';
 
 /** 演出差量写回与脚本显式落位、移除的提交规则。 */
 const runtime: StoryRuntimeSnapshot = { version: 2, sequence: 0, runs: [], completedEvents: [],
@@ -42,11 +42,86 @@ test('回到兽人部落交接后，离队的奥尔夫留在长老屋', () => {
   const { scripts }: { scripts: Record<string, StoryScript> } = JSON.parse(readFileSync(new URL('../public/content/campaign.json', import.meta.url), 'utf8'));
   const handoff = scripts['event-113'].nodes.find(node => node.id === 'scene-2')!;
   const declaration = handoff.presentation.find(action => action.type === 'stage')!;
+  let stage = resolveStoryScene(declaration, {
+    map: declaration.map,
+    actors: [
+      { id: 'player', actor: 'kiyan', x: declaration.x, y: declaration.y, facing: declaration.facing, visible: true },
+      { id: 'member:story-mercenary-olaf', actor: 'mercenary-olaf', memberId: 'story-mercenary-olaf', x: 216, y: 184, facing: 'south', visible: true },
+      { id: 'entity:quest-npc-located-npc-249', actor: 'story-olaf-d48a31ff', characterId: 'npc-249', worldEntityId: 'quest-npc-located-npc-249', x: 216, y: 184, facing: 'south', visible: true },
+    ],
+  });
+  for (const action of handoff.presentation) {
+    if (action.type === 'stage' || action.type === 'dialogue' || action.type === 'choice' || action.type === 'quest-popup') continue;
+    stage = applyStorySceneAction(stage, action);
+  }
+  assert.equal(stage.cast.find(member => member.memberId === 'story-mercenary-olaf')?.characterId, 'npc-249');
+  validateStoryStageSnapshot(stage);
   const state = world();
-  const commands = storyCommitCommands(commit(handoff.commands, stageSnapshot(declaration)), state, [], () => true);
+  const commands = storyCommitCommands(commit(handoff.commands, stage), state, [], () => true);
+  assert.equal(commands.some(command => command.type === 'world' && command.command.kind === 'remove-character'
+    && command.command.characterId === 'npc-249'), false, '离队节点不再清理奥尔夫的地图副本');
   for (const command of commands) if (command.type === 'world') state.apply(command.command);
   assert.equal(state.entity('quest-npc-located-npc-249')?.removed, false);
   assert.equal(state.actorVisible(declaration.map, 'story-olaf-d48a31ff', 'npc-249'), true);
+});
+
+test('峡谷怪人的接取演出结束后移除队伍成员的地图副本', () => {
+  const { scripts }: { scripts: Record<string, StoryScript> } = JSON.parse(readFileSync(new URL('../public/content/campaign.json', import.meta.url), 'utf8'));
+  const node = scripts['event-97'].nodes.find(candidate => candidate.id === 'scene-1')!;
+  const declaration = node.presentation.find(action => action.type === 'stage')!;
+  let stage = resolveStoryScene(declaration, {
+    map: declaration.map,
+    actors: [
+      { id: 'player', actor: 'kiyan', x: declaration.x, y: declaration.y, facing: declaration.facing, visible: true },
+      { id: 'member:story-mercenary-olaf', actor: 'mercenary-olaf', memberId: 'story-mercenary-olaf', x: 640, y: 540, facing: 'south', visible: true },
+      { id: 'entity:story-character-npc-249', actor: 'story-olaf-d48a31ff', characterId: 'npc-249', worldEntityId: 'story-character-npc-249', x: 696, y: 520, facing: 'south', visible: true },
+    ],
+  });
+  for (const action of node.presentation) {
+    if (action.type === 'stage' || action.type === 'dialogue' || action.type === 'choice' || action.type === 'quest-popup') continue;
+    stage = applyStorySceneAction(stage, action);
+  }
+  assert.equal(stage.cast.find(member => member.memberId === 'story-mercenary-olaf')?.characterId, 'npc-249');
+  validateStoryStageSnapshot(stage);
+
+  const state = new StoryWorldState();
+  state.apply({ kind: 'travel', destination: { map: declaration.map, x: stage.x, y: stage.y, facing: stage.facing } });
+  state.apply({ kind: 'place', scope: 'visit', entity: {
+    id: 'story-character-npc-249', map: declaration.map, actor: 'story-olaf-d48a31ff', characterId: 'npc-249',
+    x: 696, y: 520, facing: 'south', visible: true,
+  } });
+  const commands = storyCommitCommands(commit(node.commands, stage), state, [], () => true);
+  assert.ok(commands.some(command => command.type === 'world' && command.command.kind === 'remove-character'
+    && command.command.characterId === 'npc-249' && command.command.map === declaration.map && command.command.all),
+    '队伍成员已有同名地图副本，演出收尾要清掉它');
+  for (const command of commands) if (command.type === 'world') state.apply(command.command);
+  assert.equal(state.entity('story-character-npc-249')?.removed, true);
+  assert.equal(state.projectEntities(declaration.map, [], []).some(entity => entity.id === 'story-character-npc-249'), false);
+});
+
+test('同类演出的队伍成员副本按收尾规则统一移除', () => {
+  const { scripts }: { scripts: Record<string, StoryScript> } = JSON.parse(readFileSync(new URL('../public/content/campaign.json', import.meta.url), 'utf8'));
+  const removed = new Set<string>(), kept = new Set<string>();
+  for (const [name, script] of Object.entries(scripts)) {
+    for (const node of script.nodes) {
+      const declaration = node.presentation.find(action => action.type === 'stage'
+        && action.cast.some(member => member.memberId && member.characterId)) as StoryStage | undefined;
+      if (!declaration) continue;
+      const stage = resolveStoryScene(declaration, {
+        map: declaration.map,
+        actors: [
+          { id: 'player', actor: 'kiyan', x: declaration.x, y: declaration.y, facing: declaration.facing, visible: true },
+          { id: 'member:story-mercenary-olaf', actor: 'mercenary-olaf', memberId: 'story-mercenary-olaf',
+            x: declaration.x, y: declaration.y, facing: 'south', visible: true },
+        ],
+      });
+      const commands = storyCommitCommands(commit(node.commands, stage), world(), [], () => true);
+      (commands.some(command => command.type === 'world' && command.command.kind === 'remove-character'
+        && command.command.characterId === 'npc-249') ? removed : kept).add(name);
+    }
+  }
+  assert.deepEqual([...kept], ['event-113'], '只有离队节点保留地图副本');
+  assert.equal(removed.size, 23);
 });
 
 test('implicit stage bindings do not revive an entity the script removed', () => {

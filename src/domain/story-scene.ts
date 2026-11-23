@@ -153,7 +153,12 @@ export function syncStoryScene(snapshot: StoryStageSnapshot): StoryStageSnapshot
   snapshot.cast = snapshot.cast.map(member => {
     const actor = snapshot.scene.actors.find(actor => actor.id === bindings.get(member.id));
     if (!actor) throw new Error(`剧情演员绑定失效：${member.id}`);
-    return { ...member, actor: actor.actor, worldEntityId: actor.worldEntityId, characterId: actor.characterId,
+    // 队伍成员实例只有 memberId，没有人物编号；只有绑定到的确实是同一个队伍成员时，
+    // 才补回声明的 characterId，供 storyCommitCommands 收尾时移除同图地图副本。
+    // memberId 必须来自实际绑定，不能由声明补齐。
+    const boundPartyMember = actor.id === `member:${member.memberId}`;
+    return { ...member, actor: actor.actor, worldEntityId: actor.worldEntityId,
+      characterId: actor.characterId ?? (boundPartyMember ? member.characterId : undefined),
       memberId: actor.memberId, enemyId: actor.enemyId, x: actor.x, y: actor.y, facing: actor.facing,
       visible: actor.visible, unpositioned: actor.unpositioned };
   });

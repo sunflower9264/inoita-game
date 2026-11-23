@@ -4,6 +4,8 @@ import type {ActorDefinition} from '../src/domain/content.ts';
 import type {SceneActorState,SceneSnapshot} from '../src/domain/scene-snapshot.ts';
 import type {PerformanceAction,StoryCastMember,StoryStage} from '../src/domain/story-performance.ts';
 import {applyStorySceneAction,boundSceneActor,findSceneActor,hidePendingEntrances,hideUnboundStageActors,resolveStoryScene,syncStoryScene} from '../src/domain/story-scene.ts';
+import {validateStoryStageSnapshot} from '../src/domain/story-performance.ts';
+import {stageSnapshot} from './helpers/story-stage.ts';
 
 const actor=(id:string,extra:Partial<SceneActorState>={}):SceneActorState=>({id,actor:id,x:10,y:20,facing:'south',visible:true,...extra});
 const member=(id:string,extra:Partial<StoryCastMember>={}):StoryCastMember=>({id,actor:id,x:0,y:0,facing:'south',visible:false,binding:'world',...extra});
@@ -398,4 +400,61 @@ test('town pose overrides only the hero and survives same-map scene changes', ()
   assert.equal(boundSceneActor(armed, 'player')!.townPose, false);
   const reloaded = resolveStoryScene({ ...stage(), resetActors: true }, armed.scene);
   assert.equal(boundSceneActor(reloaded, 'player')!.townPose, undefined);
+});
+
+test('a declared character identity survives binding to a party instance without one', () => {
+  const snapshot = resolveStoryScene(stage([
+    member('olaf', { actor: 'story-olaf-d48a31ff', memberId: 'story-mercenary-olaf', characterId: 'npc-249', x: 32, y: 48, visible: true }),
+  ]), source([
+    actor('member:story-mercenary-olaf', { actor: 'mercenary-olaf', memberId: 'story-mercenary-olaf', x: 32, y: 48 }),
+    actor('entity:story-character-npc-249', { actor: 'story-olaf-d48a31ff', characterId: 'npc-249', worldEntityId: 'story-character-npc-249', x: 32, y: 48 }),
+  ]));
+  assert.equal(boundSceneActor(snapshot, 'olaf')?.id, 'member:story-mercenary-olaf');
+  assert.equal(snapshot.cast[0]?.memberId, 'story-mercenary-olaf');
+  assert.equal(snapshot.cast[0]?.characterId, 'npc-249', '队伍实例没有人物编号时保留声明的人物身份');
+  validateStoryStageSnapshot(snapshot);
+});
+
+test('an actor with its own character id keeps it over the stage declaration', () => {
+  const snapshot = resolveStoryScene(stage([
+    member('olaf', { actor: 'olaf', memberId: 'story-mercenary-olaf', characterId: 'npc-249', x: 1, y: 2, visible: true }),
+  ]), source([
+    actor('member:story-mercenary-olaf', { actor: 'mercenary-olaf', memberId: 'story-mercenary-olaf', characterId: 'npc-other', x: 1, y: 2 }),
+  ]));
+  assert.equal(snapshot.cast[0]?.characterId, 'npc-other');
+});
+
+test('an unnamed actor cannot borrow a declared identity unless it is the same party member', () => {
+  const snapshot = stageSnapshot(stage([
+    member('olaf', { actor: 'olaf', memberId: 'story-mercenary-olaf', characterId: 'npc-249', x: 1, y: 2, visible: true }),
+  ]));
+  const bound = snapshot.scene.actors.find(candidate => candidate.id === 'cast:olaf')!;
+  bound.id = 'member:story-mercenary-olaf'; delete bound.characterId;
+  snapshot.bindings = snapshot.bindings.map(([alias, id]) =>
+    [alias, id === 'cast:olaf' ? 'member:story-mercenary-olaf' : id] as [string, string]);
+  validateStoryStageSnapshot(snapshot);
+  const other = structuredClone(snapshot);
+  other.scene.actors.find(candidate => candidate.id === 'member:story-mercenary-olaf')!.memberId = 'another-member';
+  assert.throws(() => validateStoryStageSnapshot(other), /演员身份不一致/);
+  const wrongShape = structuredClone(snapshot);
+  const wrongActor = wrongShape.scene.actors.find(candidate => candidate.id === 'member:story-mercenary-olaf')!;
+  wrongActor.id = 'cast:olaf';
+  wrongShape.bindings = wrongShape.bindings.map(([alias, id]) =>
+    [alias, id === 'member:story-mercenary-olaf' ? 'cast:olaf' : id] as [string, string]);
+  assert.throws(() => validateStoryStageSnapshot(wrongShape), /演员身份不一致/);
+});
+
+test('a rebuilt unnamed actor does not borrow the declared character id', () => {
+  let snapshot = resolveStoryScene(stage([
+    member('olaf', { actor: 'olaf', memberId: 'story-mercenary-olaf', characterId: 'npc-249', x: 1, y: 2, visible: true }),
+  ]), source([
+    actor('member:story-mercenary-olaf', { actor: 'mercenary-olaf', memberId: 'story-mercenary-olaf', x: 1, y: 2 }),
+  ]));
+  snapshot = applyStorySceneAction(snapshot, { type: 'world-object', target: 'olaf', mode: 'create',
+    command: { kind: 'place', entity: { id: 'story-unnamed', map: 'camp', actor: 'olaf', x: 8, y: 9 } } });
+  const bound = boundSceneActor(snapshot, 'olaf')!;
+  assert.equal(bound.id, 'entity:story-unnamed');
+  assert.equal(bound.memberId, undefined);
+  assert.equal(snapshot.cast[0]?.characterId, undefined, '重绑到无名实体后不借声明身份');
+  validateStoryStageSnapshot(snapshot);
 });

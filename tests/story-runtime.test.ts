@@ -456,3 +456,29 @@ test('completed and deferred runs release full scene payloads after handing the 
     assert.ok(h.commits.every(commit=>JSON.stringify(commit.stage)===JSON.stringify(stage)));
   }
 });
+
+test('restore accepts a party member borrowing the declared character id', async () => {
+  const h = harness(graph([node('one', { type: 'end' }, 3)]));
+  await h.runtime.start('main');
+  const stage = stageSnapshot({ type: 'stage', map: 'camp', x: 0, y: 0, facing: 'south', playerVisible: true,
+    cast: [{ id: 'olaf', actor: 'olaf', memberId: 'story-mercenary-olaf', characterId: 'npc-249', x: 8, y: 8, facing: 'south', visible: true }] });
+  const olaf = stage.scene.actors.find(actor => actor.id === 'cast:olaf')!;
+  olaf.id = 'member:story-mercenary-olaf'; delete olaf.characterId;
+  stage.bindings = stage.bindings.map(([alias, id]) =>
+    [alias, id === 'cast:olaf' ? 'member:story-mercenary-olaf' : id] as [string, string]);
+  const saved = structuredClone(h.runtime.snapshot()); saved.runs[0]!.stage = stage;
+  assert.doesNotThrow(() => h.runtime.restore(saved));
+
+  const corrupt = structuredClone(stage);
+  corrupt.scene.actors.find(actor => actor.id === 'member:story-mercenary-olaf')!.memberId = 'another-member';
+  const broken = structuredClone(saved); broken.runs[0]!.stage = corrupt;
+  assert.throws(() => h.runtime.restore(broken));
+
+  const wrongShape = structuredClone(stage);
+  const wrongActor = wrongShape.scene.actors.find(actor => actor.id === 'member:story-mercenary-olaf')!;
+  wrongActor.id = 'cast:olaf';
+  wrongShape.bindings = wrongShape.bindings.map(([alias, id]) =>
+    [alias, id === 'member:story-mercenary-olaf' ? 'cast:olaf' : id] as [string, string]);
+  const brokenShape = structuredClone(saved); brokenShape.runs[0]!.stage = wrongShape;
+  assert.throws(() => h.runtime.restore(brokenShape), /演员身份不一致/, '不是队伍实例形状的演员不能借声明身份');
+});

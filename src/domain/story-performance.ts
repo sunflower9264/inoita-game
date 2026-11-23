@@ -174,7 +174,8 @@ export function validateStoryStageSnapshot(value: unknown): asserts value is Sto
     || !Array.isArray(stage.cast) || stage.cast.some(member => !member || typeof member.id !== 'string' || !member.id
       || typeof member.actor !== 'string' || !member.actor || !Number.isFinite(member.x) || !Number.isFinite(member.y)
       || typeof member.visible !== 'boolean' || !['north', 'south', 'east', 'west'].includes(member.facing)
-      || member.unpositioned !== undefined && typeof member.unpositioned !== 'boolean')
+      || member.unpositioned !== undefined && typeof member.unpositioned !== 'boolean'
+      || member.characterId !== undefined && (typeof member.characterId !== 'string' || !member.characterId))
     || new Set(stage.cast.map(member => member.id)).size !== stage.cast.length) throw new Error('剧情检查点舞台无效');
   validateSceneSnapshot(stage.scene);
   if (stage.scene.map !== stage.map) throw new Error('剧情检查点场景与舞台地图不一致');
@@ -199,9 +200,15 @@ export function validateStoryStageSnapshot(value: unknown): asserts value is Sto
     throw new Error('剧情检查点主角状态与场景不一致');
   for (const member of stage.cast) {
     const actor = actors.get(bindings.get(member.id)!)!;
+    // 队伍成员实例只有 memberId，没有人物编号；声明的人物编号是演出收尾清理地图副本的依据。
+    // 只有绑定到的确实是同一个队伍成员时，才允许演员缺少 characterId。
+    const partyInstance = member.memberId !== undefined && member.memberId !== 'player'
+      && actor.memberId === member.memberId && actor.id === `member:${member.memberId}`;
+    const characterIdConflicts = member.characterId !== undefined
+      && (actor.characterId === undefined ? !partyInstance : actor.characterId !== member.characterId);
     if (member.actor !== actor.actor || member.x !== actor.x || member.y !== actor.y || member.facing !== actor.facing
       || member.visible !== actor.visible || !!member.unpositioned !== !!actor.unpositioned
-      || member.characterId !== undefined && actor.characterId !== member.characterId
+      || characterIdConflicts
       || member.worldEntityId !== undefined && actor.worldEntityId !== member.worldEntityId
       || member.memberId !== undefined && actor.memberId !== member.memberId
       || member.enemyId !== undefined && actor.enemyId !== member.enemyId)

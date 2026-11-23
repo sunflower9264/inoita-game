@@ -75,6 +75,8 @@
 
 演出 `stage.cast[].id` 是临时演员标识。需要永久改变某个角色时同时填写 `worldEntityId`，精确绑定世界实例；同一舞台一个世界实例只绑定一次。普通临时演员不参与正式世界保存。
 
+舞台条目同时声明 `memberId` 和 `characterId` 时，表示这个人物由队伍成员接管；事件收尾会按人物编号移除同图的地图副本，避免队伍成员和旧 NPC 同时出现。节点里的 `party-leave` 让该人物保留为地图 NPC。
+
 地图人物的 `characterId` 表示稳定人物身份，`actor` 表示外观。任务的 `giverCharacterId`、`deliveryCharacterId`、目标的 `characterId` 和近身事件的 `nearCharacterId` 使用同一身份；不同人物可以共用素材。
 
 地图实体和剧情摆放可以写 `authority` 标明来源：`registered` 是剧情位置登记，代表角色在本图的正式副本；`npc` 是普通任务 NPC；`story` 是演出临时实例；`static` 是地图自带对象。旧内容没写时，加载阶段按 ID 解码一次；运行期只读这个字段来决定位置登记是否接管地图副本，不再各处判断前缀。
