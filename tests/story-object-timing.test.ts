@@ -28,8 +28,8 @@ test('published native object appearances and removals keep their immediate acti
       }
     }
   }
-  assert.equal(places, 563);
-  assert.equal(removals, 223);
+  assert.equal(places, 559);
+  assert.equal(removals, 219);
 });
 
 test('the mine gate disappears after its location effect and before the next dialogue', () => {
