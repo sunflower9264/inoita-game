@@ -1,9 +1,9 @@
 /**
  * 长枪样板原创像素特效源数据（全部逐格像素网格 + 量化色板，代码导出透明 PNG）。
  *
- * 全套包含 10 套原创像素特效（全部采用 normal 底光 + add 炽核双层，适配深色/游戏/浅色画布）：
+ * 全套包含 11 套原创像素特效（全部采用 normal 底光 + add 炽核双层，适配深色/游戏/浅色画布）：
  * 第一批：
- * 1. spear-thrust-beam   （6 帧）：破阵枪 / 基础直刺的蓝青柳叶贯通枪芒
+ * 1. spear-thrust-beam   （6 帧）：基础直刺的蓝青柳叶贯通枪芒
  * 2. spear-basic-thrust  （3 帧）：普通攻击第一段 · 素银轻刺破风线
  * 3. spear-basic-flick   （3 帧）：普通攻击第二段 · 素银极薄小月牙拨光
  * 4. spear-heavy-pierce  （5 帧）：狂龙穿心破 · 赤金炽白重刺破甲芒（带向后喷射破甲气锥）
@@ -14,6 +14,7 @@
  * 8. spear-flurry-needles（8 帧）：连环点枪前两段 · 暴雨梨花奇偶交替扇形针芒幻影（带红缨残影）
  * 9. spear-flurry-finisher（4 帧）：连环点枪第三段 · 炽青加粗定音主刺芒 + 十字爆闪
  * 10. spear-sovereign-beam（7 帧）：万圣龙王破 · 同源 1.6 倍加长蓝青柳叶枪芒 + 双层青金螺旋气浪
+ * 11. spear-spin-storm   （14 帧）：旋风枪舞 · 360° 俯视椭圆冷钢青白刃环 + 飞舞朱红红缨流光 + 末圈气浪爆散
  */
 
 export type RgbaPalette = Readonly<Record<string, readonly [number, number, number, number]>>;
@@ -187,6 +188,35 @@ export const FLURRY_ADD_PALETTE: RgbaPalette = {
   r: [0xb0, 0x26, 0x20, 115],
   R: [0xf2, 0x4c, 0x3e, 180],
   P: [0xff, 0xa2, 0x86, 220],
+};
+
+/** 8. 旋风枪舞（360° 旋枪风暴）：锐利银青冷钢刃弧 + 醒目朱红红缨流光 + 淡金火星 */
+export const SPIN_BASE_PALETTE: RgbaPalette = {
+  '.': [0, 0, 0, 0],
+  d: [0x12, 0x3a, 0x6e, 128], // 深冷青风尾
+  D: [0x22, 0x66, 0xb2, 196], // 冷青暗刃
+  B: [0x4c, 0xa8, 0xe8, 226], // 苍青风弧
+  C: [0x96, 0xe4, 0xff, 242], // 银青主光
+  L: [0xd8, 0xf6, 0xff, 248], // 炽银亮锋
+  W: [0xf8, 0xfe, 0xff, 255], // 纯白尖锋
+  g: [0xff, 0xdf, 0x82, 232], // 破风金火星
+  r: [0x8c, 0x16, 0x14, 190], // 红缨暗红拖尾
+  R: [0xdf, 0x2f, 0x26, 236], // 红缨正朱红
+  P: [0xff, 0x82, 0x64, 248], // 红缨高光丝
+};
+
+export const SPIN_ADD_PALETTE: RgbaPalette = {
+  '.': [0, 0, 0, 0],
+  d: [0x1c, 0x56, 0xa2, 86],
+  D: [0x38, 0x90, 0xdc, 148],
+  B: [0x70, 0xca, 0xff, 198],
+  C: [0xb8, 0xf0, 0xff, 232],
+  L: [0xe8, 0xfb, 0xff, 246],
+  W: [0xff, 0xff, 0xff, 255],
+  g: [0xff, 0xf0, 0xb2, 244],
+  r: [0xb4, 0x22, 0x1c, 125],
+  R: [0xf6, 0x48, 0x38, 192],
+  P: [0xff, 0xa6, 0x88, 230],
 };
 
 function blank(w: number, h: number): string[][] {
@@ -1489,11 +1519,210 @@ function drawSovereignBeamAxis(
 }
 
 // ===========================================================================
-// 汇总全套 10 组原创特效源（export.ts 自动打包到 spear-effects.png）
+// 11. 旋风枪舞：360° 俯视椭圆冷钢青白刃环 + 飞舞红缨流光 + 末圈爆散（spear-spin-storm，14 帧）
+// ===========================================================================
+
+function drawTasselRibbon(
+  base: string[][],
+  add: string[][],
+  cx: number,
+  cy: number,
+  rx: number,
+  ry: number,
+  tailDeg: number,
+  headDeg: number,
+  halfWidth: number,
+  phaseSeed: number,
+): void {
+  // 高密度采样（每度至少 1.5 步），彻底消除外圈断齿并画出双股飘逸红缨丝感
+  const steps = Math.max(220, Math.ceil(Math.abs(headDeg - tailDeg) * 1.6));
+  for (let s = 0; s <= steps; s++) {
+    const f = s / steps; // 0 = 飘尾，1 = 靠近枪颈红缨头
+    const deg = tailDeg + (headDeg - tailDeg) * f;
+    const rad = (deg * Math.PI) / 180;
+    const flutter = Math.sin(f * Math.PI * 3.5 + phaseSeed) * 1.35 * (1 - f * 0.4);
+    const taper = Math.sin(Math.pow(f, 0.72) * Math.PI);
+    const hw = Math.max(0.45, halfWidth * taper);
+    const ca = Math.cos(rad);
+    const sa = Math.sin(rad);
+    for (let o = -hw; o <= hw; o += 0.35) {
+      const px = cx + (rx + flutter + o) * ca;
+      const py = cy + (ry + flutter * 0.72 + o * 0.76) * sa;
+      const norm = Math.abs(o) / Math.max(0.45, hw);
+      const ch = norm < 0.38 && f > 0.34 ? 'P' : norm < 0.76 && f > 0.14 ? 'R' : 'r';
+      const gx = Math.round(px);
+      const gy = Math.round(py);
+      if (gy >= 0 && gy < base.length && gx >= 0 && gx < base[0].length) {
+        if (base[gy][gx] !== 'W') base[gy][gx] = ch;
+        if (add[gy][gx] !== 'W') add[gy][gx] = ch;
+      }
+    }
+    // 副股细红缨飘丝（略偏外侧、反相波动，增强真丝甩尾质感）
+    if (f > 0.12 && f < 0.92) {
+      const f2 = Math.sin(f * Math.PI * 4.5 + phaseSeed + 2.1) * 1.5;
+      const px2 = cx + (rx + 3.2 + f2) * ca;
+      const py2 = cy + (ry + 2.3 + f2 * 0.72) * sa;
+      const gx2 = Math.round(px2);
+      const gy2 = Math.round(py2);
+      if (gy2 >= 0 && gy2 < base.length && gx2 >= 0 && gx2 < base[0].length) {
+        const ch2 = f > 0.55 ? 'R' : 'r';
+        if (base[gy2][gx2] !== 'W' && base[gy2][gx2] !== 'P') base[gy2][gx2] = ch2;
+        if (add[gy2][gx2] !== 'W' && add[gy2][gx2] !== 'P') add[gy2][gx2] = ch2;
+      }
+    }
+  }
+}
+
+function buildSpinStorm(direction: 'west' | 'south' | 'north'): DirectionalEffectSource {
+  // 140×104：角色脚底 (0,0) 在 (70, 60)，旋风中心在 (70, 48)（腰胸高度 y = -12），南北枪尖完整贴合弧锋不穿帮
+  const w = 140;
+  const h = 104;
+  const ox = 70;
+  const oy = 60;
+  const cx = 70;
+  const cy = 48;
+  // 起始角度与 source.ts 四向起旋严丝合缝咬合，每帧逆时针旋转 -90°（东向由西向自动镜像成顺时针）
+  const startDeg = direction === 'south' ? 90 : direction === 'west' ? 180 : -90;
+  const baseFrames: EffectFrameGrid[] = [];
+  const addFrames: EffectFrameGrid[] = [];
+
+  for (let i = 0; i < 14; i++) {
+    const base = blank(w, h);
+    const add = blank(w, h);
+    const tipDeg = startDeg - i * 90;
+
+    if (i < 12) {
+      // 阶段 1..3：三整圈旋枪递进（第 1 圈起势 → 第 2 圈满速 → 第 3 圈极限狂舞）
+      const turn = Math.floor(i / 4); // 0, 1, 2
+      const progress = i / 11;
+      const scale = 0.88 + progress * 0.22; // 0.88 → 1.10
+      const rx = 50 * scale;
+      const ry = 36.5 * scale;
+      const mainThick = turn === 0 ? 3.5 + i * 0.28 : turn === 1 ? 5.1 : 5.8;
+      const trailSpan = turn === 0 ? 200 + i * 10 : turn === 1 ? 245 : 265;
+
+      // 1. 外圈主枪锋寒芒（高密 440 步平滑连续绘制，彻底无断齿，前锋炽白紧咬枪尖）
+      drawArcCurve(base, add, cx, cy, rx, ry, tipDeg + trailSpan, tipDeg, mainThick, true, 440);
+
+      // 2. 180° 对侧平衡风刃弧（维持 360° 连续旋风感，比主锋更薄不抢方向）
+      drawArcCurve(
+        base, add, cx, cy, rx + 2.5, ry + 1.9,
+        tipDeg + 180 + (turn === 0 ? 110 : 140), tipDeg + 180 - 10,
+        turn === 0 ? 1.5 : 2.1, false, 240,
+      );
+
+      // 3. 第 2~3 圈追加外缘破风丝线，拉满高速离心张力
+      if (turn >= 1) {
+        drawArcCurve(base, add, cx, cy, rx + 5.8, ry + 4.2, tipDeg + 175, tipDeg + 14, 1.15, true, 260);
+      }
+      if (turn === 2) {
+        drawArcCurve(base, add, cx, cy, rx + 9.2, ry + 6.5, tipDeg + 135, tipDeg + 20, 0.95, false, 220);
+      }
+
+      // 4. 内圈枪杆带起的气旋细丝（保持中心镂空，绝不遮挡角色头脸与盔甲）
+      drawArcCurve(base, add, cx, cy, rx - 18, ry - 13, tipDeg + 215, tipDeg + 35, 1.05, false, 220);
+
+      // 5. 长枪灵魂标识：紧贴枪头内侧高速甩飞的双股朱红红缨流光带！
+      drawTasselRibbon(
+        base, add, cx, cy, rx - 8.5, ry - 6.2,
+        tipDeg + (turn === 0 ? 136 : 168), tipDeg + 8,
+        turn === 0 ? 1.55 : turn === 1 ? 1.95 : 2.2,
+        i * 1.4,
+      );
+
+      // 6. 枪尖破空十字亮锋 + 沿外缘甩出的金青火星
+      const tipRad = (tipDeg * Math.PI) / 180;
+      plotSpark(base, add, cx + rx * Math.cos(tipRad), cy + ry * Math.sin(tipRad), 'W', plotMax, true);
+      const sparkCount = turn === 0 ? 3 : turn === 1 ? 5 : 7;
+      for (let s = 0; s < sparkCount; s++) {
+        const sDeg = tipDeg + 26 + s * (280 / sparkCount);
+        const sRad = (sDeg * Math.PI) / 180;
+        const sr = rx + 4 + ((s * 3 + i) % 6);
+        const sry = ry + 3 + ((s * 2 + i) % 4);
+        plotSpark(base, add, cx + sr * Math.cos(sRad), cy + sry * Math.sin(sRad), s % 2 === 0 ? 'g' : 'C', plotMax, turn === 2 && s % 3 === 0);
+      }
+    } else if (i === 12) {
+      // Frame 12（对应动画 F14）：三圈收满归位！360° 平滑扩环气浪 + 切向甩飞破风流丝 + 枪尖爆闪
+      const rx = 58;
+      const ry = 42;
+      drawArcCurve(base, add, cx, cy, rx, ry, tipDeg + 356, tipDeg - 4, 4.2, true, 540);
+      drawArcCurve(base, add, cx, cy, rx - 8.5, ry - 6.2, tipDeg + 315, tipDeg + 15, 1.85, false, 360);
+      // 末圈甩开的红缨收尾光弧
+      drawTasselRibbon(base, add, cx, cy, rx - 11.5, ry - 8.4, tipDeg + 190, tipDeg + 6, 1.95, 4.2);
+      // 6 道顺旋转方向切向甩离的破风气丝（取代生硬直角射线，更有离心爆发张力）
+      for (let k = 0; k < 6; k++) {
+        const aStart = tipDeg + k * 60 + 28;
+        const aEnd = tipDeg + k * 60 - 10;
+        for (let s = 0; s <= 44; s++) {
+          const f = s / 44;
+          const deg = aStart + (aEnd - aStart) * f;
+          const rad = (deg * Math.PI) / 180;
+          const expand = f * (k === 0 ? 9.5 : 7.5);
+          const px = cx + (rx + 1 + expand) * Math.cos(rad);
+          const py = cy + (ry + 0.8 + expand * 0.72) * Math.sin(rad);
+          const ch = f > 0.65 ? (k === 0 ? 'W' : 'g') : f > 0.3 ? 'L' : 'C';
+          plotMax(base, px, py, ch);
+          plotMax(add, px, py, f > 0.5 ? 'W' : 'L');
+        }
+        const tipRad = (aEnd * Math.PI) / 180;
+        const ex = k === 0 ? 10 : 8;
+        plotSpark(
+          base, add,
+          cx + (rx + ex) * Math.cos(tipRad),
+          cy + (ry + ex * 0.72) * Math.sin(tipRad),
+          k === 0 ? 'W' : k % 2 === 0 ? 'g' : 'L',
+          plotMax,
+          k === 0 || k % 2 === 0,
+        );
+      }
+      // 归位枪尖强十字爆闪
+      const homeRad = (tipDeg * Math.PI) / 180;
+      const hx = cx + rx * Math.cos(homeRad);
+      const hy = cy + ry * Math.sin(homeRad);
+      for (let d = -5; d <= 5; d++) {
+        const ch = Math.abs(d) <= 2 ? 'W' : 'L';
+        plotMax(base, hx + d, hy, ch);
+        plotMax(add, hx + d, hy, ch);
+        plotMax(base, hx, hy + d, ch);
+        plotMax(add, hx, hy + d, ch);
+      }
+    } else {
+      // Frame 13（对应动画 F15）：外圈断续余风与零星金青火星轻盈消散
+      const rx = 62;
+      const ry = 44.5;
+      for (const offset of [0, 120, 240]) {
+        drawArcCurve(base, add, cx, cy, rx, ry, tipDeg + offset + 64, tipDeg + offset + 8, 1.15, false, 140);
+      }
+      for (let k = 0; k < 6; k++) {
+        const rad = ((tipDeg + 20 + k * 60) * Math.PI) / 180;
+        plotSpark(base, add, cx + (rx + 2) * Math.cos(rad), cy + (ry + 1.5) * Math.sin(rad), k % 2 === 0 ? 'g' : 'C', plotMax, false);
+      }
+    }
+
+    baseFrames.push({ id: `spear-spin-storm-${direction}-base-${i}`, rows: base.map(r => r.join('')) });
+    addFrames.push({ id: `spear-spin-storm-${direction}-add-${i}`, rows: add.map(r => r.join('')) });
+  }
+
+  return {
+    effectId: 'spear-spin-storm',
+    direction,
+    frameWidth: w,
+    frameHeight: h,
+    originX: ox / w,
+    originY: oy / h,
+    basePalette: SPIN_BASE_PALETTE,
+    addPalette: SPIN_ADD_PALETTE,
+    baseFrames,
+    addFrames,
+  };
+}
+
+// ===========================================================================
+// 汇总全套 11 组原创特效源（export.ts 自动打包到 spear-effects.png）
 // ===========================================================================
 
 export const SPEAR_EFFECT_SOURCES: readonly DirectionalEffectSource[] = [
-  // 1. 蓝青直刺枪芒（破阵枪 / 基础直刺）
+  // 1. 蓝青直刺枪芒（基础直刺原型对照）
   buildDirectionalLinearEffect({
     effectId: 'spear-thrust-beam', direction: 'west', frameCount: 6,
     width: 110, height: 36, originPx: [98, 29], startAlongPx: 86, axisLength: 84, centerCrossPx: 18,
@@ -1600,4 +1829,9 @@ export const SPEAR_EFFECT_SOURCES: readonly DirectionalEffectSource[] = [
     width: 48, height: 164, originPx: [24, 160], startAlongPx: 130, axisLength: 126, centerCrossPx: 24,
     basePalette: BEAM_BASE_PALETTE, addPalette: BEAM_ADD_PALETTE, drawer: drawSovereignBeamAxis,
   }),
+
+  // 11. 旋风枪舞 · 360° 俯视椭圆冷钢青白刃环 + 朱红红缨流光 + 末圈爆散（14 帧，东向由西向自动镜像同步）
+  buildSpinStorm('west'),
+  buildSpinStorm('south'),
+  buildSpinStorm('north'),
 ];

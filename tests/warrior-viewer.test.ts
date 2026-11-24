@@ -293,7 +293,7 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
   const effBytes = fs.readFileSync(new URL(proto.effectSheet.texture.file, repoRoot));
   const effWidth = effBytes.readUInt32BE(16);
   const effHeight = effBytes.readUInt32BE(20);
-  assert.equal(Object.keys(proto.effectSheet.frames).length, 284);
+  assert.equal(Object.keys(proto.effectSheet.frames).length, 368);
   for (const rect of Object.values(proto.effectSheet.frames)) {
     assert.ok(rect.x >= 0 && rect.y >= 0);
     assert.ok(rect.x + rect.width <= effWidth && rect.y + rect.height <= effHeight);
@@ -328,7 +328,7 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
     'attack-2': 7,
     'skill-dragon-pierce': 12,
     'skill-whirl-sweep': 16,
-    'skill-breaker-thrust': 11,
+    'skill-spin-storm': 18,
     'skill-flurry-thrust': 17,
     'skill-dragon-slam': 11,
     'skill-sovereign-pierce': 19,
@@ -363,7 +363,7 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
       // Check timelines across all 2 basic attacks + 6 damage skills + 3 self-buffs
       const skillsWithEffects = [
         'attack', 'attack-2', 'thrust',
-        'skill-dragon-pierce', 'skill-whirl-sweep', 'skill-breaker-thrust',
+        'skill-dragon-pierce', 'skill-whirl-sweep', 'skill-spin-storm',
         'skill-flurry-thrust', 'skill-dragon-slam', 'skill-sovereign-pierce',
         'skill-focus-edge', 'skill-dragon-step', 'skill-gale-stance',
       ];
@@ -395,6 +395,12 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
       const whirlTl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, 'skill-whirl-sweep', facing, audio, proto.actionTimelines);
       assert.ok(whirlTl.effects.some(e => e.effect === 'spear-flower-spin' && e.startFrame === 0));
       assert.ok(whirlTl.effects.some(e => e.effect === 'spear-gale-sweep' && e.variant === facing));
+
+      const spinTl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, 'skill-spin-storm', facing, audio, proto.actionTimelines);
+      assert.equal(spinTl.markers.filter(m => m.kind === 'strike').length, 4);
+      assert.deepEqual(spinTl.shakeFrames, [3, 7, 11, 14]);
+      assert.ok(spinTl.effects.some(e => e.effect === 'spear-spin-storm' && e.variant === facing && e.startFrame === 2));
+      assert.ok(spinTl.effects.some(e => e.effect === 'curse-wind-ring' && e.placement === 'ground'));
 
       const flurryTl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, 'skill-flurry-thrust', facing, audio, proto.actionTimelines);
       assert.equal(flurryTl.markers.filter(m => m.kind === 'strike').length, 3);

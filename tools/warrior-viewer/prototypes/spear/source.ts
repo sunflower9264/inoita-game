@@ -450,9 +450,11 @@ export interface SpearKeyframeSpec {
   piece: number;
   x: number;
   y: number;
-  /** 可选：该帧将整个人物（含换装与长枪）一同平移，用于突进前探/微踏。 */
+  /** 可选：该帧将整个人物（含换装与长枪）一同平移，用于突进前探/微踏/旋转中轴归中。 */
   bodyDx?: number;
   bodyDy?: number;
+  /** 可选：单帧水平镜像原版基础身体帧（用于 360° 旋枪时的东向干净身位）。 */
+  mirrorBaseFrame?: boolean;
   scaleX?: number;
   scaleY?: number;
   angle?: number;
@@ -618,7 +620,7 @@ const SWEEP_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
 // ---------------------------------------------------------------------------
 // 第一批新增技能动作：
 // 1. 普通攻击二段循环（attack 轻刺 8 帧 + attack-2 斜撩 7 帧，拦拿扎呼吸感）
-// 2. 破阵枪（skill-breaker-thrust，11 帧：拧腰甩枪 → 无缝切入直刺贯气）
+// 2. 旋风枪舞（skill-spin-storm，18 帧：基于原版 360° 旋风骨架 pose-4094 三整圈周身旋枪 + 末圈爆散收枪）
 // 3. 狂龙穿心破（skill-dragon-pierce，12 帧：蓄力压身 → 10px 前探+残影+赤金重刺）
 // 4. 伏龙震（skill-dragon-slam，11 帧：基于原版地面过顶劈 pose-4076..4078 力劈华山重砸）
 // ---------------------------------------------------------------------------
@@ -684,49 +686,68 @@ const ATK2_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
   SWEEP_NORTH_FRAMES[11],
 ];
 
-// 2. 破阵枪 · 拧腰甩刺（11 帧：横扫前 3 帧身侧抡枪 + 1 帧轴向转正 + 直刺全力贯出 + 复用蓝青直刺枪芒）
-const BREAKER_SOUTH_FRAMES: readonly SpearKeyframeSpec[] = [
-  // F0..F2：身侧抡枪拧腰蓄劲
-  SWEEP_SOUTH_FRAMES[0],
-  SWEEP_SOUTH_FRAMES[1],
-  SWEEP_SOUTH_FRAMES[2],
-  // F3：甩枪收束对齐南向刺轴（平滑过渡不跳杆）
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 1, piece: 9, x: -5, y: -7, insertMode: 'front' },
-  // F4..F6：贯气直刺全伸！（F4 出蓝青枪芒，F5 命中穿透 2 人）
-  THRUST_SOUTH_FRAMES[3],
-  THRUST_SOUTH_FRAMES[4],
-  THRUST_SOUTH_FRAMES[5],
-  // F7..F10：回抽收枪
-  THRUST_SOUTH_FRAMES[6],
-  THRUST_SOUTH_FRAMES[7],
-  THRUST_SOUTH_FRAMES[8],
-  THRUST_SOUTH_FRAMES[9],
+// 2. 旋风枪舞（18 帧：2 帧沉腰起转 → 12 帧三整圈 360° 周身疾旋 → 1 帧归位爆散终结 → 3 帧稳步收枪）
+// 四个正方向旋转帧均选用四肢完全贴身、无悬空手套的原版高动态帧，并做中轴归中：
+// - 南向：pose-4094 f3（低身前倾）；西/东向：pose-4074 f5 及其镜像（双手平端疾扫）；北向：pose-4075 f4（背身回旋，枪走 back 层）
+const SPIN_CARDINAL_S: SpearKeyframeSpec = {
+  sourcePoseId: 'pose-4094-south-ticks-24', sourceFrame: 3, piece: 7, x: -1, y: -4, bodyDx: 0, insertMode: 'front',
+};
+const SPIN_CARDINAL_E: SpearKeyframeSpec = {
+  sourcePoseId: 'pose-4074-west-ticks-0', sourceFrame: 5, mirrorBaseFrame: true, piece: 10, x: 14, y: -11, scaleX: -1, bodyDx: -2, insertMode: 'front',
+};
+const SPIN_CARDINAL_N: SpearKeyframeSpec = {
+  sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 0, y: -11, bodyDx: 0, insertMode: 'back',
+};
+const SPIN_CARDINAL_W: SpearKeyframeSpec = {
+  sourcePoseId: 'pose-4074-west-ticks-0', sourceFrame: 5, piece: 10, x: -14, y: -11, scaleX: 1, bodyDx: 2, insertMode: 'front',
+};
+
+const SPIN_STORM_SOUTH_FRAMES: readonly SpearKeyframeSpec[] = [
+  // F0..F1：沉腰拧枪起转
+  { sourcePoseId: 'pose-4094-south-ticks-24', sourceFrame: 0, piece: 0, x: -2, y: -9, insertMode: 'front' },
+  { sourcePoseId: 'pose-4094-south-ticks-24', sourceFrame: 2, piece: 9, x: -4, y: -6, insertMode: 'front' },
+  // F2..F13：三整圈高速 360° 逆时针旋枪（南 → 东 → 北 → 西 × 3）
+  SPIN_CARDINAL_S, SPIN_CARDINAL_E, SPIN_CARDINAL_N, SPIN_CARDINAL_W,
+  SPIN_CARDINAL_S, SPIN_CARDINAL_E, SPIN_CARDINAL_N, SPIN_CARDINAL_W,
+  SPIN_CARDINAL_S, SPIN_CARDINAL_E, SPIN_CARDINAL_N, SPIN_CARDINAL_W,
+  // F14：收满三圈归位南向 + 360° 气浪爆散终结
+  SPIN_CARDINAL_S,
+  // F15..F17：顺势减速收枪回南向战姿（无悬空手）
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 10, piece: 9, x: 1, y: -8, scaleX: -1, bodyDx: -1, insertMode: 'front' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 0, x: 0, y: -8, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 1, piece: 1, x: 0, y: -8, insertMode: 'between-south-arms' },
 ];
-const BREAKER_WEST_FRAMES: readonly SpearKeyframeSpec[] = [
-  SWEEP_WEST_FRAMES[0],
-  SWEEP_WEST_FRAMES[1],
-  SWEEP_WEST_FRAMES[2],
-  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 1, piece: 2, x: 4, y: -11, insertMode: 'front' },
-  THRUST_WEST_FRAMES[3],
-  THRUST_WEST_FRAMES[4],
-  THRUST_WEST_FRAMES[5],
-  THRUST_WEST_FRAMES[6],
-  THRUST_WEST_FRAMES[7],
-  THRUST_WEST_FRAMES[8],
-  THRUST_WEST_FRAMES[9],
+
+const SPIN_STORM_WEST_FRAMES: readonly SpearKeyframeSpec[] = [
+  // F0..F1：低身平枪蓄势起转（西向起步，东向镜像后自动从东向起步）
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 2, x: -3, y: -10, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 4, piece: 10, x: -6, y: -11, bodyDx: 1, insertMode: 'front' },
+  // F2..F13：三整圈高速 360° 旋枪（西 → 南 → 东 → 北 × 3）
+  SPIN_CARDINAL_W, SPIN_CARDINAL_S, SPIN_CARDINAL_E, SPIN_CARDINAL_N,
+  SPIN_CARDINAL_W, SPIN_CARDINAL_S, SPIN_CARDINAL_E, SPIN_CARDINAL_N,
+  SPIN_CARDINAL_W, SPIN_CARDINAL_S, SPIN_CARDINAL_E, SPIN_CARDINAL_N,
+  // F14：收满三圈归位西向 + 360° 气浪爆散终结
+  SPIN_CARDINAL_W,
+  // F15..F17：顺势减速收枪回西向战姿
+  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 4, piece: 9, x: -5, y: -9, bodyDx: 1, insertMode: 'front' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 2, x: -3, y: -10, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 1, piece: 3, x: -3, y: -10, insertMode: 'between-west-arms' },
 ];
-const BREAKER_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
-  SWEEP_NORTH_FRAMES[0],
-  SWEEP_NORTH_FRAMES[1],
-  SWEEP_NORTH_FRAMES[2],
-  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 1, piece: 11, x: 3, y: -9, scaleX: -1, insertMode: 'back' },
-  THRUST_NORTH_FRAMES[3],
-  THRUST_NORTH_FRAMES[4],
-  THRUST_NORTH_FRAMES[5],
-  THRUST_NORTH_FRAMES[6],
-  THRUST_NORTH_FRAMES[7],
-  THRUST_NORTH_FRAMES[8],
-  THRUST_NORTH_FRAMES[9],
+
+const SPIN_STORM_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
+  // F0..F1：沉腰拧枪起转
+  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 0, x: 1, y: -9, scaleX: -1, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 1, piece: 11, x: 4, y: -11, scaleX: -1, insertMode: 'back' },
+  // F2..F13：三整圈高速 360° 旋枪（北 → 西 → 南 → 东 × 3）
+  SPIN_CARDINAL_N, SPIN_CARDINAL_W, SPIN_CARDINAL_S, SPIN_CARDINAL_E,
+  SPIN_CARDINAL_N, SPIN_CARDINAL_W, SPIN_CARDINAL_S, SPIN_CARDINAL_E,
+  SPIN_CARDINAL_N, SPIN_CARDINAL_W, SPIN_CARDINAL_S, SPIN_CARDINAL_E,
+  // F14：收满三圈归位北向 + 360° 气浪爆散终结
+  SPIN_CARDINAL_N,
+  // F15..F17：顺势减速收枪回北向战姿
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 8, piece: 11, x: -4, y: -12, bodyDx: 4, insertMode: 'back' },
+  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 0, x: 1, y: -9, scaleX: -1, insertMode: 'back' },
+  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 1, piece: 1, x: 1, y: -9, scaleX: -1, insertMode: 'back' },
 ];
 
 // 3. 狂龙穿心破 · 蛟龙出海（12 帧：4 帧低重心蓄力 → 10px 前探滑步 + 2 枚残影 + 赤金破甲重刺 → 缓步回防）
@@ -1115,11 +1136,11 @@ export const SPEAR_ACTION_RECIPES: readonly SpearKeyframedPoseRecipe[] = [
   { id: 'prototype-spear-skill-whirl-sweep-north', clip: 'skill-whirl-sweep-north', mirrorX: false, frameRate: FPS, frames: WHIRL_SWEEP_NORTH_FRAMES },
   { id: 'prototype-spear-skill-whirl-sweep-east', clip: 'skill-whirl-sweep-east', mirrorX: true, frameRate: FPS, frames: WHIRL_SWEEP_WEST_FRAMES },
 
-  // 主动伤害技能 3：破阵枪（拧腰甩刺 + 复用蓝青直刺枪芒）
-  { id: 'prototype-spear-skill-breaker-thrust-south', clip: 'skill-breaker-thrust-south', mirrorX: false, frameRate: FPS, frames: BREAKER_SOUTH_FRAMES },
-  { id: 'prototype-spear-skill-breaker-thrust-west', clip: 'skill-breaker-thrust-west', mirrorX: false, frameRate: FPS, frames: BREAKER_WEST_FRAMES },
-  { id: 'prototype-spear-skill-breaker-thrust-north', clip: 'skill-breaker-thrust-north', mirrorX: false, frameRate: FPS, frames: BREAKER_NORTH_FRAMES },
-  { id: 'prototype-spear-skill-breaker-thrust-east', clip: 'skill-breaker-thrust-east', mirrorX: true, frameRate: FPS, frames: BREAKER_WEST_FRAMES },
+  // 主动伤害技能 3：旋风枪舞（18 帧：三整圈 360° 周身旋枪 + 末圈爆散收枪）
+  { id: 'prototype-spear-skill-spin-storm-south', clip: 'skill-spin-storm-south', mirrorX: false, frameRate: FPS, frames: SPIN_STORM_SOUTH_FRAMES },
+  { id: 'prototype-spear-skill-spin-storm-west', clip: 'skill-spin-storm-west', mirrorX: false, frameRate: FPS, frames: SPIN_STORM_WEST_FRAMES },
+  { id: 'prototype-spear-skill-spin-storm-north', clip: 'skill-spin-storm-north', mirrorX: false, frameRate: FPS, frames: SPIN_STORM_NORTH_FRAMES },
+  { id: 'prototype-spear-skill-spin-storm-east', clip: 'skill-spin-storm-east', mirrorX: true, frameRate: FPS, frames: SPIN_STORM_WEST_FRAMES },
 
   // 主动伤害技能 4：连环点枪（暴雨梨花扇形针芒乱刺 + 第 3 段定音主刺）
   { id: 'prototype-spear-skill-flurry-thrust-south', clip: 'skill-flurry-thrust-south', mirrorX: false, frameRate: FPS, frames: FLURRY_SOUTH_FRAMES },

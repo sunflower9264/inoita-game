@@ -296,8 +296,11 @@ function buildKeyframedPose(wardrobe: WardrobeCatalog, recipe: SpearKeyframedPos
   const frames: CostumePart[][] = recipe.frames.map((spec, index) => {
     const basePose = wardrobe.poses[spec.sourcePoseId];
     if (!basePose) throw new Error(`基础姿态不存在：${spec.sourcePoseId}（${recipe.id} F${index}）`);
-    const baseFrame = basePose.frames[spec.sourceFrame];
-    if (!baseFrame) throw new Error(`基础帧不存在：${spec.sourcePoseId}[${spec.sourceFrame}]`);
+    const rawFrame = basePose.frames[spec.sourceFrame];
+    if (!rawFrame) throw new Error(`基础帧不存在：${spec.sourcePoseId}[${spec.sourceFrame}]`);
+    const baseFrame = spec.mirrorBaseFrame
+      ? rawFrame.map(part => ({ ...part, x: -part.x, scaleX: -part.scaleX }))
+      : rawFrame;
     const spearPart: CostumePart = {
       part: 'spear',
       piece: spec.piece,
@@ -363,23 +366,23 @@ function run(): void {
     variants: { 'spear-style-1': variantKeys },
     stancePoses,
     actionLabels: {
-      idle: '持枪待机（双手战斗）',
+      idle: '持枪待机',
       walk: '持枪行走',
-      thrust: '基础直刺（原型对照）',
-      sweep: '基础横扫（原型对照）',
-      'spear-upright-idle': '立枪待机（单手直立）',
-      attack: '普攻第一段 · 轻刺（A）',
-      'attack-2': '普攻第二段 · 斜撩（AA）',
-      'skill-dragon-pierce': '狂龙穿心破 · 蛟龙出海',
-      'skill-whirl-sweep': '虬龙扫暴阵 · 枪花狂扫',
-      'skill-breaker-thrust': '破阵枪 · 拧腰甩刺',
-      'skill-flurry-thrust': '连环点枪 · 暴雨梨花',
-      'skill-dragon-slam': '伏龙震 · 力劈华山',
-      'skill-sovereign-pierce': '万圣龙王破 · 怒龙穿心',
-      'skill-focus-edge': '凝锋 · 立枪聚气（增益）',
-      'skill-dragon-step': '游龙步 · 疾风步法（增益）',
-      'skill-gale-stance': '疾风枪势 · 提速枪势（增益）',
-      'spear-die': '战斗阵亡 · 失枪倒地',
+      thrust: '基础直刺',
+      sweep: '基础横扫',
+      'spear-upright-idle': '立枪待机',
+      attack: '普攻 · 轻刺',
+      'attack-2': '普攻 · 斜撩',
+      'skill-dragon-pierce': '狂龙穿心破',
+      'skill-whirl-sweep': '虬龙扫暴阵',
+      'skill-spin-storm': '旋风枪舞',
+      'skill-flurry-thrust': '连环点枪',
+      'skill-dragon-slam': '伏龙震',
+      'skill-sovereign-pierce': '万圣龙王破',
+      'skill-focus-edge': '凝锋',
+      'skill-dragon-step': '游龙步',
+      'skill-gale-stance': '疾风枪势',
+      'spear-die': '战斗阵亡',
     },
     actionTimelines: {
       thrust: {
@@ -448,17 +451,22 @@ function run(): void {
         shakeFrames: [8],
         sounds: ['Wa_Wheel_Wind', 'Weapon_TwoHand_Sword_Attack'],
       },
-      'skill-breaker-thrust': {
-        cycleFrames: 11,
+      'skill-spin-storm': {
+        cycleFrames: 18,
         cues: [
-          { effect: 'spear-thrust-beam', startFrame: 4, variant: 'facing', placement: 'above-characters', source: '贯气直刺枪芒' },
+          { effect: 'curse-wind-ring', startFrame: 2, variant: 'default', placement: 'ground', source: '脚底起旋风环' },
+          { effect: 'curse-wind-ring', startFrame: 8, variant: 'default', placement: 'ground', source: '脚底续旋风环' },
+          { effect: 'spear-spin-storm', startFrame: 2, variant: 'facing', placement: 'above-characters', source: '360° 红缨旋风枪环' },
         ],
         markers: [
-          { frame: 1, kind: 'effect', label: '拧腰抡枪蓄劲' },
-          { frame: 4, kind: 'swing', label: '甩刺出枪芒（spear-thrust-beam）' },
-          { frame: 5, kind: 'strike', label: '贯穿 2 目标结算' },
+          { frame: 2, kind: 'swing', label: '起旋出风环（spear-spin-storm）' },
+          { frame: 3, kind: 'strike', label: '第 1 圈周身斩击' },
+          { frame: 7, kind: 'strike', label: '第 2 圈周身斩击' },
+          { frame: 11, kind: 'strike', label: '第 3 圈周身斩击' },
+          { frame: 14, kind: 'strike', label: '末圈气浪爆散终结' },
         ],
-        sounds: ['Weapon_TwoHand_Sword_Attack'],
+        shakeFrames: [3, 7, 11, 14],
+        sounds: ['Wa_Wheel_Wind', 'Wa_Storm'],
       },
       'skill-flurry-thrust': {
         cycleFrames: 17,
