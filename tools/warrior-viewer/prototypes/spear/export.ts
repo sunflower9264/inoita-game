@@ -373,6 +373,7 @@ function run(): void {
       'spear-upright-idle': '立枪待机',
       attack: '普攻 · 轻刺',
       'attack-2': '普攻 · 斜撩',
+      'attack-3': '普攻 · 上挑',
       'skill-dragon-pierce': '狂龙穿心破',
       'skill-whirl-sweep': '虬龙扫暴阵',
       'skill-spin-storm': '旋风枪舞',
@@ -422,6 +423,17 @@ function run(): void {
           { frame: 3, kind: 'strike', label: '普攻第二段命中' },
         ],
         sounds: ['Weapon_Dagger_Attack'],
+      },
+      'attack-3': {
+        cycleFrames: 8,
+        cues: [
+          { effect: 'spear-basic-lift', startFrame: 2, variant: 'facing', placement: 'above-characters', source: '素银上挑' },
+        ],
+        markers: [
+          { frame: 2, kind: 'swing', label: '出挑光（spear-basic-lift）' },
+          { frame: 3, kind: 'strike', label: '普攻第三段命中（无控制）' },
+        ],
+        sounds: ['Weapon_TwoHand_Sword_Attack'],
       },
       'skill-dragon-pierce': {
         cycleFrames: 12,

@@ -293,7 +293,7 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
   const effBytes = fs.readFileSync(new URL(proto.effectSheet.texture.file, repoRoot));
   const effWidth = effBytes.readUInt32BE(16);
   const effHeight = effBytes.readUInt32BE(20);
-  assert.equal(Object.keys(proto.effectSheet.frames).length, 368);
+  assert.equal(Object.keys(proto.effectSheet.frames).length, 386);
   for (const rect of Object.values(proto.effectSheet.frames)) {
     assert.ok(rect.x >= 0 && rect.y >= 0);
     assert.ok(rect.x + rect.width <= effWidth && rect.y + rect.height <= effHeight);
@@ -326,6 +326,7 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
     'spear-upright-idle': 14,
     attack: 8,
     'attack-2': 7,
+    'attack-3': 8,
     'skill-dragon-pierce': 12,
     'skill-whirl-sweep': 16,
     'skill-spin-storm': 18,
@@ -360,9 +361,9 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
         }
       }
 
-      // Check timelines across all 2 basic attacks + 6 damage skills + 3 self-buffs
+      // Check timelines across all 3 basic attacks + 6 damage skills + 3 self-buffs
       const skillsWithEffects = [
-        'attack', 'attack-2', 'thrust',
+        'attack', 'attack-2', 'attack-3', 'thrust',
         'skill-dragon-pierce', 'skill-whirl-sweep', 'skill-spin-storm',
         'skill-flurry-thrust', 'skill-dragon-slam', 'skill-sovereign-pierce',
         'skill-focus-edge', 'skill-dragon-step', 'skill-gale-stance',
@@ -385,6 +386,11 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
           assert.ok(audio.effects[soundId], `${key} missing audio ${soundId}`);
         }
       }
+
+      const atk3Tl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, 'attack-3', facing, audio, proto.actionTimelines);
+      assert.equal(atk3Tl.shakeFrames.length, 0);
+      assert.ok(atk3Tl.effects.some(e => e.effect === 'spear-basic-lift' && e.variant === facing && e.startFrame === 2));
+      assert.ok(!atk3Tl.effects.some(e => e.effect === 'state-stun'));
 
       const pierceTl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, 'skill-dragon-pierce', facing, audio, proto.actionTimelines);
       assert.deepEqual(pierceTl.afterimages?.frames, [4, 5, 6]);

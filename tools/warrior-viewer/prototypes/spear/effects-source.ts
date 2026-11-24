@@ -1,7 +1,7 @@
 /**
  * 长枪样板原创像素特效源数据（全部逐格像素网格 + 量化色板，代码导出透明 PNG）。
  *
- * 全套包含 11 套原创像素特效（全部采用 normal 底光 + add 炽核双层，适配深色/游戏/浅色画布）：
+ * 全套包含 12 套原创像素特效（全部采用 normal 底光 + add 炽核双层，适配深色/游戏/浅色画布）：
  * 第一批：
  * 1. spear-thrust-beam   （6 帧）：基础直刺的蓝青柳叶贯通枪芒
  * 2. spear-basic-thrust  （3 帧）：普通攻击第一段 · 素银轻刺破风线
@@ -15,6 +15,7 @@
  * 9. spear-flurry-finisher（4 帧）：连环点枪第三段 · 炽青加粗定音主刺芒 + 十字爆闪
  * 10. spear-sovereign-beam（7 帧）：万圣龙王破 · 同源 1.6 倍加长蓝青柳叶枪芒 + 双层青金螺旋气浪
  * 11. spear-spin-storm   （14 帧）：旋风枪舞 · 360° 俯视椭圆冷钢青白刃环 + 飞舞朱红红缨流光 + 末圈气浪爆散
+ * 12. spear-basic-lift   （3 帧）：普通攻击第三段 · 素银由下而上轻量上挑弧光（无控制）
  */
 
 export type RgbaPalette = Readonly<Record<string, readonly [number, number, number, number]>>;
@@ -1718,7 +1719,65 @@ function buildSpinStorm(direction: 'west' | 'south' | 'north'): DirectionalEffec
 }
 
 // ===========================================================================
-// 汇总全套 11 组原创特效源（export.ts 自动打包到 spear-effects.png）
+// 12. 普通攻击第三段：素银由下而上轻量上挑弧光（spear-basic-lift，3 帧，无控制）
+// ===========================================================================
+
+function buildBasicLift(direction: 'west' | 'south' | 'north'): DirectionalEffectSource {
+  const baseFrames: EffectFrameGrid[] = [];
+  const addFrames: EffectFrameGrid[] = [];
+  // 紧贴普攻「压低→上挑」枪尖轨迹的自下而上素银细弧（保持与前两段一致的轻灵克制感，不抢技能风头）
+  const cfg = direction === 'west'
+    ? {
+        w: 68, h: 76, ox: 52, oy: 56, cx: 46, cy: 38, rx: 30, ry: 30,
+        // 西向（东向镜像）：左下低位(130°) 顺时针上挑过正西(180°) 至左上高点(250°)
+        arcs: [[130, 198, 2.3], [145, 250, 3.2], [205, 256, 1.5]] as const,
+      }
+    : direction === 'south'
+      ? {
+          w: 66, h: 76, ox: 29, oy: 46, cx: 28, cy: 32, rx: 26, ry: 28,
+          // 南向：正前下方(95°) 逆时针斜上挑过右前(15°) 至高点(-62°)
+          arcs: [[95, 18, 2.3], [76, -62, 3.2], [-10, -68, 1.5]] as const,
+        }
+      : {
+          w: 64, h: 86, ox: 34, oy: 76, cx: 30, cy: 46, rx: 20, ry: 28,
+          // 北向：右后低位(25°) 向上挑过右上(-48°) 至正北高空(-102°)
+          arcs: [[25, -48, 2.3], [8, -102, 3.2], [-56, -108, 1.5]] as const,
+        };
+
+  for (let i = 0; i < 3; i++) {
+    const base = blank(cfg.w, cfg.h);
+    const add = blank(cfg.w, cfg.h);
+    const [a0, a1, thick] = cfg.arcs[i];
+    drawArcCurve(base, add, cfg.cx, cfg.cy, cfg.rx, cfg.ry, a0, a1, thick, i !== 2, 180);
+    if (i === 1) {
+      // 峰值帧外缘补 1 条极细上挑破风银丝 + 顶端轻巧星闪
+      drawArcCurve(base, add, cfg.cx, cfg.cy, cfg.rx + 4, cfg.ry + 4, a0 + (a1 - a0) * 0.28, a1, 0.85, true, 140);
+      const tipRad = (a1 * Math.PI) / 180;
+      plotSpark(base, add, cfg.cx + cfg.rx * Math.cos(tipRad), cfg.cy + cfg.ry * Math.sin(tipRad), 'W', plotMax, true);
+    } else if (i === 2) {
+      const tipRad = (a1 * Math.PI) / 180;
+      plotSpark(base, add, cfg.cx + (cfg.rx + 2) * Math.cos(tipRad), cfg.cy + (cfg.ry + 2) * Math.sin(tipRad), 'L', plotMax, false);
+    }
+    baseFrames.push({ id: `spear-basic-lift-${direction}-base-${i}`, rows: base.map(r => r.join('')) });
+    addFrames.push({ id: `spear-basic-lift-${direction}-add-${i}`, rows: add.map(r => r.join('')) });
+  }
+
+  return {
+    effectId: 'spear-basic-lift',
+    direction,
+    frameWidth: cfg.w,
+    frameHeight: cfg.h,
+    originX: cfg.ox / cfg.w,
+    originY: cfg.oy / cfg.h,
+    basePalette: SILVER_BASE_PALETTE,
+    addPalette: SILVER_ADD_PALETTE,
+    baseFrames,
+    addFrames,
+  };
+}
+
+// ===========================================================================
+// 汇总全套 12 组原创特效源（export.ts 自动打包到 spear-effects.png）
 // ===========================================================================
 
 export const SPEAR_EFFECT_SOURCES: readonly DirectionalEffectSource[] = [
@@ -1760,6 +1819,11 @@ export const SPEAR_EFFECT_SOURCES: readonly DirectionalEffectSource[] = [
   buildBasicFlick('west'),
   buildBasicFlick('south'),
   buildBasicFlick('north'),
+
+  // 3B. 普通攻击第三段 · 素银由下而上轻量上挑弧光（3 帧，无控制）
+  buildBasicLift('west'),
+  buildBasicLift('south'),
+  buildBasicLift('north'),
 
   // 4. 狂龙穿心破 · 赤金炽白重刺破甲芒（5 帧，对齐 +10px 前探身位）
   buildDirectionalLinearEffect({

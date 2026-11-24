@@ -9,7 +9,7 @@
 - `index.html` 与 `style.css` 提供双视图工作台：「动作与切片检查」（动作目录、播放控制、关键帧与音效条、换装选择、当前帧切片面板）与「职业素材总清单」（跨架势动作模板表、12 部位全套切片图鉴、配套图标/特效/音效清单与规格导出）。
 - `main.ts` 加载内容、部件图集及按需加载的特效/UI 图集，通过 Phaser 绘制纸娃娃部件、同步叠加战斗特效与状态染色，并连接双视图交互。
 - `model.ts` 复用领域层的 `costumeRecipe`、`townMovementPoses` 与 `sharedWardrobePoses`，处理装备与佣兵预设、动作目录、关键帧与特效时间轴、边界提示、外观覆盖、切片解析、范围计算、播放状态、姿势加载、长枪样板合并与全职业素材账本。
-- `prototypes/spear/` 保存长枪样板的可编辑像素源数据（`source.ts` 14 张长枪切片与全套动作、`effects-source.ts` 11 套原创像素特效）、导出脚本（`export.ts`）以及生成的透明 PNG（`spear-parts.png`、`spear-effects.png`）与整套姿态/特效数据（`spear-prototype.json`，涵盖基础待机/行走/直刺/横扫/立枪对照、普攻二段轻刺与斜撩、6 项伤害主动技含 360° 旋风枪舞、3 项自身增益立枪聚气与 23 帧长枪阵亡，支持残影层、多段特效与原版特效混叠）；修改像素、握点或特效后执行 `node tools/warrior-viewer/prototypes/spear/export.ts` 重导。访问 `?weapon=prototype-spear-basic`（可加 `&action=skill-spin-storm` 等）直达样板预览。
+- `prototypes/spear/` 保存长枪样板的可编辑像素源数据（`source.ts` 14 张长枪切片与全套动作、`effects-source.ts` 12 套原创像素特效）、导出脚本（`export.ts`）以及生成的透明 PNG（`spear-parts.png`、`spear-effects.png`）与整套姿态/特效数据（`spear-prototype.json`，涵盖基础待机/行走/直刺/横扫/立枪对照、普攻三段轻刺/斜撩/上挑、6 项伤害主动技含 360° 旋风枪舞、3 项自身增益立枪聚气与 23 帧长枪阵亡，支持残影层、多段特效与原版特效混叠）；修改像素、握点或特效后执行 `node tools/warrior-viewer/prototypes/spear/export.ts` 重导。访问 `?weapon=prototype-spear-basic`（可加 `&action=attack-3` 或 `&action=skill-spin-storm` 等）直达样板预览。
 - `tsconfig.json` 为本目录浏览器 TypeScript 提供独立类型检查。
 
 ## 数据与绘制

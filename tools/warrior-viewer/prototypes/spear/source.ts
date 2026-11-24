@@ -619,7 +619,7 @@ const SWEEP_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
 
 // ---------------------------------------------------------------------------
 // 第一批新增技能动作：
-// 1. 普通攻击二段循环（attack 轻刺 8 帧 + attack-2 斜撩 7 帧，拦拿扎呼吸感）
+// 1. 普通攻击三段循环（attack 轻刺 8 帧 + attack-2 斜撩 7 帧 + attack-3 上挑 8 帧，无控制）
 // 2. 旋风枪舞（skill-spin-storm，18 帧：基于原版 360° 旋风骨架 pose-4094 三整圈周身旋枪 + 末圈爆散收枪）
 // 3. 狂龙穿心破（skill-dragon-pierce，12 帧：蓄力压身 → 10px 前探+残影+赤金重刺）
 // 4. 伏龙震（skill-dragon-slam，11 帧：基于原版地面过顶劈 pose-4076..4078 力劈华山重砸）
@@ -684,6 +684,58 @@ const ATK2_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
   SWEEP_NORTH_FRAMES[7],
   SWEEP_NORTH_FRAMES[10],
   SWEEP_NORTH_FRAMES[11],
+];
+
+// 1C. 普攻第三段 · 上挑（8 帧，不产生控制：压低蓄挑 → 由下而上迅猛挑起 → 高空微顿 → 顺势回落，全四向无悬空手）
+const ATK3_WEST_FRAMES: readonly SpearKeyframeSpec[] = [
+  // F0：战姿微沉
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 2, x: -3, y: -10, insertMode: 'between-west-arms' },
+  // F1：压低深蹲，枪尖贴地蓄挑
+  { sourcePoseId: 'pose-4080-west-ticks-0', sourceFrame: 3, piece: 13, x: -4, y: -2, insertMode: 'front' },
+  // F2：迅猛起挑破空（触发 3 帧素银上挑弧光 spear-basic-lift）
+  { sourcePoseId: 'pose-4080-west-ticks-0', sourceFrame: 4, piece: 2, x: -7, y: -9, insertMode: 'front' },
+  // F3：挑枪命中帧（双手高举，枪尖斜挑高空，无控制）
+  { sourcePoseId: 'pose-4080-west-ticks-0', sourceFrame: 5, piece: 11, x: -8, y: -16, insertMode: 'front' },
+  // F4：挑势顶点微顿
+  { sourcePoseId: 'pose-4080-west-ticks-0', sourceFrame: 6, piece: 11, x: -6, y: -21, insertMode: 'front' },
+  // F5..F7：顺势回落归回战姿
+  { sourcePoseId: 'pose-4080-west-ticks-0', sourceFrame: 7, piece: 11, x: -5, y: -16, insertMode: 'front' },
+  { sourcePoseId: 'pose-4080-west-ticks-0', sourceFrame: 10, piece: 2, x: -4, y: -10, insertMode: 'front' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 3, x: -3, y: -10, insertMode: 'between-west-arms' },
+];
+
+const ATK3_SOUTH_FRAMES: readonly SpearKeyframeSpec[] = [
+  // F0：战姿微沉
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 0, x: 0, y: -8, insertMode: 'between-south-arms' },
+  // F1：深蹲低手，南向压低枪尖蓄挑
+  { sourcePoseId: 'pose-4076-south-ticks-0', sourceFrame: 4, piece: 7, x: -1, y: -1, insertMode: 'front' },
+  // F2：由下向上起挑破空（F2 触发素银上挑弧光）
+  { sourcePoseId: 'pose-4076-south-ticks-0', sourceFrame: 0, piece: 2, x: 5, y: -8, scaleX: -1, insertMode: 'front' },
+  // F3：挑枪命中帧（双手扬起，枪尖高挑斜上）
+  { sourcePoseId: 'pose-4076-south-ticks-0', sourceFrame: 1, piece: 11, x: 5, y: -15, scaleX: -1, insertMode: 'front' },
+  // F4：挑势顶点高扬微顿
+  { sourcePoseId: 'pose-4076-south-ticks-0', sourceFrame: 2, piece: 11, x: 3, y: -20, scaleX: -1, insertMode: 'front' },
+  // F5..F7：顺势收枪归位
+  { sourcePoseId: 'pose-4076-south-ticks-0', sourceFrame: 1, piece: 11, x: 4, y: -14, scaleX: -1, insertMode: 'front' },
+  { sourcePoseId: 'pose-4076-south-ticks-0', sourceFrame: 0, piece: 0, x: 1, y: -8, insertMode: 'front' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 1, x: 0, y: -8, insertMode: 'between-south-arms' },
+];
+
+const ATK3_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
+  // F0：战姿微沉
+  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 0, x: 1, y: -9, scaleX: -1, insertMode: 'back' },
+  // F1：背身深蹲压低蓄挑
+  { sourcePoseId: 'pose-4078-north-ticks-0', sourceFrame: 4, piece: 8, x: 0, y: -4, insertMode: 'back' },
+  // F2：起身斜右上挑破空（枪尖紧贴北向挑弧起势，F2 触发素银上挑弧光）
+  { sourcePoseId: 'pose-4081-north-ticks-0', sourceFrame: 5, piece: 11, x: 3, y: -13, scaleX: -1, insertMode: 'back' },
+  // F3：挑枪命中帧（双臂高举、枪尖高挑向北上方）
+  { sourcePoseId: 'pose-4078-north-ticks-0', sourceFrame: 1, piece: 8, x: 0, y: -23, insertMode: 'back' },
+  // F4：挑势顶点微顿
+  { sourcePoseId: 'pose-4078-north-ticks-0', sourceFrame: 2, piece: 8, x: 0, y: -26, insertMode: 'back' },
+  // F5..F7：顺势回落归回战姿
+  { sourcePoseId: 'pose-4078-north-ticks-0', sourceFrame: 1, piece: 11, x: 1, y: -17, scaleX: -1, insertMode: 'back' },
+  { sourcePoseId: 'pose-4078-north-ticks-0', sourceFrame: 0, piece: 0, x: 1, y: -10, scaleX: -1, insertMode: 'back' },
+  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 1, x: 1, y: -9, scaleX: -1, insertMode: 'back' },
 ];
 
 // 2. 旋风枪舞（18 帧：2 帧沉腰起转 → 12 帧三整圈 360° 周身疾旋 → 1 帧归位爆散终结 → 3 帧稳步收枪）
@@ -1114,7 +1166,7 @@ export const SPEAR_ACTION_RECIPES: readonly SpearKeyframedPoseRecipe[] = [
   { id: 'prototype-spear-sweep-north', clip: 'sweep-north', mirrorX: false, frameRate: FPS, frames: SWEEP_NORTH_FRAMES },
   { id: 'prototype-spear-sweep-east', clip: 'sweep-east', mirrorX: true, frameRate: FPS, frames: SWEEP_WEST_FRAMES },
 
-  // 普通攻击二段循环（A 轻刺 → AA 斜撩）
+  // 普通攻击三段循环（A 轻刺 → AA 斜撩 → AAA 上挑，无控制）
   { id: 'prototype-spear-attack-south', clip: 'attack-south', mirrorX: false, frameRate: FPS, frames: ATK1_SOUTH_FRAMES },
   { id: 'prototype-spear-attack-west', clip: 'attack-west', mirrorX: false, frameRate: FPS, frames: ATK1_WEST_FRAMES },
   { id: 'prototype-spear-attack-north', clip: 'attack-north', mirrorX: false, frameRate: FPS, frames: ATK1_NORTH_FRAMES },
@@ -1123,6 +1175,10 @@ export const SPEAR_ACTION_RECIPES: readonly SpearKeyframedPoseRecipe[] = [
   { id: 'prototype-spear-attack-2-west', clip: 'attack-2-west', mirrorX: false, frameRate: FPS, frames: ATK2_WEST_FRAMES },
   { id: 'prototype-spear-attack-2-north', clip: 'attack-2-north', mirrorX: false, frameRate: FPS, frames: ATK2_NORTH_FRAMES },
   { id: 'prototype-spear-attack-2-east', clip: 'attack-2-east', mirrorX: true, frameRate: FPS, frames: ATK2_WEST_FRAMES },
+  { id: 'prototype-spear-attack-3-south', clip: 'attack-3-south', mirrorX: false, frameRate: FPS, frames: ATK3_SOUTH_FRAMES },
+  { id: 'prototype-spear-attack-3-west', clip: 'attack-3-west', mirrorX: false, frameRate: FPS, frames: ATK3_WEST_FRAMES },
+  { id: 'prototype-spear-attack-3-north', clip: 'attack-3-north', mirrorX: false, frameRate: FPS, frames: ATK3_NORTH_FRAMES },
+  { id: 'prototype-spear-attack-3-east', clip: 'attack-3-east', mirrorX: true, frameRate: FPS, frames: ATK3_WEST_FRAMES },
 
   // 主动伤害技能 1：狂龙穿心破（蓄力前探残影 + 赤金破甲重刺）
   { id: 'prototype-spear-skill-dragon-pierce-south', clip: 'skill-dragon-pierce-south', mirrorX: false, frameRate: FPS, frames: DRAGON_PIERCE_SOUTH_FRAMES },
