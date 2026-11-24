@@ -66,6 +66,21 @@ test('另外四类封印祭坛也只在自己的洞穴触发', () => {
   }
 });
 
+test('现世与深渊机关室的共用触发机关（trigger-cb2455aa）只在各自所在地图触发对应剧情', () => {
+  const story: StoryGraph = JSON.parse(readFileSync(new URL('../public/content/campaign.json', import.meta.url), 'utf8'));
+  const trigger = character('trigger', 'trigger-cb2455aa', 'npc-94');
+  for (const [map, mustInclude, mustExclude] of [
+    ['engine-room-of-reality-a06620c7', 'event-321', 'event-326'],
+    ['abyss-engine-room-be5a127f', 'event-326', 'event-321'],
+    ['sealed-dungeon-1-2-c824bb14', undefined, 'event-321'],
+    ['inside-arnen-castle02-9a1430d7', undefined, 'event-326'],
+  ] as const) {
+    const ids = buildStoryTriggerIndex(story, map, [trigger]).nearCharacters.flatMap(group => group.events.map(ev => ev.id));
+    if (mustInclude) assert.ok(ids.includes(mustInclude), `${map} 应包含 ${mustInclude}`);
+    assert.equal(ids.includes(mustExclude), false, `${map} 不应包含 ${mustExclude}`);
+  }
+});
+
 test('trigger index groups the current map and preserves campaign order',()=>{
   const first=character('npc-1','npc'), second=character('npc-2','npc','npc-2'), hidden=character('npc-3','npc',undefined,false);
   const index=buildStoryTriggerIndex(campaign,'a',[first,second,hidden]);

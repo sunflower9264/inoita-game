@@ -287585,6 +287585,7 @@
     {
       "id": "event-321",
       "source": "near",
+      "map": "engine-room-of-reality-a06620c7",
       "script": "event-321",
       "condition": {
         "type": "all",
@@ -287599,33 +287600,11 @@
       "near": "trigger-cb2455aa",
       "nearCharacterId": "npc-94",
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "abyss-engine-room-be5a127f",
-            "x": 168,
-            "y": 584,
-            "source": "native-placement"
-          },
-          {
-            "map": "engine-room-of-reality-a06620c7",
-            "x": 88,
-            "y": 136,
-            "source": "native-placement"
-          },
-          {
-            "map": "inside-arnen-castle02-9a1430d7",
-            "x": 104,
-            "y": 424,
-            "source": "native-registration"
-          },
-          {
-            "map": "sealed-dungeon-1-2-c824bb14",
-            "x": 408,
-            "y": 88,
-            "source": "native-registration"
-          }
-        ]
+        "type": "fixed",
+        "map": "engine-room-of-reality-a06620c7",
+        "x": 88,
+        "y": 136,
+        "source": "native-placement"
       }
     },
     {
@@ -287702,6 +287681,7 @@
     {
       "id": "event-326",
       "source": "near",
+      "map": "abyss-engine-room-be5a127f",
       "script": "event-326",
       "condition": {
         "type": "all",
@@ -287716,33 +287696,11 @@
       "near": "trigger-cb2455aa",
       "nearCharacterId": "npc-94",
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "abyss-engine-room-be5a127f",
-            "x": 168,
-            "y": 584,
-            "source": "native-placement"
-          },
-          {
-            "map": "engine-room-of-reality-a06620c7",
-            "x": 88,
-            "y": 136,
-            "source": "native-placement"
-          },
-          {
-            "map": "inside-arnen-castle02-9a1430d7",
-            "x": 104,
-            "y": 424,
-            "source": "native-registration"
-          },
-          {
-            "map": "sealed-dungeon-1-2-c824bb14",
-            "x": 408,
-            "y": 88,
-            "source": "native-registration"
-          }
-        ]
+        "type": "fixed",
+        "map": "abyss-engine-room-be5a127f",
+        "x": 168,
+        "y": 584,
+        "source": "native-placement"
       }
     },
     {
@@ -321721,33 +321679,11 @@
           "source": "quest-active-event"
         },
         "ready": {
-          "type": "alternatives",
-          "spots": [
-            {
-              "map": "abyss-engine-room-be5a127f",
-              "x": 24,
-              "y": 264,
-              "source": "quest-ready-event"
-            },
-            {
-              "map": "engine-room-of-reality-a06620c7",
-              "x": 24,
-              "y": 488,
-              "source": "quest-ready-event"
-            },
-            {
-              "map": "inside-arnen-castle02-9a1430d7",
-              "x": 584,
-              "y": 40,
-              "source": "quest-ready-event"
-            },
-            {
-              "map": "sealed-dungeon-1-2-c824bb14",
-              "x": 696,
-              "y": 280,
-              "source": "quest-ready-event"
-            }
-          ]
+          "type": "fixed",
+          "map": "engine-room-of-reality-a06620c7",
+          "x": 88,
+          "y": 136,
+          "source": "quest-ready-event"
         }
       }
     },
@@ -321797,33 +321733,11 @@
       "completeText": "你回来了~稍等。&N解毒魔法快结束了。",
       "places": {
         "available": {
-          "type": "alternatives",
-          "spots": [
-            {
-              "map": "abyss-engine-room-be5a127f",
-              "x": 24,
-              "y": 264,
-              "source": "quest-available-event"
-            },
-            {
-              "map": "engine-room-of-reality-a06620c7",
-              "x": 24,
-              "y": 488,
-              "source": "quest-available-event"
-            },
-            {
-              "map": "inside-arnen-castle02-9a1430d7",
-              "x": 584,
-              "y": 40,
-              "source": "quest-available-event"
-            },
-            {
-              "map": "sealed-dungeon-1-2-c824bb14",
-              "x": 696,
-              "y": 280,
-              "source": "quest-available-event"
-            }
-          ]
+          "type": "fixed",
+          "map": "engine-room-of-reality-a06620c7",
+          "x": 88,
+          "y": 136,
+          "source": "quest-available-event"
         },
         "active": {
           "type": "alternatives",
@@ -322252,33 +322166,11 @@
       "completeText": "稍等，慢工出细活~",
       "places": {
         "available": {
-          "type": "alternatives",
-          "spots": [
-            {
-              "map": "abyss-engine-room-be5a127f",
-              "x": 24,
-              "y": 264,
-              "source": "quest-available-event"
-            },
-            {
-              "map": "engine-room-of-reality-a06620c7",
-              "x": 24,
-              "y": 488,
-              "source": "quest-available-event"
-            },
-            {
-              "map": "inside-arnen-castle02-9a1430d7",
-              "x": 584,
-              "y": 40,
-              "source": "quest-available-event"
-            },
-            {
-              "map": "sealed-dungeon-1-2-c824bb14",
-              "x": 696,
-              "y": 280,
-              "source": "quest-available-event"
-            }
-          ]
+          "type": "fixed",
+          "map": "abyss-engine-room-be5a127f",
+          "x": 168,
+          "y": 584,
+          "source": "quest-available-event"
         },
         "active": {
           "type": "alternatives",
