@@ -281,7 +281,7 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
   const pngBytes = fs.readFileSync(new URL(proto.texture.file, repoRoot));
   const pngWidth = pngBytes.readUInt32BE(16);
   const pngHeight = pngBytes.readUInt32BE(20);
-  assert.equal(Object.keys(proto.sprites).length, 14);
+  assert.equal(Object.keys(proto.sprites).length, 18);
   for (const sprite of Object.values(proto.sprites)) {
     assert.equal(sprite.texture, proto.texture.key);
     assert.ok(sprite.x >= 0 && sprite.y >= 0);
@@ -293,7 +293,7 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
   const effBytes = fs.readFileSync(new URL(proto.effectSheet.texture.file, repoRoot));
   const effWidth = effBytes.readUInt32BE(16);
   const effHeight = effBytes.readUInt32BE(20);
-  assert.equal(Object.keys(proto.effectSheet.frames).length, 386);
+  assert.equal(Object.keys(proto.effectSheet.frames).length, 414);
   for (const rect of Object.values(proto.effectSheet.frames)) {
     assert.ok(rect.x >= 0 && rect.y >= 0);
     assert.ok(rect.x + rect.width <= effWidth && rect.y + rect.height <= effHeight);
@@ -399,7 +399,9 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
       assert.ok(pierceTl.effects.some(e => e.effect === 'impact-burst' && e.onTarget));
 
       const whirlTl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, 'skill-whirl-sweep', facing, audio, proto.actionTimelines);
-      assert.ok(whirlTl.effects.some(e => e.effect === 'spear-flower-spin' && e.startFrame === 0));
+      assert.equal(whirlTl.markers.filter(m => m.kind === 'strike').length, 3);
+      assert.ok(whirlTl.effects.some(e => e.effect === 'spear-flower-spin' && e.variant === facing && e.startFrame === 0));
+      assert.ok(whirlTl.effects.some(e => e.effect === 'impact-burst' && e.onTarget && e.startFrame === 2));
       assert.ok(whirlTl.effects.some(e => e.effect === 'spear-gale-sweep' && e.variant === facing));
 
       const spinTl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, 'skill-spin-storm', facing, audio, proto.actionTimelines);

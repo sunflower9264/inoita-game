@@ -134,6 +134,42 @@
       "height": 24,
       "anchorX": 34,
       "anchorY": 14
+    },
+    "spear-flower-ext-west-up": {
+      "texture": "prototype-spear-parts",
+      "x": 605,
+      "y": 2,
+      "width": 68,
+      "height": 24,
+      "anchorX": 51,
+      "anchorY": 13
+    },
+    "spear-flower-ext-west-down": {
+      "texture": "prototype-spear-parts",
+      "x": 675,
+      "y": 2,
+      "width": 68,
+      "height": 24,
+      "anchorX": 51,
+      "anchorY": 10
+    },
+    "spear-flower-ext-south-tilt": {
+      "texture": "prototype-spear-parts",
+      "x": 745,
+      "y": 2,
+      "width": 24,
+      "height": 64,
+      "anchorX": 9,
+      "anchorY": 16
+    },
+    "spear-flower-ext-north-tilt": {
+      "texture": "prototype-spear-parts",
+      "x": 771,
+      "y": 2,
+      "width": 24,
+      "height": 64,
+      "anchorX": 9,
+      "anchorY": 47
     }
   },
   "variants": {
@@ -151,7 +187,11 @@
       "spear-sweep-flat",
       "spear-sweep-high-diag",
       "spear-overhead-raise",
-      "spear-slam-low"
+      "spear-slam-low",
+      "spear-flower-ext-west-up",
+      "spear-flower-ext-west-down",
+      "spear-flower-ext-south-tilt",
+      "spear-flower-ext-north-tilt"
     ]
   },
   "stancePoses": {
@@ -406,9 +446,27 @@
         {
           "effect": "spear-flower-spin",
           "startFrame": 0,
+          "variant": "facing",
+          "placement": "above-characters",
+          "source": "前探延长枪花连击"
+        },
+        {
+          "effect": "impact-burst",
+          "startFrame": 2,
           "variant": "default",
           "placement": "above-characters",
-          "source": "身前银白枪花"
+          "onTarget": true,
+          "targetDistancePx": 44,
+          "source": "枪花第一段受击火花"
+        },
+        {
+          "effect": "impact-burst",
+          "startFrame": 4,
+          "variant": "default",
+          "placement": "above-characters",
+          "onTarget": true,
+          "targetDistancePx": 44,
+          "source": "枪花第二段受击火花"
         },
         {
           "effect": "spear-gale-sweep",
@@ -421,8 +479,18 @@
       "markers": [
         {
           "frame": 0,
-          "kind": "effect",
-          "label": "舞枪花引风（4 帧）"
+          "kind": "swing",
+          "label": "滑把延枪 · 出前探枪花"
+        },
+        {
+          "frame": 2,
+          "kind": "strike",
+          "label": "枪花第一段命中"
+        },
+        {
+          "frame": 4,
+          "kind": "strike",
+          "label": "枪花第二段命中"
         },
         {
           "frame": 7,
@@ -432,7 +500,7 @@
         {
           "frame": 8,
           "kind": "strike",
-          "label": "半圈横扫命中 + 推退硬直"
+          "label": "半圈大扫终结 + 推退硬直"
         }
       ],
       "shakeFrames": [
@@ -440,6 +508,7 @@
       ],
       "sounds": [
         "Wa_Wheel_Wind",
+        "Weapon_Dagger_Attack",
         "Weapon_TwoHand_Sword_Attack"
       ]
     },
@@ -1714,1455 +1783,1623 @@
         "width": 82,
         "height": 96
       },
-      "spear-flower-spin-default-base-0": {
+      "spear-flower-spin-west-base-0": {
         "x": 2,
         "y": 2806,
-        "width": 46,
-        "height": 46
+        "width": 88,
+        "height": 64
       },
-      "spear-flower-spin-default-base-1": {
-        "x": 50,
+      "spear-flower-spin-west-base-1": {
+        "x": 92,
         "y": 2806,
-        "width": 46,
-        "height": 46
+        "width": 88,
+        "height": 64
       },
-      "spear-flower-spin-default-base-2": {
-        "x": 98,
+      "spear-flower-spin-west-base-2": {
+        "x": 182,
         "y": 2806,
-        "width": 46,
-        "height": 46
+        "width": 88,
+        "height": 64
       },
-      "spear-flower-spin-default-base-3": {
-        "x": 146,
+      "spear-flower-spin-west-base-3": {
+        "x": 272,
         "y": 2806,
-        "width": 46,
-        "height": 46
+        "width": 88,
+        "height": 64
       },
-      "spear-flower-spin-default-add-0": {
+      "spear-flower-spin-west-base-4": {
+        "x": 362,
+        "y": 2806,
+        "width": 88,
+        "height": 64
+      },
+      "spear-flower-spin-west-base-5": {
+        "x": 452,
+        "y": 2806,
+        "width": 88,
+        "height": 64
+      },
+      "spear-flower-spin-west-add-0": {
         "x": 2,
-        "y": 2854,
-        "width": 46,
-        "height": 46
+        "y": 2872,
+        "width": 88,
+        "height": 64
       },
-      "spear-flower-spin-default-add-1": {
-        "x": 50,
-        "y": 2854,
-        "width": 46,
-        "height": 46
+      "spear-flower-spin-west-add-1": {
+        "x": 92,
+        "y": 2872,
+        "width": 88,
+        "height": 64
       },
-      "spear-flower-spin-default-add-2": {
-        "x": 98,
-        "y": 2854,
-        "width": 46,
-        "height": 46
+      "spear-flower-spin-west-add-2": {
+        "x": 182,
+        "y": 2872,
+        "width": 88,
+        "height": 64
       },
-      "spear-flower-spin-default-add-3": {
-        "x": 146,
-        "y": 2854,
-        "width": 46,
-        "height": 46
+      "spear-flower-spin-west-add-3": {
+        "x": 272,
+        "y": 2872,
+        "width": 88,
+        "height": 64
+      },
+      "spear-flower-spin-west-add-4": {
+        "x": 362,
+        "y": 2872,
+        "width": 88,
+        "height": 64
+      },
+      "spear-flower-spin-west-add-5": {
+        "x": 452,
+        "y": 2872,
+        "width": 88,
+        "height": 64
+      },
+      "spear-flower-spin-south-base-0": {
+        "x": 2,
+        "y": 2938,
+        "width": 76,
+        "height": 88
+      },
+      "spear-flower-spin-south-base-1": {
+        "x": 80,
+        "y": 2938,
+        "width": 76,
+        "height": 88
+      },
+      "spear-flower-spin-south-base-2": {
+        "x": 158,
+        "y": 2938,
+        "width": 76,
+        "height": 88
+      },
+      "spear-flower-spin-south-base-3": {
+        "x": 236,
+        "y": 2938,
+        "width": 76,
+        "height": 88
+      },
+      "spear-flower-spin-south-base-4": {
+        "x": 314,
+        "y": 2938,
+        "width": 76,
+        "height": 88
+      },
+      "spear-flower-spin-south-base-5": {
+        "x": 392,
+        "y": 2938,
+        "width": 76,
+        "height": 88
+      },
+      "spear-flower-spin-south-add-0": {
+        "x": 2,
+        "y": 3028,
+        "width": 76,
+        "height": 88
+      },
+      "spear-flower-spin-south-add-1": {
+        "x": 80,
+        "y": 3028,
+        "width": 76,
+        "height": 88
+      },
+      "spear-flower-spin-south-add-2": {
+        "x": 158,
+        "y": 3028,
+        "width": 76,
+        "height": 88
+      },
+      "spear-flower-spin-south-add-3": {
+        "x": 236,
+        "y": 3028,
+        "width": 76,
+        "height": 88
+      },
+      "spear-flower-spin-south-add-4": {
+        "x": 314,
+        "y": 3028,
+        "width": 76,
+        "height": 88
+      },
+      "spear-flower-spin-south-add-5": {
+        "x": 392,
+        "y": 3028,
+        "width": 76,
+        "height": 88
+      },
+      "spear-flower-spin-north-base-0": {
+        "x": 2,
+        "y": 3118,
+        "width": 76,
+        "height": 92
+      },
+      "spear-flower-spin-north-base-1": {
+        "x": 80,
+        "y": 3118,
+        "width": 76,
+        "height": 92
+      },
+      "spear-flower-spin-north-base-2": {
+        "x": 158,
+        "y": 3118,
+        "width": 76,
+        "height": 92
+      },
+      "spear-flower-spin-north-base-3": {
+        "x": 236,
+        "y": 3118,
+        "width": 76,
+        "height": 92
+      },
+      "spear-flower-spin-north-base-4": {
+        "x": 314,
+        "y": 3118,
+        "width": 76,
+        "height": 92
+      },
+      "spear-flower-spin-north-base-5": {
+        "x": 392,
+        "y": 3118,
+        "width": 76,
+        "height": 92
+      },
+      "spear-flower-spin-north-add-0": {
+        "x": 2,
+        "y": 3212,
+        "width": 76,
+        "height": 92
+      },
+      "spear-flower-spin-north-add-1": {
+        "x": 80,
+        "y": 3212,
+        "width": 76,
+        "height": 92
+      },
+      "spear-flower-spin-north-add-2": {
+        "x": 158,
+        "y": 3212,
+        "width": 76,
+        "height": 92
+      },
+      "spear-flower-spin-north-add-3": {
+        "x": 236,
+        "y": 3212,
+        "width": 76,
+        "height": 92
+      },
+      "spear-flower-spin-north-add-4": {
+        "x": 314,
+        "y": 3212,
+        "width": 76,
+        "height": 92
+      },
+      "spear-flower-spin-north-add-5": {
+        "x": 392,
+        "y": 3212,
+        "width": 76,
+        "height": 92
       },
       "spear-gale-sweep-west-base-0": {
         "x": 2,
-        "y": 2902,
+        "y": 3306,
         "width": 94,
         "height": 114
       },
       "spear-gale-sweep-west-base-1": {
         "x": 98,
-        "y": 2902,
+        "y": 3306,
         "width": 94,
         "height": 114
       },
       "spear-gale-sweep-west-base-2": {
         "x": 194,
-        "y": 2902,
+        "y": 3306,
         "width": 94,
         "height": 114
       },
       "spear-gale-sweep-west-base-3": {
         "x": 290,
-        "y": 2902,
+        "y": 3306,
         "width": 94,
         "height": 114
       },
       "spear-gale-sweep-west-base-4": {
         "x": 386,
-        "y": 2902,
+        "y": 3306,
         "width": 94,
         "height": 114
       },
       "spear-gale-sweep-west-base-5": {
         "x": 482,
-        "y": 2902,
+        "y": 3306,
         "width": 94,
         "height": 114
       },
       "spear-gale-sweep-west-add-0": {
         "x": 2,
-        "y": 3018,
+        "y": 3422,
         "width": 94,
         "height": 114
       },
       "spear-gale-sweep-west-add-1": {
         "x": 98,
-        "y": 3018,
+        "y": 3422,
         "width": 94,
         "height": 114
       },
       "spear-gale-sweep-west-add-2": {
         "x": 194,
-        "y": 3018,
+        "y": 3422,
         "width": 94,
         "height": 114
       },
       "spear-gale-sweep-west-add-3": {
         "x": 290,
-        "y": 3018,
+        "y": 3422,
         "width": 94,
         "height": 114
       },
       "spear-gale-sweep-west-add-4": {
         "x": 386,
-        "y": 3018,
+        "y": 3422,
         "width": 94,
         "height": 114
       },
       "spear-gale-sweep-west-add-5": {
         "x": 482,
-        "y": 3018,
+        "y": 3422,
         "width": 94,
         "height": 114
       },
       "spear-gale-sweep-south-base-0": {
         "x": 2,
-        "y": 3134,
+        "y": 3538,
         "width": 120,
         "height": 78
       },
       "spear-gale-sweep-south-base-1": {
         "x": 124,
-        "y": 3134,
+        "y": 3538,
         "width": 120,
         "height": 78
       },
       "spear-gale-sweep-south-base-2": {
         "x": 246,
-        "y": 3134,
+        "y": 3538,
         "width": 120,
         "height": 78
       },
       "spear-gale-sweep-south-base-3": {
         "x": 368,
-        "y": 3134,
+        "y": 3538,
         "width": 120,
         "height": 78
       },
       "spear-gale-sweep-south-base-4": {
         "x": 490,
-        "y": 3134,
+        "y": 3538,
         "width": 120,
         "height": 78
       },
       "spear-gale-sweep-south-base-5": {
         "x": 612,
-        "y": 3134,
+        "y": 3538,
         "width": 120,
         "height": 78
       },
       "spear-gale-sweep-south-add-0": {
         "x": 2,
-        "y": 3214,
+        "y": 3618,
         "width": 120,
         "height": 78
       },
       "spear-gale-sweep-south-add-1": {
         "x": 124,
-        "y": 3214,
+        "y": 3618,
         "width": 120,
         "height": 78
       },
       "spear-gale-sweep-south-add-2": {
         "x": 246,
-        "y": 3214,
+        "y": 3618,
         "width": 120,
         "height": 78
       },
       "spear-gale-sweep-south-add-3": {
         "x": 368,
-        "y": 3214,
+        "y": 3618,
         "width": 120,
         "height": 78
       },
       "spear-gale-sweep-south-add-4": {
         "x": 490,
-        "y": 3214,
+        "y": 3618,
         "width": 120,
         "height": 78
       },
       "spear-gale-sweep-south-add-5": {
         "x": 612,
-        "y": 3214,
+        "y": 3618,
         "width": 120,
         "height": 78
       },
       "spear-gale-sweep-north-base-0": {
         "x": 2,
-        "y": 3294,
+        "y": 3698,
         "width": 120,
         "height": 86
       },
       "spear-gale-sweep-north-base-1": {
         "x": 124,
-        "y": 3294,
+        "y": 3698,
         "width": 120,
         "height": 86
       },
       "spear-gale-sweep-north-base-2": {
         "x": 246,
-        "y": 3294,
+        "y": 3698,
         "width": 120,
         "height": 86
       },
       "spear-gale-sweep-north-base-3": {
         "x": 368,
-        "y": 3294,
+        "y": 3698,
         "width": 120,
         "height": 86
       },
       "spear-gale-sweep-north-base-4": {
         "x": 490,
-        "y": 3294,
+        "y": 3698,
         "width": 120,
         "height": 86
       },
       "spear-gale-sweep-north-base-5": {
         "x": 612,
-        "y": 3294,
+        "y": 3698,
         "width": 120,
         "height": 86
       },
       "spear-gale-sweep-north-add-0": {
         "x": 2,
-        "y": 3382,
+        "y": 3786,
         "width": 120,
         "height": 86
       },
       "spear-gale-sweep-north-add-1": {
         "x": 124,
-        "y": 3382,
+        "y": 3786,
         "width": 120,
         "height": 86
       },
       "spear-gale-sweep-north-add-2": {
         "x": 246,
-        "y": 3382,
+        "y": 3786,
         "width": 120,
         "height": 86
       },
       "spear-gale-sweep-north-add-3": {
         "x": 368,
-        "y": 3382,
+        "y": 3786,
         "width": 120,
         "height": 86
       },
       "spear-gale-sweep-north-add-4": {
         "x": 490,
-        "y": 3382,
+        "y": 3786,
         "width": 120,
         "height": 86
       },
       "spear-gale-sweep-north-add-5": {
         "x": 612,
-        "y": 3382,
+        "y": 3786,
         "width": 120,
         "height": 86
       },
       "spear-flurry-needles-west-base-0": {
         "x": 2,
-        "y": 3470,
+        "y": 3874,
         "width": 94,
         "height": 66
       },
       "spear-flurry-needles-west-base-1": {
         "x": 98,
-        "y": 3470,
+        "y": 3874,
         "width": 94,
         "height": 66
       },
       "spear-flurry-needles-west-base-2": {
         "x": 194,
-        "y": 3470,
+        "y": 3874,
         "width": 94,
         "height": 66
       },
       "spear-flurry-needles-west-base-3": {
         "x": 290,
-        "y": 3470,
+        "y": 3874,
         "width": 94,
         "height": 66
       },
       "spear-flurry-needles-west-base-4": {
         "x": 386,
-        "y": 3470,
+        "y": 3874,
         "width": 94,
         "height": 66
       },
       "spear-flurry-needles-west-base-5": {
         "x": 482,
-        "y": 3470,
+        "y": 3874,
         "width": 94,
         "height": 66
       },
       "spear-flurry-needles-west-base-6": {
         "x": 578,
-        "y": 3470,
+        "y": 3874,
         "width": 94,
         "height": 66
       },
       "spear-flurry-needles-west-base-7": {
         "x": 674,
-        "y": 3470,
+        "y": 3874,
         "width": 94,
         "height": 66
       },
       "spear-flurry-needles-west-add-0": {
         "x": 2,
-        "y": 3538,
+        "y": 3942,
         "width": 94,
         "height": 66
       },
       "spear-flurry-needles-west-add-1": {
         "x": 98,
-        "y": 3538,
+        "y": 3942,
         "width": 94,
         "height": 66
       },
       "spear-flurry-needles-west-add-2": {
         "x": 194,
-        "y": 3538,
+        "y": 3942,
         "width": 94,
         "height": 66
       },
       "spear-flurry-needles-west-add-3": {
         "x": 290,
-        "y": 3538,
+        "y": 3942,
         "width": 94,
         "height": 66
       },
       "spear-flurry-needles-west-add-4": {
         "x": 386,
-        "y": 3538,
+        "y": 3942,
         "width": 94,
         "height": 66
       },
       "spear-flurry-needles-west-add-5": {
         "x": 482,
-        "y": 3538,
+        "y": 3942,
         "width": 94,
         "height": 66
       },
       "spear-flurry-needles-west-add-6": {
         "x": 578,
-        "y": 3538,
+        "y": 3942,
         "width": 94,
         "height": 66
       },
       "spear-flurry-needles-west-add-7": {
         "x": 674,
-        "y": 3538,
+        "y": 3942,
         "width": 94,
         "height": 66
       },
       "spear-flurry-needles-south-base-0": {
         "x": 2,
-        "y": 3606,
+        "y": 4010,
         "width": 66,
         "height": 94
       },
       "spear-flurry-needles-south-base-1": {
         "x": 70,
-        "y": 3606,
+        "y": 4010,
         "width": 66,
         "height": 94
       },
       "spear-flurry-needles-south-base-2": {
         "x": 138,
-        "y": 3606,
+        "y": 4010,
         "width": 66,
         "height": 94
       },
       "spear-flurry-needles-south-base-3": {
         "x": 206,
-        "y": 3606,
+        "y": 4010,
         "width": 66,
         "height": 94
       },
       "spear-flurry-needles-south-base-4": {
         "x": 274,
-        "y": 3606,
+        "y": 4010,
         "width": 66,
         "height": 94
       },
       "spear-flurry-needles-south-base-5": {
         "x": 342,
-        "y": 3606,
+        "y": 4010,
         "width": 66,
         "height": 94
       },
       "spear-flurry-needles-south-base-6": {
         "x": 410,
-        "y": 3606,
+        "y": 4010,
         "width": 66,
         "height": 94
       },
       "spear-flurry-needles-south-base-7": {
         "x": 478,
-        "y": 3606,
+        "y": 4010,
         "width": 66,
         "height": 94
       },
       "spear-flurry-needles-south-add-0": {
         "x": 2,
-        "y": 3702,
+        "y": 4106,
         "width": 66,
         "height": 94
       },
       "spear-flurry-needles-south-add-1": {
         "x": 70,
-        "y": 3702,
+        "y": 4106,
         "width": 66,
         "height": 94
       },
       "spear-flurry-needles-south-add-2": {
         "x": 138,
-        "y": 3702,
+        "y": 4106,
         "width": 66,
         "height": 94
       },
       "spear-flurry-needles-south-add-3": {
         "x": 206,
-        "y": 3702,
+        "y": 4106,
         "width": 66,
         "height": 94
       },
       "spear-flurry-needles-south-add-4": {
         "x": 274,
-        "y": 3702,
+        "y": 4106,
         "width": 66,
         "height": 94
       },
       "spear-flurry-needles-south-add-5": {
         "x": 342,
-        "y": 3702,
+        "y": 4106,
         "width": 66,
         "height": 94
       },
       "spear-flurry-needles-south-add-6": {
         "x": 410,
-        "y": 3702,
+        "y": 4106,
         "width": 66,
         "height": 94
       },
       "spear-flurry-needles-south-add-7": {
         "x": 478,
-        "y": 3702,
+        "y": 4106,
         "width": 66,
         "height": 94
       },
       "spear-flurry-needles-north-base-0": {
         "x": 2,
-        "y": 3798,
+        "y": 4202,
         "width": 66,
         "height": 100
       },
       "spear-flurry-needles-north-base-1": {
         "x": 70,
-        "y": 3798,
+        "y": 4202,
         "width": 66,
         "height": 100
       },
       "spear-flurry-needles-north-base-2": {
         "x": 138,
-        "y": 3798,
+        "y": 4202,
         "width": 66,
         "height": 100
       },
       "spear-flurry-needles-north-base-3": {
         "x": 206,
-        "y": 3798,
+        "y": 4202,
         "width": 66,
         "height": 100
       },
       "spear-flurry-needles-north-base-4": {
         "x": 274,
-        "y": 3798,
+        "y": 4202,
         "width": 66,
         "height": 100
       },
       "spear-flurry-needles-north-base-5": {
         "x": 342,
-        "y": 3798,
+        "y": 4202,
         "width": 66,
         "height": 100
       },
       "spear-flurry-needles-north-base-6": {
         "x": 410,
-        "y": 3798,
+        "y": 4202,
         "width": 66,
         "height": 100
       },
       "spear-flurry-needles-north-base-7": {
         "x": 478,
-        "y": 3798,
+        "y": 4202,
         "width": 66,
         "height": 100
       },
       "spear-flurry-needles-north-add-0": {
         "x": 2,
-        "y": 3900,
+        "y": 4304,
         "width": 66,
         "height": 100
       },
       "spear-flurry-needles-north-add-1": {
         "x": 70,
-        "y": 3900,
+        "y": 4304,
         "width": 66,
         "height": 100
       },
       "spear-flurry-needles-north-add-2": {
         "x": 138,
-        "y": 3900,
+        "y": 4304,
         "width": 66,
         "height": 100
       },
       "spear-flurry-needles-north-add-3": {
         "x": 206,
-        "y": 3900,
+        "y": 4304,
         "width": 66,
         "height": 100
       },
       "spear-flurry-needles-north-add-4": {
         "x": 274,
-        "y": 3900,
+        "y": 4304,
         "width": 66,
         "height": 100
       },
       "spear-flurry-needles-north-add-5": {
         "x": 342,
-        "y": 3900,
+        "y": 4304,
         "width": 66,
         "height": 100
       },
       "spear-flurry-needles-north-add-6": {
         "x": 410,
-        "y": 3900,
+        "y": 4304,
         "width": 66,
         "height": 100
       },
       "spear-flurry-needles-north-add-7": {
         "x": 478,
-        "y": 3900,
+        "y": 4304,
         "width": 66,
         "height": 100
       },
       "spear-flurry-finisher-west-base-0": {
         "x": 2,
-        "y": 4002,
+        "y": 4406,
         "width": 98,
         "height": 40
       },
       "spear-flurry-finisher-west-base-1": {
         "x": 102,
-        "y": 4002,
+        "y": 4406,
         "width": 98,
         "height": 40
       },
       "spear-flurry-finisher-west-base-2": {
         "x": 202,
-        "y": 4002,
+        "y": 4406,
         "width": 98,
         "height": 40
       },
       "spear-flurry-finisher-west-base-3": {
         "x": 302,
-        "y": 4002,
+        "y": 4406,
         "width": 98,
         "height": 40
       },
       "spear-flurry-finisher-west-add-0": {
         "x": 2,
-        "y": 4044,
+        "y": 4448,
         "width": 98,
         "height": 40
       },
       "spear-flurry-finisher-west-add-1": {
         "x": 102,
-        "y": 4044,
+        "y": 4448,
         "width": 98,
         "height": 40
       },
       "spear-flurry-finisher-west-add-2": {
         "x": 202,
-        "y": 4044,
+        "y": 4448,
         "width": 98,
         "height": 40
       },
       "spear-flurry-finisher-west-add-3": {
         "x": 302,
-        "y": 4044,
+        "y": 4448,
         "width": 98,
         "height": 40
       },
       "spear-flurry-finisher-south-base-0": {
         "x": 2,
-        "y": 4086,
+        "y": 4490,
         "width": 40,
         "height": 96
       },
       "spear-flurry-finisher-south-base-1": {
         "x": 44,
-        "y": 4086,
+        "y": 4490,
         "width": 40,
         "height": 96
       },
       "spear-flurry-finisher-south-base-2": {
         "x": 86,
-        "y": 4086,
+        "y": 4490,
         "width": 40,
         "height": 96
       },
       "spear-flurry-finisher-south-base-3": {
         "x": 128,
-        "y": 4086,
+        "y": 4490,
         "width": 40,
         "height": 96
       },
       "spear-flurry-finisher-south-add-0": {
         "x": 2,
-        "y": 4184,
+        "y": 4588,
         "width": 40,
         "height": 96
       },
       "spear-flurry-finisher-south-add-1": {
         "x": 44,
-        "y": 4184,
+        "y": 4588,
         "width": 40,
         "height": 96
       },
       "spear-flurry-finisher-south-add-2": {
         "x": 86,
-        "y": 4184,
+        "y": 4588,
         "width": 40,
         "height": 96
       },
       "spear-flurry-finisher-south-add-3": {
         "x": 128,
-        "y": 4184,
+        "y": 4588,
         "width": 40,
         "height": 96
       },
       "spear-flurry-finisher-north-base-0": {
         "x": 2,
-        "y": 4282,
+        "y": 4686,
         "width": 40,
         "height": 106
       },
       "spear-flurry-finisher-north-base-1": {
         "x": 44,
-        "y": 4282,
+        "y": 4686,
         "width": 40,
         "height": 106
       },
       "spear-flurry-finisher-north-base-2": {
         "x": 86,
-        "y": 4282,
+        "y": 4686,
         "width": 40,
         "height": 106
       },
       "spear-flurry-finisher-north-base-3": {
         "x": 128,
-        "y": 4282,
+        "y": 4686,
         "width": 40,
         "height": 106
       },
       "spear-flurry-finisher-north-add-0": {
         "x": 2,
-        "y": 4390,
+        "y": 4794,
         "width": 40,
         "height": 106
       },
       "spear-flurry-finisher-north-add-1": {
         "x": 44,
-        "y": 4390,
+        "y": 4794,
         "width": 40,
         "height": 106
       },
       "spear-flurry-finisher-north-add-2": {
         "x": 86,
-        "y": 4390,
+        "y": 4794,
         "width": 40,
         "height": 106
       },
       "spear-flurry-finisher-north-add-3": {
         "x": 128,
-        "y": 4390,
+        "y": 4794,
         "width": 40,
         "height": 106
       },
       "spear-sovereign-beam-west-base-0": {
         "x": 2,
-        "y": 4498,
+        "y": 4902,
         "width": 158,
         "height": 48
       },
       "spear-sovereign-beam-west-base-1": {
         "x": 162,
-        "y": 4498,
+        "y": 4902,
         "width": 158,
         "height": 48
       },
       "spear-sovereign-beam-west-base-2": {
         "x": 322,
-        "y": 4498,
+        "y": 4902,
         "width": 158,
         "height": 48
       },
       "spear-sovereign-beam-west-base-3": {
         "x": 482,
-        "y": 4498,
+        "y": 4902,
         "width": 158,
         "height": 48
       },
       "spear-sovereign-beam-west-base-4": {
         "x": 642,
-        "y": 4498,
+        "y": 4902,
         "width": 158,
         "height": 48
       },
       "spear-sovereign-beam-west-base-5": {
         "x": 802,
-        "y": 4498,
+        "y": 4902,
         "width": 158,
         "height": 48
       },
       "spear-sovereign-beam-west-base-6": {
         "x": 962,
-        "y": 4498,
+        "y": 4902,
         "width": 158,
         "height": 48
       },
       "spear-sovereign-beam-west-add-0": {
         "x": 2,
-        "y": 4548,
+        "y": 4952,
         "width": 158,
         "height": 48
       },
       "spear-sovereign-beam-west-add-1": {
         "x": 162,
-        "y": 4548,
+        "y": 4952,
         "width": 158,
         "height": 48
       },
       "spear-sovereign-beam-west-add-2": {
         "x": 322,
-        "y": 4548,
+        "y": 4952,
         "width": 158,
         "height": 48
       },
       "spear-sovereign-beam-west-add-3": {
         "x": 482,
-        "y": 4548,
+        "y": 4952,
         "width": 158,
         "height": 48
       },
       "spear-sovereign-beam-west-add-4": {
         "x": 642,
-        "y": 4548,
+        "y": 4952,
         "width": 158,
         "height": 48
       },
       "spear-sovereign-beam-west-add-5": {
         "x": 802,
-        "y": 4548,
+        "y": 4952,
         "width": 158,
         "height": 48
       },
       "spear-sovereign-beam-west-add-6": {
         "x": 962,
-        "y": 4548,
+        "y": 4952,
         "width": 158,
         "height": 48
       },
       "spear-sovereign-beam-south-base-0": {
         "x": 2,
-        "y": 4598,
+        "y": 5002,
         "width": 48,
         "height": 156
       },
       "spear-sovereign-beam-south-base-1": {
         "x": 52,
-        "y": 4598,
+        "y": 5002,
         "width": 48,
         "height": 156
       },
       "spear-sovereign-beam-south-base-2": {
         "x": 102,
-        "y": 4598,
+        "y": 5002,
         "width": 48,
         "height": 156
       },
       "spear-sovereign-beam-south-base-3": {
         "x": 152,
-        "y": 4598,
+        "y": 5002,
         "width": 48,
         "height": 156
       },
       "spear-sovereign-beam-south-base-4": {
         "x": 202,
-        "y": 4598,
+        "y": 5002,
         "width": 48,
         "height": 156
       },
       "spear-sovereign-beam-south-base-5": {
         "x": 252,
-        "y": 4598,
+        "y": 5002,
         "width": 48,
         "height": 156
       },
       "spear-sovereign-beam-south-base-6": {
         "x": 302,
-        "y": 4598,
+        "y": 5002,
         "width": 48,
         "height": 156
       },
       "spear-sovereign-beam-south-add-0": {
         "x": 2,
-        "y": 4756,
+        "y": 5160,
         "width": 48,
         "height": 156
       },
       "spear-sovereign-beam-south-add-1": {
         "x": 52,
-        "y": 4756,
+        "y": 5160,
         "width": 48,
         "height": 156
       },
       "spear-sovereign-beam-south-add-2": {
         "x": 102,
-        "y": 4756,
+        "y": 5160,
         "width": 48,
         "height": 156
       },
       "spear-sovereign-beam-south-add-3": {
         "x": 152,
-        "y": 4756,
+        "y": 5160,
         "width": 48,
         "height": 156
       },
       "spear-sovereign-beam-south-add-4": {
         "x": 202,
-        "y": 4756,
+        "y": 5160,
         "width": 48,
         "height": 156
       },
       "spear-sovereign-beam-south-add-5": {
         "x": 252,
-        "y": 4756,
+        "y": 5160,
         "width": 48,
         "height": 156
       },
       "spear-sovereign-beam-south-add-6": {
         "x": 302,
-        "y": 4756,
+        "y": 5160,
         "width": 48,
         "height": 156
       },
       "spear-sovereign-beam-north-base-0": {
         "x": 2,
-        "y": 4914,
+        "y": 5318,
         "width": 48,
         "height": 164
       },
       "spear-sovereign-beam-north-base-1": {
         "x": 52,
-        "y": 4914,
+        "y": 5318,
         "width": 48,
         "height": 164
       },
       "spear-sovereign-beam-north-base-2": {
         "x": 102,
-        "y": 4914,
+        "y": 5318,
         "width": 48,
         "height": 164
       },
       "spear-sovereign-beam-north-base-3": {
         "x": 152,
-        "y": 4914,
+        "y": 5318,
         "width": 48,
         "height": 164
       },
       "spear-sovereign-beam-north-base-4": {
         "x": 202,
-        "y": 4914,
+        "y": 5318,
         "width": 48,
         "height": 164
       },
       "spear-sovereign-beam-north-base-5": {
         "x": 252,
-        "y": 4914,
+        "y": 5318,
         "width": 48,
         "height": 164
       },
       "spear-sovereign-beam-north-base-6": {
         "x": 302,
-        "y": 4914,
+        "y": 5318,
         "width": 48,
         "height": 164
       },
       "spear-sovereign-beam-north-add-0": {
         "x": 2,
-        "y": 5080,
+        "y": 5484,
         "width": 48,
         "height": 164
       },
       "spear-sovereign-beam-north-add-1": {
         "x": 52,
-        "y": 5080,
+        "y": 5484,
         "width": 48,
         "height": 164
       },
       "spear-sovereign-beam-north-add-2": {
         "x": 102,
-        "y": 5080,
+        "y": 5484,
         "width": 48,
         "height": 164
       },
       "spear-sovereign-beam-north-add-3": {
         "x": 152,
-        "y": 5080,
+        "y": 5484,
         "width": 48,
         "height": 164
       },
       "spear-sovereign-beam-north-add-4": {
         "x": 202,
-        "y": 5080,
+        "y": 5484,
         "width": 48,
         "height": 164
       },
       "spear-sovereign-beam-north-add-5": {
         "x": 252,
-        "y": 5080,
+        "y": 5484,
         "width": 48,
         "height": 164
       },
       "spear-sovereign-beam-north-add-6": {
         "x": 302,
-        "y": 5080,
+        "y": 5484,
         "width": 48,
         "height": 164
       },
       "spear-spin-storm-west-base-0": {
         "x": 2,
-        "y": 5246,
+        "y": 5650,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-west-base-1": {
         "x": 144,
-        "y": 5246,
+        "y": 5650,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-west-base-2": {
         "x": 286,
-        "y": 5246,
+        "y": 5650,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-west-base-3": {
         "x": 428,
-        "y": 5246,
+        "y": 5650,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-west-base-4": {
         "x": 570,
-        "y": 5246,
+        "y": 5650,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-west-base-5": {
         "x": 712,
-        "y": 5246,
+        "y": 5650,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-west-base-6": {
         "x": 854,
-        "y": 5246,
+        "y": 5650,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-west-base-7": {
         "x": 996,
-        "y": 5246,
+        "y": 5650,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-west-base-8": {
         "x": 1138,
-        "y": 5246,
+        "y": 5650,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-west-base-9": {
         "x": 1280,
-        "y": 5246,
+        "y": 5650,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-west-base-10": {
         "x": 1422,
-        "y": 5246,
+        "y": 5650,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-west-base-11": {
         "x": 1564,
-        "y": 5246,
+        "y": 5650,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-west-base-12": {
         "x": 1706,
-        "y": 5246,
+        "y": 5650,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-west-base-13": {
         "x": 1848,
-        "y": 5246,
+        "y": 5650,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-west-add-0": {
         "x": 2,
-        "y": 5352,
+        "y": 5756,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-west-add-1": {
         "x": 144,
-        "y": 5352,
+        "y": 5756,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-west-add-2": {
         "x": 286,
-        "y": 5352,
+        "y": 5756,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-west-add-3": {
         "x": 428,
-        "y": 5352,
+        "y": 5756,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-west-add-4": {
         "x": 570,
-        "y": 5352,
+        "y": 5756,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-west-add-5": {
         "x": 712,
-        "y": 5352,
+        "y": 5756,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-west-add-6": {
         "x": 854,
-        "y": 5352,
+        "y": 5756,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-west-add-7": {
         "x": 996,
-        "y": 5352,
+        "y": 5756,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-west-add-8": {
         "x": 1138,
-        "y": 5352,
+        "y": 5756,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-west-add-9": {
         "x": 1280,
-        "y": 5352,
+        "y": 5756,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-west-add-10": {
         "x": 1422,
-        "y": 5352,
+        "y": 5756,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-west-add-11": {
         "x": 1564,
-        "y": 5352,
+        "y": 5756,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-west-add-12": {
         "x": 1706,
-        "y": 5352,
+        "y": 5756,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-west-add-13": {
         "x": 1848,
-        "y": 5352,
+        "y": 5756,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-south-base-0": {
         "x": 2,
-        "y": 5458,
+        "y": 5862,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-south-base-1": {
         "x": 144,
-        "y": 5458,
+        "y": 5862,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-south-base-2": {
         "x": 286,
-        "y": 5458,
+        "y": 5862,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-south-base-3": {
         "x": 428,
-        "y": 5458,
+        "y": 5862,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-south-base-4": {
         "x": 570,
-        "y": 5458,
+        "y": 5862,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-south-base-5": {
         "x": 712,
-        "y": 5458,
+        "y": 5862,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-south-base-6": {
         "x": 854,
-        "y": 5458,
+        "y": 5862,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-south-base-7": {
         "x": 996,
-        "y": 5458,
+        "y": 5862,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-south-base-8": {
         "x": 1138,
-        "y": 5458,
+        "y": 5862,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-south-base-9": {
         "x": 1280,
-        "y": 5458,
+        "y": 5862,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-south-base-10": {
         "x": 1422,
-        "y": 5458,
+        "y": 5862,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-south-base-11": {
         "x": 1564,
-        "y": 5458,
+        "y": 5862,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-south-base-12": {
         "x": 1706,
-        "y": 5458,
+        "y": 5862,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-south-base-13": {
         "x": 1848,
-        "y": 5458,
+        "y": 5862,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-south-add-0": {
         "x": 2,
-        "y": 5564,
+        "y": 5968,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-south-add-1": {
         "x": 144,
-        "y": 5564,
+        "y": 5968,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-south-add-2": {
         "x": 286,
-        "y": 5564,
+        "y": 5968,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-south-add-3": {
         "x": 428,
-        "y": 5564,
+        "y": 5968,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-south-add-4": {
         "x": 570,
-        "y": 5564,
+        "y": 5968,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-south-add-5": {
         "x": 712,
-        "y": 5564,
+        "y": 5968,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-south-add-6": {
         "x": 854,
-        "y": 5564,
+        "y": 5968,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-south-add-7": {
         "x": 996,
-        "y": 5564,
+        "y": 5968,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-south-add-8": {
         "x": 1138,
-        "y": 5564,
+        "y": 5968,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-south-add-9": {
         "x": 1280,
-        "y": 5564,
+        "y": 5968,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-south-add-10": {
         "x": 1422,
-        "y": 5564,
+        "y": 5968,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-south-add-11": {
         "x": 1564,
-        "y": 5564,
+        "y": 5968,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-south-add-12": {
         "x": 1706,
-        "y": 5564,
+        "y": 5968,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-south-add-13": {
         "x": 1848,
-        "y": 5564,
+        "y": 5968,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-north-base-0": {
         "x": 2,
-        "y": 5670,
+        "y": 6074,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-north-base-1": {
         "x": 144,
-        "y": 5670,
+        "y": 6074,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-north-base-2": {
         "x": 286,
-        "y": 5670,
+        "y": 6074,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-north-base-3": {
         "x": 428,
-        "y": 5670,
+        "y": 6074,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-north-base-4": {
         "x": 570,
-        "y": 5670,
+        "y": 6074,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-north-base-5": {
         "x": 712,
-        "y": 5670,
+        "y": 6074,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-north-base-6": {
         "x": 854,
-        "y": 5670,
+        "y": 6074,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-north-base-7": {
         "x": 996,
-        "y": 5670,
+        "y": 6074,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-north-base-8": {
         "x": 1138,
-        "y": 5670,
+        "y": 6074,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-north-base-9": {
         "x": 1280,
-        "y": 5670,
+        "y": 6074,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-north-base-10": {
         "x": 1422,
-        "y": 5670,
+        "y": 6074,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-north-base-11": {
         "x": 1564,
-        "y": 5670,
+        "y": 6074,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-north-base-12": {
         "x": 1706,
-        "y": 5670,
+        "y": 6074,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-north-base-13": {
         "x": 1848,
-        "y": 5670,
+        "y": 6074,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-north-add-0": {
         "x": 2,
-        "y": 5776,
+        "y": 6180,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-north-add-1": {
         "x": 144,
-        "y": 5776,
+        "y": 6180,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-north-add-2": {
         "x": 286,
-        "y": 5776,
+        "y": 6180,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-north-add-3": {
         "x": 428,
-        "y": 5776,
+        "y": 6180,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-north-add-4": {
         "x": 570,
-        "y": 5776,
+        "y": 6180,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-north-add-5": {
         "x": 712,
-        "y": 5776,
+        "y": 6180,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-north-add-6": {
         "x": 854,
-        "y": 5776,
+        "y": 6180,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-north-add-7": {
         "x": 996,
-        "y": 5776,
+        "y": 6180,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-north-add-8": {
         "x": 1138,
-        "y": 5776,
+        "y": 6180,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-north-add-9": {
         "x": 1280,
-        "y": 5776,
+        "y": 6180,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-north-add-10": {
         "x": 1422,
-        "y": 5776,
+        "y": 6180,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-north-add-11": {
         "x": 1564,
-        "y": 5776,
+        "y": 6180,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-north-add-12": {
         "x": 1706,
-        "y": 5776,
+        "y": 6180,
         "width": 140,
         "height": 104
       },
       "spear-spin-storm-north-add-13": {
         "x": 1848,
-        "y": 5776,
+        "y": 6180,
         "width": 140,
         "height": 104
       }
@@ -3384,17 +3621,53 @@
         "spear-slam-arc-north-add-2",
         "spear-slam-arc-north-add-3"
       ],
-      "prototype/spear-flower-spin/default-base.png": [
-        "spear-flower-spin-default-base-0",
-        "spear-flower-spin-default-base-1",
-        "spear-flower-spin-default-base-2",
-        "spear-flower-spin-default-base-3"
+      "prototype/spear-flower-spin/west-base.png": [
+        "spear-flower-spin-west-base-0",
+        "spear-flower-spin-west-base-1",
+        "spear-flower-spin-west-base-2",
+        "spear-flower-spin-west-base-3",
+        "spear-flower-spin-west-base-4",
+        "spear-flower-spin-west-base-5"
       ],
-      "prototype/spear-flower-spin/default-add.png": [
-        "spear-flower-spin-default-add-0",
-        "spear-flower-spin-default-add-1",
-        "spear-flower-spin-default-add-2",
-        "spear-flower-spin-default-add-3"
+      "prototype/spear-flower-spin/west-add.png": [
+        "spear-flower-spin-west-add-0",
+        "spear-flower-spin-west-add-1",
+        "spear-flower-spin-west-add-2",
+        "spear-flower-spin-west-add-3",
+        "spear-flower-spin-west-add-4",
+        "spear-flower-spin-west-add-5"
+      ],
+      "prototype/spear-flower-spin/south-base.png": [
+        "spear-flower-spin-south-base-0",
+        "spear-flower-spin-south-base-1",
+        "spear-flower-spin-south-base-2",
+        "spear-flower-spin-south-base-3",
+        "spear-flower-spin-south-base-4",
+        "spear-flower-spin-south-base-5"
+      ],
+      "prototype/spear-flower-spin/south-add.png": [
+        "spear-flower-spin-south-add-0",
+        "spear-flower-spin-south-add-1",
+        "spear-flower-spin-south-add-2",
+        "spear-flower-spin-south-add-3",
+        "spear-flower-spin-south-add-4",
+        "spear-flower-spin-south-add-5"
+      ],
+      "prototype/spear-flower-spin/north-base.png": [
+        "spear-flower-spin-north-base-0",
+        "spear-flower-spin-north-base-1",
+        "spear-flower-spin-north-base-2",
+        "spear-flower-spin-north-base-3",
+        "spear-flower-spin-north-base-4",
+        "spear-flower-spin-north-base-5"
+      ],
+      "prototype/spear-flower-spin/north-add.png": [
+        "spear-flower-spin-north-add-0",
+        "spear-flower-spin-north-add-1",
+        "spear-flower-spin-north-add-2",
+        "spear-flower-spin-north-add-3",
+        "spear-flower-spin-north-add-4",
+        "spear-flower-spin-north-add-5"
       ],
       "prototype/spear-gale-sweep/west-base.png": [
         "spear-gale-sweep-west-base-0",
@@ -4391,27 +4664,111 @@
     },
     "spear-flower-spin": {
       "clips": {
-        "default": {
+        "west": {
           "version": 1,
-          "frameWidth": 46,
-          "frameHeight": 46,
-          "frames": 4,
-          "originX": 0.5,
-          "originY": 0.7608695652173914,
+          "frameWidth": 88,
+          "frameHeight": 64,
+          "frames": 6,
+          "originX": 0.9090909090909091,
+          "originY": 0.71875,
           "frameRate": 16.666666666666668,
           "mirrorX": false,
           "layers": [
             {
-              "key": "spear-flower-spin-default-base",
-              "file": "prototype/spear-flower-spin/default-base.png",
+              "key": "spear-flower-spin-west-base",
+              "file": "prototype/spear-flower-spin/west-base.png",
               "blend": "normal",
               "operations": [
                 "normal"
               ]
             },
             {
-              "key": "spear-flower-spin-default-add",
-              "file": "prototype/spear-flower-spin/default-add.png",
+              "key": "spear-flower-spin-west-add",
+              "file": "prototype/spear-flower-spin/west-add.png",
+              "blend": "add",
+              "operations": [
+                "add"
+              ]
+            }
+          ]
+        },
+        "east": {
+          "version": 1,
+          "frameWidth": 88,
+          "frameHeight": 64,
+          "frames": 6,
+          "originX": 0.9090909090909091,
+          "originY": 0.71875,
+          "frameRate": 16.666666666666668,
+          "mirrorX": true,
+          "layers": [
+            {
+              "key": "spear-flower-spin-east-base",
+              "file": "prototype/spear-flower-spin/west-base.png",
+              "blend": "normal",
+              "operations": [
+                "normal"
+              ]
+            },
+            {
+              "key": "spear-flower-spin-east-add",
+              "file": "prototype/spear-flower-spin/west-add.png",
+              "blend": "add",
+              "operations": [
+                "add"
+              ]
+            }
+          ]
+        },
+        "south": {
+          "version": 1,
+          "frameWidth": 76,
+          "frameHeight": 88,
+          "frames": 6,
+          "originX": 0.5,
+          "originY": 0.20454545454545456,
+          "frameRate": 16.666666666666668,
+          "mirrorX": false,
+          "layers": [
+            {
+              "key": "spear-flower-spin-south-base",
+              "file": "prototype/spear-flower-spin/south-base.png",
+              "blend": "normal",
+              "operations": [
+                "normal"
+              ]
+            },
+            {
+              "key": "spear-flower-spin-south-add",
+              "file": "prototype/spear-flower-spin/south-add.png",
+              "blend": "add",
+              "operations": [
+                "add"
+              ]
+            }
+          ]
+        },
+        "north": {
+          "version": 1,
+          "frameWidth": 76,
+          "frameHeight": 92,
+          "frames": 6,
+          "originX": 0.5,
+          "originY": 0.8695652173913043,
+          "frameRate": 16.666666666666668,
+          "mirrorX": false,
+          "layers": [
+            {
+              "key": "spear-flower-spin-north-base",
+              "file": "prototype/spear-flower-spin/north-base.png",
+              "blend": "normal",
+              "operations": [
+                "normal"
+              ]
+            },
+            {
+              "key": "spear-flower-spin-north-add",
+              "file": "prototype/spear-flower-spin/north-add.png",
               "blend": "add",
               "operations": [
                 "add"
@@ -37583,20 +37940,20 @@
       "frames": [
         [
           {
-            "part": "cloak",
-            "piece": 0,
-            "x": -2,
-            "y": 0,
+            "part": "body",
+            "piece": 4,
+            "x": 0,
+            "y": 4,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
             "alpha": 1
           },
           {
-            "part": "coat-front",
-            "piece": 13,
-            "x": -9,
-            "y": -5,
+            "part": "cloak",
+            "piece": 0,
+            "x": 0,
+            "y": 2,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -37604,140 +37961,8 @@
           },
           {
             "part": "coat-back",
-            "piece": 4,
-            "x": -2,
-            "y": 0,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
             "piece": 0,
-            "x": -2,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 1,
-            "x": -4,
-            "y": 3,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-front",
-            "piece": 1,
-            "x": -4,
-            "y": 3,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-back",
-            "piece": 1,
-            "x": -4,
-            "y": 3,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 9,
-            "x": -21,
-            "y": -9,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 90,
-            "alpha": 1
-          },
-          {
-            "part": "spear",
-            "piece": 0,
-            "x": -2,
-            "y": -11,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          }
-        ],
-        [
-          {
-            "part": "cloak",
-            "piece": 0,
-            "x": -2,
-            "y": 1,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 12,
-            "x": -22,
-            "y": -22,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 90,
-            "alpha": 1
-          },
-          {
-            "part": "coat-back",
-            "piece": 4,
-            "x": -2,
-            "y": 0,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 0,
-            "x": -1,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 1,
-            "x": -4,
-            "y": 2,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-front",
-            "piece": 1,
-            "x": -4,
-            "y": 2,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-back",
-            "piece": 1,
-            "x": -4,
+            "x": 0,
             "y": 2,
             "scaleX": 1,
             "scaleY": 1,
@@ -37746,90 +37971,8 @@
           },
           {
             "part": "coat-front",
-            "piece": 10,
-            "x": -15,
-            "y": -20,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 90,
-            "alpha": 1
-          },
-          {
-            "part": "spear",
-            "piece": 9,
-            "x": 2,
-            "y": -10,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          }
-        ],
-        [
-          {
-            "part": "cloak",
             "piece": 0,
-            "x": -2,
-            "y": 1,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 12,
-            "x": -22,
-            "y": -22,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 90,
-            "alpha": 1
-          },
-          {
-            "part": "coat-back",
-            "piece": 4,
-            "x": -2,
-            "y": 0,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 0,
-            "x": -1,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 1,
-            "x": -4,
-            "y": 2,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-front",
-            "piece": 1,
-            "x": -4,
-            "y": 2,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-back",
-            "piece": 1,
-            "x": -4,
+            "x": 0,
             "y": 2,
             "scaleX": 1,
             "scaleY": 1,
@@ -37838,31 +37981,19 @@
           },
           {
             "part": "coat-front",
-            "piece": 10,
-            "x": -15,
-            "y": -20,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 90,
-            "alpha": 1
-          },
-          {
-            "part": "spear",
             "piece": 11,
-            "x": -3,
-            "y": -12,
+            "x": 3,
+            "y": 2,
             "scaleX": -1,
             "scaleY": 1,
             "angle": 0,
             "alpha": 1
-          }
-        ],
-        [
+          },
           {
-            "part": "spear",
-            "piece": 0,
-            "x": -4,
-            "y": -11,
+            "part": "coat-front",
+            "piece": 10,
+            "x": -2,
+            "y": 5,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -37870,9 +38001,51 @@
           },
           {
             "part": "body",
+            "piece": 0,
+            "x": 0,
+            "y": 4,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-front",
+            "piece": 0,
+            "x": 0,
+            "y": 4,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-back",
+            "piece": 0,
+            "x": 0,
+            "y": 4,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "spear",
+            "piece": 16,
+            "x": -1,
+            "y": -4,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          }
+        ],
+        [
+          {
+            "part": "body",
             "piece": 4,
-            "x": -4,
-            "y": 6,
+            "x": -1,
+            "y": 8,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -37881,7 +38054,535 @@
           {
             "part": "cloak",
             "piece": 0,
+            "x": -1,
+            "y": 4,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-back",
+            "piece": 1,
+            "x": 0,
+            "y": 4,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 0,
+            "x": 0,
+            "y": 4,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 5,
             "x": -3,
+            "y": 7,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 10,
+            "x": -1,
+            "y": 7,
+            "scaleX": -1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 0,
+            "x": -1,
+            "y": 8,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 0,
+            "x": 0,
+            "y": 8,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 0.6
+          },
+          {
+            "part": "head-front",
+            "piece": 0,
+            "x": -1,
+            "y": 8,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-front",
+            "piece": 0,
+            "x": 0,
+            "y": 8,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 0.6
+          },
+          {
+            "part": "head-back",
+            "piece": 0,
+            "x": -1,
+            "y": 8,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-back",
+            "piece": 0,
+            "x": 0,
+            "y": 8,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 0.6
+          },
+          {
+            "part": "spear",
+            "piece": 16,
+            "x": -2,
+            "y": 2,
+            "scaleX": -1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          }
+        ],
+        [
+          {
+            "part": "body",
+            "piece": 4,
+            "x": -1,
+            "y": 9,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "cloak",
+            "piece": 0,
+            "x": -1,
+            "y": 5,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-back",
+            "piece": 1,
+            "x": 0,
+            "y": 5,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 0,
+            "x": 0,
+            "y": 5,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 5,
+            "x": -3,
+            "y": 8,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 10,
+            "x": -1,
+            "y": 8,
+            "scaleX": -1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 0,
+            "x": -1,
+            "y": 9,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 0,
+            "x": 0,
+            "y": 9,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 0.6
+          },
+          {
+            "part": "head-front",
+            "piece": 0,
+            "x": -1,
+            "y": 9,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-front",
+            "piece": 0,
+            "x": 0,
+            "y": 9,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 0.6
+          },
+          {
+            "part": "head-back",
+            "piece": 0,
+            "x": -1,
+            "y": 9,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-back",
+            "piece": 0,
+            "x": 0,
+            "y": 9,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 0.6
+          },
+          {
+            "part": "spear",
+            "piece": 16,
+            "x": 2,
+            "y": 4,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          }
+        ],
+        [
+          {
+            "part": "body",
+            "piece": 4,
+            "x": -1,
+            "y": 9,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "cloak",
+            "piece": 0,
+            "x": -1,
+            "y": 5,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-back",
+            "piece": 1,
+            "x": 0,
+            "y": 5,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 0,
+            "x": 0,
+            "y": 5,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 5,
+            "x": -3,
+            "y": 8,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 10,
+            "x": -1,
+            "y": 8,
+            "scaleX": -1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 0,
+            "x": -1,
+            "y": 9,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 0,
+            "x": 0,
+            "y": 9,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 0.6
+          },
+          {
+            "part": "head-front",
+            "piece": 0,
+            "x": -1,
+            "y": 9,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-front",
+            "piece": 0,
+            "x": 0,
+            "y": 9,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 0.6
+          },
+          {
+            "part": "head-back",
+            "piece": 0,
+            "x": -1,
+            "y": 9,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-back",
+            "piece": 0,
+            "x": 0,
+            "y": 9,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 0.6
+          },
+          {
+            "part": "spear",
+            "piece": 16,
+            "x": -2,
+            "y": 4,
+            "scaleX": -1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          }
+        ],
+        [
+          {
+            "part": "body",
+            "piece": 4,
+            "x": -1,
+            "y": 9,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "cloak",
+            "piece": 0,
+            "x": -1,
+            "y": 5,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-back",
+            "piece": 1,
+            "x": 0,
+            "y": 5,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 0,
+            "x": 0,
+            "y": 5,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 5,
+            "x": -3,
+            "y": 8,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 10,
+            "x": -1,
+            "y": 8,
+            "scaleX": -1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 0,
+            "x": -1,
+            "y": 9,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 0,
+            "x": 0,
+            "y": 9,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 0.6
+          },
+          {
+            "part": "head-front",
+            "piece": 0,
+            "x": -1,
+            "y": 9,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-front",
+            "piece": 0,
+            "x": 0,
+            "y": 9,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 0.6
+          },
+          {
+            "part": "head-back",
+            "piece": 0,
+            "x": -1,
+            "y": 9,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-back",
+            "piece": 0,
+            "x": 0,
+            "y": 9,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 0.6
+          },
+          {
+            "part": "spear",
+            "piece": 16,
+            "x": 2,
+            "y": 4,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          }
+        ],
+        [
+          {
+            "part": "body",
+            "piece": 4,
+            "x": 0,
+            "y": 4,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "cloak",
+            "piece": 0,
+            "x": 0,
             "y": 2,
             "scaleX": 1,
             "scaleY": 1,
@@ -37890,10 +38591,10 @@
           },
           {
             "part": "coat-back",
-            "piece": 4,
-            "x": -3,
-            "y": 0,
-            "scaleX": -1,
+            "piece": 0,
+            "x": 0,
+            "y": 2,
+            "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
             "alpha": 1
@@ -37901,8 +38602,28 @@
           {
             "part": "coat-front",
             "piece": 0,
+            "x": 0,
+            "y": 2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 11,
+            "x": 3,
+            "y": 2,
+            "scaleX": -1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 10,
             "x": -2,
-            "y": 1,
+            "y": 5,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -37911,8 +38632,8 @@
           {
             "part": "body",
             "piece": 0,
-            "x": -4,
-            "y": 6,
+            "x": 0,
+            "y": 4,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -37921,8 +38642,8 @@
           {
             "part": "head-front",
             "piece": 0,
-            "x": -4,
-            "y": 6,
+            "x": 0,
+            "y": 4,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -37931,123 +38652,21 @@
           {
             "part": "head-back",
             "piece": 0,
-            "x": -4,
-            "y": 6,
+            "x": 0,
+            "y": 4,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
             "alpha": 1
           },
-          {
-            "part": "coat-front",
-            "piece": 4,
-            "x": -12,
-            "y": -13,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 9,
-            "x": -17,
-            "y": -16,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 90,
-            "alpha": 1
-          }
-        ],
-        [
           {
             "part": "spear",
-            "piece": 0,
-            "x": -4,
-            "y": -11,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "cloak",
-            "piece": 0,
+            "piece": 16,
             "x": -2,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 13,
-            "x": -9,
-            "y": -5,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-back",
-            "piece": 4,
-            "x": -2,
-            "y": 0,
+            "y": -3,
             "scaleX": -1,
             "scaleY": 1,
             "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 0,
-            "x": -2,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 1,
-            "x": -4,
-            "y": 3,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-front",
-            "piece": 1,
-            "x": -4,
-            "y": 3,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-back",
-            "piece": 1,
-            "x": -4,
-            "y": 3,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 9,
-            "x": -21,
-            "y": -9,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 90,
             "alpha": 1
           }
         ],
@@ -38056,7 +38675,17 @@
             "part": "spear",
             "piece": 11,
             "x": -7,
-            "y": -13,
+            "y": -11,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 4,
+            "x": 0,
+            "y": 2,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -38065,29 +38694,19 @@
           {
             "part": "cloak",
             "piece": 0,
-            "x": -2,
-            "y": 1,
+            "x": 0,
+            "y": 0,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
             "alpha": 1
           },
           {
-            "part": "coat-front",
-            "piece": 12,
-            "x": -22,
-            "y": -22,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 90,
-            "alpha": 1
-          },
-          {
             "part": "coat-back",
-            "piece": 4,
-            "x": -2,
+            "piece": 0,
+            "x": 0,
             "y": 0,
-            "scaleX": -1,
+            "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
             "alpha": 1
@@ -38095,7 +38714,7 @@
           {
             "part": "coat-front",
             "piece": 0,
-            "x": -1,
+            "x": 0,
             "y": 0,
             "scaleX": 1,
             "scaleY": 1,
@@ -38103,31 +38722,11 @@
             "alpha": 1
           },
           {
-            "part": "body",
-            "piece": 1,
-            "x": -4,
-            "y": 2,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-front",
-            "piece": 1,
-            "x": -4,
-            "y": 2,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-back",
-            "piece": 1,
-            "x": -4,
-            "y": 2,
-            "scaleX": 1,
+            "part": "coat-front",
+            "piece": 11,
+            "x": 3,
+            "y": 0,
+            "scaleX": -1,
             "scaleY": 1,
             "angle": 0,
             "alpha": 1
@@ -38135,60 +38734,8 @@
           {
             "part": "coat-front",
             "piece": 10,
-            "x": -15,
-            "y": -20,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 90,
-            "alpha": 1
-          }
-        ],
-        [
-          {
-            "part": "spear",
-            "piece": 11,
-            "x": -9,
-            "y": -10,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 4,
-            "x": -4,
-            "y": 6,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "cloak",
-            "piece": 0,
-            "x": -3,
-            "y": 2,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-back",
-            "piece": 4,
-            "x": -3,
-            "y": 0,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 0,
             "x": -2,
-            "y": 1,
+            "y": 3,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -38197,8 +38744,8 @@
           {
             "part": "body",
             "piece": 0,
-            "x": -4,
-            "y": 6,
+            "x": 0,
+            "y": 2,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -38207,8 +38754,8 @@
           {
             "part": "head-front",
             "piece": 0,
-            "x": -4,
-            "y": 6,
+            "x": 0,
+            "y": 2,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -38217,31 +38764,11 @@
           {
             "part": "head-back",
             "piece": 0,
-            "x": -4,
-            "y": 6,
+            "x": 0,
+            "y": 2,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 4,
-            "x": -12,
-            "y": -13,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 9,
-            "x": -17,
-            "y": -16,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 90,
             "alpha": 1
           }
         ],
@@ -39112,9 +39639,19 @@
         [
           {
             "part": "cloak",
-            "piece": 6,
+            "piece": 4,
             "x": 1,
-            "y": 1,
+            "y": -1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 5,
+            "x": 0,
+            "y": 2,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -39122,9 +39659,9 @@
           },
           {
             "part": "coat-back",
-            "piece": 18,
-            "x": 2,
-            "y": 2,
+            "piece": 6,
+            "x": -1,
+            "y": -1,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -39141,40 +39678,10 @@
             "alpha": 1
           },
           {
-            "part": "body",
-            "piece": 2,
-            "x": 0,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 6,
-            "x": 0,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-front",
-            "piece": 2,
-            "x": 0,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-back",
-            "piece": 2,
-            "x": 0,
-            "y": 0,
+            "part": "coat-front",
+            "piece": 12,
+            "x": -2,
+            "y": 3,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -39182,18 +39689,48 @@
           },
           {
             "part": "coat-front",
-            "piece": 9,
-            "x": -17,
-            "y": -20,
+            "piece": 8,
+            "x": -9,
+            "y": 2,
             "scaleX": 1,
             "scaleY": 1,
-            "angle": 90,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 1,
+            "x": 0,
+            "y": 2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-front",
+            "piece": 1,
+            "x": 0,
+            "y": 2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-back",
+            "piece": 1,
+            "x": 0,
+            "y": 2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
             "alpha": 1
           },
           {
             "part": "spear",
-            "piece": 2,
-            "x": -4,
+            "piece": 14,
+            "x": 3,
             "y": -11,
             "scaleX": 1,
             "scaleY": 1,
@@ -39204,8 +39741,18 @@
         [
           {
             "part": "cloak",
-            "piece": 6,
-            "x": 1,
+            "piece": 4,
+            "x": -4,
+            "y": -1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 5,
+            "x": -4,
             "y": 1,
             "scaleX": 1,
             "scaleY": 1,
@@ -39215,8 +39762,18 @@
           {
             "part": "coat-back",
             "piece": 18,
-            "x": 2,
-            "y": 2,
+            "x": -2,
+            "y": 1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 13,
+            "x": -9,
+            "y": -5,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -39225,47 +39782,7 @@
           {
             "part": "coat-front",
             "piece": 1,
-            "x": -2,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 2,
-            "x": 1,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 6,
-            "x": 1,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-front",
-            "piece": 2,
-            "x": 1,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-back",
-            "piece": 2,
-            "x": 1,
+            "x": -5,
             "y": 0,
             "scaleX": 1,
             "scaleY": 1,
@@ -39274,19 +39791,49 @@
           },
           {
             "part": "coat-front",
-            "piece": 10,
-            "x": -15,
-            "y": -12,
-            "scaleX": -1,
+            "piece": 11,
+            "x": -6,
+            "y": 3,
+            "scaleX": 1,
             "scaleY": 1,
-            "angle": 90,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 1,
+            "x": -4,
+            "y": 1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-front",
+            "piece": 1,
+            "x": -4,
+            "y": 1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-back",
+            "piece": 1,
+            "x": -4,
+            "y": 1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
             "alpha": 1
           },
           {
             "part": "spear",
-            "piece": 11,
-            "x": -2,
-            "y": -13,
+            "piece": 14,
+            "x": -5,
+            "y": -11,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -39295,10 +39842,20 @@
         ],
         [
           {
+            "part": "body",
+            "piece": 5,
+            "x": -4,
+            "y": 3,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
             "part": "cloak",
-            "piece": 6,
-            "x": 1,
-            "y": 1,
+            "piece": 4,
+            "x": -1,
+            "y": -1,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -39307,7 +39864,7 @@
           {
             "part": "coat-back",
             "piece": 18,
-            "x": 2,
+            "x": 3,
             "y": 2,
             "scaleX": 1,
             "scaleY": 1,
@@ -39318,47 +39875,7 @@
             "part": "coat-front",
             "piece": 1,
             "x": -2,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 2,
-            "x": 1,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 6,
-            "x": 1,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-front",
-            "piece": 2,
-            "x": 1,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-back",
-            "piece": 2,
-            "x": 1,
-            "y": 0,
+            "y": 1,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -39366,18 +39883,58 @@
           },
           {
             "part": "coat-front",
-            "piece": 10,
-            "x": -15,
-            "y": -12,
+            "piece": 7,
+            "x": -2,
+            "y": -2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 13,
+            "x": -1,
+            "y": 2,
             "scaleX": -1,
             "scaleY": 1,
-            "angle": 90,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 1,
+            "x": -4,
+            "y": 3,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-front",
+            "piece": 1,
+            "x": -4,
+            "y": 3,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-back",
+            "piece": 1,
+            "x": -4,
+            "y": 3,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
             "alpha": 1
           },
           {
             "part": "spear",
-            "piece": 9,
-            "x": -3,
+            "piece": 15,
+            "x": -5,
             "y": -10,
             "scaleX": 1,
             "scaleY": 1,
@@ -39387,203 +39944,19 @@
         ],
         [
           {
-            "part": "spear",
-            "piece": 11,
-            "x": 1,
-            "y": -14,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
             "part": "cloak",
-            "piece": 6,
-            "x": 2,
-            "y": 1,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-back",
-            "piece": 18,
-            "x": 2,
-            "y": 2,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 1,
-            "x": -1,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 2,
-            "x": 2,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 6,
-            "x": 2,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-front",
-            "piece": 2,
-            "x": 2,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-back",
-            "piece": 2,
-            "x": 2,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 9,
-            "x": -18,
-            "y": -11,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 90,
-            "alpha": 1
-          }
-        ],
-        [
-          {
-            "part": "spear",
-            "piece": 11,
-            "x": 3,
-            "y": -14,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "cloak",
-            "piece": 6,
-            "x": 1,
-            "y": 1,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-back",
-            "piece": 18,
-            "x": 2,
-            "y": 2,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 1,
-            "x": -2,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 2,
-            "x": 0,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 6,
-            "x": 0,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-front",
-            "piece": 2,
-            "x": 0,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-back",
-            "piece": 2,
-            "x": 0,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 9,
-            "x": -17,
-            "y": -20,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 90,
-            "alpha": 1
-          }
-        ],
-        [
-          {
-            "part": "spear",
             "piece": 4,
-            "x": 4,
-            "y": -15,
+            "x": -4,
+            "y": -1,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
             "alpha": 1
           },
           {
-            "part": "cloak",
-            "piece": 6,
-            "x": 1,
+            "part": "body",
+            "piece": 5,
+            "x": -4,
             "y": 1,
             "scaleX": 1,
             "scaleY": 1,
@@ -39593,7 +39966,109 @@
           {
             "part": "coat-back",
             "piece": 18,
-            "x": 2,
+            "x": -2,
+            "y": 1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 13,
+            "x": -9,
+            "y": -5,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 1,
+            "x": -5,
+            "y": 0,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 11,
+            "x": -6,
+            "y": 3,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 1,
+            "x": -4,
+            "y": 1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-front",
+            "piece": 1,
+            "x": -4,
+            "y": 1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-back",
+            "piece": 1,
+            "x": -4,
+            "y": 1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "spear",
+            "piece": 14,
+            "x": -6,
+            "y": -12,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          }
+        ],
+        [
+          {
+            "part": "body",
+            "piece": 5,
+            "x": -4,
+            "y": 3,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "cloak",
+            "piece": 4,
+            "x": -1,
+            "y": -1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-back",
+            "piece": 18,
+            "x": 3,
             "y": 2,
             "scaleX": 1,
             "scaleY": 1,
@@ -39604,47 +40079,7 @@
             "part": "coat-front",
             "piece": 1,
             "x": -2,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 2,
-            "x": 1,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 6,
-            "x": 1,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-front",
-            "piece": 2,
-            "x": 1,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-back",
-            "piece": 2,
-            "x": 1,
-            "y": 0,
+            "y": 1,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -39652,20 +40087,80 @@
           },
           {
             "part": "coat-front",
-            "piece": 10,
-            "x": -15,
-            "y": -12,
+            "piece": 7,
+            "x": -2,
+            "y": -2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 13,
+            "x": -1,
+            "y": 2,
             "scaleX": -1,
             "scaleY": 1,
-            "angle": 90,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 1,
+            "x": -4,
+            "y": 3,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-front",
+            "piece": 1,
+            "x": -4,
+            "y": 3,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-back",
+            "piece": 1,
+            "x": -4,
+            "y": 3,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "spear",
+            "piece": 15,
+            "x": -5,
+            "y": -10,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
             "alpha": 1
           }
         ],
         [
           {
             "part": "cloak",
-            "piece": 6,
-            "x": 2,
+            "piece": 4,
+            "x": -3,
+            "y": -1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 5,
+            "x": -3,
             "y": 1,
             "scaleX": 1,
             "scaleY": 1,
@@ -39675,8 +40170,110 @@
           {
             "part": "coat-back",
             "piece": 18,
+            "x": -1,
+            "y": 1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 13,
+            "x": -8,
+            "y": -5,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 1,
+            "x": -4,
+            "y": 0,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 11,
+            "x": -5,
+            "y": 3,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 1,
+            "x": -3,
+            "y": 1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-front",
+            "piece": 1,
+            "x": -3,
+            "y": 1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-back",
+            "piece": 1,
+            "x": -3,
+            "y": 1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "spear",
+            "piece": 14,
+            "x": -1,
+            "y": -11,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          }
+        ],
+        [
+          {
+            "part": "cloak",
+            "piece": 4,
             "x": 2,
+            "y": -1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 5,
+            "x": 1,
             "y": 2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-back",
+            "piece": 6,
+            "x": 0,
+            "y": -1,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -39693,40 +40290,10 @@
             "alpha": 1
           },
           {
-            "part": "body",
-            "piece": 2,
-            "x": 2,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 6,
-            "x": 2,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-front",
-            "piece": 2,
-            "x": 2,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-back",
-            "piece": 2,
-            "x": 2,
-            "y": 0,
+            "part": "coat-front",
+            "piece": 12,
+            "x": -1,
+            "y": 3,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -39734,19 +40301,49 @@
           },
           {
             "part": "coat-front",
-            "piece": 9,
-            "x": -18,
-            "y": -11,
-            "scaleX": -1,
+            "piece": 8,
+            "x": -8,
+            "y": 2,
+            "scaleX": 1,
             "scaleY": 1,
-            "angle": 90,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 1,
+            "x": 1,
+            "y": 2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-front",
+            "piece": 1,
+            "x": 1,
+            "y": 2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-back",
+            "piece": 1,
+            "x": 1,
+            "y": 2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
             "alpha": 1
           },
           {
             "part": "spear",
             "piece": 11,
-            "x": 0,
-            "y": -15,
+            "x": -1,
+            "y": -14,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -40700,396 +41297,10 @@
         [
           {
             "part": "spear",
-            "piece": 0,
-            "x": 2,
-            "y": -11,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "cloak",
-            "piece": 5,
-            "x": 2,
-            "y": 2,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-back",
-            "piece": 17,
-            "x": 0,
-            "y": 1,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 16,
-            "x": 1,
-            "y": 1,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 12,
-            "x": 1,
-            "y": 3,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 2,
-            "x": 3,
-            "y": 3,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 6,
-            "x": 3,
-            "y": 3,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-front",
-            "piece": 2,
-            "x": 3,
-            "y": 3,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 8,
-            "x": -3,
-            "y": 8,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-back",
-            "piece": 2,
-            "x": 3,
-            "y": 3,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          }
-        ],
-        [
-          {
-            "part": "spear",
-            "piece": 11,
-            "x": -2,
-            "y": -12,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "cloak",
-            "piece": 5,
-            "x": 3,
-            "y": 1,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-back",
             "piece": 17,
             "x": 1,
-            "y": 2,
+            "y": -10,
             "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 16,
-            "x": 3,
-            "y": 2,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 10,
-            "x": 5,
-            "y": 1,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 2,
-            "x": 5,
-            "y": 3,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 6,
-            "x": 5,
-            "y": 3,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-front",
-            "piece": 2,
-            "x": 5,
-            "y": 3,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-back",
-            "piece": 2,
-            "x": 5,
-            "y": 3,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 9,
-            "x": 5,
-            "y": 8,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          }
-        ],
-        [
-          {
-            "part": "spear",
-            "piece": 9,
-            "x": 3,
-            "y": -11,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "cloak",
-            "piece": 5,
-            "x": 3,
-            "y": 1,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-back",
-            "piece": 17,
-            "x": 1,
-            "y": 2,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 16,
-            "x": 3,
-            "y": 2,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 10,
-            "x": 5,
-            "y": 1,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 2,
-            "x": 5,
-            "y": 3,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 6,
-            "x": 5,
-            "y": 3,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-front",
-            "piece": 2,
-            "x": 5,
-            "y": 3,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-back",
-            "piece": 2,
-            "x": 5,
-            "y": 3,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 9,
-            "x": 5,
-            "y": 8,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          }
-        ],
-        [
-          {
-            "part": "spear",
-            "piece": 0,
-            "x": 4,
-            "y": -11,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "cloak",
-            "piece": 5,
-            "x": 5,
-            "y": 1,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-back",
-            "piece": 17,
-            "x": 2,
-            "y": 3,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 16,
-            "x": 4,
-            "y": 3,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 10,
-            "x": 6,
-            "y": 1,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 2,
-            "x": 7,
-            "y": 4,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 6,
-            "x": 7,
-            "y": 4,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-front",
-            "piece": 2,
-            "x": 7,
-            "y": 4,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-back",
-            "piece": 2,
-            "x": 7,
-            "y": 4,
-            "scaleX": -1,
             "scaleY": 1,
             "angle": 0,
             "alpha": 1
@@ -41097,8 +41308,98 @@
           {
             "part": "coat-front",
             "piece": 13,
-            "x": -2,
-            "y": 6,
+            "x": 7,
+            "y": -6,
+            "scaleX": -1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 9,
+            "x": -9,
+            "y": -3,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 9,
+            "x": 0,
+            "y": -1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-back",
+            "piece": 12,
+            "x": 0,
+            "y": -2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 2,
+            "x": 0,
+            "y": -2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "cloak",
+            "piece": 8,
+            "x": 0,
+            "y": -2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 3,
+            "x": 1,
+            "y": -2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 7,
+            "x": 1,
+            "y": -2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-front",
+            "piece": 3,
+            "x": 1,
+            "y": -2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-back",
+            "piece": 3,
+            "x": 1,
+            "y": -2,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -41108,29 +41409,29 @@
         [
           {
             "part": "spear",
-            "piece": 0,
-            "x": 4,
-            "y": -10,
+            "piece": 17,
+            "x": -1,
+            "y": -16,
             "scaleX": -1,
             "scaleY": 1,
             "angle": 0,
             "alpha": 1
           },
           {
-            "part": "cloak",
-            "piece": 5,
-            "x": 2,
-            "y": 2,
-            "scaleX": -1,
+            "part": "coat-front",
+            "piece": 12,
+            "x": -4,
+            "y": -8,
+            "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
             "alpha": 1
           },
           {
             "part": "coat-back",
-            "piece": 17,
+            "piece": 15,
             "x": 0,
-            "y": 1,
+            "y": -2,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -41138,9 +41439,81 @@
           },
           {
             "part": "coat-front",
-            "piece": 16,
+            "piece": 2,
+            "x": 0,
+            "y": -3,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 7,
+            "x": 0,
+            "y": -4,
+            "scaleX": -1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "cloak",
+            "piece": 9,
+            "x": 0,
+            "y": -4,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 3,
+            "x": 0,
+            "y": -2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 7,
+            "x": 0,
+            "y": -2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-front",
+            "piece": 3,
+            "x": 0,
+            "y": -2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-back",
+            "piece": 3,
+            "x": 0,
+            "y": -2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          }
+        ],
+        [
+          {
+            "part": "spear",
+            "piece": 17,
             "x": 1,
-            "y": 1,
+            "y": -18,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -41149,8 +41522,48 @@
           {
             "part": "coat-front",
             "piece": 12,
-            "x": 1,
-            "y": 3,
+            "x": -4,
+            "y": -9,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-back",
+            "piece": 15,
+            "x": 0,
+            "y": -3,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 2,
+            "x": 0,
+            "y": -4,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 7,
+            "x": 0,
+            "y": -5,
+            "scaleX": -1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "cloak",
+            "piece": 9,
+            "x": 0,
+            "y": -5,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -41158,39 +41571,29 @@
           },
           {
             "part": "body",
-            "piece": 2,
-            "x": 3,
-            "y": 3,
-            "scaleX": -1,
+            "piece": 3,
+            "x": 0,
+            "y": -3,
+            "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
             "alpha": 1
           },
           {
             "part": "body",
-            "piece": 6,
-            "x": 3,
-            "y": 3,
-            "scaleX": -1,
+            "piece": 7,
+            "x": 0,
+            "y": -3,
+            "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
             "alpha": 1
           },
           {
             "part": "head-front",
-            "piece": 2,
-            "x": 3,
-            "y": 3,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 8,
-            "x": -3,
-            "y": 8,
+            "piece": 3,
+            "x": 0,
+            "y": -3,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -41198,10 +41601,10 @@
           },
           {
             "part": "head-back",
-            "piece": 2,
-            "x": 3,
-            "y": 3,
-            "scaleX": -1,
+            "piece": 3,
+            "x": 0,
+            "y": -3,
+            "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
             "alpha": 1
@@ -41210,9 +41613,49 @@
         [
           {
             "part": "spear",
-            "piece": 9,
-            "x": 6,
-            "y": -10,
+            "piece": 17,
+            "x": -1,
+            "y": -18,
+            "scaleX": -1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 12,
+            "x": -4,
+            "y": -9,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-back",
+            "piece": 15,
+            "x": 0,
+            "y": -3,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 2,
+            "x": 0,
+            "y": -4,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 7,
+            "x": 0,
+            "y": -5,
             "scaleX": -1,
             "scaleY": 1,
             "angle": 0,
@@ -41220,39 +41663,9 @@
           },
           {
             "part": "cloak",
-            "piece": 5,
-            "x": 3,
-            "y": 1,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-back",
-            "piece": 17,
-            "x": 1,
-            "y": 2,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 16,
-            "x": 3,
-            "y": 2,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 10,
-            "x": 5,
-            "y": 1,
+            "piece": 9,
+            "x": 0,
+            "y": -5,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -41260,39 +41673,163 @@
           },
           {
             "part": "body",
-            "piece": 2,
-            "x": 5,
-            "y": 3,
-            "scaleX": -1,
+            "piece": 3,
+            "x": 0,
+            "y": -3,
+            "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
             "alpha": 1
           },
           {
             "part": "body",
-            "piece": 6,
-            "x": 5,
-            "y": 3,
-            "scaleX": -1,
+            "piece": 7,
+            "x": 0,
+            "y": -3,
+            "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
             "alpha": 1
           },
           {
             "part": "head-front",
-            "piece": 2,
-            "x": 5,
-            "y": 3,
-            "scaleX": -1,
+            "piece": 3,
+            "x": 0,
+            "y": -3,
+            "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
             "alpha": 1
           },
           {
             "part": "head-back",
+            "piece": 3,
+            "x": 0,
+            "y": -3,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          }
+        ],
+        [
+          {
+            "part": "spear",
+            "piece": 17,
+            "x": 1,
+            "y": -18,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 12,
+            "x": -4,
+            "y": -9,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-back",
+            "piece": 15,
+            "x": 0,
+            "y": -3,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
             "piece": 2,
-            "x": 5,
-            "y": 3,
+            "x": 0,
+            "y": -4,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 7,
+            "x": 0,
+            "y": -5,
+            "scaleX": -1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "cloak",
+            "piece": 9,
+            "x": 0,
+            "y": -5,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 3,
+            "x": 0,
+            "y": -3,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 7,
+            "x": 0,
+            "y": -3,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-front",
+            "piece": 3,
+            "x": 0,
+            "y": -3,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-back",
+            "piece": 3,
+            "x": 0,
+            "y": -3,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          }
+        ],
+        [
+          {
+            "part": "spear",
+            "piece": 17,
+            "x": 2,
+            "y": -11,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 13,
+            "x": 7,
+            "y": -6,
             "scaleX": -1,
             "scaleY": 1,
             "angle": 0,
@@ -41301,9 +41838,89 @@
           {
             "part": "coat-front",
             "piece": 9,
-            "x": 5,
-            "y": 8,
-            "scaleX": -1,
+            "x": -9,
+            "y": -3,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 9,
+            "x": 0,
+            "y": -1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-back",
+            "piece": 12,
+            "x": 0,
+            "y": -2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 2,
+            "x": 0,
+            "y": -2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "cloak",
+            "piece": 8,
+            "x": 0,
+            "y": -2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 3,
+            "x": 1,
+            "y": -2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 7,
+            "x": 1,
+            "y": -2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-front",
+            "piece": 3,
+            "x": 1,
+            "y": -2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-back",
+            "piece": 3,
+            "x": 1,
+            "y": -2,
+            "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
             "alpha": 1
@@ -42348,9 +42965,19 @@
         [
           {
             "part": "cloak",
-            "piece": 6,
+            "piece": 4,
             "x": 1,
-            "y": 1,
+            "y": -1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 5,
+            "x": 0,
+            "y": 2,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -42358,9 +42985,9 @@
           },
           {
             "part": "coat-back",
-            "piece": 18,
-            "x": 2,
-            "y": 2,
+            "piece": 6,
+            "x": -1,
+            "y": -1,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -42377,40 +43004,10 @@
             "alpha": 1
           },
           {
-            "part": "body",
-            "piece": 2,
-            "x": 0,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 6,
-            "x": 0,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-front",
-            "piece": 2,
-            "x": 0,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-back",
-            "piece": 2,
-            "x": 0,
-            "y": 0,
+            "part": "coat-front",
+            "piece": 12,
+            "x": -2,
+            "y": 3,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -42418,18 +43015,48 @@
           },
           {
             "part": "coat-front",
-            "piece": 9,
-            "x": -17,
-            "y": -20,
+            "piece": 8,
+            "x": -9,
+            "y": 2,
             "scaleX": 1,
             "scaleY": 1,
-            "angle": 90,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 1,
+            "x": 0,
+            "y": 2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-front",
+            "piece": 1,
+            "x": 0,
+            "y": 2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-back",
+            "piece": 1,
+            "x": 0,
+            "y": 2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
             "alpha": 1
           },
           {
             "part": "spear",
-            "piece": 2,
-            "x": -4,
+            "piece": 14,
+            "x": 3,
             "y": -11,
             "scaleX": 1,
             "scaleY": 1,
@@ -42440,8 +43067,18 @@
         [
           {
             "part": "cloak",
-            "piece": 6,
-            "x": 1,
+            "piece": 4,
+            "x": -4,
+            "y": -1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 5,
+            "x": -4,
             "y": 1,
             "scaleX": 1,
             "scaleY": 1,
@@ -42451,8 +43088,18 @@
           {
             "part": "coat-back",
             "piece": 18,
-            "x": 2,
-            "y": 2,
+            "x": -2,
+            "y": 1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 13,
+            "x": -9,
+            "y": -5,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -42461,47 +43108,7 @@
           {
             "part": "coat-front",
             "piece": 1,
-            "x": -2,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 2,
-            "x": 1,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 6,
-            "x": 1,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-front",
-            "piece": 2,
-            "x": 1,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-back",
-            "piece": 2,
-            "x": 1,
+            "x": -5,
             "y": 0,
             "scaleX": 1,
             "scaleY": 1,
@@ -42510,19 +43117,49 @@
           },
           {
             "part": "coat-front",
-            "piece": 10,
-            "x": -15,
-            "y": -12,
-            "scaleX": -1,
+            "piece": 11,
+            "x": -6,
+            "y": 3,
+            "scaleX": 1,
             "scaleY": 1,
-            "angle": 90,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 1,
+            "x": -4,
+            "y": 1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-front",
+            "piece": 1,
+            "x": -4,
+            "y": 1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-back",
+            "piece": 1,
+            "x": -4,
+            "y": 1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
             "alpha": 1
           },
           {
             "part": "spear",
-            "piece": 11,
-            "x": -2,
-            "y": -13,
+            "piece": 14,
+            "x": -5,
+            "y": -11,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -42531,10 +43168,20 @@
         ],
         [
           {
+            "part": "body",
+            "piece": 5,
+            "x": -4,
+            "y": 3,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
             "part": "cloak",
-            "piece": 6,
-            "x": 1,
-            "y": 1,
+            "piece": 4,
+            "x": -1,
+            "y": -1,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -42543,7 +43190,7 @@
           {
             "part": "coat-back",
             "piece": 18,
-            "x": 2,
+            "x": 3,
             "y": 2,
             "scaleX": 1,
             "scaleY": 1,
@@ -42554,47 +43201,7 @@
             "part": "coat-front",
             "piece": 1,
             "x": -2,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 2,
-            "x": 1,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 6,
-            "x": 1,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-front",
-            "piece": 2,
-            "x": 1,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-back",
-            "piece": 2,
-            "x": 1,
-            "y": 0,
+            "y": 1,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -42602,18 +43209,58 @@
           },
           {
             "part": "coat-front",
-            "piece": 10,
-            "x": -15,
-            "y": -12,
+            "piece": 7,
+            "x": -2,
+            "y": -2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 13,
+            "x": -1,
+            "y": 2,
             "scaleX": -1,
             "scaleY": 1,
-            "angle": 90,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 1,
+            "x": -4,
+            "y": 3,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-front",
+            "piece": 1,
+            "x": -4,
+            "y": 3,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-back",
+            "piece": 1,
+            "x": -4,
+            "y": 3,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
             "alpha": 1
           },
           {
             "part": "spear",
-            "piece": 9,
-            "x": -3,
+            "piece": 15,
+            "x": -5,
             "y": -10,
             "scaleX": 1,
             "scaleY": 1,
@@ -42623,203 +43270,19 @@
         ],
         [
           {
-            "part": "spear",
-            "piece": 11,
-            "x": 1,
-            "y": -14,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
             "part": "cloak",
-            "piece": 6,
-            "x": 2,
-            "y": 1,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-back",
-            "piece": 18,
-            "x": 2,
-            "y": 2,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 1,
-            "x": -1,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 2,
-            "x": 2,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 6,
-            "x": 2,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-front",
-            "piece": 2,
-            "x": 2,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-back",
-            "piece": 2,
-            "x": 2,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 9,
-            "x": -18,
-            "y": -11,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 90,
-            "alpha": 1
-          }
-        ],
-        [
-          {
-            "part": "spear",
-            "piece": 11,
-            "x": 3,
-            "y": -14,
-            "scaleX": -1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "cloak",
-            "piece": 6,
-            "x": 1,
-            "y": 1,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-back",
-            "piece": 18,
-            "x": 2,
-            "y": 2,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 1,
-            "x": -2,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 2,
-            "x": 0,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 6,
-            "x": 0,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-front",
-            "piece": 2,
-            "x": 0,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-back",
-            "piece": 2,
-            "x": 0,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "coat-front",
-            "piece": 9,
-            "x": -17,
-            "y": -20,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 90,
-            "alpha": 1
-          }
-        ],
-        [
-          {
-            "part": "spear",
             "piece": 4,
-            "x": 4,
-            "y": -15,
+            "x": -4,
+            "y": -1,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
             "alpha": 1
           },
           {
-            "part": "cloak",
-            "piece": 6,
-            "x": 1,
+            "part": "body",
+            "piece": 5,
+            "x": -4,
             "y": 1,
             "scaleX": 1,
             "scaleY": 1,
@@ -42829,7 +43292,109 @@
           {
             "part": "coat-back",
             "piece": 18,
-            "x": 2,
+            "x": -2,
+            "y": 1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 13,
+            "x": -9,
+            "y": -5,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 1,
+            "x": -5,
+            "y": 0,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 11,
+            "x": -6,
+            "y": 3,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 1,
+            "x": -4,
+            "y": 1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-front",
+            "piece": 1,
+            "x": -4,
+            "y": 1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-back",
+            "piece": 1,
+            "x": -4,
+            "y": 1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "spear",
+            "piece": 14,
+            "x": -6,
+            "y": -12,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          }
+        ],
+        [
+          {
+            "part": "body",
+            "piece": 5,
+            "x": -4,
+            "y": 3,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "cloak",
+            "piece": 4,
+            "x": -1,
+            "y": -1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-back",
+            "piece": 18,
+            "x": 3,
             "y": 2,
             "scaleX": 1,
             "scaleY": 1,
@@ -42840,47 +43405,7 @@
             "part": "coat-front",
             "piece": 1,
             "x": -2,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 2,
-            "x": 1,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 6,
-            "x": 1,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-front",
-            "piece": 2,
-            "x": 1,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-back",
-            "piece": 2,
-            "x": 1,
-            "y": 0,
+            "y": 1,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -42888,20 +43413,80 @@
           },
           {
             "part": "coat-front",
-            "piece": 10,
-            "x": -15,
-            "y": -12,
+            "piece": 7,
+            "x": -2,
+            "y": -2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 13,
+            "x": -1,
+            "y": 2,
             "scaleX": -1,
             "scaleY": 1,
-            "angle": 90,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 1,
+            "x": -4,
+            "y": 3,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-front",
+            "piece": 1,
+            "x": -4,
+            "y": 3,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-back",
+            "piece": 1,
+            "x": -4,
+            "y": 3,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "spear",
+            "piece": 15,
+            "x": -5,
+            "y": -10,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
             "alpha": 1
           }
         ],
         [
           {
             "part": "cloak",
-            "piece": 6,
-            "x": 2,
+            "piece": 4,
+            "x": -3,
+            "y": -1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 5,
+            "x": -3,
             "y": 1,
             "scaleX": 1,
             "scaleY": 1,
@@ -42911,8 +43496,110 @@
           {
             "part": "coat-back",
             "piece": 18,
+            "x": -1,
+            "y": 1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 13,
+            "x": -8,
+            "y": -5,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 1,
+            "x": -4,
+            "y": 0,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-front",
+            "piece": 11,
+            "x": -5,
+            "y": 3,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 1,
+            "x": -3,
+            "y": 1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-front",
+            "piece": 1,
+            "x": -3,
+            "y": 1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-back",
+            "piece": 1,
+            "x": -3,
+            "y": 1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "spear",
+            "piece": 14,
+            "x": -1,
+            "y": -11,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          }
+        ],
+        [
+          {
+            "part": "cloak",
+            "piece": 4,
             "x": 2,
+            "y": -1,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 5,
+            "x": 1,
             "y": 2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "coat-back",
+            "piece": 6,
+            "x": 0,
+            "y": -1,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -42929,40 +43616,10 @@
             "alpha": 1
           },
           {
-            "part": "body",
-            "piece": 2,
-            "x": 2,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "body",
-            "piece": 6,
-            "x": 2,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-front",
-            "piece": 2,
-            "x": 2,
-            "y": 0,
-            "scaleX": 1,
-            "scaleY": 1,
-            "angle": 0,
-            "alpha": 1
-          },
-          {
-            "part": "head-back",
-            "piece": 2,
-            "x": 2,
-            "y": 0,
+            "part": "coat-front",
+            "piece": 12,
+            "x": -1,
+            "y": 3,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,
@@ -42970,19 +43627,49 @@
           },
           {
             "part": "coat-front",
-            "piece": 9,
-            "x": -18,
-            "y": -11,
-            "scaleX": -1,
+            "piece": 8,
+            "x": -8,
+            "y": 2,
+            "scaleX": 1,
             "scaleY": 1,
-            "angle": 90,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "body",
+            "piece": 1,
+            "x": 1,
+            "y": 2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-front",
+            "piece": 1,
+            "x": 1,
+            "y": 2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
+            "alpha": 1
+          },
+          {
+            "part": "head-back",
+            "piece": 1,
+            "x": 1,
+            "y": 2,
+            "scaleX": 1,
+            "scaleY": 1,
+            "angle": 0,
             "alpha": 1
           },
           {
             "part": "spear",
             "piece": 11,
-            "x": 0,
-            "y": -15,
+            "x": -1,
+            "y": -14,
             "scaleX": 1,
             "scaleY": 1,
             "angle": 0,

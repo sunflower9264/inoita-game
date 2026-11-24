@@ -452,16 +452,20 @@ function run(): void {
       'skill-whirl-sweep': {
         cycleFrames: 16,
         cues: [
-          { effect: 'spear-flower-spin', startFrame: 0, variant: 'default', placement: 'above-characters', source: '身前银白枪花' },
+          { effect: 'spear-flower-spin', startFrame: 0, variant: 'facing', placement: 'above-characters', source: '前探延长枪花连击' },
+          { effect: 'impact-burst', startFrame: 2, variant: 'default', placement: 'above-characters', onTarget: true, targetDistancePx: 44, source: '枪花第一段受击火花' },
+          { effect: 'impact-burst', startFrame: 4, variant: 'default', placement: 'above-characters', onTarget: true, targetDistancePx: 44, source: '枪花第二段受击火花' },
           { effect: 'spear-gale-sweep', startFrame: 7, variant: 'facing', placement: 'above-characters', source: '180° 青白狂风枪芒' },
         ],
         markers: [
-          { frame: 0, kind: 'effect', label: '舞枪花引风（4 帧）' },
+          { frame: 0, kind: 'swing', label: '滑把延枪 · 出前探枪花' },
+          { frame: 2, kind: 'strike', label: '枪花第一段命中' },
+          { frame: 4, kind: 'strike', label: '枪花第二段命中' },
           { frame: 7, kind: 'swing', label: '大横扫出狂风芒' },
-          { frame: 8, kind: 'strike', label: '半圈横扫命中 + 推退硬直' },
+          { frame: 8, kind: 'strike', label: '半圈大扫终结 + 推退硬直' },
         ],
         shakeFrames: [8],
-        sounds: ['Wa_Wheel_Wind', 'Weapon_TwoHand_Sword_Attack'],
+        sounds: ['Wa_Wheel_Wind', 'Weapon_Dagger_Attack', 'Weapon_TwoHand_Sword_Attack'],
       },
       'skill-spin-storm': {
         cycleFrames: 18,
