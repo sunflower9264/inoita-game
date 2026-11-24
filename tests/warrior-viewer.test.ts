@@ -431,4 +431,28 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
       assert.ok(focusTl.appearanceColors && focusTl.appearanceColors.length > 0);
     }
   }
+
+  // 防回归：西向/东向全套长枪姿态绝不含背后翘起旋转手臂（angle !== 0）或刺客猫背胸甲（coat-front[15]），
+  // 且在多套不同盔甲外观下全部帧的双手臂与长枪切片均有效解析。
+  const armorSamples = [0, 3, 10, 25].map(idx => armorChoices(mergedCatalog, mergedItems, 'body')[idx].id);
+  for (const [clip, poseId] of Object.entries(proto.stancePoses)) {
+    if (!clip.endsWith('-west') && !clip.endsWith('-east')) continue;
+    if (clip.startsWith('spear-die-')) continue;
+    const pose = mergedCatalog.poses[poseId];
+    assert.ok(pose, `missing pose ${poseId}`);
+    for (let fi = 0; fi < pose.frames.length; fi++) {
+      const frame = pose.frames[fi];
+      for (const part of frame) {
+        if (part.part === 'coat-front') {
+          assert.equal(part.angle, 0, `${poseId} F${fi} coat-front[${part.piece}] 不应出现旋转怪手`);
+          assert.notEqual(part.piece, 15, `${poseId} F${fi} 不应混用刺客猫背胸甲 coat-front[15]`);
+        }
+      }
+      for (const armorId of armorSamples) {
+        const recipe = viewerRecipe(mergedCatalog, mergedItems, { 'main-hand': proto.weaponId, body: armorId }, {});
+        const pieces = framePieces(mergedCatalog, recipe.variants, frame);
+        assert.ok(pieces.filter(p => p.part.part === 'coat-front').length >= 3, `${poseId} F${fi} (${armorId}) 应含胸甲与双臂`);
+      }
+    }
+  }
 });

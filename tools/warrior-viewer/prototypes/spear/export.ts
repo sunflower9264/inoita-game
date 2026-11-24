@@ -7,8 +7,8 @@ import type { EffectClip } from '../../../../src/domain/content.ts';
 import type { CostumePart, CostumePiece, CostumePose, WardrobeCatalog } from '../../../../src/domain/wardrobe.ts';
 import { SPEAR_EFFECT_SOURCES } from './effects-source.ts';
 import type { EffectFrameGrid, RgbaPalette } from './effects-source.ts';
-import { SPEAR_ACTION_RECIPES, SPEAR_CYCLE_RECIPES, SPEAR_PALETTE, SPEAR_SLICES } from './source.ts';
-import type { SpearInsertMode, SpearKeyframedPoseRecipe, SpearPoseRecipe } from './source.ts';
+import { SPEAR_ACTION_RECIPES, SPEAR_CYCLE_RECIPES, SPEAR_PALETTE, SPEAR_SLICES, WEST_ARMS_PRESETS } from './source.ts';
+import type { SpearArmsPreset, SpearInsertMode, SpearKeyframedPoseRecipe, SpearPoseRecipe } from './source.ts';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(dir, '../../../..');
@@ -201,12 +201,27 @@ function packEffects(): {
   };
 }
 
+function isCoatFrontArm(part: CostumePart): boolean {
+  return part.part === 'coat-front' && part.piece >= 3 && part.piece <= 14;
+}
+
+function mirrorPartX(part: CostumePart): CostumePart {
+  return {
+    ...part,
+    x: -part.x,
+    scaleX: -part.scaleX,
+    angle: part.angle ? -part.angle : 0,
+  };
+}
+
 function insertSpearIntoFrame(
   frame: CostumePart[],
   spearPart: CostumePart,
   insertMode: SpearInsertMode,
   bodyDx = 0,
   bodyDy = 0,
+  armsPreset?: SpearArmsPreset,
+  mirrorBaseFrame = false,
 ): CostumePart[] {
   const shift = (part: CostumePart): CostumePart => ({
     ...part,
@@ -219,10 +234,61 @@ function insertSpearIntoFrame(
     y: spearPart.y + bodyDy,
   };
 
+  if (armsPreset) {
+    const preset = WEST_ARMS_PRESETS[armsPreset];
+    const bodyOnly = frame.filter(part => !REMOVED_WEAPON_PARTS.has(part.part) && !isCoatFrontArm(part));
+    const torsoIdx = bodyOnly.findIndex(part => part.part === 'coat-front');
+    if (torsoIdx < 0) {
+      throw new Error(`armsPreset=${armsPreset} 需要基础帧包含胸甲 coat-front 躯干切片`);
+    }
+    const torso = bodyOnly[torsoIdx];
+    const torsoDx = torso.x - (-1);
+    const torsoDy = torso.y;
+    const backArm: CostumePart = {
+      part: 'coat-front',
+      piece: preset.backArm.piece,
+      x: preset.backArm.x + torsoDx,
+      y: preset.backArm.y + torsoDy,
+      scaleX: preset.backArm.scaleX,
+      scaleY: preset.backArm.scaleY,
+      angle: 0,
+      alpha: 1,
+    };
+    const frontArm: CostumePart = {
+      part: 'coat-front',
+      piece: preset.frontArm.piece,
+      x: preset.frontArm.x + torsoDx,
+      y: preset.frontArm.y + torsoDy,
+      scaleX: preset.frontArm.scaleX,
+      scaleY: preset.frontArm.scaleY,
+      angle: 0,
+      alpha: 1,
+    };
+    const beforeTorso = bodyOnly.slice(0, torsoIdx);
+    const afterTorso = bodyOnly.slice(torsoIdx + 1);
+    const transform = (part: CostumePart): CostumePart => shift(mirrorBaseFrame ? mirrorPartX(part) : part);
+    const backList = beforeTorso.map(transform);
+    const backArmOut = transform(backArm);
+    const torsoOut = transform(torso);
+    const frontArmOut = transform(frontArm);
+    const afterList = afterTorso.map(transform);
+
+    if (insertMode === 'back') {
+      return [shiftedSpear, ...backList, backArmOut, torsoOut, frontArmOut, ...afterList];
+    }
+    if (insertMode === 'front') {
+      return [...backList, backArmOut, torsoOut, frontArmOut, ...afterList, shiftedSpear];
+    }
+    // 默认双手实握遮挡顺序：远侧手在胸甲与枪杆后，近侧手在枪杆前、头发/头盔下方
+    return [...backList, backArmOut, torsoOut, shiftedSpear, frontArmOut, ...afterList];
+  }
+
+  const baseFrame = mirrorBaseFrame ? frame.map(mirrorPartX) : frame;
+
   if (insertMode === 'replace-staff') {
     const next: CostumePart[] = [];
     let inserted = false;
-    for (const part of frame) {
+    for (const part of baseFrame) {
       if (part.part === 'staff') {
         next.push(shiftedSpear);
         inserted = true;
@@ -234,7 +300,7 @@ function insertSpearIntoFrame(
     return next;
   }
 
-  const stripped = frame.filter(part => !REMOVED_WEAPON_PARTS.has(part.part)).map(shift);
+  const stripped = baseFrame.filter(part => !REMOVED_WEAPON_PARTS.has(part.part)).map(shift);
   if (insertMode === 'back') return [shiftedSpear, ...stripped];
   if (insertMode === 'between-west-arms') {
     const idx = stripped.findIndex(part => part.part === 'coat-front' && part.piece === 8);
@@ -298,9 +364,6 @@ function buildKeyframedPose(wardrobe: WardrobeCatalog, recipe: SpearKeyframedPos
     if (!basePose) throw new Error(`基础姿态不存在：${spec.sourcePoseId}（${recipe.id} F${index}）`);
     const rawFrame = basePose.frames[spec.sourceFrame];
     if (!rawFrame) throw new Error(`基础帧不存在：${spec.sourcePoseId}[${spec.sourceFrame}]`);
-    const baseFrame = spec.mirrorBaseFrame
-      ? rawFrame.map(part => ({ ...part, x: -part.x, scaleX: -part.scaleX }))
-      : rawFrame;
     const spearPart: CostumePart = {
       part: 'spear',
       piece: spec.piece,
@@ -311,7 +374,15 @@ function buildKeyframedPose(wardrobe: WardrobeCatalog, recipe: SpearKeyframedPos
       angle: spec.angle ?? 0,
       alpha: spec.alpha ?? 1,
     };
-    return insertSpearIntoFrame(baseFrame, spearPart, spec.insertMode, spec.bodyDx ?? 0, spec.bodyDy ?? 0);
+    return insertSpearIntoFrame(
+      rawFrame,
+      spearPart,
+      spec.insertMode,
+      spec.bodyDx ?? 0,
+      spec.bodyDy ?? 0,
+      spec.armsPreset,
+      spec.mirrorBaseFrame ?? false,
+    );
   });
 
   return {
