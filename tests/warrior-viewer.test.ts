@@ -281,19 +281,19 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
   const pngBytes = fs.readFileSync(new URL(proto.texture.file, repoRoot));
   const pngWidth = pngBytes.readUInt32BE(16);
   const pngHeight = pngBytes.readUInt32BE(20);
-  assert.equal(Object.keys(proto.sprites).length, 12);
+  assert.equal(Object.keys(proto.sprites).length, 14);
   for (const sprite of Object.values(proto.sprites)) {
     assert.equal(sprite.texture, proto.texture.key);
     assert.ok(sprite.x >= 0 && sprite.y >= 0);
     assert.ok(sprite.x + sprite.width <= pngWidth && sprite.y + sprite.height <= pngHeight);
   }
 
-  // Validate prototype spear-beam effect sheet PNG and frame bounds
+  // Validate prototype spear effect sheet PNG and frame bounds
   assert.ok(proto.effectSheet);
   const effBytes = fs.readFileSync(new URL(proto.effectSheet.texture.file, repoRoot));
   const effWidth = effBytes.readUInt32BE(16);
   const effHeight = effBytes.readUInt32BE(20);
-  assert.equal(Object.keys(proto.effectSheet.frames).length, 36);
+  assert.equal(Object.keys(proto.effectSheet.frames).length, 126);
   for (const rect of Object.values(proto.effectSheet.frames)) {
     assert.ok(rect.x >= 0 && rect.y >= 0);
     assert.ok(rect.x + rect.width <= effWidth && rect.y + rect.height <= effHeight);
@@ -324,6 +324,11 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
     thrust: 10,
     sweep: 12,
     'spear-upright-idle': 14,
+    attack: 8,
+    'attack-2': 7,
+    'skill-dragon-pierce': 12,
+    'skill-breaker-thrust': 11,
+    'skill-dragon-slam': 11,
   };
 
   for (const appearance of [undefined, 'mercenary-olaf']) {
@@ -331,8 +336,8 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
     assert.equal(recipe.variants.spear, proto.variantId);
     for (const facing of directions) {
       const choices = actionChoices(mergedCatalog, mergedItems, spearEquipment, facing, skillNames, proto.actionLabels);
-      const protoActions = choices.filter(choice => choice.group === '样板动作');
-      assert.equal(protoActions.length, 5);
+      const protoActions = choices.filter(choice => !choice.key.startsWith('town-') && choice.key !== 'die');
+      assert.equal(protoActions.length, Object.keys(expectedFrames).length);
       for (const [key, count] of Object.entries(expectedFrames)) {
         const action = protoActions.find(choice => choice.key === key);
         assert.ok(action, `missing prototype action ${key} (${facing})`);
@@ -348,27 +353,33 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
         }
       }
 
-      // Thrust timeline overlays spear-thrust-beam VFX across frames 3..8 in all 4 directions
-      const thrustTl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, 'thrust', facing, audio, proto.actionTimelines);
-      assert.equal(thrustTl.effects.length, 1);
-      assert.equal(thrustTl.effects[0].effect, 'spear-thrust-beam');
-      assert.equal(thrustTl.effects[0].variant, facing);
-      assert.equal(thrustTl.effects[0].startFrame, 3);
-      assert.equal(thrustTl.effects[0].frames, 6);
-      assert.equal(activeEffectsAtFrame(thrustTl, mergedBattle, 2).length, 0);
-      const activePeak = activeEffectsAtFrame(thrustTl, mergedBattle, 5);
-      assert.equal(activePeak.length, 1);
-      assert.equal(activePeak[0].effectFrame, 2);
-      for (const layer of activePeak[0].clip.layers) {
-        const keys = proto.effectSheet.byFile[layer.file];
-        assert.ok(keys && keys.length === 6, `missing effect frames for ${layer.file}`);
-        for (const key of keys) assert.ok(proto.effectSheet.frames[key], `missing rect ${key}`);
+      // Check timelines across Batch 1 skills (prototype + reusable game effects + afterimages + shake)
+      for (const key of ['attack', 'attack-2', 'thrust', 'skill-dragon-pierce', 'skill-breaker-thrust', 'skill-dragon-slam']) {
+        const tl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, key, facing, audio, proto.actionTimelines);
+        assert.ok(tl.effects.length >= 1, `${key} should have effects`);
+        assert.ok(effectOverlayBounds(mergedBattle, tl, facing), `${key} bounds`);
+        for (const cue of tl.effects) {
+          const clip = mergedBattle.attackEffects[cue.effect]?.clips[cue.variant];
+          assert.ok(clip, `${key}:${cue.effect}/${cue.variant}`);
+          for (const layer of clip.layers) {
+            const protoKeys = proto.effectSheet.byFile[layer.file];
+            const atlasKeys = EFFECT_ATLAS_BY_FILE[layer.file];
+            assert.ok((protoKeys && protoKeys.length >= clip.frames) || (atlasKeys && atlasKeys.length >= clip.frames),
+              `missing frames for ${layer.file}`);
+          }
+        }
       }
-      assert.ok(effectOverlayBounds(mergedBattle, thrustTl, facing));
 
-      // Sweep timeline marks strike frame
-      const sweepTl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, 'sweep', facing, audio, proto.actionTimelines);
-      assert.ok(sweepTl.markers.some(m => m.kind === 'strike' && m.frame === 4));
+      const pierceTl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, 'skill-dragon-pierce', facing, audio, proto.actionTimelines);
+      assert.deepEqual(pierceTl.afterimages?.frames, [4, 5, 6]);
+      assert.deepEqual(pierceTl.shakeFrames, [5]);
+      assert.ok(pierceTl.effects.some(e => e.effect === 'spear-heavy-pierce' && e.variant === facing));
+      assert.ok(pierceTl.effects.some(e => e.effect === 'impact-burst' && e.onTarget));
+
+      const slamTl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, 'skill-dragon-slam', facing, audio, proto.actionTimelines);
+      assert.deepEqual(slamTl.shakeFrames, [4]);
+      assert.ok(slamTl.effects.some(e => e.effect === 'spear-slam-arc' && e.variant === facing));
+      assert.ok(slamTl.effects.some(e => e.effect === 'state-stun' && e.onTarget));
     }
   }
 });

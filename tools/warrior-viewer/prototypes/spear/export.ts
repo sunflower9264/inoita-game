@@ -5,8 +5,8 @@ import { PNG } from 'pngjs';
 import type { BattleCatalog } from '../../../../src/domain/battle.ts';
 import type { EffectClip } from '../../../../src/domain/content.ts';
 import type { CostumePart, CostumePiece, CostumePose, WardrobeCatalog } from '../../../../src/domain/wardrobe.ts';
-import { BEAM_ADD_PALETTE, BEAM_BASE_PALETTE, SPEAR_THRUST_BEAM_SOURCES } from './effects-source.ts';
-import type { EffectFrameGrid } from './effects-source.ts';
+import { SPEAR_EFFECT_SOURCES } from './effects-source.ts';
+import type { EffectFrameGrid, RgbaPalette } from './effects-source.ts';
 import { SPEAR_ACTION_RECIPES, SPEAR_CYCLE_RECIPES, SPEAR_PALETTE, SPEAR_SLICES } from './source.ts';
 import type { SpearInsertMode, SpearKeyframedPoseRecipe, SpearPoseRecipe } from './source.ts';
 
@@ -86,26 +86,25 @@ function packEffects(): {
   };
   attackEffects: BattleCatalog['attackEffects'];
 } {
-  // 按行排布：每个方向的两层（base / add）各自占一行（每行 6 帧）
   const strips: {
     file: string;
-    palette: Readonly<Record<string, readonly [number, number, number, number]>>;
+    palette: RgbaPalette;
     frames: readonly EffectFrameGrid[];
     width: number;
     height: number;
   }[] = [];
 
-  for (const src of SPEAR_THRUST_BEAM_SOURCES) {
+  for (const src of SPEAR_EFFECT_SOURCES) {
     strips.push({
-      file: `prototype/spear-thrust-beam/${src.direction}-base.png`,
-      palette: BEAM_BASE_PALETTE,
+      file: `prototype/${src.effectId}/${src.direction}-base.png`,
+      palette: src.basePalette,
       frames: src.baseFrames,
       width: src.frameWidth,
       height: src.frameHeight,
     });
     strips.push({
-      file: `prototype/spear-thrust-beam/${src.direction}-add.png`,
-      palette: BEAM_ADD_PALETTE,
+      file: `prototype/${src.effectId}/${src.direction}-add.png`,
+      palette: src.addPalette,
       frames: src.addFrames,
       width: src.frameWidth,
       height: src.frameHeight,
@@ -154,8 +153,9 @@ function packEffects(): {
     cursorY += strip.height + PADDING;
   }
 
-  const clips: Record<string, EffectClip> = {};
-  for (const src of SPEAR_THRUST_BEAM_SOURCES) {
+  const attackEffects: BattleCatalog['attackEffects'] = {};
+  for (const src of SPEAR_EFFECT_SOURCES) {
+    const entry = attackEffects[src.effectId] ?? (attackEffects[src.effectId] = { clips: {} });
     const clip: EffectClip = {
       version: 1,
       frameWidth: src.frameWidth,
@@ -167,22 +167,22 @@ function packEffects(): {
       mirrorX: false,
       layers: [
         {
-          key: `spear-thrust-beam-${src.direction}-base`,
-          file: `prototype/spear-thrust-beam/${src.direction}-base.png`,
+          key: `${src.effectId}-${src.direction}-base`,
+          file: `prototype/${src.effectId}/${src.direction}-base.png`,
           blend: 'normal',
           operations: ['normal'],
         },
         {
-          key: `spear-thrust-beam-${src.direction}-add`,
-          file: `prototype/spear-thrust-beam/${src.direction}-add.png`,
+          key: `${src.effectId}-${src.direction}-add`,
+          file: `prototype/${src.effectId}/${src.direction}-add.png`,
           blend: 'add',
           operations: ['add'],
         },
       ],
     };
-    clips[src.direction] = clip;
+    entry.clips[src.direction] = clip;
     if (src.direction === 'west') {
-      clips.east = {
+      entry.clips.east = {
         ...clip,
         mirrorX: true,
         layers: clip.layers.map(layer => ({ ...layer, key: layer.key.replace('-west-', '-east-') })),
@@ -197,48 +197,62 @@ function packEffects(): {
       frames,
       byFile,
     },
-    attackEffects: {
-      'spear-thrust-beam': { clips },
-    },
+    attackEffects,
   };
 }
 
-function insertSpearIntoFrame(frame: CostumePart[], spearPart: CostumePart, insertMode: SpearInsertMode): CostumePart[] {
+function insertSpearIntoFrame(
+  frame: CostumePart[],
+  spearPart: CostumePart,
+  insertMode: SpearInsertMode,
+  bodyDx = 0,
+  bodyDy = 0,
+): CostumePart[] {
+  const shift = (part: CostumePart): CostumePart => ({
+    ...part,
+    x: part.x + bodyDx,
+    y: part.y + bodyDy,
+  });
+  const shiftedSpear: CostumePart = {
+    ...spearPart,
+    x: spearPart.x + bodyDx,
+    y: spearPart.y + bodyDy,
+  };
+
   if (insertMode === 'replace-staff') {
     const next: CostumePart[] = [];
     let inserted = false;
     for (const part of frame) {
       if (part.part === 'staff') {
-        next.push(spearPart);
+        next.push(shiftedSpear);
         inserted = true;
       } else if (!REMOVED_WEAPON_PARTS.has(part.part)) {
-        next.push({ ...part });
+        next.push(shift(part));
       }
     }
-    if (!inserted) next.push(spearPart);
+    if (!inserted) next.push(shiftedSpear);
     return next;
   }
 
-  const stripped = frame.filter(part => !REMOVED_WEAPON_PARTS.has(part.part)).map(part => ({ ...part }));
-  if (insertMode === 'back') return [spearPart, ...stripped];
+  const stripped = frame.filter(part => !REMOVED_WEAPON_PARTS.has(part.part)).map(shift);
+  if (insertMode === 'back') return [shiftedSpear, ...stripped];
   if (insertMode === 'between-west-arms') {
     const idx = stripped.findIndex(part => part.part === 'coat-front' && part.piece === 8);
-    if (idx >= 0) { stripped.splice(idx, 0, spearPart); return stripped; }
+    if (idx >= 0) { stripped.splice(idx, 0, shiftedSpear); return stripped; }
   }
   if (insertMode === 'between-south-arms') {
     const idx = stripped.findIndex(part => part.part === 'coat-front' && part.piece === 10);
-    if (idx >= 0) { stripped.splice(idx, 0, spearPart); return stripped; }
+    if (idx >= 0) { stripped.splice(idx, 0, shiftedSpear); return stripped; }
   }
   if (insertMode === 'between-south-walk-arms') {
     const idx = stripped.findIndex(part => part.part === 'coat-front' && part.piece === 13);
-    if (idx >= 0) { stripped.splice(idx, 0, spearPart); return stripped; }
+    if (idx >= 0) { stripped.splice(idx, 0, shiftedSpear); return stripped; }
   }
   if (insertMode === 'before-front-hand') {
-    // 西向直刺弓步中，coat-front[13]（f2）或 coat-front[10]（f3）是伸向前方的扶枪手
     const idx = stripped.findIndex(part => part.part === 'coat-front' && (part.piece === 13 || part.piece === 10));
-    if (idx >= 0) { stripped.splice(idx, 0, spearPart); return stripped; }
+    if (idx >= 0) { stripped.splice(idx, 0, shiftedSpear); return stripped; }
   }
-  stripped.push(spearPart);
+  stripped.push(shiftedSpear);
   return stripped;
 }
 
@@ -294,7 +308,7 @@ function buildKeyframedPose(wardrobe: WardrobeCatalog, recipe: SpearKeyframedPos
       angle: spec.angle ?? 0,
       alpha: 1,
     };
-    return insertSpearIntoFrame(baseFrame, spearPart, spec.insertMode);
+    return insertSpearIntoFrame(baseFrame, spearPart, spec.insertMode, spec.bodyDx ?? 0, spec.bodyDy ?? 0);
   });
 
   return {
@@ -314,13 +328,8 @@ function run(): void {
   const poses: Record<string, CostumePose> = {};
   const stancePoses: Record<string, string> = {};
 
-  // 按阅读习惯顺序注册动作：待机 → 行走 → 直刺 → 横扫 → 立枪待机
-  const orderedCycles = [
-    ...SPEAR_CYCLE_RECIPES.filter(r => r.clip.startsWith('idle-') || r.clip.startsWith('walk-')),
-  ];
-  const uprightCycles = SPEAR_CYCLE_RECIPES.filter(r => r.clip.startsWith('spear-upright-idle-'));
-
-  for (const recipe of orderedCycles) {
+  // 1. 基础动作（待机 / 行走 / 基础直刺与横扫原型 / 立枪对照）
+  for (const recipe of SPEAR_CYCLE_RECIPES.filter(r => r.clip.startsWith('idle-') || r.clip.startsWith('walk-'))) {
     poses[recipe.id] = buildCyclePose(wardrobe, recipe);
     stancePoses[recipe.clip] = recipe.id;
   }
@@ -328,7 +337,7 @@ function run(): void {
     poses[recipe.id] = buildKeyframedPose(wardrobe, recipe);
     stancePoses[recipe.clip] = recipe.id;
   }
-  for (const recipe of uprightCycles) {
+  for (const recipe of SPEAR_CYCLE_RECIPES.filter(r => r.clip.startsWith('spear-upright-idle-'))) {
     poses[recipe.id] = buildCyclePose(wardrobe, recipe);
     stancePoses[recipe.clip] = recipe.id;
   }
@@ -346,9 +355,14 @@ function run(): void {
     actionLabels: {
       idle: '持枪待机（双手战斗）',
       walk: '持枪行走',
-      thrust: '直刺（含枪芒特效）',
-      sweep: '横扫',
+      thrust: '基础直刺（原型对照）',
+      sweep: '基础横扫（原型对照）',
       'spear-upright-idle': '立枪待机（单手直立）',
+      attack: '普攻第一段 · 轻刺（A）',
+      'attack-2': '普攻第二段 · 斜撩（AA）',
+      'skill-dragon-pierce': '狂龙穿心破 · 蛟龙出海',
+      'skill-breaker-thrust': '破阵枪 · 拧腰甩刺',
+      'skill-dragon-slam': '伏龙震 · 力劈华山',
     },
     actionTimelines: {
       thrust: {
@@ -366,6 +380,69 @@ function run(): void {
         strikeFrame: 4,
         swings: [],
         sound: 'Weapon_TwoHand_Sword_Attack',
+      },
+      attack: {
+        cycleFrames: 8,
+        cues: [
+          { effect: 'spear-basic-thrust', startFrame: 2, variant: 'facing', placement: 'above-characters', source: '素银轻刺' },
+        ],
+        markers: [
+          { frame: 2, kind: 'swing', label: '出刺光（spear-basic-thrust）' },
+          { frame: 3, kind: 'strike', label: '普攻第一段命中' },
+        ],
+        sounds: ['Weapon_Sword_Attack'],
+      },
+      'attack-2': {
+        cycleFrames: 7,
+        cues: [
+          { effect: 'spear-basic-flick', startFrame: 2, variant: 'facing', placement: 'above-characters', source: '素银斜撩' },
+        ],
+        markers: [
+          { frame: 2, kind: 'swing', label: '出拨光（spear-basic-flick）' },
+          { frame: 3, kind: 'strike', label: '普攻第二段命中' },
+        ],
+        sounds: ['Weapon_Dagger_Attack'],
+      },
+      'skill-dragon-pierce': {
+        cycleFrames: 12,
+        cues: [
+          { effect: 'spear-heavy-pierce', startFrame: 4, variant: 'facing', placement: 'above-characters', source: '赤金破甲重刺' },
+          { effect: 'impact-burst', startFrame: 5, variant: 'default', placement: 'above-characters', onTarget: true, targetDistancePx: 50, source: '目标破甲爆花' },
+        ],
+        markers: [
+          { frame: 4, kind: 'charge', label: '前探突刺 + 出破甲芒' },
+          { frame: 5, kind: 'strike', label: '穿心重刺命中' },
+        ],
+        shakeFrames: [5],
+        afterimages: { frames: [4, 5, 6], opacity: 0.48, distancesPx: [7, 14] },
+        sounds: ['Wa_Anger_Rush', 'Weapon_TwoHand_Sword_Critical'],
+      },
+      'skill-breaker-thrust': {
+        cycleFrames: 11,
+        cues: [
+          { effect: 'spear-thrust-beam', startFrame: 4, variant: 'facing', placement: 'above-characters', source: '贯气直刺枪芒' },
+        ],
+        markers: [
+          { frame: 1, kind: 'effect', label: '拧腰抡枪蓄劲' },
+          { frame: 4, kind: 'swing', label: '甩刺出枪芒（spear-thrust-beam）' },
+          { frame: 5, kind: 'strike', label: '贯穿 2 目标结算' },
+        ],
+        sounds: ['Weapon_TwoHand_Sword_Attack'],
+      },
+      'skill-dragon-slam': {
+        cycleFrames: 11,
+        cues: [
+          { effect: 'spear-slam-arc', startFrame: 3, variant: 'facing', placement: 'above-characters', source: '暗金纵劈 + 地面震波' },
+          { effect: 'impact-cross', startFrame: 4, variant: 'default', placement: 'above-characters', onTarget: true, targetDistancePx: 36, source: '钝击爆闪' },
+          { effect: 'state-stun', startFrame: 4, variant: 'default', placement: 'above-characters', onTarget: true, targetDistancePx: 36, source: '目标眩晕 0.8s' },
+        ],
+        markers: [
+          { frame: 1, kind: 'effect', label: '双手过顶高举' },
+          { frame: 3, kind: 'swing', label: '力劈华山下砸' },
+          { frame: 4, kind: 'strike', label: '砸地命中 + 眩晕' },
+        ],
+        shakeFrames: [4],
+        sounds: ['Wa_Titan_Attack', 'Wa_Boom'],
       },
     },
     effectSheet,

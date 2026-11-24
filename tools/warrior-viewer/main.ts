@@ -246,9 +246,11 @@ function playSound(soundId: string): void {
 
 class CharacterScene extends Phaser.Scene {
   private groundEffects!: Phaser.GameObjects.Container;
+  private afterimageLayer!: Phaser.GameObjects.Container;
   private root!: Phaser.GameObjects.Container;
   private topEffects!: Phaser.GameObjects.Container;
   private readonly sprites: Phaser.GameObjects.Image[] = [];
+  private readonly afterimagePool: Phaser.GameObjects.Image[] = [];
   private readonly colorFilters = new WeakMap<Phaser.GameObjects.Image, Phaser.Filters.ColorMatrix>();
   private readonly groundPool: Phaser.GameObjects.Image[] = [];
   private readonly topPool: Phaser.GameObjects.Image[] = [];
@@ -270,6 +272,7 @@ class CharacterScene extends Phaser.Scene {
       if (!this.textures.exists(atlas.key)) this.textures.addAtlas(atlas.key, atlas.image, atlas.data);
     }
     this.groundEffects = this.add.container(0, 0);
+    this.afterimageLayer = this.add.container(0, 0);
     this.root = this.add.container(0, 0);
     this.topEffects = this.add.container(0, 0);
     scene = this;
@@ -283,6 +286,7 @@ class CharacterScene extends Phaser.Scene {
 
   setLoading(): void {
     this.groundEffects.setVisible(false);
+    this.afterimageLayer.setVisible(false);
     this.root.setVisible(false);
     this.topEffects.setVisible(false);
   }
@@ -293,9 +297,10 @@ class CharacterScene extends Phaser.Scene {
     let used = 0;
     for (const active of itemsToDraw) {
       const { cue, clip, effectFrame } = active;
-      const baseX = cue.onTarget ? dir.x * 28 : 0;
+      const dist = cue.targetDistancePx ?? 28;
+      const baseX = cue.onTarget ? dir.x * dist : 0;
       const baseY = cue.onTarget
-        ? dir.y * 28
+        ? dir.y * dist
         : (cue.placement === 'attached' && cue.attachmentPoint !== 'feet' ? effectAnchor.y : 0);
       for (const layer of clip.layers) {
         let textureKey: string | undefined;
@@ -361,9 +366,49 @@ class CharacterScene extends Phaser.Scene {
     const originX = Math.round(this.scale.width / 2 - centerX * zoom);
     const originY = Math.round(this.scale.height / 2 - centerY * zoom);
 
+    this.afterimageLayer.setPosition(originX, originY).setScale(pose.mirrorX ? -zoom : zoom, zoom);
     this.root.setPosition(originX, originY).setScale(pose.mirrorX ? -zoom : zoom, zoom).setVisible(true);
     this.groundEffects.setPosition(originX, originY).setScale(zoom, zoom);
     this.topEffects.setPosition(originX, originY).setScale(zoom, zoom);
+
+    // 绘制突进残影（与主游戏 SkillAfterimages 机制同源，仅在残影帧且非单切片模式下显示）
+    const trail = showEffects ? currentTimeline.afterimages : undefined;
+    let usedGhosts = 0;
+    if (trail && trail.frames.includes(playback.frame)) {
+      const dir = facingVector(facing);
+      const localStepX = pose.mirrorX ? dir.x : -dir.x;
+      const localStepY = -dir.y;
+      // 从远到近绘制残影，靠近本体的残影透明度更高
+      const orderedDistances = [...trail.distancesPx].sort((a, b) => b - a);
+      for (const [ghostIdx, dist] of orderedDistances.entries()) {
+        const ghostAlpha = trail.opacity * (orderedDistances.length > 1
+          ? 0.52 + 0.48 * (ghostIdx / (orderedDistances.length - 1))
+          : 1);
+        for (const entry of currentPieces) {
+          const { part, sprite: piece } = entry;
+          if (hiddenParts.has(part.part)) continue;
+          let ghost = this.afterimagePool[usedGhosts];
+          if (!ghost) {
+            ghost = this.add.image(0, 0, piece.texture, entry.key);
+            this.afterimageLayer.add(ghost);
+            this.afterimagePool.push(ghost);
+          }
+          ghost.setTexture(piece.texture, entry.key)
+            .setOrigin(piece.anchorX / piece.width, piece.anchorY / piece.height)
+            .setPosition(part.x + localStepX * dist, part.y + localStepY * dist)
+            .setScale(part.scaleX, part.scaleY)
+            .setAngle(part.angle)
+            .setTint(0xffd2a6)
+            .setAlpha(part.alpha * ghostAlpha)
+            .setVisible(true);
+          usedGhosts++;
+        }
+      }
+    }
+    for (let index = usedGhosts; index < this.afterimagePool.length; index++) {
+      this.afterimagePool[index].setVisible(false);
+    }
+    this.afterimageLayer.setVisible(usedGhosts > 0);
 
     const tintColors = showTintInput.checked && soloOrder === undefined ? currentTimeline.appearanceColors : undefined;
     const tintMatrix = tintColors?.length ? statusColorMatrix(tintColors, playback.frame, false, false) : undefined;
@@ -467,6 +512,12 @@ function renderKeyframesAndSounds(): void {
     shake.className = 'kf-pill';
     shake.textContent = `震屏帧：${currentTimeline.shakeFrames.map(f => `F${f + 1}`).join(' / ')}`;
     pills.push(shake);
+  }
+  if (currentTimeline.afterimages?.frames.length) {
+    const ghost = document.createElement('span');
+    ghost.className = 'kf-pill kind-charge';
+    ghost.textContent = `残影帧：${currentTimeline.afterimages.frames.map(f => `F${f + 1}`).join(' / ')}`;
+    pills.push(ghost);
   }
   if (currentTimeline.appearanceColors?.length) {
     const tint = document.createElement('span');

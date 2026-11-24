@@ -88,10 +88,30 @@ export interface PrototypeEffectSheet {
   frames: Record<string, { x: number; y: number; width: number; height: number }>;
   byFile: Record<string, string[]>;
 }
+export interface PrototypeEffectCueSpec {
+  effect: string;
+  startFrame: number;
+  variant?: 'facing' | 'default';
+  placement?: AttackPlacement;
+  onTarget?: boolean;
+  targetDistancePx?: number;
+  source: string;
+}
+export interface PrototypeAfterimageSpec {
+  frames: number[];
+  opacity: number;
+  distancesPx: number[];
+}
 export interface PrototypeActionTimelineSpec {
   cycleFrames?: number;
+  cues?: PrototypeEffectCueSpec[];
+  markers?: KeyframeMarker[];
+  shakeFrames?: number[];
+  afterimages?: PrototypeAfterimageSpec;
+  appearanceColors?: readonly StatusColor[];
+  sounds?: string[];
   swingFrame?: number | null;
-  strikeFrame: number;
+  strikeFrame?: number;
   swings?: string[];
   swingPlacement?: AttackPlacement;
   swingLabel?: string;
@@ -128,6 +148,7 @@ export interface EffectCueSpec {
   placement: AttackPlacement;
   attachmentPoint?: 'feet' | 'effect-anchor';
   onTarget: boolean;
+  targetDistancePx?: number;
   source: string;
 }
 
@@ -143,6 +164,7 @@ export interface ActionTimeline {
   markers: KeyframeMarker[];
   sounds: string[];
   shakeFrames: number[];
+  afterimages?: PrototypeAfterimageSpec;
   appearanceColors?: readonly StatusColor[];
 }
 
@@ -381,7 +403,7 @@ export function actionChoices(catalog: WardrobeCatalog, items: ItemCatalog, equi
     const key = clip.slice(0, -suffix.length);
     const skill = key.startsWith('skill-');
     const group = isPrototypeWeapon
-      ? '样板动作'
+      ? (skill ? '主动技能' : key.startsWith('attack') ? '普通攻击' : key === 'spear-die' ? '阵亡动作' : '基础动作')
       : skill ? '主动技能' : key.startsWith('frenzy-') ? '狂暴攻击'
         : key.startsWith('dual-') ? '双持攻击' : key.startsWith('attack') ? '普通攻击' : '基础动作';
     const label = customLabels?.[key] ?? (skill ? skillNames[key.slice(6)] ?? key : ACTION_NAMES[key] ?? key);
@@ -499,13 +521,13 @@ function resolveEffectVariant(battle: BattleCatalog, effectId: string, preferred
 }
 
 function addCue(target: EffectCueSpec[], seen: Set<string>, battle: BattleCatalog,
-  effectId: string, preferredVariant: string, startFrame: number, placement: AttackPlacement, onTarget: boolean, source: string): void {
+  effectId: string, preferredVariant: string, startFrame: number, placement: AttackPlacement, onTarget: boolean, source: string, targetDistancePx?: number): void {
   const definition = battle.attackEffects[effectId];
   if (!definition) return;
   const variant = resolveEffectVariant(battle, effectId, preferredVariant);
   const clip = definition.clips[variant];
   if (!clip) return;
-  const key = `${effectId}|${variant}|${startFrame}|${placement}|${onTarget}`;
+  const key = `${effectId}|${variant}|${startFrame}|${placement}|${onTarget}|${targetDistancePx ?? ''}`;
   if (seen.has(key)) return;
   seen.add(key);
   target.push({
@@ -516,6 +538,7 @@ function addCue(target: EffectCueSpec[], seen: Set<string>, battle: BattleCatalo
     placement,
     attachmentPoint: definition.attachmentPoint,
     onTarget,
+    targetDistancePx,
     source,
   });
 }
@@ -643,19 +666,36 @@ function resolveSkillTimeline(battle: BattleCatalog, audio: AudioCatalogLite | u
 function resolvePrototypeTimeline(battle: BattleCatalog, spec: PrototypeActionTimelineSpec, facing: Facing): ActionTimeline {
   const effects: EffectCueSpec[] = [];
   const seen = new Set<string>();
-  const markers: KeyframeMarker[] = [];
-  const sounds = spec.sound ? [spec.sound] : [];
-  const swingLabel = spec.swingLabel ?? '出特效';
+  const markers: KeyframeMarker[] = [...(spec.markers ?? [])];
+  const sounds = [...(spec.sounds ?? [])];
+  if (spec.sound && !sounds.includes(spec.sound)) sounds.push(spec.sound);
 
+  for (const cue of spec.cues ?? []) {
+    const preferredVariant = cue.variant === 'default' ? 'default' : facing;
+    addCue(effects, seen, battle, cue.effect, preferredVariant, cue.startFrame,
+      cue.placement ?? 'above-characters', cue.onTarget ?? false, cue.source, cue.targetDistancePx);
+  }
+
+  const swingLabel = spec.swingLabel ?? '出特效';
   if (spec.swingFrame !== null && spec.swingFrame !== undefined && spec.swings?.length) {
     markers.push({ frame: spec.swingFrame, kind: 'swing', label: `${swingLabel}（${spec.swings.join(' / ')}）` });
     for (const effectId of spec.swings) {
       addCue(effects, seen, battle, effectId, facing, spec.swingFrame, spec.swingPlacement ?? 'above-characters', false, swingLabel);
     }
   }
-  markers.push({ frame: spec.strikeFrame, kind: 'strike', label: '命中结算' });
+  if (spec.strikeFrame !== undefined) {
+    markers.push({ frame: spec.strikeFrame, kind: 'strike', label: '命中结算' });
+  }
   markers.sort((a, b) => a.frame - b.frame);
-  return { cycleFrames: spec.cycleFrames, effects, markers, sounds, shakeFrames: [] };
+  return {
+    cycleFrames: spec.cycleFrames,
+    effects,
+    markers,
+    sounds,
+    shakeFrames: [...(spec.shakeFrames ?? [])],
+    afterimages: spec.afterimages,
+    appearanceColors: spec.appearanceColors,
+  };
 }
 
 export function actionTimeline(catalog: WardrobeCatalog, items: ItemCatalog, battle: BattleCatalog,
@@ -717,8 +757,9 @@ export function effectOverlayBounds(battle: BattleCatalog, timeline: ActionTimel
     const clip = battle.attackEffects[cue.effect]?.clips[cue.variant];
     if (!clip) continue;
     found = true;
-    const baseX = cue.onTarget ? dir.x * 28 : 0;
-    const baseY = cue.onTarget ? dir.y * 28 : (cue.placement === 'attached' && cue.attachmentPoint !== 'feet' ? effectAnchor.y : 0);
+    const dist = cue.targetDistancePx ?? 28;
+    const baseX = cue.onTarget ? dir.x * dist : 0;
+    const baseY = cue.onTarget ? dir.y * dist : (cue.placement === 'attached' && cue.attachmentPoint !== 'feet' ? effectAnchor.y : 0);
     const ox = clip.originX * clip.frameWidth;
     const oy = clip.originY * clip.frameHeight;
     const minX = clip.mirrorX ? baseX - (clip.frameWidth - ox) : baseX - ox;
