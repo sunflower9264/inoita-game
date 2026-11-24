@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { PNG } from 'pngjs';
 import type { BattleCatalog } from '../src/domain/battle.ts';
 import type { Facing } from '../src/domain/content.ts';
 import type { ItemCatalog } from '../src/domain/items.ts';
@@ -533,6 +534,68 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
       const dySpan = Math.max(...centers.map(c => c.botY)) - Math.min(...centers.map(c => c.botY));
       assert.ok(dxSpan <= 3.5, `${poseId} horizontal foot drift too large: ${dxSpan}`);
       assert.ok(dySpan <= 4, `${poseId} vertical foot drift too large: ${dySpan}`);
+    }
+  }
+
+  // 防回归：全部北向战斗动作（基础动作、三段普攻、全部主动技能）及四向旋风枪舞在有/无披风状态下，
+  // 人物双腿裆部空隙（x ∈ [-4, 4], y ≥ -8）及中轴脚底以下绝不露出任何长枪像素，且突刺不混入短剑头顶悬空手（coat-front[5] y < -30）。
+  const loadedTextures = new Map<string, PNG>();
+  for (const tex of catalog.textures) {
+    loadedTextures.set(tex.key, PNG.sync.read(fs.readFileSync(new URL(tex.file, root))));
+  }
+  loadedTextures.set(proto.texture.key, PNG.sync.read(pngBytes));
+
+  const northCombatClips = Object.keys(proto.stancePoses).filter(clip =>
+    (clip.endsWith('-north') && !clip.startsWith('town-') && clip !== 'spear-die-north')
+    || clip.startsWith('skill-spin-storm-'));
+
+  for (const clip of northCombatClips) {
+    const poseId = proto.stancePoses[clip];
+    const pose = mergedCatalog.poses[poseId];
+    assert.ok(pose, `missing pose ${poseId}`);
+    for (let fi = 0; fi < pose.frames.length; fi++) {
+      const frame = pose.frames[fi];
+      // 四向旋风枪舞中包含南向/西向/东向旋转与起收帧，仅对朝北背身帧（body[2]/body[3]）检查双腿间漏枪把
+      const spearEntry = frame.find(p => p.part === 'spear');
+      const isNorthBodyFrame = frame.some(p => p.part === 'body' && (p.piece === 2 || p.piece === 3));
+      if (clip.startsWith('skill-spin-storm-') && !isNorthBodyFrame) {
+        continue;
+      }
+      assert.ok(spearEntry, `${poseId} F${fi} missing spear`);
+      for (const part of frame) {
+        if (part.part === 'coat-front' && part.piece === 5) {
+          assert.ok(part.y > -30, `${poseId} F${fi} 不应混入头顶悬空手臂 coat-front[5]`);
+        }
+      }
+      for (const appearance of [undefined, 'mercenary-olaf'] as const) {
+        const variants = viewerRecipe(mergedCatalog, mergedItems, spearEquipment, {}, appearance).variants;
+        const pieces = framePieces(mergedCatalog, variants, frame);
+        let crotchSpearPixels = 0;
+        for (let dy = -8; dy <= 24; dy++) {
+          for (let dx = -4; dx <= 4; dx++) {
+            const localX = pose.mirrorX ? -dx : dx;
+            let topPart: string | null = null;
+            for (const { part, sprite } of pieces) {
+              const png = loadedTextures.get(sprite.texture)!;
+              const rad = (part.angle * Math.PI) / 180;
+              const cos = Math.cos(rad);
+              const sin = Math.sin(rad);
+              const rx = localX - part.x;
+              const ry = dy - part.y;
+              const u = (rx * cos + ry * sin) / part.scaleX + sprite.anchorX;
+              const v = (-rx * sin + ry * cos) / part.scaleY + sprite.anchorY;
+              const sx = Math.floor(u + 1e-6);
+              const sy = Math.floor(v + 1e-6);
+              if (sx >= 0 && sx < sprite.width && sy >= 0 && sy < sprite.height) {
+                const idx = ((sprite.y + sy) * png.width + (sprite.x + sx)) * 4;
+                if (png.data[idx + 3] > 20) topPart = part.part;
+              }
+            }
+            if (topPart === 'spear') crotchSpearPixels++;
+          }
+        }
+        assert.equal(crotchSpearPixels, 0, `${clip} (${poseId}) F${fi} [${appearance ?? 'cloak'}] 双腿间露出 ${crotchSpearPixels} 个长枪像素`);
+      }
     }
   }
 });
