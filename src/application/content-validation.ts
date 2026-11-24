@@ -416,7 +416,7 @@ export function validateItemSkills(items:ItemCatalog,battle:BattleCatalog):void 
 const wardrobe=shape<WardrobeCatalog>({defaultShield:optional(boolean),companions:optional(record(object({variants:record(text),fixedParts:array(text)}))),textures:array(object({key:text,file})),sprites:record(object({texture:text,x:integer,y:integer,width:count,height:count,anchorX:number,anchorY:number})),
   variants:record(array(nullable(text))),defaults:record(text),equipment:record(object({main:record(text),offHand:record(text)})),
   poses:record(object({mirrorX:boolean,frameRate:positive,frames:array(array(object({part:text,piece:integer,x:number,y:number,scaleX:number,scaleY:number,angle:number,alpha:number})))})),
-  stances:record(record(text)),skills:record(record(text)),attacks:(value,path)=>record(basicAttack)(value,path),dualWieldAttacks:optional((value,path)=>record(boundBasicAttack)(value,path)),
+  stances:record(record(text)),sharedPoses:optional(record(text)),skills:record(record(text)),attacks:(value,path)=>record(basicAttack)(value,path),dualWieldAttacks:optional((value,path)=>record(boundBasicAttack)(value,path)),
   frenzyAttacks:optional((value,path)=>record(boundBasicAttack)(value,path)),
   frenzyWaitFrames:optional(record(count)),
   skillStances:(value,path)=>record(record(object({poses:record(text),actions:record(nullable(skillAction))})))(value,path)});
@@ -427,7 +427,7 @@ export function parseWardrobe(value:unknown):WardrobeCatalog {
   for(const pieces of Object.values(result.variants))for(const piece of pieces)if(piece)requireValue(result.sprites[piece],'wardrobe.variants','部件不存在');
   for(const variants of [result.defaults,...Object.values(result.companions??{}).map(companion=>companion.variants),...Object.values(result.equipment).flatMap(entry=>[entry.main,entry.offHand])])
     for(const variant of Object.values(variants))requireValue(result.variants[variant],'wardrobe.equipment','服装样式不存在');
-  for(const stance of [...Object.values(result.stances),...Object.values(result.skills)])for(const pose of Object.values(stance))requireValue(result.poses[pose!],'wardrobe.stances','动作不存在');
+  for(const stance of [...Object.values(result.stances),...Object.values(result.skills),...(result.sharedPoses?[result.sharedPoses]:[])])for(const pose of Object.values(stance))requireValue(result.poses[pose!],'wardrobe.stances','动作不存在');
   for(const id of Object.keys(result.stances))requireValue(result.attacks[id],'wardrobe.attacks','普攻规则缺失');
   for(const [id,attack]of Object.entries(result.attacks)){
     requireValue(result.stances[id],'wardrobe.attacks','武器动作缺失');

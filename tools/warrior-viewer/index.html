@@ -3,15 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>狂战士 · 动作素材查看器</title>
+  <title>狂战士 · 动作与素材工作台</title>
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
   <header class="masthead">
-    <div><span class="eyebrow">艾诺迪亚 · 素材工作台</span><h1>狂战士<span>动作与换装</span></h1></div>
-    <p id="status" role="status">正在读取游戏原始素材…</p>
+    <div>
+      <span class="eyebrow">艾诺迪亚 · 新职业对照工作台</span>
+      <h1>狂战士<span>动作、特效与完整素材清单</span></h1>
+    </div>
+    <div class="masthead-right">
+      <div id="view-tabs" class="view-tabs" role="tablist" aria-label="切换工作台视图">
+        <button id="tab-inspector" role="tab" data-view="inspector" aria-selected="true">动作与切片检查</button>
+        <button id="tab-inventory" role="tab" data-view="inventory" aria-selected="false">职业素材总清单</button>
+      </div>
+      <p id="status" role="status">正在读取游戏原始素材…</p>
+    </div>
   </header>
-  <main class="workspace" aria-busy="true">
+
+  <main id="inspector-view" class="workspace" aria-busy="true">
     <aside class="actions-panel panel">
       <div class="panel-heading"><h2>动作</h2><span id="action-count"></span></div>
       <div id="directions" class="directions" aria-label="角色朝向">
@@ -22,12 +32,22 @@
       </div>
       <nav id="actions" aria-label="选择动作"></nav>
     </aside>
+
     <section class="preview-panel panel">
-      <div class="preview-heading"><div><span class="eyebrow">当前动作</span><h2 id="action-title">准备中</h2></div><span id="pose-info"></span></div>
-      <div id="stage" class="stage checker"><div id="character-canvas"></div><span id="scale-info" class="scale-info"></span></div>
+      <div class="preview-heading">
+        <div><span class="eyebrow">当前动作</span><h2 id="action-title">准备中</h2></div>
+        <span id="pose-info"></span>
+      </div>
+      <div id="action-notices" class="action-notices" hidden></div>
+      <div id="stage" class="stage checker">
+        <div id="character-canvas"></div>
+        <span id="scale-info" class="scale-info"></span>
+      </div>
       <div class="view-options">
         <label>缩放 <select id="zoom"><option value="1">1×</option><option value="2">2×</option><option value="3">3×</option><option value="4">4×</option><option value="6" selected>6×</option><option value="8">8×</option><option value="12">12×</option></select></label>
         <label>背景 <select id="background"><option value="checker">透明棋盘</option><option value="gray">中灰</option><option value="dark">深灰</option><option value="light">浅色</option></select></label>
+        <label class="toggle"><input id="show-effects" type="checkbox" checked>叠加特效</label>
+        <label class="toggle"><input id="show-tint" type="checkbox" checked>状态染色</label>
         <button id="show-all" hidden>显示完整角色</button>
       </div>
       <div class="transport">
@@ -37,25 +57,115 @@
         <output id="frame-label">— / —</output>
         <label class="speed">速度 <select id="speed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label>
         <input id="timeline" type="range" min="0" max="0" value="0" aria-label="当前帧">
-        <span class="shortcuts">空格 暂停 / 继续 · 左右键 逐帧</span>
+        <div id="keyframe-bar" class="keyframe-bar" hidden></div>
+        <div id="sound-bar" class="sound-bar" hidden></div>
+        <span class="shortcuts">空格 暂停 / 继续 · 左右键 逐帧 · 点击关键帧标签直接定位</span>
       </div>
       <section class="frame-inspector">
-        <div class="panel-heading"><h2>这一帧的切片</h2><span id="piece-count"></span></div>
+        <div class="panel-heading"><h2>这一帧的切片与特效</h2><span id="piece-count"></span></div>
         <p class="hint">按从后到前的绘制顺序排列。点击「仅看此片」在预览中保留它的位置和变换。</p>
+        <div id="effect-summary" class="effect-summary" hidden></div>
         <div id="pieces" class="pieces"></div>
       </section>
     </section>
+
     <aside class="outfit-panel panel">
-      <div class="panel-heading"><h2>外观部件</h2><button id="reset" class="text-button">恢复默认</button></div>
+      <div class="panel-heading"><h2>外观与装备</h2><button id="reset" class="text-button">恢复默认</button></div>
       <div class="weapons">
+        <label>角色预设<select id="preset"></select></label>
         <label>主手装备<select id="main-hand"></select></label>
         <label>副手装备<select id="off-hand"></select></label>
+        <label>盔甲 / 上衣<select id="armor-body"></select></label>
+        <label>头盔 / 头饰<select id="armor-head"></select></label>
+        <label>披风<select id="armor-back"></select></label>
       </div>
-      <p class="hint">装备决定出手动作。下面可独立切换每个部位的现有外形。</p>
+      <p class="hint">武器决定动作架势与特效。下方可逐部位独立覆盖外观款式（按狂战士可用与其他款式分组）。</p>
       <div id="variants" class="variants"></div>
-      <p class="hint legend">「未使用」表示当前帧没有绘制这个部位。上衣包含手臂与手套，下装包含腿脚。</p>
+      <p class="hint legend">「未使用」表示当前帧没有绘制这个部位。上衣包含手臂与手套，下装包含腿脚；护手、鞋子、戒指、项链无纸娃娃外观。</p>
     </aside>
   </main>
+
+  <section id="inventory-view" class="inventory-view" hidden>
+    <div class="inventory-toolbar panel">
+      <div>
+        <span class="eyebrow">新职业资产对照账本</span>
+        <h2>狂战士全量素材规格总览</h2>
+        <p id="inventory-summary" class="hint">切换到本页后自动汇总狂战士全部动作模板、12 个换装部位切片及配套 UI / 特效 / 音效。</p>
+      </div>
+      <div class="export-actions">
+        <button id="export-markdown">导出 Markdown 规格表</button>
+        <button id="export-json">导出 JSON 规格表</button>
+      </div>
+    </div>
+
+    <div class="inventory-body">
+      <section class="inventory-section panel">
+        <div class="panel-heading">
+          <h2>一、独立动作模板总表（跨 27 种架势去重）</h2>
+          <span id="inventory-poses-count"></span>
+        </div>
+        <p class="hint">每一行是一套独立的四向姿态模板。点击「去预览」会自动切换成匹配该模板的武器并跳回动作画布。</p>
+        <div id="inventory-pose-filters" class="filter-pills"></div>
+        <div class="table-wrap">
+          <table class="spec-table">
+            <thead>
+              <tr>
+                <th>分类</th>
+                <th>动作名称</th>
+                <th>适用武器架势</th>
+                <th>帧数（南/西/北/东）</th>
+                <th>帧率 / 镜像</th>
+                <th>涉及部位</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="inventory-poses"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="inventory-section panel">
+        <div class="panel-heading">
+          <h2>二、12 个纸娃娃换装部位全套切片图鉴</h2>
+          <span id="inventory-parts-count"></span>
+        </div>
+        <p class="hint">展示每个部位默认款式的全部切片索引、像素尺寸与基准点，标注哪些切片仅在阵亡动作出现（如双手剑 #8/#10、单手武器 #5）。</p>
+        <div id="inventory-no-visual-slots" class="notice-strip"></div>
+        <div id="inventory-parts" class="parts-catalog"></div>
+      </section>
+
+      <section class="inventory-section panel">
+        <div class="panel-heading">
+          <h2>三、职业标识、技能图标与状态图标</h2>
+          <span id="inventory-ui-count"></span>
+        </div>
+        <h3 class="sub-heading">职业标识与预览图</h3>
+        <div id="inventory-identity" class="asset-grid"></div>
+        <h3 class="sub-heading">15 项职业技能（9 主动 + 6 被动）</h3>
+        <div id="inventory-skills" class="skill-grid"></div>
+        <h3 class="sub-heading">状态（Buff）图标</h3>
+        <div id="inventory-buffs" class="asset-grid compact"></div>
+      </section>
+
+      <section class="inventory-section panel">
+        <div class="panel-heading">
+          <h2>四、战斗与技能特效清单</h2>
+          <span id="inventory-effects-count"></span>
+        </div>
+        <p class="hint">全部取自游戏运行时无损 WebP 特效图集（effect-atlas），标注方向数、帧数、单帧画布尺寸、图层混合方式与所属动作。</p>
+        <div id="inventory-effects" class="effect-grid"></div>
+      </section>
+
+      <section class="inventory-section panel">
+        <div class="panel-heading">
+          <h2>五、战斗与技能音效清单</h2>
+          <span id="inventory-sounds-count"></span>
+        </div>
+        <div id="inventory-sounds" class="sound-grid"></div>
+      </section>
+    </div>
+  </section>
+
   <script type="module" src="./main.ts"></script>
 </body>
 </html>

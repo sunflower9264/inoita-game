@@ -26,6 +26,11 @@ export interface WardrobeCatalog {
   equipment: Record<string,{main:Record<string,string>;offHand:Record<string,string>}>;
   poses: Record<string,CostumePose>;
   stances: Record<string,Partial<Record<ClipName,string>>>;
+  /** 与武器架势无关的共用姿态（如战斗阵亡 die）；按需读取，不自动混入默认战斗外观合成列表。 */
+  sharedPoses?: Partial<Record<ClipName,string>>;
+}
+export function sharedWardrobePoses(catalog: WardrobeCatalog): Partial<Record<ClipName,string>> {
+  return catalog.sharedPoses ? { ...catalog.sharedPoses } : {};
 }
 export function wardrobePoseRelativeFile(id: string): string {
   return `wardrobe/poses/${encodeURIComponent(id)}.json`;

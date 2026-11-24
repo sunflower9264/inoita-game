@@ -13,7 +13,7 @@
 - 角色/特效图集用 `AtlasImageQueue` 限制同时编码的页数（CPU 核数），避免整套页的原始像素同时驻留内存。
 - 角色图集按 1024 页装箱，并在生成时打印「最差 10 个 actor」的页占用；新增大型 actor 或大技能帧后先看这份报告，避免单个小角色被装进大页后一次拉起几十 MB 纹理。
 - 测试/审计/APK：`test.ts` 是测试入口，`audit-story-actors.ts` 审计剧情角色摆放，`build-apk.mjs` 与 `verify-apk.mjs` 打包并校验 APK。
-- 素材查看：`warrior-viewer/` 是独立 HTML 开发页面，检查狂战士全部可用动作、部件换装与逐帧切片；入口与验证见 `warrior-viewer/AGENTS.md`。
+- 素材查看：`warrior-viewer/` 是独立 HTML 开发工作台，检查狂战士全部可用动作（含 `sharedPoses` 阵亡动作）、战斗特效与状态染色、换装预设、逐帧切片及新职业参照用全量素材清单；入口与验证见 `warrior-viewer/AGENTS.md`。
 - 热更新：`update-manifest.ts` 生成、签名和验签逐文件清单，`update-key.ts` 生成签名密钥与公钥，`verify-update.ts` 核对 APK 基线与线上清单的差量。
 
 ## 规则

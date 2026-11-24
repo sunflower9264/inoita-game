@@ -1,22 +1,41 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import type { BattleCatalog } from '../src/domain/battle.ts';
 import type { Facing } from '../src/domain/content.ts';
 import type { ItemCatalog } from '../src/domain/items.ts';
-import type { CostumePose, WardrobeCatalog } from '../src/domain/wardrobe.ts';
-import { actionChoices, compatibleOffhands, framePieces, Playback, PoseRepository,
-  poseBounds, variantChoices, viewerRecipe, weaponChoices } from '../tools/warrior-viewer/model.ts';
-import type { EquipmentSelection } from '../tools/warrior-viewer/model.ts';
+import { costumeRecipe, type CostumePose, type WardrobeCatalog } from '../src/domain/wardrobe.ts';
+import { EFFECT_ATLAS_BY_FILE } from '../src/generated/effect-atlas.ts';
+import {
+  actionChoices, actionNotices, actionTimeline, activeEffectsAtFrame, armorChoices,
+  compatibleOffhands, effectOverlayBounds, formatInventoryMarkdown, framePieces, Playback,
+  PoseRepository, poseBounds, variantChoices, viewerRecipe, warriorAssetInventory,
+  warriorPartSpecs, warriorPoseIds, warriorPoseMatrix, warriorPresets, weaponChoices,
+} from '../tools/warrior-viewer/model.ts';
+import type {
+  AudioCatalogLite, CompanionCatalogLite, EquipmentSelection, MenuPanelsLite, StatusHudLite,
+  StoryClassesLite,
+} from '../tools/warrior-viewer/model.ts';
 
 const root = new URL('../public/', import.meta.url);
-const catalog = JSON.parse(fs.readFileSync(new URL('content/wardrobe.json', root), 'utf8')) as WardrobeCatalog;
-const items = JSON.parse(fs.readFileSync(new URL('content/items.json', root), 'utf8')) as ItemCatalog;
+const readJson = <T>(file: string): T => JSON.parse(fs.readFileSync(new URL(file, root), 'utf8')) as T;
+const catalog = readJson<WardrobeCatalog>('content/wardrobe.json');
+const items = readJson<ItemCatalog>('content/items.json');
+const battle = readJson<BattleCatalog>('content/battle.json');
+const storyClasses = readJson<StoryClassesLite>('content/story-classes.json');
+const menuPanels = readJson<MenuPanelsLite>('content/menu-panels.json');
+const statusHud = readJson<StatusHudLite>('content/status-hud.json');
+const companions = readJson<CompanionCatalogLite>('content/companions.json');
+const audio = readJson<AudioCatalogLite>('content/audio.json');
 const defaults = items.startingEquipment.warrior;
 const directions: Facing[] = ['south', 'west', 'north', 'east'];
+const skillNames = Object.fromEntries(Object.entries(battle.skills).map(([id, value]) => [id, value.name]));
 
-test('viewer includes all warrior skills, combo and frenzy poses, plus separate town movement', () => {
+test('viewer includes all warrior skills, combo, frenzy, town movement and shared die pose without altering main costumeRecipe', () => {
+  const mainRecipe = costumeRecipe(catalog, items, defaults, 'warrior');
+  assert.equal(mainRecipe.poses['die-south'], undefined);
   for (const facing of directions) {
-    const choices = actionChoices(catalog, items, defaults, facing, {});
+    const choices = actionChoices(catalog, items, defaults, facing, skillNames);
     assert.equal(choices.filter(choice => choice.group === '主动技能').length, 9);
     assert.ok(choices.some(choice => choice.key === 'attack-3'));
     assert.ok(choices.some(choice => choice.key === 'frenzy-two-handed'));
@@ -24,10 +43,14 @@ test('viewer includes all warrior skills, combo and frenzy poses, plus separate 
     const town = choices.find(choice => choice.key === 'town-walk')!;
     assert.equal(town.poseId, catalog.stances['unarmed:empty'][`walk-${facing}`]);
     assert.notEqual(town.poseId, choices.find(choice => choice.key === 'walk')!.poseId);
+    const die = choices.find(choice => choice.key === 'die')!;
+    assert.equal(die.group, '阵亡动作');
+    assert.equal(die.poseId, catalog.sharedPoses?.[`die-${facing}`]);
+    assert.equal(catalog.poses[die.poseId].frames.length, 23);
   }
 });
 
-test('weapons offer unique warrior appearances and only supported offhand combinations', () => {
+test('weapons, armor and presets offer unique warrior appearances and valid offhand combinations', () => {
   const main = weaponChoices(catalog, items);
   const signatures = main.map(choice => JSON.stringify([choice.kind, catalog.equipment[choice.id].main]));
   assert.equal(signatures.length, new Set(signatures).size);
@@ -36,9 +59,21 @@ test('weapons offer unique warrior appearances and only supported offhand combin
   assert.ok(compatibleOffhands(catalog, items, 'dagger').some(choice => choice.kind === 'shield'));
   assert.ok(compatibleOffhands(catalog, items, 'dagger').some(choice => choice.kind === 'longsword'));
   assert.ok(compatibleOffhands(catalog, items).every(choice => choice.kind === 'shield'));
+
+  assert.ok(armorChoices(catalog, items, 'body').length >= 50);
+  assert.ok(armorChoices(catalog, items, 'head').length >= 50);
+  assert.equal(armorChoices(catalog, items, 'back').length, 4);
+
+  const presets = warriorPresets(catalog, companions);
+  assert.equal(presets[0].id, 'hero');
+  assert.ok(presets.some(p => p.appearanceId === 'mercenary-warrior'));
+  assert.ok(presets.some(p => p.appearanceId === 'mercenary-olaf'));
+  assert.ok(presets.some(p => p.appearanceId === 'mercenary-shin'));
+  const olafRecipe = viewerRecipe(catalog, items, defaults, {}, 'mercenary-olaf');
+  assert.equal(olafRecipe.variants.body, catalog.companions!['mercenary-olaf'].variants.body);
 });
 
-test('every available weapon stance resolves all four directions and every frame to valid atlas pieces', () => {
+test('every available weapon stance and die pose resolves all four directions and every frame to valid atlas pieces', () => {
   const representatives = new Map<string, string | undefined>([['unarmed', undefined]]);
   for (const choice of weaponChoices(catalog, items)) representatives.set(choice.kind, choice.id);
   const sheets = new Map(catalog.textures.map(texture => {
@@ -55,7 +90,7 @@ test('every available weapon stance resolves all four directions and every frame
       if (off) equipment['off-hand'] = off;
       const recipe = viewerRecipe(catalog, items, equipment, {});
       seen.add(`${mainKind}:${offKind}`);
-      for (const facing of directions) for (const action of actionChoices(catalog, items, equipment, facing, {})) {
+      for (const facing of directions) for (const action of actionChoices(catalog, items, equipment, facing, skillNames)) {
         const pose = catalog.poses[action.poseId];
         assert.ok(pose?.frames.length, action.poseId);
         assert.ok(pose.frameRate > 0);
@@ -75,6 +110,97 @@ test('every available weapon stance resolves all four directions and every frame
   assert.equal(seen.size, 27);
 });
 
+test('action timelines resolve swings, skill effects, buff tints, sounds and atlas frames across stances', () => {
+  // 2H basic combo 1/2/3 -> heavy-swing / heavy-swing-2 / heavy-swing-3
+  for (const [key, expectedFx] of [['attack', 'heavy-swing'], ['attack-2', 'heavy-swing-2'], ['attack-3', 'heavy-swing-3']] as const) {
+    const tl = actionTimeline(catalog, items, battle, defaults, key, 'south', audio);
+    assert.ok(tl.effects.some(cue => cue.effect === expectedFx && cue.variant === 'south'), key);
+    assert.ok(tl.sounds.includes('Weapon_TwoHand_Sword_Attack'));
+    assert.ok(tl.cycleFrames && tl.cycleFrames > 0);
+  }
+  // Giant blow switches effect between two-handed (giant-blow) and one-handed (giant-blow-swing)
+  const gb2h = actionTimeline(catalog, items, battle, defaults, 'skill-giant-blow', 'west', audio);
+  assert.ok(gb2h.effects.some(cue => cue.effect === 'giant-blow' && cue.variant === 'west'));
+  assert.ok(gb2h.sounds.includes('Wa_Titan_Attack'));
+  const activeMid = activeEffectsAtFrame(gb2h, battle, 14);
+  assert.equal(activeMid.length, 1);
+  assert.equal(activeMid[0].effectFrame, 2);
+  assert.ok(effectOverlayBounds(battle, gb2h, 'west'));
+
+  const longswordId = weaponChoices(catalog, items).find(w => w.kind === 'longsword')!.id;
+  const gb1h = actionTimeline(catalog, items, battle, { 'main-hand': longswordId }, 'skill-giant-blow', 'west', audio);
+  assert.ok(gb1h.effects.some(cue => cue.effect === 'giant-blow-swing' && cue.variant === 'west'));
+
+  // Enrage carries 7-frame red appearanceColors and armor-ember + aura-ring
+  const enrageTl = actionTimeline(catalog, items, battle, defaults, 'skill-enrage', 'south', audio);
+  assert.equal(enrageTl.appearanceColors?.length, 7);
+  assert.ok(enrageTl.effects.some(cue => cue.effect === 'armor-ember'));
+  assert.ok(enrageTl.effects.some(cue => cue.effect === 'aura-ring'));
+
+  // Every active skill effect resolves cleanly to EFFECT_ATLAS_BY_FILE
+  const warriorClass = battle.classes.find(c => c.id === 'warrior')!;
+  for (const skillId of warriorClass.skills) {
+    if (battle.skills[skillId].kind !== 'active') continue;
+    for (const eq of [defaults, { 'main-hand': longswordId }]) {
+      const tl = actionTimeline(catalog, items, battle, eq, `skill-${skillId}`, 'south', audio);
+      assert.ok(tl.markers.length > 0, skillId);
+      for (const cue of tl.effects) {
+        const clip = battle.attackEffects[cue.effect]?.clips[cue.variant];
+        assert.ok(clip, `${skillId}:${cue.effect}/${cue.variant}`);
+        for (const layer of clip.layers) {
+          const atlasFrames = EFFECT_ATLAS_BY_FILE[layer.file];
+          assert.ok(atlasFrames && atlasFrames.length >= clip.frames, `effect atlas missing ${layer.file}`);
+        }
+      }
+      for (const soundId of tl.sounds) {
+        assert.ok(audio.effects[soundId], `missing audio ${soundId}`);
+      }
+    }
+  }
+});
+
+test('boundary notices warn about unarmed+shield frenzy wait and weapon-less original skill poses', () => {
+  const shieldId = weaponChoices(catalog, items, true).find(w => w.kind === 'shield')!.id;
+  const unarmedShieldPose = catalog.poses[catalog.stances['unarmed:shield']['idle-south']!];
+  const shieldNotices = actionNotices(catalog, items, { 'off-hand': shieldId }, 'idle', unarmedShieldPose);
+  assert.ok(shieldNotices.some(msg => msg.includes('128 帧等待')));
+
+  const armorPenPose = catalog.poses[catalog.skills.warrior['skill-armor-penetration-south']!];
+  const twoHandedNotices = actionNotices(catalog, items, defaults, 'skill-armor-penetration', armorPenPose);
+  assert.ok(twoHandedNotices.some(msg => msg.includes('双手武器')));
+});
+
+test('asset inventory covers all 30 pose templates, 12 warrior parts (with die-only weapon slices) and supplemental assets', () => {
+  assert.equal(warriorPoseIds(catalog, items).length, 117);
+  const templates = warriorPoseMatrix(catalog, items, skillNames);
+  assert.equal(templates.length, 30);
+  assert.ok(templates.some(t => t.category === '阵亡动作' && t.frames.south === 23));
+
+  const parts = warriorPartSpecs(catalog, items);
+  assert.equal(parts.length, 12);
+  assert.ok(!parts.some(p => p.part === 'cast-prop-1'));
+  const twoHanded = parts.find(p => p.part === 'two-handed')!;
+  assert.equal(twoHanded.sliceCount, 11);
+  assert.equal(twoHanded.dieOnlyCount, 2); // #8 and #10 appear only in die pose
+  assert.equal(twoHanded.slices[8].dieUsed && !twoHanded.slices[8].combatUsed, true);
+  assert.equal(twoHanded.slices[10].dieUsed && !twoHanded.slices[10].combatUsed, true);
+  const mainBlade = parts.find(p => p.part === 'main-blade')!;
+  assert.equal(mainBlade.dieOnlyCount, 1); // #5 appears only in die pose
+
+  const inventory = warriorAssetInventory(catalog, items, battle, storyClasses, menuPanels, statusHud, audio);
+  assert.equal(inventory.stanceCount, 27);
+  assert.equal(inventory.supplemental.skills.length, 15);
+  assert.equal(inventory.supplemental.buffIcons.length, 8);
+  assert.equal(inventory.supplemental.identity.length, 4);
+  assert.ok(inventory.supplemental.effects.length >= 30);
+  assert.ok(inventory.supplemental.sounds.length >= 10);
+
+  const md = formatInventoryMarkdown(inventory);
+  assert.ok(md.includes('# 狂战士完整动作与素材规格清单'));
+  assert.ok(md.includes('战斗阵亡'));
+  assert.ok(md.includes('无外观切片的装备槽'));
+});
+
 test('independent appearance overrides keep pose selection and original catalog intact', () => {
   const recipe = viewerRecipe(catalog, items, defaults, { 'coat-front': 'coat-front-style-2', 'head-front': null });
   assert.equal(recipe.variants['coat-front'], 'coat-front-style-2');
@@ -87,6 +213,7 @@ test('independent appearance overrides keep pose selection and original catalog 
   assert.ok(entries.some(piece => piece.part.part === 'coat-front'));
   const options = variantChoices(catalog, items, 'two-handed');
   assert.equal(options.length, 13);
+  assert.ok(options.every(choice => choice.warrior));
   assert.equal(new Set(options.map(choice => choice.id)).size, options.length);
   assert.throws(() => framePieces(catalog, { body: 'missing' }, pose.frames[0]), /外观款式缺失/);
 });

@@ -11,7 +11,10 @@
   --line:#d8d9d0;
   --muted:#707a72;
   --green:#285d4c;
-  --paper:#fafaf5
+  --paper:#fafaf5;
+  --warn-bg:#f8f1de;
+  --warn-border:#dcc283;
+  --warn-text:#6c4e12
 }
 *{
   box-sizing:border-box
@@ -47,12 +50,39 @@ button:disabled,select:disabled{
   display:none!important
 }
 .masthead{
-  padding:24px 30px 22px;
+  padding:20px 30px 18px;
   display:flex;
   align-items:flex-end;
   justify-content:space-between;
   border-bottom:1px solid var(--line);
   gap:24px
+}
+.masthead-right{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:10px;
+  max-width:58%
+}
+.view-tabs{
+  display:inline-flex;
+  gap:4px;
+  padding:3px;
+  border:1px solid var(--line);
+  border-radius:6px;
+  background:#e8e8df
+}
+.view-tabs button{
+  border:0;
+  background:transparent;
+  font-size:12px;
+  padding:6px 14px;
+  border-radius:4px;
+  color:var(--muted)
+}
+.view-tabs button[aria-selected=true]{
+  background:var(--green);
+  color:#fff
 }
 .eyebrow{
   display:block;
@@ -61,8 +91,8 @@ button:disabled,select:disabled{
   color:var(--muted)
 }
 h1{
-  font-size:27px;
-  letter-spacing:-.05em;
+  font-size:26px;
+  letter-spacing:-.04em;
   margin:6px 0 0;
   font-weight:650
 }
@@ -70,7 +100,7 @@ h1 span{
   font-size:14px;
   font-weight:400;
   letter-spacing:0;
-  margin-left:16px;
+  margin-left:14px;
   color:var(--muted)
 }
 h2{
@@ -84,15 +114,15 @@ p{
 #status{
   font-size:12px;
   color:var(--muted);
-  max-width:50%;
-  line-height:1.6
+  text-align:right;
+  line-height:1.5
 }
 #status.error{
   color:#b53d27
 }
 .workspace{
   display:grid;
-  grid-template-columns:205px minmax(420px,1fr) 286px;
+  grid-template-columns:205px minmax(420px,1fr) 290px;
   gap:1px;
   background:var(--line);
   min-height:calc(100vh - 99px)
@@ -120,7 +150,7 @@ p{
   display:grid;
   grid-template-columns:repeat(4,1fr);
   gap:4px;
-  margin-bottom:22px
+  margin-bottom:20px
 }
 .directions button{
   font-size:11px;
@@ -132,7 +162,7 @@ p{
   border-color:var(--green)
 }
 .action-group{
-  margin-bottom:20px
+  margin-bottom:18px
 }
 .action-group h3{
   font-size:11px;
@@ -147,7 +177,7 @@ p{
   text-align:left;
   border:0;
   background:transparent;
-  padding:8px 9px;
+  padding:7px 9px;
   font-size:12px;
   line-height:1.4
 }
@@ -160,12 +190,12 @@ p{
   box-shadow:inset 3px 0 #477359
 }
 .preview-heading{
-  padding:20px 24px;
+  padding:18px 24px 16px;
   display:flex;
   justify-content:space-between;
   gap:12px;
   align-items:center;
-  min-height:78px
+  min-height:74px
 }
 .preview-heading h2{
   font-size:20px;
@@ -175,8 +205,20 @@ p{
   color:var(--muted);
   font:10px ViewerMono,monospace;
   overflow-wrap:anywhere;
-  max-width:45%;
+  max-width:48%;
   text-align:right
+}
+.action-notices{
+  margin:0 22px 12px;
+  padding:8px 12px;
+  border:1px solid var(--warn-border);
+  background:var(--warn-bg);
+  color:var(--warn-text);
+  border-radius:4px;
+  font-size:11px;
+  line-height:1.6;
+  display:grid;
+  gap:4px
 }
 .stage{
   height:420px;
@@ -221,16 +263,26 @@ p{
 }
 .view-options{
   display:flex;
+  flex-wrap:wrap;
   align-items:center;
-  gap:16px;
+  gap:14px;
   padding:12px 22px
 }
 .view-options label{
   display:flex;
   align-items:center;
-  gap:8px;
+  gap:6px;
   font-size:11px;
   color:var(--muted)
+}
+.view-options label.toggle{
+  color:var(--green);
+  cursor:pointer;
+  user-select:none
+}
+.view-options input[type=checkbox]{
+  accent-color:var(--green);
+  margin:0
 }
 select{
   padding:6px;
@@ -246,7 +298,7 @@ select{
   grid-template-columns:34px 80px 34px 1fr auto;
   align-items:center;
   gap:8px;
-  padding:0 22px 20px;
+  padding:0 22px 18px;
   border-bottom:1px solid var(--line)
 }
 .transport button{
@@ -274,6 +326,57 @@ select{
   accent-color:var(--green);
   margin:6px 0 0
 }
+.keyframe-bar,.sound-bar{
+  grid-column:1/-1;
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:6px;
+  padding-top:4px
+}
+.kf-pill{
+  font:11px ViewerMono,"PingFang SC",sans-serif;
+  padding:3px 8px;
+  border-radius:999px;
+  border:1px solid var(--line);
+  background:#f1f2ea;
+  color:#34403b
+}
+.kf-pill.kind-swing{
+  border-color:#93b6d4;
+  background:#e8f2fa;
+  color:#1c4c70
+}
+.kf-pill.kind-strike{
+  border-color:#d89a8d;
+  background:#faeae6;
+  color:#8a2c19
+}
+.kf-pill.kind-charge{
+  border-color:#d1b479;
+  background:#f9f1df;
+  color:#734e11
+}
+.kf-pill.kind-effect,.kf-pill.kind-buff{
+  border-color:#99c0a6;
+  background:#e6f2e8;
+  color:#1f523a
+}
+.kf-pill.active{
+  box-shadow:0 0 0 2px var(--green)
+}
+.sound-bar{
+  font-size:11px;
+  color:var(--muted)
+}
+.sound-btn{
+  font:11px ViewerMono,"PingFang SC",sans-serif;
+  padding:3px 9px;
+  border-radius:4px;
+  background:#eef2eb;
+  border-color:#c6d3c7;
+  color:#244f40
+}
 .shortcuts{
   grid-column:1/-1;
   font-size:10px;
@@ -286,6 +389,23 @@ select{
   font-size:11px;
   line-height:1.7;
   color:var(--muted)
+}
+.effect-summary{
+  margin-top:10px;
+  padding:10px 12px;
+  border:1px solid #c7d9cc;
+  background:#eff5ef;
+  border-radius:4px;
+  font-size:11px;
+  line-height:1.65;
+  color:#254638
+}
+.effect-summary code{
+  font-family:ViewerMono,monospace;
+  font-size:10px;
+  background:#dce8de;
+  padding:1px 4px;
+  border-radius:3px
 }
 .pieces{
   display:grid;
@@ -361,9 +481,9 @@ select{
 }
 .weapons label{
   display:grid;
-  gap:6px;
+  gap:5px;
   font-size:12px;
-  margin-top:12px
+  margin-top:10px
 }
 .variants{
   margin-top:16px
@@ -409,6 +529,263 @@ select{
   opacity:.5;
   pointer-events:none
 }
+
+/* 职业素材总清单视图 */
+.inventory-view{
+  padding:20px 26px 40px;
+  display:grid;
+  gap:18px;
+  max-width:1680px;
+  margin:0 auto
+}
+.inventory-toolbar{
+  padding:20px 24px;
+  border:1px solid var(--line);
+  border-radius:6px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  flex-wrap:wrap
+}
+.inventory-toolbar h2{
+  font-size:19px;
+  margin:4px 0 6px
+}
+.export-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap
+}
+.export-actions button{
+  font-size:12px;
+  background:var(--green);
+  color:#fff;
+  border-color:var(--green)
+}
+.export-actions button:hover{
+  background:#1f4a3c
+}
+.inventory-body{
+  display:grid;
+  gap:18px
+}
+.inventory-section{
+  padding:20px 22px;
+  border:1px solid var(--line);
+  border-radius:6px
+}
+.sub-heading{
+  font-size:13px;
+  font-weight:600;
+  margin:18px 0 10px;
+  color:#34413c
+}
+.filter-pills{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin:12px 0
+}
+.filter-pills button{
+  font-size:11px;
+  padding:5px 10px;
+  border-radius:999px
+}
+.filter-pills button[aria-pressed=true]{
+  background:var(--green);
+  color:#fff;
+  border-color:var(--green)
+}
+.table-wrap{
+  overflow-x:auto;
+  border:1px solid var(--line);
+  border-radius:4px
+}
+.spec-table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:12px
+}
+.spec-table th,.spec-table td{
+  padding:8px 10px;
+  border-bottom:1px solid var(--line);
+  text-align:left;
+  vertical-align:top
+}
+.spec-table th{
+  background:#f0f1e8;
+  font-size:11px;
+  color:var(--muted);
+  white-space:nowrap
+}
+.spec-table td code{
+  font:10px ViewerMono,monospace;
+  color:var(--muted)
+}
+.spec-table tr:last-child td{
+  border-bottom:0
+}
+.spec-table button{
+  font-size:11px;
+  padding:4px 9px;
+  white-space:nowrap
+}
+.notice-strip{
+  margin:12px 0;
+  padding:10px 12px;
+  border-radius:4px;
+  background:#f1f2ea;
+  border:1px solid var(--line);
+  font-size:11px;
+  line-height:1.7;
+  color:#3d4944
+}
+.parts-catalog{
+  display:grid;
+  gap:12px;
+  margin-top:12px
+}
+.part-spec-card{
+  border:1px solid var(--line);
+  border-radius:5px;
+  padding:14px;
+  background:#fffefa
+}
+.part-spec-header{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:10px
+}
+.part-spec-header strong{
+  font-size:13px
+}
+.part-spec-meta{
+  font:11px ViewerMono,"PingFang SC",sans-serif;
+  color:var(--muted)
+}
+.slice-strip{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(108px,1fr));
+  gap:8px
+}
+.slice-mini{
+  border:1px solid var(--line);
+  border-radius:4px;
+  padding:6px;
+  background:var(--paper);
+  display:grid;
+  gap:4px;
+  font:10px/1.4 ViewerMono,"PingFang SC",sans-serif
+}
+.slice-mini.die-only{
+  border-color:var(--warn-border);
+  background:var(--warn-bg)
+}
+.slice-mini.unused{
+  opacity:.58
+}
+.slice-mini-img{
+  height:56px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#e6e7df;
+  border-radius:3px
+}
+.slice-mini-img img{
+  image-rendering:pixelated;
+  max-width:100%;
+  max-height:100%
+}
+.badge{
+  display:inline-block;
+  font-size:9px;
+  padding:1px 5px;
+  border-radius:3px;
+  background:#e2ebe3;
+  color:#244f40;
+  width:fit-content
+}
+.badge.warn{
+  background:#efe0b6;
+  color:#6c4e12
+}
+.badge.muted{
+  background:#e4e5dd;
+  color:var(--muted)
+}
+.asset-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+  gap:10px
+}
+.asset-grid.compact{
+  grid-template-columns:repeat(auto-fill,minmax(190px,1fr))
+}
+.asset-card,.skill-card,.effect-card,.sound-card{
+  border:1px solid var(--line);
+  border-radius:4px;
+  padding:10px;
+  background:#fffefa;
+  display:flex;
+  gap:10px;
+  align-items:center;
+  min-width:0
+}
+.asset-thumb{
+  width:56px;
+  height:56px;
+  flex-shrink:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#2c3330;
+  border-radius:4px;
+  overflow:hidden
+}
+.asset-thumb.light-bg{
+  background:#e6e7df
+}
+.asset-thumb img{
+  image-rendering:pixelated;
+  max-width:100%;
+  max-height:100%;
+  object-fit:contain
+}
+.asset-meta{
+  min-width:0;
+  display:grid;
+  gap:3px;
+  font-size:11px
+}
+.asset-meta code{
+  font:10px ViewerMono,monospace;
+  color:var(--muted);
+  overflow-wrap:anywhere
+}
+.skill-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(275px,1fr));
+  gap:10px
+}
+.effect-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(285px,1fr));
+  gap:10px
+}
+.sound-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+  gap:8px
+}
+.sound-card{
+  justify-content:space-between
+}
+
 @media(min-width:1500px){
   .workspace{
     grid-template-columns:230px minmax(420px,1fr) 330px
@@ -422,15 +799,12 @@ select{
 }
 @media(max-width:1050px){
   .workspace{
-    grid-template-columns:175px minmax(340px,1fr) 235px
+    grid-template-columns:175px minmax(340px,1fr) 240px
   }
   .actions-panel,.outfit-panel{
     padding:18px 12px
   }
-  .preview-heading{
-    padding:18px
-  }
-  .frame-inspector{
+  .preview-heading,.frame-inspector{
     padding:18px
   }
   .view-options{
@@ -442,13 +816,17 @@ select{
 }
 @media(max-width:800px){
   .masthead{
-    padding:20px;
+    padding:18px 20px;
     align-items:flex-start;
     flex-direction:column;
     gap:10px
   }
-  #status{
+  .masthead-right{
+    align-items:flex-start;
     max-width:100%
+  }
+  #status{
+    text-align:left
   }
   .workspace{
     grid-template-columns:160px minmax(0,1fr)
@@ -460,13 +838,6 @@ select{
     display:grid;
     grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
     gap:0 20px
-  }
-  .weapons{
-    display:flex;
-    gap:20px
-  }
-  .weapons label{
-    width:50%
   }
   .stage{
     height:340px
@@ -524,5 +895,8 @@ select{
   }
   .shortcuts{
     display:none
+  }
+  .inventory-view{
+    padding:12px
   }
 }

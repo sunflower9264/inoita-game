@@ -1,31 +1,32 @@
-# 狂战士动作与换装展示器
+# 狂战士动作与素材工作台
 
-独立开发页面，用游戏已有的狂战士动作和部件检查动画、换装与逐帧组合。
+独立开发页面，用游戏已有的狂战士动作、战斗特效、部件与界面素材检查动画、换装、逐帧组合及整套新职业素材规格。
 
 ## 入口与文件
 
 在仓库根目录使用现有 `npm run dev`，访问 `http://localhost:4003/tools/warrior-viewer/index.html`。4003 已经监听时直接使用当前服务。
 
-- `index.html` 与 `style.css` 提供动作目录、播放控制、换装选择和当前帧切片面板。
-- `main.ts` 加载内容与图集，通过 Phaser 绘制部件并连接页面交互。
-- `model.ts` 复用领域层的 `costumeRecipe`，处理装备组合、动作目录、外观覆盖、切片解析、范围计算、播放状态和姿势加载。
+- `index.html` 与 `style.css` 提供双视图工作台：「动作与切片检查」（动作目录、播放控制、关键帧与音效条、换装选择、当前帧切片面板）与「职业素材总清单」（跨架势动作模板表、12 部位全套切片图鉴、配套图标/特效/音效清单与规格导出）。
+- `main.ts` 加载内容、部件图集及按需加载的特效/UI 图集，通过 Phaser 绘制纸娃娃部件、同步叠加战斗特效与状态染色，并连接双视图交互。
+- `model.ts` 复用领域层的 `costumeRecipe`、`townMovementPoses` 与 `sharedWardrobePoses`，处理装备与佣兵预设、动作目录、关键帧与特效时间轴、边界提示、外观覆盖、切片解析、范围计算、播放状态、姿势加载和全职业素材账本。
 - `tsconfig.json` 为本目录浏览器 TypeScript 提供独立类型检查。
 
 ## 数据与绘制
 
-- 从同源 `/content/wardrobe.json`、`/content/items.json` 和 `/content/battle.json` 读取游戏数据，图像使用衣柜声明的两张现有部件图集。姿势加载同时支持完整 JSON 与开发服务拆分后的 `/content/wardrobe/poses/<id>.json`。
-- 初始为狂战士主角默认外观、基础双手剑外形、南向待机。动作目录跟随合法主副手组合，包含技能覆盖、普攻连段、双持、狂暴及独立的地图待机与行走。
-- 部位外观使用现有切片款式，按外观款式去重。上衣和双臂一起切换，下装和腿脚一起切换。暂停帧的切片列表保留原始绘制顺序、基准点、镜像、旋转和透明度。
-- 保留原始重复帧。Phaser 场景按动作帧率和播放速度推进，手动选帧暂停，继续播放从当前帧开始。切片单独查看时保留它在角色中的位置和变换。
+- 从同源 `/content/wardrobe.json`、`/content/items.json`、`/content/battle.json`、`/content/story-classes.json`、`/content/menu-panels.json`、`/content/status-hud.json`、`/content/companions.json` 和 `/content/audio.json` 读取游戏数据；纸娃娃使用衣柜两张部件图集，战斗特效按需读取 `public/assets/effect-atlas/` 无损 WebP 图集，图标与职业图读取 `menu-icons.webp` 与 `menu-ui-*.webp`。姿势加载同时支持完整 JSON 与开发服务拆分后的 `/content/wardrobe/poses/<id>.json`。
+- 初始为狂战士主角默认外观、基础双手剑外形、南向待机。动作目录跟随合法主副手组合，包含技能覆盖、普攻三段连击、双持、狂暴、独立的地图待机与行走，以及取自 `wardrobe.sharedPoses` 的 23 帧战斗阵亡动作 `die`（该字段仅供按需读取，不改变主游戏默认合成列表）。
+- 播放普攻、双持、狂暴和 9 个主动技能时，画布默认按游戏实际事件帧叠加对应挥砍刀光、技能特效与 Buff 外观染色（如「血之狂暴」红色脉冲、「狮子吼」蓝色着色），时间轴下方标出出刀光帧、命中帧、冲锋帧与震屏帧，并支持点击跳帧与音效试听。
+- 部位外观按「狂战士可用 / 其他职业与佣兵款式」分组；右侧支持切换狂战士角色预设（主角凯恩 + 狂战士佣兵/剧情伙伴）及主副手、盔甲、头盔、披风装备。
 - 页面覆盖值仅存在于当前展示器会话。修改游戏实际外观应回到内容源文件。异步加载结果安装前校验选择版本，错误显示具体动作或切片标识。
 
 ## 操作与验证
 
-选择左侧动作和朝向，右侧选择装备与外观。空格暂停或继续，左右键逐帧，拖动进度条定位；正在操作输入框或按钮时沿用控件原有按键行为。点击切片的「仅看此片」会暂停，点击「显示完整角色」恢复组合视图。原图以整数倍显示，大动作自动减小放大倍数以适应画布。
+切换顶部「动作与切片检查 / 职业素材总清单」视图。检查视图中空格暂停或继续，左右键逐帧，拖动进度条或点击关键帧标签定位；勾选「叠加特效 / 状态染色」切换表现层；点击切片的「仅看此片」会暂停，点击「显示完整角色」恢复组合视图。总清单视图支持按分类筛选全部 30 组去重动作模板并一键跳转预览，支持导出 Markdown / JSON 规格表。
 
 ```bash
-npm test -- tests/warrior-viewer.test.ts
+npm test -- tests/warrior-viewer.test.ts tests/wardrobe.test.ts
 npx tsc --noEmit -p tools/warrior-viewer/tsconfig.json
+npm run validate:content
 git diff --check
 ```
 
