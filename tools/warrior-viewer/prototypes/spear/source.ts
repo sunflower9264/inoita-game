@@ -91,11 +91,10 @@ function buildAngledSpear(options: {
   upright?: boolean;
   tasselMode?: 'hang' | 'trail' | 'sweep';
   bladeWidthScale?: number;
-  sweepGlint?: boolean;
 }): string[] {
   const {
     width, height, tipX, tipY, buttX, buttY, bladeLen, collarLen, buttLen,
-    sway, upright, tasselMode = 'hang', bladeWidthScale = 1, sweepGlint = false,
+    sway, upright, tasselMode = 'hang', bladeWidthScale = 1,
   } = options;
   const grid = blankGrid(width, height);
   const dx = buttX - tipX;
@@ -152,20 +151,6 @@ function buildAngledSpear(options: {
       else if (o > 0) ch = o < halfW * 0.62 ? 'L' : 'M';
       else ch = -o < halfW * 0.58 ? 'M' : 'S';
       put(grid, px, py, ch);
-    }
-  }
-
-  // 横扫峰值切片的刃缘流光拉丝（紧贴枪刃前沿形成弧形锋芒尾迹）
-  if (sweepGlint) {
-    for (let t = 0.5; t <= bladeLen + 2; t += 0.5) {
-      const f = t / (bladeLen + 2);
-      const curveOff = -2.2 - Math.sin(f * Math.PI) * 1.3;
-      const [gx, gy] = sampleAt(t, curveOff);
-      put(grid, gx, gy, f < 0.6 ? 'H' : 'L');
-      if (f > 0.15 && f < 0.72) {
-        const [gx2, gy2] = sampleAt(t, curveOff - 0.9);
-        put(grid, gx2, gy2, 'L');
-      }
     }
   }
 
@@ -369,14 +354,14 @@ export const SPEAR_SLICES: readonly PixelSliceSource[] = [
   },
   {
     id: 'spear-sweep-flat',
-    label: '横扫峰值长枪（带刃缘锋芒）',
+    label: '水平横扫长枪（红缨甩尾）',
     anchorX: 31,
-    anchorY: 8,
+    anchorY: 7,
     rows: buildAngledSpear({
-      width: 56, height: 19,
-      tipX: 2, tipY: 8, buttX: 53, buttY: 8,
-      bladeLen: 16, collarLen: 2.2, buttLen: 4.5,
-      sway: 0, tasselMode: 'sweep', bladeWidthScale: 1.08, sweepGlint: true,
+      width: 56, height: 17,
+      tipX: 2, tipY: 7, buttX: 53, buttY: 7,
+      bladeLen: 15, collarLen: 2.2, buttLen: 4.5,
+      sway: 0, tasselMode: 'sweep',
     }),
   },
   {
@@ -696,10 +681,10 @@ const SWEEP_SOUTH_FRAMES: readonly SpearKeyframeSpec[] = [
   { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 3, piece: 9, x: -6, y: -3, insertMode: 'front' },
   // F4：峰值横扫正前偏右（命中帧，180° 前弧贯扫！）
   { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 4, piece: 9, x: 6, y: -3, scaleX: -1, insertMode: 'front' },
-  // F5：横扫全展至右侧（带锋芒平扫切片）
+  // F5：横扫全展至右侧（水平甩缨平扫）
   { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 5, piece: 10, x: 10, y: -7, scaleX: -1, insertMode: 'front' },
-  // F6：右侧余势滞留
-  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 6, piece: 10, x: 9, y: -8, scaleX: -1, insertMode: 'front' },
+  // F6：右侧余势顺势微抬，自然衔接右斜收枪
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 6, piece: 2, x: 8, y: -9, scaleX: -1, insertMode: 'front' },
   // F7..F8：右肩回带
   { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 7, piece: 0, x: 5, y: -9, scaleX: -1, insertMode: 'front' },
   { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 8, piece: 11, x: 5, y: -11, scaleX: -1, insertMode: 'back' },

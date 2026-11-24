@@ -104,9 +104,9 @@
       "x": 390,
       "y": 2,
       "width": 56,
-      "height": 19,
+      "height": 17,
       "anchorX": 31,
-      "anchorY": 8
+      "anchorY": 7
     },
     "spear-sweep-high-diag": {
       "texture": "prototype-spear-parts",
@@ -14513,9 +14513,9 @@
           },
           {
             "part": "spear",
-            "piece": 10,
-            "x": 9,
-            "y": -8,
+            "piece": 2,
+            "x": 8,
+            "y": -9,
             "scaleX": -1,
             "scaleY": 1,
             "angle": 0,
