@@ -9,7 +9,7 @@
  * 4. spear-heavy-pierce  （5 帧）：狂龙穿心破 · 赤金炽白重刺破甲芒（带向后喷射破甲气锥）
  * 5. spear-slam-arc      （4 帧）：伏龙震 · 暗金土黄纵向重劈弧光 + 地面震裂冲击环
  * 第二批：
- * 6. spear-flower-spin   （6 帧）：虬龙扫暴阵前半段 · 左右两侧侧面竖椭圆双枪花（| 🧍 |）+ 高速残影风丝与红缨流光
+ * 6. spear-flower-spin   （6 帧）：虬龙扫暴阵前半段 · 真 3D 俯视投影左右双侧枪花（/ 🧍 \，近粗亮远细暗 + 红缨纵深流光）
  * 7. spear-gale-sweep    （6 帧）：虬龙扫暴阵主体 · 四向 180° 青白月牙狂风横扫枪芒
  * 8. spear-flurry-needles（8 帧）：连环点枪前两段 · 暴雨梨花奇偶交替扇形针芒幻影（带红缨残影）
  * 9. spear-flurry-finisher（4 帧）：连环点枪第三段 · 炽青加粗定音主刺芒 + 十字爆闪
@@ -973,131 +973,185 @@ function buildSlamArc(direction: 'west' | 'south' | 'north'): DirectionalEffectS
 }
 
 // ===========================================================================
-// 6. 虬龙扫暴阵前半段：左右两侧侧面竖椭圆双枪花（spear-flower-spin，6 帧，方案 C）
+// 6. 虬龙扫暴阵前半段：真 3D 俯视投影左右双侧枪花（spear-flower-spin，6 帧，/ 🧍 \）
 // ===========================================================================
 
-function drawSideFlowerWheel(
+function projectFlower3D(x: number, y: number, z: number): { sx: number; sy: number; depth: number } {
+  // 模拟艾诺迪亚 4 约 32°~35° 俯视镜头：位于 (0, +82, +132) 望向角色腰胸 (0, 0, 0)
+  const camY = 82;
+  const camZ = 132;
+  const fov = 152;
+  const invLen = 1 / Math.hypot(camY, camZ);
+  const fy = -camY * invLen;
+  const fz = -camZ * invLen;
+  const uy = -fz;
+  const uz = fy;
+  const ry = y - camY;
+  const rz = z - camZ;
+  const depth = ry * fy + rz * fz;
+  const camU = ry * uy + rz * uz;
+  const scale = fov / Math.max(30, depth);
+  return { sx: x * scale, sy: -camU * scale, depth };
+}
+
+function drawDisc(grid: string[][], x: number, y: number, radius: number, ch: string, overwrite = false): void {
+  const h = grid.length;
+  const w = grid[0].length;
+  const r = Math.ceil(radius);
+  const r2 = radius * radius;
+  const cx = Math.round(x);
+  const cy = Math.round(y);
+  for (let dy = -r; dy <= r; dy++) {
+    const gy = cy + dy;
+    if (gy < 0 || gy >= h) continue;
+    for (let dx = -r; dx <= r; dx++) {
+      if (dx * dx + dy * dy > r2 + 0.15) continue;
+      const gx = cx + dx;
+      if (gx < 0 || gx >= w) continue;
+      if (overwrite) grid[gy][gx] = ch;
+      else plotMax(grid, gx, gy, ch);
+    }
+  }
+}
+
+function draw3DSideFlowerWheel(
   base: string[][],
   add: string[][],
-  wx: number,
-  wy: number,
-  rx: number,
-  ry: number,
+  cx: number,
+  cy: number,
+  sideX: number,
+  radius: number,
   rotDeg: number,
   isSpearHead: boolean,
   isHit: boolean,
   isFade: boolean,
-  sideSign: -1 | 1,
   frameIdx: number,
 ): void {
-  const h = base.length;
-  const w = base[0].length;
-  const mainThick = isFade ? 1.15 : isHit ? (isSpearHead ? 2.55 : 2.1) : (isSpearHead ? 2.15 : 1.75);
-  const arcSpan = isFade ? 82 : isHit ? 152 : 132;
+  // 真实 3D 垂直圆环（位于 Y-Z 平面 X = sideX，近镜前缘微微外展形成自然 / 🧍 \ 俯视透视）
+  const coneFlare = sideX < 0 ? 3.2 : -3.2;
+  const steps = 260;
+  const mainSpan = isFade ? 86 : isHit ? 162 : 142;
+  const subSpan = isFade ? 68 : isHit ? 124 : 104;
+  const tasselSpan = isFade ? 58 : isHit ? 116 : 98;
 
-  // 1. 侧面窄竖椭圆双股高速旋转银锋（竖高横窄 3:1，呈现明显侧面立体翻滚感！）
-  drawArcCurve(base, add, wx, wy, rx, ry, rotDeg - arcSpan, rotDeg, mainThick, !isFade, 220);
-  drawArcCurve(base, add, wx, wy, rx, ry, rotDeg + 180 - arcSpan * 0.84, rotDeg + 180, mainThick * 0.78, false, 200);
-
-  // 2. 内层两股错位 8 字上下翻卷风丝（拉出饱满的侧面枪花立体涡流，绝不显得像生硬空心椭圆框）
-  if (!isFade) {
-    drawArcCurve(base, add, wx, wy, rx * 0.62, ry * 0.78, rotDeg - 125, rotDeg + 18, 1.1, true, 160);
-    drawArcCurve(base, add, wx, wy, rx * 0.42, ry * 0.56, rotDeg + 65, rotDeg + 195, 0.85, false, 120);
+  type Sample = {
+    depth: number;
+    sx: number;
+    sy: number;
+    qx: number;
+    qy: number;
+    rel: number;
+  };
+  const samples: Sample[] = [];
+  for (let s = 0; s < steps; s++) {
+    const deg = (s / steps) * 360;
+    const rad = (deg * Math.PI) / 180;
+    const sinR = Math.sin(rad);
+    const cosR = Math.cos(rad);
+    const p = projectFlower3D(sideX + coneFlare * cosR, radius * sinR, radius * cosR);
+    const flutter = Math.sin((deg * Math.PI) / 60 + frameIdx * 1.4) * 0.9;
+    const q = projectFlower3D(
+      sideX + coneFlare * cosR * 0.85,
+      (radius * 0.84 + flutter) * sinR,
+      (radius * 0.84 + flutter) * cosR,
+    );
+    const rel = (((rotDeg - deg) % 360) + 360) % 360;
+    samples.push({ depth: p.depth, sx: cx + p.sx, sy: cy + p.sy, qx: cx + q.sx, qy: cy + q.sy, rel });
   }
 
-  // 3. 枪尖侧：紧贴竖椭圆高速上下甩飞的醒目朱红红缨流光带！
-  if (isSpearHead) {
-    const tasselSteps = 120;
-    const tasselSpan = isFade ? 54 : isHit ? 112 : 94;
-    for (let s = 0; s <= tasselSteps; s++) {
-      const f = s / tasselSteps;
-      const deg = rotDeg - tasselSpan * (1 - f) - 6;
-      const rad = (deg * Math.PI) / 180;
-      const flutter = Math.sin(f * Math.PI * 3.5 + frameIdx * 1.4) * 0.85;
-      const taper = Math.sin(Math.pow(f, 0.72) * Math.PI);
-      const hw = Math.max(0.42, (isFade ? 0.95 : 1.55) * taper);
-      const ca = Math.cos(rad);
-      const sa = Math.sin(rad);
-      for (let o = -hw; o <= hw; o += 0.35) {
-        const px = wx + (rx * 0.82 + flutter * 0.5 + o * 0.72) * ca;
-        const py = wy + (ry * 0.86 + flutter + o) * sa;
-        const norm = Math.abs(o) / Math.max(0.42, hw);
-        const ch = norm < 0.38 && f > 0.35 ? 'P' : norm < 0.76 && f > 0.14 ? 'R' : 'r';
-        const gx = Math.round(px);
-        const gy = Math.round(py);
-        if (gy >= 0 && gy < h && gx >= 0 && gx < w) {
-          if (base[gy][gx] !== 'W') base[gy][gx] = ch;
-          if (add[gy][gx] !== 'W') add[gy][gx] = ch;
-        }
+  // 严格按深度由远及近排序绘制（远后半环退暗、近前半环高亮清晰盖在前方！）
+  samples.sort((a, b) => b.depth - a.depth);
+  const dMin = 128;
+  const dMax = 178;
+
+  for (const sp of samples) {
+    const ff = Math.max(0, Math.min(1, (dMax - sp.depth) / (dMax - dMin))); // 0 = 远景后弧，1 = 近景前弧
+    const inMain = sp.rel < mainSpan;
+    const inSub = sp.rel >= 180 && sp.rel < 180 + subSpan;
+    if (inMain || inSub) {
+      const span = inMain ? mainSpan : subSpan;
+      const local = inMain ? sp.rel : sp.rel - 180;
+      const taper = Math.sin((1 - local / span) * Math.PI);
+      const thick = (isFade ? 0.45 : 0.55) + (isFade ? 0.65 : (inMain ? 1.55 : 1.05)) * ff * (0.45 + 0.75 * taper);
+
+      // 近景粗亮炽白/亮银，远景细暗冷蓝退远，一眼看出 3D 纵深！
+      let baseCh: string;
+      let addCh: string | null;
+      if (inMain) {
+        if (ff > 0.56) { baseCh = taper > 0.4 ? 'W' : 'L'; addCh = 'W'; }
+        else if (ff > 0.30) { baseCh = 'C'; addCh = 'L'; }
+        else { baseCh = 'B'; addCh = 'D'; }
+      } else {
+        if (ff > 0.56) { baseCh = 'C'; addCh = 'C'; }
+        else if (ff > 0.30) { baseCh = 'B'; addCh = 'D'; }
+        else { baseCh = 'D'; addCh = null; }
       }
+
+      // 外边冷暗描边 + 亮心双笔触
+      if (thick > 1.15 && ff > 0.4) {
+        drawDisc(base, sp.sx, sp.sy, thick, inMain ? 'C' : 'B', false);
+        drawDisc(base, sp.sx, sp.sy, Math.max(0.5, thick * 0.52), baseCh, ff > 0.55);
+      } else {
+        drawDisc(base, sp.sx, sp.sy, thick * 0.85, baseCh, ff > 0.65);
+      }
+      if (addCh) drawDisc(add, sp.sx, sp.sy, Math.max(0.45, thick * 0.62), addCh, false);
+    }
+
+    // 枪尖侧：随 3D 圆环前后明暗变化的醒目朱红红缨流光带！
+    if (isSpearHead && sp.rel < tasselSpan) {
+      const tf = 1 - sp.rel / tasselSpan;
+      const taper = Math.sin(Math.pow(tf, 0.72) * Math.PI);
+      const rThick = (isFade ? 0.4 : 0.45) + 1.15 * ff * taper;
+      const rCh = ff > 0.52 && tf > 0.38 ? 'P' : ff > 0.30 ? 'R' : 'r';
+      drawDisc(base, sp.qx, sp.qy, rThick, rCh, ff > 0.48);
+      if (ff > 0.35) drawDisc(add, sp.qx, sp.qy, Math.max(0.45, rThick * 0.75), rCh, false);
     }
   }
 
-  // 4. F2 / F4 命中帧：外侧竖向破风切刃 + 打击火星（明确打伤人物左侧与右侧敌人）
+  // F2 / F4 命中帧：在最靠前外缘（z = +radius 处）爆出左右双侧横向打击火星与外切亮锋
   if (isHit) {
-    const outerA0 = sideSign < 0 ? 128 : -52;
-    const outerA1 = sideSign < 0 ? 232 : 52;
-    drawArcCurve(base, add, wx, wy, rx + 3.5, ry + 2.5, outerA0, outerA1, 1.2, true, 120);
-    const midDeg = sideSign < 0 ? 180 : 0;
-    const midRad = (midDeg * Math.PI) / 180;
-    plotSpark(base, add, wx + (rx + 3) * Math.cos(midRad), wy, isSpearHead ? 'W' : 'g', plotMax, true);
-    plotSpark(base, add, wx + (rx + 1) * Math.cos(midRad), wy - ry * 0.58, 'L', plotMax, false);
-    plotSpark(base, add, wx + (rx + 1) * Math.cos(midRad), wy + ry * 0.58, isSpearHead ? 'g' : 'C', plotMax, false);
+    const frontMid = projectFlower3D(sideX + coneFlare * 1.15, 0, radius + 3);
+    const frontHi = projectFlower3D(sideX + coneFlare, radius * 0.58, radius * 0.82);
+    const frontLo = projectFlower3D(sideX + coneFlare, -radius * 0.58, radius * 0.82);
+    plotSpark(base, add, cx + frontMid.sx, cy + frontMid.sy, isSpearHead ? 'W' : 'g', plotMax, true);
+    plotSpark(base, add, cx + frontHi.sx, cy + frontHi.sy, 'L', plotMax, false);
+    plotSpark(base, add, cx + frontLo.sx, cy + frontLo.sy, isSpearHead ? 'g' : 'C', plotMax, false);
   }
 
-  // 5. 领先端点闪光（枪尖炽白星闪 / 枪尾淡金铁镦闪点）
+  // 旋转领先尖端高光点（位于前侧时放大闪烁，位于远后侧时微弱）
   const leadRad = (rotDeg * Math.PI) / 180;
-  plotSpark(base, add, wx + rx * Math.cos(leadRad), wy + ry * Math.sin(leadRad), isSpearHead ? 'W' : 'g', plotMax, !isFade);
+  const leadP = projectFlower3D(sideX + coneFlare * Math.cos(leadRad), radius * Math.sin(leadRad), radius * Math.cos(leadRad));
+  const leadFront = leadP.depth < 152;
+  plotSpark(base, add, cx + leadP.sx, cy + leadP.sy, isSpearHead ? 'W' : 'g', plotMax, !isFade && leadFront);
 }
 
 function buildFlowerSpin(direction: 'west' | 'south' | 'north'): DirectionalEffectSource {
-  // 116×94：角色脚底 (0,0) 在 (58, 58)，腰胸中心 (58, 46)（y = -12）；
-  // 左侧侧面枪花轮紧贴左翼 x = -31px (27, 46)，右侧在 x = +31px (89, 46)，
-  // 内缘自然贴近双手、外缘横扫至 ±45px 覆盖敌人，彻底去掉中间生硬横杠，配合虚化枪身呈现行云流水的 | 🧍 | 侧面双枪花！
-  const w = 116;
-  const h = 94;
-  const ox = 58;
-  const oy = 58;
+  // 112×98：角色脚底 (0,0) 在 (56, 60)，3D 旋转中心落在腰胸 (56, 46)（y = -14）
+  const w = 112;
+  const h = 98;
+  const ox = 56;
+  const oy = 60;
+  const cx = 56;
   const cy = 46;
-  const lx = 27; // -31px 左侧
-  const rxC = 89; // +31px 右侧
   const baseFrames: EffectFrameGrid[] = [];
   const addFrames: EffectFrameGrid[] = [];
-  const scales = [0.85, 0.98, 1.04, 1.00, 1.06, 1.10];
+  const scales = [0.86, 0.98, 1.04, 1.00, 1.06, 1.10];
 
   for (let i = 0; i < 6; i++) {
     const base = blank(w, h);
     const add = blank(w, h);
-    const sc = scales[i];
-    const ellRx = 13.0 * sc;
-    const ellRy = 31.0 * sc;
+    const radius = 28.0 * scales[i];
     const isHit = i === 2 || i === 4;
     const isFade = i === 5;
-    // F0..F2 枪尖在左侧、枪尾在右侧；F3..F5 翻腕互换（枪尖在右侧、枪尾在左侧），与虚化枪身 100% 咬合！
+    // F0..F2 枪尖红缨在左、枪尾冷银在右；F3..F5 翻腕互换（枪尖在右、枪尾在左）
     const headOnLeft = i <= 2;
-    const leftRot = -70 + i * 105;
-    const rightRot = 110 + i * 105; // 与左侧反相上下交替运动！
+    const leftRot = -50 + i * 95;
+    const rightRot = 130 + i * 95; // 与左侧反相上下交替运动
 
-    // 1. 仅在左右枪花内侧边缘加极淡的短促风尾过渡，彻底消除“哑铃/H 形硬横杠”，让中间角色干爽自然
-    if (!isFade) {
-      const tilt = i === 2 || i === 4 ? 0 : (i % 2 === 0 ? -4 : 4);
-      for (const side of [-1, 1] as const) {
-        for (let s = 0; s <= 12; s++) {
-          const f = s / 12;
-          const px = (side < 0 ? lx + 5 : rxC - 5) - side * f * 10;
-          const py = cy + side * tilt * (1 - f * 0.6);
-          const ch = f < 0.45 ? 'B' : 'd';
-          plotMax(base, px, py, ch);
-          if (f < 0.6) plotMax(add, px, py, 'D');
-        }
-      }
-    }
-
-    // 2. 左侧侧面竖椭圆枪花（| 左侧）
-    drawSideFlowerWheel(base, add, lx, cy, ellRx, ellRy, leftRot, headOnLeft, isHit, isFade, -1, i);
-
-    // 3. 右侧侧面竖椭圆枪花（右侧 |）
-    drawSideFlowerWheel(base, add, rxC, cy, ellRx, ellRy, rightRot, !headOnLeft, isHit, isFade, 1, i);
+    // 左侧 3D 透视枪花轮（/ 倾角）
+    draw3DSideFlowerWheel(base, add, cx, cy, -30.0, radius, leftRot, headOnLeft, isHit, isFade, i);
+    // 右侧 3D 透视枪花轮（\ 倾角）
+    draw3DSideFlowerWheel(base, add, cx, cy, +30.0, radius, rightRot, !headOnLeft, isHit, isFade, i);
 
     baseFrames.push({ id: `spear-flower-spin-${direction}-base-${i}`, rows: base.map(r => r.join('')) });
     addFrames.push({ id: `spear-flower-spin-${direction}-add-${i}`, rows: add.map(r => r.join('')) });

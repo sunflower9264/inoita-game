@@ -452,11 +452,11 @@ function run(): void {
       'skill-whirl-sweep': {
         cycleFrames: 16,
         cues: [
-          { effect: 'spear-flower-spin', startFrame: 0, variant: 'facing', placement: 'above-characters', source: '左右侧面双竖枪花' },
+          { effect: 'spear-flower-spin', startFrame: 0, variant: 'facing', placement: 'above-characters', source: '真 3D 透视双侧枪花' },
           { effect: 'spear-gale-sweep', startFrame: 7, variant: 'facing', placement: 'above-characters', source: '180° 青白狂风枪芒' },
         ],
         markers: [
-          { frame: 0, kind: 'swing', label: '双侧侧面舞花（残影虚化）' },
+          { frame: 0, kind: 'swing', label: '双侧 3D 透视舞花' },
           { frame: 2, kind: 'strike', label: '枪花第一段命中（左右双侧）' },
           { frame: 4, kind: 'strike', label: '枪花第二段命中（左右互换）' },
           { frame: 7, kind: 'swing', label: '顺势抽把 · 180° 狂风大扫' },
