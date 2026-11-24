@@ -510,14 +510,13 @@ function run(): void {
         cycleFrames: 12,
         cues: [
           { effect: 'spear-heavy-pierce', startFrame: 4, variant: 'facing', placement: 'above-characters', source: '赤金破甲重刺' },
-          { effect: 'impact-burst', startFrame: 5, variant: 'default', placement: 'above-characters', onTarget: true, targetDistancePx: 50, source: '目标破甲爆花' },
+          { effect: 'impact-burst', startFrame: 5, variant: 'default', placement: 'above-characters', onTarget: true, targetDistancePx: 42, source: '目标破甲爆花' },
         ],
         markers: [
-          { frame: 4, kind: 'charge', label: '前探突刺 + 出破甲芒' },
+          { frame: 4, kind: 'swing', label: '原地贯刺 + 出破甲芒' },
           { frame: 5, kind: 'strike', label: '穿心重刺命中' },
         ],
         shakeFrames: [5],
-        afterimages: { frames: [4, 5, 6], opacity: 0.48, distancesPx: [7, 14] },
         sounds: ['Wa_Anger_Rush', 'Weapon_TwoHand_Sword_Critical'],
       },
       'skill-whirl-sweep': {
@@ -558,7 +557,7 @@ function run(): void {
         cues: [
           { effect: 'spear-flurry-needles', startFrame: 1, variant: 'facing', placement: 'above-characters', source: '暴雨梨花扇形针芒' },
           { effect: 'spear-flurry-finisher', startFrame: 11, variant: 'facing', placement: 'above-characters', source: '定音主刺芒 + 十字闪' },
-          { effect: 'impact-burst', startFrame: 12, variant: 'default', placement: 'above-characters', onTarget: true, targetDistancePx: 58, source: '第三刺定音爆闪' },
+          { effect: 'impact-burst', startFrame: 12, variant: 'default', placement: 'above-characters', onTarget: true, targetDistancePx: 53, source: '第三刺定音爆闪' },
         ],
         markers: [
           { frame: 2, kind: 'strike', label: '第一段乱刺（30%）' },
@@ -599,7 +598,6 @@ function run(): void {
           { frame: 11, kind: 'strike', label: '贯穿 4 目标峰值结算' },
         ],
         shakeFrames: [10, 11],
-        afterimages: { frames: [9, 10, 11], opacity: 0.44, distancesPx: [6, 12] },
         sounds: ['Wa_Storm', 'Wa_Titan_Attack'],
       },
       'skill-focus-edge': {

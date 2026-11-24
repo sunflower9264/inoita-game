@@ -1959,20 +1959,20 @@ export const SPEAR_EFFECT_SOURCES: readonly DirectionalEffectSource[] = [
   buildBasicLift('south'),
   buildBasicLift('north'),
 
-  // 4. 狂龙穿心破 · 赤金炽白重刺破甲芒（5 帧，对齐 +10px 前探身位）
+  // 4. 狂龙穿心破 · 赤金炽白重刺破甲芒（5 帧，贴紧原地出枪身位）
   buildDirectionalLinearEffect({
     effectId: 'spear-heavy-pierce', direction: 'west', frameCount: 5,
-    width: 104, height: 42, originPx: [96, 32], startAlongPx: 74, axisLength: 68, centerCrossPx: 21,
+    width: 104, height: 42, originPx: [96, 32], startAlongPx: 84, axisLength: 68, centerCrossPx: 21,
     basePalette: HEAVY_BASE_PALETTE, addPalette: HEAVY_ADD_PALETTE, drawer: drawHeavyPierceAxis,
   }),
   buildDirectionalLinearEffect({
     effectId: 'spear-heavy-pierce', direction: 'south', frameCount: 5,
-    width: 42, height: 102, originPx: [24, 6], startAlongPx: 25, axisLength: 70, centerCrossPx: 21,
+    width: 42, height: 102, originPx: [24, 6], startAlongPx: 18, axisLength: 70, centerCrossPx: 21,
     basePalette: HEAVY_BASE_PALETTE, addPalette: HEAVY_ADD_PALETTE, drawer: drawHeavyPierceAxis,
   }),
   buildDirectionalLinearEffect({
     effectId: 'spear-heavy-pierce', direction: 'north', frameCount: 5,
-    width: 42, height: 110, originPx: [21, 108], startAlongPx: 70, axisLength: 66, centerCrossPx: 21,
+    width: 42, height: 110, originPx: [21, 108], startAlongPx: 78, axisLength: 66, centerCrossPx: 21,
     basePalette: HEAVY_BASE_PALETTE, addPalette: HEAVY_ADD_PALETTE, drawer: drawHeavyPierceAxis,
   }),
 
@@ -1996,15 +1996,15 @@ export const SPEAR_EFFECT_SOURCES: readonly DirectionalEffectSource[] = [
   buildFlurryNeedles('south'),
   buildFlurryNeedles('north'),
 
-  // 9. 连环点枪第三段 · 炽青加粗定音主刺芒 + 十字爆闪（4 帧，对齐 +4px 微踏）
+  // 9. 连环点枪第三段 · 炽青加粗定音主刺芒 + 十字爆闪（4 帧，贴紧原地出枪身位）
   buildDirectionalLinearEffect({
     effectId: 'spear-flurry-finisher', direction: 'west', frameCount: 4,
-    width: 98, height: 40, originPx: [90, 31], startAlongPx: 74, axisLength: 72, centerCrossPx: 20,
+    width: 98, height: 40, originPx: [90, 31], startAlongPx: 78, axisLength: 72, centerCrossPx: 20,
     basePalette: BEAM_BASE_PALETTE, addPalette: BEAM_ADD_PALETTE, drawer: drawFlurryFinisherAxis,
   }),
   buildDirectionalLinearEffect({
     effectId: 'spear-flurry-finisher', direction: 'south', frameCount: 4,
-    width: 40, height: 96, originPx: [23, 6], startAlongPx: 22, axisLength: 72, centerCrossPx: 20,
+    width: 40, height: 96, originPx: [23, 6], startAlongPx: 18, axisLength: 72, centerCrossPx: 20,
     basePalette: BEAM_BASE_PALETTE, addPalette: BEAM_ADD_PALETTE, drawer: drawFlurryFinisherAxis,
   }),
   buildDirectionalLinearEffect({
@@ -2013,15 +2013,15 @@ export const SPEAR_EFFECT_SOURCES: readonly DirectionalEffectSource[] = [
     basePalette: BEAM_BASE_PALETTE, addPalette: BEAM_ADD_PALETTE, drawer: drawFlurryFinisherAxis,
   }),
 
-  // 10. 万圣龙王破（选项 A）· 同源 1.6 倍加长螺旋龙枪芒（7 帧，对齐 +6px 前冲，覆盖 4 目标）
+  // 10. 万圣龙王破（选项 A）· 同源 1.6 倍加长螺旋龙枪芒（7 帧，贴紧原地出枪身位，覆盖 4 目标）
   buildDirectionalLinearEffect({
     effectId: 'spear-sovereign-beam', direction: 'west', frameCount: 7,
-    width: 158, height: 48, originPx: [148, 35], startAlongPx: 132, axisLength: 130, centerCrossPx: 24,
+    width: 158, height: 48, originPx: [148, 35], startAlongPx: 136, axisLength: 130, centerCrossPx: 24,
     basePalette: BEAM_BASE_PALETTE, addPalette: BEAM_ADD_PALETTE, drawer: drawSovereignBeamAxis,
   }),
   buildDirectionalLinearEffect({
     effectId: 'spear-sovereign-beam', direction: 'south', frameCount: 7,
-    width: 48, height: 156, originPx: [27, 6], startAlongPx: 22, axisLength: 130, centerCrossPx: 24,
+    width: 48, height: 156, originPx: [27, 6], startAlongPx: 18, axisLength: 130, centerCrossPx: 24,
     basePalette: BEAM_BASE_PALETTE, addPalette: BEAM_ADD_PALETTE, drawer: drawSovereignBeamAxis,
   }),
   buildDirectionalLinearEffect({

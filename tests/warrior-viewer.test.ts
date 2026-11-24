@@ -393,7 +393,7 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
       assert.ok(!atk3Tl.effects.some(e => e.effect === 'state-stun'));
 
       const pierceTl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, 'skill-dragon-pierce', facing, audio, proto.actionTimelines);
-      assert.deepEqual(pierceTl.afterimages?.frames, [4, 5, 6]);
+      assert.equal(pierceTl.afterimages, undefined, 'stationary dragon-pierce should not draw dash afterimages');
       assert.deepEqual(pierceTl.shakeFrames, [5]);
       assert.ok(pierceTl.effects.some(e => e.effect === 'spear-heavy-pierce' && e.variant === facing));
       assert.ok(pierceTl.effects.some(e => e.effect === 'impact-burst' && e.onTarget));
@@ -424,7 +424,7 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
 
       const sovTl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, 'skill-sovereign-pierce', facing, audio, proto.actionTimelines);
       assert.ok(sovTl.effects.some(e => e.effect === 'spear-sovereign-beam' && e.variant === facing));
-      assert.deepEqual(sovTl.afterimages?.frames, [9, 10, 11]);
+      assert.equal(sovTl.afterimages, undefined, 'stationary sovereign-pierce should not draw dash afterimages');
       assert.deepEqual(sovTl.shakeFrames, [10, 11]);
 
       const focusTl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, 'skill-focus-edge', facing, audio, proto.actionTimelines);
@@ -453,6 +453,34 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
         const pieces = framePieces(mergedCatalog, recipe.variants, frame);
         assert.ok(pieces.filter(p => p.part.part === 'coat-front').length >= 3, `${poseId} F${fi} (${armorId}) 应含胸甲与双臂`);
       }
+    }
+  }
+
+  // 防回归：狂龙穿心破、虬龙扫暴阵、连环点枪、万圣龙王破四招为纯原地释放，全四向脚部（coat-back）中心不滑步位移。
+  const stationarySkills = ['skill-dragon-pierce', 'skill-whirl-sweep', 'skill-flurry-thrust', 'skill-sovereign-pierce'];
+  const defaultSpearRecipe = viewerRecipe(mergedCatalog, mergedItems, { 'main-hand': proto.weaponId }, {});
+  for (const skillKey of stationarySkills) {
+    for (const facing of directions) {
+      const poseId = proto.stancePoses[`${skillKey}-${facing}`];
+      const pose = mergedCatalog.poses[poseId];
+      assert.ok(pose, `missing stationary pose ${poseId}`);
+      const sign = pose.mirrorX ? -1 : 1;
+      const centers: { cx: number; botY: number }[] = [];
+      for (const frame of pose.frames) {
+        const leg = framePieces(mergedCatalog, defaultSpearRecipe.variants, frame).find(p => p.part.part === 'coat-back');
+        assert.ok(leg, `${poseId} missing coat-back`);
+        const ax = leg.part.scaleX < 0 ? leg.sprite.width - leg.sprite.anchorX : leg.sprite.anchorX;
+        const left = leg.part.x - ax;
+        const right = left + leg.sprite.width;
+        const cx = ((left + right) / 2) * sign;
+        const botY = leg.part.y - leg.sprite.anchorY + leg.sprite.height;
+        assert.ok(Math.abs(cx) <= 2.5, `${poseId} foot center drifted horizontally: ${cx}`);
+        centers.push({ cx, botY });
+      }
+      const dxSpan = Math.max(...centers.map(c => c.cx)) - Math.min(...centers.map(c => c.cx));
+      const dySpan = Math.max(...centers.map(c => c.botY)) - Math.min(...centers.map(c => c.botY));
+      assert.ok(dxSpan <= 3.5, `${poseId} horizontal foot drift too large: ${dxSpan}`);
+      assert.ok(dySpan <= 4, `${poseId} vertical foot drift too large: ${dySpan}`);
     }
   }
 });
