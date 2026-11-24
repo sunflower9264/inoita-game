@@ -12,13 +12,15 @@ import { backdropApproximation, layerDraw } from '../../src/rendering/effect-col
 import {
   PART_NAMES, Playback, PoseRepository, WARRIOR_CORE_PARTS, actionChoices, actionNotices,
   actionTimeline, activeEffectsAtFrame, armorChoices, compatibleOffhands, effectOverlayBounds,
-  facingVector, formatInventoryMarkdown, framePieces, mergePrototypeWeapon, poseBounds,
-  variantChoices, viewerRecipe, warriorAssetInventory, warriorPoseIds, warriorPresets, weaponChoices,
+  facingVector, formatInventoryMarkdown, framePieces, mergePrototypeBattle, mergePrototypeWeapon,
+  poseBounds, variantChoices, viewerRecipe, warriorAssetInventory, warriorPoseIds, warriorPresets,
+  weaponChoices,
 } from './model.ts';
 import type {
   ActionChoice, ActionTimeline, ActiveEffectLayer, AudioCatalogLite, CompanionCatalogLite,
   CompanionPreset, EquipmentSelection, FramePiece, MenuPanelsLite, PoseBounds,
-  PrototypeWeaponBundle, StatusHudLite, StoryClassesLite, VariantOverrides, WarriorAssetInventory,
+  PrototypeActionTimelineSpec, PrototypeWeaponBundle, StatusHudLite, StoryClassesLite,
+  VariantOverrides, WarriorAssetInventory,
 } from './model.ts';
 
 interface AtlasJsonFrame {
@@ -91,7 +93,10 @@ let audioCatalog: AudioCatalogLite;
 let repository: PoseRepository;
 let skillNames: Record<string, string> = {};
 let prototypeLabels: Record<string, string> = {};
+let prototypeTimelines: Record<string, PrototypeActionTimelineSpec> = {};
+let prototypeEffectSheet: PrototypeWeaponBundle['effectSheet'];
 let defaultWeaponId = '';
+const prototypeEffectFrames = new Map<string, { textureKey: string; frames: string[] }>();
 let presets: CompanionPreset[] = [];
 let appearanceId: string | undefined;
 let equipment: EquipmentSelection = {};
@@ -255,6 +260,12 @@ class CharacterScene extends Phaser.Scene {
     for (const [key, piece] of Object.entries(catalog.sprites)) {
       this.textures.get(piece.texture).add(key, 0, piece.x, piece.y, piece.width, piece.height);
     }
+    if (prototypeEffectSheet && this.textures.exists(prototypeEffectSheet.texture.key)) {
+      const texture = this.textures.get(prototypeEffectSheet.texture.key);
+      for (const [frameKey, rect] of Object.entries(prototypeEffectSheet.frames)) {
+        texture.add(frameKey, 0, rect.x, rect.y, rect.width, rect.height);
+      }
+    }
     for (const atlas of atlasStore.values()) {
       if (!this.textures.exists(atlas.key)) this.textures.addAtlas(atlas.key, atlas.image, atlas.data);
     }
@@ -287,19 +298,33 @@ class CharacterScene extends Phaser.Scene {
         ? dir.y * 28
         : (cue.placement === 'attached' && cue.attachmentPoint !== 'feet' ? effectAnchor.y : 0);
       for (const layer of clip.layers) {
+        let textureKey: string | undefined;
+        let frameName: string | undefined;
         const ref = EFFECT_ATLAS_BY_FILE[layer.file]?.[effectFrame];
-        if (!ref) continue;
-        const page = EFFECT_ATLAS_PAGES[ref.page];
-        if (!page || !this.textures.exists(page.key)) continue;
+        if (ref) {
+          const page = EFFECT_ATLAS_PAGES[ref.page];
+          if (page && this.textures.exists(page.key)) {
+            textureKey = page.key;
+            frameName = ref.frame;
+          }
+        } else {
+          const protoRef = prototypeEffectFrames.get(layer.file);
+          const protoFrame = protoRef?.frames[effectFrame];
+          if (protoRef && protoFrame && this.textures.exists(protoRef.textureKey)) {
+            textureKey = protoRef.textureKey;
+            frameName = protoFrame;
+          }
+        }
+        if (!textureKey || !frameName) continue;
         let sprite = pool[used];
         if (!sprite) {
-          sprite = this.add.image(0, 0, page.key, ref.frame);
+          sprite = this.add.image(0, 0, textureKey, frameName);
           container.add(sprite);
           pool.push(sprite);
         }
         const draw = layerDraw(layer);
         const mode = blendModeOf(draw.kind === 'backdrop' ? backdropApproximation(layer.operations) : draw.blend);
-        sprite.setTexture(page.key, ref.frame)
+        sprite.setTexture(textureKey, frameName)
           .setOrigin(clip.originX, clip.originY)
           .setPosition(baseX, baseY)
           .setScale(clip.mirrorX ? -1 : 1, 1)
@@ -657,7 +682,8 @@ async function refresh(rebuildActions = true): Promise<void> {
       renderActions();
     }
     const selected = choices.find(choice => choice.key === selectedAction)!;
-    const nextTimeline = actionTimeline(catalog, items, battle, equipment, selected.key, facing, audioCatalog);
+    const nextTimeline = actionTimeline(catalog, items, battle, equipment, selected.key, facing, audioCatalog,
+      equipment['main-hand']?.startsWith('prototype-') ? prototypeTimelines : undefined);
     const [nextPose] = await Promise.all([
       repository.get(selected.poseId),
       ensureTimelineEffectsLoaded(nextTimeline),
@@ -1131,7 +1157,15 @@ async function boot(): Promise<void> {
     const merged = mergePrototypeWeapon(loadedCatalog, loadedItems, spearProto);
     catalog = merged.catalog;
     items = merged.items;
+    battle = mergePrototypeBattle(loadedBattle, spearProto);
     prototypeLabels = spearProto.actionLabels ?? {};
+    prototypeTimelines = spearProto.actionTimelines ?? {};
+    prototypeEffectSheet = spearProto.effectSheet;
+    if (prototypeEffectSheet) {
+      for (const [file, frameKeys] of Object.entries(prototypeEffectSheet.byFile)) {
+        prototypeEffectFrames.set(file, { textureKey: prototypeEffectSheet.texture.key, frames: frameKeys });
+      }
+    }
   } else {
     catalog = loadedCatalog;
     items = loadedItems;
@@ -1150,7 +1184,10 @@ async function boot(): Promise<void> {
   const warriorDefault = weaponOpts.find(choice => JSON.stringify(catalog.equipment[choice.id].main) ===
     JSON.stringify(defaultAppearance.main))!;
   const protoOpt = spearProto ? weaponOpts.find(choice => choice.id === spearProto.weaponId) : undefined;
-  const requestedWeapon = new URLSearchParams(window.location.search).get('weapon');
+  const params = new URLSearchParams(window.location.search);
+  const requestedWeapon = params.get('weapon');
+  const requestedAction = params.get('action');
+  if (requestedAction) selectedAction = requestedAction;
   defaultWeaponId = requestedWeapon && weaponOpts.some(choice => choice.id === requestedWeapon)
     ? requestedWeapon
     : warriorDefault.id;
@@ -1176,7 +1213,9 @@ async function boot(): Promise<void> {
   populateArmor(backArmorSelect, 'back', '无披风');
 
   wireControls();
-  await Promise.all(catalog.textures.map(async texture => { images.set(texture.key, await readImage(texture.file)); }));
+  const texturesToLoad = [...catalog.textures];
+  if (prototypeEffectSheet) texturesToLoad.push(prototypeEffectSheet.texture);
+  await Promise.all(texturesToLoad.map(async texture => { images.set(texture.key, await readImage(texture.file)); }));
   const parent = element('character-canvas');
   game = new Phaser.Game({
     type: Phaser.WEBGL, parent, width: parent.clientWidth, height: parent.clientHeight,

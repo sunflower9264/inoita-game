@@ -51,6 +51,7 @@ const ACTION_NAMES: Record<string, string> = {
   'dual-attack': '双持攻击', 'dual-quick-attack': '双持快速攻击',
   'frenzy-blade': '狂暴攻击 · 单手', 'frenzy-dagger': '狂暴攻击 · 短剑',
   'frenzy-two-handed': '狂暴攻击 · 双手', die: '战斗阵亡',
+  thrust: '直刺', sweep: '横扫',
   'spear-upright-idle': '立枪待机（单手直立）',
 };
 
@@ -82,6 +83,20 @@ const WARRIOR_EXTRA_BUFF_ICONS: readonly { id: string; label: string; source: st
 export type EquipmentSelection = Partial<Record<EquipmentSlot, string>>;
 export type VariantOverrides = Record<string, string | null>;
 export interface WeaponChoice { id: string; label: string; kind: string }
+export interface PrototypeEffectSheet {
+  texture: { key: string; file: string };
+  frames: Record<string, { x: number; y: number; width: number; height: number }>;
+  byFile: Record<string, string[]>;
+}
+export interface PrototypeActionTimelineSpec {
+  cycleFrames?: number;
+  swingFrame?: number | null;
+  strikeFrame: number;
+  swings?: string[];
+  swingPlacement?: AttackPlacement;
+  swingLabel?: string;
+  sound?: string;
+}
 export interface PrototypeWeaponBundle {
   weaponId: string;
   weaponName: string;
@@ -93,6 +108,9 @@ export interface PrototypeWeaponBundle {
   variants: Record<string, (string | null)[]>;
   stancePoses: Record<string, string>;
   actionLabels?: Record<string, string>;
+  actionTimelines?: Record<string, PrototypeActionTimelineSpec>;
+  effectSheet?: PrototypeEffectSheet;
+  attackEffects?: BattleCatalog['attackEffects'];
   poses: Record<string, CostumePose>;
 }
 export interface ArmorChoice { id: string; label: string; slot: 'body' | 'head' | 'back'; parts: Record<string, string> }
@@ -325,6 +343,17 @@ export function mergePrototypeWeapon(catalog: WardrobeCatalog, items: ItemCatalo
     },
   };
   return { catalog: mergedCatalog, items: mergedItems };
+}
+
+export function mergePrototypeBattle(battle: BattleCatalog, prototype: PrototypeWeaponBundle): BattleCatalog {
+  if (!prototype.attackEffects || !Object.keys(prototype.attackEffects).length) return battle;
+  return {
+    ...battle,
+    attackEffects: {
+      ...battle.attackEffects,
+      ...prototype.attackEffects,
+    },
+  };
 }
 
 export function viewerRecipe(catalog: WardrobeCatalog, items: ItemCatalog, equipment: EquipmentSelection,
@@ -611,8 +640,29 @@ function resolveSkillTimeline(battle: BattleCatalog, audio: AudioCatalogLite | u
   return { effects, markers, sounds, shakeFrames, appearanceColors };
 }
 
+function resolvePrototypeTimeline(battle: BattleCatalog, spec: PrototypeActionTimelineSpec, facing: Facing): ActionTimeline {
+  const effects: EffectCueSpec[] = [];
+  const seen = new Set<string>();
+  const markers: KeyframeMarker[] = [];
+  const sounds = spec.sound ? [spec.sound] : [];
+  const swingLabel = spec.swingLabel ?? '出特效';
+
+  if (spec.swingFrame !== null && spec.swingFrame !== undefined && spec.swings?.length) {
+    markers.push({ frame: spec.swingFrame, kind: 'swing', label: `${swingLabel}（${spec.swings.join(' / ')}）` });
+    for (const effectId of spec.swings) {
+      addCue(effects, seen, battle, effectId, facing, spec.swingFrame, spec.swingPlacement ?? 'above-characters', false, swingLabel);
+    }
+  }
+  markers.push({ frame: spec.strikeFrame, kind: 'strike', label: '命中结算' });
+  markers.sort((a, b) => a.frame - b.frame);
+  return { cycleFrames: spec.cycleFrames, effects, markers, sounds, shakeFrames: [] };
+}
+
 export function actionTimeline(catalog: WardrobeCatalog, items: ItemCatalog, battle: BattleCatalog,
-  equipment: EquipmentSelection, actionKey: string, facing: Facing, audio?: AudioCatalogLite): ActionTimeline {
+  equipment: EquipmentSelection, actionKey: string, facing: Facing, audio?: AudioCatalogLite,
+  customTimelines?: Record<string, PrototypeActionTimelineSpec>): ActionTimeline {
+  const custom = customTimelines?.[actionKey];
+  if (custom) return resolvePrototypeTimeline(battle, custom, facing);
   const recipe = viewerRecipe(catalog, items, equipment, {});
   const mainKind = equipment['main-hand'] ? items.items[equipment['main-hand']].kind : 'unarmed';
   if (actionKey === 'attack') return resolveAttackTimeline(battle, audio, recipe.attack, facing, mainKind);
