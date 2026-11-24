@@ -478,11 +478,14 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
   }
 
   // 防回归：西向/东向全套长枪姿态绝不含背后翘起旋转手臂（angle !== 0）或刺客猫背胸甲（coat-front[15]），
+  // 除行走（walk / town-walk）外的全部西向/东向招式绝不含走路循环腿切片（coat-back[7..10]），
   // 且在多套不同盔甲外观下全部帧的双手臂与长枪切片均有效解析。
+  const walkingLegPieces = new Set([7, 8, 9, 10]);
   const armorSamples = [0, 3, 10, 25].map(idx => armorChoices(mergedCatalog, mergedItems, 'body')[idx].id);
   for (const [clip, poseId] of Object.entries(proto.stancePoses)) {
     if (!clip.endsWith('-west') && !clip.endsWith('-east')) continue;
     if (clip.startsWith('spear-die-')) continue;
+    const isWalkClip = clip.startsWith('walk-') || clip.startsWith('town-walk-');
     const pose = mergedCatalog.poses[poseId];
     assert.ok(pose, `missing pose ${poseId}`);
     for (let fi = 0; fi < pose.frames.length; fi++) {
@@ -491,6 +494,9 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
         if (part.part === 'coat-front') {
           assert.equal(part.angle, 0, `${poseId} F${fi} coat-front[${part.piece}] 不应出现旋转怪手`);
           assert.notEqual(part.piece, 15, `${poseId} F${fi} 不应混用刺客猫背胸甲 coat-front[15]`);
+        }
+        if (!isWalkClip && part.part === 'coat-back') {
+          assert.ok(!walkingLegPieces.has(part.piece), `${poseId} F${fi} 非行走招式不应混用走路腿 coat-back[${part.piece}]`);
         }
       }
       for (const armorId of armorSamples) {

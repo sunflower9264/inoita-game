@@ -7,8 +7,8 @@ import type { EffectClip } from '../../../../src/domain/content.ts';
 import type { CostumePart, CostumePiece, CostumePose, WardrobeCatalog } from '../../../../src/domain/wardrobe.ts';
 import { SPEAR_EFFECT_SOURCES } from './effects-source.ts';
 import type { EffectFrameGrid, RgbaPalette } from './effects-source.ts';
-import { SPEAR_ACTION_RECIPES, SPEAR_CYCLE_RECIPES, SPEAR_PALETTE, SPEAR_SLICES, WEST_ARMS_PRESETS } from './source.ts';
-import type { SpearArmsPreset, SpearInsertMode, SpearKeyframedPoseRecipe, SpearPoseRecipe } from './source.ts';
+import { SPEAR_ACTION_RECIPES, SPEAR_CYCLE_RECIPES, SPEAR_PALETTE, SPEAR_SLICES, WEST_ARMS_PRESETS, WEST_LEGS_PRESETS } from './source.ts';
+import type { SpearArmsPreset, SpearInsertMode, SpearKeyframedPoseRecipe, SpearLegsPreset, SpearPoseRecipe } from './source.ts';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(dir, '../../../..');
@@ -222,6 +222,7 @@ function insertSpearIntoFrame(
   bodyDy = 0,
   armsPreset?: SpearArmsPreset,
   mirrorBaseFrame = false,
+  legsPreset?: SpearLegsPreset,
 ): CostumePart[] {
   const shift = (part: CostumePart): CostumePart => ({
     ...part,
@@ -233,10 +234,24 @@ function insertSpearIntoFrame(
     x: spearPart.x + bodyDx,
     y: spearPart.y + bodyDy,
   };
+  const legsApplied = legsPreset
+    ? frame.map(part => (part.part === 'coat-back'
+      ? {
+          part: 'coat-back',
+          piece: WEST_LEGS_PRESETS[legsPreset].piece,
+          x: WEST_LEGS_PRESETS[legsPreset].x,
+          y: WEST_LEGS_PRESETS[legsPreset].y,
+          scaleX: 1,
+          scaleY: 1,
+          angle: 0,
+          alpha: 1,
+        }
+      : part))
+    : frame;
 
   if (armsPreset) {
     const preset = WEST_ARMS_PRESETS[armsPreset];
-    const bodyOnly = frame.filter(part => !REMOVED_WEAPON_PARTS.has(part.part) && !isCoatFrontArm(part));
+    const bodyOnly = legsApplied.filter(part => !REMOVED_WEAPON_PARTS.has(part.part) && !isCoatFrontArm(part));
     const torsoIdx = bodyOnly.findIndex(part => part.part === 'coat-front');
     if (torsoIdx < 0) {
       throw new Error(`armsPreset=${armsPreset} 需要基础帧包含胸甲 coat-front 躯干切片`);
@@ -283,7 +298,7 @@ function insertSpearIntoFrame(
     return [...backList, backArmOut, torsoOut, shiftedSpear, frontArmOut, ...afterList];
   }
 
-  const baseFrame = mirrorBaseFrame ? frame.map(mirrorPartX) : frame;
+  const baseFrame = mirrorBaseFrame ? legsApplied.map(mirrorPartX) : legsApplied;
 
   if (insertMode === 'replace-staff') {
     const next: CostumePart[] = [];
@@ -401,6 +416,7 @@ function buildKeyframedPose(wardrobe: WardrobeCatalog, recipe: SpearKeyframedPos
       spec.bodyDy ?? 0,
       spec.armsPreset,
       spec.mirrorBaseFrame ?? false,
+      spec.legsPreset,
     );
   });
 
