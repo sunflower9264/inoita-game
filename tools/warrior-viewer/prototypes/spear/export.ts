@@ -337,6 +337,16 @@ function run(): void {
     poses[recipe.id] = buildKeyframedPose(wardrobe, recipe);
     stancePoses[recipe.clip] = recipe.id;
   }
+  // 游龙步与疾风枪势共用同一套「立枪聚气」四向姿态（不重复冗余导出姿态 JSON）
+  for (const facing of ['south', 'west', 'north', 'east'] as const) {
+    const buffPoseId = `prototype-spear-buff-cast-${facing}`;
+    stancePoses[`skill-dragon-step-${facing}`] = buffPoseId;
+    stancePoses[`skill-gale-stance-${facing}`] = buffPoseId;
+  }
+  // 长枪阵亡：西/北向共用南向倒地，东向镜像（与原版 sharedPoses.die-* 口径一致）
+  stancePoses['spear-die-west'] = 'prototype-spear-die-south';
+  stancePoses['spear-die-north'] = 'prototype-spear-die-south';
+
   for (const recipe of SPEAR_CYCLE_RECIPES.filter(r => r.clip.startsWith('spear-upright-idle-'))) {
     poses[recipe.id] = buildCyclePose(wardrobe, recipe);
     stancePoses[recipe.clip] = recipe.id;
@@ -361,8 +371,15 @@ function run(): void {
       attack: '普攻第一段 · 轻刺（A）',
       'attack-2': '普攻第二段 · 斜撩（AA）',
       'skill-dragon-pierce': '狂龙穿心破 · 蛟龙出海',
+      'skill-whirl-sweep': '虬龙扫暴阵 · 枪花狂扫',
       'skill-breaker-thrust': '破阵枪 · 拧腰甩刺',
+      'skill-flurry-thrust': '连环点枪 · 暴雨梨花',
       'skill-dragon-slam': '伏龙震 · 力劈华山',
+      'skill-sovereign-pierce': '万圣龙王破 · 怒龙穿心',
+      'skill-focus-edge': '凝锋 · 立枪聚气（增益）',
+      'skill-dragon-step': '游龙步 · 疾风步法（增益）',
+      'skill-gale-stance': '疾风枪势 · 提速枪势（增益）',
+      'spear-die': '战斗阵亡 · 失枪倒地',
     },
     actionTimelines: {
       thrust: {
@@ -417,6 +434,20 @@ function run(): void {
         afterimages: { frames: [4, 5, 6], opacity: 0.48, distancesPx: [7, 14] },
         sounds: ['Wa_Anger_Rush', 'Weapon_TwoHand_Sword_Critical'],
       },
+      'skill-whirl-sweep': {
+        cycleFrames: 16,
+        cues: [
+          { effect: 'spear-flower-spin', startFrame: 0, variant: 'default', placement: 'above-characters', source: '身前银白枪花' },
+          { effect: 'spear-gale-sweep', startFrame: 7, variant: 'facing', placement: 'above-characters', source: '180° 青白狂风枪芒' },
+        ],
+        markers: [
+          { frame: 0, kind: 'effect', label: '舞枪花引风（4 帧）' },
+          { frame: 7, kind: 'swing', label: '大横扫出狂风芒' },
+          { frame: 8, kind: 'strike', label: '半圈横扫命中 + 推退硬直' },
+        ],
+        shakeFrames: [8],
+        sounds: ['Wa_Wheel_Wind', 'Weapon_TwoHand_Sword_Attack'],
+      },
       'skill-breaker-thrust': {
         cycleFrames: 11,
         cues: [
@@ -428,6 +459,23 @@ function run(): void {
           { frame: 5, kind: 'strike', label: '贯穿 2 目标结算' },
         ],
         sounds: ['Weapon_TwoHand_Sword_Attack'],
+      },
+      'skill-flurry-thrust': {
+        cycleFrames: 17,
+        cues: [
+          { effect: 'spear-flurry-needles', startFrame: 1, variant: 'facing', placement: 'above-characters', source: '暴雨梨花扇形针芒' },
+          { effect: 'spear-flurry-finisher', startFrame: 11, variant: 'facing', placement: 'above-characters', source: '定音主刺芒 + 十字闪' },
+          { effect: 'impact-burst', startFrame: 12, variant: 'default', placement: 'above-characters', onTarget: true, targetDistancePx: 58, source: '第三刺定音爆闪' },
+        ],
+        markers: [
+          { frame: 2, kind: 'strike', label: '第一段乱刺（30%）' },
+          { frame: 6, kind: 'strike', label: '第二段乱刺（30%）' },
+          { frame: 9, kind: 'charge', label: '缩枪凝势' },
+          { frame: 11, kind: 'swing', label: '定音主刺爆发' },
+          { frame: 12, kind: 'strike', label: '第三段定音命中（40%）' },
+        ],
+        shakeFrames: [12],
+        sounds: ['Weapon_Dagger_Attack', 'Weapon_Sword_Critical'],
       },
       'skill-dragon-slam': {
         cycleFrames: 11,
@@ -443,6 +491,74 @@ function run(): void {
         ],
         shakeFrames: [4],
         sounds: ['Wa_Titan_Attack', 'Wa_Boom'],
+      },
+      'skill-sovereign-pierce': {
+        cycleFrames: 19,
+        cues: [
+          { effect: 'curse-wind-ring', startFrame: 1, variant: 'default', placement: 'ground', source: '盘枪引气旋风' },
+          { effect: 'aura-ring', startFrame: 5, variant: 'default', placement: 'ground', source: '凝势聚气光环' },
+          { effect: 'spear-sovereign-beam', startFrame: 9, variant: 'facing', placement: 'above-characters', source: '1.6× 螺旋龙枪芒' },
+        ],
+        markers: [
+          { frame: 1, kind: 'effect', label: '盘枪引气（6 帧）' },
+          { frame: 6, kind: 'charge', label: '沉腰凝势聚枪' },
+          { frame: 9, kind: 'swing', label: '怒龙贯出（1.6× 螺旋枪芒）' },
+          { frame: 11, kind: 'strike', label: '贯穿 4 目标峰值结算' },
+        ],
+        shakeFrames: [10, 11],
+        afterimages: { frames: [9, 10, 11], opacity: 0.44, distancesPx: [6, 12] },
+        sounds: ['Wa_Storm', 'Wa_Titan_Attack'],
+      },
+      'skill-focus-edge': {
+        cycleFrames: 12,
+        cues: [
+          { effect: 'starburst-gold', startFrame: 2, variant: 'default', placement: 'above-characters', source: '凝锋金芒聚能' },
+          { effect: 'flash-gold', startFrame: 3, variant: 'default', placement: 'above-characters', source: '枪锋增伤闪光' },
+        ],
+        markers: [
+          { frame: 2, kind: 'buff', label: '凝锋生效（6 秒内强化穿心）' },
+        ],
+        appearanceColors: [
+          { red: 255, green: 232, blue: 168 },
+          { red: 255, green: 214, blue: 122 },
+          { red: 255, green: 236, blue: 184 },
+          { red: 255, green: 250, blue: 232 },
+        ],
+        sounds: ['Wa_Defense'],
+      },
+      'skill-dragon-step': {
+        cycleFrames: 12,
+        cues: [
+          { effect: 'curse-wind-ring', startFrame: 2, variant: 'default', placement: 'ground', source: '游龙疾风足环' },
+          { effect: 'curse-wind-ring', startFrame: 6, variant: 'default', placement: 'ground', source: '步法余风' },
+        ],
+        markers: [
+          { frame: 2, kind: 'buff', label: '游龙步生效（4 秒移速提升）' },
+        ],
+        appearanceColors: [
+          { red: 176, green: 242, blue: 255 },
+          { red: 138, green: 224, blue: 255 },
+          { red: 196, green: 248, blue: 255 },
+          { red: 236, green: 252, blue: 255 },
+        ],
+        sounds: ['Wa_Wheel_Wind'],
+      },
+      'skill-gale-stance': {
+        cycleFrames: 12,
+        cues: [
+          { effect: 'aura-ring', startFrame: 2, variant: 'default', placement: 'ground', source: '疾风枪势光环' },
+          { effect: 'curse-wind-ring', startFrame: 4, variant: 'default', placement: 'above-characters', source: '高速风气环绕' },
+        ],
+        markers: [
+          { frame: 2, kind: 'buff', label: '疾风枪势生效（6 秒攻速提升）' },
+        ],
+        appearanceColors: [
+          { red: 198, green: 236, blue: 255 },
+          { red: 164, green: 220, blue: 255 },
+          { red: 218, green: 244, blue: 255 },
+          { red: 242, green: 250, blue: 255 },
+        ],
+        sounds: ['Wa_Storm'],
       },
     },
     effectSheet,

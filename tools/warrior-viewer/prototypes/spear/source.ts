@@ -835,6 +835,253 @@ const DRAGON_SLAM_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
   { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 1, piece: 1, x: 1, y: -9, scaleX: -1, insertMode: 'back' },
 ];
 
+// ---------------------------------------------------------------------------
+// 第二批新增技能与完整补齐：
+// 5. 虬龙扫暴阵（skill-whirl-sweep，16 帧：4 帧舞枪花前奏 + 12 帧大横扫 + 180° 狂风枪芒）
+// 6. 连环点枪（skill-flurry-thrust，17 帧：前 8 帧半伸微颤暴雨梨花针芒 + 2 帧缩枪蓄劲 + 7 帧微踏定音主刺）
+// 7. 万圣龙王破（skill-sovereign-pierce，19 帧：6 帧旋枪引气 + 3 帧沉腰凝势 + 10 帧 1.6 倍螺旋龙枪芒，无黑屏）
+// 8. 3 个自身增益共用立枪聚气动作（skill-focus-edge / skill-dragon-step / skill-gale-stance，12 帧）
+// 9. 长枪战斗阵亡动作（spear-die，23 帧：枪脱手翻转落地 + 角色倒地）
+// ---------------------------------------------------------------------------
+
+// 5. 虬龙扫暴阵 · 舞枪花 + 横扫（16 帧）
+const WHIRL_SWEEP_SOUTH_FRAMES: readonly SpearKeyframeSpec[] = [
+  // F0..F3：身前快速转枪花 4 帧（配合银白红缨枪花残影环）
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 0, piece: 0, x: -2, y: -11, insertMode: 'front' },
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 1, piece: 9, x: 2, y: -10, scaleX: -1, insertMode: 'front' },
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 1, piece: 11, x: -3, y: -12, scaleX: -1, insertMode: 'front' },
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 2, piece: 0, x: -4, y: -11, insertMode: 'back' },
+  // F4..F15：完整 12 帧大横扫（F7 触发 180° 青白月牙狂风枪芒）
+  ...SWEEP_SOUTH_FRAMES,
+];
+
+const WHIRL_SWEEP_WEST_FRAMES: readonly SpearKeyframeSpec[] = [
+  { sourcePoseId: 'pose-4074-west-ticks-0', sourceFrame: 0, piece: 2, x: -4, y: -11, insertMode: 'front' },
+  { sourcePoseId: 'pose-4074-west-ticks-0', sourceFrame: 1, piece: 11, x: -2, y: -13, insertMode: 'front' },
+  { sourcePoseId: 'pose-4074-west-ticks-0', sourceFrame: 1, piece: 9, x: -3, y: -10, insertMode: 'front' },
+  { sourcePoseId: 'pose-4074-west-ticks-0', sourceFrame: 2, piece: 11, x: 1, y: -14, scaleX: -1, insertMode: 'back' },
+  ...SWEEP_WEST_FRAMES,
+];
+
+const WHIRL_SWEEP_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 0, piece: 0, x: 2, y: -11, scaleX: -1, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 1, piece: 11, x: -2, y: -12, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 1, piece: 9, x: 3, y: -11, scaleX: -1, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 2, piece: 0, x: 4, y: -11, scaleX: -1, insertMode: 'back' },
+  ...SWEEP_NORTH_FRAMES,
+];
+
+// 6. 连环点枪 · 暴雨梨花枪（17 帧 ≈ 1.02s：前 8 帧定半伸微抖乱刺 + 2 帧缩枪蓄劲 + 7 帧微踏全力定音）
+const FLURRY_WEST_FRAMES: readonly SpearKeyframeSpec[] = [
+  // F0：起手微沉
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 2, x: -3, y: -10, insertMode: 'between-west-arms' },
+  // F1..F8：前 0.5s 定在直刺半伸态（微颤 2~3px，靠扇形暴雨梨花针芒打前两段 30% + 30%）
+  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 2, piece: 6, x: -8, y: -11, insertMode: 'before-front-hand' },
+  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 2, piece: 6, x: -11, y: -12, insertMode: 'before-front-hand' },
+  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 2, piece: 6, x: -7, y: -10, insertMode: 'before-front-hand' },
+  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 2, piece: 6, x: -11, y: -11, insertMode: 'before-front-hand' },
+  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 2, piece: 6, x: -8, y: -12, insertMode: 'before-front-hand' },
+  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 2, piece: 6, x: -12, y: -10, insertMode: 'before-front-hand' },
+  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 2, piece: 6, x: -7, y: -11, insertMode: 'before-front-hand' },
+  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 3, piece: 6, x: -9, y: -11, insertMode: 'before-front-hand' },
+  // F9..F10：短促缩枪蓄劲 2 帧（疾 → 顿）
+  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 0, piece: 6, x: 5, y: -11, bodyDx: 1, insertMode: 'front' },
+  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 1, piece: 6, x: 10, y: -11, bodyDx: 2, insertMode: 'front' },
+  // F11..F13：微踏一步全力伸展刺出第 3 段（破！40%，F11 出定音主刺芒、F12 命中+震屏）
+  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 2, piece: 6, x: -14, y: -11, bodyDx: -4, insertMode: 'before-front-hand' },
+  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 2, piece: 6, x: -16, y: -11, bodyDx: -5, insertMode: 'before-front-hand' },
+  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 2, piece: 6, x: -15, y: -11, bodyDx: -4, insertMode: 'before-front-hand' },
+  // F14..F16：利落收势回防
+  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 3, piece: 6, x: -7, y: -11, bodyDx: -2, insertMode: 'before-front-hand' },
+  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 4, piece: 2, x: -2, y: -10, bodyDx: -1, insertMode: 'front' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 3, x: -3, y: -10, bodyDx: 0, insertMode: 'between-west-arms' },
+];
+
+const FLURRY_SOUTH_FRAMES: readonly SpearKeyframeSpec[] = [
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 0, x: 0, y: -8, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -4, y: 1, insertMode: 'front' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -2, y: 5, insertMode: 'front' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -4, y: 0, insertMode: 'front' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 5, insertMode: 'front' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -2, y: 1, insertMode: 'front' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -4, y: 6, insertMode: 'front' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 1, insertMode: 'front' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 3, piece: 7, x: -3, y: 2, insertMode: 'front' },
+  // 缩枪蓄劲
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 0, piece: 7, x: -7, y: -12, bodyDy: -1, insertMode: 'back' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 1, piece: 7, x: -7, y: -16, bodyDy: -2, insertMode: 'back' },
+  // 微踏定音第 3 刺
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 5, bodyDy: 4, insertMode: 'front' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 9, bodyDy: 5, insertMode: 'front' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 8, bodyDy: 4, insertMode: 'front' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 3, piece: 7, x: -3, y: 1, bodyDy: 2, insertMode: 'front' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 4, piece: 0, x: -1, y: -7, bodyDy: 1, insertMode: 'front' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 1, x: 0, y: -8, bodyDy: 0, insertMode: 'between-south-arms' },
+];
+
+const FLURRY_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
+  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 0, x: 1, y: -9, scaleX: -1, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 2, piece: 8, x: -1, y: -14, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 2, piece: 8, x: 1, y: -18, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 2, piece: 8, x: -1, y: -13, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 2, piece: 8, x: 0, y: -18, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 2, piece: 8, x: 1, y: -14, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 2, piece: 8, x: -1, y: -19, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 2, piece: 8, x: 0, y: -14, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 3, piece: 8, x: 0, y: -15, insertMode: 'back' },
+  // 缩枪蓄劲
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 0, piece: 8, x: 0, y: -4, bodyDy: 1, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 1, piece: 8, x: 0, y: -1, bodyDy: 2, insertMode: 'back' },
+  // 微踏定音第 3 刺
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 2, piece: 8, x: 0, y: -18, bodyDy: -4, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 2, piece: 8, x: 0, y: -21, bodyDy: -5, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 2, piece: 8, x: 0, y: -20, bodyDy: -4, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 3, piece: 8, x: 0, y: -13, bodyDy: -2, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 4, piece: 0, x: 1, y: -9, scaleX: -1, bodyDy: -1, insertMode: 'back' },
+  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 1, x: 1, y: -9, scaleX: -1, bodyDy: 0, insertMode: 'back' },
+];
+
+// 7. 万圣龙王破 · 怒龙穿心（19 帧，无黑屏：6 帧盘枪引气 → 3 帧沉腰凝势 → 10 帧 1.6 倍螺旋龙枪芒贯出）
+const SOVEREIGN_WEST_FRAMES: readonly SpearKeyframeSpec[] = [
+  // F0..F5：盘枪引气（快播横扫关键帧旋枪聚气）
+  SWEEP_WEST_FRAMES[0],
+  SWEEP_WEST_FRAMES[1],
+  SWEEP_WEST_FRAMES[3],
+  SWEEP_WEST_FRAMES[4],
+  SWEEP_WEST_FRAMES[5],
+  SWEEP_WEST_FRAMES[7],
+  // F6..F8：沉腰收枪凝势（3 帧蓄力紧绷，无黑屏）
+  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 0, piece: 6, x: 7, y: -10, bodyDx: 2, bodyDy: 1, insertMode: 'front' },
+  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 1, piece: 6, x: 12, y: -10, bodyDx: 3, bodyDy: 2, insertMode: 'front' },
+  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 1, piece: 6, x: 11, y: -10, bodyDx: 3, bodyDy: 2, insertMode: 'front' },
+  // F9..F15：化龙贯出！（前探 -6px + 残影 + 1.6 倍蓝青螺旋龙枪芒 F9~F15 + 强震屏）
+  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 2, piece: 6, x: -13, y: -11, bodyDx: -5, insertMode: 'before-front-hand' },
+  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 2, piece: 6, x: -16, y: -11, bodyDx: -6, insertMode: 'before-front-hand' },
+  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 2, piece: 6, x: -16, y: -11, bodyDx: -6, insertMode: 'before-front-hand' },
+  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 2, piece: 6, x: -15, y: -11, bodyDx: -6, insertMode: 'before-front-hand' },
+  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 3, piece: 6, x: -12, y: -11, bodyDx: -5, insertMode: 'before-front-hand' },
+  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 3, piece: 6, x: -9, y: -11, bodyDx: -4, insertMode: 'before-front-hand' },
+  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 3, piece: 6, x: -5, y: -11, bodyDx: -3, insertMode: 'before-front-hand' },
+  // F16..F18：沉稳收枪回防
+  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 4, piece: 2, x: -2, y: -10, bodyDx: -2, insertMode: 'front' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 2, x: -3, y: -10, bodyDx: -1, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 3, x: -3, y: -10, bodyDx: 0, insertMode: 'between-west-arms' },
+];
+
+const SOVEREIGN_SOUTH_FRAMES: readonly SpearKeyframeSpec[] = [
+  SWEEP_SOUTH_FRAMES[0],
+  SWEEP_SOUTH_FRAMES[2],
+  SWEEP_SOUTH_FRAMES[3],
+  SWEEP_SOUTH_FRAMES[4],
+  SWEEP_SOUTH_FRAMES[5],
+  SWEEP_SOUTH_FRAMES[7],
+  // 沉腰凝势
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 0, piece: 7, x: -7, y: -13, bodyDy: -2, insertMode: 'back' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 1, piece: 7, x: -7, y: -17, bodyDy: -3, insertMode: 'back' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 1, piece: 7, x: -7, y: -16, bodyDy: -3, insertMode: 'back' },
+  // 化龙贯出
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 4, bodyDy: 5, insertMode: 'front' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 8, bodyDy: 6, insertMode: 'front' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 8, bodyDy: 6, insertMode: 'front' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 7, bodyDy: 6, insertMode: 'front' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 3, piece: 7, x: -3, y: 3, bodyDy: 5, insertMode: 'front' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 3, piece: 7, x: -3, y: 0, bodyDy: 4, insertMode: 'front' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 3, piece: 7, x: -4, y: -4, bodyDy: 3, insertMode: 'front' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 4, piece: 0, x: -1, y: -7, bodyDy: 2, insertMode: 'front' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 0, x: 0, y: -8, bodyDy: 1, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 1, x: 0, y: -8, bodyDy: 0, insertMode: 'between-south-arms' },
+];
+
+const SOVEREIGN_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
+  SWEEP_NORTH_FRAMES[0],
+  SWEEP_NORTH_FRAMES[2],
+  SWEEP_NORTH_FRAMES[3],
+  SWEEP_NORTH_FRAMES[4],
+  SWEEP_NORTH_FRAMES[5],
+  SWEEP_NORTH_FRAMES[7],
+  // 沉腰凝势
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 0, piece: 8, x: 0, y: -4, bodyDy: 2, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 1, piece: 8, x: 0, y: -1, bodyDy: 3, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 1, piece: 8, x: 0, y: -2, bodyDy: 3, insertMode: 'back' },
+  // 化龙贯出
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 2, piece: 8, x: 0, y: -17, bodyDy: -5, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 2, piece: 8, x: 0, y: -20, bodyDy: -6, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 2, piece: 8, x: 0, y: -20, bodyDy: -6, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 2, piece: 8, x: 0, y: -19, bodyDy: -6, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 3, piece: 8, x: 0, y: -15, bodyDy: -5, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 3, piece: 8, x: 0, y: -12, bodyDy: -4, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 3, piece: 8, x: 0, y: -8, bodyDy: -3, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 4, piece: 0, x: 1, y: -9, scaleX: -1, bodyDy: -2, insertMode: 'back' },
+  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 0, x: 1, y: -9, scaleX: -1, bodyDy: -1, insertMode: 'back' },
+  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 1, x: 1, y: -9, scaleX: -1, bodyDy: 0, insertMode: 'back' },
+];
+
+// 8. 3 个自身增益共用立枪聚气动作（12 帧，基于原版战吼 pose-3977..3979，立枪顿地聚气、红缨随风猎猎飘动）
+const BUFF_CAST_SOUTH_FRAMES: readonly SpearKeyframeSpec[] = [
+  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 0, piece: 4, x: -9, y: -12, insertMode: 'front' },
+  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 1, piece: 4, x: -9, y: -13, insertMode: 'front' },
+  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 2, piece: 4, x: -9, y: -10, insertMode: 'front' },
+  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 3, piece: 5, x: -9, y: -10, insertMode: 'front' },
+  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 4, piece: 4, x: -9, y: -10, insertMode: 'front' },
+  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 5, piece: 5, x: -9, y: -10, insertMode: 'front' },
+  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 6, piece: 4, x: -9, y: -10, insertMode: 'front' },
+  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 7, piece: 5, x: -9, y: -10, insertMode: 'front' },
+  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 8, piece: 4, x: -9, y: -10, insertMode: 'front' },
+  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 9, piece: 5, x: -9, y: -10, insertMode: 'front' },
+  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 1, piece: 4, x: -8, y: -10, insertMode: 'front' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 0, x: 0, y: -8, insertMode: 'between-south-arms' },
+];
+
+const BUFF_CAST_WEST_FRAMES: readonly SpearKeyframeSpec[] = [
+  { sourcePoseId: 'pose-3978-west-ticks-16', sourceFrame: 0, piece: 4, x: -8, y: -12, insertMode: 'front' },
+  { sourcePoseId: 'pose-3978-west-ticks-16', sourceFrame: 1, piece: 4, x: -8, y: -13, insertMode: 'front' },
+  { sourcePoseId: 'pose-3978-west-ticks-16', sourceFrame: 2, piece: 4, x: -8, y: -10, insertMode: 'front' },
+  { sourcePoseId: 'pose-3978-west-ticks-16', sourceFrame: 3, piece: 5, x: -8, y: -10, insertMode: 'front' },
+  { sourcePoseId: 'pose-3978-west-ticks-16', sourceFrame: 4, piece: 4, x: -8, y: -10, insertMode: 'front' },
+  { sourcePoseId: 'pose-3978-west-ticks-16', sourceFrame: 5, piece: 5, x: -8, y: -10, insertMode: 'front' },
+  { sourcePoseId: 'pose-3978-west-ticks-16', sourceFrame: 6, piece: 4, x: -8, y: -10, insertMode: 'front' },
+  { sourcePoseId: 'pose-3978-west-ticks-16', sourceFrame: 7, piece: 5, x: -8, y: -10, insertMode: 'front' },
+  { sourcePoseId: 'pose-3978-west-ticks-16', sourceFrame: 8, piece: 4, x: -8, y: -10, insertMode: 'front' },
+  { sourcePoseId: 'pose-3978-west-ticks-16', sourceFrame: 9, piece: 5, x: -8, y: -10, insertMode: 'front' },
+  { sourcePoseId: 'pose-3978-west-ticks-16', sourceFrame: 1, piece: 4, x: -7, y: -10, insertMode: 'front' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 2, x: -3, y: -10, insertMode: 'between-west-arms' },
+];
+
+const BUFF_CAST_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
+  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 0, piece: 4, x: 10, y: -12, scaleX: -1, insertMode: 'back' },
+  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 1, piece: 4, x: 10, y: -13, scaleX: -1, insertMode: 'back' },
+  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 2, piece: 4, x: 10, y: -10, scaleX: -1, insertMode: 'back' },
+  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 3, piece: 5, x: 10, y: -10, scaleX: -1, insertMode: 'back' },
+  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 4, piece: 4, x: 10, y: -10, scaleX: -1, insertMode: 'back' },
+  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 5, piece: 5, x: 10, y: -10, scaleX: -1, insertMode: 'back' },
+  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 6, piece: 4, x: 10, y: -10, scaleX: -1, insertMode: 'back' },
+  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 7, piece: 5, x: 10, y: -10, scaleX: -1, insertMode: 'back' },
+  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 8, piece: 4, x: 10, y: -10, scaleX: -1, insertMode: 'back' },
+  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 9, piece: 5, x: 10, y: -10, scaleX: -1, insertMode: 'back' },
+  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 1, piece: 4, x: 9, y: -10, scaleX: -1, insertMode: 'back' },
+  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 0, x: 1, y: -9, scaleX: -1, insertMode: 'back' },
+];
+
+// 9. 长枪战斗阵亡动作（23 帧，基于原版 pose-3964-south-ticks-0：受创失手 → 长枪翻转砸地弹跳 → 英雄倒地）
+const DIE_SPEAR_FRAMES: readonly SpearKeyframeSpec[] = [
+  { sourcePoseId: 'pose-3964-south-ticks-0', sourceFrame: 0, piece: 0, x: 0, y: -10, insertMode: 'front' },
+  { sourcePoseId: 'pose-3964-south-ticks-0', sourceFrame: 1, piece: 11, x: -3, y: -14, insertMode: 'front' },
+  { sourcePoseId: 'pose-3964-south-ticks-0', sourceFrame: 2, piece: 4, x: -6, y: -18, insertMode: 'back' },
+  { sourcePoseId: 'pose-3964-south-ticks-0', sourceFrame: 3, piece: 12, x: -8, y: -14, insertMode: 'back' },
+  { sourcePoseId: 'pose-3964-south-ticks-0', sourceFrame: 4, piece: 9, x: -10, y: -5, insertMode: 'back' },
+  { sourcePoseId: 'pose-3964-south-ticks-0', sourceFrame: 5, piece: 6, x: -12, y: 5, insertMode: 'back' },
+  { sourcePoseId: 'pose-3964-south-ticks-0', sourceFrame: 6, piece: 2, x: -13, y: 2, insertMode: 'back' },
+  { sourcePoseId: 'pose-3964-south-ticks-0', sourceFrame: 7, piece: 6, x: -13, y: 6, insertMode: 'back' },
+  ...Array.from({ length: 15 }, (_, idx): SpearKeyframeSpec => ({
+    sourcePoseId: 'pose-3964-south-ticks-0',
+    sourceFrame: 8 + idx,
+    piece: 6,
+    x: -13,
+    y: 6,
+    insertMode: 'back',
+  })),
+];
+
 export const SPEAR_ACTION_RECIPES: readonly SpearKeyframedPoseRecipe[] = [
   // 基础原型对照（直刺 / 横扫）
   { id: 'prototype-spear-thrust-south', clip: 'thrust-south', mirrorX: false, frameRate: FPS, frames: THRUST_SOUTH_FRAMES },
@@ -856,21 +1103,49 @@ export const SPEAR_ACTION_RECIPES: readonly SpearKeyframedPoseRecipe[] = [
   { id: 'prototype-spear-attack-2-north', clip: 'attack-2-north', mirrorX: false, frameRate: FPS, frames: ATK2_NORTH_FRAMES },
   { id: 'prototype-spear-attack-2-east', clip: 'attack-2-east', mirrorX: true, frameRate: FPS, frames: ATK2_WEST_FRAMES },
 
-  // 主动技能 1：狂龙穿心破（蓄力前探残影 + 赤金破甲重刺）
+  // 主动伤害技能 1：狂龙穿心破（蓄力前探残影 + 赤金破甲重刺）
   { id: 'prototype-spear-skill-dragon-pierce-south', clip: 'skill-dragon-pierce-south', mirrorX: false, frameRate: FPS, frames: DRAGON_PIERCE_SOUTH_FRAMES },
   { id: 'prototype-spear-skill-dragon-pierce-west', clip: 'skill-dragon-pierce-west', mirrorX: false, frameRate: FPS, frames: DRAGON_PIERCE_WEST_FRAMES },
   { id: 'prototype-spear-skill-dragon-pierce-north', clip: 'skill-dragon-pierce-north', mirrorX: false, frameRate: FPS, frames: DRAGON_PIERCE_NORTH_FRAMES },
   { id: 'prototype-spear-skill-dragon-pierce-east', clip: 'skill-dragon-pierce-east', mirrorX: true, frameRate: FPS, frames: DRAGON_PIERCE_WEST_FRAMES },
 
-  // 主动技能 3：破阵枪（拧腰甩刺 + 复用蓝青直刺枪芒）
+  // 主动伤害技能 2：虬龙扫暴阵（4 帧银白枪花 + 12 帧大横扫 + 180° 狂风枪芒）
+  { id: 'prototype-spear-skill-whirl-sweep-south', clip: 'skill-whirl-sweep-south', mirrorX: false, frameRate: FPS, frames: WHIRL_SWEEP_SOUTH_FRAMES },
+  { id: 'prototype-spear-skill-whirl-sweep-west', clip: 'skill-whirl-sweep-west', mirrorX: false, frameRate: FPS, frames: WHIRL_SWEEP_WEST_FRAMES },
+  { id: 'prototype-spear-skill-whirl-sweep-north', clip: 'skill-whirl-sweep-north', mirrorX: false, frameRate: FPS, frames: WHIRL_SWEEP_NORTH_FRAMES },
+  { id: 'prototype-spear-skill-whirl-sweep-east', clip: 'skill-whirl-sweep-east', mirrorX: true, frameRate: FPS, frames: WHIRL_SWEEP_WEST_FRAMES },
+
+  // 主动伤害技能 3：破阵枪（拧腰甩刺 + 复用蓝青直刺枪芒）
   { id: 'prototype-spear-skill-breaker-thrust-south', clip: 'skill-breaker-thrust-south', mirrorX: false, frameRate: FPS, frames: BREAKER_SOUTH_FRAMES },
   { id: 'prototype-spear-skill-breaker-thrust-west', clip: 'skill-breaker-thrust-west', mirrorX: false, frameRate: FPS, frames: BREAKER_WEST_FRAMES },
   { id: 'prototype-spear-skill-breaker-thrust-north', clip: 'skill-breaker-thrust-north', mirrorX: false, frameRate: FPS, frames: BREAKER_NORTH_FRAMES },
   { id: 'prototype-spear-skill-breaker-thrust-east', clip: 'skill-breaker-thrust-east', mirrorX: true, frameRate: FPS, frames: BREAKER_WEST_FRAMES },
 
-  // 主动技能 5：伏龙震（力劈华山高举重砸 + 暗金纵劈弧光 + 眩晕）
+  // 主动伤害技能 4：连环点枪（暴雨梨花扇形针芒乱刺 + 第 3 段定音主刺）
+  { id: 'prototype-spear-skill-flurry-thrust-south', clip: 'skill-flurry-thrust-south', mirrorX: false, frameRate: FPS, frames: FLURRY_SOUTH_FRAMES },
+  { id: 'prototype-spear-skill-flurry-thrust-west', clip: 'skill-flurry-thrust-west', mirrorX: false, frameRate: FPS, frames: FLURRY_WEST_FRAMES },
+  { id: 'prototype-spear-skill-flurry-thrust-north', clip: 'skill-flurry-thrust-north', mirrorX: false, frameRate: FPS, frames: FLURRY_NORTH_FRAMES },
+  { id: 'prototype-spear-skill-flurry-thrust-east', clip: 'skill-flurry-thrust-east', mirrorX: true, frameRate: FPS, frames: FLURRY_WEST_FRAMES },
+
+  // 主动伤害技能 5：伏龙震（力劈华山高举重砸 + 暗金纵劈弧光 + 眩晕）
   { id: 'prototype-spear-skill-dragon-slam-south', clip: 'skill-dragon-slam-south', mirrorX: false, frameRate: FPS, frames: DRAGON_SLAM_SOUTH_FRAMES },
   { id: 'prototype-spear-skill-dragon-slam-west', clip: 'skill-dragon-slam-west', mirrorX: false, frameRate: FPS, frames: DRAGON_SLAM_WEST_FRAMES },
   { id: 'prototype-spear-skill-dragon-slam-north', clip: 'skill-dragon-slam-north', mirrorX: false, frameRate: FPS, frames: DRAGON_SLAM_NORTH_FRAMES },
   { id: 'prototype-spear-skill-dragon-slam-east', clip: 'skill-dragon-slam-east', mirrorX: true, frameRate: FPS, frames: DRAGON_SLAM_WEST_FRAMES },
+
+  // 主动伤害技能 6：万圣龙王破（盘枪引气 + 沉腰凝势 + 1.6 倍螺旋龙枪芒，无黑屏）
+  { id: 'prototype-spear-skill-sovereign-pierce-south', clip: 'skill-sovereign-pierce-south', mirrorX: false, frameRate: FPS, frames: SOVEREIGN_SOUTH_FRAMES },
+  { id: 'prototype-spear-skill-sovereign-pierce-west', clip: 'skill-sovereign-pierce-west', mirrorX: false, frameRate: FPS, frames: SOVEREIGN_WEST_FRAMES },
+  { id: 'prototype-spear-skill-sovereign-pierce-north', clip: 'skill-sovereign-pierce-north', mirrorX: false, frameRate: FPS, frames: SOVEREIGN_NORTH_FRAMES },
+  { id: 'prototype-spear-skill-sovereign-pierce-east', clip: 'skill-sovereign-pierce-east', mirrorX: true, frameRate: FPS, frames: SOVEREIGN_WEST_FRAMES },
+
+  // 主动增益技能 7..9 共用「立枪聚气」姿态（由 export.ts 映射到 3 个增益技能）
+  { id: 'prototype-spear-buff-cast-south', clip: 'skill-focus-edge-south', mirrorX: false, frameRate: FPS, frames: BUFF_CAST_SOUTH_FRAMES },
+  { id: 'prototype-spear-buff-cast-west', clip: 'skill-focus-edge-west', mirrorX: false, frameRate: FPS, frames: BUFF_CAST_WEST_FRAMES },
+  { id: 'prototype-spear-buff-cast-north', clip: 'skill-focus-edge-north', mirrorX: false, frameRate: FPS, frames: BUFF_CAST_NORTH_FRAMES },
+  { id: 'prototype-spear-buff-cast-east', clip: 'skill-focus-edge-east', mirrorX: true, frameRate: FPS, frames: BUFF_CAST_WEST_FRAMES },
+
+  // 长枪战斗阵亡动作（23 帧）
+  { id: 'prototype-spear-die-south', clip: 'spear-die-south', mirrorX: false, frameRate: FPS, frames: DIE_SPEAR_FRAMES },
+  { id: 'prototype-spear-die-east', clip: 'spear-die-east', mirrorX: true, frameRate: FPS, frames: DIE_SPEAR_FRAMES },
 ];

@@ -293,7 +293,7 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
   const effBytes = fs.readFileSync(new URL(proto.effectSheet.texture.file, repoRoot));
   const effWidth = effBytes.readUInt32BE(16);
   const effHeight = effBytes.readUInt32BE(20);
-  assert.equal(Object.keys(proto.effectSheet.frames).length, 126);
+  assert.equal(Object.keys(proto.effectSheet.frames).length, 284);
   for (const rect of Object.values(proto.effectSheet.frames)) {
     assert.ok(rect.x >= 0 && rect.y >= 0);
     assert.ok(rect.x + rect.width <= effWidth && rect.y + rect.height <= effHeight);
@@ -327,8 +327,15 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
     attack: 8,
     'attack-2': 7,
     'skill-dragon-pierce': 12,
+    'skill-whirl-sweep': 16,
     'skill-breaker-thrust': 11,
+    'skill-flurry-thrust': 17,
     'skill-dragon-slam': 11,
+    'skill-sovereign-pierce': 19,
+    'skill-focus-edge': 12,
+    'skill-dragon-step': 12,
+    'skill-gale-stance': 12,
+    'spear-die': 23,
   };
 
   for (const appearance of [undefined, 'mercenary-olaf']) {
@@ -353,8 +360,14 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
         }
       }
 
-      // Check timelines across Batch 1 skills (prototype + reusable game effects + afterimages + shake)
-      for (const key of ['attack', 'attack-2', 'thrust', 'skill-dragon-pierce', 'skill-breaker-thrust', 'skill-dragon-slam']) {
+      // Check timelines across all 2 basic attacks + 6 damage skills + 3 self-buffs
+      const skillsWithEffects = [
+        'attack', 'attack-2', 'thrust',
+        'skill-dragon-pierce', 'skill-whirl-sweep', 'skill-breaker-thrust',
+        'skill-flurry-thrust', 'skill-dragon-slam', 'skill-sovereign-pierce',
+        'skill-focus-edge', 'skill-dragon-step', 'skill-gale-stance',
+      ];
+      for (const key of skillsWithEffects) {
         const tl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, key, facing, audio, proto.actionTimelines);
         assert.ok(tl.effects.length >= 1, `${key} should have effects`);
         assert.ok(effectOverlayBounds(mergedBattle, tl, facing), `${key} bounds`);
@@ -368,6 +381,9 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
               `missing frames for ${layer.file}`);
           }
         }
+        for (const soundId of tl.sounds) {
+          assert.ok(audio.effects[soundId], `${key} missing audio ${soundId}`);
+        }
       }
 
       const pierceTl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, 'skill-dragon-pierce', facing, audio, proto.actionTimelines);
@@ -376,10 +392,27 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
       assert.ok(pierceTl.effects.some(e => e.effect === 'spear-heavy-pierce' && e.variant === facing));
       assert.ok(pierceTl.effects.some(e => e.effect === 'impact-burst' && e.onTarget));
 
+      const whirlTl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, 'skill-whirl-sweep', facing, audio, proto.actionTimelines);
+      assert.ok(whirlTl.effects.some(e => e.effect === 'spear-flower-spin' && e.startFrame === 0));
+      assert.ok(whirlTl.effects.some(e => e.effect === 'spear-gale-sweep' && e.variant === facing));
+
+      const flurryTl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, 'skill-flurry-thrust', facing, audio, proto.actionTimelines);
+      assert.equal(flurryTl.markers.filter(m => m.kind === 'strike').length, 3);
+      assert.ok(flurryTl.effects.some(e => e.effect === 'spear-flurry-needles' && e.variant === facing));
+      assert.ok(flurryTl.effects.some(e => e.effect === 'spear-flurry-finisher' && e.variant === facing));
+
       const slamTl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, 'skill-dragon-slam', facing, audio, proto.actionTimelines);
       assert.deepEqual(slamTl.shakeFrames, [4]);
       assert.ok(slamTl.effects.some(e => e.effect === 'spear-slam-arc' && e.variant === facing));
       assert.ok(slamTl.effects.some(e => e.effect === 'state-stun' && e.onTarget));
+
+      const sovTl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, 'skill-sovereign-pierce', facing, audio, proto.actionTimelines);
+      assert.ok(sovTl.effects.some(e => e.effect === 'spear-sovereign-beam' && e.variant === facing));
+      assert.deepEqual(sovTl.afterimages?.frames, [9, 10, 11]);
+      assert.deepEqual(sovTl.shakeFrames, [10, 11]);
+
+      const focusTl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, 'skill-focus-edge', facing, audio, proto.actionTimelines);
+      assert.ok(focusTl.appearanceColors && focusTl.appearanceColors.length > 0);
     }
   }
 });
