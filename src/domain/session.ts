@@ -773,6 +773,16 @@ export class Session {
   forgetEnemyVitals(id:string):void {
     this.deleteEnemyState(id);
   }
+  /** 按前缀清理历史剧情敌怪状态（如跨时间点跳转清理 `story-located-`），避免触发整份会话深拷贝。 */
+  forgetEnemyVitalsByPrefix(prefix:string):number {
+    let removed=0;
+    for(const id of [...this.enemyStates.keys()]){
+      if(!id.startsWith(prefix))continue;
+      this.deleteEnemyState(id);
+      removed++;
+    }
+    return removed;
+  }
   /**
    * 一次性剧情遭遇被有界历史淘汰后，它的怪物死亡记录也不会再被任何名册或结算读到。
    * key 必须和生成时一致，统一走 `encounterSpawnId`，不要在这里另拼格式。

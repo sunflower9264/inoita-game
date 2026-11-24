@@ -180,6 +180,154 @@ test('跳转现场会投影目标发布人显形、区域清障与常驻敌怪�
       assert.equal(h.session.enemyVitals('story-located-enemy-elf-seal-protector-1').deadUntil, undefined);
     } finally { h.director.dispose(); }
   }
+
+  // 6. available 模式下目标任务自身的接取事件（如 quest-454 的 event-563）绝不提前重放进前置历史，保持现场铁门可见
+  {
+    const h = playthrough();
+    try {
+      const p454 = planQuestStart(campaign, h.session, 'quest-454');
+      assert.equal(p454.accept?.eventId, 'event-563');
+      assert.equal(p454.conditionPatch.completedEvents.includes('event-563'), false);
+      applyQuestStartPlan(h.session, p454);
+      assert.equal(
+        h.session.storyWorld.actorVisible('kiyan-s-final-memory-layer-2-ecc3d1ca', 'steel-door-430a2b1b', 'npc-320'),
+        true,
+        '跳到「卓拉德」可接现场时，记忆 2 层铁门必须保持可见以供玩家靠近触发 event-563',
+      );
+    } finally { h.director.dispose(); }
+  }
+});
+
+test('Session.forgetEnemyVitalsByPrefix 精准按前缀清理，历史显形与摆放投影严守先后护栏', () => {
+  // 1. forgetEnemyVitalsByPrefix 只清理匹配前缀的条目，保留普通刷怪点记录并推进修订号
+  const h = playthrough();
+  try {
+    h.session.removeStoryEnemy('story-located-alpha');
+    h.session.removeStoryEnemy('story-located-beta');
+    h.session.setEnemyVitals('normal-spawn-1', 42, 10);
+    const revBefore = h.session.enemyRevision;
+    const spawnRevBefore = h.session.enemySpawnRevision;
+
+    assert.equal(h.session.forgetEnemyVitalsByPrefix('story-located-'), 2);
+    assert.equal(h.session.enemyVitals('story-located-alpha').deadUntil, undefined);
+    assert.equal(h.session.enemyVitals('story-located-beta').deadUntil, undefined);
+    assert.equal(h.session.enemyVitals('normal-spawn-1').health, 42);
+    assert.ok(h.session.enemyRevision > revBefore);
+    assert.ok(h.session.enemySpawnRevision > spawnRevBefore);
+    assert.equal(h.session.forgetEnemyVitalsByPrefix('story-located-'), 0);
+  } finally {
+    h.director.dispose();
+  }
+
+  // 2. 规则 1 / 规则 2 先后护栏：更晚章节的显形与登记摆放事件绝不被提前拉进早期任务的 available 现场
+  const chronologyCampaign: Campaign = {
+    version: 2,
+    contentVersion: 1,
+    start: { map: 'shadow-camp', x: 120, y: 312, actor: 'kiyan', facing: 'south', script: 'start' },
+    quests: [
+      {
+        id: 'q-intro',
+        title: 'q-intro',
+        description: 'q-intro',
+        guidance: { available: '', active: '' },
+        progressText: '',
+        completeText: '',
+        goals: [],
+        availableWhen: { type: 'always', value: true },
+        completion: 'story',
+      },
+      {
+        id: 'q-early',
+        title: 'q-early',
+        description: 'q-early',
+        guidance: { available: '', active: '' },
+        progressText: '',
+        completeText: '',
+        giver: 'darius',
+        giverCharacterId: 'npc-1',
+        delivery: 'darius',
+        deliveryCharacterId: 'npc-2',
+        goals: [],
+        availableWhen: { type: 'quest', quest: 'q-intro', status: 'completed' },
+        completion: 'story',
+      },
+      {
+        id: 'q-later',
+        title: 'q-later',
+        description: 'q-later',
+        guidance: { available: '', active: '' },
+        progressText: '',
+        completeText: '',
+        goals: [],
+        availableWhen: { type: 'quest', quest: 'q-early', status: 'completed' },
+        completion: 'story',
+      },
+    ],
+    questGroups: [{ id: 'g', title: 'g', kind: 'main', questIds: ['q-intro', 'q-early', 'q-later'] }],
+    placements: [
+      {
+        id: 'quest-npc-located-npc-2',
+        map: 'shadow-camp',
+        actor: 'darius',
+        characterId: 'npc-2',
+        x: 120,
+        y: 312,
+        condition: { type: 'flag', flag: 'quest-npc-located-npc-2', value: true },
+      },
+    ],
+    scripts: {
+      start: { entry: 'done', nodes: [{ id: 'done', presentation: [], commands: [], exit: { type: 'end' } }] },
+      's-intro': {
+        entry: 'n',
+        nodes: [
+          {
+            id: 'n',
+            presentation: [],
+            commands: [
+              { type: 'quest', command: { type: 'accept', quest: 'q-intro' } },
+              { type: 'quest', command: { type: 'script-complete', quest: 'q-intro' } },
+              { type: 'world', command: { kind: 'actor-visibility', map: 'shadow-camp', actor: 'darius', characterId: 'npc-1', visible: false } },
+            ],
+            exit: { type: 'end' },
+          },
+        ],
+      },
+      's-early-accept': {
+        entry: 'n',
+        nodes: [{ id: 'n', presentation: [], commands: [{ type: 'quest', command: { type: 'accept', quest: 'q-early' } }], exit: { type: 'end' } }],
+      },
+      's-future-reveal': {
+        entry: 'n',
+        nodes: [
+          {
+            id: 'n',
+            presentation: [],
+            commands: [
+              { type: 'world', command: { kind: 'actor-visibility', map: 'shadow-camp', actor: 'darius', characterId: 'npc-1', visible: true } },
+              { type: 'flag', flag: 'quest-npc-located-npc-2', value: true },
+            ],
+            exit: { type: 'end' },
+          },
+        ],
+      },
+    },
+    events: [
+      { id: 'ev-intro', source: 'event', script: 's-intro', condition: { type: 'always', value: true } },
+      { id: 'ev-early-accept', source: 'event', script: 's-early-accept', condition: { type: 'quest', quest: 'q-intro', status: 'completed' } },
+      { id: 'ev-future-reveal', source: 'event', script: 's-future-reveal', condition: { type: 'quest', quest: 'q-later', status: 'active' } },
+    ],
+  };
+
+  const history = questJumpHistory(chronologyCampaign, 'q-early', 'available');
+  const reRevealed = history.world.some(
+    cmd => cmd.type === 'world' && cmd.command.kind === 'actor-visibility' && cmd.command.characterId === 'npc-1' && cmd.command.visible,
+  );
+  const futurePlaced = history.world.some(
+    cmd => (cmd.type === 'flag' && cmd.flag === 'quest-npc-located-npc-2') ||
+      (cmd.type === 'world' && cmd.command.kind === 'flag' && cmd.command.id === 'quest-npc-located-npc-2'),
+  );
+  assert.equal(reRevealed, false, '更晚章节的显形事件不应提前投影到早期任务');
+  assert.equal(futurePlaced, false, '更晚章节的登记摆放标志不应提前投影到早期任务');
 });
 
 function repeatCampaign(): Campaign {
