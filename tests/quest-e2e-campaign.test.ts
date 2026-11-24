@@ -656,6 +656,7 @@ test('全部 487 个正式任务逐一独立跑通「接取 → 目标达成 →
   let repeatQuestsVerified = 0;
   let landmarkQuestsVerified = 0;
   let saveRoundtripsVerified = 0;
+  const crossIslandQuestIds = new Set<string>();
   const sharedHarness = createQuestE2EHarness(official, { validateStages: false });
   t.after(() => sharedHarness.dispose());
 
@@ -677,6 +678,9 @@ test('全部 487 个正式任务逐一独立跑通「接取 → 目标达成 →
           }
 
           const outcome = await h.completeQuest(quest);
+          for (const transfer of h.log.crossIslandTransfers) {
+            crossIslandQuestIds.add(transfer.questId ?? questId);
+          }
           if (quest.journal === false) {
             assert.equal(
               h.log.popups.some(p => p.questId === questId),
@@ -754,4 +758,10 @@ test('全部 487 个正式任务逐一独立跑通「接取 → 目标达成 →
   assert.ok(repeatQuestsVerified >= 11, `可重复任务双轮验证数量不足：${repeatQuestsVerified}`);
   assert.equal(landmarkQuestsVerified, 5, `终态日志外路标任务数量变化：${landmarkQuestsVerified}`);
   assert.equal(saveRoundtripsVerified, 24, `跨章节正式存读档往返覆盖数量不足：${saveRoundtripsVerified}`);
+  // 跨岛专用通道仅允许命中真正横跨物理孤岛的任务（第1章跨岛路标「第1章路障」与战前战后分岛的「艾丽恩之家」），任何同岛锁门严禁走跨岛通道
+  assert.deepEqual(
+    [...crossIslandQuestIds].sort(),
+    ['quest-180', 'quest-298'],
+    `跨岛专用通道命中清单超出预期：[${[...crossIslandQuestIds].sort().join(', ')}]`,
+  );
 });

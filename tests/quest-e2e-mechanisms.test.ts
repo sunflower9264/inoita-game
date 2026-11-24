@@ -390,7 +390,7 @@ test('触发区占用记录与已完成任务经正式格式 1 存读档恢复�
   }
 });
 
-test('底座四项硬核对反作弊自证：隐身人物、动态路障封框、禁用刷怪点与无来源物品均立即报错拦截', async () => {
+test('底座五项硬核对反作弊自证：隐身人物、动态路障封框、禁用刷怪点、无来源物品与锁死出口均立即拦截，纯几何清障不依赖英文名且不误伤路人', async () => {
   const h = createQuestE2EHarness(miniContent);
   try {
     // 1. 人物被 actor-visibility 隐藏后，locateEntity 与交互直接判失败（不回退原始地图表、不造虚拟实体）
@@ -399,35 +399,35 @@ test('底座四项硬核对反作弊自证：隐身人物、动态路障封框�
     ]);
     assert.throws(() => h.locateEntity('captain', 'npc-captain', ['camp']), /找不到目标角色/);
 
-    // 2. 动态路障将 region 触发框完全封死时，assertRegionReachable / fireStoryEvent 立即判失败
+    // 2. 动态路障（即使使用非路障英文名）将 region 触发框完全封死且无解锁事件时，assertRegionReachable 立即判失败
     const blockedRegion = { x: 0, y: 0, width: 16, height: 16 };
     h.session.applyStoryCommands([
       {
         type: 'world',
         command: {
           kind: 'place',
-          entity: { id: 'wall-1', map: 'camp', actor: 'barricade', x: 8, y: 8, visible: true },
+          entity: { id: 'wall-1', map: 'camp', actor: 'sealstone', x: 8, y: 8, visible: true },
         },
       },
       {
         type: 'world',
         command: {
           kind: 'place',
-          entity: { id: 'wall-2', map: 'camp', actor: 'barricade', x: 24, y: 8, visible: true },
+          entity: { id: 'wall-2', map: 'camp', actor: 'sealstone', x: 24, y: 8, visible: true },
         },
       },
       {
         type: 'world',
         command: {
           kind: 'place',
-          entity: { id: 'wall-3', map: 'camp', actor: 'barricade', x: 8, y: 24, visible: true },
+          entity: { id: 'wall-3', map: 'camp', actor: 'sealstone', x: 8, y: 24, visible: true },
         },
       },
       {
         type: 'world',
         command: {
           kind: 'place',
-          entity: { id: 'wall-4', map: 'camp', actor: 'barricade', x: 24, y: 24, visible: true },
+          entity: { id: 'wall-4', map: 'camp', actor: 'sealstone', x: 24, y: 24, visible: true },
         },
       },
     ]);
@@ -445,5 +445,142 @@ test('底座四项硬核对反作弊自证：隐身人物、动态路障封框�
     await assert.rejects(() => h.fulfillQuestGoals(fakeQuest), /均无可用合法来源/);
   } finally {
     h.dispose();
+  }
+
+  // 5. 同岛出口被 exitRules 锁死时，换图、找人、打怪、拿物与跨岛通道均严禁穿墙，必须立即报错拦截；无剧情桥接的孤岛同样拒绝跨岛
+  const lockedContent = {
+    ...miniContent,
+    campaign: {
+      ...miniContent.campaign,
+      exitRules: [
+        {
+          map: 'camp',
+          id: 'camp-to-wilds',
+          condition: { type: 'flag' as const, flag: 'wilds-exit-unlocked', value: true },
+        },
+      ],
+    },
+  };
+  const hLocked = createQuestE2EHarness(lockedContent);
+  try {
+    assert.equal(hLocked.reachableMapsFrom('camp').has('wilds'), false, '出口锁死时 wilds 必须不可达');
+    assert.throws(
+      () => hLocked.travelToMapEntrance('wilds'),
+      /禁止穿墙换图/,
+      '出口被 exitRules 锁死时严禁通过普通换图穿墙进入 wilds',
+    );
+    assert.throws(
+      () => hLocked.crossIslandToMap('wilds', 'test-locked-door'),
+      /同岛出口被锁死，严禁当作跨岛任务穿墙/,
+      '同岛出口锁死绝不能冒充跨岛任务绕过',
+    );
+    assert.throws(
+      () => hLocked.locateEntity('horn', 'npc-horn', ['wilds']),
+      /找不到目标角色/,
+      '出口锁死时严禁穿墙定位不可达地图上的人物/机关',
+    );
+    assert.throws(
+      () => hLocked.locateSpawnedEnemy('enemy-reagents-1', ['wilds']),
+      /可达候选地图.*找不到已启用的敌人/,
+      '出口被 exitRules 锁死时严禁穿墙跨图定位敌人',
+    );
+    const lockedQuest = lockedContent.campaign.quests.find(q => q.id === 'q-side-tusk-a')!;
+    await assert.rejects(
+      () => hLocked.fulfillQuestGoals(lockedQuest),
+      /可达掉落表.*未能真实获得|无可用合法来源/,
+      '出口被 exitRules 锁死时严禁穿墙跨图刷取任务物品',
+    );
+  } finally {
+    hLocked.dispose();
+  }
+
+  // 5b. 没有任何静态出口且没有任何正式剧情 stage/travel 桥接的孤立死岛，跨岛通道同样必须拒绝
+  const orphanMap = {
+    ...miniContent.maps.get('wilds')!,
+    id: 'orphan-island',
+    name: '无桥孤岛',
+    exits: [],
+  };
+  const orphanContent = {
+    ...miniContent,
+    maps: new Map([...miniContent.maps, ['orphan-island', orphanMap]]),
+  };
+  const hOrphan = createQuestE2EHarness(orphanContent);
+  try {
+    assert.throws(
+      () => hOrphan.crossIslandToMap('orphan-island', 'test-orphan'),
+      /没有任何正式剧情切图桥接，严禁跨岛/,
+      '无任何正式剧情桥接的孤岛必须被跨岛通道拒绝',
+    );
+  } finally {
+    hOrphan.dispose();
+  }
+
+  // 6. 纯几何清障自证：非关键字障碍（sealstone）挡住区域触发框且有正式清障事件时自动打通，同时不误触发隐藏旁观村民的事件
+  const geoContent = {
+    ...miniContent,
+    campaign: {
+      ...miniContent.campaign,
+      scripts: {
+        ...miniContent.campaign.scripts,
+        's-clear-seal-wall': {
+          entry: 'n',
+          nodes: [
+            {
+              id: 'n',
+              presentation: [],
+              commands: [{ type: 'world' as const, command: { kind: 'actor-visibility' as const, map: 'camp', actor: 'sealstone', visible: false } }],
+              exit: { type: 'end' as const },
+            },
+          ],
+        },
+        's-hide-bystander': {
+          entry: 'n',
+          nodes: [
+            {
+              id: 'n',
+              presentation: [],
+              commands: [{ type: 'world' as const, command: { kind: 'actor-visibility' as const, map: 'camp', actor: 'captain', characterId: 'npc-captain', visible: false } }],
+              exit: { type: 'end' as const },
+            },
+          ],
+        },
+        's-enter-corner': {
+          entry: 'n',
+          nodes: [
+            {
+              id: 'n',
+              presentation: [],
+              commands: [{ type: 'flag' as const, flag: 'corner-reached', value: true }],
+              exit: { type: 'end' as const },
+            },
+          ],
+        },
+      },
+      events: [
+        ...miniContent.campaign.events,
+        { id: 'ev-hide-bystander', source: 'event' as const, key: 'hide-bystander', map: 'camp', script: 's-hide-bystander' },
+        { id: 'ev-clear-seal-wall', source: 'event' as const, key: 'clear-seal-wall', map: 'camp', script: 's-clear-seal-wall' },
+        { id: 'ev-enter-corner', source: 'region' as const, map: 'camp', region: { x: 0, y: 0, width: 16, height: 16 }, script: 's-enter-corner' },
+      ],
+    },
+  };
+  const hGeo = createQuestE2EHarness(geoContent);
+  try {
+    hGeo.session.applyStoryCommands([
+      { type: 'world', command: { kind: 'place', entity: { id: 'seal-w1', map: 'camp', actor: 'sealstone', x: 8, y: 8, visible: true } } },
+      { type: 'world', command: { kind: 'place', entity: { id: 'seal-w2', map: 'camp', actor: 'sealstone', x: 24, y: 8, visible: true } } },
+      { type: 'world', command: { kind: 'place', entity: { id: 'seal-w3', map: 'camp', actor: 'sealstone', x: 8, y: 24, visible: true } } },
+      { type: 'world', command: { kind: 'place', entity: { id: 'seal-w4', map: 'camp', actor: 'sealstone', x: 24, y: 24, visible: true } } },
+    ]);
+    await hGeo.fireStoryEvent(geoContent.campaign.events.find(e => e.id === 'ev-enter-corner')!);
+    assert.equal(hGeo.session.storyWorld.hasFlag('corner-reached'), true, '纯几何判定应自动识别并触发非关键字清障事件');
+    assert.equal(
+      hGeo.visibleEntities('camp').some(e => e.characterId === 'npc-captain'),
+      true,
+      '纯几何判定绝不误触发隐藏旁观村民的无关事件',
+    );
+  } finally {
+    hGeo.dispose();
   }
 });

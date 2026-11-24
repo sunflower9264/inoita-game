@@ -1,98 +1,40 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import {
-  parseBattle,
-  parseCampaign,
-  parseCharacterStats,
-  parseCompanions,
-  parseItemCatalog,
-  parseShops,
-  parseStoryClasses,
-  parseWorld,
-} from '../../src/application/content-validation.ts';
 import { captureSessionSave, prepareSavedGame } from '../../src/application/saved-game.ts';
 import type { SaveWorldResult, StoryWorldViewSnapshot } from '../../src/application/world-snapshot.ts';
-import type { BattleCatalog } from '../../src/domain/battle.ts';
-import type { Campaign, CampaignQuest } from '../../src/domain/campaign.ts';
-import type { CharacterStatsCatalog } from '../../src/domain/character-stats.ts';
-import { nearInteractive } from '../../src/domain/chests.ts';
+import type { CampaignQuest } from '../../src/domain/campaign.ts';
 import type {
   ActorDefinition,
   ChoiceOption,
   EntityPlacement,
-  QuestItemSpawn,
   QuestRewardReceipt,
   QuestStatus,
   TravelDestination,
-  WorldIndex,
-  WorldMap,
 } from '../../src/domain/content.ts';
-import { parseDrops, type DropCatalog } from '../../src/domain/drops.ts';
 import { groundLootFor } from '../../src/domain/ground-loot.ts';
 import { resolveInteraction } from '../../src/domain/interaction.ts';
-import type { ItemCatalog } from '../../src/domain/items.ts';
-import { authoredPlacements, baseMapEntities } from '../../src/domain/map-placement.ts';
-import { overlapsFootRect, type GameRectangle, type Point } from '../../src/domain/navigation.ts';
-import { mirroredCollision, NavigationWorld } from '../../src/domain/navigation-world.ts';
-import type { CompanionCatalog } from '../../src/domain/party.ts';
 import { QuestEnemyWatch } from '../../src/domain/quest-enemies.ts';
 import type { SaveGame } from '../../src/domain/save-game.ts';
-import { assertUniqueActorInstances } from '../../src/domain/actor-census.ts';
-import { assertScenePlan, planScene } from '../../src/domain/scene-plan.ts';
-import type { SceneSnapshot } from '../../src/domain/scene-snapshot.ts';
-import { prepareSceneVisit } from '../../src/domain/scene-visit.ts';
 import type { Session } from '../../src/domain/session.ts';
-import { Storefront, type ShopCatalog } from '../../src/domain/shop.ts';
-import { parseSprings, type SpringCatalog } from '../../src/domain/springs.ts';
-import { newStorySession, type StoryClassCatalog } from '../../src/domain/story-class.ts';
+import { Storefront } from '../../src/domain/shop.ts';
+import { newStorySession } from '../../src/domain/story-class.ts';
 import { storyConditionReferences, type StoryCondition } from '../../src/domain/story-condition.ts';
 import { StoryDirector, type StoryWorldPort } from '../../src/domain/story-director.ts';
-import type { StoryCommand, StoryEvent } from '../../src/domain/story-graph.ts';
-import type { PerformanceAction, StoryPresentationPort, StoryStage, StoryStageSnapshot } from '../../src/domain/story-performance.ts';
-import { applyStorySceneAction, hidePendingEntrances, resolveStoryScene } from '../../src/domain/story-scene.ts';
-import { storyExitId } from '../../src/domain/story-world.ts';
+import type { StoryEvent } from '../../src/domain/story-graph.ts';
+import type { PerformanceAction } from '../../src/domain/story-performance.ts';
 import { applyStoryEnemyRemovals, encounterSpawnId, WorldEnemyRoster } from '../../src/domain/world-enemies.ts';
 import { applyQuestStartPlan, planQuestStart } from '../../src/debug/quest-jump.ts';
 import { GameUI } from '../../src/ui/game-ui.ts';
 import { questNotices, type QuestNoticeState } from '../../src/ui/quest-progress.ts';
+import {
+  buildCampaignIndexes,
+  buildContentSourceIndexes,
+  loadOfficialQuestContent,
+  type QuestHarnessContent,
+} from './quest-e2e-indexes.ts';
+import { createQuestNavigation, type ObstacleTarget } from './quest-e2e-navigation.ts';
+import { createStoryPresentationPorts } from './quest-e2e-stage.ts';
 
-export interface QuestHarnessContent {
-  campaign: Campaign;
-  world: WorldIndex;
-  maps: ReadonlyMap<string, WorldMap>;
-  items: ItemCatalog;
-  stats: CharacterStatsCatalog;
-  battle: BattleCatalog;
-  storyClasses: StoryClassCatalog;
-  companions: CompanionCatalog;
-  drops: DropCatalog;
-  springs: SpringCatalog;
-  shops?: ShopCatalog;
-  shopActors?: ReadonlySet<string>;
-}
-
-let cachedOfficialContent: QuestHarnessContent | undefined;
-
-/** 读取并校验一次正式内容，供全量 487 任务测试共享只读副本。 */
-export function loadOfficialQuestContent(): QuestHarnessContent {
-  if (cachedOfficialContent) return cachedOfficialContent;
-  const read = (name: string) =>
-    JSON.parse(readFileSync(new URL(`../../public/content/${name}.json`, import.meta.url), 'utf8'));
-  const campaign = parseCampaign(read('campaign'));
-  const world = parseWorld(read('world'));
-  const items = parseItemCatalog(read('items'));
-  const stats = parseCharacterStats(read('character-stats'));
-  const battle = parseBattle(read('battle'));
-  const storyClasses = parseStoryClasses(read('story-classes'));
-  const companions = parseCompanions(read('companions'));
-  const drops = parseDrops(read('drops'), items, battle.enemies.map(enemy => enemy.id));
-  const springs = parseSprings(read('springs'));
-  const shops = parseShops(read('shops'));
-  const shopActors = new Set(Object.keys(shops.shops));
-  const maps = new Map<string, WorldMap>(world.maps.map(ref => [ref.id, read(`maps/${ref.id}`) as WorldMap]));
-  cachedOfficialContent = { campaign, world, maps, items, stats, battle, storyClasses, companions, drops, springs, shops, shopActors };
-  return cachedOfficialContent;
-}
+export { buildCampaignIndexes, loadOfficialQuestContent, type QuestHarnessContent };
 
 export interface PopupRecord {
   kind: 'start' | 'complete';
@@ -109,246 +51,6 @@ export interface QuestHarnessOptions {
   validateStages?: boolean;
   onPopupOpen?: (kind: 'start' | 'complete', quest: CampaignQuest, reward: QuestRewardReceipt | undefined, ui: GameUI) => void | Promise<void>;
   onStageAction?: (action: PerformanceAction) => void | Promise<void>;
-}
-
-interface CampaignIndexes {
-  questById: Map<string, CampaignQuest>;
-  groupKindByQuest: Map<string, 'main' | 'side'>;
-  choiceEvents: Map<string, StoryEvent[]>;
-  scriptQuestCommands: Map<string, Extract<StoryCommand, { type: 'quest' }>['command'][]>;
-  scriptHasTrap: Map<string, boolean>;
-  eventsCompletingQuest: Map<string, StoryEvent[]>;
-  eventsReadyingQuest: Map<string, StoryEvent[]>;
-  eventsAcceptingQuest: Map<string, StoryEvent[]>;
-}
-
-const indexCache = new WeakMap<Campaign, CampaignIndexes>();
-
-export function buildCampaignIndexes(campaign: Campaign): CampaignIndexes {
-  const existing = indexCache.get(campaign);
-  if (existing) return existing;
-  const questById = new Map(campaign.quests.map(q => [q.id, q]));
-  const groupKindByQuest = new Map<string, 'main' | 'side'>();
-  for (const g of campaign.questGroups) {
-    for (const qid of g.questIds) groupKindByQuest.set(qid, g.kind);
-  }
-  const choiceEvents = new Map<string, StoryEvent[]>();
-  for (const ev of campaign.events) {
-    if (ev.source !== 'choice') continue;
-    const match = JSON.stringify(ev.condition ?? {}).match(/"choice":"([^"]+)","value":"([^"]+)"/);
-    if (match) {
-      const key = `${match[1]}=${match[2]}`;
-      const list = choiceEvents.get(key) ?? [];
-      list.push(ev);
-      choiceEvents.set(key, list);
-    }
-  }
-  const scriptQuestCommands = new Map<string, Extract<StoryCommand, { type: 'quest' }>['command'][]>();
-  const scriptHasTrap = new Map<string, boolean>();
-  for (const [sid, script] of Object.entries(campaign.scripts)) {
-    const qcmds: Extract<StoryCommand, { type: 'quest' }>['command'][] = [];
-    let trap = false;
-    for (const node of script.nodes) {
-      for (const cmd of node.commands) {
-        if (cmd.type === 'quest') qcmds.push(cmd.command);
-        if (cmd.type === 'world' && cmd.command.kind === 'party-buff' && cmd.command.buff === 'story-trap') trap = true;
-      }
-    }
-    scriptQuestCommands.set(sid, qcmds);
-    scriptHasTrap.set(sid, trap);
-  }
-  const eventsCompletingQuest = new Map<string, StoryEvent[]>();
-  const eventsReadyingQuest = new Map<string, StoryEvent[]>();
-  const eventsAcceptingQuest = new Map<string, StoryEvent[]>();
-  const push = (map: Map<string, StoryEvent[]>, qid: string, ev: StoryEvent) => {
-    const list = map.get(qid) ?? [];
-    if (!list.includes(ev)) list.push(ev);
-    map.set(qid, list);
-  };
-  for (const ev of campaign.events) {
-    const direct = scriptQuestCommands.get(ev.script) ?? [];
-    const viaChoice: Extract<StoryCommand, { type: 'quest' }>['command'][] = [];
-    for (const node of campaign.scripts[ev.script]?.nodes ?? []) {
-      if (node.exit.type === 'choice') {
-        for (const opt of Object.keys(node.exit.cases)) {
-          for (const cev of choiceEvents.get(`${node.exit.choice}=${opt}`) ?? []) {
-            viaChoice.push(...(scriptQuestCommands.get(cev.script) ?? []));
-          }
-        }
-      }
-    }
-    for (const qc of [...direct, ...viaChoice]) {
-      if ('quest' in qc) {
-        if (qc.type === 'complete' || qc.type === 'script-complete') push(eventsCompletingQuest, qc.quest, ev);
-        else if (qc.type === 'script-ready') push(eventsReadyingQuest, qc.quest, ev);
-        else if (qc.type === 'accept') push(eventsAcceptingQuest, qc.quest, ev);
-      }
-    }
-  }
-  const built: CampaignIndexes = {
-    questById,
-    groupKindByQuest,
-    choiceEvents,
-    scriptQuestCommands,
-    scriptHasTrap,
-    eventsCompletingQuest,
-    eventsReadyingQuest,
-    eventsAcceptingQuest,
-  };
-  indexCache.set(campaign, built);
-  return built;
-}
-
-interface ContentSourceIndexes {
-  mapEntrances: Map<string, Point[]>;
-  mapsByEnemy: Map<string, string[]>;
-  mapsByQuestItemKey: Map<string, { mapId: string; spawn: QuestItemSpawn }[]>;
-  mapsByItemSpawn: Map<string, { mapId: string; spawn: QuestItemSpawn }[]>;
-  mapsByChar: Map<string, string[]>;
-  mapsByActor: Map<string, string[]>;
-  droppersByQuestItem: Map<string, string[]>;
-  eventsGivingItem: Map<string, StoryEvent[]>;
-  questsRewardingItem: Map<string, CampaignQuest[]>;
-  eventsSettingFlag: Map<string, StoryEvent[]>;
-  choiceParentEvents: Map<string, StoryEvent[]>;
-  eventsSpawningEnemy: Map<string, StoryEvent[]>;
-  eventsPlacingChar: Map<string, StoryEvent[]>;
-  eventsHidingActorOnMap: Map<string, StoryEvent[]>;
-  bfsCache: Map<string, Point[]>;
-}
-
-const sourceIndexCache = new WeakMap<QuestHarnessContent, ContentSourceIndexes>();
-
-function buildContentSourceIndexes(content: QuestHarnessContent): ContentSourceIndexes {
-  const existing = sourceIndexCache.get(content);
-  if (existing) return existing;
-
-  const pushUnique = <T>(map: Map<string, T[]>, key: string, value: T) => {
-    const list = map.get(key) ?? [];
-    if (!list.includes(value)) list.push(value);
-    map.set(key, list);
-  };
-
-  const mapEntrances = new Map<string, Point[]>();
-  for (const m of content.maps.values()) mapEntrances.set(m.id, []);
-  mapEntrances.get(content.campaign.start.map)?.push({ x: content.campaign.start.x, y: content.campaign.start.y });
-  for (const src of content.maps.values()) {
-    for (const ex of src.exits) {
-      mapEntrances.get(ex.destination)?.push({ x: ex.spawn.x, y: ex.spawn.y });
-    }
-  }
-
-  const mapsByEnemy = new Map<string, string[]>();
-  const mapsByQuestItemKey = new Map<string, { mapId: string; spawn: QuestItemSpawn }[]>();
-  const mapsByItemSpawn = new Map<string, { mapId: string; spawn: QuestItemSpawn }[]>();
-  const mapsByChar = new Map<string, string[]>();
-  const mapsByActor = new Map<string, string[]>();
-
-  for (const m of content.maps.values()) {
-    for (const sp of m.enemySpawns ?? []) pushUnique(mapsByEnemy, sp.enemyId, m.id);
-    for (const qis of m.questItemSpawns ?? []) {
-      const entry = { mapId: m.id, spawn: qis };
-      const qKey = `${qis.quest}\0${qis.item}`;
-      const qList = mapsByQuestItemKey.get(qKey) ?? [];
-      qList.push(entry);
-      mapsByQuestItemKey.set(qKey, qList);
-      const iList = mapsByItemSpawn.get(qis.item) ?? [];
-      iList.push(entry);
-      mapsByItemSpawn.set(qis.item, iList);
-    }
-    for (const e of m.entities) {
-      if (e.characterId) pushUnique(mapsByChar, e.characterId, m.id);
-      pushUnique(mapsByActor, e.actor, m.id);
-      if (e.objective) pushUnique(mapsByActor, e.objective, m.id);
-    }
-  }
-  for (const ep of content.campaign.enemyPlacements ?? []) pushUnique(mapsByEnemy, ep.enemyId, ep.map);
-  for (const p of [...content.campaign.placements, ...(content.campaign.mapEntryPlacements ?? [])]) {
-    if (p.characterId) pushUnique(mapsByChar, p.characterId, p.map);
-    pushUnique(mapsByActor, p.actor, p.map);
-    if (p.objective) pushUnique(mapsByActor, p.objective, p.map);
-  }
-
-  const droppersByQuestItem = new Map<string, string[]>();
-  for (const [enemyId, rules] of Object.entries(content.drops.questItems)) {
-    for (const rule of rules) pushUnique(droppersByQuestItem, rule.item, enemyId);
-  }
-
-  const eventsGivingItem = new Map<string, StoryEvent[]>();
-  const eventsSettingFlag = new Map<string, StoryEvent[]>();
-  const choiceParentEvents = new Map<string, StoryEvent[]>();
-  const eventsSpawningEnemy = new Map<string, StoryEvent[]>();
-  const eventsPlacingChar = new Map<string, StoryEvent[]>();
-  const eventsHidingActorOnMap = new Map<string, StoryEvent[]>();
-  for (const ev of content.campaign.events) {
-    const script = content.campaign.scripts[ev.script];
-    for (const node of script?.nodes ?? []) {
-      if (node.exit.type === 'choice') pushUnique(choiceParentEvents, node.exit.choice, ev);
-      if (node.exit.type === 'waitEncounter') {
-        for (const sp of node.exit.encounter.spawns) pushUnique(eventsSpawningEnemy, sp.enemyId, ev);
-      }
-      for (const cmd of node.commands) {
-        if (cmd.type === 'item-give' || cmd.type === 'item-drop') pushUnique(eventsGivingItem, cmd.item, ev);
-        if (cmd.type === 'flag') {
-          pushUnique(eventsSettingFlag, `${cmd.flag}=${cmd.value ?? true}`, ev);
-          const locMatch = /^quest-npc-located-(npc-\d+)$/.exec(cmd.flag);
-          if (locMatch && (cmd.value ?? true)) pushUnique(eventsPlacingChar, locMatch[1]!, ev);
-        }
-        if (cmd.type === 'world' && cmd.command.kind === 'flag') {
-          pushUnique(eventsSettingFlag, `${cmd.command.id}=${cmd.command.value}`, ev);
-          const locMatch = /^quest-npc-located-(npc-\d+)$/.exec(cmd.command.id);
-          if (locMatch && cmd.command.value) pushUnique(eventsPlacingChar, locMatch[1]!, ev);
-        }
-        if (cmd.type === 'encounter') {
-          for (const sp of cmd.encounter.spawns) pushUnique(eventsSpawningEnemy, sp.enemyId, ev);
-        }
-        if (cmd.type === 'world' && cmd.command.kind === 'place') {
-          const ent = cmd.command.entity;
-          if (ent.characterId) {
-            pushUnique(mapsByChar, ent.characterId, ent.map);
-            if (cmd.command.scope !== 'visit') pushUnique(eventsPlacingChar, ent.characterId, ev);
-          }
-          if (ent.actor) pushUnique(mapsByActor, ent.actor, ent.map);
-        }
-        if (cmd.type === 'world' && cmd.command.kind === 'enemy-location' && cmd.command.location) {
-          pushUnique(mapsByEnemy, cmd.command.enemyId, cmd.command.location.map);
-          pushUnique(eventsSpawningEnemy, cmd.command.enemyId, ev);
-        }
-        if (cmd.type === 'world' && cmd.command.kind === 'enemy-availability' && cmd.command.available) {
-          pushUnique(eventsSpawningEnemy, cmd.command.enemyId, ev);
-        }
-        if (cmd.type === 'world' && cmd.command.kind === 'actor-visibility' && !cmd.command.visible) {
-          if (cmd.command.characterId) pushUnique(eventsHidingActorOnMap, `${cmd.command.map}\0${cmd.command.characterId}`, ev);
-          pushUnique(eventsHidingActorOnMap, `${cmd.command.map}\0${cmd.command.actor}`, ev);
-        }
-      }
-    }
-  }
-
-  const questsRewardingItem = new Map<string, CampaignQuest[]>();
-  for (const q of content.campaign.quests) {
-    for (const reward of q.rewards?.items ?? []) pushUnique(questsRewardingItem, reward.item, q);
-  }
-
-  const built: ContentSourceIndexes = {
-    mapEntrances,
-    mapsByEnemy,
-    mapsByQuestItemKey,
-    mapsByItemSpawn,
-    mapsByChar,
-    mapsByActor,
-    droppersByQuestItem,
-    eventsGivingItem,
-    questsRewardingItem,
-    eventsSettingFlag,
-    choiceParentEvents,
-    eventsSpawningEnemy,
-    eventsPlacingChar,
-    eventsHidingActorOnMap,
-    bfsCache: new Map(),
-  };
-  sourceIndexCache.set(content, built);
-  return built;
 }
 
 const flushTurn = () => new Promise<void>(resolve => setImmediate(resolve));
@@ -401,6 +103,19 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
   }
 
   const questEnemies = new QuestEnemyWatch(session, content.drops.questItems);
+  const nav = createQuestNavigation(content, sources, session, kiyanActor);
+  const {
+    currentMapObj,
+    visibleEntities,
+    reachableMapsFrom,
+    canStaticallyWalkBetween,
+    hasFormalStoryBridgeToIsland,
+    reachableCellsWithDynamicObstacles,
+    assertRegionReachable,
+    assertEntityApproachable,
+    findBlockingUnlockEvents,
+  } = nav;
+
   const ui = new GameUI();
   ui.setMode('game');
   ui.loaded();
@@ -422,6 +137,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     servicesOpened: [] as string[],
     eventsCompleted: [] as string[],
     skipPhases: [] as string[],
+    crossIslandTransfers: [] as { questId?: string; from: string; to: string; reason: string }[],
     errors: [] as { error: unknown; retry: () => Promise<boolean> }[],
   };
 
@@ -455,226 +171,12 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
   syncQuestNotices();
   session.subscribe(() => syncQuestNotices());
 
-  let stage: StoryStageSnapshot | undefined;
-  const scenes = new Map<string, SceneSnapshot>();
-  const committedScenes = new Map<string, SceneSnapshot>();
-  const remember = () => {
-    if (stage) scenes.set(stage.map, structuredClone(stage.scene));
-  };
-
-  const currentMapObj = (): WorldMap => {
-    const mapId = session.storyWorld.currentLocation?.map ?? content.campaign.start.map;
-    const found = content.maps.get(mapId);
-    assert.ok(found, `地图不存在：${mapId}`);
-    return found;
-  };
-
-  const captureScene = (declaration?: StoryStage): SceneSnapshot => {
-    const location = session.storyWorld.currentLocation ?? { ...content.campaign.start, facing: 'south' as const };
-    const mapId = declaration && !declaration.mapFromWorld ? declaration.map : location.map;
-    const map = content.maps.get(mapId);
-    assert.ok(map, `舞台地图不存在：${mapId}`);
-    const player = mapId === location.map ? location : declaration!;
-    return prepareSceneVisit(
-      { session, campaign: content.campaign, world: content.world, battleCatalog: content.battle, drops: content.drops, springs: content.springs },
-      map,
-      { id: 'player', actor: content.campaign.start.actor, x: player.x, y: player.y, facing: player.facing, visible: true },
-      () => 0.5,
-    );
-  };
-
-  const resolveStage = (declaration: StoryStage): StoryStageSnapshot => {
-    remember();
-    const sameMap = stage && (declaration.mapFromWorld || declaration.map === stage.map) && !declaration.resetActors;
-    const mapId = declaration.mapFromWorld ? stage?.map ?? session.storyWorld.currentLocation?.map ?? content.campaign.start.map : declaration.map;
-    const scene = sameMap
-      ? stage!.scene
-      : !declaration.resetActors && scenes.has(mapId)
-        ? scenes.get(mapId)!
-        : captureScene(declaration);
-    if (!committedScenes.has(mapId) || declaration.resetActors) committedScenes.set(mapId, structuredClone(scene));
-    return resolveStoryScene(declaration, scene);
-  };
-
-  let fastStage: StoryStageSnapshot | undefined;
-  const makeFastStage = (declaration: StoryStage): StoryStageSnapshot => {
-    const fallbackMap = fastStage?.map ?? session.storyWorld.currentLocation?.map ?? content.campaign.start.map;
-    const map = declaration.mapFromWorld ? fallbackMap : declaration.map;
-    const facing = declaration.facing ?? 'south';
-    const actors: SceneSnapshot['actors'] = [
-      {
-        id: 'player',
-        actor: content.campaign.start.actor,
-        x: declaration.x,
-        y: declaration.y,
-        facing,
-        visible: declaration.playerVisible,
-      },
-    ];
-    const bindings: [string, string][] = [['player', 'player']];
-    for (const member of declaration.cast) {
-      if (member.id === 'player') continue;
-      actors.push({
-        id: member.id,
-        actor: member.actor,
-        x: member.x,
-        y: member.y,
-        facing: member.facing,
-        visible: member.visible,
-        ...(member.characterId !== undefined ? { characterId: member.characterId } : {}),
-        ...(member.worldEntityId !== undefined ? { worldEntityId: member.worldEntityId } : {}),
-        ...(member.memberId !== undefined ? { memberId: member.memberId } : {}),
-        ...(member.enemyId !== undefined ? { enemyId: member.enemyId } : {}),
-        ...(member.unpositioned !== undefined ? { unpositioned: member.unpositioned } : {}),
-      });
-      bindings.push([member.id, member.id]);
-    }
-    return {
-      ...declaration,
-      map,
-      facing,
-      scene: { map, actors },
-      bindings,
-    };
-  };
-  const fastPresentation: StoryPresentationPort = {
-    begin(_signal, restored) {
-      if (restored && 'scene' in restored) {
-        fastStage = structuredClone(restored);
-      } else if (restored) {
-        fastStage = makeFastStage(restored);
-      } else {
-        const loc = session.storyWorld.currentLocation ?? { ...content.campaign.start, facing: 'south' as const };
-        fastStage = makeFastStage({ type: 'stage', ...loc, playerVisible: true, cast: [] });
-      }
-    },
-    async execute(action) {
-      await options.onStageAction?.(action);
-      if (action.type === 'stage') {
-        fastStage = makeFastStage(action);
-      } else if (fastStage && action.type === 'walk' && action.target === 'player') {
-        fastStage = {
-          ...fastStage,
-          x: action.x,
-          y: action.y,
-          scene: {
-            ...fastStage.scene,
-            actors: fastStage.scene.actors.map(a => (a.id === 'player' ? { ...a, x: action.x, y: action.y } : a)),
-          },
-        };
-      } else if (fastStage && action.type === 'face' && action.target === 'player') {
-        fastStage = {
-          ...fastStage,
-          facing: action.facing,
-          scene: {
-            ...fastStage.scene,
-            actors: fastStage.scene.actors.map(a => (a.id === 'player' ? { ...a, facing: action.facing } : a)),
-          },
-        };
-      }
-    },
-    async restoreStage(saved) {
-      fastStage = structuredClone(saved);
-    },
-    getStageState: () => (fastStage ? structuredClone(fastStage) : undefined),
-    getWorldChanges: () => [],
-    committed() {},
-    async finish() {},
-    async flushStage() {},
-    release() {
-      fastStage = undefined;
-    },
-  };
-
-  const presentation: StoryPresentationPort = !validateStages ? fastPresentation : {
-    begin(_signal, restored) {
-      stage = undefined;
-      scenes.clear();
-      committedScenes.clear();
-      const loc = session.storyWorld.currentLocation ?? { ...content.campaign.start, facing: 'south' as const };
-      stage = restored && 'scene' in restored
-        ? structuredClone(restored)
-        : resolveStage(restored ?? { type: 'stage', ...loc, playerVisible: true, cast: [] });
-      remember();
-      committedScenes.set(stage.map, structuredClone(stage.scene));
-      if (validateStages) {
-        assertUniqueActorInstances(stage.scene.actors, `舞台 ${stage.map}/begin`);
-        assertScenePlan(planScene(stage.scene, stage.bindings));
-      }
-    },
-    async execute(action, _playback, pendingEntrances) {
-      await options.onStageAction?.(action);
-      if (action.type === 'stage') {
-        stage = resolveStage(action);
-        if (pendingEntrances?.length) stage = hidePendingEntrances(stage, action, pendingEntrances);
-      } else if (stage) {
-        stage = applyStorySceneAction(stage, action);
-      }
-      if (stage && validateStages) {
-        assertUniqueActorInstances(stage.scene.actors, `舞台 ${stage.map}/${action.type}`);
-        assertScenePlan(planScene(stage.scene, stage.bindings));
-      }
-    },
-    async restoreStage(saved) {
-      stage = structuredClone(saved);
-      scenes.clear();
-      for (const s of saved.scenes ?? []) scenes.set(s.map, structuredClone(s));
-      scenes.set(saved.map, structuredClone(saved.scene));
-      committedScenes.clear();
-      for (const [m, s] of scenes) committedScenes.set(m, structuredClone(s));
-      if (validateStages) {
-        assertUniqueActorInstances(stage.scene.actors, `舞台 ${stage.map}/restore`);
-        assertScenePlan(planScene(stage.scene, stage.bindings));
-      }
-    },
-    getStageState() {
-      return stage ? structuredClone(stage) : undefined;
-    },
-    getWorldChanges() {
-      remember();
-      return [...scenes].flatMap(([map, scene]) =>
-        scene.actors.flatMap(actor => {
-          if (!actor.worldEntityId || actor.unpositioned || actor.stageHidden) return [];
-          const previous = committedScenes.get(map)?.actors.find(value => value.id === actor.id);
-          if (
-            previous &&
-            previous.worldEntityId === actor.worldEntityId &&
-            previous.actor === actor.actor &&
-            previous.x === actor.x &&
-            previous.y === actor.y &&
-            previous.facing === actor.facing &&
-            previous.visible === actor.visible
-          ) {
-            return [];
-          }
-          return [
-            {
-              id: actor.worldEntityId,
-              map,
-              actor: actor.actor,
-              characterId: actor.characterId,
-              x: actor.x,
-              y: actor.y,
-              facing: actor.facing,
-              visible: actor.visible,
-            },
-          ];
-        }),
-      );
-    },
-    committed() {
-      remember();
-      committedScenes.clear();
-      for (const [m, s] of scenes) committedScenes.set(m, structuredClone(s));
-    },
-    async finish() {},
-    async flushStage() {},
-    release() {
-      stage = undefined;
-      scenes.clear();
-      committedScenes.clear();
-    },
-  };
+  const presentation = createStoryPresentationPorts({
+    content,
+    session,
+    validateStages,
+    onStageAction: options.onStageAction,
+  });
 
   let worldBaseline: { location?: TravelDestination } = {};
   const worldPort: StoryWorldPort = {
@@ -795,8 +297,14 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
             deferredHeldAtOpen: director.runtime.busy === false && log.eventsCompleted.length >= 0,
           };
           log.popups.push(record);
-          await options.onPopupOpen?.(currentPopup.kind, currentPopup.definition, currentPopup.reward, ui);
-          if (pausePopupKind === 'any' || pausePopupKind === currentPopup.kind) {
+          let popupHookError: unknown;
+          try {
+            await options.onPopupOpen?.(currentPopup.kind, currentPopup.definition, currentPopup.reward, ui);
+          } catch (hookErr) {
+            popupHookError = hookErr;
+            log.errors.push({ error: hookErr, retry: () => director.retry() });
+          }
+          if (!popupHookError && (pausePopupKind === 'any' || pausePopupKind === currentPopup.kind)) {
             pausedPopupConfirm = () => {
               pausedPopupConfirm = undefined;
               pausePopupKind = undefined;
@@ -893,160 +401,76 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     throw new Error(`任务闭环在限定调度轮次内未静止（目标任务：${targetQuestId ?? '无'}）`);
   };
 
-  /** 当前地图真实可见实体列表（与 WorldScene / prepareSceneVisit 显隐投影口径完全一致）。 */
-  const visibleEntities = (mapId?: string): EntityPlacement[] => {
-    const map = mapId ? content.maps.get(mapId)! : currentMapObj();
-    const authored = authoredPlacements(map, content.campaign);
-    const base = baseMapEntities(map, content.campaign, entity => session.visible(entity));
-    return session.storyWorld
-      .projectEntities(map.id, [...base, ...authored], content.campaign.placements)
-      .filter(
-        entity =>
-          session.visible(entity) &&
-          session.storyWorld.actorVisible(map.id, entity.actor, entity.characterId),
-      );
-  };
-
-  /** 计算从当前所在地图沿当前未被 exitRules 禁用的出口可达的全部地图集合（图级 BFS，不跑格子）。 */
-  const reachableMapsFrom = (originMapId?: string): Set<string> => {
-    const startMap = originMapId ?? session.storyWorld.currentLocation?.map ?? content.campaign.start.map;
-    const reached = new Set<string>([startMap]);
-    const queue = [startMap];
-    for (let i = 0; i < queue.length; i++) {
-      const mid = queue[i]!;
-      const mapObj = content.maps.get(mid);
-      if (!mapObj) continue;
-      for (const ex of mapObj.exits) {
-        const eid = storyExitId(mid, ex);
-        const rule = content.campaign.exitRules?.find(r => r.map === mid && r.id === eid);
-        const ruleOk = !rule || session.evaluateCondition(rule.condition);
-        if (!ruleOk || !session.storyWorld.exitEnabled(mid, ex)) continue;
-        if (!reached.has(ex.destination) && content.maps.has(ex.destination)) {
-          reached.add(ex.destination);
-          queue.push(ex.destination);
-        }
-      }
-    }
-    return reached;
-  };
-
-  /** 构建叠加当前真实在场实体动态碰撞盒的地图导航世界，并从入口做静态格子 BFS 返回所有主角可站立格中心点。 */
-  const reachableCellsWithDynamicObstacles = (mapId: string, extraStarts: Point[] = []): { cells: Point[]; entities: EntityPlacement[] } => {
-    const map = content.maps.get(mapId);
-    assert.ok(map, `导航校验目标地图不存在：${mapId}`);
-    const entities = visibleEntities(mapId);
-    const obstacleParts: string[] = [];
-    const obstacleEntities: { entity: EntityPlacement; col: NonNullable<ReturnType<typeof mirroredCollision>> }[] = [];
-    for (const entity of entities) {
-      const col = mirroredCollision(content.world.actors[entity.actor]?.collision, entity.flip);
-      if (!col) continue;
-      obstacleEntities.push({ entity, col });
-      obstacleParts.push(`${entity.actor}@${entity.x},${entity.y},${entity.flip ? 1 : 0}`);
-    }
-    const loc = session.storyWorld.currentLocation;
-    const starts: Point[] = [...(sources.mapEntrances.get(mapId) ?? []), ...extraStarts];
-    if (loc?.map === mapId) starts.push({ x: loc.x, y: loc.y });
-
-    obstacleParts.sort();
-    const startsSig = starts.map(s => `${Math.round(s.x)},${Math.round(s.y)}`).join(';');
-    const cacheKey = `${mapId}\0${obstacleParts.join('|')}\0${startsSig}`;
-    const cached = sources.bfsCache.get(cacheKey);
-    if (cached) return { cells: cached, entities };
-
-    const nav = new NavigationWorld(map);
-    for (const { entity, col } of obstacleEntities) {
-      nav.register({
-        shape: () => ({ collision: col }),
-        position: () => entity,
-        enabled: () => true,
-        faction: () => 'neutral',
-      });
-    }
-
-    const visited = new Set<number>();
-    const queue: number[] = [];
-    const cells: Point[] = [];
-    for (const sp of starts) {
-      const p = nav.nearestBody(kiyanActor, sp) ?? nav.nearest(kiyanActor, sp);
-      if (!p) continue;
-      const cx = Math.floor(p.x / map.tileSize);
-      const cy = Math.floor(p.y / map.tileSize);
-      if (cx < 0 || cy < 0 || cx >= map.columns || cy >= map.rows) continue;
-      const idx = cy * map.columns + cx;
-      if (visited.has(idx)) continue;
-      visited.add(idx);
-      queue.push(idx);
-      cells.push({ x: cx * map.tileSize + map.tileSize / 2, y: cy * map.tileSize + map.tileSize / 2 });
-    }
-    for (let i = 0; i < queue.length; i++) {
-      const cell = queue[i]!;
-      const cx = cell % map.columns;
-      const cy = Math.floor(cell / map.columns);
-      for (const [dx, dy] of [
-        [1, 0],
-        [-1, 0],
-        [0, 1],
-        [0, -1],
-      ] as const) {
-        const nx = cx + dx;
-        const ny = cy + dy;
-        if (nx < 0 || ny < 0 || nx >= map.columns || ny >= map.rows) continue;
-        const nidx = ny * map.columns + nx;
-        if (visited.has(nidx)) continue;
-        const pt = { x: nx * map.tileSize + map.tileSize / 2, y: ny * map.tileSize + map.tileSize / 2 };
-        if (!nav.canPlace(kiyanActor, pt)) continue;
-        visited.add(nidx);
-        queue.push(nidx);
-        cells.push(pt);
-      }
-    }
-    if (sources.bfsCache.size >= 4096) sources.bfsCache.clear();
-    sources.bfsCache.set(cacheKey, cells);
-    return { cells, entities };
-  };
-
-  /** 静态格子硬校验：region 触发框内至少有一格主角可站立、重叠脚底框且从当前入口不被当前在场动态路障堵死。 */
-  const assertRegionReachable = (mapId: string, region: GameRectangle, label: string): Point => {
-    const { cells, entities } = reachableCellsWithDynamicObstacles(mapId);
-    const hit = cells.find(pt => overlapsFootRect(pt, region));
-    if (!hit) {
-      const blockers = entities
-        .filter(e => Math.hypot(e.x - (region.x + region.width / 2), e.y - (region.y + region.height / 2)) < 96)
-        .map(e => `${e.actor}(${e.characterId ?? e.id})@${e.x},${e.y}`);
-      assert.fail(
-        `区域触发框不可达或被动态路障堵死 [${label}] map=${mapId} region=${JSON.stringify(region)} 附近在场实体=[${blockers.join(', ')}]`,
-      );
-    }
-    return hit;
-  };
-
-  /** 静态格子硬校验：目标在场实体周围至少存在一格主角可站立且处于交互/近身距离内、不被动态路障隔绝。 */
-  const assertEntityApproachable = (mapId: string, entity: EntityPlacement, label: string): Point => {
-    const actor = content.world.actors[entity.actor];
-    assert.ok(actor, `角色定义缺失：${entity.actor}`);
-    const isShop = content.shopActors?.has(entity.actor) ?? false;
-    const bodyReach = isShop ? 64 : undefined;
-    const { cells, entities } = reachableCellsWithDynamicObstacles(mapId);
-    const hit = cells.find(pt => nearInteractive(pt, entity, actor.collision, !!entity.flip, bodyReach));
-    if (!hit) {
-      const blockers = entities
-        .filter(e => e.id !== entity.id && Math.hypot(e.x - entity.x, e.y - entity.y) < 64)
-        .map(e => `${e.actor}(${e.characterId ?? e.id})@${e.x},${e.y}`);
-      assert.fail(
-        `在场目标不可接近或被路障隔绝 [${label}] map=${mapId} target=${entity.actor}(${entity.characterId ?? entity.id})@${entity.x},${entity.y} 附近实体=[${blockers.join(', ')}]`,
-      );
-    }
-    return hit;
-  };
-
-  const setCurrentMap = (mapId: string, x?: number, y?: number) => {
-    if (session.storyWorld.currentLocation?.map === mapId) return;
+  /**
+   * 普通同岛换图：严格校验目标地图必须沿当前已开启的静态出口可达（严禁穿墙跨过锁死出口或偷跑跨岛），
+   * 并一律落到目标地图真实入口坐标，严禁瞬移到目标脸上掩盖动态路障。
+   */
+  const travelToMapEntrance = (mapId: string) => {
+    const curMap = session.storyWorld.currentLocation?.map;
+    if (curMap === mapId) return;
     const map = content.maps.get(mapId);
     assert.ok(map, `切换目标地图不存在：${mapId}`);
+    if (curMap) {
+      assert.equal(
+        reachableMapsFrom(curMap).has(mapId),
+        true,
+        `禁止穿墙换图：从 ${curMap} 沿当前已开启的静态出口无法到达 ${mapId}`,
+      );
+    }
     const entrance = sources.mapEntrances.get(mapId)?.[0];
-    const destX = entrance?.x ?? x ?? 64;
-    const destY = entrance?.y ?? y ?? 64;
+    const destX = entrance?.x ?? 64;
+    const destY = entrance?.y ?? 64;
     session.applyStoryCommands([{ type: 'travel', destination: { map: mapId, x: destX, y: destY, facing: 'south' } }]);
+    session.enterMap(map.id, map.questItemSpawns ?? [], map, map.enemySpawns);
+  };
+
+  /**
+   * 跨岛任务专用切图通道（独立于同岛步行，带三道硬门禁并全程记账）：
+   * 1. 若同岛已连通，直接走正常同岛换图；
+   * 2. 若两图物理上同属一片静态出口大陆（只是门被 exitRules/exitEnabled 锁住），立刻报错拒绝，严禁借跨岛通道穿墙；
+   * 3. 目标岛必须存在正式剧情 stage/travel 切图桥接（拒绝无桥接的孤立死岛），并记入 log.crossIslandTransfers 接受审计。
+   */
+  const crossIslandToMap = (mapId: string, reason: string) => {
+    const curMap = session.storyWorld.currentLocation?.map;
+    if (!curMap || curMap === mapId || reachableMapsFrom(curMap).has(mapId)) {
+      travelToMapEntrance(mapId);
+      return;
+    }
+    const map = content.maps.get(mapId);
+    assert.ok(map, `跨岛目标地图不存在：${mapId}`);
+    assert.equal(
+      canStaticallyWalkBetween(curMap, mapId),
+      false,
+      `同岛出口被锁死，严禁当作跨岛任务穿墙：${curMap} -> ${mapId}（原因：${reason}）`,
+    );
+    assert.equal(
+      hasFormalStoryBridgeToIsland(mapId),
+      true,
+      `目标地图 ${mapId} 所在岛屿没有任何正式剧情切图桥接，严禁跨岛（来自 ${curMap}，原因：${reason}）`,
+    );
+    log.crossIslandTransfers.push({ questId: targetQuestId, from: curMap, to: mapId, reason });
+    const entrance = sources.mapEntrances.get(mapId)?.[0];
+    const destX = entrance?.x ?? 64;
+    const destY = entrance?.y ?? 64;
+    session.applyStoryCommands([{ type: 'travel', destination: { map: mapId, x: destX, y: destY, facing: 'south' } }]);
+    session.enterMap(map.id, map.questItemSpawns ?? [], map, map.enemySpawns);
+  };
+
+  /** GM 跳转落点：仅在初始化任务起点承接 plan.destination 时按精确落点就位。 */
+  const placeAtDestination = (destination: TravelDestination) => {
+    const map = content.maps.get(destination.map);
+    assert.ok(map, `GM 跳转落点地图不存在：${destination.map}`);
+    session.applyStoryCommands([
+      {
+        type: 'travel',
+        destination: {
+          map: destination.map,
+          x: destination.x,
+          y: destination.y,
+          facing: destination.facing ?? 'south',
+        },
+      },
+    ]);
     session.enterMap(map.id, map.questItemSpawns ?? [], map, map.enemySpawns);
   };
 
@@ -1063,7 +487,6 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     };
     addCand(currentId);
     for (const mid of preferredMaps) addCand(mid);
-    // 也纳入 storyWorld 当前动态放置记录中所在地图
     for (const st of session.storyWorld.captureState().entities) {
       if (st.map && !st.removed && ((characterId && st.characterId === characterId) || st.actor === actorOrCharId || st.characterId === actorOrCharId || st.id === actorOrCharId)) {
         addCand(st.map);
@@ -1075,15 +498,17 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     for (const mid of sources.mapsByActor.get(actorOrCharId) ?? []) addCand(mid);
     for (const mid of sources.mapsByChar.get(actorOrCharId) ?? []) addCand(mid);
 
+    const reachable = reachableMapsFrom();
     const searchWith = (pred: (e: EntityPlacement) => boolean): { mapId: string; entity: EntityPlacement; actor: ActorDefinition } | undefined => {
-      for (const mid of candidateMaps) {
-        // 若该地图存在条件成立的 mapEntryPlacements（如评论邀请的露娜），先触发一次真实进图使其按正式规则投影
+      // 严禁穿墙定位不可达地图上的人物或机关：仅在当前图与当前静态出口可达地图内查找
+      const reachableCands = candidateMaps.filter(mid => mid === currentId || reachable.has(mid));
+      for (const mid of reachableCands) {
         const needsEntryPlace =
           mid !== session.storyWorld.currentLocation?.map &&
           (content.campaign.mapEntryPlacements ?? []).some(
             p => p.map === mid && pred(p) && session.evaluateCondition(p.condition),
           );
-        if (needsEntryPlace) setCurrentMap(mid);
+        if (needsEntryPlace) travelToMapEntrance(mid);
         const hit = visibleEntities(mid).find(pred);
         if (hit) {
           const actor = content.world.actors[hit.actor];
@@ -1102,7 +527,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     );
   };
 
-  /** 严格定位真实在场可见实体并核验主角可接近；找不到直接判失败。 */
+  /** 严格定位真实在场可见实体；找不到直接判失败。 */
   const locateEntity = (
     actorOrCharId: string,
     characterId?: string,
@@ -1116,6 +541,8 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     return found;
   };
 
+  let onBeforeDirectorInteract: (() => void) | undefined;
+
   /** 通过真实 resolveInteraction + StoryDirector.interact 执行一次角色/机关交互（附带静态可达核验）。 */
   const interactWithEntity = async (
     entity: EntityPlacement,
@@ -1123,7 +550,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     visitedQuests = new Set<string>(),
   ): Promise<string> => {
     const targetMap = mapId ?? currentMapObj().id;
-    setCurrentMap(targetMap);
+    travelToMapEntrance(targetMap);
     assert.ok(
       visibleEntities(targetMap).some(e => e.id === entity.id),
       `交互实体 ${entity.actor}(${entity.id}) 在地图 ${targetMap} 当前不可见`,
@@ -1131,10 +558,9 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     try {
       assertEntityApproachable(targetMap, entity, `interact:${entity.actor}(${entity.characterId ?? entity.id})`);
     } catch (approachErr) {
-      // 若同图存在可由正式剧情/解锁任务移除的动态门障（例如哥布林监狱的牢门），先走正式解锁流程再复核可达性
-      const unlocked = await tryUnlockMapObstacles(targetMap, visitedQuests);
+      const unlocked = await tryUnlockMapObstacles(targetMap, { kind: 'entity', entity }, visitedQuests);
       if (!unlocked) throw approachErr;
-      setCurrentMap(targetMap);
+      travelToMapEntrance(targetMap);
       assert.ok(
         visibleEntities(targetMap).some(e => e.id === entity.id),
         `解锁障碍后交互实体 ${entity.actor}(${entity.id}) 在地图 ${targetMap} 不再可见`,
@@ -1162,6 +588,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
       log.servicesOpened.push(`${action.kind}:${entity.actor}`);
       return action.kind;
     }
+    onBeforeDirectorInteract?.();
     await director.interact(entity, actor);
     await settle();
     return 'story';
@@ -1182,7 +609,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     let guard = 0;
     while (session.storyWorld.activeEncounters.length > 0 && guard++ < 20) {
       const enc = session.storyWorld.activeEncounters[0]!;
-      setCurrentMap(enc.map);
+      travelToMapEntrance(enc.map);
       const map = currentMapObj();
       const roster = new WorldEnemyRoster(
         session,
@@ -1247,7 +674,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
   };
 
   /**
-   * 尝试在当前活跃遭遇或候选地图的真实 WorldEnemyRoster 中定位真实在场敌人实例（严禁捏造虚拟刷怪点）。
+   * 尝试在当前活跃遭遇或可达地图的真实 WorldEnemyRoster 中定位真实在场敌人实例（严禁捏造虚拟刷怪点、严禁跨锁死出口穿墙）。
    * 若同图可刷新刷怪点处于死亡冷却中，通过正式时钟推进 + roster.refresh() 合法续刷；
    * 若同图全部静态刷怪点在本轮访问内都已被捕捉占用，通过正式相邻地图出口离图重进释放上轮捕捉状态。
    */
@@ -1265,7 +692,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     for (const enc of session.storyWorld.activeEncounters) {
       const sp = enc.spawns.find(s => s.enemyId === enemyId && session.enemyVitals(encounterSpawnId(enc.id, s.id)).deadUntil === undefined);
       if (!sp) continue;
-      setCurrentMap(enc.map, sp.x, sp.y);
+      travelToMapEntrance(enc.map);
       const map = currentMapObj();
       const roster = new WorldEnemyRoster(
         session,
@@ -1279,26 +706,26 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
       return { found: { mapId: enc.map, key, x: sp.x, y: sp.y, spawn: src, roster }, candidateMaps: [enc.map] };
     }
 
-    // 2. 收集真实候选地图（优先当前地图、任务活动地图、剧情 enemyLocations 地图、以及含该怪刷怪点的图）
+    // 2. 严格限定当前地图与真实可达地图（严禁穿墙访问被 exitRules/exitEnabled 封锁的地图）
     const reachable = reachableMapsFrom();
     const candidateMaps: string[] = [];
-    const addCand = (mid: string | undefined) => {
-      if (mid && content.maps.has(mid) && !candidateMaps.includes(mid)) candidateMaps.push(mid);
-    };
-    // 若当前地图已有该怪的剧情放置/刷怪点，优先检查当前地图，避免切图清掉 scope='visit' 的剧情怪
     const curMapId = session.storyWorld.currentLocation?.map;
+    const addReachableCand = (mid: string | undefined) => {
+      if (mid && content.maps.has(mid) && (mid === curMapId || reachable.has(mid)) && !candidateMaps.includes(mid)) {
+        candidateMaps.push(mid);
+      }
+    };
     if (curMapId && session.storyWorld.enemySpawns(curMapId).some(sp => sp.enemyId === enemyId)) {
-      addCand(curMapId);
+      addReachableCand(curMapId);
     }
-    for (const mid of preferredMaps) addCand(mid);
-    addCand(curMapId);
+    for (const mid of preferredMaps) addReachableCand(mid);
+    addReachableCand(curMapId);
     for (const el of session.storyWorld.captureState().enemyLocations ?? []) {
-      if (el.enemyId === enemyId) addCand(el.map);
+      if (el.enemyId === enemyId) addReachableCand(el.map);
     }
     for (const mid of sources.mapsByEnemy.get(enemyId) ?? []) {
-      if (reachable.has(mid)) addCand(mid);
+      addReachableCand(mid);
     }
-    for (const mid of sources.mapsByEnemy.get(enemyId) ?? []) addCand(mid);
 
     for (const mid of candidateMaps) {
       const map = content.maps.get(mid)!;
@@ -1309,11 +736,10 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
         session.storyWorld.enemySpawns(mid).some(sp => sp.enemyId === enemyId);
       if (!hasAnyPotential) continue;
 
-      setCurrentMap(mid);
+      travelToMapEntrance(mid);
       let roster = new WorldEnemyRoster(session, map, mapPlacements, session.hero?.level ?? 1, questEnemies);
       let placed = roster.enemies.find(e => e.enemyId === enemyId);
       if (!placed) {
-        // 合法续刷 1：可刷新普通地图刷怪点处于死亡计时中，按正式时钟推进 65 秒并刷新名册
         const hasRespawnable = roster.spawns.some(sp => sp.enemyId === enemyId && sp.respawn !== false);
         if (hasRespawnable) {
           session.advanceGameTime(65_000);
@@ -1322,7 +748,6 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
         }
       }
       if (!placed) {
-        // 合法续刷 2：本图该敌人的静态刷怪点在当前访问中全被捕捉（state.capture），沿真实出口离图再进图
         const hasCapturedSlots = roster.spawns.some(
           sp => sp.enemyId === enemyId && session.enemyVitals(sp.id).capture !== undefined,
         );
@@ -1331,8 +756,8 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
             ex => ex.destination !== mid && content.maps.has(ex.destination) && session.storyWorld.exitEnabled(mid, ex),
           )?.destination;
           if (neighbor) {
-            setCurrentMap(neighbor);
-            setCurrentMap(mid);
+            travelToMapEntrance(neighbor);
+            travelToMapEntrance(mid);
             roster = new WorldEnemyRoster(session, map, mapPlacements, session.hero?.level ?? 1, questEnemies);
             placed = roster.enemies.find(e => e.enemyId === enemyId);
           }
@@ -1356,7 +781,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     const res = tryLocateSpawnedEnemy(enemyId, preferredMaps);
     if (!res.found) {
       assert.fail(
-        `在当前活跃遭遇与全部候选地图的真实 WorldEnemyRoster 中均找不到已启用的敌人：${enemyId}（候选地图=[${res.candidateMaps.join(',')}]）`,
+        `在当前活跃遭遇与全部可达候选地图的真实 WorldEnemyRoster 中均找不到已启用的敌人：${enemyId}（当前地图=${session.storyWorld.currentLocation?.map ?? '无'}，可达候选地图=[${res.candidateMaps.join(',')}]）`,
       );
     }
     return res.found;
@@ -1379,9 +804,20 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
         const unsub = session.subscribeDefeats(id => {
           if (id === enemyId) defeatedDuringEvent = true;
         });
+        const defeatGoalTotal = (): number => {
+          if (!targetQuestId) return 0;
+          const q = indexes.questById.get(targetQuestId);
+          const prog = session.quests.get(targetQuestId);
+          if (!q || !prog) return 0;
+          let total = 0;
+          for (const g of q.goals) {
+            if (g.kind === 'defeat' && g.target === enemyId) total += prog.goals[g.id] ?? 0;
+          }
+          return total;
+        };
         const beforeQuestStatus = targetQuestId ? session.status(targetQuestId) : undefined;
         const beforeQuestCycles = targetQuestId ? session.questBook.completedCycles(targetQuestId) : 0;
-        const beforeDefeatSeq = session.questBook.factSequence('story') + session.questBook.factSequence('combat');
+        const beforeDefeatGoal = defeatGoalTotal();
         activeSpawningEnemies.add(enemyId);
         try {
           if (readyEv.condition && !session.evaluateCondition(readyEv.condition)) {
@@ -1396,9 +832,8 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
           !!targetQuestId &&
           (session.status(targetQuestId) !== beforeQuestStatus ||
             session.questBook.completedCycles(targetQuestId) > beforeQuestCycles);
-        const defeatSeqAdvanced =
-          session.questBook.factSequence('story') + session.questBook.factSequence('combat') > beforeDefeatSeq;
-        if (defeatedDuringEvent || questProgressed || defeatSeqAdvanced) {
+        const defeatGoalAdvanced = defeatGoalTotal() > beforeDefeatGoal;
+        if (defeatedDuringEvent || defeatGoalAdvanced || questProgressed) {
           return { mapId: currentMapObj().id, key: `encounter:${readyEv.id}:${enemyId}`, droppedItems: [] };
         }
         attempt = tryLocateSpawnedEnemy(enemyId, [currentMapObj().id, ...preferredMaps]);
@@ -1407,7 +842,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     const found = attempt.found ?? locateSpawnedEnemy(enemyId, preferredMaps);
     const enemyDef = content.battle.enemies.find(e => e.id === enemyId)!;
     const map = content.maps.get(found.mapId)!;
-    const beforeDropIds = new Set(groundLootFor(session).forMap(found.mapId).map(d => d.id));
+    const beforeDropIds = new Set(groundLootFor(session).dropsOnMap(found.mapId).map(d => d.id));
     const res = session.settleEnemyDefeat({
       key: found.key,
       spawn: found.spawn,
@@ -1428,7 +863,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     assert.ok(res, `真实敌人 ${enemyId} (${found.key}) 结算击败返回空`);
     res.notify();
     const droppedItems = groundLootFor(session)
-      .forMap(found.mapId)
+      .dropsOnMap(found.mapId)
       .filter(d => !beforeDropIds.has(d.id) && d.reward.kind === 'item')
       .map(d => (d.reward.kind === 'item' ? d.reward.item : ''));
     collectAllGroundLootOnMap(found.mapId);
@@ -1456,28 +891,40 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
           : undefined;
     const mapId = event.map ?? spot?.map ?? session.storyWorld.currentLocation?.map ?? content.campaign.start.map;
 
+    const moveToEventMap = (destMapId: string) => {
+      const curMap = session.storyWorld.currentLocation?.map;
+      if (!curMap || curMap === destMapId || reachableMapsFrom(curMap).has(destMapId)) {
+        travelToMapEntrance(destMapId);
+      } else if (!canStaticallyWalkBetween(curMap, destMapId)) {
+        // 仅在真正跨岛（两岛间物理无步行静态出口）时走独立跨岛通道；若同岛锁门则落入 travelToMapEntrance 直接报错拦截
+        crossIslandToMap(destMapId, `event:${event.id}`);
+      } else {
+        travelToMapEntrance(destMapId);
+      }
+    };
+
     let fired = false;
     switch (event.source) {
       case 'start':
-        setCurrentMap(mapId, spot?.x ?? 64, spot?.y ?? 64);
+        moveToEventMap(mapId);
         fired = await director.start();
         break;
       case 'region': {
         assert.ok(event.map && event.region, `区域事件 ${event.id} 缺少 map 或 region`);
-        setCurrentMap(event.map);
+        moveToEventMap(event.map);
         try {
           assertRegionReachable(event.map, event.region, `event:${event.id}`);
         } catch (regionErr) {
-          const unlocked = await tryUnlockMapObstacles(event.map, visitedQuests);
+          const unlocked = await tryUnlockMapObstacles(event.map, { kind: 'region', region: event.region }, visitedQuests);
           if (!unlocked) throw regionErr;
-          setCurrentMap(event.map);
+          moveToEventMap(event.map);
           assertRegionReachable(event.map, event.region, `event:${event.id}`);
         }
         fired = await director.enterRegion(event.id, event.map);
         break;
       }
       case 'map-entry': {
-        setCurrentMap(mapId, spot?.x ?? 64, spot?.y ?? 64);
+        moveToEventMap(mapId);
         fired = await director.enterMap(event.key ?? mapId);
         break;
       }
@@ -1489,13 +936,13 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
         const located = event.entity
           ? locateEntity(event.entity, undefined, candMaps)
           : locateEntity(event.near!, event.nearCharacterId, candMaps);
-        setCurrentMap(located.mapId);
+        travelToMapEntrance(located.mapId);
         try {
           assertEntityApproachable(located.mapId, located.entity, `near:${event.id}`);
         } catch (approachErr) {
-          const unlocked = await tryUnlockMapObstacles(located.mapId, visitedQuests);
+          const unlocked = await tryUnlockMapObstacles(located.mapId, { kind: 'entity', entity: located.entity }, visitedQuests);
           if (!unlocked) throw approachErr;
-          setCurrentMap(located.mapId);
+          travelToMapEntrance(located.mapId);
           assertEntityApproachable(located.mapId, located.entity, `near:${event.id}`);
         }
         fired = await director.approach(event, located.entity, located.mapId);
@@ -1503,13 +950,13 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
       }
       case 'interaction': {
         const located = locateEntity(event.key ?? '', undefined, candMaps);
-        setCurrentMap(located.mapId);
+        travelToMapEntrance(located.mapId);
         try {
           assertEntityApproachable(located.mapId, located.entity, `interaction:${event.id}`);
         } catch (approachErr) {
-          const unlocked = await tryUnlockMapObstacles(located.mapId, visitedQuests);
+          const unlocked = await tryUnlockMapObstacles(located.mapId, { kind: 'entity', entity: located.entity }, visitedQuests);
           if (!unlocked) throw approachErr;
-          setCurrentMap(located.mapId);
+          travelToMapEntrance(located.mapId);
           assertEntityApproachable(located.mapId, located.entity, `interaction:${event.id}`);
         }
         fired = await director.interact(located.entity, located.actor);
@@ -1548,13 +995,12 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
           await defeatRealEnemy(enemyId, candMaps, visitedQuests);
           fired = true;
         } else {
-          setCurrentMap(mapId, spot?.x ?? 64, spot?.y ?? 64);
+          travelToMapEntrance(mapId);
           fired = await director.notify('battle', key, mapId);
         }
         break;
       }
       case 'choice': {
-        // 若存在父选择事件且本事件条件尚未成立，先满足父事件条件并经父事件真实弹出选项，再走 StoryRuntime.notify
         const choiceMatch = JSON.stringify(event.condition ?? {}).match(/"choice":"([^"]+)","value":"([^"]+)"/);
         const choiceKey = event.key ?? choiceMatch?.[1];
         const choiceVal = choiceMatch?.[2];
@@ -1577,7 +1023,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
             activeChoiceEvents.delete(event.id);
           }
         } else {
-          setCurrentMap(mapId, spot?.x ?? 64, spot?.y ?? 64);
+          travelToMapEntrance(mapId);
           fired = await director.notify('choice', event.key, mapId);
         }
         break;
@@ -1585,7 +1031,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
       case 'quest':
       case 'inventory':
       case 'event':
-        setCurrentMap(mapId, spot?.x ?? 64, spot?.y ?? 64);
+        travelToMapEntrance(mapId);
         fired = await director.notify(event.source, event.key, mapId);
         break;
     }
@@ -1606,34 +1052,30 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     return false;
   };
 
-  /** 拾取当前地图地面战利品进背包（背包被非任务杂物接近占满时跳过非任务掉落，并严格核对入包结果）。 */
+  /** 单趟 O(N) 拾取当前地图地面战利品进背包（背包被非任务杂物接近占满时跳过非任务掉落，并严格核对入包结果）。 */
   const collectAllGroundLootOnMap = (mapId: string): number => {
     const store = groundLootFor(session);
-    let collectedCount = 0;
-    for (const drop of [...store.forMap(mapId)]) {
-      const picked = store.collectNearby(mapId, drop.x, drop.y, reward => {
-        if (reward.kind === 'money') {
-          session.gainMoney(reward.amount);
-          return true;
-        }
-        const needed = isNeededByRunningQuest(reward.item);
-        if (!needed && session.bag.entries.length >= 10) return false;
-        return reward.instance ? session.bag.receiveDrop(reward.instance) : session.bag.add(reward.item, reward.quantity);
-      });
-      if (picked.length > 0) {
-        collectedCount += picked.length;
-        session.questItemGenerators.collected(
-          picked.map(d => d.id),
-          session.combatTick,
-        );
+    const picked = store.collectAll(mapId, reward => {
+      if (reward.kind === 'money') {
+        session.gainMoney(reward.amount);
+        return true;
       }
+      const needed = isNeededByRunningQuest(reward.item);
+      if (!needed && session.bag.entries.length >= 10) return false;
+      return reward.instance ? session.bag.receiveDrop(reward.instance) : session.bag.add(reward.item, reward.quantity);
+    });
+    if (picked.length > 0) {
+      session.questItemGenerators.collected(
+        picked.map(d => d.id),
+        session.combatTick,
+      );
+      session.emit();
     }
-    if (collectedCount > 0) session.emit();
-    return collectedCount;
+    return picked.length;
   };
 
   /**
-   * 通过 6 类正式游戏渠道合法获取任务/交接物品（彻底禁止无来源凭空 placeGroundRewards 塞包）：
+   * 通过 6 类正式游戏渠道合法获取任务/交接物品（彻底禁止无来源凭空 placeGroundRewards 塞包、严禁穿墙访问被锁死地图）：
    * 1. 背包已有（接取赠送或前置带入）
    * 2. 真实任务掉落怪（WorldEnemyRoster + settleEnemyDefeat 真实掉出并拾取）
    * 3. 真实地图采集生成点（map.questItemSpawns + advanceCombatFrames 驱动 questItemGenerators 真实产出）
@@ -1683,22 +1125,23 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
         assert.equal(
           progressedThisRound,
           true,
-          `任务 ${quest.id} 击杀掉落表怪物 [${droppers.join(',')}] 后未能真实获得任务物品 ${itemId}`,
+          `任务 ${quest.id} 击杀可达掉落表怪物 [${droppers.join(',')}] 后未能真实获得任务物品 ${itemId}`,
         );
       }
       if (session.itemCount(itemId) >= targetQty || questSettled()) return;
     }
 
-    // 渠道 3：真实地图采集生成点（map.questItemSpawns -> session.questItemGenerators.advance）
-    const spawnEntries =
+    // 渠道 3：真实地图采集生成点（map.questItemSpawns -> session.questItemGenerators.advance，仅限可达地图）
+    const rawSpawnEntries =
       sources.mapsByQuestItemKey.get(`${quest.id}\0${itemId}`) ??
       sources.mapsByItemSpawn.get(itemId) ??
       [];
+    const reachableForSpawns = reachableMapsFrom();
+    const spawnEntries = rawSpawnEntries.filter(e => reachableForSpawns.has(e.mapId));
     if (spawnEntries.length > 0) {
       const targetMapId = spawnEntries.find(e => activeMaps.includes(e.mapId))?.mapId ?? spawnEntries[0]!.mapId;
       const onMapSpawns = spawnEntries.filter(e => e.mapId === targetMapId);
-      setCurrentMap(targetMapId);
-      // 校验至少一个采集点坐标在当前地图导航网中可接近
+      travelToMapEntrance(targetMapId);
       const { cells } = reachableCellsWithDynamicObstacles(targetMapId);
       const anySpawnReachable = onMapSpawns.some(({ spawn }) =>
         cells.some(pt => Math.hypot(pt.x - spawn.x, pt.y - spawn.y) <= 28),
@@ -1711,16 +1154,14 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
       let guard = 0;
       while (session.itemCount(itemId) < targetQty && !questSettled() && guard++ < targetQty * 4 + 6) {
         const before = session.itemCount(itemId);
-        // 推进正式战斗帧驱动 QuestItemGenerators（跨越 150 帧检查周期与 respawnFrames）
         session.advanceCombatFrames(6_000, () => {});
         collectAllGroundLootOnMap(targetMapId);
         await settle();
         if (questSettled() || session.itemCount(itemId) >= targetQty) break;
         if (session.itemCount(itemId) === before && guard > 2) {
-          // 若是 respawnFrames===0 的一次性点位，换到另一张含生成点的图或重新进图
           const alt = spawnEntries.find(e => e.mapId !== targetMapId);
           if (alt) {
-            setCurrentMap(alt.mapId);
+            travelToMapEntrance(alt.mapId);
             session.advanceCombatFrames(6_000, () => {});
             collectAllGroundLootOnMap(alt.mapId);
             await settle();
@@ -1737,7 +1178,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
       if (!ev.repeat && director.runtime.eventStatus(ev.id) === 'completed') continue;
       await satisfyEventCondition(ev.condition, visitedQuests);
       if (session.itemCount(itemId) >= targetQty) break;
-      await fireStoryEvent(ev);
+      await fireStoryEvent(ev, visitedQuests);
     }
     if (session.itemCount(itemId) >= targetQty) return;
 
@@ -1754,8 +1195,8 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
         const accEv = (indexes.eventsAcceptingQuest.get(rq.id) ?? []).find(
           e => !e.condition || session.evaluateCondition(e.condition),
         );
-        if (accEv) await fireStoryEvent(accEv);
-        else if (rq.giver) await admitViaGiver(rq);
+        if (accEv) await fireStoryEvent(accEv, visitedQuests);
+        else if (rq.giver) await admitViaGiver(rq, visitedQuests);
       }
       if (['active', 'ready'].includes(session.status(rq.id))) {
         await completeQuest(rq, visitedQuests);
@@ -1763,8 +1204,9 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     }
     if (session.itemCount(itemId) >= targetQty) return;
 
-    // 渠道 6：真实商店货架购买（Storefront）
+    // 渠道 6：真实商店货架购买（Storefront，仅限当前可达地图上的在场商店）
     if (content.shops) {
+      const reachableForShops = reachableMapsFrom();
       for (const [shopId, def] of Object.entries(content.shops.shops)) {
         if (session.itemCount(itemId) >= targetQty) break;
         const sellsFixed = def.fixedStock.includes(itemId);
@@ -1779,7 +1221,8 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
               itemDef.level <= r.maximumLevel,
           );
         if (!sellsFixed && !sellsByRule) continue;
-        const shopMap = sources.mapsByActor.get(shopId)?.[0] ?? currentMapObj().id;
+        const shopMap = (sources.mapsByActor.get(shopId) ?? []).find(mid => reachableForShops.has(mid));
+        if (!shopMap) continue;
         const storefront = new Storefront(content.shops, content.items, content.stats, session, shopId, shopMap, () => 0);
         if (sellsByRule && itemDef) storefront.selectCategory(itemDef.kind);
         while (session.itemCount(itemId) < targetQty) {
@@ -1795,7 +1238,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     }
 
     assert.fail(
-      `任务 ${quest.id}（${quest.title}）所需物品 ${itemId}（需 ${targetQty}，当前 ${session.itemCount(itemId)}）在掉落表、地图采集点、剧情发物、任务奖励与商店中均无可用合法来源`,
+      `任务 ${quest.id}（${quest.title}）所需物品 ${itemId}（需 ${targetQty}，当前 ${session.itemCount(itemId)}，当前地图=${session.storyWorld.currentLocation?.map ?? '无'}）在可达掉落表、地图采集点、剧情发物、任务奖励与可达商店中均无可用合法来源`,
     );
   };
 
@@ -1830,23 +1273,24 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     }
   };
 
-  /** 若地图存在可由正式剧情事件移除的动态障碍（如牢门/栅栏/路障/巨石），走正式解锁任务与事件清障。 */
-  const tryUnlockMapObstacles = async (mapId: string, visitedQuests: Set<string>): Promise<boolean> => {
-    const obstacleRe = /(prison-gates|barricade|boulder|fence|prison-)/;
-    const obstacles = visibleEntities(mapId).filter(e => obstacleRe.test(e.actor));
+  /**
+   * 通过纯几何阻塞判定识别挡住目标的动态障碍（零英文名正则），走正式解锁任务与事件清障。
+   */
+  const tryUnlockMapObstacles = async (
+    mapId: string,
+    target: ObstacleTarget,
+    visitedQuests: Set<string>,
+  ): Promise<boolean> => {
     let unlockedAny = false;
-    for (const obs of obstacles) {
-      const evs = [
-        ...(obs.characterId ? sources.eventsHidingActorOnMap.get(`${mapId}\0${obs.characterId}`) ?? [] : []),
-        ...(sources.eventsHidingActorOnMap.get(`${mapId}\0${obs.actor}`) ?? []),
-      ].filter(
-        (ev, idx, arr) =>
-          arr.indexOf(ev) === idx &&
-          !activeUnlockEvents.has(ev.id) &&
-          (ev.repeat || director.runtime.eventStatus(ev.id) !== 'completed'),
+    for (let pass = 0; pass < 8; pass++) {
+      const candidates = findBlockingUnlockEvents(
+        mapId,
+        target,
+        ev => !activeUnlockEvents.has(ev.id) && (ev.repeat || director.runtime.eventStatus(ev.id) !== 'completed'),
       );
-      const ev = evs.find(e => !e.condition || session.evaluateCondition(e.condition)) ?? evs[0];
-      if (!ev) continue;
+      if (candidates.length === 0) break;
+      const ev = candidates.find(e => !e.condition || session.evaluateCondition(e.condition)) ?? candidates[0]!;
+      const beforeIds = new Set(visibleEntities(mapId).map(e => e.id));
       activeUnlockEvents.add(ev.id);
       try {
         if (ev.condition && !session.evaluateCondition(ev.condition)) {
@@ -1858,7 +1302,24 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
       } finally {
         activeUnlockEvents.delete(ev.id);
       }
-      if (!visibleEntities(mapId).some(e => e.id === obs.id)) unlockedAny = true;
+      const afterIds = new Set(visibleEntities(mapId).map(e => e.id));
+      let removedSomething = false;
+      for (const id of beforeIds) {
+        if (!afterIds.has(id)) {
+          removedSomething = true;
+          break;
+        }
+      }
+      if (!removedSomething) break;
+      unlockedAny = true;
+      // 目标已打通则提前结束，不触发同图无关事件
+      try {
+        if (target.kind === 'region') assertRegionReachable(mapId, target.region, 'unlock-check');
+        else assertEntityApproachable(mapId, target.entity, 'unlock-check');
+        break;
+      } catch {
+        // 继续解锁串联门障的下一道障碍
+      }
     }
     return unlockedAny;
   };
@@ -1910,7 +1371,6 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
               await ensureRegisteredNpcPlaced(goal.characterId, visitedQuests);
             }
             const located = locateEntity(goal.target, goal.characterId, activeMaps);
-            // 多实例机关（例如同图多座号角）按真实在场实体轮流交互，严禁拼造假实体 ID
             const matchingOnMap = visibleEntities(located.mapId).filter(e =>
               goal.characterId
                 ? e.characterId === goal.characterId
@@ -1965,6 +1425,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     log.servicesOpened.length = 0;
     log.eventsCompleted.length = 0;
     log.skipPhases.length = 0;
+    log.crossIslandTransfers.length = 0;
     log.errors.length = 0;
     choiceQueue.length = 0;
 
@@ -1981,7 +1442,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     const startCycles = session.questBook.completedCycles(questId);
     director.runtime.restore(session.runtimeState);
     if (plan.destination) {
-      setCurrentMap(plan.destination.map, plan.destination.x, plan.destination.y);
+      placeAtDestination(plan.destination);
     }
     questStatuses = questNotices(new Map(), session.quests, id => session.definition(id)).snapshot;
     questStatusVersion = session.questBook.version;
@@ -1998,7 +1459,6 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     if (plan.accept?.eventId) {
       const ev = content.campaign.events.find(e => e.id === plan.accept!.eventId);
       assert.ok(ev, `接取事件不存在：${plan.accept.eventId}`);
-      // 若接取事件包含一次性剧情遭遇且目标任务的完成事件同时要求另一条共享该首领的同场任务就绪（如「格里普顿伯爵护卫兵_战斗」与「刺杀格里普顿伯爵」），先经正式发布人接取该同场任务
       if (!ev.repeat) {
         const encEnemyIds = new Set<string>();
         for (const node of content.campaign.scripts[ev.script]?.nodes ?? []) {
@@ -2066,7 +1526,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
       if (writer) {
         visitedEvents.add(writer.id);
         await satisfyEventCondition(writer.condition, visitedQuests, visitedEvents);
-        await fireStoryEvent(writer);
+        await fireStoryEvent(writer, visitedQuests);
       }
       if (session.evaluateCondition(cond)) return;
     }
@@ -2079,7 +1539,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
       if (!depEv) continue;
       await satisfyEventCondition(depEv.condition, visitedQuests, visitedEvents);
       if (director.runtime.eventStatus(depEventId) !== 'completed') {
-        await fireStoryEvent(depEv);
+        await fireStoryEvent(depEv, visitedQuests);
       }
       if (session.evaluateCondition(cond)) return;
     }
@@ -2103,9 +1563,9 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
           e => (e.repeat || director.runtime.eventStatus(e.id) !== 'completed') && (!e.condition || session.evaluateCondition(e.condition)),
         );
         if (accEv) {
-          await fireStoryEvent(accEv);
+          await fireStoryEvent(accEv, visitedQuests);
         } else if (depQuest.giver && session.status(depQuestId) === 'available') {
-          await admitViaGiver(depQuest);
+          await admitViaGiver(depQuest, visitedQuests);
         } else {
           const anyAccEv = (indexes.eventsAcceptingQuest.get(depQuestId) ?? []).find(
             e => !visitedEvents.has(e.id) && (e.repeat || director.runtime.eventStatus(e.id) !== 'completed'),
@@ -2113,7 +1573,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
           if (anyAccEv) {
             visitedEvents.add(anyAccEv.id);
             await satisfyEventCondition(anyAccEv.condition, visitedQuests, visitedEvents);
-            await fireStoryEvent(anyAccEv);
+            await fireStoryEvent(anyAccEv, visitedQuests);
           }
         }
       }
@@ -2123,7 +1583,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
         const readyEv = (indexes.eventsReadyingQuest.get(depQuestId) ?? [])[0];
         if (readyEv && session.status(depQuestId) === 'active') {
           await satisfyEventCondition(readyEv.condition, visitedQuests, visitedEvents);
-          await fireStoryEvent(readyEv);
+          await fireStoryEvent(readyEv, visitedQuests);
         }
       }
       if (session.evaluateCondition(cond)) return;
@@ -2158,7 +1618,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
       for (const rev of readyEvs) {
         if (session.status(quest.id) !== 'active') break;
         await satisfyEventCondition(rev.condition, visitedQuests);
-        await fireStoryEvent(rev);
+        await fireStoryEvent(rev, visitedQuests);
       }
       if (hasSettledThisCycle()) {
         return 'completed';
@@ -2197,6 +1657,10 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
         let followupEventsBefore = 0;
         let checkedPopupHold = false;
         const prevHook = options.onPopupOpen;
+        const prevBeforeInteract = onBeforeDirectorInteract;
+        onBeforeDirectorInteract = () => {
+          followupEventsBefore = log.eventsCompleted.length;
+        };
         options.onPopupOpen = async (kind, q, reward, currentUi) => {
           await prevHook?.(kind, q, reward, currentUi);
           if (kind === 'complete' && q.id === quest.id && !quest.completeScript) {
@@ -2217,9 +1681,15 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
           }
         } finally {
           options.onPopupOpen = prevHook;
+          onBeforeDirectorInteract = prevBeforeInteract;
         }
       } else {
-        for (const cev of compEvs) {
+        const orderedCompEvs = [...compEvs].sort((a, b) => {
+          const aReady = !a.condition || session.evaluateCondition(a.condition) ? 0 : 1;
+          const bReady = !b.condition || session.evaluateCondition(b.condition) ? 0 : 1;
+          return aReady - bReady;
+        });
+        for (const cev of orderedCompEvs) {
           if (hasSettledThisCycle()) break;
           await satisfyEventCondition(cev.condition, visitedQuests);
           if (hasSettledThisCycle()) break;
@@ -2326,8 +1796,12 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
       await settle();
       return res;
     },
-    setCurrentMap,
+    setCurrentMap: travelToMapEntrance,
+    travelToMapEntrance,
+    crossIslandToMap,
+    placeAtDestination,
     visibleEntities,
+    reachableMapsFrom,
     assertRegionReachable,
     assertEntityApproachable,
     locateEntity,
