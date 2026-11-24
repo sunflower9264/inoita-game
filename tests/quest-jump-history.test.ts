@@ -117,6 +117,71 @@ test('历史里已交付的重复任务回到 available 并保留完成轮次', 
   assert.equal(session.status('repeat-quest'), 'active');
 });
 
+test('跳转现场会投影目标发布人显形、区域清障与常驻敌怪摆放，且不污染无关完成事件', () => {
+  // 1. 隐藏发布人显形（暗黑魔法师凯恩 / 赏金猎人拉尔斯）与普通发布人任务落图
+  {
+    const h = playthrough();
+    try {
+      const p171 = planQuestStart(campaign, h.session, 'quest-171');
+      applyQuestStartPlan(h.session, p171);
+      assert.equal(h.session.storyWorld.actorVisible('shadow-hall', 'dark-sorcerer-kane-369ccd17', 'npc-364'), true);
+
+      const p347 = planQuestStart(campaign, h.session, 'quest-347');
+      assert.equal(p347.destination?.map, 'training-dungeon-one');
+      applyQuestStartPlan(h.session, p347);
+      assert.equal(h.session.storyWorld.actorVisible('training-dungeon-one', 'bounty-hunter-lars-9521311c', 'npc-593'), true);
+      assert.equal(h.session.runtimeState.completedEvents.includes('event-19'), false);
+    } finally { h.director.dispose(); }
+  }
+
+  // 2. 贝勒塞首都区域触发框前的路障清障，且不把无关的 event-19 拉进 completedEvents
+  {
+    const h = playthrough();
+    try {
+      const p146 = planQuestStart(campaign, h.session, 'quest-146');
+      applyQuestStartPlan(h.session, p146);
+      assert.equal(h.session.storyWorld.actorVisible('berkel-capital', 'barricade-a1eb664e', 'npc-120'), false);
+      assert.equal(h.session.runtimeState.completedEvents.includes('event-19'), false);
+    } finally { h.director.dispose(); }
+  }
+
+  // 3. 救出长老（quest-122）恢复前置已完结任务留下的常驻剧情敌怪摆放
+  {
+    const h = playthrough();
+    try {
+      const p122 = planQuestStart(campaign, h.session, 'quest-122');
+      applyQuestStartPlan(h.session, p122);
+      assert.equal(
+        h.session.storyWorld.enemySpawns('fort-of-screams-floor-3-c78c50b3').some(s => s.enemyId === 'enemy-prison-of-screams-headguard-1'),
+        true,
+      );
+    } finally { h.director.dispose(); }
+  }
+
+  // 4. 记忆层任务（如 quest-400）优先选择未预设自身已完成的正式接取入口，不提前烧毁首领前置任务
+  {
+    const h = playthrough();
+    try {
+      const p400 = planQuestStart(campaign, h.session, 'quest-400');
+      assert.equal(p400.accept?.eventId, 'event-447');
+      applyQuestStartPlan(h.session, p400);
+      assert.notEqual(h.session.status('quest-376'), 'completed');
+      assert.notEqual(h.session.status('quest-377'), 'completed');
+    } finally { h.director.dispose(); }
+  }
+
+  // 5. 跨时间点跳转清理上一局访问级剧情敌怪（story-located-*）遗留的永久死亡记录
+  {
+    const h = playthrough();
+    try {
+      h.session.removeStoryEnemy('story-located-enemy-elf-seal-protector-1');
+      assert.equal(h.session.enemyVitals('story-located-enemy-elf-seal-protector-1').deadUntil, 'permanent');
+      applyQuestStartPlan(h.session, planQuestStart(campaign, h.session, 'quest-319'));
+      assert.equal(h.session.enemyVitals('story-located-enemy-elf-seal-protector-1').deadUntil, undefined);
+    } finally { h.director.dispose(); }
+  }
+});
+
 function repeatCampaign(): Campaign {
   const quest = (id: string, extra: Partial<CampaignQuest> = {}): CampaignQuest => ({
     id, title: id, description: id, guidance: { available: id, active: id },

@@ -400,11 +400,244 @@ class Planner {
       this.acceptNodeId = this.ensureAccepted(this.questId, undefined, undefined);
       if (this.mode === 'ready') this.planReady();
     }
+    const state = this.replayAndAuto();
+    this.ensureVisibilityAndPassageEvents(state);
+    this.fillIntakeCommands(state);
+    return this.historyResult(state);
+  }
+
+  replayAndAuto(): HistoryState {
     const order = this.topologicalOrder();
     const state = this.replay(order);
     this.appendAutoWorldEvents(state);
-    this.fillIntakeCommands(state);
-    return this.historyResult(state);
+    return state;
+  }
+
+  /**
+   * 补齐三类未写在任务条件里、但直接影响当前现场可达性的世界状态命令（仅投影正式事件里的对应世界命令，不把无关章节事件塞进 completedEvents）：
+   * 1. 目标任务的发布人/交付人/交互目标被前序事件设成 actor-visibility=false 时，投影最早将其显形的正式 actor-visibility 命令；
+   * 2. 目标任务的发布人（非 available 模式下含交付人与交互目标）属于 flag 门控的登记人物且尚未放置时，投影前置正式事件的 place + flag 命令；
+   * 3. 目标接取或完成事件为地图区域触发框，且更早章节的清障事件负责移除该图路障/打开通道出口时，投影对应的 actor-visibility 命令。
+   */
+  ensureVisibilityAndPassageEvents(state: HistoryState): void {
+    const visibility = new Map<string, { map: string; actor: string; characterId?: string; visible: boolean }>();
+    for (const cmd of state.world) {
+      if (cmd.type === 'world' && cmd.command.kind === 'actor-visibility') {
+        const key = `${cmd.command.map}\0${cmd.command.actor}\0${cmd.command.characterId ?? ''}`;
+        visibility.set(key, {
+          map: cmd.command.map,
+          actor: cmd.command.actor,
+          characterId: cmd.command.characterId,
+          visible: cmd.command.visible,
+        });
+      }
+    }
+
+    const targetAcceptId = this.targetAccept?.kind === 'event' ? this.targetAccept.event!.id : undefined;
+
+    const eventTouchesTargetQuest = (info: EventInfo): boolean => {
+      if (positiveQuestRefs(info.event.condition).some(ref => ref.quest === this.questId)) return true;
+      return info.commands.some(cmd => cmd.type === 'quest' && 'quest' in cmd.command && cmd.command.quest === this.questId);
+    };
+
+    const targetCharIds = new Set<string>(
+      [
+        this.target.giverCharacterId,
+        this.target.deliveryCharacterId,
+        ...this.target.goals.map(g => g.characterId),
+      ].filter((id): id is string => !!id),
+    );
+    const targetActorIds = new Set<string>(
+      [
+        this.target.giver,
+        this.target.delivery,
+        ...this.target.goals.filter(g => g.kind === 'interact' || g.kind === 'talk').map(g => g.target),
+      ].filter((id): id is string => !!id),
+    );
+    const matchesTargetNpc = (entry: { actor: string; characterId?: string }): boolean =>
+      (entry.characterId !== undefined && targetCharIds.has(entry.characterId)) ||
+      (entry.characterId === undefined && targetActorIds.has(entry.actor));
+
+    // 1. 恢复被前序事件隐藏的目标任务发布人/交付人/交互目标
+    for (const entry of visibility.values()) {
+      if (entry.visible || !matchesTargetNpc(entry)) continue;
+      for (const info of this.index.eventOrder) {
+        if (info.event.id === targetAcceptId || state.completedEvents.has(info.event.id)) continue;
+        if (info.event.repeat || this.conditionConflicts(info.event.condition) || eventTouchesTargetQuest(info)) continue;
+        const cmd = info.commands.find(
+          c =>
+            c.type === 'world' &&
+            c.command.kind === 'actor-visibility' &&
+            c.command.visible === true &&
+            c.command.map === entry.map &&
+            c.command.actor === entry.actor &&
+            (entry.characterId === undefined || c.command.characterId === entry.characterId),
+        );
+        if (cmd) {
+          state.world.push(cmd);
+          entry.visible = true;
+          break;
+        }
+      }
+    }
+
+    // 2. 补齐目标任务相关角色所需的前置登记摆放（仅针对受 flag 门控且尚未在历史中退场的角色）
+    const acceptScriptFlags = new Set<string>();
+    const acceptScriptName = this.targetAccept?.kind === 'event' ? this.targetAccept.event!.script : this.targetAccept?.script;
+    if (acceptScriptName) {
+      const acceptCmds = targetAcceptId ? (this.index.events.get(targetAcceptId)?.commands ?? []) : [];
+      for (const cmd of acceptCmds) {
+        if (cmd.type === 'flag' && (cmd.value ?? true)) acceptScriptFlags.add(cmd.flag);
+        if (cmd.type === 'world' && cmd.command.kind === 'flag' && cmd.command.value) acceptScriptFlags.add(cmd.command.id);
+      }
+    }
+    const lastFlagFalseIndex = new Map<string, number>();
+    for (const evId of state.completedEvents) {
+      const info = this.index.events.get(evId);
+      if (!info) continue;
+      for (const cmd of info.commands) {
+        if (cmd.type === 'flag' && cmd.value === false) {
+          lastFlagFalseIndex.set(cmd.flag, Math.max(lastFlagFalseIndex.get(cmd.flag) ?? -1, info.index));
+        }
+        if (cmd.type === 'world' && cmd.command.kind === 'flag' && !cmd.command.value) {
+          lastFlagFalseIndex.set(cmd.command.id, Math.max(lastFlagFalseIndex.get(cmd.command.id) ?? -1, info.index));
+        }
+      }
+    }
+    const placementCharIds = new Set<string>(
+      [
+        this.target.giverCharacterId,
+        this.target.deliveryCharacterId,
+        ...this.target.goals.map(g => g.characterId),
+      ].filter((id): id is string => !!id),
+    );
+    for (const charId of placementCharIds) {
+      const placements = this.campaign.placements.filter(p => p.characterId === charId);
+      if (!placements.length) continue;
+      const hasUnconditional = placements.some(p => !p.condition || (p.condition.type === 'always' && p.condition.value));
+      if (hasUnconditional) continue;
+      for (const p of placements) {
+        if (p.condition?.type !== 'flag') continue;
+        const flag = p.condition.flag;
+        if (state.flags.get(flag) || acceptScriptFlags.has(flag)) continue;
+        const placer = this.index.eventOrder.find(info => {
+          if (info.event.id === targetAcceptId || state.completedEvents.has(info.event.id)) return false;
+          if (info.event.repeat || this.conditionConflicts(info.event.condition) || eventTouchesTargetQuest(info)) return false;
+          if ((lastFlagFalseIndex.get(flag) ?? -1) > info.index) return false;
+          return info.commands.some(
+            cmd =>
+              (cmd.type === 'flag' && cmd.flag === flag && (cmd.value ?? true)) ||
+              (cmd.type === 'world' && cmd.command.kind === 'flag' && cmd.command.id === flag && cmd.command.value),
+          );
+        });
+        if (!placer) continue;
+        for (const cmd of placer.commands) {
+          if (cmd.type === 'world' && cmd.command.kind === 'place' && cmd.command.scope !== 'visit' && cmd.command.entity.characterId === charId) {
+            state.world.push(cmd);
+            this.recordPlacement(state, cmd.command.entity);
+          } else if (cmd.type === 'flag' && cmd.flag === flag && (cmd.value ?? true)) {
+            state.flags.set(flag, true);
+            state.world.push(cmd);
+          } else if (cmd.type === 'world' && cmd.command.kind === 'flag' && cmd.command.id === flag && cmd.command.value) {
+            state.flags.set(flag, true);
+            state.world.push(cmd);
+          }
+        }
+      }
+    }
+
+    // 3. 目标接取或完成事件为 region 触发框时，投影更早章节清除该图路障/打开通道出口的 actor-visibility 命令
+    const targetRegionEvents: StoryEvent[] = [];
+    if (this.targetAccept?.kind === 'event' && this.targetAccept.event!.source === 'region' && this.targetAccept.event!.map) {
+      targetRegionEvents.push(this.targetAccept.event!);
+    }
+    for (const comp of this.index.completers.get(this.questId) ?? []) {
+      if (comp.kind === 'event' && comp.event!.source === 'region' && comp.event!.map && !targetRegionEvents.includes(comp.event!)) {
+        targetRegionEvents.push(comp.event!);
+      }
+    }
+    if (targetRegionEvents.length > 0) {
+      const maxCompletedIndex = Math.max(
+        -1,
+        ...[...state.completedEvents].map(id => this.index.events.get(id)?.index ?? -1),
+      );
+      const lastVisWriteIndex = new Map<string, number>();
+      for (const evId of state.completedEvents) {
+        const info = this.index.events.get(evId);
+        if (!info) continue;
+        for (const cmd of info.commands) {
+          if (cmd.type === 'world' && cmd.command.kind === 'actor-visibility') {
+            const key = `${cmd.command.map}\0${cmd.command.actor}\0${cmd.command.characterId ?? ''}`;
+            lastVisWriteIndex.set(key, Math.max(lastVisWriteIndex.get(key) ?? -1, info.index));
+          }
+        }
+      }
+      const appliedPassageKeys = new Set<string>();
+      for (const regEv of targetRegionEvents) {
+        const targetIndex = this.index.events.get(regEv.id)?.index ?? -1;
+        if (targetIndex <= 0) continue;
+        for (const info of this.index.eventOrder) {
+          if (info.index >= targetIndex) continue;
+          const isUnconditional =
+            !info.event.condition ||
+            (info.event.condition.type === 'all' && info.event.condition.conditions.length === 0);
+          if (info.index >= maxCompletedIndex && !isUnconditional) continue;
+          if (info.event.repeat || state.completedEvents.has(info.event.id)) continue;
+          if (this.conditionConflicts(info.event.condition) || eventTouchesTargetQuest(info)) continue;
+          for (const cmd of info.commands) {
+            if (cmd.type !== 'world' || cmd.command.kind !== 'actor-visibility') continue;
+            if (cmd.command.map !== regEv.map) continue;
+            const key = `${cmd.command.map}\0${cmd.command.actor}\0${cmd.command.characterId ?? ''}`;
+            if ((lastVisWriteIndex.get(key) ?? -1) > info.index) continue;
+            if (appliedPassageKeys.has(key)) continue;
+            const clearsExit =
+              cmd.command.visible === true &&
+              visibility.get(key)?.visible === false &&
+              cmd.command.actor.startsWith('map-exit');
+            const clearsObstacle =
+              cmd.command.visible === false &&
+              (cmd.command.actor.includes('barricade') || cmd.command.actor.includes('boulder-obstacle'));
+            if (clearsExit || clearsObstacle) {
+              state.world.push(cmd);
+              appliedPassageKeys.add(key);
+            }
+          }
+        }
+      }
+    }
+
+    // 4. 目标任务活动地图上的剧情常驻敌怪摆放（enemy-location）：若放置它的事件依赖的前置任务已在历史中完成，投影其 enemy-location 命令
+    const activePlace = this.target.places?.active;
+    const activeMaps = new Set<string>(
+      activePlace?.type === 'fixed'
+        ? [activePlace.map]
+        : activePlace?.type === 'alternatives'
+          ? activePlace.spots.map(s => s.map)
+          : [],
+    );
+    if (activeMaps.size > 0) {
+      const placedEnemies = new Set<string>();
+      for (const cmd of state.world) {
+        if (cmd.type === 'world' && cmd.command.kind === 'enemy-location' && cmd.command.location) {
+          placedEnemies.add(`${cmd.command.location.map}\0${cmd.command.enemyId}`);
+        }
+      }
+      for (const info of this.index.eventOrder) {
+        if (info.event.id === targetAcceptId || info.event.repeat || state.completedEvents.has(info.event.id)) continue;
+        if (this.conditionConflicts(info.event.condition) || eventTouchesTargetQuest(info)) continue;
+        const refs = positiveQuestRefs(info.event.condition);
+        if (!refs.length || !refs.every(ref => state.delivered.has(ref.quest))) continue;
+        for (const cmd of info.commands) {
+          if (cmd.type !== 'world' || cmd.command.kind !== 'enemy-location') continue;
+          if (cmd.command.scope === 'visit' || !cmd.command.location) continue;
+          if (!activeMaps.has(cmd.command.location.map)) continue;
+          const key = `${cmd.command.location.map}\0${cmd.command.enemyId}`;
+          if (placedEnemies.has(key)) continue;
+          state.world.push(cmd);
+          placedEnemies.add(key);
+        }
+      }
+    }
   }
 
   acceptProducer(): Producer | undefined {
@@ -413,7 +646,30 @@ class Planner {
       const offered = candidates.find(candidate => candidate.script === this.target.offerScript);
       if (offered) return offered;
     }
-    return candidates[0];
+    const presupposesOwnCompletion = (candidate: Producer): boolean => {
+      if (candidate.kind !== 'event' || !candidate.event?.condition) return false;
+      for (const ref of positiveQuestRefs(candidate.event.condition)) {
+        if (ref.status !== 'completed' && ref.status !== 'settled') continue;
+        const depCompleters = this.index.completers.get(ref.quest) ?? [];
+        const primary = depCompleters[0];
+        if (primary?.kind === 'event' && primary.event) {
+          const cmds = this.index.events.get(primary.event.id)?.commands ?? [];
+          if (
+            cmds.some(
+              cmd =>
+                cmd.type === 'quest' &&
+                'quest' in cmd.command &&
+                cmd.command.quest === this.questId &&
+                (cmd.command.type === 'complete' || cmd.command.type === 'script-complete'),
+            )
+          ) {
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+    return candidates.find(candidate => !presupposesOwnCompletion(candidate)) ?? candidates[0];
   }
 
   planAvailable(): void {
@@ -877,6 +1133,7 @@ class Planner {
   }
 
   replay(order: PlanNode[]): HistoryState {
+    this.acceptMap = undefined;
     const state: HistoryState = {
       status: new Map(), opened: new Set(), ready: new Set(), delivered: new Set(),
       completedEvents: new Set(), choices: new Map(this.choicePins), flags: new Map(this.flagPins),
@@ -1187,8 +1444,7 @@ class Planner {
 
   acceptMapForAvailable(state: HistoryState): string | undefined {
     const accept = this.targetAccept;
-    if (!accept) return undefined;
-    if (accept.kind === 'event') return this.triggerMap(accept.event!, state);
+    if (accept?.kind === 'event') return this.triggerMap(accept.event!, state);
     const places = this.target.places?.available;
     if (places?.type === 'fixed') return places.map;
     if (places?.type === 'alternatives') return places.spots[0]?.map;

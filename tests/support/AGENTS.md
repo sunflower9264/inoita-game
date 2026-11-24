@@ -9,8 +9,8 @@
 - `atlas-image.ts`：导出 `atlasImageSize`，读图集页的宽高并确认它是无损 WebP（`VP8L`）；图集页测试用它代替读 PNG 文件头。
 - `fake-sprite.ts`：导出 `FakeSprite`，只实现生产代码用到的链式调用面，避免启动真实渲染。
 - `story-fixtures.ts`：剧情与文本测试夹具，导出 `compileScript`、`storyScriptActions` 和 `plainText`；这些工具只被测试使用，不进入生产导出。
-- `quest-e2e-harness.ts`：无跑图任务状态闭环底座，导出 `loadOfficialQuestContent`、`buildCampaignIndexes` 与 `createQuestE2EHarness`；连接真实 `Session`、`StoryDirector`、`GameUI` 与正式格式 1 存读档，按任务自身定义驱动接取、目标达成、弹窗阻塞与交付结算。
-- `quest-mini-world.ts`：导出 `createMiniQuestWorld`；在内存中构造通过全部正式内容校验器的最小合法任务集，供破坏性边界与故障注入端到端测试使用。
+- `quest-e2e-harness.ts`：无跑图零兜底任务状态闭环底座，导出 `loadOfficialQuestContent`、`buildCampaignIndexes` 与 `createQuestE2EHarness`；连接真实 `Session`、`StoryDirector`、`GameUI`、`NavigationWorld`、`WorldEnemyRoster`、`Storefront` 与正式格式 1 存读档。强制 4 项硬核对：所有人物/机关仅从真实 `visibleEntities` 查找且须动态碰撞可达（零虚拟实体）；接取与推进全量走真实触发器入口并对 `region` 框做动态路障格子连通校验；目标怪物须存在于活跃遭遇或可达地图真实 `WorldEnemyRoster`；任务/交接物品须经 6 类合法来源真实产出（严禁凭空塞包）。
+- `quest-mini-world.ts`：导出 `createMiniQuestWorld`；在内存中构造通过全部正式内容校验器且含真实地图双向出口与刷怪点的最小合法任务集，供破坏性边界、故障注入与反作弊自证测试使用。
 
 ## 规则
 

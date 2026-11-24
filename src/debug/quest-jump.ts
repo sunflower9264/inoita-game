@@ -460,6 +460,10 @@ export function applyQuestStartPlan(session: Session, plan: QuestStartPlan): voi
     session.forgetEnemyVitals(encounterSpawnId(encounter.id, spawn.id));
   for (const entity of currentWorld.entities) if (entity.removed) session.forgetEnemyVitals(entity.id);
   for (const enemy of currentWorld.enemyLocations ?? []) session.forgetEnemyVitals(enemy.id);
+  // 访问级剧情敌怪（scope='visit'）离图后会从 enemyLocations 移除，但永久死亡记录仍留在会话里；跳转新时间点时一并清理。
+  for (const [id] of session.captureState().enemies) {
+    if (id.startsWith('story-located-')) session.forgetEnemyVitals(id);
+  }
   session.storyWorld.restoreState({ location: currentWorld.location, mapVisit: currentWorld.mapVisit,
     entities: [], flags: [], choices: [], exits: [], encounters: [] });
 

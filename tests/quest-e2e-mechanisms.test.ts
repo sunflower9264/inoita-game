@@ -15,6 +15,11 @@ test('主线接取、商人让位、交付弹窗挂起后续剧情、按职业�
   ] as const) {
     const h = createQuestE2EHarness(miniContent, { classId });
     try {
+      // 军需商人在主线尚未接取/未就绪且在场可见时，不占用任务槽而是正常打开商店
+      const qmEntity = miniContent.maps.get('camp')!.entities.find(e => e.characterId === 'npc-qm')!;
+      assert.equal(await h.interactWithEntity(qmEntity, 'camp'), 'shop');
+      assert.equal(h.log.shopsOpened.length, 1);
+
       const startGate = h.pauseOnPopup('start');
       const acceptPromise = h.fireStoryEvent(miniContent.campaign.events.find(e => e.id === 'ev-accept-main')!);
       for (let i = 0; i < 20 && !startGate.isOpen(); i++) await new Promise<void>(r => setImmediate(r));
@@ -30,6 +35,9 @@ test('主线接取、商人让位、交付弹窗挂起后续剧情、按职业�
       await startGate.confirm();
       await acceptPromise;
 
+      // 已被剧情移走的军需商人严禁被底座兜底找回或交互
+      await assert.rejects(() => h.interactByIdentity('quartermaster', 'npc-qm'), /找不到目标角色/);
+
       // 日志外路障任务不弹任何任务面板，扣除钥匙即可完成
       const popupsBeforeGate = h.log.popups.length;
       await h.interactByIdentity('barricade', 'npc-barricade');
@@ -37,22 +45,17 @@ test('主线接取、商人让位、交付弹窗挂起后续剧情、按职业�
       assert.equal(h.session.itemCount('west-mine-key'), 0);
       assert.equal(h.log.popups.length, popupsBeforeGate, '日志外任务交付绝不弹出面板');
 
-      // 军需商人在主线尚未就绪时若在场交互，不占用任务槽而是正常打开商店
-      const qmEntity = miniContent.maps.get('camp')!.entities.find(e => e.characterId === 'npc-qm')!;
-      assert.equal(await h.interactWithEntity(qmEntity, 'camp'), 'shop');
-      assert.equal(h.log.shopsOpened.length, 1);
-
       // 完成第一只魔物击杀与掉落拾取：触发「任务进度」瞬时消息
       const mainQuest = miniContent.campaign.quests.find(q => q.id === 'q-main-hunt')!;
       const reagentDef = miniContent.battle.enemies.find(e => e.id === 'enemy-reagents-1')!;
       h.setCurrentMap('wilds');
       const r1 = h.session.settleEnemyDefeat({
-        key: 'reagent-1',
-        spawn: { id: 'reagent-1', enemyId: 'enemy-reagents-1', x: 32, y: 32 },
+        key: 'wilds-reagent-1',
+        spawn: { id: 'wilds-reagent-1', enemyId: 'enemy-reagents-1', x: 96, y: 80 },
         enemy: reagentDef,
         map: 'wilds',
-        x: 32,
-        y: 32,
+        x: 96,
+        y: 80,
         lootLevel: 1,
         enemyLevel: reagentDef.level ?? 1,
         elite: false,
@@ -67,12 +70,12 @@ test('主线接取、商人让位、交付弹窗挂起后续剧情、按职业�
       // 同一生成点未刷新前重复结算不会重复记账
       assert.equal(
         h.session.settleEnemyDefeat({
-          key: 'reagent-1',
-          spawn: { id: 'reagent-1', enemyId: 'enemy-reagents-1', x: 32, y: 32 },
+          key: 'wilds-reagent-1',
+          spawn: { id: 'wilds-reagent-1', enemyId: 'enemy-reagents-1', x: 96, y: 80 },
           enemy: reagentDef,
           map: 'wilds',
-          x: 32,
-          y: 32,
+          x: 96,
+          y: 80,
           lootLevel: 1,
           enemyLevel: reagentDef.level ?? 1,
           elite: false,
@@ -382,6 +385,64 @@ test('触发区占用记录与已完成任务经正式格式 1 存读档恢复�
     } finally {
       restored.dispose();
     }
+  } finally {
+    h.dispose();
+  }
+});
+
+test('底座四项硬核对反作弊自证：隐身人物、动态路障封框、禁用刷怪点与无来源物品均立即报错拦截', async () => {
+  const h = createQuestE2EHarness(miniContent);
+  try {
+    // 1. 人物被 actor-visibility 隐藏后，locateEntity 与交互直接判失败（不回退原始地图表、不造虚拟实体）
+    h.session.applyStoryCommands([
+      { type: 'world', command: { kind: 'actor-visibility', map: 'camp', actor: 'captain', characterId: 'npc-captain', visible: false } },
+    ]);
+    assert.throws(() => h.locateEntity('captain', 'npc-captain', ['camp']), /找不到目标角色/);
+
+    // 2. 动态路障将 region 触发框完全封死时，assertRegionReachable / fireStoryEvent 立即判失败
+    const blockedRegion = { x: 0, y: 0, width: 16, height: 16 };
+    h.session.applyStoryCommands([
+      {
+        type: 'world',
+        command: {
+          kind: 'place',
+          entity: { id: 'wall-1', map: 'camp', actor: 'barricade', x: 8, y: 8, visible: true },
+        },
+      },
+      {
+        type: 'world',
+        command: {
+          kind: 'place',
+          entity: { id: 'wall-2', map: 'camp', actor: 'barricade', x: 24, y: 8, visible: true },
+        },
+      },
+      {
+        type: 'world',
+        command: {
+          kind: 'place',
+          entity: { id: 'wall-3', map: 'camp', actor: 'barricade', x: 8, y: 24, visible: true },
+        },
+      },
+      {
+        type: 'world',
+        command: {
+          kind: 'place',
+          entity: { id: 'wall-4', map: 'camp', actor: 'barricade', x: 24, y: 24, visible: true },
+        },
+      },
+    ]);
+    assert.throws(() => h.assertRegionReachable('camp', blockedRegion, 'blocked-corner'), /不可达或被动态路障堵死/);
+
+    // 3. 地图上不存在该敌人刷怪点时，locateSpawnedEnemy 立即判失败（严禁编造假刷怪点）
+    assert.throws(() => h.locateSpawnedEnemy('enemy-earl-grafton-1', ['wilds']), /WorldEnemyRoster 中均找不到已启用的敌人/);
+
+    // 4. 构造无掉落、无采集点、无发物事件、无奖励且商店不卖的任务物品，fulfillQuestGoals 必须直接报错（严禁凭空塞包）
+    const fakeQuest = {
+      ...miniContent.campaign.quests.find(q => q.id === 'q-side-tusk-a')!,
+      goals: [{ id: 'impossible', kind: 'item' as const, target: 'royal-dagger', quantity: 1, label: '不存在来源物品' }],
+      handoverItems: [],
+    };
+    await assert.rejects(() => h.fulfillQuestGoals(fakeQuest), /均无可用合法来源/);
   } finally {
     h.dispose();
   }

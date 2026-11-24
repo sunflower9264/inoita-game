@@ -64,7 +64,18 @@ export function createMiniQuestWorld(): QuestHarnessContent {
             { id: 'ent-horn-1', actor: 'horn', characterId: 'npc-horn', objective: 'horn', x: 48, y: 48, flip: false },
             { id: 'ent-horn-2', actor: 'horn', characterId: 'npc-horn', objective: 'horn', x: 80, y: 48, flip: false },
           ],
-    exits: [],
+    exits:
+      id === 'camp'
+        ? [{ id: 'camp-to-wilds', x: 144, y: 64, width: 16, height: 32, destination: 'wilds', spawn: { x: 24, y: 80 }, exitFacing: 'east', facing: 'east' }]
+        : [{ id: 'wilds-to-camp', x: 0, y: 64, width: 16, height: 32, destination: 'camp', spawn: { x: 120, y: 80 }, exitFacing: 'west', facing: 'west' }],
+    enemySpawns:
+      id === 'wilds'
+        ? [
+            { id: 'wilds-reagent-1', enemyId: 'enemy-reagents-1', x: 96, y: 80 },
+            { id: 'wilds-reagent-2', enemyId: 'enemy-reagents-1', x: 112, y: 96 },
+            { id: 'wilds-wolf-1', enemyId: 'enemy-wolf-1', x: 80, y: 112 },
+          ]
+        : [],
     lootLevel: 1,
     townPose: id === 'camp',
   });
@@ -504,7 +515,7 @@ export function createMiniQuestWorld(): QuestHarnessContent {
       },
     },
     events: [
-      { id: 'ev-accept-main', source: 'region', map: 'camp', region: { x: 48, y: 48, width: 32, height: 32 }, script: 'ev-accept-main', place: { type: 'fixed', map: 'camp', x: 64, y: 64, source: 'event-region' } },
+      { id: 'ev-accept-main', source: 'region', map: 'camp', region: { x: 48, y: 64, width: 32, height: 32 }, script: 'ev-accept-main', place: { type: 'fixed', map: 'camp', x: 64, y: 80, source: 'event-region' } },
       { id: 'ev-after-main', source: 'quest', key: 'q-main-hunt', script: 'ev-after-main', condition: { type: 'quest', quest: 'q-main-hunt', status: 'completed' }, place: { type: 'current' } },
       { id: 'ev-seal-prompt', source: 'near', near: 'sealstone', nearCharacterId: 'npc-seal', repeat: true, script: 'ev-seal-prompt', condition: { type: 'quest', quest: 'q-gate-confirm', status: 'ready' }, place: { type: 'fixed', map: 'camp', x: 128, y: 64, source: 'authored-placement' } },
       { id: 'ev-seal-confirm', source: 'choice', key: 'ch-seal', script: 'ev-seal-confirm', condition: { type: 'choice', choice: 'ch-seal', value: 'option-0' }, place: { type: 'current' } },
