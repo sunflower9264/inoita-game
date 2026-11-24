@@ -79,8 +79,21 @@ const showTintInput = element<HTMLInputElement>('show-tint');
 const timeline = element<HTMLInputElement>('timeline');
 const playButton = element<HTMLButtonElement>('play');
 const zoomSelect = element<HTMLSelectElement>('zoom');
+const backgroundSelect = element<HTMLSelectElement>('background');
 const stage = element('stage');
 const showAll = element<HTMLButtonElement>('show-all');
+
+/**
+ * 画布背景由 Phaser 内部作为最底层不透明图层绘制（与 style.css 的 .stage.* 保持同色）。
+ * 原版战斗特效图集的 add/screen 帧空白区是纯黑不透明像素 (0,0,0,255)；
+ * 若 WebGL 画布设为 transparent: true，空帧缓冲 alpha=0，add/screen 混合后会写出不透明纯黑方块。
+ */
+const STAGE_BACKGROUNDS: Record<string, number> = {
+  gray: 0x777c79,
+  dark: 0x252d29,
+  light: 0xeeeadd,
+};
+const CHECKER_TEXTURE_KEY = 'viewer-stage-checker';
 
 let catalog: WardrobeCatalog;
 let items: ItemCatalog;
@@ -245,6 +258,8 @@ function playSound(soundId: string): void {
 }
 
 class CharacterScene extends Phaser.Scene {
+  private bgSolid!: Phaser.GameObjects.Rectangle;
+  private bgChecker!: Phaser.GameObjects.TileSprite;
   private groundEffects!: Phaser.GameObjects.Container;
   private afterimageLayer!: Phaser.GameObjects.Container;
   private root!: Phaser.GameObjects.Container;
@@ -257,7 +272,32 @@ class CharacterScene extends Phaser.Scene {
 
   constructor() { super('warrior-viewer'); }
 
+  private ensureCheckerTexture(): void {
+    if (this.textures.exists(CHECKER_TEXTURE_KEY)) return;
+    const tile = this.textures.createCanvas(CHECKER_TEXTURE_KEY, 24, 24);
+    if (!tile) return;
+    const ctx = tile.getContext();
+    ctx.fillStyle = '#848986';
+    ctx.fillRect(0, 0, 24, 24);
+    ctx.fillStyle = '#7b807d';
+    ctx.fillRect(12, 0, 12, 12);
+    ctx.fillRect(0, 12, 12, 12);
+    tile.refresh();
+  }
+
+  setBackdrop(mode: string): void {
+    const w = Math.max(1, this.scale.width);
+    const h = Math.max(1, this.scale.height);
+    this.bgSolid.setSize(w, h);
+    this.bgChecker.setSize(w, h);
+    const isChecker = mode === 'checker';
+    this.bgChecker.setVisible(isChecker);
+    this.bgSolid.setVisible(!isChecker);
+    if (!isChecker) this.bgSolid.setFillStyle(STAGE_BACKGROUNDS[mode] ?? 0x777c79, 1);
+  }
+
   create(): void {
+    this.ensureCheckerTexture();
     for (const [key, image] of images) this.textures.addImage(key, image);
     for (const [key, piece] of Object.entries(catalog.sprites)) {
       this.textures.get(piece.texture).add(key, 0, piece.x, piece.y, piece.width, piece.height);
@@ -271,12 +311,18 @@ class CharacterScene extends Phaser.Scene {
     for (const atlas of atlasStore.values()) {
       if (!this.textures.exists(atlas.key)) this.textures.addAtlas(atlas.key, atlas.image, atlas.data);
     }
+    this.bgSolid = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x777c79).setOrigin(0, 0);
+    this.bgChecker = this.add.tileSprite(0, 0, this.scale.width, this.scale.height, CHECKER_TEXTURE_KEY).setOrigin(0, 0);
+    this.setBackdrop(backgroundSelect.value);
     this.groundEffects = this.add.container(0, 0);
     this.afterimageLayer = this.add.container(0, 0);
     this.root = this.add.container(0, 0);
     this.topEffects = this.add.container(0, 0);
     scene = this;
-    this.scale.on('resize', () => this.draw());
+    this.scale.on('resize', () => {
+      this.setBackdrop(backgroundSelect.value);
+      this.draw();
+    });
     void refresh();
   }
 
@@ -1116,8 +1162,9 @@ function wireControls(): void {
   zoomSelect.onchange = () => scene?.draw();
   showEffectsInput.onchange = () => scene?.draw();
   showTintInput.onchange = () => scene?.draw();
-  element<HTMLSelectElement>('background').onchange = event => {
-    stage.className = `stage ${(event.target as HTMLSelectElement).value}`;
+  backgroundSelect.onchange = () => {
+    stage.className = `stage ${backgroundSelect.value}`;
+    scene?.setBackdrop(backgroundSelect.value);
   };
   showAll.onclick = () => { resetSolo(); renderFrame(); };
 
@@ -1270,7 +1317,7 @@ async function boot(): Promise<void> {
   const parent = element('character-canvas');
   game = new Phaser.Game({
     type: Phaser.WEBGL, parent, width: parent.clientWidth, height: parent.clientHeight,
-    transparent: true, pixelArt: true, roundPixels: false, antialias: false, banner: false,
+    transparent: false, backgroundColor: '#7a7e7b', pixelArt: true, roundPixels: false, antialias: false, banner: false,
     audio: { noAudio: true }, scene: CharacterScene,
     scale: { mode: Phaser.Scale.NONE }, fps: { target: 30 },
   });
