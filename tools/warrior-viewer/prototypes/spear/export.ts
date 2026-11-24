@@ -452,16 +452,14 @@ function run(): void {
       'skill-whirl-sweep': {
         cycleFrames: 16,
         cues: [
-          { effect: 'spear-flower-spin', startFrame: 0, variant: 'facing', placement: 'above-characters', source: '前探延长枪花连击' },
-          { effect: 'impact-burst', startFrame: 2, variant: 'default', placement: 'above-characters', onTarget: true, targetDistancePx: 44, source: '枪花第一段受击火花' },
-          { effect: 'impact-burst', startFrame: 4, variant: 'default', placement: 'above-characters', onTarget: true, targetDistancePx: 44, source: '枪花第二段受击火花' },
+          { effect: 'spear-flower-spin', startFrame: 0, variant: 'facing', placement: 'above-characters', source: '左右立圆双端大枪花' },
           { effect: 'spear-gale-sweep', startFrame: 7, variant: 'facing', placement: 'above-characters', source: '180° 青白狂风枪芒' },
         ],
         markers: [
-          { frame: 0, kind: 'swing', label: '滑把延枪 · 出前探枪花' },
-          { frame: 2, kind: 'strike', label: '枪花第一段命中' },
-          { frame: 4, kind: 'strike', label: '枪花第二段命中' },
-          { frame: 7, kind: 'swing', label: '大横扫出狂风芒' },
+          { frame: 0, kind: 'swing', label: '居中延枪 · 左右立圆舞花' },
+          { frame: 2, kind: 'strike', label: '枪花第一段命中（左右双侧）' },
+          { frame: 4, kind: 'strike', label: '枪花第二段命中（左右反转）' },
+          { frame: 7, kind: 'swing', label: '顺势抽把 · 180° 狂风大扫' },
           { frame: 8, kind: 'strike', label: '半圈大扫终结 + 推退硬直' },
         ],
         shakeFrames: [8],

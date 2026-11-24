@@ -401,7 +401,6 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
       const whirlTl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, 'skill-whirl-sweep', facing, audio, proto.actionTimelines);
       assert.equal(whirlTl.markers.filter(m => m.kind === 'strike').length, 3);
       assert.ok(whirlTl.effects.some(e => e.effect === 'spear-flower-spin' && e.variant === facing && e.startFrame === 0));
-      assert.ok(whirlTl.effects.some(e => e.effect === 'impact-burst' && e.onTarget && e.startFrame === 2));
       assert.ok(whirlTl.effects.some(e => e.effect === 'spear-gale-sweep' && e.variant === facing));
 
       const spinTl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, 'skill-spin-storm', facing, audio, proto.actionTimelines);

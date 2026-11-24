@@ -9,7 +9,7 @@
  * 4. spear-heavy-pierce  （5 帧）：狂龙穿心破 · 赤金炽白重刺破甲芒（带向后喷射破甲气锥）
  * 5. spear-slam-arc      （4 帧）：伏龙震 · 暗金土黄纵向重劈弧光 + 地面震裂冲击环
  * 第二批：
- * 6. spear-flower-spin   （6 帧）：虬龙扫暴阵前半段 · 四向前置延长枪花绞杀涡轮 + 飞舞红缨与枪杆破风线
+ * 6. spear-flower-spin   （6 帧）：虬龙扫暴阵前半段 · 以人物为中心的左右上下立圆双端大枪花（枪尖红缨锋 + 枪尾铁镦风）
  * 7. spear-gale-sweep    （6 帧）：虬龙扫暴阵主体 · 四向 180° 青白月牙狂风横扫枪芒
  * 8. spear-flurry-needles（8 帧）：连环点枪前两段 · 暴雨梨花奇偶交替扇形针芒幻影（带红缨残影）
  * 9. spear-flurry-finisher（4 帧）：连环点枪第三段 · 炽青加粗定音主刺芒 + 十字爆闪
@@ -973,105 +973,96 @@ function buildSlamArc(direction: 'west' | 'south' | 'north'): DirectionalEffectS
 }
 
 // ===========================================================================
-// 6. 虬龙扫暴阵前半段：四向前置延长枪花绞杀涡轮 + 红缨流光（spear-flower-spin，6 帧）
+// 6. 虬龙扫暴阵前半段：以人物为中心的左右上下立圆双端大枪花（spear-flower-spin，6 帧）
 // ===========================================================================
 
 function buildFlowerSpin(direction: 'west' | 'south' | 'north'): DirectionalEffectSource {
-  // 花环中心前推到延长枪尖与敌人打击区（距脚底约 36~48px），配合前探滑把长枪真正打到敌人
-  const cfg = direction === 'west'
-    ? { w: 88, h: 64, ox: 80, oy: 46, cx: 36, cy: 34, rx: 16, ry: 23, shaftFrom: [70, 34] as const, shaftTo: [46, 34] as const, isHoriz: true }
-    : direction === 'south'
-      ? { w: 76, h: 88, ox: 38, oy: 18, cx: 38, cy: 57, rx: 26, ry: 17, shaftFrom: [38, 22] as const, shaftTo: [38, 44] as const, isHoriz: false }
-      : { w: 76, h: 92, ox: 38, oy: 80, cx: 38, cy: 28, rx: 26, ry: 17, shaftFrom: [38, 62] as const, shaftTo: [38, 41] as const, isHoriz: false };
-
+  // 118×102：角色脚底 (0,0) 在 (59, 62)，立圆风车中心在腰胸 (59, 50)（y = -12），
+  // 横向横扫左侧 -45px 与右侧 +45px（覆盖 78px 加长枪尖与枪尾），纵向掠过头顶 -49px 与脚下 +25px。
+  const w = 118;
+  const h = 102;
+  const ox = 59;
+  const oy = 62;
+  const cx = 59;
+  const cy = 50;
+  const rx = 44;
+  const ry = 36;
+  // 逐帧严丝合缝咬合 source.ts 的顺时针立圆枪尖角位（东向由西向自动镜像为逆时针同步！）
+  const tipDegs = [-155, -61, 0, 119, 180, 241];
   const baseFrames: EffectFrameGrid[] = [];
   const addFrames: EffectFrameGrid[] = [];
-  const scales = [0.74, 0.96, 1.04, 1.08, 1.04, 1.12];
 
   for (let i = 0; i < 6; i++) {
-    const base = blank(cfg.w, cfg.h);
-    const add = blank(cfg.w, cfg.h);
-    const rot = i * 95;
-    const sc = scales[i];
-    const rx = cfg.rx * sc;
-    const ry = cfg.ry * sc;
+    const base = blank(w, h);
+    const add = blank(w, h);
+    const tipDeg = tipDegs[i];
+    const buttDeg = tipDeg + 180;
+    const isHit = i === 2 || i === 4;
     const isFade = i === 5;
-    const mainThick = i === 0 ? 1.7 : isFade ? 1.15 : 2.35;
+    const scale = i === 0 ? 0.90 : isHit ? 1.04 : isFade ? 1.06 : 0.98;
+    const arx = rx * scale;
+    const ary = ry * scale;
 
-    // 1. 沿延长枪杆向前贯出的高速破风牵引丝（把英雄手中的延长枪与前方枪花涡轮自然连成一体）
-    if (!isFade) {
-      const [sx0, sy0] = cfg.shaftFrom;
-      const [sx1, sy1] = cfg.shaftTo;
-      const offsets = i % 2 === 0 ? [-3, 0, 3] : [-4, 1, 4];
-      for (let oi = 0; oi < offsets.length; oi++) {
-        const off = offsets[oi];
-        const steps = 28;
-        for (let s = 0; s <= steps; s++) {
-          const f = s / steps;
-          if (oi !== 1 && f < 0.25) continue;
-          const px = sx0 + (sx1 - sx0) * f + (cfg.isHoriz ? 0 : off);
-          const py = sy0 + (sy1 - sy0) * f + (cfg.isHoriz ? off : 0);
-          const ch = oi === 1 && f > 0.45 ? 'L' : f > 0.35 ? 'C' : 'B';
-          plotMax(base, px, py, ch);
-          plotMax(add, px, py, oi === 1 ? 'L' : 'B');
-        }
-      }
-    }
+    // 1. 枪尖一端主刃弧（顺时针旋转，尾在 tipDeg - span，炽白锋尖死咬 tipDeg！）
+    const headSpan = i === 0 ? 96 : isFade ? 82 : isHit ? 142 : 122;
+    const headThick = i === 0 ? 2.4 : isFade ? 1.5 : isHit ? 3.8 : 3.0;
+    drawArcCurve(base, add, cx, cy, arx, ary, tipDeg - headSpan, tipDeg, headThick, !isFade, 260);
 
-    // 2. 双股高速螺旋银白枪花刃弧（高密度 220 步平滑无断齿，保留翻花透气空隙）
-    drawArcCurve(base, add, cfg.cx, cfg.cy, rx, ry, rot - 15, rot + (isFade ? 95 : 138), mainThick, !isFade, 220);
-    drawArcCurve(base, add, cfg.cx, cfg.cy, rx, ry, rot + 165, rot + (isFade ? 275 : 318), mainThick * 0.94, !isFade, 220);
+    // 2. 180° 对侧枪尾铁镦破风弧（明确交代另一端枪尾也在同步横扫另一侧打伤害！）
+    const buttSpan = i === 0 ? 78 : isFade ? 68 : isHit ? 116 : 96;
+    const buttThick = i === 0 ? 1.6 : isFade ? 1.05 : isHit ? 2.5 : 2.0;
+    drawArcCurve(base, add, cx, cy, arx - 1, ary - 1, buttDeg - buttSpan, buttDeg, buttThick, false, 220);
 
-    // 3. 内圈交叉 8 字翻花风丝（体现延长枪尖高速画圆钻刺的绞击感）
-    if (!isFade) {
-      drawArcCurve(base, add, cfg.cx, cfg.cy, rx * 0.62, ry * 0.72, rot + 30, rot + 162, 1.15, true, 160);
-      drawArcCurve(base, add, cfg.cx, cfg.cy, rx * 0.62, ry * 0.72, rot + 210, rot + 342, 1.15, true, 160);
-    }
-
-    // 4. 两缕紧贴花环高速甩飞的醒目朱红红缨流光带（长枪辨识灵魂！）
-    for (const offsetDeg of [rot + 126, rot + 306]) {
-      const steps = 96;
-      const span = isFade ? 56 : 86;
-      for (let s = 0; s <= steps; s++) {
-        const f = s / steps;
-        const rad = ((offsetDeg - f * span) * Math.PI) / 180;
-        const flutter = Math.sin(f * Math.PI * 3 + i) * 0.9;
-        const rrX = rx * 0.86 + flutter;
-        const rrY = ry * 0.86 + flutter;
-        const px = cfg.cx + rrX * Math.cos(rad);
-        const py = cfg.cy + rrY * Math.sin(rad);
-        const ch = f < 0.28 ? 'P' : f < 0.72 ? 'R' : 'r';
+    // 3. 紧贴枪尖内侧甩飞的双股朱红红缨流光带（让肉眼一眼追踪枪尖绕人物左右上下翻飞）
+    const tasselSteps = 140;
+    const tasselSpan = isFade ? 58 : isHit ? 105 : 88;
+    for (let s = 0; s <= tasselSteps; s++) {
+      const f = s / tasselSteps; // 0 = 飘尾，1 = 靠近枪颈红缨头
+      const deg = tipDeg - tasselSpan * (1 - f) - 4;
+      const rad = (deg * Math.PI) / 180;
+      const flutter = Math.sin(f * Math.PI * 3.5 + i * 1.3) * 1.1;
+      const taper = Math.sin(Math.pow(f, 0.72) * Math.PI);
+      const hw = Math.max(0.45, (isFade ? 1.1 : 1.85) * taper);
+      const ca = Math.cos(rad);
+      const sa = Math.sin(rad);
+      for (let o = -hw; o <= hw; o += 0.35) {
+        const px = cx + (arx - 6.5 + flutter + o) * ca;
+        const py = cy + (ary - 5.2 + flutter * 0.8 + o * 0.85) * sa;
+        const norm = Math.abs(o) / Math.max(0.45, hw);
+        const ch = norm < 0.38 && f > 0.35 ? 'P' : norm < 0.76 && f > 0.14 ? 'R' : 'r';
         const gx = Math.round(px);
         const gy = Math.round(py);
-        if (gy >= 0 && gy < cfg.h && gx >= 0 && gx < cfg.w) {
+        if (gy >= 0 && gy < h && gx >= 0 && gx < w) {
           if (base[gy][gx] !== 'W') base[gy][gx] = ch;
           if (add[gy][gx] !== 'W') add[gy][gx] = ch;
         }
-        if (!isFade && f < 0.75) {
-          const px2 = cfg.cx + (rrX + 1.3) * Math.cos(rad);
-          const py2 = cfg.cy + (rrY + 1.3) * Math.sin(rad);
-          const gx2 = Math.round(px2);
-          const gy2 = Math.round(py2);
-          if (gy2 >= 0 && gy2 < cfg.h && gx2 >= 0 && gx2 < cfg.w) {
-            if (base[gy2][gx2] !== 'W') base[gy2][gx2] = f < 0.35 ? 'R' : 'r';
-            if (add[gy2][gx2] !== 'W') add[gy2][gx2] = f < 0.35 ? 'R' : 'r';
-          }
-        }
       }
     }
 
-    // 5. 枪尖高频点刺炽白中心闪光 + 外缘绞击星火
-    const tipRad1 = ((rot + 138) * Math.PI) / 180;
-    const tipRad2 = ((rot + 318) * Math.PI) / 180;
-    plotSpark(base, add, cfg.cx + rx * Math.cos(tipRad1), cfg.cy + ry * Math.sin(tipRad1), 'W', plotMax, !isFade);
-    plotSpark(base, add, cfg.cx + rx * Math.cos(tipRad2), cfg.cy + ry * Math.sin(tipRad2), isFade ? 'C' : 'L', plotMax, i === 2 || i === 4);
-    if (i >= 1 && i <= 4) {
-      const jitterX = (i % 2 === 0 ? -2 : 2);
-      const jitterY = (i % 3 === 0 ? -2 : 2);
-      plotSpark(base, add, cfg.cx + jitterX, cfg.cy + jitterY, 'W', plotMax, i === 2 || i === 4);
-      const spRad = ((rot + 55) * Math.PI) / 180;
-      plotSpark(base, add, cfg.cx + (rx + 4) * Math.cos(spRad), cfg.cy + (ry + 3) * Math.sin(spRad), 'g', plotMax, false);
+    // 4. F2 / F4 水平满展命中帧：人物左侧 (-45px) 与右侧 (+45px) 双翼同步炸出横向破风弧丝与打击星火！
+    if (isHit) {
+      // 右侧外翼破风弧 + 火星
+      drawArcCurve(base, add, cx, cy, arx + 5.5, ary + 3.5, -42, 34, 1.35, true, 140);
+      // 左侧外翼破风弧 + 火星
+      drawArcCurve(base, add, cx, cy, arx + 5.5, ary + 3.5, 138, 214, 1.35, true, 140);
+      // 左右两侧横向打击爆闪星火（直观传达左侧和右侧同时打出范围伤害）
+      for (const [deg, ch, big] of [
+        [0, 'W', true], [-22, 'g', false], [20, 'L', false],
+        [180, 'W', true], [158, 'g', false], [202, 'L', false],
+      ] as const) {
+        const rad = (deg * Math.PI) / 180;
+        plotSpark(base, add, cx + (arx + 4) * Math.cos(rad), cy + (ary + 3) * Math.sin(rad), ch, plotMax, big);
+      }
+    } else if (!isFade) {
+      // 非水平帧：在外圈补 1 条细银风丝体现立圆高速旋转张力（中心保持通透绝不糊脸）
+      drawArcCurve(base, add, cx, cy, arx + 3.5, ary + 3, tipDeg - 68, tipDeg - 6, 0.9, true, 120);
     }
+
+    // 5. 枪尖破空十字亮闪 + 枪尾淡金钝击闪点
+    const tipRad = (tipDeg * Math.PI) / 180;
+    const buttRad = (buttDeg * Math.PI) / 180;
+    plotSpark(base, add, cx + arx * Math.cos(tipRad), cy + ary * Math.sin(tipRad), 'W', plotMax, !isFade);
+    plotSpark(base, add, cx + (arx - 1) * Math.cos(buttRad), cy + (ary - 1) * Math.sin(buttRad), 'g', plotMax, isHit);
 
     baseFrames.push({ id: `spear-flower-spin-${direction}-base-${i}`, rows: base.map(r => r.join('')) });
     addFrames.push({ id: `spear-flower-spin-${direction}-add-${i}`, rows: add.map(r => r.join('')) });
@@ -1080,10 +1071,10 @@ function buildFlowerSpin(direction: 'west' | 'south' | 'north'): DirectionalEffe
   return {
     effectId: 'spear-flower-spin',
     direction,
-    frameWidth: cfg.w,
-    frameHeight: cfg.h,
-    originX: cfg.ox / cfg.w,
-    originY: cfg.oy / cfg.h,
+    frameWidth: w,
+    frameHeight: h,
+    originX: ox / w,
+    originY: oy / h,
     basePalette: FLOWER_BASE_PALETTE,
     addPalette: FLOWER_ADD_PALETTE,
     baseFrames,
