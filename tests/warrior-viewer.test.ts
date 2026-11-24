@@ -281,7 +281,7 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
   const pngBytes = fs.readFileSync(new URL(proto.texture.file, repoRoot));
   const pngWidth = pngBytes.readUInt32BE(16);
   const pngHeight = pngBytes.readUInt32BE(20);
-  assert.equal(Object.keys(proto.sprites).length, 18);
+  assert.equal(Object.keys(proto.sprites).length, 28);
   for (const sprite of Object.values(proto.sprites)) {
     assert.equal(sprite.texture, proto.texture.key);
     assert.ok(sprite.x >= 0 && sprite.y >= 0);
@@ -358,6 +358,51 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
           assert.ok(pieces.some(p => p.part.part === 'coat-front'), `${action.poseId} should draw armor`);
           if (!appearance) assert.ok(pieces.some(p => p.part.part === 'cloak'), `${action.poseId} should draw cloak`);
           else assert.ok(!pieces.some(p => p.part.part === 'cloak'), 'olaf fixedParts suppresses cloak');
+        }
+      }
+
+      // Check single-hand upright carry (idle/walk) and diagonal back-slung town movement (town-idle/town-walk) across all 4 directions
+      for (const [key, expectedCount] of [['idle', 14], ['walk', 8]] as const) {
+        const action = choices.find(choice => choice.key === key)!;
+        const pose = mergedCatalog.poses[action.poseId];
+        assert.equal(pose.frames.length, expectedCount);
+        const f0 = pose.frames[0];
+        const spearIdx = f0.findIndex(p => p.part === 'spear');
+        const spear = f0[spearIdx];
+        assert.ok(spear);
+        const expectedPrefix = facing === 'south' ? 'spear-carry-south-' : facing === 'north' ? 'spear-carry-north-' : 'spear-carry-side-';
+        assert.ok(proto.variants[proto.variantId][spear.piece]?.startsWith(expectedPrefix), `${action.poseId} should use ${expectedPrefix}`);
+        if (facing === 'west' || facing === 'east') {
+          const lastNearArmIdx = f0.reduce((acc, p, idx) => (p.part === 'coat-front' && (p.piece === 6 || p.piece === 8) ? idx : acc), -1);
+          assert.ok(spearIdx < lastNearArmIdx, `${action.poseId} spear should sit beneath near gripping arm`);
+        } else if (facing === 'south') {
+          const rightArmIdx = f0.findIndex(p => p.part === 'coat-front' && (p.piece === 9 || p.piece === 5) && p.scaleX === 1);
+          assert.ok(spearIdx < rightArmIdx, `${action.poseId} spear should sit beneath south right gripping arm`);
+        } else {
+          const cloakIdx = f0.findIndex(p => p.part === 'cloak');
+          assert.ok(spearIdx < cloakIdx, `${action.poseId} spear should sit before north cloak`);
+        }
+      }
+
+      for (const [key, expectedCount] of [['town-idle', 14], ['town-walk', 8]] as const) {
+        const action = choices.find(choice => choice.key === key);
+        assert.ok(action, `missing ${key} (${facing})`);
+        assert.equal(action.group, '地图动作');
+        assert.equal(action.poseId, `prototype-spear-${key}-${facing}`);
+        const pose = mergedCatalog.poses[action.poseId];
+        assert.equal(pose.frames.length, expectedCount, `${action.poseId} frame count`);
+        assert.equal(pose.mirrorX, facing === 'east');
+        assert.equal(actionNotices(mergedCatalog, mergedItems, spearEquipment, key, pose).length, 0, `${action.poseId} should not warn weapon hidden`);
+        for (const frame of pose.frames) {
+          const pieces = framePieces(mergedCatalog, recipe.variants, frame);
+          const spearIdx = frame.findIndex(p => p.part === 'spear');
+          const cloakIdx = frame.findIndex(p => p.part === 'cloak');
+          assert.ok(spearIdx >= 0, `${action.poseId} should draw back-slung spear`);
+          assert.ok(pieces.some(p => p.part.part === 'coat-front'), `${action.poseId} should draw armor`);
+          const spriteId = proto.variants[proto.variantId][frame[spearIdx].piece];
+          assert.ok(spriteId?.startsWith(facing === 'west' || facing === 'east' ? 'spear-back-side-' : 'spear-back-diag-'));
+          if (facing === 'north') assert.ok(spearIdx > cloakIdx, `${action.poseId} north back-slung spear should draw over cloak`);
+          else assert.equal(spearIdx, 0, `${action.poseId} ${facing} back-slung spear should draw behind body/cloak`);
         }
       }
 
@@ -451,7 +496,8 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
       for (const armorId of armorSamples) {
         const recipe = viewerRecipe(mergedCatalog, mergedItems, { 'main-hand': proto.weaponId, body: armorId }, {});
         const pieces = framePieces(mergedCatalog, recipe.variants, frame);
-        assert.ok(pieces.filter(p => p.part.part === 'coat-front').length >= 3, `${poseId} F${fi} (${armorId}) 应含胸甲与双臂`);
+        const minCoatFront = clip.startsWith('town-walk-') ? 2 : 3;
+        assert.ok(pieces.filter(p => p.part.part === 'coat-front').length >= minCoatFront, `${poseId} F${fi} (${armorId}) 应含胸甲与有效手臂`);
       }
     }
   }

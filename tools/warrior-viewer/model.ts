@@ -401,6 +401,7 @@ export function actionChoices(catalog: WardrobeCatalog, items: ItemCatalog, equi
     const suffix = `-${facing}`;
     if (!poseId || !clip.endsWith(suffix)) continue;
     const key = clip.slice(0, -suffix.length);
+    if (key.startsWith('town-')) continue;
     const skill = key.startsWith('skill-');
     const group = isPrototypeWeapon
       ? (skill ? '主动技能' : key.startsWith('attack') ? '普通攻击' : key === 'spear-die' ? '阵亡动作' : '基础动作')
@@ -410,9 +411,12 @@ export function actionChoices(catalog: WardrobeCatalog, items: ItemCatalog, equi
     result.push({ key, label, group, poseId });
   }
   const town = townMovementPoses(catalog);
+  const poseMap = recipe.poses as Record<string, string | undefined>;
   for (const movement of ['idle', 'walk'] as const) {
-    result.push({ key: `town-${movement}`, label: movement === 'idle' ? '地图待机' : '地图行走',
-      group: '地图动作', poseId: town[`${movement}-${facing}`]! });
+    const key = `town-${movement}`;
+    const poseId = poseMap[`${key}-${facing}`] ?? town[`${movement}-${facing}`]!;
+    const label = customLabels?.[key] ?? (movement === 'idle' ? '地图待机' : '地图行走');
+    result.push({ key, label, group: '地图动作', poseId });
   }
   const shared = sharedWardrobePoses(catalog);
   const diePose = shared[`die-${facing}`];

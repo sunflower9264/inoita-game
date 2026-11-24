@@ -91,10 +91,13 @@ function buildAngledSpear(options: {
   upright?: boolean;
   tasselMode?: 'hang' | 'trail' | 'sweep' | 'whip-up';
   bladeWidthScale?: number;
+  tasselBehindBlade?: boolean;
+  tasselScale?: number;
 }): string[] {
   const {
     width, height, tipX, tipY, buttX, buttY, bladeLen, collarLen, buttLen,
     sway, upright, tasselMode = 'hang', bladeWidthScale = 1,
+    tasselBehindBlade = false, tasselScale = 1,
   } = options;
   const grid = blankGrid(width, height);
   const dx = buttX - tipX;
@@ -110,6 +113,98 @@ function buildAngledSpear(options: {
     tipX + ux * t + nx * off,
     tipY + uy * t + ny * off,
   ];
+
+  const drawTassel = (): void => {
+    const [collarX, collarY] = sampleAt(bladeLen + collarLen * 0.55, 0);
+    if (tasselMode === 'trail') {
+      const trailStrands = [
+        { off: -1.8, len: 8, spread: -0.25 },
+        { off: 1.8, len: 9, spread: 0.28 },
+        { off: -0.9, len: 6, spread: -0.15 },
+        { off: 0.9, len: 7, spread: 0.15 },
+      ];
+      for (const strand of trailStrands) {
+        for (let step = 0; step < strand.len; step++) {
+          const [sx, sy] = sampleAt(bladeLen + collarLen + step * 1.15, strand.off + step * strand.spread);
+          const ch = step < 2 ? 'P' : step < strand.len - 2 ? 'R' : 'r';
+          put(grid, sx, sy, ch);
+        }
+      }
+    } else if (tasselMode === 'sweep') {
+      const sweepStrands = [
+        { off: 1.4, len: 7, curve: 0.55 },
+        { off: 2.3, len: 9, curve: 0.45 },
+        { off: 3.1, len: 6, curve: 0.35 },
+      ];
+      for (const strand of sweepStrands) {
+        for (let step = 0; step < strand.len; step++) {
+          const [sx, sy] = sampleAt(bladeLen + collarLen + step * 0.95, strand.off + step * strand.curve);
+          const ch = step < 2 ? 'P' : step < strand.len - 2 ? 'R' : 'r';
+          put(grid, sx, sy, ch);
+        }
+      }
+    } else if (tasselMode === 'whip-up') {
+      // 纵劈砸地惯性：红缨向上后方猛烈扬起
+      const bx = Math.round(collarX);
+      const by = Math.round(collarY);
+      const strands = [
+        { ox: -1, oy: -1, len: 6, drift: 1 },
+        { ox: 0, oy: -1, len: 8, drift: 1.5 },
+        { ox: 1, oy: -1, len: 7, drift: 2 },
+      ];
+      for (const strand of strands) {
+        for (let step = 0; step < strand.len; step++) {
+          const sx = bx + strand.ox + Math.round(step * 0.45 * strand.drift);
+          const sy = by + strand.oy - step;
+          const ch = step < 2 ? 'P' : step < strand.len - 1 ? 'R' : 'r';
+          put(grid, sx, sy, ch);
+        }
+      }
+    } else if (tasselBehindBlade) {
+      // 枪尖朝镜头前下方透视：红缨绕在铜箍后方两侧，避免糊盖银钢锋刃
+      const bx = Math.round(collarX);
+      const by = Math.round(collarY);
+      const strands = [
+        { ox: -2, oy: 0, len: Math.max(1, Math.round(5 * tasselScale)), drift: -1 + sway },
+        { ox: -1, oy: 1, len: Math.max(1, Math.round(6 * tasselScale)), drift: -1 + sway },
+        { ox: 1, oy: 1, len: Math.max(1, Math.round(6 * tasselScale)), drift: 1 + sway },
+        { ox: 2, oy: 0, len: Math.max(1, Math.round(5 * tasselScale)), drift: 1 + sway },
+      ];
+      for (const strand of strands) {
+        for (let step = 0; step < strand.len; step++) {
+          const bend = step >= 2 ? Math.round((step - 1) * 0.35 * strand.drift) : 0;
+          const sx = bx + strand.ox + bend;
+          const sy = by + strand.oy + step;
+          const ch = step === 0 ? 'P' : step < 3 ? 'R' : 'r';
+          put(grid, sx, sy, ch);
+        }
+      }
+    } else {
+      const bx = Math.round(collarX);
+      const by = Math.round(collarY);
+      const strands = upright
+        ? [
+            { ox: -2, oy: 1, len: Math.max(1, Math.round(6 * tasselScale)), drift: -1 + sway },
+            { ox: -1, oy: 1, len: Math.max(1, Math.round(8 * tasselScale)), drift: sway },
+            { ox: 1, oy: 1, len: Math.max(1, Math.round(7 * tasselScale)), drift: sway },
+            { ox: 2, oy: 2, len: Math.max(1, Math.round(5 * tasselScale)), drift: 1 },
+          ]
+        : [
+            { ox: -1, oy: 1, len: Math.max(1, Math.round(5 * tasselScale)), drift: sway },
+            { ox: 0, oy: 1, len: Math.max(1, Math.round(8 * tasselScale)), drift: sway },
+            { ox: 1, oy: 1, len: Math.max(1, Math.round(6 * tasselScale)), drift: 1 + sway },
+          ];
+      for (const strand of strands) {
+        for (let step = 0; step < strand.len; step++) {
+          const bend = step >= 3 ? Math.round((step - 2) * 0.4 * strand.drift) : 0;
+          const sx = bx + strand.ox + bend;
+          const sy = by + strand.oy + step;
+          const ch = step === 0 ? 'P' : step < 3 ? (strand.ox <= 0 ? 'P' : 'R') : step < strand.len - 1 ? 'R' : 'r';
+          put(grid, sx, sy, ch);
+        }
+      }
+    }
+  };
 
   // 1. 纤细硬木枪杆（2px 核心）
   const shaftStart = bladeLen + collarLen;
@@ -133,6 +228,8 @@ function buildAngledSpear(options: {
       put(grid, px, py, ch);
     }
   }
+
+  if (tasselBehindBlade) drawTassel();
 
   // 3. 修长柳叶枪头（前锐、中脊亮、后收束）
   for (let s = 0; s <= bladeLen * 4; s++) {
@@ -164,76 +261,7 @@ function buildAngledSpear(options: {
   }
 
   // 5. 红缨
-  const [collarX, collarY] = sampleAt(bladeLen + collarLen * 0.55, 0);
-  if (tasselMode === 'trail') {
-    const trailStrands = [
-      { off: -1.8, len: 8, spread: -0.25 },
-      { off: 1.8, len: 9, spread: 0.28 },
-      { off: -0.9, len: 6, spread: -0.15 },
-      { off: 0.9, len: 7, spread: 0.15 },
-    ];
-    for (const strand of trailStrands) {
-      for (let step = 0; step < strand.len; step++) {
-        const [sx, sy] = sampleAt(bladeLen + collarLen + step * 1.15, strand.off + step * strand.spread);
-        const ch = step < 2 ? 'P' : step < strand.len - 2 ? 'R' : 'r';
-        put(grid, sx, sy, ch);
-      }
-    }
-  } else if (tasselMode === 'sweep') {
-    const sweepStrands = [
-      { off: 1.4, len: 7, curve: 0.55 },
-      { off: 2.3, len: 9, curve: 0.45 },
-      { off: 3.1, len: 6, curve: 0.35 },
-    ];
-    for (const strand of sweepStrands) {
-      for (let step = 0; step < strand.len; step++) {
-        const [sx, sy] = sampleAt(bladeLen + collarLen + step * 0.95, strand.off + step * strand.curve);
-        const ch = step < 2 ? 'P' : step < strand.len - 2 ? 'R' : 'r';
-        put(grid, sx, sy, ch);
-      }
-    }
-  } else if (tasselMode === 'whip-up') {
-    // 纵劈砸地惯性：红缨向上后方猛烈扬起
-    const bx = Math.round(collarX);
-    const by = Math.round(collarY);
-    const strands = [
-      { ox: -1, oy: -1, len: 6, drift: 1 },
-      { ox: 0, oy: -1, len: 8, drift: 1.5 },
-      { ox: 1, oy: -1, len: 7, drift: 2 },
-    ];
-    for (const strand of strands) {
-      for (let step = 0; step < strand.len; step++) {
-        const sx = bx + strand.ox + Math.round(step * 0.45 * strand.drift);
-        const sy = by + strand.oy - step;
-        const ch = step < 2 ? 'P' : step < strand.len - 1 ? 'R' : 'r';
-        put(grid, sx, sy, ch);
-      }
-    }
-  } else {
-    const bx = Math.round(collarX);
-    const by = Math.round(collarY);
-    const strands = upright
-      ? [
-          { ox: -2, oy: 1, len: 6, drift: -1 + sway },
-          { ox: -1, oy: 1, len: 8, drift: sway },
-          { ox: 1, oy: 1, len: 7, drift: sway },
-          { ox: 2, oy: 2, len: 5, drift: 1 },
-        ]
-      : [
-          { ox: -1, oy: 1, len: 5, drift: sway },
-          { ox: 0, oy: 1, len: 8, drift: sway },
-          { ox: 1, oy: 1, len: 6, drift: 1 + sway },
-        ];
-    for (const strand of strands) {
-      for (let step = 0; step < strand.len; step++) {
-        const bend = step >= 3 ? Math.round((step - 2) * 0.4 * strand.drift) : 0;
-        const sx = bx + strand.ox + bend;
-        const sy = by + strand.oy + step;
-        const ch = step === 0 ? 'P' : step < 3 ? (strand.ox <= 0 ? 'P' : 'R') : step < strand.len - 1 ? 'R' : 'r';
-        put(grid, sx, sy, ch);
-      }
-    }
-  }
+  if (!tasselBehindBlade) drawTassel();
 
   // 6. 1px 清晰像素轮廓线
   applyOutline(grid, 'D', ch => ch === 'H' || ch === 'L' || ch === 'M' || ch === 'S');
@@ -464,6 +492,128 @@ export const SPEAR_SLICES: readonly PixelSliceSource[] = [
       sway: 0, upright: true, tasselMode: 'trail', bladeWidthScale: 1.0,
     }),
   },
+  // 18..23：四向挺拔单手朝前微仰（~12.6°）持枪待机与行走专用切片（每向 2 帧红缨微摆）
+  {
+    id: 'spear-carry-side-0',
+    label: '单手持枪（西/东朝前微仰 · 红缨帧 1）',
+    anchorX: 32,
+    anchorY: 10,
+    rows: buildAngledSpear({
+      width: 54, height: 22,
+      tipX: 2, tipY: 3, buttX: 51, buttY: 14,
+      bladeLen: 14, collarLen: 2.2, buttLen: 4.5,
+      sway: 0,
+    }),
+  },
+  {
+    id: 'spear-carry-side-1',
+    label: '单手持枪（西/东朝前微仰 · 红缨帧 2）',
+    anchorX: 32,
+    anchorY: 10,
+    rows: buildAngledSpear({
+      width: 54, height: 22,
+      tipX: 2, tipY: 3, buttX: 51, buttY: 14,
+      bladeLen: 14, collarLen: 2.2, buttLen: 4.5,
+      sway: 1,
+    }),
+  },
+  {
+    id: 'spear-carry-south-0',
+    label: '单手持枪（南向朝前透视 · 红缨帧 1）',
+    anchorX: 9,
+    anchorY: 12,
+    rows: buildAngledSpear({
+      width: 18, height: 32,
+      tipX: 6, tipY: 29, buttX: 11, buttY: 2,
+      bladeLen: 11, collarLen: 2.2, buttLen: 4.5,
+      sway: 0, upright: true, tasselBehindBlade: true,
+    }),
+  },
+  {
+    id: 'spear-carry-south-1',
+    label: '单手持枪（南向朝前透视 · 红缨帧 2）',
+    anchorX: 9,
+    anchorY: 12,
+    rows: buildAngledSpear({
+      width: 18, height: 32,
+      tipX: 6, tipY: 29, buttX: 11, buttY: 2,
+      bladeLen: 11, collarLen: 2.2, buttLen: 4.5,
+      sway: 1, upright: true, tasselBehindBlade: true,
+    }),
+  },
+  {
+    id: 'spear-carry-north-0',
+    label: '单手持枪（北向朝前微仰透视 · 红缨帧 1）',
+    anchorX: 8,
+    anchorY: 25,
+    rows: buildAngledSpear({
+      width: 18, height: 39,
+      tipX: 12, tipY: 2, buttX: 6, buttY: 36,
+      bladeLen: 10, collarLen: 2.2, buttLen: 4.5,
+      sway: 0, upright: true, tasselScale: 0.82,
+    }),
+  },
+  {
+    id: 'spear-carry-north-1',
+    label: '单手持枪（北向朝前微仰透视 · 红缨帧 2）',
+    anchorX: 8,
+    anchorY: 25,
+    rows: buildAngledSpear({
+      width: 18, height: 39,
+      tipX: 12, tipY: 2, buttX: 6, buttY: 36,
+      bladeLen: 10, collarLen: 2.2, buttLen: 4.5,
+      sway: 1, upright: true, tasselScale: 0.82,
+    }),
+  },
+  // 24..27：四向脱战斜背背后专用切片（南/北斜跨肩背 + 西/东贴背斜背，各 2 帧红缨微摆）
+  {
+    id: 'spear-back-diag-0',
+    label: '脱战斜背长枪（南/北斜跨 · 红缨帧 1）',
+    anchorX: 18,
+    anchorY: 22,
+    rows: buildAngledSpear({
+      width: 38, height: 44,
+      tipX: 34, tipY: 2, buttX: 3, buttY: 41,
+      bladeLen: 14, collarLen: 2.2, buttLen: 4.5,
+      sway: 0,
+    }),
+  },
+  {
+    id: 'spear-back-diag-1',
+    label: '脱战斜背长枪（南/北斜跨 · 红缨帧 2）',
+    anchorX: 18,
+    anchorY: 22,
+    rows: buildAngledSpear({
+      width: 38, height: 44,
+      tipX: 34, tipY: 2, buttX: 3, buttY: 41,
+      bladeLen: 14, collarLen: 2.2, buttLen: 4.5,
+      sway: 1,
+    }),
+  },
+  {
+    id: 'spear-back-side-0',
+    label: '脱战斜背长枪（西/东贴背 · 红缨帧 1）',
+    anchorX: 17,
+    anchorY: 23,
+    rows: buildAngledSpear({
+      width: 34, height: 46,
+      tipX: 30, tipY: 2, buttX: 4, buttY: 43,
+      bladeLen: 14, collarLen: 2.2, buttLen: 4.5,
+      sway: 0,
+    }),
+  },
+  {
+    id: 'spear-back-side-1',
+    label: '脱战斜背长枪（西/东贴背 · 红缨帧 2）',
+    anchorX: 17,
+    anchorY: 23,
+    rows: buildAngledSpear({
+      width: 34, height: 46,
+      tipX: 30, tipY: 2, buttX: 4, buttY: 43,
+      bladeLen: 14, collarLen: 2.2, buttLen: 4.5,
+      sway: 1,
+    }),
+  },
 ];
 
 export type SpearInsertMode =
@@ -473,7 +623,10 @@ export type SpearInsertMode =
   | 'between-south-arms'
   | 'between-south-walk-arms'
   | 'between-west-arms'
-  | 'before-front-hand';
+  | 'before-front-hand'
+  | 'before-right-arm-south'
+  | 'before-near-arm-west'
+  | 'before-cloak';
 
 /**
  * 西向双手持枪标准双臂预设（东向姿态自动水平镜像同步）。
@@ -609,45 +762,79 @@ export interface SpearKeyframedPoseRecipe {
 }
 
 export const SPEAR_CYCLE_RECIPES: readonly SpearPoseRecipe[] = [
-  // 一、双手斜持战斗待机
+  // 一、挺拔单手朝前微仰持枪待机（原版单手挺拔骨架 pose-3986..3988）
   {
-    id: 'prototype-spear-idle-south', clip: 'idle-south', basePoseId: 'pose-4067-south-ticks-0',
-    mirrorX: false, insertMode: 'between-south-arms', pieceEven: 0, pieceOdd: 1, baseX: 0, baseY: -8, scaleX: 1, scaleY: 1, angle: 0,
+    id: 'prototype-spear-idle-south', clip: 'idle-south', basePoseId: 'pose-3986-south-ticks-0',
+    mirrorX: false, insertMode: 'before-right-arm-south', pieceEven: 20, pieceOdd: 21, baseX: -9, baseY: -9, scaleX: 1, scaleY: 1, angle: 0,
   },
   {
-    id: 'prototype-spear-idle-west', clip: 'idle-west', basePoseId: 'pose-4068-west-ticks-0',
-    mirrorX: false, insertMode: 'between-west-arms', pieceEven: 2, pieceOdd: 3, baseX: -3, baseY: -10, scaleX: 1, scaleY: 1, angle: 0,
+    id: 'prototype-spear-idle-west', clip: 'idle-west', basePoseId: 'pose-3987-west-ticks-0',
+    mirrorX: false, insertMode: 'before-near-arm-west', pieceEven: 18, pieceOdd: 19, baseX: 1, baseY: -8, scaleX: 1, scaleY: 1, angle: 0,
   },
   {
-    id: 'prototype-spear-idle-north', clip: 'idle-north', basePoseId: 'pose-4069-north-ticks-0',
-    mirrorX: false, insertMode: 'back', pieceEven: 0, pieceOdd: 1, baseX: 1, baseY: -9, scaleX: -1, scaleY: 1, angle: 0,
+    id: 'prototype-spear-idle-north', clip: 'idle-north', basePoseId: 'pose-3988-north-ticks-0',
+    mirrorX: false, insertMode: 'before-cloak', pieceEven: 22, pieceOdd: 23, baseX: 9, baseY: -9, scaleX: 1, scaleY: 1, angle: 0,
   },
   {
-    id: 'prototype-spear-idle-east', clip: 'idle-east', basePoseId: 'pose-4068-east-ticks-0',
-    mirrorX: true, insertMode: 'between-west-arms', pieceEven: 2, pieceOdd: 3, baseX: -3, baseY: -10, scaleX: 1, scaleY: 1, angle: 0,
+    id: 'prototype-spear-idle-east', clip: 'idle-east', basePoseId: 'pose-3987-east-ticks-0',
+    mirrorX: true, insertMode: 'before-near-arm-west', pieceEven: 18, pieceOdd: 19, baseX: 1, baseY: -8, scaleX: 1, scaleY: 1, angle: 0,
   },
-  // 二、持枪行走
+  // 二、挺拔单手朝前微仰持枪行走（原版单手步行骨架 pose-3989..3991）
   {
-    id: 'prototype-spear-walk-south', clip: 'walk-south', basePoseId: 'pose-4070-south-ticks-0',
-    mirrorX: false, insertMode: 'between-south-walk-arms', pieceEven: 0, pieceOdd: 1, swayPeriod: 2,
-    baseX: 1, baseY: -8, stepDx: [0, 0, -1, -1, 0, 0, 1, 1], scaleX: 1, scaleY: 1, angle: 0,
-  },
-  {
-    id: 'prototype-spear-walk-west', clip: 'walk-west', basePoseId: 'pose-4071-west-ticks-0',
-    mirrorX: false, insertMode: 'between-west-arms', pieceEven: 2, pieceOdd: 3, swayPeriod: 2,
-    baseX: -4, baseY: -10, stepDx: [0, 0, -1, -1, 0, 0, 1, 1], scaleX: 1, scaleY: 1, angle: 0,
+    id: 'prototype-spear-walk-south', clip: 'walk-south', basePoseId: 'pose-3989-south-ticks-0',
+    mirrorX: false, insertMode: 'before-right-arm-south', pieceEven: 20, pieceOdd: 21, swayPeriod: 2,
+    baseX: -9, baseY: -9, scaleX: 1, scaleY: 1, angle: 0,
   },
   {
-    id: 'prototype-spear-walk-north', clip: 'walk-north', basePoseId: 'pose-4072-north-ticks-0',
-    mirrorX: false, insertMode: 'back', pieceEven: 0, pieceOdd: 1, swayPeriod: 2,
-    baseX: 1, baseY: -9, stepDx: [0, 0, 1, 1, 0, 0, -1, -1], scaleX: -1, scaleY: 1, angle: 0,
+    id: 'prototype-spear-walk-west', clip: 'walk-west', basePoseId: 'pose-3990-west-ticks-0',
+    mirrorX: false, insertMode: 'before-near-arm-west', pieceEven: 18, pieceOdd: 19, swayPeriod: 2,
+    baseX: 2, baseY: -8, scaleX: 1, scaleY: 1, angle: 0,
   },
   {
-    id: 'prototype-spear-walk-east', clip: 'walk-east', basePoseId: 'pose-4071-east-ticks-0',
-    mirrorX: true, insertMode: 'between-west-arms', pieceEven: 2, pieceOdd: 3, swayPeriod: 2,
-    baseX: -4, baseY: -10, stepDx: [0, 0, -1, -1, 0, 0, 1, 1], scaleX: 1, scaleY: 1, angle: 0,
+    id: 'prototype-spear-walk-north', clip: 'walk-north', basePoseId: 'pose-3991-north-ticks-0',
+    mirrorX: false, insertMode: 'before-cloak', pieceEven: 22, pieceOdd: 23, swayPeriod: 2,
+    baseX: 9, baseY: -9, scaleX: 1, scaleY: 1, angle: 0,
   },
-  // 三、立枪待机（单手直立对照）
+  {
+    id: 'prototype-spear-walk-east', clip: 'walk-east', basePoseId: 'pose-3990-east-ticks-0',
+    mirrorX: true, insertMode: 'before-near-arm-west', pieceEven: 18, pieceOdd: 19, swayPeriod: 2,
+    baseX: 2, baseY: -8, scaleX: 1, scaleY: 1, angle: 0,
+  },
+  // 三、脱战斜背长枪待机（原版城镇待机骨架 pose-3980..3982）
+  {
+    id: 'prototype-spear-town-idle-south', clip: 'town-idle-south', basePoseId: 'pose-3980-south-ticks-0',
+    mirrorX: false, insertMode: 'back', pieceEven: 24, pieceOdd: 25, baseX: 1, baseY: -19, scaleX: 1, scaleY: 1, angle: 0,
+  },
+  {
+    id: 'prototype-spear-town-idle-west', clip: 'town-idle-west', basePoseId: 'pose-3981-west-ticks-0',
+    mirrorX: false, insertMode: 'back', pieceEven: 26, pieceOdd: 27, baseX: 5, baseY: -19, scaleX: 1, scaleY: 1, angle: 0,
+  },
+  {
+    id: 'prototype-spear-town-idle-north', clip: 'town-idle-north', basePoseId: 'pose-3982-north-ticks-0',
+    mirrorX: false, insertMode: 'front', pieceEven: 24, pieceOdd: 25, baseX: -2, baseY: -16, scaleX: -1, scaleY: 1, angle: 0,
+  },
+  {
+    id: 'prototype-spear-town-idle-east', clip: 'town-idle-east', basePoseId: 'pose-3981-east-ticks-0',
+    mirrorX: true, insertMode: 'back', pieceEven: 26, pieceOdd: 27, baseX: 5, baseY: -19, scaleX: 1, scaleY: 1, angle: 0,
+  },
+  // 四、脱战斜背长枪行走（原版城镇行走骨架 pose-3983..3985）
+  {
+    id: 'prototype-spear-town-walk-south', clip: 'town-walk-south', basePoseId: 'pose-3983-south-ticks-0',
+    mirrorX: false, insertMode: 'back', pieceEven: 24, pieceOdd: 25, swayPeriod: 2, baseX: 1, baseY: -19, scaleX: 1, scaleY: 1, angle: 0,
+  },
+  {
+    id: 'prototype-spear-town-walk-west', clip: 'town-walk-west', basePoseId: 'pose-3984-west-ticks-0',
+    mirrorX: false, insertMode: 'back', pieceEven: 26, pieceOdd: 27, swayPeriod: 2, baseX: 5, baseY: -19, scaleX: 1, scaleY: 1, angle: 0,
+  },
+  {
+    id: 'prototype-spear-town-walk-north', clip: 'town-walk-north', basePoseId: 'pose-3985-north-ticks-0',
+    mirrorX: false, insertMode: 'front', pieceEven: 24, pieceOdd: 25, swayPeriod: 2, baseX: -2, baseY: -16, scaleX: -1, scaleY: 1, angle: 0,
+  },
+  {
+    id: 'prototype-spear-town-walk-east', clip: 'town-walk-east', basePoseId: 'pose-3984-east-ticks-0',
+    mirrorX: true, insertMode: 'back', pieceEven: 26, pieceOdd: 27, swayPeriod: 2, baseX: 5, baseY: -19, scaleX: 1, scaleY: 1, angle: 0,
+  },
+  // 五、立枪待机（单手直立对照）
   {
     id: 'prototype-spear-upright-idle-south', clip: 'spear-upright-idle-south', basePoseId: 'pose-4142-south-ticks-0',
     mirrorX: false, insertMode: 'replace-staff', pieceEven: 4, pieceOdd: 5, baseX: -9, baseY: -10, scaleX: 1, scaleY: 1, angle: 0,

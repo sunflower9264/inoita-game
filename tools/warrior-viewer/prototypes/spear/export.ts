@@ -318,6 +318,24 @@ function insertSpearIntoFrame(
     const idx = stripped.findIndex(part => part.part === 'coat-front' && (part.piece === 13 || part.piece === 10));
     if (idx >= 0) { stripped.splice(idx, 0, shiftedSpear); return stripped; }
   }
+  if (insertMode === 'before-right-arm-south') {
+    const idx = stripped.findIndex(part => part.part === 'coat-front' && (part.piece === 9 || part.piece === 5) && part.scaleX === 1);
+    if (idx >= 0) { stripped.splice(idx, 0, shiftedSpear); return stripped; }
+    return [shiftedSpear, ...stripped];
+  }
+  if (insertMode === 'before-near-arm-west') {
+    let idx = -1;
+    for (let i = stripped.length - 1; i >= 0; i--) {
+      const part = stripped[i];
+      if (part.part === 'coat-front' && (part.piece === 6 || part.piece === 8)) { idx = i; break; }
+    }
+    if (idx >= 0) { stripped.splice(idx, 0, shiftedSpear); return stripped; }
+  }
+  if (insertMode === 'before-cloak') {
+    const idx = stripped.findIndex(part => part.part === 'cloak');
+    if (idx >= 0) { stripped.splice(idx, 0, shiftedSpear); return stripped; }
+    return [shiftedSpear, ...stripped];
+  }
   stripped.push(shiftedSpear);
   return stripped;
 }
@@ -326,14 +344,15 @@ function buildCyclePose(wardrobe: WardrobeCatalog, recipe: SpearPoseRecipe): Cos
   const basePose = wardrobe.poses[recipe.basePoseId];
   if (!basePose) throw new Error(`基础姿态不存在：${recipe.basePoseId}`);
 
-  const firstRef = basePose.frames[0].find(p => p.part === 'two-handed' || p.part === 'staff')
-    ?? basePose.frames[0].find(p => p.part === 'head-front');
+  const findRef = (frame: CostumePart[]) =>
+    frame.find(p => p.part === 'two-handed' || p.part === 'staff' || p.part === 'main-blade')
+    ?? frame.find(p => p.part === 'head-front');
+  const firstRef = findRef(basePose.frames[0]);
   const originRefY = firstRef?.y ?? 0;
   const period = recipe.swayPeriod ?? 7;
 
   const frames: CostumePart[][] = basePose.frames.map((frame, frameIndex) => {
-    const ref = frame.find(p => p.part === 'two-handed' || p.part === 'staff')
-      ?? frame.find(p => p.part === 'head-front');
+    const ref = findRef(frame);
     const dy = (ref?.y ?? originRefY) - originRefY;
     const swayPhase = Math.floor(frameIndex / period) % 2;
     const dx = recipe.stepDx?.[frameIndex] ?? 0;
@@ -402,8 +421,10 @@ function run(): void {
   const poses: Record<string, CostumePose> = {};
   const stancePoses: Record<string, string> = {};
 
-  // 1. 基础动作（待机 / 行走 / 基础直刺与横扫原型 / 立枪对照）
-  for (const recipe of SPEAR_CYCLE_RECIPES.filter(r => r.clip.startsWith('idle-') || r.clip.startsWith('walk-'))) {
+  // 1. 基础动作（持枪待机 / 持枪行走 / 脱战斜背待机与行走 / 基础直刺与横扫原型 / 立枪对照）
+  for (const recipe of SPEAR_CYCLE_RECIPES.filter(r =>
+    r.clip.startsWith('idle-') || r.clip.startsWith('walk-')
+    || r.clip.startsWith('town-idle-') || r.clip.startsWith('town-walk-'))) {
     poses[recipe.id] = buildCyclePose(wardrobe, recipe);
     stancePoses[recipe.clip] = recipe.id;
   }
@@ -439,6 +460,8 @@ function run(): void {
     actionLabels: {
       idle: '持枪待机',
       walk: '持枪行走',
+      'town-idle': '脱战待机（背枪）',
+      'town-walk': '脱战行走（背枪）',
       thrust: '基础直刺',
       sweep: '基础横扫',
       'spear-upright-idle': '立枪待机',
