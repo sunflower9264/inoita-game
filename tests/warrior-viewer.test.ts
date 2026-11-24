@@ -402,6 +402,9 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
       assert.equal(whirlTl.markers.filter(m => m.kind === 'strike').length, 3);
       assert.ok(whirlTl.effects.some(e => e.effect === 'spear-flower-spin' && e.variant === facing && e.startFrame === 0));
       assert.ok(whirlTl.effects.some(e => e.effect === 'spear-gale-sweep' && e.variant === facing));
+      const whirlPose = mergedCatalog.poses[proto.stancePoses[`skill-whirl-sweep-${facing}`]];
+      const whirlF2Spear = whirlPose.frames[2].find(p => p.part === 'spear');
+      assert.ok(whirlF2Spear && whirlF2Spear.alpha < 0.6, 'whirl flower mid-frames blur spear alpha');
 
       const spinTl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, 'skill-spin-storm', facing, audio, proto.actionTimelines);
       assert.equal(spinTl.markers.filter(m => m.kind === 'strike').length, 4);

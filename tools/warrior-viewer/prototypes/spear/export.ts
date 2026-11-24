@@ -309,7 +309,7 @@ function buildKeyframedPose(wardrobe: WardrobeCatalog, recipe: SpearKeyframedPos
       scaleX: spec.scaleX ?? 1,
       scaleY: spec.scaleY ?? 1,
       angle: spec.angle ?? 0,
-      alpha: 1,
+      alpha: spec.alpha ?? 1,
     };
     return insertSpearIntoFrame(baseFrame, spearPart, spec.insertMode, spec.bodyDx ?? 0, spec.bodyDy ?? 0);
   });
@@ -452,13 +452,13 @@ function run(): void {
       'skill-whirl-sweep': {
         cycleFrames: 16,
         cues: [
-          { effect: 'spear-flower-spin', startFrame: 0, variant: 'facing', placement: 'above-characters', source: '左右立圆双端大枪花' },
+          { effect: 'spear-flower-spin', startFrame: 0, variant: 'facing', placement: 'above-characters', source: '左右侧面双竖枪花' },
           { effect: 'spear-gale-sweep', startFrame: 7, variant: 'facing', placement: 'above-characters', source: '180° 青白狂风枪芒' },
         ],
         markers: [
-          { frame: 0, kind: 'swing', label: '居中延枪 · 左右立圆舞花' },
+          { frame: 0, kind: 'swing', label: '双侧侧面舞花（残影虚化）' },
           { frame: 2, kind: 'strike', label: '枪花第一段命中（左右双侧）' },
-          { frame: 4, kind: 'strike', label: '枪花第二段命中（左右反转）' },
+          { frame: 4, kind: 'strike', label: '枪花第二段命中（左右互换）' },
           { frame: 7, kind: 'swing', label: '顺势抽把 · 180° 狂风大扫' },
           { frame: 8, kind: 'strike', label: '半圈大扫终结 + 推退硬直' },
         ],

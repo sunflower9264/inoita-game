@@ -415,53 +415,53 @@ export const SPEAR_SLICES: readonly PixelSliceSource[] = [
       sway: 0, tasselMode: 'whip-up',
     }),
   },
-  // 14..17：虬龙扫暴阵立圆大枪花专用切片（居中握持、两端加长至 ~78px，配合 scaleX/scaleY 像素级覆盖左右上下立圆 360°）
+  // 14..17：虬龙扫暴阵「双侧侧面枪花」专用居中切片（长度收束至 ~68px，使枪尖与枪尾刚好收在左右立圆花环内，配合半透明残影不违和）
   {
     id: 'spear-windmill-horiz',
-    label: '立圆大枪花（水平满展 · 尖左尾右）',
-    anchorX: 39,
+    label: '双侧枪花（居中水平 · 尖左尾右）',
+    anchorX: 34,
     anchorY: 9,
     rows: buildAngledSpear({
-      width: 78, height: 18,
-      tipX: 2, tipY: 9, buttX: 75, buttY: 9,
-      bladeLen: 16, collarLen: 2.2, buttLen: 6,
-      sway: 0, tasselMode: 'sweep', bladeWidthScale: 1.05,
+      width: 68, height: 18,
+      tipX: 2, tipY: 9, buttX: 65, buttY: 9,
+      bladeLen: 15, collarLen: 2.2, buttLen: 5.5,
+      sway: 0, tasselMode: 'sweep', bladeWidthScale: 1.0,
     }),
   },
   {
     id: 'spear-windmill-diag-low',
-    label: '立圆大枪花（低斜 25° · 居中加长）',
-    anchorX: 34,
-    anchorY: 19,
+    label: '双侧枪花（居中低斜 22° · 上下摆动）',
+    anchorX: 33,
+    anchorY: 17,
     rows: buildAngledSpear({
-      width: 68, height: 38,
-      tipX: 2, tipY: 4, buttX: 65, buttY: 33,
-      bladeLen: 16, collarLen: 2.2, buttLen: 6,
-      sway: 0, tasselMode: 'sweep', bladeWidthScale: 1.05,
+      width: 66, height: 34,
+      tipX: 2, tipY: 4, buttX: 63, buttY: 29,
+      bladeLen: 15, collarLen: 2.2, buttLen: 5.5,
+      sway: 0, tasselMode: 'sweep', bladeWidthScale: 1.0,
     }),
   },
   {
     id: 'spear-windmill-diag-steep',
-    label: '立圆大枪花（高斜 62° · 居中加长）',
+    label: '双侧枪花（居中高斜 62°）',
     anchorX: 21,
     anchorY: 31,
     rows: buildAngledSpear({
       width: 42, height: 62,
       tipX: 5, tipY: 2, buttX: 36, buttY: 59,
-      bladeLen: 16, collarLen: 2.2, buttLen: 6,
-      sway: 1, tasselMode: 'trail', bladeWidthScale: 1.05,
+      bladeLen: 15, collarLen: 2.2, buttLen: 5.5,
+      sway: 1, tasselMode: 'trail', bladeWidthScale: 1.0,
     }),
   },
   {
     id: 'spear-windmill-vert',
-    label: '立圆大枪花（竖直 90° · 居中加长）',
+    label: '双侧枪花（居中竖直 90°）',
     anchorX: 9,
     anchorY: 35,
     rows: buildAngledSpear({
       width: 18, height: 70,
       tipX: 9, tipY: 2, buttX: 9, buttY: 67,
-      bladeLen: 16, collarLen: 2.2, buttLen: 6,
-      sway: 0, upright: true, tasselMode: 'trail', bladeWidthScale: 1.05,
+      bladeLen: 15, collarLen: 2.2, buttLen: 5.5,
+      sway: 0, upright: true, tasselMode: 'trail', bladeWidthScale: 1.0,
     }),
   },
 ];
@@ -507,6 +507,8 @@ export interface SpearKeyframeSpec {
   scaleX?: number;
   scaleY?: number;
   angle?: number;
+  /** 可选：武器透明度（用于高速舞枪花时虚化枪杆残影，避免实体硬杆显得违和）。 */
+  alpha?: number;
   insertMode: SpearInsertMode;
 }
 
@@ -966,42 +968,40 @@ const DRAGON_SLAM_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
 // 9. 长枪战斗阵亡动作（spear-die，23 帧：枪脱手翻转落地 + 角色倒地）
 // ---------------------------------------------------------------------------
 
-// 5. 虬龙扫暴阵 · 左右上下立圆大枪花 + 朝向 180° 大横扫（16 帧）
-// 前 6 帧以人物中心 (0, -12) 为轴做顺时针立圆风车旋转（10点 → 1点 → 3点水平满展 → 7点 → 9点反转满展 → 11点），
-// 居中握持 78px 加长枪身，F2/F4 靠枪尖与枪尾横扫人物左右两侧打 2 段，随后无缝接当前朝向 180° 狂风大横扫。
+// 5. 虬龙扫暴阵 · 双侧侧面竖椭圆枪花（方案 C，柔和高速残影枪杆）+ 朝向 180° 大横扫（16 帧）
+// 前 6 帧长枪居中横跨并随左右两枚侧面竖椭圆枪花高速上下摆动，F1..F4 枪身虚化为轻柔残影（alpha 0.26~0.34）绝不违和；
+// F0..F2 枪尖在左/枪尾在右，F3..F5 翻腕互换（枪尖在右/枪尾在左），随后 F6..F15 恢复实体无缝接朝向 180° 狂风大横扫。
 const WHIRL_SWEEP_SOUTH_FRAMES: readonly SpearKeyframeSpec[] = [
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 15, x: 0, y: -12, scaleX: 1, scaleY: 1, insertMode: 'front' },
-  { sourcePoseId: 'pose-4094-south-ticks-24', sourceFrame: 3, piece: 16, x: 0, y: -12, scaleX: -1, scaleY: 1, insertMode: 'front' },
-  { sourcePoseId: 'pose-4094-south-ticks-24', sourceFrame: 3, piece: 14, x: 0, y: -12, scaleX: -1, scaleY: 1, insertMode: 'front' },
-  { sourcePoseId: 'pose-4094-south-ticks-24', sourceFrame: 3, piece: 16, x: 0, y: -12, scaleX: 1, scaleY: -1, insertMode: 'front' },
-  { sourcePoseId: 'pose-4094-south-ticks-24', sourceFrame: 3, piece: 14, x: 0, y: -12, scaleX: 1, scaleY: 1, insertMode: 'front' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 16, x: 0, y: -12, scaleX: 1, scaleY: 1, insertMode: 'front' },
-  // F6：顺势抽把切入南向大横扫起势 → F7..F15 甩出南向 180° 狂风大扫
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 15, x: 0, y: -12, scaleX: 1, scaleY: 1, alpha: 0.56, insertMode: 'front' },
+  { sourcePoseId: 'pose-4094-south-ticks-24', sourceFrame: 3, piece: 15, x: 0, y: -12, scaleX: 1, scaleY: -1, alpha: 0.26, insertMode: 'front' },
+  { sourcePoseId: 'pose-4094-south-ticks-24', sourceFrame: 3, piece: 14, x: 0, y: -12, scaleX: 1, scaleY: 1, alpha: 0.34, insertMode: 'front' },
+  { sourcePoseId: 'pose-4094-south-ticks-24', sourceFrame: 3, piece: 15, x: 0, y: -12, scaleX: -1, scaleY: 1, alpha: 0.26, insertMode: 'front' },
+  { sourcePoseId: 'pose-4094-south-ticks-24', sourceFrame: 3, piece: 14, x: 0, y: -12, scaleX: -1, scaleY: 1, alpha: 0.34, insertMode: 'front' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 15, x: 0, y: -12, scaleX: -1, scaleY: -1, alpha: 0.58, insertMode: 'front' },
+  // F6：实体恢复抽把切入南向大横扫起势 → F7..F15 甩出南向 180° 狂风大扫
   { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 11, x: -7, y: -11, insertMode: 'back' },
   ...SWEEP_SOUTH_FRAMES.slice(3),
 ];
 
 const WHIRL_SWEEP_WEST_FRAMES: readonly SpearKeyframeSpec[] = [
-  // 身体居中归零（bodyDx 抵消基础帧偏移），加长长枪在人物左右上下立圆旋转；东向镜像后自动逆时针立旋并无缝接东向大扫
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 15, x: 0, y: -12, scaleX: 1, scaleY: 1, insertMode: 'front' },
-  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 4, piece: 16, x: -2, y: -12, scaleX: -1, scaleY: 1, bodyDx: 2, insertMode: 'front' },
-  { sourcePoseId: 'pose-4074-west-ticks-0', sourceFrame: 5, piece: 14, x: -2, y: -12, scaleX: -1, scaleY: 1, bodyDx: 2, insertMode: 'front' },
-  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 4, piece: 16, x: -2, y: -12, scaleX: 1, scaleY: -1, bodyDx: 2, insertMode: 'front' },
-  { sourcePoseId: 'pose-4074-west-ticks-0', sourceFrame: 5, piece: 14, x: -2, y: -12, scaleX: 1, scaleY: 1, bodyDx: 2, insertMode: 'front' },
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 16, x: 0, y: -12, scaleX: 1, scaleY: 1, insertMode: 'front' },
-  // F6：无悬空手抽枪高举过渡 → F7..F15 无缝接西向 180° 狂风大横扫
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 15, x: 0, y: -12, scaleX: 1, scaleY: 1, alpha: 0.56, insertMode: 'front' },
+  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 4, piece: 15, x: -2, y: -12, scaleX: 1, scaleY: -1, bodyDx: 2, alpha: 0.26, insertMode: 'front' },
+  { sourcePoseId: 'pose-4074-west-ticks-0', sourceFrame: 5, piece: 14, x: -2, y: -12, scaleX: 1, scaleY: 1, bodyDx: 2, alpha: 0.34, insertMode: 'front' },
+  { sourcePoseId: 'pose-4062-west-ticks-0', sourceFrame: 4, piece: 15, x: -2, y: -12, scaleX: -1, scaleY: 1, bodyDx: 2, alpha: 0.26, insertMode: 'front' },
+  { sourcePoseId: 'pose-4074-west-ticks-0', sourceFrame: 5, piece: 14, x: -2, y: -12, scaleX: -1, scaleY: 1, bodyDx: 2, alpha: 0.34, insertMode: 'front' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 15, x: 0, y: -12, scaleX: -1, scaleY: -1, alpha: 0.58, insertMode: 'front' },
+  // F6：实体恢复抽枪高举过渡 → F7..F15 无缝接西向 180° 狂风大横扫
   { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 11, x: -1, y: -14, insertMode: 'front' },
   ...SWEEP_WEST_FRAMES.slice(3),
 ];
 
 const WHIRL_SWEEP_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
-  // 北向背对镜头，立圆旋转大长枪在角色身前（画面 back 层）掠过头顶与左右两侧，再接北向 180° 大横扫
-  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 15, x: 0, y: -12, scaleX: 1, scaleY: 1, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 16, x: 0, y: -12, scaleX: -1, scaleY: 1, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 14, x: 0, y: -12, scaleX: -1, scaleY: 1, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 16, x: 0, y: -12, scaleX: 1, scaleY: -1, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 14, x: 0, y: -12, scaleX: 1, scaleY: 1, insertMode: 'back' },
-  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 16, x: 0, y: -12, scaleX: 1, scaleY: 1, insertMode: 'back' },
+  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 15, x: 0, y: -12, scaleX: 1, scaleY: 1, alpha: 0.56, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 15, x: 0, y: -12, scaleX: 1, scaleY: -1, alpha: 0.26, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 14, x: 0, y: -12, scaleX: 1, scaleY: 1, alpha: 0.34, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 15, x: 0, y: -12, scaleX: -1, scaleY: 1, alpha: 0.26, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 14, x: 0, y: -12, scaleX: -1, scaleY: 1, alpha: 0.34, insertMode: 'back' },
+  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 15, x: 0, y: -12, scaleX: -1, scaleY: -1, alpha: 0.58, insertMode: 'back' },
   // F6..F15：无缝接北向 180° 狂风大横扫
   ...SWEEP_NORTH_FRAMES.slice(2),
 ];
