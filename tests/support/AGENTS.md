@@ -9,7 +9,8 @@
 - `atlas-image.ts`：导出 `atlasImageSize`，读图集页的宽高并确认它是无损 WebP（`VP8L`）；图集页测试用它代替读 PNG 文件头。
 - `fake-sprite.ts`：导出 `FakeSprite`，只实现生产代码用到的链式调用面，避免启动真实渲染。
 - `story-fixtures.ts`：剧情与文本测试夹具，导出 `compileScript`、`storyScriptActions` 和 `plainText`；这些工具只被测试使用，不进入生产导出。
-- `quest-scenario.ts`：任务触发与交付的合成场景，导出 `createQuestCampaign` 和 `questScenario`；用代码构造最小 campaign，直接驱动真实 `Session` 与 `StoryDirector`，不读取 `public/content`、不启动 Phaser。
+- `quest-e2e-harness.ts`：无跑图任务状态闭环底座，导出 `loadOfficialQuestContent`、`buildCampaignIndexes` 与 `createQuestE2EHarness`；连接真实 `Session`、`StoryDirector`、`GameUI` 与正式格式 1 存读档，按任务自身定义驱动接取、目标达成、弹窗阻塞与交付结算。
+- `quest-mini-world.ts`：导出 `createMiniQuestWorld`；在内存中构造通过全部正式内容校验器的最小合法任务集，供破坏性边界与故障注入端到端测试使用。
 
 ## 规则
 

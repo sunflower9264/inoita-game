@@ -102,7 +102,7 @@ for (const [enemy, event, previous] of [
   const trigger = campaign.events.find(candidate => candidate.id === event)!;
   assert.equal(trigger.key, 'defeat:' + enemy);
   const h = harness({ ...campaign, events: [trigger] });
-  // 这段戏发生在战斗地图上，运行时给 `mapFromStage` 的物件定位要读「当前地图」（见 story-native-triggers）。
+  // 这段戏发生在战斗地图上，运行时给 `mapFromStage` 的物件定位要读「当前地图」。
   const battleMap = campaign.scripts[event].nodes.flatMap(node => node.presentation).find(action => action.type === 'stage')!.map;
   h.session.storyWorld.apply({ kind: 'travel', destination: { map: battleMap, x: 0, y: 0, facing: 'south' } });
   h.session.applyStoryCommands([{ type: 'quest', command: { type: 'accept', quest: previous } }]);

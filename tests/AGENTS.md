@@ -21,17 +21,15 @@
 
 ### 剧情与任务
 
-- `story-intake.test.ts` 用「最后的封印」石魔战验证遭遇出现在玩家当前地图、等待战斗的剧情恢复后继续；`story-gated-interaction.test.ts` 覆盖七组剧情确认入口的取消后重试、普通交付保护和剧情结算，并用真实结界石验证石魔生成、击败后的主线推进与正常存档恢复。
-- `story-native-triggers.test.ts` 检查《最后的记忆2》前三次交付各播一段对白、各发一次奖励并开放下一轮；`story-trigger-occupancy.test.ts` 逐帧验证原地只播一次、走开再靠近可重播、过滤解除后补播；`story-trigger-index.test.ts` 验证五类封印祭坛只在各自洞穴和剧情阶段触发，不会在候选地图上抢占一次性事件。
-- `story-stage-isolation.test.ts` 验证加载途中跳过、迟到画面清理、共享启动与真实坐标保留；`story-skip.test.ts` 验证流程阶段与解锁顺序。「最后的记忆1」四处铁门入口覆盖正常走位、开场跳过和途中跳过，核对落点、镜头与弹窗前补画。
-- `story-progression.test.ts` 验证「前往钢之兽人部落」与「被绑架的兽人长老」整段跳过和接取窗口读档续播，核对任务交付、沃尔达克入队及收尾地图。
-- `quest-trigger-flow.test.ts` 用不加载正式内容的合成场景验证区域事件接取、击杀推进到待交付、NPC 交付奖励、近身剧情结算交付，以及快照恢复后触发不重播、交付不重复结算；场景驱动在 `tests/support/quest-scenario.ts`。
+- `quest-e2e-campaign.test.ts` 对 `public/content/campaign.json` 全部 487 个正式任务做两层零脚本硬编码验证：先从初始空状态对条件依赖图做自动不动点推演（自动将含 `reset-side-quests` 的跨章事件排在当章支线收敛之后），断言 487 个任务全部可解锁不断链；再按 230 个任务组逐一在独立干净会话中驱动每个任务的「因果前置准备 → 真实接取 → 真实目标达成 → 交付弹窗阻塞与奖励结算 → 存读档防重及可重复任务双轮闭环」。
+- `quest-e2e-mechanisms.test.ts` 用 `tests/support/quest-mini-world.ts` 覆盖单任务正常闭环之外的破坏性边界与故障注入：主线接取与商人让位恢复、完成弹窗打开期间挂起后续关联剧情、共享材料防双花、确认门（`interactionEvent`）取消重开与跨章清空未完成支线、可选接取与交互反馈去重、残血变身捕捉、穿戴快捷满足（`equipped-item-shortcut`）、跳过在选项与弹窗前停顿、未提交前取消回滚、交付后续抛错重试及正式存读档恢复触发区占用记录。
+- `story-trigger-index.test.ts` 验证五类封印祭坛只在各自洞穴和剧情阶段触发，不会在候选地图上抢占一次性事件；`story-stage-isolation.test.ts` 验证加载途中跳过、迟到画面清理、共享启动与真实坐标保留；`story-skip.test.ts` 验证流程阶段与解锁顺序。
 - `story-preparation.test.ts` 覆盖确定路径与调用返回、预测边界；`story-asset-preparation.test.ts` 覆盖跨场景请求复用、目标替换、取消和失败重试；入口测试验证恢复游戏不等待后续剧情素材。
-- `story-equipment.test.ts` 覆盖剧情装备发放与拾取拦截、手动穿脱与连带替换保护、剧情移除与离队销毁、正常装备退回；`story-disguise.test.ts` 验证剧情伪装穿脱；`story-scene`、`story-stage-isolation` 与 `saved-game` 覆盖主角收放武器、同图保留、换图恢复默认和存档读回；「消失的圣女1」在外观未准备好时分别跳过和取消整段剧情，核对姿态与迟到外观。
+- `story-equipment.test.ts` 覆盖剧情装备发放与拾取拦截、手动穿脱与连带替换保护、剧情移除与离队销毁、正常装备退回；`story-disguise.test.ts` 验证剧情伪装穿脱；`story-scene`、`story-stage-isolation` 与 `saved-game` 覆盖主角收放武器、同图保留、换图恢复默认和存档读回。
 - 剧情动作测试检查等待结束时仍在播放、自然完成后的保持或待机、跳过后的最终姿势；`story-playthrough-rewards.test.ts` 验证剧情奖励。
-- 剧情跳转回归遍历全部菜单任务并颠倒显示顺序，用正式进图、行走、战斗、交付和存读档验证蜘蛛巢穴前跳回跳，以及接取演出里赢得首领战后的跳转；`quest-jump-history.test.ts` 验证 quest-21/23/84/168/83 的因果历史、`place` 重放和无关区域事件隔离；`gm-quest-jump.test.ts` 用「圣女救援行动」逐个验证跳转现场，序幕与哈肯沙漠折返验证旧演出结束与主动回跳。
-- `quest-actor-visibility.test.ts` 覆盖交付人在同一次进图现身、取消剧情后恢复缺席；`quest-drops.test.ts` 覆盖任务物品来源；`quest-item-generation.test.ts` 验证掉落满额后读档与任务拾取。
-- `audit:story:full` 跑主线开场、门口触发、近身剧情、专属任务交付、跨图收集、狼人战后接取交付和战斗失败恢复的代表性流程。
+- 剧情跳转回归（`quest-jump.test.ts`、`quest-jump-history.test.ts`、`gm-quest-jump.test.ts`）遍历全部菜单任务并颠倒显示顺序，验证因果历史推导、`place` 重放、无关区域事件隔离及跳转传送回滚。
+- `quest-drops.test.ts` 覆盖任务物品来源；`quest-item-generation.test.ts` 验证掉落满额后读档与任务拾取。
+- `audit:story:full` 运行 `audit:story`（舞台与演员台账审计）以及 `quest-e2e-mechanisms.test.ts`、`quest-e2e-campaign.test.ts`、`combat-defeat-ticket.test.ts`。
 
 ### 战斗与技能
 
@@ -89,6 +87,6 @@ npm test -- tests/combat.test.ts
 npm run test:standalone
 npm run test:content-build
 npm run audit:story        # 剧情角色与演出内容审计
-npm run audit:story:full   # 主线代表性流程
+npm run audit:story:full   # 剧情审计 + 全量 487 任务闭环与异常机制测试
 npm run test:all           # 仅用户明确要求全量时
 ```

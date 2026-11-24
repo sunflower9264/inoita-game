@@ -11,6 +11,8 @@ import { storyConditionReferences } from '../src/domain/story-condition.ts';
 import { StoryWorldState } from '../src/domain/story-world.ts';
 import type { Campaign } from '../src/domain/campaign.ts';
 import type {ChoiceAction, ClipName, DialogueLine, WorldIndex, WorldMap} from '../src/domain/content.ts';
+import type { StoryStage } from '../src/domain/story-performance.ts';
+import { parseCampaign, parseItemCatalog, parseStoryInterface, validateStoryItems } from '../src/application/content-validation.ts';
 import { PROP_ATLAS_BY_KEY } from '../src/generated/prop-atlas.ts';
 import { UI_ATLAS_FRAMES } from '../src/generated/ui-atlas.ts';
 import { sourceAssetPath } from '../tools/asset-source.ts';
@@ -280,4 +282,67 @@ test('ancient swords and innkeepers carry their interaction services',()=>{
   }
  }
  assert.equal(swords,23);assert.equal(innkeepers,8);
+});
+
+test('native quest state commands commit before their popup and same-state guards bypass both',()=>{
+ let journaled=0,journalExternal=0;
+ for(const [name,script] of Object.entries(campaign.scripts)){
+  if(!/^event-\d+$/.test(name))continue;
+  for(const node of script.nodes)for(const command of node.commands){
+   if(command.type!=='quest'||!['accept','script-complete'].includes(command.command.type))continue;
+   if(!('quest' in command.command))continue;
+   const questId=command.command.quest;
+   const quest=campaign.quests.find(entry=>entry.id===questId)!;
+   assert.ok(quest,`${name}/${node.id}`);
+   assert.ok(node.exit.type==='next');
+   const next=script.nodes.find(candidate=>candidate.id===(node.exit.type==='next'?node.exit.target.node:''))!;
+   const popup=next.presentation.find(action=>action.type==='quest-popup'&&action.quest===quest.id);
+   if(quest.journal===false){journalExternal++;assert.equal(popup,undefined,`${name}/${quest.id}`);continue;}
+   journaled++;
+   assert.deepEqual(popup,{type:'quest-popup',kind:command.command.type==='accept'?'start':'complete',quest:quest.id});
+   assert.deepEqual(next.commands,[],'confirming the popup cannot commit the reward again');
+   assert.ok(next.exit.type==='next');
+   assert.ok(script.nodes.some(guard=>guard.exit.type==='branch'&&guard.exit.otherwise.node===node.id
+    &&guard.exit.then.node===(next.exit.type==='next'?next.exit.target.node:'')),`${name}/${quest.id}: missing same-state guard`);
+  }
+ }
+ assert.ok(journaled>0);assert.ok(journalExternal>0);
+});
+
+test('content validation rejects broken story interface assets, invalid quest quantities, broken item references, and mismatched interactionEvent',()=>{
+ const items=parseItemCatalog(read('content/items.json'));
+ const rawInterface=parseStoryInterface(read('content/story-interface.json'));
+ validateStoryItems(campaign,items);
+ const missing=structuredClone(rawInterface);delete missing.assets['menu'];
+ assert.throws(()=>parseStoryInterface(missing),/menu/);
+ const invalid=structuredClone(rawInterface);invalid.player.health=invalid.player.maxHealth+1;
+ assert.throws(()=>parseStoryInterface(invalid),/上限/);
+ assert.throws(()=>validateStoryItems(campaign,{...items,items:{}}),/物品/);
+ const fraction=structuredClone(campaign);fraction.quests[0]!.goals[0]!.quantity=1.5;
+ assert.throws(()=>parseCampaign(fraction),/整数/);
+ for(const value of ['missing-event','event-285','event-186',undefined]){
+  const copy=structuredClone(campaign) as unknown as Record<string,unknown>;
+  const target=(copy.quests as {id:string;interactionEvent?:string}[]).find(q=>q.id==='quest-371')!;
+  target.interactionEvent=value;
+  assert.throws(()=>parseCampaign(copy),/剧情交互/);
+ }
+});
+
+test('battle threshold and death scenes remove their triggering boss, start on the battle map, and retain live player positions when unplaced',()=>{
+ for(const event of campaign.events.filter(candidate=>candidate.source==='battle'&&candidate.key?.startsWith('health-below-30:'))){
+  const key=event.key;if(!key||!key.startsWith('health-below-30:'))continue;
+  const enemyId=key.slice('health-below-30:'.length);
+  const commands=campaign.scripts[event.script].nodes.flatMap(node=>node.commands);
+  assert.ok(commands.some(command=>command.type==='world'&&command.command.kind==='remove-enemy'
+   &&command.command.enemyId===enemyId),`${event.id} 必须移除 ${enemyId}`);
+ }
+ const firstMap=(id:string)=>campaign.scripts[id].nodes.flatMap(node=>node.presentation).find(action=>action.type==='stage')!.map;
+ assert.equal(firstMap('event-61'),'werewolf-lair-43f5b4c5');
+ assert.equal(firstMap('event-112'),'steel-altar-a048555a');
+ assert.equal(firstMap('event-135'),'redhoods-boss-room-c9f73fd1');
+ assert.equal(firstMap('event-55'),'old-sanctuary-54cffd62');
+ const stageOf=(name:string)=>campaign.scripts[name].nodes.map(node=>node.presentation[0]).find(action=>action?.type==='stage') as StoryStage;
+ assert.equal(stageOf('event-28').retainPlayerPosition,true);
+ assert.equal(stageOf('event-27').retainPlayerPosition,true);
+ assert.equal(stageOf('event-3').retainPlayerPosition,undefined);
 });

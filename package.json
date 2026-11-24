@@ -29,7 +29,7 @@
     "test:all": "node tools/test.ts --all",
     "validate:content": "node tools/validate-content.mjs",
     "audit:story": "node tools/test.ts tests/story-actor-ledger.test.ts tests/story-cast-audit.test.ts tests/story-stage-action-audit.test.ts",
-    "audit:story:full": "npm run audit:story && node tools/test.ts tests/quest-trigger-flow.test.ts tests/story-progression.test.ts tests/story-doorway-trigger.test.ts tests/story-trigger-occupancy.test.ts tests/story-gated-interaction.test.ts tests/story-chapters.test.ts tests/story-werewolf-progression.test.ts tests/combat-defeat-ticket.test.ts",
+    "audit:story:full": "npm run audit:story && node tools/test.ts tests/quest-e2e-mechanisms.test.ts tests/quest-e2e-campaign.test.ts tests/combat-defeat-ticket.test.ts",
     "release:story": "npm run validate:content && npm run audit:story:full && node tools/test.ts tests/save-game.test.ts tests/saved-game.test.ts && npm run build",
     "diag:list": "node tools/diagnostics-report.mjs",
     "diag:session": "node tools/diagnostics-report.mjs --session",
