@@ -245,7 +245,7 @@ export class StoryRuntime {
         if(run.stack.length>MAX_STORY_CALL_DEPTH)throw new Error('剧情调用层级超过限制');
         for(const reference of run.stack)if(!this.nodes.has(StoryRuntime.nodeKey(reference)))throw new Error('剧情返回节点不存在');
       }
-      if (run.eventId && !this.graph.events.some(event => event.id === run.eventId)) throw new Error(`剧情检查点事件不存在：${run.eventId}`);
+      if (run.eventId && !this.eventIds.has(run.eventId)) throw new Error(`剧情检查点事件不存在：${run.eventId}`);
       if (run.eventId && ['running', 'waiting'].includes(run.status)) {
         if (activeEvents.has(run.eventId)) throw new Error('剧情检查点事件重复运行：'+run.eventId);
         activeEvents.add(run.eventId);
@@ -265,11 +265,11 @@ export class StoryRuntime {
         || pending.nextEventIndex > (this.eventIndex.get(pending.occurrence.source)?.length ?? 0)) throw new Error('剧情待处理候选无效');
     }
     if (new Set(result.pendingOccurrences.map(value=>this.occurrenceKey(value.occurrence))).size !== result.pendingOccurrences.length) throw new Error('剧情待处理发生标识重复');
-    for (const [event, occurrence] of result.handledOccurrences) if (!occurrence || !this.graph.events.some(value => value.id === event)) throw new Error('剧情触发记账引用不存在');
+    for (const [event, occurrence] of result.handledOccurrences) if (!occurrence || !this.eventIds.has(event)) throw new Error('剧情触发记账引用不存在');
     if (result.encounterResults.length > ENCOUNTER_RESULT_HISTORY_LIMIT || result.encounterResults.some(id => !id)) throw new Error('剧情遭遇结果记账无效');
     if (new Set(result.occurrenceSequences.map(([key]) => key)).size !== result.occurrenceSequences.length
       || result.occurrenceSequences.some(([key, sequence]) => !key || !Number.isSafeInteger(sequence) || sequence < 0)) throw new Error('剧情触发发生序号无效');
-    for (const id of result.completedEvents) if (!this.graph.events.some(event => event.id === id)) throw new Error(`已完成事件不存在：${id}`);
+    for (const id of result.completedEvents) if (!this.eventIds.has(id)) throw new Error(`已完成事件不存在：${id}`);
     if (new Set(result.completedEvents).size !== result.completedEvents.length || new Set(result.encounterResults).size !== result.encounterResults.length) throw new Error('剧情检查点记账重复');
   }
   restore(snapshot: StoryRuntimeSnapshot): void {

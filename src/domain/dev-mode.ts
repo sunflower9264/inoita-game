@@ -9,16 +9,22 @@ const injected = typeof __STORY_DEV_MODE__ === 'boolean' ? __STORY_DEV_MODE__ : 
 
 export function storyDevMode(): boolean { return injected; }
 
-/** 开发/测试模式递归冻结；已经冻结的部分直接复用，生产原样返回。 */
+const deeplyFrozen = new WeakSet<object>();
+
+/** 开发/测试模式递归冻结；已经由本函数深冻结过的子树直接复用，生产原样返回。 */
 export function freezeSnapshot<T>(value: T): T {
   if (!injected) return value;
   const seen = new Set<object>();
   const freeze = (current: unknown): void => {
-    if (!current || typeof current !== 'object' || seen.has(current)) return;
+    if (!current || typeof current !== 'object' || deeplyFrozen.has(current) || seen.has(current)) return;
     seen.add(current);
     if (!Object.isFrozen(current)) Object.freeze(current);
-    if (Array.isArray(current)) { for (const item of current) freeze(item); return; }
-    for (const child of Object.values(current as Record<string, unknown>)) freeze(child);
+    if (Array.isArray(current)) {
+      for (const item of current) freeze(item);
+    } else {
+      for (const child of Object.values(current as Record<string, unknown>)) freeze(child);
+    }
+    deeplyFrozen.add(current);
   };
   freeze(value);
   return value;
