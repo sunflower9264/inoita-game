@@ -8,7 +8,8 @@
 
 - `index.html` 与 `style.css` 提供双视图工作台：「动作与切片检查」（动作目录、播放控制、关键帧与音效条、换装选择、当前帧切片面板）与「职业素材总清单」（跨架势动作模板表、12 部位全套切片图鉴、配套图标/特效/音效清单与规格导出）。
 - `main.ts` 加载内容、部件图集及按需加载的特效/UI 图集，通过 Phaser 绘制纸娃娃部件、同步叠加战斗特效与状态染色，并连接双视图交互。
-- `model.ts` 复用领域层的 `costumeRecipe`、`townMovementPoses` 与 `sharedWardrobePoses`，处理装备与佣兵预设、动作目录、关键帧与特效时间轴、边界提示、外观覆盖、切片解析、范围计算、播放状态、姿势加载和全职业素材账本。
+- `model.ts` 复用领域层的 `costumeRecipe`、`townMovementPoses` 与 `sharedWardrobePoses`，处理装备与佣兵预设、动作目录、关键帧与特效时间轴、边界提示、外观覆盖、切片解析、范围计算、播放状态、姿势加载、长枪样板合并与全职业素材账本。
+- `prototypes/spear/` 保存长枪样板的可编辑像素源数据（`source.ts`）、导出脚本（`export.ts`）以及生成的透明 PNG（`spear-parts.png`）与姿态数据（`spear-prototype.json`）；修改像素或握点后执行 `node tools/warrior-viewer/prototypes/spear/export.ts` 重导。访问 `?weapon=prototype-spear-basic` 可默认选中「基础长枪（样板）」。
 - `tsconfig.json` 为本目录浏览器 TypeScript 提供独立类型检查。
 
 ## 数据与绘制

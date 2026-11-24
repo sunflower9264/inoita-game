@@ -21,6 +21,7 @@ export const PART_NAMES: Record<string, string> = {
   'coat-front': '上衣 / 双臂', 'coat-back': '下装 / 腿脚', cloak: '披风',
   'two-handed': '双手武器', 'main-blade': '主手剑 / 斧 / 锤', 'off-blade': '副手剑 / 斧 / 锤',
   'main-dagger': '主手短剑', 'off-dagger': '副手短剑', shield: '盾牌',
+  spear: '长枪（样板）',
   'cast-prop-1': '技能道具',
 };
 
@@ -41,7 +42,7 @@ const PART_SLOT_LABELS: Record<string, string> = {
 
 const KIND_LABELS: Record<string, string> = {
   unarmed: '空手', empty: '空副手', dagger: '短剑', longsword: '长剑',
-  axe: '斧', mace: '钝器', 'two-handed': '双手剑', shield: '盾牌',
+  axe: '斧', mace: '钝器', 'two-handed': '双手剑', shield: '盾牌', spear: '长枪',
 };
 
 const ACTION_NAMES: Record<string, string> = {
@@ -50,6 +51,7 @@ const ACTION_NAMES: Record<string, string> = {
   'dual-attack': '双持攻击', 'dual-quick-attack': '双持快速攻击',
   'frenzy-blade': '狂暴攻击 · 单手', 'frenzy-dagger': '狂暴攻击 · 短剑',
   'frenzy-two-handed': '狂暴攻击 · 双手', die: '战斗阵亡',
+  'spear-upright-idle': '立枪待机（单手直立）',
 };
 
 const WEAPON_PART_BY_KIND: Record<string, { main?: string; off?: string }> = {
@@ -58,6 +60,7 @@ const WEAPON_PART_BY_KIND: Record<string, { main?: string; off?: string }> = {
   axe: { main: 'main-blade', off: 'off-blade' },
   mace: { main: 'main-blade', off: 'off-blade' },
   'two-handed': { main: 'two-handed' },
+  spear: { main: 'spear' },
   shield: { off: 'shield' },
 };
 
@@ -79,6 +82,19 @@ const WARRIOR_EXTRA_BUFF_ICONS: readonly { id: string; label: string; source: st
 export type EquipmentSelection = Partial<Record<EquipmentSlot, string>>;
 export type VariantOverrides = Record<string, string | null>;
 export interface WeaponChoice { id: string; label: string; kind: string }
+export interface PrototypeWeaponBundle {
+  weaponId: string;
+  weaponName: string;
+  weaponKind: string;
+  partName: string;
+  variantId: string;
+  texture: { key: string; file: string };
+  sprites: Record<string, CostumePiece>;
+  variants: Record<string, (string | null)[]>;
+  stancePoses: Record<string, string>;
+  actionLabels?: Record<string, string>;
+  poses: Record<string, CostumePose>;
+}
 export interface ArmorChoice { id: string; label: string; slot: 'body' | 'head' | 'back'; parts: Record<string, string> }
 export interface CompanionPreset { id: string; label: string; appearanceId?: string; fixedParts: string[] }
 export interface ActionChoice { key: string; label: string; group: string; poseId: string }
@@ -270,9 +286,52 @@ export function warriorPresets(catalog: WardrobeCatalog, companions?: CompanionC
   return result;
 }
 
+export function mergePrototypeWeapon(catalog: WardrobeCatalog, items: ItemCatalog,
+  prototype: PrototypeWeaponBundle): { catalog: WardrobeCatalog; items: ItemCatalog } {
+  const stanceKey = `${prototype.weaponKind}:empty`;
+  const fallbackAttack = catalog.attacks['two-handed:empty'] ?? Object.values(catalog.attacks)[0];
+  const mergedCatalog: WardrobeCatalog = {
+    ...catalog,
+    textures: catalog.textures.some(t => t.key === prototype.texture.key)
+      ? catalog.textures
+      : [...catalog.textures, prototype.texture],
+    sprites: { ...catalog.sprites, ...prototype.sprites },
+    variants: { ...catalog.variants, ...prototype.variants },
+    equipment: {
+      ...catalog.equipment,
+      [prototype.weaponId]: { main: { [prototype.partName]: prototype.variantId }, offHand: {} },
+    },
+    poses: { ...catalog.poses, ...prototype.poses },
+    stances: { ...catalog.stances, [stanceKey]: prototype.stancePoses },
+    attacks: { ...catalog.attacks, [stanceKey]: fallbackAttack },
+  };
+  const sampleItem = Object.values(items.items).find(item => item.equipment?.slot === 'main-hand' && item.equipment.classes.includes('warrior'))!;
+  const mergedItems: ItemCatalog = {
+    ...items,
+    items: {
+      ...items.items,
+      [prototype.weaponId]: {
+        ...sampleItem,
+        name: prototype.weaponName,
+        kind: prototype.weaponKind as ItemCatalog['items'][string]['kind'],
+        equipment: {
+          ...sampleItem.equipment!,
+          slot: 'main-hand',
+          classes: ['warrior'],
+          dualWield: false,
+          twoHanded: true,
+        },
+      },
+    },
+  };
+  return { catalog: mergedCatalog, items: mergedItems };
+}
+
 export function viewerRecipe(catalog: WardrobeCatalog, items: ItemCatalog, equipment: EquipmentSelection,
   overrides: VariantOverrides, appearanceId?: string) {
-  const recipe = costumeRecipe(catalog, items, equipment, 'warrior', appearanceId);
+  const mainKind = equipment['main-hand'] ? items.items[equipment['main-hand']]?.kind : undefined;
+  const classId = mainKind && !WARRIOR_MAIN_KINDS.has(mainKind) ? undefined : 'warrior';
+  const recipe = costumeRecipe(catalog, items, equipment, classId, appearanceId);
   const variants: Record<string, string> = { ...recipe.variants };
   for (const [part, variant] of Object.entries(overrides)) {
     if (variant === null) delete variants[part];
@@ -282,17 +341,22 @@ export function viewerRecipe(catalog: WardrobeCatalog, items: ItemCatalog, equip
 }
 
 export function actionChoices(catalog: WardrobeCatalog, items: ItemCatalog, equipment: EquipmentSelection,
-  facing: Facing, skillNames: Record<string, string>): ActionChoice[] {
+  facing: Facing, skillNames: Record<string, string>, customLabels?: Record<string, string>): ActionChoice[] {
   const recipe = viewerRecipe(catalog, items, equipment, {});
+  const mainKind = equipment['main-hand'] ? items.items[equipment['main-hand']]?.kind : undefined;
+  const isPrototypeWeapon = !!mainKind && !WARRIOR_MAIN_KINDS.has(mainKind);
   const result: ActionChoice[] = [];
   for (const [clip, poseId] of Object.entries(recipe.poses)) {
     const suffix = `-${facing}`;
     if (!poseId || !clip.endsWith(suffix)) continue;
     const key = clip.slice(0, -suffix.length);
     const skill = key.startsWith('skill-');
-    const group = skill ? '主动技能' : key.startsWith('frenzy-') ? '狂暴攻击'
-      : key.startsWith('dual-') ? '双持攻击' : key.startsWith('attack') ? '普通攻击' : '基础动作';
-    result.push({ key, label: skill ? skillNames[key.slice(6)] ?? key : ACTION_NAMES[key] ?? key, group, poseId });
+    const group = isPrototypeWeapon
+      ? '样板动作'
+      : skill ? '主动技能' : key.startsWith('frenzy-') ? '狂暴攻击'
+        : key.startsWith('dual-') ? '双持攻击' : key.startsWith('attack') ? '普通攻击' : '基础动作';
+    const label = customLabels?.[key] ?? (skill ? skillNames[key.slice(6)] ?? key : ACTION_NAMES[key] ?? key);
+    result.push({ key, label, group, poseId });
   }
   const town = townMovementPoses(catalog);
   for (const movement of ['idle', 'walk'] as const) {

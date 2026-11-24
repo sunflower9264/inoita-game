@@ -12,13 +12,13 @@ import { backdropApproximation, layerDraw } from '../../src/rendering/effect-col
 import {
   PART_NAMES, Playback, PoseRepository, WARRIOR_CORE_PARTS, actionChoices, actionNotices,
   actionTimeline, activeEffectsAtFrame, armorChoices, compatibleOffhands, effectOverlayBounds,
-  facingVector, formatInventoryMarkdown, framePieces, poseBounds, variantChoices, viewerRecipe,
-  warriorAssetInventory, warriorPoseIds, warriorPresets, weaponChoices,
+  facingVector, formatInventoryMarkdown, framePieces, mergePrototypeWeapon, poseBounds,
+  variantChoices, viewerRecipe, warriorAssetInventory, warriorPoseIds, warriorPresets, weaponChoices,
 } from './model.ts';
 import type {
   ActionChoice, ActionTimeline, ActiveEffectLayer, AudioCatalogLite, CompanionCatalogLite,
-  CompanionPreset, EquipmentSelection, FramePiece, MenuPanelsLite, PoseBounds, StatusHudLite,
-  StoryClassesLite, VariantOverrides, WarriorAssetInventory,
+  CompanionPreset, EquipmentSelection, FramePiece, MenuPanelsLite, PoseBounds,
+  PrototypeWeaponBundle, StatusHudLite, StoryClassesLite, VariantOverrides, WarriorAssetInventory,
 } from './model.ts';
 
 interface AtlasJsonFrame {
@@ -90,6 +90,8 @@ let companions: CompanionCatalogLite;
 let audioCatalog: AudioCatalogLite;
 let repository: PoseRepository;
 let skillNames: Record<string, string> = {};
+let prototypeLabels: Record<string, string> = {};
+let defaultWeaponId = '';
 let presets: CompanionPreset[] = [];
 let appearanceId: string | undefined;
 let equipment: EquipmentSelection = {};
@@ -646,7 +648,8 @@ async function refresh(rebuildActions = true): Promise<void> {
   try {
     variants = viewerRecipe(catalog, items, equipment, overrides, appearanceId).variants;
     if (rebuildActions) {
-      choices = actionChoices(catalog, items, equipment, facing, skillNames);
+      choices = actionChoices(catalog, items, equipment, facing, skillNames,
+        equipment['main-hand']?.startsWith('prototype-') ? prototypeLabels : undefined);
       if (!choices.some(choice => choice.key === selectedAction)) {
         selectedAction = 'idle';
         playback.frame = 0;
@@ -705,7 +708,7 @@ function clearOverridesForParts(partList: readonly string[]): void {
 }
 
 function clearWeaponOverrides(): void {
-  clearOverridesForParts(['two-handed', 'main-blade', 'off-blade', 'main-dagger', 'off-dagger', 'shield']);
+  clearOverridesForParts(['two-handed', 'main-blade', 'off-blade', 'main-dagger', 'off-dagger', 'shield', 'spear']);
 }
 
 function selectFrame(frame: number): void {
@@ -1075,10 +1078,10 @@ function wireControls(): void {
   element('reset').onclick = () => {
     appearanceId = undefined;
     presetSelect.value = 'hero';
-    equipment = { 'main-hand': mainSelect.options[1].value };
+    equipment = { 'main-hand': defaultWeaponId };
     overrides = {};
     hiddenParts = new Set();
-    mainSelect.value = equipment['main-hand']!;
+    mainSelect.value = defaultWeaponId;
     bodyArmorSelect.value = '';
     headArmorSelect.value = '';
     backArmorSelect.value = '';
@@ -1106,7 +1109,8 @@ function wireControls(): void {
 }
 
 async function boot(): Promise<void> {
-  [battle, catalog, items, storyClasses, menuPanels, statusHud, companions, audioCatalog] = await Promise.all([
+  const [loadedBattle, loadedCatalog, loadedItems, loadedStoryClasses, loadedMenuPanels, loadedStatusHud,
+    loadedCompanions, loadedAudio, spearProto] = await Promise.all([
     readJson<BattleCatalog>('/content/battle.json'),
     readJson<WardrobeCatalog>('/content/wardrobe.json'),
     readJson<ItemCatalog>('/content/items.json'),
@@ -1115,7 +1119,23 @@ async function boot(): Promise<void> {
     readJson<StatusHudLite>('/content/status-hud.json'),
     readJson<CompanionCatalogLite>('/content/companions.json'),
     readJson<AudioCatalogLite>('/content/audio.json'),
+    readJson<PrototypeWeaponBundle>('./prototypes/spear/spear-prototype.json').catch(() => undefined),
   ]);
+  battle = loadedBattle;
+  storyClasses = loadedStoryClasses;
+  menuPanels = loadedMenuPanels;
+  statusHud = loadedStatusHud;
+  companions = loadedCompanions;
+  audioCatalog = loadedAudio;
+  if (spearProto) {
+    const merged = mergePrototypeWeapon(loadedCatalog, loadedItems, spearProto);
+    catalog = merged.catalog;
+    items = merged.items;
+    prototypeLabels = spearProto.actionLabels ?? {};
+  } else {
+    catalog = loadedCatalog;
+    items = loadedItems;
+  }
   repository = new PoseRepository(catalog, readJson<CostumePose>);
   skillNames = Object.fromEntries(Object.entries(battle.skills).map(([id, value]) => [id, value.name]));
   const warriorClass = battle.classes.find(entry => entry.id === 'warrior');
@@ -1127,12 +1147,24 @@ async function boot(): Promise<void> {
 
   const weaponOpts = weaponChoices(catalog, items);
   const defaultAppearance = catalog.equipment[items.startingEquipment.warrior['main-hand']!];
-  const initial = weaponOpts.find(choice => JSON.stringify(catalog.equipment[choice.id].main) ===
+  const warriorDefault = weaponOpts.find(choice => JSON.stringify(catalog.equipment[choice.id].main) ===
     JSON.stringify(defaultAppearance.main))!;
-  equipment = { 'main-hand': initial.id };
-  mainSelect.append(option('', '空手'), option(initial.id, `${initial.label}（默认）`),
-    ...weaponOpts.filter(choice => choice.id !== initial.id).map(choice => option(choice.id, choice.label)));
-  mainSelect.value = initial.id;
+  const protoOpt = spearProto ? weaponOpts.find(choice => choice.id === spearProto.weaponId) : undefined;
+  const requestedWeapon = new URLSearchParams(window.location.search).get('weapon');
+  defaultWeaponId = requestedWeapon && weaponOpts.some(choice => choice.id === requestedWeapon)
+    ? requestedWeapon
+    : warriorDefault.id;
+  equipment = { 'main-hand': defaultWeaponId };
+
+  mainSelect.append(option('', '空手'));
+  if (protoOpt) mainSelect.append(option(protoOpt.id, protoOpt.label));
+  mainSelect.append(
+    option(warriorDefault.id, `${warriorDefault.label}（狂战士默认）`),
+    ...weaponOpts
+      .filter(choice => choice.id !== warriorDefault.id && choice.id !== protoOpt?.id)
+      .map(choice => option(choice.id, choice.label)),
+  );
+  mainSelect.value = defaultWeaponId;
   refreshWeapons();
 
   const populateArmor = (select: HTMLSelectElement, slot: 'body' | 'head' | 'back', emptyLabel: string) => {

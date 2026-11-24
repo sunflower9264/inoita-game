@@ -8,13 +8,14 @@ import { costumeRecipe, type CostumePose, type WardrobeCatalog } from '../src/do
 import { EFFECT_ATLAS_BY_FILE } from '../src/generated/effect-atlas.ts';
 import {
   actionChoices, actionNotices, actionTimeline, activeEffectsAtFrame, armorChoices,
-  compatibleOffhands, effectOverlayBounds, formatInventoryMarkdown, framePieces, Playback,
-  PoseRepository, poseBounds, variantChoices, viewerRecipe, warriorAssetInventory,
-  warriorPartSpecs, warriorPoseIds, warriorPoseMatrix, warriorPresets, weaponChoices,
+  compatibleOffhands, effectOverlayBounds, formatInventoryMarkdown, framePieces,
+  mergePrototypeWeapon, Playback, PoseRepository, poseBounds, variantChoices, viewerRecipe,
+  warriorAssetInventory, warriorPartSpecs, warriorPoseIds, warriorPoseMatrix, warriorPresets,
+  weaponChoices,
 } from '../tools/warrior-viewer/model.ts';
 import type {
-  AudioCatalogLite, CompanionCatalogLite, EquipmentSelection, MenuPanelsLite, StatusHudLite,
-  StoryClassesLite,
+  AudioCatalogLite, CompanionCatalogLite, EquipmentSelection, MenuPanelsLite,
+  PrototypeWeaponBundle, StatusHudLite, StoryClassesLite,
 } from '../tools/warrior-viewer/model.ts';
 
 const root = new URL('../public/', import.meta.url);
@@ -272,4 +273,58 @@ test('split pose loading shares requests, supports full catalogs and retries fai
   assert.equal(loads, 2);
   const full = new PoseRepository(catalog, async () => { throw new Error('unexpected download'); });
   assert.equal(await full.get(Object.keys(catalog.poses)[0]), sample);
+});
+
+test('spear prototype integrates cleanly with existing wardrobe outfits across all four directions without polluting warrior inventory', () => {
+  const repoRoot = new URL('../', import.meta.url);
+  const proto = JSON.parse(fs.readFileSync(new URL('tools/warrior-viewer/prototypes/spear/spear-prototype.json', repoRoot), 'utf8')) as PrototypeWeaponBundle;
+  const pngBytes = fs.readFileSync(new URL(proto.texture.file, repoRoot));
+  const pngWidth = pngBytes.readUInt32BE(16);
+  const pngHeight = pngBytes.readUInt32BE(20);
+  for (const sprite of Object.values(proto.sprites)) {
+    assert.equal(sprite.texture, proto.texture.key);
+    assert.ok(sprite.x >= 0 && sprite.y >= 0);
+    assert.ok(sprite.x + sprite.width <= pngWidth && sprite.y + sprite.height <= pngHeight);
+  }
+
+  const { catalog: mergedCatalog, items: mergedItems } = mergePrototypeWeapon(catalog, items, proto);
+  // Original catalog & warrior asset inventory remain untouched
+  assert.equal(catalog.equipment[proto.weaponId], undefined);
+  assert.equal(warriorPoseIds(mergedCatalog, mergedItems).length, 117);
+  assert.equal(warriorPoseMatrix(mergedCatalog, mergedItems, skillNames).length, 30);
+
+  const bodyArmor = armorChoices(mergedCatalog, mergedItems, 'body')[3].id;
+  const headArmor = armorChoices(mergedCatalog, mergedItems, 'head')[3].id;
+  const cloakArmor = armorChoices(mergedCatalog, mergedItems, 'back')[1].id;
+  const spearEquipment: EquipmentSelection = {
+    'main-hand': proto.weaponId,
+    body: bodyArmor,
+    head: headArmor,
+    back: cloakArmor,
+  };
+  assert.deepEqual(compatibleOffhands(mergedCatalog, mergedItems, proto.weaponId), []);
+
+  for (const appearance of [undefined, 'mercenary-olaf']) {
+    const recipe = viewerRecipe(mergedCatalog, mergedItems, spearEquipment, {}, appearance);
+    assert.equal(recipe.variants.spear, proto.variantId);
+    for (const facing of directions) {
+      const choices = actionChoices(mergedCatalog, mergedItems, spearEquipment, facing, skillNames, proto.actionLabels);
+      const protoActions = choices.filter(choice => choice.group === '样板动作');
+      assert.equal(protoActions.length, 2);
+      assert.ok(protoActions.some(choice => choice.key === 'idle' && choice.label === '持枪待机（双手战斗）'));
+      assert.ok(protoActions.some(choice => choice.key === 'spear-upright-idle'));
+      for (const action of protoActions) {
+        const pose = mergedCatalog.poses[action.poseId];
+        assert.equal(pose.frames.length, 14);
+        assert.equal(pose.mirrorX, facing === 'east');
+        for (const frame of pose.frames) {
+          const pieces = framePieces(mergedCatalog, recipe.variants, frame);
+          assert.ok(pieces.some(p => p.part.part === 'spear'), `${action.poseId} should draw spear`);
+          assert.ok(pieces.some(p => p.part.part === 'coat-front'), `${action.poseId} should draw armor`);
+          if (!appearance) assert.ok(pieces.some(p => p.part.part === 'cloak'), `${action.poseId} should draw cloak`);
+          else assert.ok(!pieces.some(p => p.part.part === 'cloak'), 'olaf fixedParts suppresses cloak');
+        }
+      }
+    }
+  }
 });
