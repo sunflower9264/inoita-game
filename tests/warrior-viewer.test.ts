@@ -720,4 +720,94 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
     const diff = Math.abs((((deg - expectedCardinalDeg[facing]) + 540) % 360) - 180);
     assert.ok(diff <= 4, `spear-gale-sweep ${facing} 峰值质心方位角 ${deg.toFixed(1)}° 偏离正方向 ${expectedCardinalDeg[facing]}°（差 ${diff.toFixed(1)}°）`);
   }
+
+  // 防回归：全四向全部 14 项战斗动作每帧均使用干净双手（恰好 2 条 0° 手臂 coat-front[3..14]），多套盔甲有效解析；
+  // 普攻二段更名为「普攻 · 横扫」且 spear-basic-flick 峰值帧对称于四正方向；
+  // 普攻三段「上挑」全四向每帧双手像素均紧贴长枪枪杆（杜绝手枪分离）。
+  assert.equal(proto.actionLabels?.['attack-2'], '普攻 · 横扫');
+  for (const facing of directions) {
+    const clip = proto.attackEffects?.['spear-basic-flick']?.clips[facing];
+    assert.ok(clip, `missing spear-basic-flick clip for ${facing}`);
+    const frameKey = proto.effectSheet.byFile[clip.layers[0].file]?.[1];
+    assert.ok(frameKey, `missing spear-basic-flick f1 for ${facing}`);
+    const rect = proto.effectSheet.frames[frameKey];
+    const ox = clip.originX * clip.frameWidth;
+    const oy = clip.originY * clip.frameHeight;
+    let sumX = 0;
+    let sumY = 0;
+    let count = 0;
+    for (let y = 0; y < rect.height; y++) {
+      for (let x = 0; x < rect.width; x++) {
+        if (effPng.data[((rect.y + y) * effPng.width + (rect.x + x)) * 4 + 3] > 20) {
+          sumX += clip.mirrorX ? (ox - x) : (x - ox);
+          sumY += y - oy;
+          count++;
+        }
+      }
+    }
+    assert.ok(count > 0);
+    const deg = (Math.atan2(sumY / count - (-12), sumX / count) * 180) / Math.PI;
+    const diff = Math.abs((((deg - expectedCardinalDeg[facing]) + 540) % 360) - 180);
+    assert.ok(diff <= 5, `spear-basic-flick ${facing} 峰值质心方位角 ${deg.toFixed(1)}° 偏离正方向 ${expectedCardinalDeg[facing]}°（差 ${diff.toFixed(1)}°）`);
+  }
+
+  for (const actionKey of combatHeadActions) {
+    for (const facing of directions) {
+      const poseId = proto.stancePoses[`${actionKey}-${facing}`];
+      const pose = mergedCatalog.poses[poseId];
+      for (let fi = 0; fi < pose.frames.length; fi++) {
+        const frame = pose.frames[fi];
+        const arms = frame.filter(p => p.part === 'coat-front' && p.piece >= 3 && p.piece <= 14);
+        assert.equal(arms.length, 2, `${actionKey}-${facing} (${poseId}) F${fi} 应恰好含 2 条双手持枪手臂，实际 ${arms.length}`);
+        for (const arm of arms) {
+          assert.equal(arm.angle, 0, `${actionKey}-${facing} (${poseId}) F${fi} coat-front[${arm.piece}] 不应存在旋转手臂`);
+        }
+        if (facing === 'south' || facing === 'north') {
+          for (const armorId of armorSamples) {
+            const recipe = viewerRecipe(mergedCatalog, mergedItems, { 'main-hand': proto.weaponId, body: armorId }, {});
+            const pieces = framePieces(mergedCatalog, recipe.variants, frame);
+            assert.ok(pieces.filter(p => p.part.part === 'coat-front').length >= 3, `${poseId} F${fi} (${armorId}) 应含胸甲与双手`);
+          }
+        }
+      }
+    }
+  }
+
+  // 普攻三段「上挑」手枪像素级贴合检查：全四向每帧两条手臂的像素包络与长枪像素的最小距离均 <= 4px（严防手枪分离）
+  for (const facing of directions) {
+    const poseId = proto.stancePoses[`attack-3-${facing}`];
+    const pose = mergedCatalog.poses[poseId];
+    for (let fi = 0; fi < pose.frames.length; fi++) {
+      const pieces = framePieces(mergedCatalog, defaultSpearRecipe.variants, pose.frames[fi]);
+      const collectPixels = (entry: (typeof pieces)[number]): [number, number][] => {
+        const png = loadedTextures.get(entry.sprite.texture)!;
+        const pts: [number, number][] = [];
+        for (let sy = 0; sy < entry.sprite.height; sy++) {
+          for (let sx = 0; sx < entry.sprite.width; sx++) {
+            const alpha = png.data[((entry.sprite.y + sy) * png.width + (entry.sprite.x + sx)) * 4 + 3];
+            if (alpha <= 40) continue;
+            const wx = entry.part.x + (sx - entry.sprite.anchorX) * entry.part.scaleX;
+            const wy = entry.part.y + (sy - entry.sprite.anchorY) * entry.part.scaleY;
+            pts.push([wx, wy]);
+          }
+        }
+        return pts;
+      };
+      const spearEntry = pieces.find(p => p.part.part === 'spear')!;
+      const armEntries = pieces.filter(p => p.part.part === 'coat-front' && p.part.piece >= 3 && p.part.piece <= 14);
+      const spearPts = collectPixels(spearEntry);
+      for (const armEntry of armEntries) {
+        const armPts = collectPixels(armEntry);
+        let minDist2 = Infinity;
+        for (const [ax, ay] of armPts) {
+          for (const [sx, sy] of spearPts) {
+            const d2 = (ax - sx) * (ax - sx) + (ay - sy) * (ay - sy);
+            if (d2 < minDist2) minDist2 = d2;
+          }
+        }
+        const minDist = Math.sqrt(minDist2);
+        assert.ok(minDist <= 4, `attack-3-${facing} (${poseId}) F${fi} 手臂 coat-front[${armEntry.part.piece}] 与长枪分离（最小距离 ${minDist.toFixed(1)}px）`);
+      }
+    }
+  }
 });

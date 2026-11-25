@@ -629,12 +629,13 @@ export type SpearInsertMode =
   | 'before-cloak';
 
 /**
- * 西向双手持枪标准双臂预设（东向姿态自动水平镜像同步）。
- * 使用全部 63 套 `coat-front` 上衣外观共有的手臂切片 `[8, 10, 11, 12, 13]`（全 0° 无旋转），
- * 在导出时替换原版短剑/大剑的猫背怪手与悬空断手，确保远侧前手在枪杆后、近侧后手在枪杆前实握，
- * 且肩部坐标自动跟随挺拔胸甲 `coat-front[1]` 的微幅起伏。
+ * 全四向双手持枪标准双臂预设（东向由西向自动水平镜像同步）。
+ * 使用全部 63 套 `coat-front` 上衣外观 100% 共有的手臂切片 `[5..14]`（全 0° 无旋转，支持原版标准 `scaleY: -1` 上举臂），
+ * 在导出时替换原版单手剑/短剑/战吼的单臂、三臂、旋转怪手与悬空断手，确保四向每帧均由双手紧贴肩窝实握枪杆，
+ * 且肩部坐标自动跟随胸甲躯干的微幅起伏。
  */
 export type SpearArmsPreset =
+  // 西/东向双手预设
   | 'thrust-coil'
   | 'thrust-extend'
   | 'flurry-mid'
@@ -644,7 +645,37 @@ export type SpearArmsPreset =
   | 'sweep-low'
   | 'slam-low'
   | 'whirl-center'
-  | 'buff-upright';
+  | 'buff-upright'
+  | 'lift-mid'
+  | 'lift-high'
+  // 南向双手预设
+  | 'south-ready'
+  | 'south-thrust-coil'
+  | 'south-thrust-extend'
+  | 'south-sweep-left'
+  | 'south-sweep-center'
+  | 'south-sweep-right'
+  | 'south-whirl-center'
+  | 'south-lift-low'
+  | 'south-lift-mid'
+  | 'south-lift-high'
+  | 'south-slam-overhead'
+  | 'south-slam-down'
+  | 'south-buff-upright'
+  // 北向双手预设
+  | 'north-ready'
+  | 'north-thrust-coil'
+  | 'north-thrust-extend'
+  | 'north-sweep-right'
+  | 'north-sweep-left'
+  | 'north-whirl-center'
+  | 'north-lift-mid'
+  | 'north-lift-high'
+  | 'north-slam-overhead'
+  | 'north-slam-down'
+  | 'north-buff-upright';
+
+export type SpearArmLayer = 'behind-torso' | 'behind-spear' | 'front-of-spear';
 
 export interface SpearArmPlacement {
   piece: number;
@@ -652,16 +683,21 @@ export interface SpearArmPlacement {
   y: number;
   scaleX: number;
   scaleY: number;
+  /** 可选遮挡层序：缺省时 backArm='behind-torso'，frontArm='front-of-spear'。 */
+  layer?: SpearArmLayer;
 }
 
 export interface SpearArmsSpec {
-  /** 远侧手（西向时为左臂，画在胸甲与枪杆后方，托住前段枪杆）。 */
+  /** 躯干基准横坐标（西向 coat-front[1] 默认 -1，南/北向 coat-front[0]/[2] 为 0）。 */
+  baseTorsoX?: number;
+  /** 第一手臂（西向为远侧左臂，南/北向为右侧/远侧辅助握枪臂）。 */
   backArm: SpearArmPlacement;
-  /** 近侧手（西向时为右臂，画在枪杆前方、头发/头盔下方，实握中后段枪杆）。 */
+  /** 第二手臂（西向为近侧右臂，南/北向为主握枪臂）。 */
   frontArm: SpearArmPlacement;
 }
 
-export const WEST_ARMS_PRESETS: Record<SpearArmsPreset, SpearArmsSpec> = {
+export const SPEAR_ARMS_PRESETS: Record<SpearArmsPreset, SpearArmsSpec> = {
+  // === 西/东向双手预设（baseTorsoX 默认 -1） ===
   // 蓄枪后引：左臂前伸稳托前杆，右臂曲肘拉回腰后握尾
   'thrust-coil': {
     backArm: { piece: 8, x: 1, y: 1, scaleX: -1, scaleY: 1 },
@@ -711,6 +747,164 @@ export const WEST_ARMS_PRESETS: Record<SpearArmsPreset, SpearArmsSpec> = {
   'buff-upright': {
     backArm: { piece: 8, x: 1, y: 1, scaleX: -1, scaleY: 1 },
     frontArm: { piece: 12, x: -1, y: 2, scaleX: 1, scaleY: 1 },
+  },
+  // 西/东向上挑中位（#11 斜上枪杆）：远侧前臂前上举贴紧前杆、近侧后臂紧扣中后杆，零分离
+  'lift-mid': {
+    backArm: { piece: 7, x: -2, y: -35, scaleX: -1, scaleY: -1, layer: 'behind-torso' },
+    frontArm: { piece: 7, x: 5, y: -3, scaleX: -1, scaleY: 1, layer: 'front-of-spear' },
+  },
+  // 西/东向上挑高位顶点（#11 高斜挑）：双臂随胸抬升紧扣斜上枪杆
+  'lift-high': {
+    backArm: { piece: 7, x: -2, y: -36, scaleX: -1, scaleY: -1, layer: 'behind-torso' },
+    frontArm: { piece: 7, x: 5, y: -4, scaleX: -1, scaleY: 1, layer: 'front-of-spear' },
+  },
+
+  // === 南向双手预设（baseTorsoX: 0，双肩位于 ±5, y=-18） ===
+  // 南向双手斜持战姿（#0/#1 过腰胸斜杆）
+  'south-ready': {
+    baseTorsoX: 0,
+    backArm: { piece: 11, x: 1, y: -1, scaleX: -1, scaleY: 1, layer: 'front-of-spear' },
+    frontArm: { piece: 10, x: 0, y: -2, scaleX: 1, scaleY: 1, layer: 'front-of-spear' },
+  },
+  // 南向直刺蓄枪（#7 竖枪收于右侧腰前 x=-5，双臂一正一斜跨胸紧扣枪杆）
+  'south-thrust-coil': {
+    baseTorsoX: 0,
+    backArm: { piece: 6, x: -1, y: -4, scaleX: -1, scaleY: 1, layer: 'front-of-spear' },
+    frontArm: { piece: 13, x: -1, y: -1, scaleX: 1, scaleY: 1, layer: 'front-of-spear' },
+  },
+  // 南向直刺前送（#7 朝正南猛刺，左臂斜跨胸前、右臂下压，双手前后实扣竖枪）
+  'south-thrust-extend': {
+    baseTorsoX: 0,
+    backArm: { piece: 6, x: 0, y: 0, scaleX: -1, scaleY: 1, layer: 'front-of-spear' },
+    frontArm: { piece: 13, x: -1, y: 1, scaleX: 1, scaleY: 1, layer: 'front-of-spear' },
+  },
+  // 南向左扫起势（右臂左展、左臂斜跨，双手并握左扫枪杆）
+  'south-sweep-left': {
+    baseTorsoX: 0,
+    backArm: { piece: 8, x: 0, y: 2, scaleX: -1, scaleY: 1, layer: 'front-of-spear' },
+    frontArm: { piece: 13, x: 0, y: 1, scaleX: 1, scaleY: 1, layer: 'front-of-spear' },
+  },
+  // 南向居中前扫命中（双手在胸前中轴实握正南枪杆）
+  'south-sweep-center': {
+    baseTorsoX: 0,
+    backArm: { piece: 10, x: 0, y: 0, scaleX: -1, scaleY: 1, layer: 'front-of-spear' },
+    frontArm: { piece: 10, x: -1, y: 1, scaleX: 1, scaleY: 1, layer: 'front-of-spear' },
+  },
+  // 南向右扫收势（右臂斜跨、左臂右展，双手并握右扫枪杆）
+  'south-sweep-right': {
+    baseTorsoX: 0,
+    backArm: { piece: 13, x: 0, y: 1, scaleX: -1, scaleY: 1, layer: 'front-of-spear' },
+    frontArm: { piece: 8, x: 0, y: 2, scaleX: 1, scaleY: 1, layer: 'front-of-spear' },
+  },
+  // 南向双侧枪花居中对握（左右双臂对称展开扣住水平枪杆）
+  'south-whirl-center': {
+    baseTorsoX: 0,
+    backArm: { piece: 11, x: -1, y: -1, scaleX: -1, scaleY: 1, layer: 'front-of-spear' },
+    frontArm: { piece: 11, x: 1, y: -1, scaleX: 1, scaleY: 1, layer: 'front-of-spear' },
+  },
+  // 南向上挑低蓄（双手压低横扣腰前枪杆）
+  'south-lift-low': {
+    baseTorsoX: 0,
+    backArm: { piece: 10, x: -1, y: 0, scaleX: -1, scaleY: 1, layer: 'front-of-spear' },
+    frontArm: { piece: 10, x: 1, y: 0, scaleX: 1, scaleY: 1, layer: 'front-of-spear' },
+  },
+  // 南向上挑起挑中段（双手贴合斜升枪杆 #2 sx=-1）
+  'south-lift-mid': {
+    baseTorsoX: 0,
+    backArm: { piece: 10, x: -1, y: -2, scaleX: -1, scaleY: 1, layer: 'front-of-spear' },
+    frontArm: { piece: 11, x: 0, y: -1, scaleX: 1, scaleY: 1, layer: 'front-of-spear' },
+  },
+  // 南向上挑高空顶点（右手稳扣下段、左手高举紧握上段，与 #11 sx=-1 零误差贴合）
+  'south-lift-high': {
+    baseTorsoX: 0,
+    backArm: { piece: 11, x: 1, y: -2, scaleX: -1, scaleY: 1, layer: 'front-of-spear' },
+    frontArm: { piece: 8, x: 1, y: -35, scaleX: 1, scaleY: -1, layer: 'front-of-spear' },
+  },
+  // 南向伏龙震过顶高举（双臂对称直举紧握头顶横枪 #12，兼容宽袖/重甲无外凸）
+  'south-slam-overhead': {
+    baseTorsoX: 0,
+    backArm: { piece: 8, x: 0, y: -36, scaleX: -1, scaleY: -1, layer: 'behind-spear' },
+    frontArm: { piece: 8, x: 0, y: -36, scaleX: 1, scaleY: -1, layer: 'behind-spear' },
+  },
+  // 南向伏龙震砸地下压（双手并扣居中竖枪猛力下砸）
+  'south-slam-down': {
+    baseTorsoX: 0,
+    backArm: { piece: 10, x: 0, y: 0, scaleX: -1, scaleY: 1, layer: 'front-of-spear' },
+    frontArm: { piece: 13, x: 0, y: 1, scaleX: 1, scaleY: 1, layer: 'front-of-spear' },
+  },
+  // 南向双手立枪聚气（取消单手举拳战吼，双手一上一下正握直立枪杆）
+  'south-buff-upright': {
+    baseTorsoX: 0,
+    backArm: { piece: 6, x: -1, y: -1, scaleX: -1, scaleY: 1, layer: 'front-of-spear' },
+    frontArm: { piece: 13, x: -1, y: -3, scaleX: 1, scaleY: 1, layer: 'front-of-spear' },
+  },
+
+  // === 北向双手预设（baseTorsoX: 0，双肩位于 ±5, y=-19，behind-spear 位于枪杆前、躯干/披风后） ===
+  // 北向双手战姿/收势
+  'north-ready': {
+    baseTorsoX: 0,
+    backArm: { piece: 13, x: 2, y: -2, scaleX: -1, scaleY: 1, layer: 'behind-spear' },
+    frontArm: { piece: 8, x: 0, y: -1, scaleX: 1, scaleY: 1, layer: 'behind-spear' },
+  },
+  // 北向右肋拉把蓄枪（右臂后拉握右肋枪尾、左臂前上托住前杆，双腿间 0 漏枪把）
+  'north-thrust-coil': {
+    baseTorsoX: 0,
+    backArm: { piece: 13, x: 0, y: -35, scaleX: -1, scaleY: -1, layer: 'behind-spear' },
+    frontArm: { piece: 8, x: 1, y: 0, scaleX: 1, scaleY: 1, layer: 'behind-spear' },
+  },
+  // 北向双手前刺（左臂向前上方伸展控前杆、右臂前推送中后杆）
+  'north-thrust-extend': {
+    baseTorsoX: 0,
+    backArm: { piece: 13, x: -1, y: -35, scaleX: -1, scaleY: -1, layer: 'behind-spear' },
+    frontArm: { piece: 11, x: 1, y: -2, scaleX: 1, scaleY: 1, layer: 'behind-spear' },
+  },
+  // 北向胸肩高位右扫（双臂向右上前展开实握枪杆）
+  'north-sweep-right': {
+    baseTorsoX: 0,
+    backArm: { piece: 13, x: -1, y: -33, scaleX: -1, scaleY: -1, layer: 'behind-spear' },
+    frontArm: { piece: 7, x: 1, y: -35, scaleX: 1, scaleY: -1, layer: 'behind-spear' },
+  },
+  // 北向胸肩高位左扫（双臂向左上前展开实握枪杆）
+  'north-sweep-left': {
+    baseTorsoX: 0,
+    backArm: { piece: 7, x: -1, y: -35, scaleX: -1, scaleY: -1, layer: 'behind-spear' },
+    frontArm: { piece: 13, x: 1, y: -33, scaleX: 1, scaleY: -1, layer: 'behind-spear' },
+  },
+  // 北向双侧枪花居中对握（对称双臂展开）
+  'north-whirl-center': {
+    baseTorsoX: 0,
+    backArm: { piece: 11, x: -1, y: -1, scaleX: -1, scaleY: 1, layer: 'behind-spear' },
+    frontArm: { piece: 11, x: 1, y: -1, scaleX: 1, scaleY: 1, layer: 'behind-spear' },
+  },
+  // 北向上挑中段（左臂扣下段、右臂上举握上段，贴合斜挑长枪 #11 sx=-1）
+  'north-lift-mid': {
+    baseTorsoX: 0,
+    backArm: { piece: 11, x: 1, y: -2, scaleX: -1, scaleY: 1, layer: 'behind-spear' },
+    frontArm: { piece: 8, x: 1, y: -35, scaleX: 1, scaleY: -1, layer: 'behind-spear' },
+  },
+  // 北向上挑高空顶点（双臂齐举紧扣正北高挑长枪 #8，彻底消除手枪分离与宽袖外凸）
+  'north-lift-high': {
+    baseTorsoX: 0,
+    backArm: { piece: 13, x: 0, y: -37, scaleX: -1, scaleY: -1, layer: 'behind-spear' },
+    frontArm: { piece: 8, x: 0, y: -37, scaleX: 1, scaleY: -1, layer: 'behind-spear' },
+  },
+  // 北向伏龙震过顶高举（双臂对称直举紧握头顶横枪 #12，兼容宽袖/重甲）
+  'north-slam-overhead': {
+    baseTorsoX: 0,
+    backArm: { piece: 8, x: 0, y: -37, scaleX: -1, scaleY: -1, layer: 'behind-spear' },
+    frontArm: { piece: 8, x: 0, y: -37, scaleX: 1, scaleY: -1, layer: 'behind-spear' },
+  },
+  // 北向伏龙震下砸顿枪（双手前压稳钉北向枪杆）
+  'north-slam-down': {
+    baseTorsoX: 0,
+    backArm: { piece: 13, x: -1, y: -35, scaleX: -1, scaleY: -1, layer: 'behind-spear' },
+    frontArm: { piece: 11, x: 1, y: -2, scaleX: 1, scaleY: 1, layer: 'behind-spear' },
+  },
+  // 北向双手立枪聚气（取消左手高举空拳，双手正握右侧立枪）
+  'north-buff-upright': {
+    baseTorsoX: 0,
+    backArm: { piece: 13, x: 2, y: -3, scaleX: -1, scaleY: 1, layer: 'behind-spear' },
+    frontArm: { piece: 8, x: 0, y: -1, scaleX: 1, scaleY: 1, layer: 'behind-spear' },
   },
 };
 
@@ -926,45 +1120,45 @@ const THRUST_WEST_FRAMES: readonly SpearKeyframeSpec[] = [
 ];
 
 const THRUST_SOUTH_FRAMES: readonly SpearKeyframeSpec[] = [
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 0, x: 0, y: -8, insertMode: 'between-south-arms' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 0, piece: 7, x: -7, y: -12, headPose: { dy: -1, cloakPiece: 1 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 1, piece: 7, x: -7, y: -15, headPose: { dx: 1, dy: -2, cloakPiece: 1 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 4, headPose: { view: 'south-action', dy: 1, cloakPiece: 2 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 8, headPose: { view: 'south-action', dy: 2, cloakPiece: 3 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 7, headPose: { view: 'south-action', dy: 1, cloakPiece: 2 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 3, piece: 7, x: -3, y: 1, headPose: { view: 'south-action', dy: 0, cloakPiece: 2 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 3, piece: 7, x: -4, y: -5, headPose: { dy: -1, cloakPiece: 1 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 4, piece: 0, x: -1, y: -7, headPose: { dy: 0, cloakPiece: 0 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 1, x: 0, y: -8, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 0, x: 0, y: -8, armsPreset: 'south-ready', insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 0, piece: 7, x: -5, y: -12, armsPreset: 'south-thrust-coil', headPose: { dy: -1, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 1, piece: 7, x: -5, y: -15, armsPreset: 'south-thrust-coil', headPose: { dx: 1, dy: -2, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 4, armsPreset: 'south-thrust-extend', headPose: { view: 'south-action', dy: 1, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 8, armsPreset: 'south-thrust-extend', headPose: { view: 'south-action', dy: 2, cloakPiece: 3 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 7, armsPreset: 'south-thrust-extend', headPose: { view: 'south-action', dy: 1, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 3, piece: 7, x: -3, y: 1, armsPreset: 'south-thrust-extend', headPose: { view: 'south-action', dy: 0, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 3, piece: 7, x: -4, y: -5, armsPreset: 'south-thrust-extend', headPose: { dy: -1, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 4, piece: 0, x: -1, y: -7, armsPreset: 'south-ready', headPose: { dy: 0, cloakPiece: 0 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 1, x: 0, y: -8, armsPreset: 'south-ready', insertMode: 'between-south-arms' },
 ];
 
 const THRUST_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
-  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 22, x: 9, y: -9, insertMode: 'before-cloak' },
-  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 0, piece: 8, x: 13, y: -10, headPose: { view: 'turn-back', scaleX: -1, dx: 1, dy: -1, cloakPiece: 9 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 1, piece: 8, x: 14, y: -8, headPose: { view: 'turn-back', scaleX: -1, dx: 2, dy: 0, cloakPiece: 10 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -21, headPose: { dy: -2, cloakPiece: 11 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -24, headPose: { dy: -3, cloakPiece: 10 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -23, headPose: { dy: -2, cloakPiece: 11 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 8, y: -17, headPose: { dy: -1, cloakPiece: 9 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 0, piece: 8, x: 12, y: -12, headPose: { dx: 1, dy: 0, cloakPiece: 9 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 22, x: 9, y: -10, headPose: { dy: -1, cloakPiece: 8 }, insertMode: 'before-cloak' },
-  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 23, x: 9, y: -9, insertMode: 'before-cloak' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 22, x: 8, y: -9, armsPreset: 'north-ready', insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 0, piece: 8, x: 11, y: -10, armsPreset: 'north-thrust-coil', headPose: { view: 'turn-back', scaleX: -1, dx: 1, dy: -1, cloakPiece: 9 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 1, piece: 8, x: 12, y: -8, armsPreset: 'north-thrust-coil', headPose: { view: 'turn-back', scaleX: -1, dx: 2, dy: 0, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -21, armsPreset: 'north-thrust-extend', headPose: { dy: -2, cloakPiece: 11 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -24, armsPreset: 'north-thrust-extend', headPose: { dy: -3, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -23, armsPreset: 'north-thrust-extend', headPose: { dy: -2, cloakPiece: 11 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 8, y: -17, armsPreset: 'north-thrust-extend', headPose: { dy: -1, cloakPiece: 9 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 0, piece: 8, x: 11, y: -11, armsPreset: 'north-thrust-coil', headPose: { dx: 1, dy: 0, cloakPiece: 9 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 22, x: 8, y: -10, armsPreset: 'north-ready', headPose: { dy: -1, cloakPiece: 8 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 23, x: 8, y: -9, armsPreset: 'north-ready', insertMode: 'back' },
 ];
 
 const SWEEP_SOUTH_FRAMES: readonly SpearKeyframeSpec[] = [
-  // 原版 pose-4073 脚步自带 -3.5..+3.5px 侧滑，用 bodyDx 反向补偿将双脚视觉中心定在原地（手与枪同步平移，握点不偏移）
-  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 0, piece: 0, x: -4, y: -11, bodyDx: 2, insertMode: 'back' },
-  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 1, piece: 11, x: -7, y: -13, bodyDx: 2, insertMode: 'back' },
-  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 2, piece: 11, x: -9, y: -10, bodyDx: 3, insertMode: 'back' },
-  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 3, piece: 9, x: -6, y: -3, bodyDx: -1, insertMode: 'front' },
-  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 4, piece: 9, x: 6, y: -3, bodyDx: -3, scaleX: -1, insertMode: 'front' },
-  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 5, piece: 10, x: 10, y: -7, bodyDx: -3, scaleX: -1, headPose: { view: 'south-action', dy: 1 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 6, piece: 2, x: 8, y: -9, bodyDx: -3, scaleX: -1, headPose: { dy: 1 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 7, piece: 0, x: 5, y: -9, bodyDx: -3, scaleX: -1, insertMode: 'front' },
-  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 8, piece: 11, x: 5, y: -11, bodyDx: -3, scaleX: -1, insertMode: 'back' },
-  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 9, piece: 0, x: 2, y: -10, bodyDx: -3, scaleX: -1, insertMode: 'back' },
-  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 10, piece: 0, x: 1, y: -9, bodyDx: -3, insertMode: 'front' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 1, x: 0, y: -8, insertMode: 'between-south-arms' },
+  // 原版 pose-4073 脚步自带 -3.5..+3.5px 侧滑，用 bodyDx 反向补偿将双脚视觉中心定在原地，并全程装配南向双手预设替代单臂/举空手
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 0, piece: 0, x: -4, y: -10, bodyDx: 2, armsPreset: 'south-sweep-left', insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 1, piece: 11, x: -6, y: -11, bodyDx: 2, armsPreset: 'south-sweep-left', insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 2, piece: 11, x: -7, y: -10, bodyDx: 3, armsPreset: 'south-sweep-left', insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 3, piece: 9, x: -6, y: -5, bodyDx: -1, armsPreset: 'south-sweep-left', insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 4, piece: 9, x: 6, y: -5, bodyDx: -3, scaleX: -1, armsPreset: 'south-sweep-right', insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 5, piece: 10, x: 8, y: -7, bodyDx: -3, scaleX: -1, armsPreset: 'south-sweep-right', headPose: { view: 'south-action', dy: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 6, piece: 2, x: 6, y: -8, bodyDx: -3, scaleX: -1, armsPreset: 'south-sweep-right', headPose: { dy: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 7, piece: 0, x: 4, y: -8, bodyDx: -3, scaleX: -1, armsPreset: 'south-sweep-right', insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 8, piece: 11, x: 4, y: -10, bodyDx: -3, scaleX: -1, armsPreset: 'south-sweep-right', insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 9, piece: 0, x: 2, y: -9, bodyDx: -3, scaleX: -1, armsPreset: 'south-ready', insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 10, piece: 0, x: 1, y: -8, bodyDx: -3, armsPreset: 'south-ready', insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 1, x: 0, y: -8, armsPreset: 'south-ready', insertMode: 'between-south-arms' },
 ];
 
 const SWEEP_WEST_FRAMES: readonly SpearKeyframeSpec[] = [
@@ -983,24 +1177,24 @@ const SWEEP_WEST_FRAMES: readonly SpearKeyframeSpec[] = [
 ];
 
 const SWEEP_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
-  // 原版 pose-4075 脚步自带 +4..-3.5px 漂移与上下起伏，反向补偿钉死双脚视觉原点；北向平扫全程抬升至胸肩高度，杜绝枪尾扫过两腿空隙
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 0, piece: 0, x: 6, y: -14, bodyDx: -2, scaleX: -1, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 1, piece: 9, x: 7, y: -12, bodyDx: -3, bodyDy: -1, scaleX: -1, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 2, piece: 11, x: 8, y: -15, bodyDx: -4, bodyDy: -2, scaleX: -1, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 3, piece: 8, x: 9, y: -21, bodyDx: -3, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 10, x: -6, y: -16, bodyDy: -1, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 5, piece: 11, x: -9, y: -19, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 6, piece: 0, x: -9, y: -16, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 7, piece: 0, x: -7, y: -16, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 8, piece: 11, x: -4, y: -17, bodyDx: 3, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 9, piece: 11, x: 4, y: -16, bodyDx: 2, scaleX: -1, insertMode: 'back' },
-  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 22, x: 9, y: -10, insertMode: 'before-cloak' },
-  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 23, x: 9, y: -9, insertMode: 'before-cloak' },
+  // 北向平扫全程抬升至胸肩高度并装配北向双手预设，杜绝枪尾扫过两腿空隙与单臂错位
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 0, piece: 0, x: 6, y: -18, bodyDx: -2, scaleX: -1, armsPreset: 'north-sweep-right', insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 1, piece: 10, x: 8, y: -21, bodyDx: -3, bodyDy: -1, scaleX: -1, armsPreset: 'north-sweep-right', insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 2, piece: 11, x: 8, y: -18, bodyDx: -4, bodyDy: -2, scaleX: -1, armsPreset: 'north-sweep-right', insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 3, piece: 8, x: 9, y: -21, bodyDx: -3, armsPreset: 'north-thrust-extend', insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 10, x: -8, y: -21, bodyDy: -1, armsPreset: 'north-sweep-left', insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 5, piece: 11, x: -9, y: -20, armsPreset: 'north-sweep-left', insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 6, piece: 0, x: -9, y: -18, armsPreset: 'north-sweep-left', insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 7, piece: 0, x: -7, y: -18, armsPreset: 'north-sweep-left', insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 8, piece: 11, x: -4, y: -18, bodyDx: 3, armsPreset: 'north-sweep-left', insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 9, piece: 11, x: 4, y: -18, bodyDx: 2, scaleX: -1, armsPreset: 'north-sweep-right', insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 22, x: 8, y: -10, armsPreset: 'north-ready', insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 23, x: 8, y: -9, armsPreset: 'north-ready', insertMode: 'back' },
 ];
 
 // ---------------------------------------------------------------------------
 // 第一批新增技能动作：
-// 1. 普通攻击三段循环（attack 轻刺 8 帧 + attack-2 斜撩 7 帧 + attack-3 上挑 8 帧，无控制）
+// 1. 普通攻击三段循环（attack 轻刺 8 帧 + attack-2 横扫 7 帧 + attack-3 上挑 8 帧，无控制）
 // 2. 旋风枪舞（skill-spin-storm，18 帧：基于原版 360° 旋风骨架 pose-4094 三整圈周身旋枪 + 末圈爆散收枪）
 // 3. 狂龙穿心破（skill-dragon-pierce，12 帧：蓄力压身 → 10px 前探+残影+赤金重刺）
 // 4. 伏龙震（skill-dragon-slam，11 帧：基于原版地面过顶劈 pose-4076..4078 力劈华山重砸）
@@ -1038,98 +1232,96 @@ const ATK1_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
   THRUST_NORTH_FRAMES[9],
 ];
 
-// 1B. 普攻第二段 · 斜撩（7 帧，截取横扫中段去头去尾加速斜拨，F3 出小月牙拨光）
+// 1B. 普攻第二段 · 横扫（7 帧，全四向双手水平横扫，F2 出素银正方向横扫弧光、F3 命中）
 const ATK2_SOUTH_FRAMES: readonly SpearKeyframeSpec[] = [
-  SWEEP_SOUTH_FRAMES[2],
-  SWEEP_SOUTH_FRAMES[3],
-  SWEEP_SOUTH_FRAMES[4],
-  SWEEP_SOUTH_FRAMES[5],
-  SWEEP_SOUTH_FRAMES[6],
-  SWEEP_SOUTH_FRAMES[10],
-  SWEEP_SOUTH_FRAMES[11],
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 10, x: -7, y: -9, armsPreset: 'south-sweep-left', headPose: { view: 'south', scaleX: 1, dx: -2, dy: -1, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 3, piece: 9, x: -6, y: -5, bodyDx: -1, armsPreset: 'south-sweep-left', headPose: { view: 'south-action', scaleX: 1, dx: -2, dy: -2, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 7, x: -1, y: -2, armsPreset: 'south-sweep-center', headPose: { view: 'south-action', scaleX: 1, dx: 0, dy: 2, cloakPiece: 3 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 4, piece: 9, x: 6, y: -5, bodyDx: -3, scaleX: -1, armsPreset: 'south-sweep-right', headPose: { view: 'south-action', scaleX: 1, dx: -1, dy: 2, cloakPiece: 3 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 5, piece: 10, x: 8, y: -7, bodyDx: -3, scaleX: -1, armsPreset: 'south-sweep-right', headPose: { view: 'south-action', scaleX: 1, dx: 0, dy: 1, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 10, piece: 0, x: 1, y: -8, bodyDx: -3, armsPreset: 'south-ready', headPose: { view: 'south', scaleX: 1, cloakPiece: 0 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 1, x: 0, y: -8, armsPreset: 'south-ready', insertMode: 'between-south-arms' },
 ];
 const ATK2_WEST_FRAMES: readonly SpearKeyframeSpec[] = [
-  SWEEP_WEST_FRAMES[2],
-  SWEEP_WEST_FRAMES[3],
-  SWEEP_WEST_FRAMES[4],
-  SWEEP_WEST_FRAMES[5],
-  SWEEP_WEST_FRAMES[7],
-  SWEEP_WEST_FRAMES[9],
-  SWEEP_WEST_FRAMES[10],
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 2, x: 2, y: -12, armsPreset: 'sweep-raise', headPose: { view: 'west', dx: 1, dy: -1, torsoDx: 1, cloakPiece: 6 }, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 2, x: -6, y: -11, armsPreset: 'sweep-cut', legsPreset: 'bow', headPose: { view: 'west-action', dx: -2, dy: 0, torsoDx: -1, cloakPiece: 5 }, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 10, x: -12, y: -10, armsPreset: 'sweep-cut', legsPreset: 'bow', headPose: { view: 'west-action', dx: -4, dy: 2, torsoDx: -2, torsoDy: 1, cloakPiece: 7 }, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 10, x: -11, y: -9, armsPreset: 'sweep-cut', legsPreset: 'planted', headPose: { view: 'west-action', dx: -3, dy: 2, torsoDx: -2, torsoDy: 1, cloakPiece: 7 }, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 2, x: -7, y: -9, armsPreset: 'sweep-low', legsPreset: 'planted', headPose: { view: 'west-action', dx: -2, dy: 1, torsoDx: -1, cloakPiece: 5 }, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 2, x: -4, y: -10, armsPreset: 'thrust-coil', headPose: { view: 'west', dx: 0, dy: 0, cloakPiece: 4 }, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 3, x: -3, y: -10, armsPreset: 'thrust-coil', insertMode: 'between-west-arms' },
 ];
 const ATK2_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
-  SWEEP_NORTH_FRAMES[2],
-  SWEEP_NORTH_FRAMES[3],
-  SWEEP_NORTH_FRAMES[4],
-  SWEEP_NORTH_FRAMES[5],
-  SWEEP_NORTH_FRAMES[7],
-  SWEEP_NORTH_FRAMES[10],
-  SWEEP_NORTH_FRAMES[11],
+  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 10, x: 8, y: -21, scaleX: -1, armsPreset: 'north-sweep-right', headPose: { view: 'north', scaleX: 1, dx: 2, dy: 1, cloakPiece: 9 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 11, x: 6, y: -20, scaleX: -1, armsPreset: 'north-sweep-right', headPose: { view: 'north', scaleX: 1, dx: 2, dy: -1, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -21, armsPreset: 'north-thrust-extend', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -3, cloakPiece: 11 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 10, x: -9, y: -21, armsPreset: 'north-sweep-left', headPose: { view: 'north', scaleX: 1, dx: -2, dy: -2, cloakPiece: 11 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 0, x: -8, y: -18, armsPreset: 'north-sweep-left', headPose: { view: 'north', scaleX: 1, dx: -1, dy: -1, cloakPiece: 9 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 22, x: 8, y: -10, armsPreset: 'north-ready', headPose: { view: 'north', scaleX: 1, dy: -1, cloakPiece: 8 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 23, x: 8, y: -9, armsPreset: 'north-ready', insertMode: 'back' },
 ];
 
-// 1C. 普攻第三段 · 上挑（8 帧，不产生控制：压低蓄挑 → 由下而上迅猛挑起 → 高空微顿 → 顺势回落，全四向无悬空手）
+// 1C. 普攻第三段 · 上挑（8 帧，不产生控制：全四向双手紧扣枪杆低蓄 → 迅猛上挑 → 高位微顿 → 平滑回落，彻底消除手枪分离）
 const ATK3_WEST_FRAMES: readonly SpearKeyframeSpec[] = [
   // F0：战姿微沉
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 2, x: -3, y: -10, insertMode: 'between-west-arms' },
-  // F1：挺胸沉马低持蓄挑，枪尖下沉蓄力（与 F3..F5 pose-4080 同源 cb[18] 下盘）
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 2, x: -3, y: -10, armsPreset: 'thrust-coil', insertMode: 'between-west-arms' },
+  // F1：沉马低持蓄挑，双手压低控枪
   { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 13, x: -5, y: -3, armsPreset: 'sweep-low', legsPreset: 'planted', headPose: { view: 'west-action', dx: -2, dy: 3, torsoDx: -1, torsoDy: 1, cloakPiece: 5 }, insertMode: 'between-west-arms' },
   // F2：迅猛起挑破空（触发 3 帧素银上挑弧光 spear-basic-lift）
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 2, x: -7, y: -9, armsPreset: 'sweep-cut', legsPreset: 'planted', headPose: { dx: -1, dy: -1, torsoDx: -1, cloakPiece: 6 }, insertMode: 'between-west-arms' },
-  // F3：挑枪命中帧（挺胸高举，枪尖斜挑高空，无控制）
-  { sourcePoseId: 'pose-4080-west-ticks-0', sourceFrame: 5, piece: 11, x: -8, y: -16, insertMode: 'front' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 2, x: -7, y: -9, armsPreset: 'sweep-cut', legsPreset: 'planted', headPose: { view: 'west', dx: -1, dy: -1, torsoDx: -1, cloakPiece: 6 }, insertMode: 'between-west-arms' },
+  // F3：挑枪命中帧（双手高挑紧扣斜上枪杆 #11，替换脱手的 pose-4080）
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 11, x: -4, y: -17, armsPreset: 'lift-mid', legsPreset: 'planted', headPose: { view: 'west', dx: -1, dy: -2, torsoDx: -1, cloakPiece: 6 }, insertMode: 'between-west-arms' },
   // F4：挑势顶点微顿
-  { sourcePoseId: 'pose-4080-west-ticks-0', sourceFrame: 6, piece: 11, x: -6, y: -21, insertMode: 'front' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 11, x: -4, y: -19, armsPreset: 'lift-high', legsPreset: 'planted', headPose: { view: 'west', dx: 0, dy: -3, torsoDx: -1, torsoDy: -1, cloakPiece: 6 }, insertMode: 'between-west-arms' },
   // F5..F7：顺势回落归回战姿
-  { sourcePoseId: 'pose-4080-west-ticks-0', sourceFrame: 7, piece: 11, x: -5, y: -16, insertMode: 'front' },
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 2, x: -4, y: -10, armsPreset: 'flurry-mid', legsPreset: 'planted', headPose: { dx: -1, dy: 1, cloakPiece: 5 }, insertMode: 'between-west-arms' },
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 3, x: -3, y: -10, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 11, x: -4, y: -17, armsPreset: 'lift-mid', legsPreset: 'planted', headPose: { view: 'west', dx: -1, dy: -1, torsoDx: -1, cloakPiece: 5 }, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 2, x: -4, y: -10, armsPreset: 'flurry-mid', legsPreset: 'planted', headPose: { view: 'west', dx: -1, dy: 1, cloakPiece: 5 }, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 3, x: -3, y: -10, armsPreset: 'thrust-coil', insertMode: 'between-west-arms' },
 ];
 
 const ATK3_SOUTH_FRAMES: readonly SpearKeyframeSpec[] = [
-  // F0：战姿微沉
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 0, x: 0, y: -8, insertMode: 'between-south-arms' },
-  // F1：深蹲低手，南向压低枪尖蓄挑
-  { sourcePoseId: 'pose-4076-south-ticks-0', sourceFrame: 4, piece: 7, x: -1, y: -1, headPose: { view: 'south-action', dy: 1, cloakPiece: 2 }, insertMode: 'front' },
-  // F2：由下向上起挑破空（F2 触发素银上挑弧光）
-  { sourcePoseId: 'pose-4076-south-ticks-0', sourceFrame: 0, piece: 2, x: 5, y: -8, scaleX: -1, insertMode: 'front' },
-  // F3：挑枪命中帧（双手扬起，枪尖高挑斜上）
-  { sourcePoseId: 'pose-4076-south-ticks-0', sourceFrame: 1, piece: 11, x: 5, y: -15, scaleX: -1, insertMode: 'front' },
+  // F0：双手战姿微沉
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 0, x: 0, y: -8, armsPreset: 'south-ready', insertMode: 'between-south-arms' },
+  // F1：压低重心双手横持蓄挑
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 2, x: -2, y: -6, armsPreset: 'south-lift-low', headPose: { view: 'south-action', scaleX: 1, dy: 3, torsoDy: 1, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  // F2：由下向上起挑破空（F2 触发素银上挑弧光，双手紧贴斜升枪杆）
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 2, x: 3, y: -9, scaleX: -1, armsPreset: 'south-lift-mid', headPose: { view: 'south', scaleX: 1, dx: 1, dy: 0, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  // F3：挑枪命中帧（右手扣下段、左手高举握上段，双手零误差贴合 #11 sx=-1）
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 11, x: 1, y: -19, scaleX: -1, armsPreset: 'south-lift-high', headPose: { view: 'south', scaleX: 1, dx: 1, dy: -2, torsoDy: -1, cloakPiece: 3 }, insertMode: 'front' },
   // F4：挑势顶点高扬微顿
-  { sourcePoseId: 'pose-4076-south-ticks-0', sourceFrame: 2, piece: 11, x: 3, y: -20, scaleX: -1, insertMode: 'front' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 11, x: 1, y: -20, scaleX: -1, armsPreset: 'south-lift-high', headPose: { view: 'south', scaleX: 1, dx: 1, dy: -3, torsoDy: -1, cloakPiece: 3 }, insertMode: 'front' },
   // F5..F7：顺势收枪归位
-  { sourcePoseId: 'pose-4076-south-ticks-0', sourceFrame: 1, piece: 11, x: 4, y: -14, scaleX: -1, insertMode: 'front' },
-  { sourcePoseId: 'pose-4076-south-ticks-0', sourceFrame: 0, piece: 0, x: 1, y: -8, insertMode: 'front' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 1, x: 0, y: -8, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 11, x: 1, y: -19, scaleX: -1, armsPreset: 'south-lift-high', headPose: { view: 'south', scaleX: 1, dx: 1, dy: -1, cloakPiece: 2 }, insertMode: 'front' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 2, x: 3, y: -9, scaleX: -1, armsPreset: 'south-lift-mid', headPose: { view: 'south', scaleX: 1, dy: 0, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 1, x: 0, y: -8, armsPreset: 'south-ready', insertMode: 'between-south-arms' },
 ];
 
 const ATK3_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
-  // F0：右侧持枪战姿微沉
-  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 22, x: 9, y: -9, insertMode: 'before-cloak' },
-  // F1：右后外侧沉把蓄挑（枪头露于右肩前上方、枪把位于右胯外侧，绝不落入两腿间）
-  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 0, piece: 8, x: 14, y: -8, insertMode: 'back' },
-  // F2：起身斜右上挑破空（枪尖紧贴北向挑弧起势，F2 触发素银上挑弧光）
-  { sourcePoseId: 'pose-4081-north-ticks-0', sourceFrame: 5, piece: 11, x: 6, y: -17, scaleX: -1, insertMode: 'back' },
-  // F3：挑枪命中帧（双臂高举、枪尖高挑向北上方）
-  { sourcePoseId: 'pose-4078-north-ticks-0', sourceFrame: 1, piece: 8, x: 6, y: -26, insertMode: 'back' },
+  // F0：北向双手战姿微沉
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 22, x: 8, y: -9, armsPreset: 'north-ready', insertMode: 'back' },
+  // F1：右后外侧双手沉把蓄挑（枪把位于右胯外侧，绝不落入两腿间）
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 0, piece: 8, x: 12, y: -9, armsPreset: 'north-thrust-coil', headPose: { view: 'north', scaleX: 1, dx: 1, dy: 1, cloakPiece: 9 }, insertMode: 'back' },
+  // F2：起身斜右上挑破空（双手贴合斜枪 #11 sx=-1，F2 触发素银上挑弧光）
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 11, x: 2, y: -21, scaleX: -1, armsPreset: 'north-lift-mid', headPose: { view: 'north', scaleX: 1, dx: 1, dy: -1, cloakPiece: 10 }, insertMode: 'back' },
+  // F3：挑枪命中帧（双臂齐举紧扣正北高挑长枪 #8，彻底消除手枪分离）
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -26, armsPreset: 'north-lift-high', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -2, cloakPiece: 11 }, insertMode: 'back' },
   // F4：挑势顶点微顿
-  { sourcePoseId: 'pose-4078-north-ticks-0', sourceFrame: 2, piece: 8, x: 6, y: -29, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -28, armsPreset: 'north-lift-high', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -3, cloakPiece: 11 }, insertMode: 'back' },
   // F5..F7：顺势沿右侧回落归回战姿
-  { sourcePoseId: 'pose-4078-north-ticks-0', sourceFrame: 1, piece: 11, x: 4, y: -19, scaleX: -1, insertMode: 'back' },
-  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 22, x: 9, y: -10, insertMode: 'before-cloak' },
-  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 23, x: 9, y: -9, insertMode: 'before-cloak' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 11, x: 2, y: -21, scaleX: -1, armsPreset: 'north-lift-mid', headPose: { view: 'north', scaleX: 1, dx: 1, dy: -1, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 22, x: 8, y: -10, armsPreset: 'north-ready', headPose: { view: 'north', scaleX: 1, dy: -1, cloakPiece: 8 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 23, x: 8, y: -9, armsPreset: 'north-ready', insertMode: 'back' },
 ];
 
 // 2. 旋风枪舞（18 帧：2 帧沉腰起转 → 12 帧三整圈 360° 周身疾旋 → 1 帧归位爆散终结 → 3 帧稳步收枪）
-// 四个正方向旋转帧均选用挺拔贴身、无悬空手套且实踩下盘的高动态帧，并做中轴归中：
-// - 南向：pose-4094 f3（低身前倾）；西/东向：pose-4068 + sweep-cut + bow 实踩弓步及其镜像；北向：pose-4075 f4（胸腰平旋，枪尖锁北端风环、枪把收于右肋）
 const SPIN_CARDINAL_S: SpearKeyframeSpec = {
-  sourcePoseId: 'pose-4094-south-ticks-24', sourceFrame: 3, piece: 7, x: -1, y: -4, bodyDx: 0, headPose: { view: 'south-action', cloakPiece: 2 }, insertMode: 'front',
+  sourcePoseId: 'pose-4094-south-ticks-24', sourceFrame: 3, piece: 7, x: -1, y: -4, bodyDx: 0, armsPreset: 'south-sweep-center', headPose: { view: 'south-action', cloakPiece: 2 }, insertMode: 'between-south-arms',
 };
 const SPIN_CARDINAL_E: SpearKeyframeSpec = {
   sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, armsPreset: 'sweep-cut', legsPreset: 'bow', headPose: { view: 'west-action', dx: -2, dy: 1, torsoDx: -1, cloakPiece: 7 }, mirrorBaseFrame: true, piece: 10, x: 13, y: -10, scaleX: -1, bodyDx: -1, insertMode: 'between-west-arms',
 };
 const SPIN_CARDINAL_N: SpearKeyframeSpec = {
-  sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -19, bodyDx: 0, headPose: { dy: -1, cloakPiece: 11 }, insertMode: 'back',
+  sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -19, bodyDx: 0, armsPreset: 'north-thrust-extend', headPose: { dy: -1, cloakPiece: 11 }, insertMode: 'back',
 };
 const SPIN_CARDINAL_W: SpearKeyframeSpec = {
   sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, armsPreset: 'sweep-cut', legsPreset: 'bow', headPose: { view: 'west-action', dx: -2, dy: 1, torsoDx: -1, cloakPiece: 7 }, piece: 10, x: -13, y: -10, scaleX: 1, bodyDx: 1, insertMode: 'between-west-arms',
@@ -1137,18 +1329,18 @@ const SPIN_CARDINAL_W: SpearKeyframeSpec = {
 
 const SPIN_STORM_SOUTH_FRAMES: readonly SpearKeyframeSpec[] = [
   // F0..F1：沉腰拧枪起转
-  { sourcePoseId: 'pose-4094-south-ticks-24', sourceFrame: 0, piece: 0, x: -2, y: -9, insertMode: 'front' },
-  { sourcePoseId: 'pose-4094-south-ticks-24', sourceFrame: 2, piece: 9, x: -4, y: -6, insertMode: 'front' },
+  { sourcePoseId: 'pose-4094-south-ticks-24', sourceFrame: 0, piece: 0, x: -2, y: -9, armsPreset: 'south-ready', insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4094-south-ticks-24', sourceFrame: 2, piece: 9, x: -4, y: -5, armsPreset: 'south-sweep-left', insertMode: 'between-south-arms' },
   // F2..F13：三整圈高速 360° 逆时针旋枪（南 → 东 → 北 → 西 × 3）
   SPIN_CARDINAL_S, SPIN_CARDINAL_E, SPIN_CARDINAL_N, SPIN_CARDINAL_W,
   SPIN_CARDINAL_S, SPIN_CARDINAL_E, SPIN_CARDINAL_N, SPIN_CARDINAL_W,
   SPIN_CARDINAL_S, SPIN_CARDINAL_E, SPIN_CARDINAL_N, SPIN_CARDINAL_W,
   // F14：收满三圈归位南向 + 360° 气浪爆散终结
   SPIN_CARDINAL_S,
-  // F15..F17：顺势减速收枪回南向战姿（无悬空手）
-  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 10, piece: 9, x: 1, y: -8, scaleX: -1, bodyDx: -1, insertMode: 'front' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 0, x: 0, y: -8, insertMode: 'between-south-arms' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 1, piece: 1, x: 0, y: -8, insertMode: 'between-south-arms' },
+  // F15..F17：顺势减速收枪回南向战姿（双手实握）
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 10, piece: 9, x: 1, y: -6, scaleX: -1, bodyDx: -1, armsPreset: 'south-sweep-right', insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 0, x: 0, y: -8, armsPreset: 'south-ready', insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 1, piece: 1, x: 0, y: -8, armsPreset: 'south-ready', insertMode: 'between-south-arms' },
 ];
 
 const SPIN_STORM_WEST_FRAMES: readonly SpearKeyframeSpec[] = [
@@ -1168,9 +1360,9 @@ const SPIN_STORM_WEST_FRAMES: readonly SpearKeyframeSpec[] = [
 ];
 
 const SPIN_STORM_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
-  // F0..F1：沉腰拧枪起转（胸肩高度起势，枪尾不扫双腿）
-  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 22, x: 9, y: -9, insertMode: 'before-cloak' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 1, piece: 11, x: 6, y: -16, scaleX: -1, insertMode: 'back' },
+  // F0..F1：沉腰拧枪起转（胸肩高度起势，双手实握、枪尾不扫双腿）
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 22, x: 8, y: -9, armsPreset: 'north-ready', insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 1, piece: 11, x: 6, y: -19, scaleX: -1, armsPreset: 'north-sweep-right', insertMode: 'back' },
   // F2..F13：三整圈高速 360° 旋枪（北 → 西 → 南 → 东 × 3）
   SPIN_CARDINAL_N, SPIN_CARDINAL_W, SPIN_CARDINAL_S, SPIN_CARDINAL_E,
   SPIN_CARDINAL_N, SPIN_CARDINAL_W, SPIN_CARDINAL_S, SPIN_CARDINAL_E,
@@ -1178,9 +1370,9 @@ const SPIN_STORM_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
   // F14：收满三圈归位北向 + 360° 气浪爆散终结
   SPIN_CARDINAL_N,
   // F15..F17：顺势沿右上减速收枪回北向战姿
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 9, piece: 11, x: 5, y: -16, bodyDx: 3, scaleX: -1, insertMode: 'back' },
-  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 22, x: 9, y: -10, insertMode: 'before-cloak' },
-  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 23, x: 9, y: -9, insertMode: 'before-cloak' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 9, piece: 11, x: 5, y: -19, bodyDx: 3, scaleX: -1, armsPreset: 'north-sweep-right', insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 22, x: 8, y: -10, armsPreset: 'north-ready', insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 23, x: 8, y: -9, armsPreset: 'north-ready', insertMode: 'back' },
 ];
 
 // 3. 狂龙穿心破（12 帧，纯原地定脚发力：4 帧蓄枪后引 → 原地满弓步赤金破甲重刺 → 稳步收势，人物不位移、头部锁定正前方不转向）
@@ -1203,35 +1395,35 @@ const DRAGON_PIERCE_WEST_FRAMES: readonly SpearKeyframeSpec[] = [
 ];
 
 const DRAGON_PIERCE_SOUTH_FRAMES: readonly SpearKeyframeSpec[] = [
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 0, x: 0, y: -8, insertMode: 'between-south-arms' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 0, piece: 7, x: -7, y: -12, headPose: { dy: -1, cloakPiece: 1 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 1, piece: 7, x: -7, y: -16, headPose: { dx: 1, dy: -2, cloakPiece: 1 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 1, piece: 7, x: -7, y: -17, headPose: { dx: 1, dy: -1, cloakPiece: 3 }, insertMode: 'back' },
-  // 原地向南猛刺（无人物位移）
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 4, headPose: { view: 'south-action', dy: 1, cloakPiece: 2 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 8, headPose: { view: 'south-action', dy: 2, cloakPiece: 3 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 7, headPose: { view: 'south-action', dy: 1, cloakPiece: 2 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 3, piece: 7, x: -3, y: 2, headPose: { view: 'south-action', dy: 0, cloakPiece: 2 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 3, piece: 7, x: -4, y: -4, headPose: { dy: -1, cloakPiece: 1 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 4, piece: 0, x: -1, y: -7, headPose: { dy: 0, cloakPiece: 0 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 0, x: 0, y: -8, headPose: { dy: 1 }, insertMode: 'between-south-arms' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 1, x: 0, y: -8, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 0, x: 0, y: -8, armsPreset: 'south-ready', insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 0, piece: 7, x: -5, y: -12, armsPreset: 'south-thrust-coil', headPose: { dy: -1, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 1, piece: 7, x: -5, y: -15, armsPreset: 'south-thrust-coil', headPose: { dx: 1, dy: -2, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 1, piece: 7, x: -5, y: -16, armsPreset: 'south-thrust-coil', headPose: { dx: 1, dy: -1, cloakPiece: 3 }, insertMode: 'between-south-arms' },
+  // 原地向南双手猛刺（无人物位移）
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 4, armsPreset: 'south-thrust-extend', headPose: { view: 'south-action', dy: 1, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 8, armsPreset: 'south-thrust-extend', headPose: { view: 'south-action', dy: 2, cloakPiece: 3 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 7, armsPreset: 'south-thrust-extend', headPose: { view: 'south-action', dy: 1, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 3, piece: 7, x: -3, y: 2, armsPreset: 'south-thrust-extend', headPose: { view: 'south-action', dy: 0, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 3, piece: 7, x: -4, y: -4, armsPreset: 'south-thrust-extend', headPose: { dy: -1, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 4, piece: 0, x: -1, y: -7, armsPreset: 'south-ready', headPose: { dy: 0, cloakPiece: 0 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 0, x: 0, y: -8, armsPreset: 'south-ready', headPose: { dy: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 1, x: 0, y: -8, armsPreset: 'south-ready', insertMode: 'between-south-arms' },
 ];
 
 const DRAGON_PIERCE_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
-  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 22, x: 9, y: -9, insertMode: 'before-cloak' },
-  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 0, piece: 8, x: 13, y: -10, headPose: { view: 'north', scaleX: 1, dx: 1, dy: 1, cloakPiece: 9 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 1, piece: 8, x: 14, y: -8, headPose: { view: 'north', scaleX: 1, dx: 0, dy: 2, cloakPiece: 10 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 1, piece: 8, x: 15, y: -7, headPose: { view: 'north', scaleX: 1, dx: 1, dy: 2, cloakPiece: 11 }, insertMode: 'back' },
-  // 原地向北猛刺（枪尖正指北方特效中轴，枪把收于右肩肋，无头顶怪手、无人物位移）
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -22, headPose: { dy: -2, cloakPiece: 11 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -25, headPose: { dy: -3, cloakPiece: 10 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -24, headPose: { dx: -1, dy: -3, cloakPiece: 11 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 8, y: -18, headPose: { dy: -1, cloakPiece: 10 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 0, piece: 8, x: 12, y: -12, headPose: { dx: 1, dy: -1, cloakPiece: 9 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 0, piece: 8, x: 12, y: -10, headPose: { dx: 0, dy: 0, cloakPiece: 9 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 22, x: 9, y: -10, headPose: { dy: -1, cloakPiece: 8 }, insertMode: 'before-cloak' },
-  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 23, x: 9, y: -9, insertMode: 'before-cloak' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 22, x: 8, y: -9, armsPreset: 'north-ready', insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 0, piece: 8, x: 11, y: -10, armsPreset: 'north-thrust-coil', headPose: { view: 'north', scaleX: 1, dx: 1, dy: 1, cloakPiece: 9 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 1, piece: 8, x: 12, y: -8, armsPreset: 'north-thrust-coil', headPose: { view: 'north', scaleX: 1, dx: 0, dy: 2, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 1, piece: 8, x: 12, y: -7, armsPreset: 'north-thrust-coil', headPose: { view: 'north', scaleX: 1, dx: 1, dy: 2, cloakPiece: 11 }, insertMode: 'back' },
+  // 原地向北双手猛刺（枪尖正指北方特效中轴，枪把收于右肩肋，无头顶怪手、无人物位移）
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -22, armsPreset: 'north-thrust-extend', headPose: { dy: -2, cloakPiece: 11 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -25, armsPreset: 'north-thrust-extend', headPose: { dy: -3, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -24, armsPreset: 'north-thrust-extend', headPose: { dx: -1, dy: -3, cloakPiece: 11 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 8, y: -18, armsPreset: 'north-thrust-extend', headPose: { dy: -1, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 0, piece: 8, x: 11, y: -12, armsPreset: 'north-thrust-coil', headPose: { dx: 1, dy: -1, cloakPiece: 9 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 0, piece: 8, x: 11, y: -10, armsPreset: 'north-thrust-coil', headPose: { dx: 0, dy: 0, cloakPiece: 9 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 22, x: 8, y: -10, armsPreset: 'north-ready', headPose: { dy: -1, cloakPiece: 8 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 23, x: 8, y: -9, armsPreset: 'north-ready', insertMode: 'back' },
 ];
 
 // 4. 伏龙震 · 力劈华山（11 帧，基于地面过顶纵劈 pose-4076..4078，F4 起纵劈弧光、F5 砸地顿帧震屏+眩晕）
@@ -1254,39 +1446,39 @@ const DRAGON_SLAM_WEST_FRAMES: readonly SpearKeyframeSpec[] = [
 ];
 
 const DRAGON_SLAM_SOUTH_FRAMES: readonly SpearKeyframeSpec[] = [
-  // F0..F2：双手举枪过顶右上方蓄力
-  { sourcePoseId: 'pose-4076-south-ticks-0', sourceFrame: 0, piece: 12, x: 3, y: -26, insertMode: 'back' },
-  { sourcePoseId: 'pose-4076-south-ticks-0', sourceFrame: 1, piece: 12, x: 5, y: -29, insertMode: 'back' },
-  { sourcePoseId: 'pose-4076-south-ticks-0', sourceFrame: 2, piece: 12, x: 5, y: -30, insertMode: 'back' },
-  // F3：竖直劈落切下
-  { sourcePoseId: 'pose-4076-south-ticks-0', sourceFrame: 3, piece: 7, x: 1, y: -14, headPose: { view: 'south-action', scaleX: 1, cloakPiece: 2 }, insertMode: 'front' },
-  // F4..F6：重砸前方地面深蹲顿枪（枪尖拍砸南向落点！）
-  { sourcePoseId: 'pose-4076-south-ticks-0', sourceFrame: 4, piece: 7, x: -1, y: 5, headPose: { view: 'south-action', dy: 1, cloakPiece: 3 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4076-south-ticks-0', sourceFrame: 5, piece: 7, x: -1, y: 6, headPose: { view: 'south-action', dy: 2, cloakPiece: 3 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4076-south-ticks-0', sourceFrame: 6, piece: 7, x: -1, y: 4, headPose: { view: 'south-action', dy: 1, cloakPiece: 2 }, insertMode: 'front' },
-  // F7..F10：拉枪起身归位
-  { sourcePoseId: 'pose-4076-south-ticks-0', sourceFrame: 7, piece: 9, x: -2, y: -4, insertMode: 'front' },
-  { sourcePoseId: 'pose-4076-south-ticks-0', sourceFrame: 8, piece: 0, x: -1, y: -7, insertMode: 'front' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 0, x: 0, y: -8, insertMode: 'between-south-arms' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 1, piece: 1, x: 0, y: -8, insertMode: 'between-south-arms' },
+  // F0..F2：双手对称直举长枪过顶蓄力（对齐原版 pose-4076 躯干横坐标 x=3..4）
+  { sourcePoseId: 'pose-4076-south-ticks-0', sourceFrame: 0, piece: 12, x: 3, y: -26, armsPreset: 'south-slam-overhead', insertMode: 'back' },
+  { sourcePoseId: 'pose-4076-south-ticks-0', sourceFrame: 1, piece: 12, x: 3, y: -28, armsPreset: 'south-slam-overhead', insertMode: 'back' },
+  { sourcePoseId: 'pose-4076-south-ticks-0', sourceFrame: 2, piece: 12, x: 4, y: -29, armsPreset: 'south-slam-overhead', insertMode: 'back' },
+  // F3：双手竖直劈落切下
+  { sourcePoseId: 'pose-4076-south-ticks-0', sourceFrame: 3, piece: 7, x: -1, y: -14, armsPreset: 'south-slam-down', headPose: { view: 'south-action', scaleX: 1, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  // F4..F6：双手重砸前方地面深蹲顿枪（枪尖拍砸南向落点！）
+  { sourcePoseId: 'pose-4076-south-ticks-0', sourceFrame: 4, piece: 7, x: -1, y: 5, armsPreset: 'south-slam-down', headPose: { view: 'south-action', dy: 1, cloakPiece: 3 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4076-south-ticks-0', sourceFrame: 5, piece: 7, x: -1, y: 6, armsPreset: 'south-slam-down', headPose: { view: 'south-action', dy: 2, cloakPiece: 3 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4076-south-ticks-0', sourceFrame: 6, piece: 7, x: -1, y: 4, armsPreset: 'south-slam-down', headPose: { view: 'south-action', dy: 1, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  // F7..F10：双手拉枪起身归位
+  { sourcePoseId: 'pose-4076-south-ticks-0', sourceFrame: 7, piece: 9, x: -3, y: -5, armsPreset: 'south-sweep-left', insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4076-south-ticks-0', sourceFrame: 8, piece: 0, x: -1, y: -7, armsPreset: 'south-ready', insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 0, x: 0, y: -8, armsPreset: 'south-ready', insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 1, piece: 1, x: 0, y: -8, armsPreset: 'south-ready', insertMode: 'between-south-arms' },
 ];
 
 const DRAGON_SLAM_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
-  // F0..F2：高举过顶蓄力
-  { sourcePoseId: 'pose-4078-north-ticks-0', sourceFrame: 0, piece: 12, x: -1, y: -27, scaleX: -1, insertMode: 'back' },
-  { sourcePoseId: 'pose-4078-north-ticks-0', sourceFrame: 1, piece: 12, x: 0, y: -30, scaleX: -1, insertMode: 'back' },
-  { sourcePoseId: 'pose-4078-north-ticks-0', sourceFrame: 2, piece: 12, x: 0, y: -31, scaleX: -1, insertMode: 'back' },
-  // F3：下压纵劈向北
-  { sourcePoseId: 'pose-4078-north-ticks-0', sourceFrame: 3, piece: 8, x: 6, y: -24, headPose: { dy: -1, cloakPiece: 10 }, insertMode: 'back' },
-  // F4..F6：重砸北向地面深蹲顿枪（枪尖拍落北向落点，枪把握于前胸右肋，绝不漏入双腿间）
-  { sourcePoseId: 'pose-4078-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -21, headPose: { dy: -2, cloakPiece: 11 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4078-north-ticks-0', sourceFrame: 5, piece: 8, x: 6, y: -20, headPose: { dy: -1, cloakPiece: 10 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4078-north-ticks-0', sourceFrame: 6, piece: 8, x: 6, y: -20, headPose: { dy: 0, cloakPiece: 9 }, insertMode: 'back' },
-  // F7..F10：沿右侧提枪起身回防
-  { sourcePoseId: 'pose-4078-north-ticks-0', sourceFrame: 7, piece: 11, x: 4, y: -16, scaleX: -1, insertMode: 'back' },
-  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 0, piece: 8, x: 12, y: -11, insertMode: 'back' },
-  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 22, x: 9, y: -10, insertMode: 'before-cloak' },
-  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 23, x: 9, y: -9, insertMode: 'before-cloak' },
+  // F0..F2：背身正北对称直举过顶蓄力（采用标准正北躯干 pose-4069，避免 pose-4078 侧转躯干错肩）
+  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 12, x: 0, y: -27, scaleX: -1, armsPreset: 'north-slam-overhead', headPose: { view: 'north', scaleX: 1, dy: 0, cloakPiece: 8 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 12, x: 0, y: -29, scaleX: -1, armsPreset: 'north-slam-overhead', headPose: { view: 'north', scaleX: 1, dy: -1, cloakPiece: 9 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 12, x: 0, y: -30, scaleX: -1, armsPreset: 'north-slam-overhead', headPose: { view: 'north', scaleX: 1, dy: -2, cloakPiece: 10 }, insertMode: 'back' },
+  // F3：双手下压纵劈向北
+  { sourcePoseId: 'pose-4078-north-ticks-0', sourceFrame: 3, piece: 8, x: 6, y: -24, armsPreset: 'north-slam-down', headPose: { dy: -1, cloakPiece: 10 }, insertMode: 'back' },
+  // F4..F6：双手重砸北向地面深蹲顿枪（枪尖拍落北向落点，枪把握于前胸右肋，绝不漏入双腿间）
+  { sourcePoseId: 'pose-4078-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -21, armsPreset: 'north-slam-down', headPose: { dy: -2, cloakPiece: 11 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4078-north-ticks-0', sourceFrame: 5, piece: 8, x: 6, y: -20, armsPreset: 'north-slam-down', headPose: { dy: -1, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4078-north-ticks-0', sourceFrame: 6, piece: 8, x: 6, y: -20, armsPreset: 'north-slam-down', headPose: { dy: 0, cloakPiece: 9 }, insertMode: 'back' },
+  // F7..F10：沿右侧双手提枪起身回防
+  { sourcePoseId: 'pose-4078-north-ticks-0', sourceFrame: 7, piece: 11, x: 4, y: -18, scaleX: -1, armsPreset: 'north-sweep-right', insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 0, piece: 8, x: 11, y: -11, armsPreset: 'north-thrust-coil', insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 22, x: 8, y: -10, armsPreset: 'north-ready', insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 23, x: 8, y: -9, armsPreset: 'north-ready', insertMode: 'back' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -1302,23 +1494,23 @@ const DRAGON_SLAM_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
 // 前 6 帧全实色长枪（~62px，不虚化）在手中随左右两枚 3D 透视侧轮（/ 🧍 \）自然摆动：
 // F0..F2 枪尖在左/枪尾在右，F3..F5 翻腕互换（枪尖在右/枪尾在左），随后 F6..F15 无缝接当前朝向 180° 狂风大横扫。
 const WHIRL_SWEEP_SOUTH_FRAMES: readonly SpearKeyframeSpec[] = [
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 15, x: 0, y: -11, scaleX: 1, scaleY: 1, headPose: { view: 'south-action', scaleX: 1, dx: -1, dy: 1, cloakPiece: 1 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4094-south-ticks-24', sourceFrame: 3, piece: 15, x: 0, y: -11, scaleX: 1, scaleY: -1, headPose: { view: 'south-action', scaleX: 1, dx: -2, dy: 1, cloakPiece: 2 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4094-south-ticks-24', sourceFrame: 3, piece: 14, x: 0, y: -11, scaleX: 1, scaleY: 1, headPose: { view: 'south-action', scaleX: 1, dx: 0, dy: 2, cloakPiece: 3 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4094-south-ticks-24', sourceFrame: 3, piece: 15, x: 0, y: -11, scaleX: -1, scaleY: 1, headPose: { view: 'south-action', scaleX: 1, dx: 2, dy: 1, cloakPiece: 1 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4094-south-ticks-24', sourceFrame: 3, piece: 14, x: 0, y: -11, scaleX: -1, scaleY: 1, headPose: { view: 'south-action', scaleX: 1, dx: 1, dy: 2, cloakPiece: 2 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 15, x: 0, y: -11, scaleX: -1, scaleY: -1, headPose: { view: 'south-action', scaleX: 1, dx: -1, dy: 0, cloakPiece: 3 }, insertMode: 'front' },
-  // F6..F15：正南对称 180° 狂风大横扫（左下 F7 → 正南命中 F8 → 右下满弧 F9 → 正右收锋 F10，全程头锁正南不转向）
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 11, x: -7, y: -11, headPose: { view: 'south', scaleX: 1, dx: -2, dy: -1, cloakPiece: 1 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 3, piece: 9, x: -6, y: -3, bodyDx: -1, headPose: { view: 'south-action', scaleX: 1, dx: -3, dy: -2, cloakPiece: 2 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4094-south-ticks-24', sourceFrame: 3, piece: 7, x: -1, y: -2, headPose: { view: 'south-action', scaleX: 1, dx: 0, dy: 2, cloakPiece: 3 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 4, piece: 9, x: 6, y: -3, bodyDx: -3, scaleX: -1, headPose: { view: 'south-action', scaleX: 1, dx: -1, dy: 2, cloakPiece: 3 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 5, piece: 10, x: 10, y: -7, bodyDx: -3, scaleX: -1, headPose: { view: 'south-action', scaleX: 1, dx: 0, dy: 1, cloakPiece: 2 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 6, piece: 2, x: 8, y: -9, bodyDx: -3, scaleX: -1, headPose: { view: 'south', scaleX: 1, dy: 1, cloakPiece: 1 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 7, piece: 0, x: 5, y: -9, bodyDx: -3, scaleX: -1, headPose: { view: 'south', scaleX: 1, cloakPiece: 0 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 8, piece: 11, x: 5, y: -11, bodyDx: -3, scaleX: -1, headPose: { view: 'south', scaleX: 1, cloakPiece: 0 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 10, piece: 0, x: 1, y: -9, bodyDx: -3, headPose: { view: 'south', scaleX: 1, cloakPiece: 0 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 1, x: 0, y: -8, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 15, x: 0, y: -11, scaleX: 1, scaleY: 1, armsPreset: 'south-whirl-center', headPose: { view: 'south-action', scaleX: 1, dx: -1, dy: 1, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 15, x: 0, y: -11, scaleX: 1, scaleY: -1, armsPreset: 'south-whirl-center', headPose: { view: 'south-action', scaleX: 1, dx: -2, dy: 2, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 14, x: 0, y: -11, scaleX: 1, scaleY: 1, armsPreset: 'south-whirl-center', headPose: { view: 'south-action', scaleX: 1, dx: 0, dy: 2, cloakPiece: 3 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 15, x: 0, y: -11, scaleX: -1, scaleY: 1, armsPreset: 'south-whirl-center', headPose: { view: 'south-action', scaleX: 1, dx: 2, dy: 1, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 14, x: 0, y: -11, scaleX: -1, scaleY: 1, armsPreset: 'south-whirl-center', headPose: { view: 'south-action', scaleX: 1, dx: 1, dy: 2, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 15, x: 0, y: -11, scaleX: -1, scaleY: -1, armsPreset: 'south-whirl-center', headPose: { view: 'south-action', scaleX: 1, dx: -1, dy: 0, cloakPiece: 3 }, insertMode: 'between-south-arms' },
+  // F6..F15：正南对称 180° 双手狂风大横扫（左下 F7 → 正南命中 F8 → 右下满弧 F9 → 正右收锋 F10，全程双手实握、头锁正南不转向）
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 11, x: -7, y: -11, armsPreset: 'south-sweep-left', headPose: { view: 'south', scaleX: 1, dx: -2, dy: -1, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 3, piece: 9, x: -6, y: -5, bodyDx: -1, armsPreset: 'south-sweep-left', headPose: { view: 'south-action', scaleX: 1, dx: -3, dy: -2, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 7, x: -1, y: -2, armsPreset: 'south-sweep-center', headPose: { view: 'south-action', scaleX: 1, dx: 0, dy: 2, cloakPiece: 3 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 4, piece: 9, x: 6, y: -5, bodyDx: -3, scaleX: -1, armsPreset: 'south-sweep-right', headPose: { view: 'south-action', scaleX: 1, dx: -1, dy: 2, cloakPiece: 3 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 5, piece: 10, x: 8, y: -7, bodyDx: -3, scaleX: -1, armsPreset: 'south-sweep-right', headPose: { view: 'south-action', scaleX: 1, dx: 0, dy: 1, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 6, piece: 2, x: 6, y: -8, bodyDx: -3, scaleX: -1, armsPreset: 'south-sweep-right', headPose: { view: 'south', scaleX: 1, dy: 1, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 7, piece: 0, x: 4, y: -8, bodyDx: -3, scaleX: -1, armsPreset: 'south-sweep-right', headPose: { view: 'south', scaleX: 1, cloakPiece: 0 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 8, piece: 11, x: 4, y: -10, bodyDx: -3, scaleX: -1, armsPreset: 'south-sweep-right', headPose: { view: 'south', scaleX: 1, cloakPiece: 0 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 10, piece: 0, x: 1, y: -8, bodyDx: -3, armsPreset: 'south-ready', headPose: { view: 'south', scaleX: 1, cloakPiece: 0 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 1, x: 0, y: -8, armsPreset: 'south-ready', insertMode: 'between-south-arms' },
 ];
 
 const WHIRL_SWEEP_WEST_FRAMES: readonly SpearKeyframeSpec[] = [
@@ -1343,23 +1535,23 @@ const WHIRL_SWEEP_WEST_FRAMES: readonly SpearKeyframeSpec[] = [
 ];
 
 const WHIRL_SWEEP_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
-  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 15, x: 0, y: -12, scaleX: 1, scaleY: 1, headPose: { view: 'north', scaleX: 1, dx: -1, dy: -1, cloakPiece: 9 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 15, x: 0, y: -12, scaleX: 1, scaleY: -1, headPose: { view: 'north', scaleX: 1, dx: -2, dy: -2, cloakPiece: 10 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 14, x: 0, y: -12, scaleX: 1, scaleY: 1, headPose: { view: 'north', scaleX: 1, dx: 0, dy: -1, cloakPiece: 11 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 15, x: 0, y: -12, scaleX: -1, scaleY: 1, headPose: { view: 'north', scaleX: 1, dx: 2, dy: -2, cloakPiece: 10 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 14, x: 0, y: -12, scaleX: -1, scaleY: 1, headPose: { view: 'north', scaleX: 1, dx: 1, dy: -1, cloakPiece: 9 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 15, x: 0, y: -12, scaleX: -1, scaleY: -1, headPose: { view: 'north', scaleX: 1, dx: 2, dy: 0, cloakPiece: 11 }, insertMode: 'back' },
-  // F6..F15：正北对称 180° 胸肩高位狂风大横扫（右蓄 F6 → 右前扫 F7 → 正北命中 F8 → 正左满弧 F9，全程背身正北不歪身不转头、双腿间 0 漏枪把）
-  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 11, x: 6, y: -18, scaleX: -1, headPose: { view: 'north', scaleX: 1, dx: 2, dy: 1, cloakPiece: 9 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 10, x: 9, y: -18, scaleX: -1, headPose: { view: 'north', scaleX: 1, dx: 2, dy: -1, cloakPiece: 10 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -21, headPose: { view: 'north', scaleX: 1, dx: 0, dy: -3, cloakPiece: 11 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 10, x: -9, y: -18, headPose: { view: 'north', scaleX: 1, dx: -2, dy: -2, cloakPiece: 11 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 10, x: -10, y: -18, headPose: { view: 'north', scaleX: 1, dx: -2, dy: -1, cloakPiece: 10 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 0, x: -8, y: -18, headPose: { view: 'north', scaleX: 1, dx: -1, dy: -1, cloakPiece: 9 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 8, piece: 11, x: -4, y: -18, bodyDx: 3, headPose: { view: 'north', scaleX: 1, dx: 0, dy: 0, cloakPiece: 9 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 9, piece: 11, x: 4, y: -18, bodyDx: 2, scaleX: -1, headPose: { view: 'north', scaleX: 1, dx: 1, dy: 0, cloakPiece: 8 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 22, x: 9, y: -10, headPose: { view: 'north', scaleX: 1, dy: -1, cloakPiece: 8 }, insertMode: 'before-cloak' },
-  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 23, x: 9, y: -9, insertMode: 'before-cloak' },
+  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 15, x: 0, y: -12, scaleX: 1, scaleY: 1, armsPreset: 'north-whirl-center', headPose: { view: 'north', scaleX: 1, dx: -1, dy: -1, cloakPiece: 9 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 15, x: 0, y: -12, scaleX: 1, scaleY: -1, armsPreset: 'north-whirl-center', headPose: { view: 'north', scaleX: 1, dx: -2, dy: -2, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 14, x: 0, y: -12, scaleX: 1, scaleY: 1, armsPreset: 'north-whirl-center', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -1, cloakPiece: 11 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 15, x: 0, y: -12, scaleX: -1, scaleY: 1, armsPreset: 'north-whirl-center', headPose: { view: 'north', scaleX: 1, dx: 2, dy: -2, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 14, x: 0, y: -12, scaleX: -1, scaleY: 1, armsPreset: 'north-whirl-center', headPose: { view: 'north', scaleX: 1, dx: 1, dy: -1, cloakPiece: 9 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 15, x: 0, y: -12, scaleX: -1, scaleY: -1, armsPreset: 'north-whirl-center', headPose: { view: 'north', scaleX: 1, dx: 2, dy: 0, cloakPiece: 11 }, insertMode: 'back' },
+  // F6..F15：正北对称 180° 双手胸肩高位狂风大横扫（右蓄 F6 → 右前扫 F7 → 正北命中 F8 → 正左满弧 F9，全程双手实握、背身正北不转头、双腿间 0 漏枪把）
+  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 11, x: 6, y: -19, scaleX: -1, armsPreset: 'north-sweep-right', headPose: { view: 'north', scaleX: 1, dx: 2, dy: 1, cloakPiece: 9 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 10, x: 9, y: -21, scaleX: -1, armsPreset: 'north-sweep-right', headPose: { view: 'north', scaleX: 1, dx: 2, dy: -1, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -21, armsPreset: 'north-thrust-extend', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -3, cloakPiece: 11 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 10, x: -9, y: -21, armsPreset: 'north-sweep-left', headPose: { view: 'north', scaleX: 1, dx: -2, dy: -2, cloakPiece: 11 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 10, x: -10, y: -21, armsPreset: 'north-sweep-left', headPose: { view: 'north', scaleX: 1, dx: -2, dy: -1, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 0, x: -8, y: -18, armsPreset: 'north-sweep-left', headPose: { view: 'north', scaleX: 1, dx: -1, dy: -1, cloakPiece: 9 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 8, piece: 11, x: -4, y: -18, bodyDx: 3, armsPreset: 'north-sweep-left', headPose: { view: 'north', scaleX: 1, dx: 0, dy: 0, cloakPiece: 9 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 9, piece: 11, x: 4, y: -19, bodyDx: 2, scaleX: -1, armsPreset: 'north-sweep-right', headPose: { view: 'north', scaleX: 1, dx: 1, dy: 0, cloakPiece: 8 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 22, x: 8, y: -10, armsPreset: 'north-ready', headPose: { view: 'north', scaleX: 1, dy: -1, cloakPiece: 8 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 23, x: 8, y: -9, armsPreset: 'north-ready', insertMode: 'back' },
 ];
 
 // 6. 连环点枪 · 暴雨梨花枪（17 帧 ≈ 1.02s，纯原地定脚：前 8 帧半伸微颤暴雨梨花针芒 + 2 帧原地缩枪蓄劲 + 7 帧原地定音主刺）
@@ -1389,47 +1581,47 @@ const FLURRY_WEST_FRAMES: readonly SpearKeyframeSpec[] = [
 ];
 
 const FLURRY_SOUTH_FRAMES: readonly SpearKeyframeSpec[] = [
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 0, x: 0, y: -8, insertMode: 'between-south-arms' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -4, y: 1, headPose: { dx: -1, dy: -1, cloakPiece: 1 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -2, y: 5, headPose: { view: 'south-action', dx: 1, dy: 1, cloakPiece: 2 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -4, y: 0, headPose: { dx: -1, dy: -1, cloakPiece: 3 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 5, headPose: { view: 'south-action', dx: 0, dy: 1, cloakPiece: 2 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -2, y: 1, headPose: { dx: 1, dy: -1, cloakPiece: 1 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -4, y: 6, headPose: { view: 'south-action', dx: -1, dy: 2, cloakPiece: 3 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 1, headPose: { dx: 0, dy: -1, cloakPiece: 2 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 3, piece: 7, x: -3, y: 2, headPose: { view: 'south-action', dy: 0, cloakPiece: 1 }, insertMode: 'front' },
-  // 原地缩枪蓄劲
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 0, piece: 7, x: -7, y: -12, headPose: { dy: -1, cloakPiece: 1 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 1, piece: 7, x: -7, y: -16, headPose: { dx: 1, dy: -2, cloakPiece: 3 }, insertMode: 'back' },
-  // 原地定音第 3 刺（无人物位移）
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 5, headPose: { view: 'south-action', dy: 1, cloakPiece: 2 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 9, headPose: { view: 'south-action', dy: 2, cloakPiece: 3 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 8, headPose: { view: 'south-action', dy: 1, cloakPiece: 2 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 3, piece: 7, x: -3, y: 1, headPose: { dy: 0, cloakPiece: 1 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 4, piece: 0, x: -1, y: -7, headPose: { dy: 0, cloakPiece: 0 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 1, x: 0, y: -8, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 0, x: 0, y: -8, armsPreset: 'south-ready', insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -4, y: 1, armsPreset: 'south-thrust-extend', headPose: { dx: -1, dy: -1, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -2, y: 5, armsPreset: 'south-thrust-extend', headPose: { view: 'south-action', dx: 1, dy: 1, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -4, y: 0, armsPreset: 'south-thrust-extend', headPose: { dx: -1, dy: -1, cloakPiece: 3 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 5, armsPreset: 'south-thrust-extend', headPose: { view: 'south-action', dx: 0, dy: 1, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -2, y: 1, armsPreset: 'south-thrust-extend', headPose: { dx: 1, dy: -1, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -4, y: 6, armsPreset: 'south-thrust-extend', headPose: { view: 'south-action', dx: -1, dy: 2, cloakPiece: 3 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 1, armsPreset: 'south-thrust-extend', headPose: { dx: 0, dy: -1, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 3, piece: 7, x: -3, y: 2, armsPreset: 'south-thrust-extend', headPose: { view: 'south-action', dy: 0, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  // 原地双手缩枪蓄劲
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 0, piece: 7, x: -5, y: -12, armsPreset: 'south-thrust-coil', headPose: { dy: -1, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 1, piece: 7, x: -5, y: -15, armsPreset: 'south-thrust-coil', headPose: { dx: 1, dy: -2, cloakPiece: 3 }, insertMode: 'between-south-arms' },
+  // 原地双手定音第 3 刺（无人物位移）
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 5, armsPreset: 'south-thrust-extend', headPose: { view: 'south-action', dy: 1, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 9, armsPreset: 'south-thrust-extend', headPose: { view: 'south-action', dy: 2, cloakPiece: 3 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 8, armsPreset: 'south-thrust-extend', headPose: { view: 'south-action', dy: 1, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 3, piece: 7, x: -3, y: 1, armsPreset: 'south-thrust-extend', headPose: { dy: 0, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 4, piece: 0, x: -1, y: -7, armsPreset: 'south-ready', headPose: { dy: 0, cloakPiece: 0 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 1, x: 0, y: -8, armsPreset: 'south-ready', insertMode: 'between-south-arms' },
 ];
 
 const FLURRY_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
-  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 22, x: 9, y: -9, insertMode: 'before-cloak' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 5, y: -19, headPose: { dx: -1, dy: -1, cloakPiece: 9 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 7, y: -23, headPose: { dx: 1, dy: -3, cloakPiece: 11 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 5, y: -18, headPose: { dx: -1, dy: -1, cloakPiece: 10 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -23, headPose: { dx: 0, dy: -3, cloakPiece: 11 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 7, y: -19, headPose: { dx: 1, dy: -1, cloakPiece: 9 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 5, y: -24, headPose: { dx: -1, dy: -3, cloakPiece: 11 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -19, headPose: { dx: 0, dy: -1, cloakPiece: 10 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -20, headPose: { dx: 0, dy: -2, cloakPiece: 9 }, insertMode: 'back' },
-  // 原地右侧缩枪蓄劲（枪头露于右肩外、枪把位于右胯外侧，头锁正北后收不转向）
-  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 0, piece: 8, x: 13, y: -10, headPose: { view: 'north', scaleX: 1, dx: 1, dy: 1, cloakPiece: 9 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 1, piece: 8, x: 14, y: -8, headPose: { view: 'north', scaleX: 1, dx: 0, dy: 2, cloakPiece: 10 }, insertMode: 'back' },
-  // 原地定音第 3 刺（无人物位移、无双腿漏枪把）
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -22, headPose: { dy: -2, cloakPiece: 11 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -25, headPose: { dy: -3, cloakPiece: 10 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -24, headPose: { dx: -1, dy: -3, cloakPiece: 11 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 8, y: -17, headPose: { dy: -1, cloakPiece: 9 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 0, piece: 8, x: 12, y: -11, headPose: { dx: 1, dy: 0, cloakPiece: 9 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 23, x: 9, y: -9, insertMode: 'before-cloak' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 22, x: 8, y: -9, armsPreset: 'north-ready', insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 5, y: -19, armsPreset: 'north-thrust-extend', headPose: { dx: -1, dy: -1, cloakPiece: 9 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 7, y: -23, armsPreset: 'north-thrust-extend', headPose: { dx: 1, dy: -3, cloakPiece: 11 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 5, y: -18, armsPreset: 'north-thrust-extend', headPose: { dx: -1, dy: -1, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -23, armsPreset: 'north-thrust-extend', headPose: { dx: 0, dy: -3, cloakPiece: 11 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 7, y: -19, armsPreset: 'north-thrust-extend', headPose: { dx: 1, dy: -1, cloakPiece: 9 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 5, y: -24, armsPreset: 'north-thrust-extend', headPose: { dx: -1, dy: -3, cloakPiece: 11 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -19, armsPreset: 'north-thrust-extend', headPose: { dx: 0, dy: -1, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -20, armsPreset: 'north-thrust-extend', headPose: { dx: 0, dy: -2, cloakPiece: 9 }, insertMode: 'back' },
+  // 原地右侧双手缩枪蓄劲（枪头露于右肩外、枪把位于右胯外侧，头锁正北后收不转向）
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 0, piece: 8, x: 11, y: -10, armsPreset: 'north-thrust-coil', headPose: { view: 'north', scaleX: 1, dx: 1, dy: 1, cloakPiece: 9 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 1, piece: 8, x: 12, y: -8, armsPreset: 'north-thrust-coil', headPose: { view: 'north', scaleX: 1, dx: 0, dy: 2, cloakPiece: 10 }, insertMode: 'back' },
+  // 原地双手定音第 3 刺（无人物位移、无双腿漏枪把）
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -22, armsPreset: 'north-thrust-extend', headPose: { dy: -2, cloakPiece: 11 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -25, armsPreset: 'north-thrust-extend', headPose: { dy: -3, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -24, armsPreset: 'north-thrust-extend', headPose: { dx: -1, dy: -3, cloakPiece: 11 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 8, y: -17, armsPreset: 'north-thrust-extend', headPose: { dy: -1, cloakPiece: 9 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 0, piece: 8, x: 11, y: -11, armsPreset: 'north-thrust-coil', headPose: { dx: 1, dy: 0, cloakPiece: 9 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 23, x: 8, y: -9, armsPreset: 'north-ready', insertMode: 'back' },
 ];
 
 // 7. 万圣龙王破 · 怒龙穿心（19 帧，纯原地定脚无黑屏：6 帧盘枪引气 → 3 帧原地凝势 → 10 帧原地贯出 1.6 倍螺旋龙枪芒，全程头锁当前朝向不转向）
@@ -1460,69 +1652,69 @@ const SOVEREIGN_WEST_FRAMES: readonly SpearKeyframeSpec[] = [
 ];
 
 const SOVEREIGN_SOUTH_FRAMES: readonly SpearKeyframeSpec[] = [
-  // F0..F5：原地盘枪引气（全程头锁正南不左右转头）
-  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 0, piece: 0, x: -4, y: -11, bodyDx: 2, headPose: { view: 'south', scaleX: 1, dx: 1, dy: -1, cloakPiece: 0 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 2, piece: 11, x: -9, y: -10, bodyDx: 3, headPose: { view: 'south', scaleX: 1, dy: -1, cloakPiece: 1 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 3, piece: 9, x: -6, y: -3, bodyDx: -1, headPose: { view: 'south-action', scaleX: 1, dx: -2, dy: -1, cloakPiece: 2 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 4, piece: 9, x: 6, y: -3, bodyDx: -3, scaleX: -1, headPose: { view: 'south-action', scaleX: 1, dx: -1, dy: 2, cloakPiece: 3 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 5, piece: 10, x: 10, y: -7, bodyDx: -3, scaleX: -1, headPose: { view: 'south-action', scaleX: 1, dy: 1, cloakPiece: 2 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 7, piece: 0, x: 5, y: -9, bodyDx: -3, scaleX: -1, headPose: { view: 'south', scaleX: 1, cloakPiece: 1 }, insertMode: 'front' },
-  // 原地沉腰凝势
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 0, piece: 7, x: -7, y: -13, headPose: { dy: -1, cloakPiece: 1 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 1, piece: 7, x: -7, y: -17, headPose: { dx: 1, dy: -2, cloakPiece: 3 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 1, piece: 7, x: -7, y: -16, headPose: { dx: 1, dy: -1, cloakPiece: 1 }, insertMode: 'back' },
-  // 原地化龙贯出
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 4, headPose: { view: 'south-action', dy: 1, cloakPiece: 2 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 8, headPose: { view: 'south-action', dy: 2, cloakPiece: 3 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 8, headPose: { view: 'south-action', dy: 3, cloakPiece: 2 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 7, headPose: { view: 'south-action', dy: 2, cloakPiece: 3 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 3, piece: 7, x: -3, y: 3, headPose: { view: 'south-action', dy: 1, cloakPiece: 2 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 3, piece: 7, x: -3, y: 0, headPose: { view: 'south-action', dy: 0, cloakPiece: 1 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 3, piece: 7, x: -4, y: -4, headPose: { dy: -1, cloakPiece: 1 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 4, piece: 0, x: -1, y: -7, headPose: { dy: 0, cloakPiece: 0 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 0, x: 0, y: -8, headPose: { dy: 1 }, insertMode: 'between-south-arms' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 1, x: 0, y: -8, insertMode: 'between-south-arms' },
+  // F0..F5：原地双手盘枪引气（全程双手实握、头锁正南不左右转头）
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 0, piece: 0, x: -4, y: -10, bodyDx: 2, armsPreset: 'south-sweep-left', headPose: { view: 'south', scaleX: 1, dx: 1, dy: -1, cloakPiece: 0 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 2, piece: 11, x: -7, y: -10, bodyDx: 3, armsPreset: 'south-sweep-left', headPose: { view: 'south', scaleX: 1, dy: -1, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 3, piece: 9, x: -6, y: -5, bodyDx: -1, armsPreset: 'south-sweep-left', headPose: { view: 'south-action', scaleX: 1, dx: -2, dy: -1, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 4, piece: 9, x: 6, y: -5, bodyDx: -3, scaleX: -1, armsPreset: 'south-sweep-right', headPose: { view: 'south-action', scaleX: 1, dx: -1, dy: 2, cloakPiece: 3 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 5, piece: 10, x: 8, y: -7, bodyDx: -3, scaleX: -1, armsPreset: 'south-sweep-right', headPose: { view: 'south-action', scaleX: 1, dy: 1, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4073-south-ticks-0', sourceFrame: 7, piece: 0, x: 4, y: -8, bodyDx: -3, scaleX: -1, armsPreset: 'south-sweep-right', headPose: { view: 'south', scaleX: 1, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  // 原地双手沉腰凝势
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 0, piece: 7, x: -5, y: -13, armsPreset: 'south-thrust-coil', headPose: { dy: -1, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 1, piece: 7, x: -5, y: -16, armsPreset: 'south-thrust-coil', headPose: { dx: 1, dy: -2, cloakPiece: 3 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 1, piece: 7, x: -5, y: -15, armsPreset: 'south-thrust-coil', headPose: { dx: 1, dy: -1, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  // 原地双手化龙贯出
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 4, armsPreset: 'south-thrust-extend', headPose: { view: 'south-action', dy: 1, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 8, armsPreset: 'south-thrust-extend', headPose: { view: 'south-action', dy: 2, cloakPiece: 3 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 8, armsPreset: 'south-thrust-extend', headPose: { view: 'south-action', dy: 3, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 2, piece: 7, x: -3, y: 7, armsPreset: 'south-thrust-extend', headPose: { view: 'south-action', dy: 2, cloakPiece: 3 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 3, piece: 7, x: -3, y: 3, armsPreset: 'south-thrust-extend', headPose: { view: 'south-action', dy: 1, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 3, piece: 7, x: -3, y: 0, armsPreset: 'south-thrust-extend', headPose: { view: 'south-action', dy: 0, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 3, piece: 7, x: -4, y: -4, armsPreset: 'south-thrust-extend', headPose: { dy: -1, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4061-south-ticks-0', sourceFrame: 4, piece: 0, x: -1, y: -7, armsPreset: 'south-ready', headPose: { dy: 0, cloakPiece: 0 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 0, x: 0, y: -8, armsPreset: 'south-ready', headPose: { dy: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 1, x: 0, y: -8, armsPreset: 'south-ready', insertMode: 'between-south-arms' },
 ];
 
 const SOVEREIGN_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
-  // F0..F5：原地胸肩高位盘枪引气（全程正北背身与正北头部随势摆动，不转头、双腿间 0 漏枪把）
-  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 0, x: 6, y: -18, scaleX: -1, headPose: { view: 'north', scaleX: 1, dx: 1, dy: 1, cloakPiece: 8 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 11, x: 7, y: -18, scaleX: -1, headPose: { view: 'north', scaleX: 1, dx: 2, dy: 0, cloakPiece: 9 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -21, headPose: { view: 'north', scaleX: 1, dx: 0, dy: -2, cloakPiece: 10 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 10, x: -8, y: -18, headPose: { view: 'north', scaleX: 1, dx: -2, dy: -1, cloakPiece: 11 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 0, x: -9, y: -18, headPose: { view: 'north', scaleX: 1, dx: -2, dy: 0, cloakPiece: 10 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 0, x: -6, y: -18, headPose: { view: 'north', scaleX: 1, dx: -1, dy: 1, cloakPiece: 9 }, insertMode: 'back' },
-  // 原地右侧沉腰凝势（枪头露于右肩外、枪把撤于右胯外侧，头锁正北后收不转向）
-  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 0, piece: 8, x: 13, y: -10, headPose: { view: 'north', scaleX: 1, dx: 1, dy: 1, cloakPiece: 9 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 1, piece: 8, x: 15, y: -7, headPose: { view: 'north', scaleX: 1, dx: 0, dy: 2, cloakPiece: 10 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 1, piece: 8, x: 14, y: -8, headPose: { view: 'north', scaleX: 1, dx: 1, dy: 2, cloakPiece: 11 }, insertMode: 'back' },
-  // 原地化龙贯出
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -22, headPose: { dy: -2, cloakPiece: 11 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -25, headPose: { dy: -3, cloakPiece: 10 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -25, headPose: { dy: -4, cloakPiece: 11 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -24, headPose: { dy: -3, cloakPiece: 10 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 7, y: -20, headPose: { dy: -2, cloakPiece: 11 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 9, y: -16, headPose: { dy: -1, cloakPiece: 9 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 0, piece: 8, x: 12, y: -12, headPose: { dx: 1, dy: -1, cloakPiece: 9 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 0, piece: 8, x: 12, y: -10, headPose: { dx: 0, dy: 0, cloakPiece: 9 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 22, x: 9, y: -10, headPose: { dy: -1, cloakPiece: 8 }, insertMode: 'before-cloak' },
-  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 23, x: 9, y: -9, insertMode: 'before-cloak' },
+  // F0..F5：原地双手胸肩高位盘枪引气（全程正北背身、双手实握与正北头部随势摆动，不转头、双腿间 0 漏枪把）
+  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 0, x: 6, y: -18, scaleX: -1, armsPreset: 'north-sweep-right', headPose: { view: 'north', scaleX: 1, dx: 1, dy: 1, cloakPiece: 8 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 11, x: 7, y: -19, scaleX: -1, armsPreset: 'north-sweep-right', headPose: { view: 'north', scaleX: 1, dx: 2, dy: 0, cloakPiece: 9 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -21, armsPreset: 'north-thrust-extend', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -2, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 10, x: -8, y: -21, armsPreset: 'north-sweep-left', headPose: { view: 'north', scaleX: 1, dx: -2, dy: -1, cloakPiece: 11 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 0, x: -9, y: -18, armsPreset: 'north-sweep-left', headPose: { view: 'north', scaleX: 1, dx: -2, dy: 0, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 0, x: -6, y: -18, armsPreset: 'north-sweep-left', headPose: { view: 'north', scaleX: 1, dx: -1, dy: 1, cloakPiece: 9 }, insertMode: 'back' },
+  // 原地右侧双手沉腰凝势（枪头露于右肩外、枪把撤于右胯外侧，头锁正北后收不转向）
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 0, piece: 8, x: 11, y: -10, armsPreset: 'north-thrust-coil', headPose: { view: 'north', scaleX: 1, dx: 1, dy: 1, cloakPiece: 9 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 1, piece: 8, x: 12, y: -7, armsPreset: 'north-thrust-coil', headPose: { view: 'north', scaleX: 1, dx: 0, dy: 2, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 1, piece: 8, x: 12, y: -8, armsPreset: 'north-thrust-coil', headPose: { view: 'north', scaleX: 1, dx: 1, dy: 2, cloakPiece: 11 }, insertMode: 'back' },
+  // 原地双手化龙贯出
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -22, armsPreset: 'north-thrust-extend', headPose: { dy: -2, cloakPiece: 11 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -25, armsPreset: 'north-thrust-extend', headPose: { dy: -3, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -25, armsPreset: 'north-thrust-extend', headPose: { dy: -4, cloakPiece: 11 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -24, armsPreset: 'north-thrust-extend', headPose: { dy: -3, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 7, y: -20, armsPreset: 'north-thrust-extend', headPose: { dy: -2, cloakPiece: 11 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 9, y: -16, armsPreset: 'north-thrust-extend', headPose: { dy: -1, cloakPiece: 9 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 0, piece: 8, x: 11, y: -12, armsPreset: 'north-thrust-coil', headPose: { dx: 1, dy: -1, cloakPiece: 9 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 0, piece: 8, x: 11, y: -10, armsPreset: 'north-thrust-coil', headPose: { dx: 0, dy: 0, cloakPiece: 9 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 22, x: 8, y: -10, armsPreset: 'north-ready', headPose: { dy: -1, cloakPiece: 8 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 23, x: 8, y: -9, armsPreset: 'north-ready', insertMode: 'back' },
 ];
 
-// 8. 3 个自身增益共用立枪聚气动作（12 帧，基于原版战吼 pose-3977..3979，立枪顿地聚气、红缨随风猎猎飘动）
+// 8. 3 个自身增益共用双手立枪聚气动作（12 帧，南/北向双手正握立枪顿地聚气、取消单手举拳战吼）
 const BUFF_CAST_SOUTH_FRAMES: readonly SpearKeyframeSpec[] = [
-  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 0, piece: 4, x: -9, y: -12, headPose: { dy: -1, cloakPiece: 0 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 1, piece: 4, x: -9, y: -13, headPose: { dy: -2, cloakPiece: 3 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 2, piece: 4, x: -9, y: -10, headPose: { view: 'south-action', dy: 3, cloakPiece: 2 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 3, piece: 5, x: -9, y: -10, headPose: { view: 'south-action', dy: 1, cloakPiece: 3 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 4, piece: 4, x: -9, y: -10, headPose: { dy: -1, cloakPiece: 1 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 5, piece: 5, x: -9, y: -10, headPose: { dy: 0, cloakPiece: 2 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 6, piece: 4, x: -9, y: -10, headPose: { dy: -1, cloakPiece: 3 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 7, piece: 5, x: -9, y: -10, headPose: { dy: 1, cloakPiece: 1 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 8, piece: 4, x: -9, y: -10, headPose: { dy: -1, cloakPiece: 2 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 9, piece: 5, x: -9, y: -10, headPose: { dy: 0, cloakPiece: 1 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 1, piece: 4, x: -8, y: -10, headPose: { dy: -1, cloakPiece: 0 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 0, x: 0, y: -8, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 0, piece: 4, x: -5, y: -12, armsPreset: 'south-buff-upright', headPose: { dy: -1, cloakPiece: 0 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 1, piece: 4, x: -5, y: -13, armsPreset: 'south-buff-upright', headPose: { dy: -2, cloakPiece: 3 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 2, piece: 4, x: -5, y: -10, armsPreset: 'south-buff-upright', headPose: { view: 'south-action', dy: 3, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 3, piece: 5, x: -5, y: -10, armsPreset: 'south-buff-upright', headPose: { view: 'south-action', dy: 1, cloakPiece: 3 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 4, piece: 4, x: -5, y: -10, armsPreset: 'south-buff-upright', headPose: { dy: -1, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 5, piece: 5, x: -5, y: -10, armsPreset: 'south-buff-upright', headPose: { dy: 0, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 6, piece: 4, x: -5, y: -10, armsPreset: 'south-buff-upright', headPose: { dy: -1, cloakPiece: 3 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 7, piece: 5, x: -5, y: -10, armsPreset: 'south-buff-upright', headPose: { dy: 1, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 8, piece: 4, x: -5, y: -10, armsPreset: 'south-buff-upright', headPose: { dy: -1, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 9, piece: 5, x: -5, y: -10, armsPreset: 'south-buff-upright', headPose: { dy: 0, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-3977-south-ticks-16', sourceFrame: 1, piece: 4, x: -5, y: -10, armsPreset: 'south-buff-upright', headPose: { dy: -1, cloakPiece: 0 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 0, x: 0, y: -8, armsPreset: 'south-ready', insertMode: 'between-south-arms' },
 ];
 
 const BUFF_CAST_WEST_FRAMES: readonly SpearKeyframeSpec[] = [
@@ -1541,18 +1733,18 @@ const BUFF_CAST_WEST_FRAMES: readonly SpearKeyframeSpec[] = [
 ];
 
 const BUFF_CAST_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
-  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 0, piece: 4, x: 10, y: -12, scaleX: -1, headPose: { dy: -1, cloakPiece: 8 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 1, piece: 4, x: 10, y: -13, scaleX: -1, headPose: { dy: -2, cloakPiece: 10 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 2, piece: 4, x: 10, y: -10, scaleX: -1, headPose: { dx: -1, dy: 1, cloakPiece: 11 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 3, piece: 5, x: 10, y: -10, scaleX: -1, headPose: { dx: -1, dy: 0, cloakPiece: 10 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 4, piece: 4, x: 10, y: -10, scaleX: -1, headPose: { dx: -2, dy: -1, cloakPiece: 9 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 5, piece: 5, x: 10, y: -10, scaleX: -1, headPose: { dx: -1, dy: 0, cloakPiece: 11 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 6, piece: 4, x: 10, y: -10, scaleX: -1, headPose: { dx: -2, dy: -1, cloakPiece: 10 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 7, piece: 5, x: 10, y: -10, scaleX: -1, headPose: { dx: -1, dy: 1, cloakPiece: 9 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 8, piece: 4, x: 10, y: -10, scaleX: -1, headPose: { dx: -2, dy: -1, cloakPiece: 11 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 9, piece: 5, x: 10, y: -10, scaleX: -1, headPose: { dx: -1, dy: 0, cloakPiece: 10 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 1, piece: 4, x: 9, y: -10, scaleX: -1, headPose: { dy: -1, cloakPiece: 8 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 23, x: 9, y: -9, insertMode: 'before-cloak' },
+  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 0, piece: 4, x: 8, y: -12, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { dy: -1, cloakPiece: 8 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 1, piece: 4, x: 8, y: -13, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { dy: -2, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 2, piece: 4, x: 8, y: -10, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { dx: -1, dy: 1, cloakPiece: 11 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 3, piece: 5, x: 8, y: -10, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { dx: -1, dy: 0, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 4, piece: 4, x: 8, y: -10, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { dx: -2, dy: -1, cloakPiece: 9 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 5, piece: 5, x: 8, y: -10, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { dx: -1, dy: 0, cloakPiece: 11 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 6, piece: 4, x: 8, y: -10, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { dx: -2, dy: -1, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 7, piece: 5, x: 8, y: -10, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { dx: -1, dy: 1, cloakPiece: 9 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 8, piece: 4, x: 8, y: -10, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { dx: -2, dy: -1, cloakPiece: 11 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 9, piece: 5, x: 8, y: -10, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { dx: -1, dy: 0, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3979-north-ticks-16', sourceFrame: 1, piece: 4, x: 8, y: -10, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { dy: -1, cloakPiece: 8 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 23, x: 8, y: -9, armsPreset: 'north-ready', insertMode: 'back' },
 ];
 
 // 9. 长枪战斗阵亡动作（23 帧，基于原版 pose-3964-south-ticks-0：受创失手 → 长枪翻转砸地弹跳 → 英雄倒地）

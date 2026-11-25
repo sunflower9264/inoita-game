@@ -609,27 +609,27 @@ function drawBasicThrustAxis(
 }
 
 // ===========================================================================
-// 3. 普通攻击第二段：素银极薄小月牙拨光（spear-basic-flick，3 帧）
+// 3. 普通攻击第二段：素银紧凑四正方向水平横扫弧光（spear-basic-flick，3 帧）
 // ===========================================================================
 
 function buildBasicFlick(direction: 'west' | 'south' | 'north'): DirectionalEffectSource {
   const baseFrames: EffectFrameGrid[] = [];
   const addFrames: EffectFrameGrid[] = [];
-  // 极简紧凑的斜撩小月牙，厚度仅 2.2~3.0px，干净利落
+  // 紧凑克制的四正方向水平横扫素银月牙（腰胸中心 (0,-12)，rx=34, ry=22，厚度 2.2~3.2px，不抢技能风头）
   const cfg = direction === 'south'
-    ? { w: 70, h: 48, ox: 35, oy: 20, cx: 35, cy: 16, rx: 28, ry: 18, arcs: [[155, 85, 2.2], [148, 22, 3.0], [95, 18, 1.6]] as const }
+    ? { w: 84, h: 52, ox: 42, oy: 20, cx: 42, cy: 8, rx: 34, ry: 22, arcs: [[168, 95, 2.2], [168, 12, 3.2], [95, 10, 1.6]] as const }
     : direction === 'west'
-      ? { w: 58, h: 56, ox: 44, oy: 36, cx: 40, cy: 25, rx: 28, ry: 20, arcs: [[228, 165, 2.2], [220, 128, 3.0], [178, 125, 1.6]] as const }
-      : { w: 70, h: 56, ox: 35, oy: 48, cx: 35, cy: 32, rx: 28, ry: 18, arcs: [[-20, -95, 2.2], [-28, -155, 3.0], [-85, -160, 1.6]] as const };
+      ? { w: 66, h: 68, ox: 54, oy: 46, cx: 51, cy: 34, rx: 34, ry: 22, arcs: [[-102, -175, 2.2], [-102, -258, 3.2], [-175, -260, 1.6]] as const }
+      : { w: 84, h: 52, ox: 42, oy: 44, cx: 42, cy: 32, rx: 34, ry: 22, arcs: [[-12, -85, 2.2], [-12, -168, 3.2], [-85, -170, 1.6]] as const };
 
   for (let i = 0; i < 3; i++) {
     const base = blank(cfg.w, cfg.h);
     const add = blank(cfg.w, cfg.h);
     const [a0, a1, thick] = cfg.arcs[i];
-    drawArcCurve(base, add, cfg.cx, cfg.cy, cfg.rx, cfg.ry, a0, a1, thick, i !== 2, 70);
+    drawArcCurve(base, add, cfg.cx, cfg.cy, cfg.rx, cfg.ry, a0, a1, thick, i !== 2, 120);
     if (i === 1) {
-      // 外缘补一条极细银丝增强撩枪锐度
-      drawArcCurve(base, add, cfg.cx, cfg.cy, cfg.rx + 4, cfg.ry + 3, a0 + (a1 - a0) * 0.3, a1, 0.8, true, 50);
+      // 外缘补一条极细银丝增强水平横扫锐度
+      drawArcCurve(base, add, cfg.cx, cfg.cy, cfg.rx + 4, cfg.ry + 3, a0 + (a1 - a0) * 0.25, a1, 0.85, true, 90);
     }
     baseFrames.push({ id: `spear-basic-flick-${direction}-base-${i}`, rows: base.map(r => r.join('')) });
     addFrames.push({ id: `spear-basic-flick-${direction}-add-${i}`, rows: add.map(r => r.join('')) });

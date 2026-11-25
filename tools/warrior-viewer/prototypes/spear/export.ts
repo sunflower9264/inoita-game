@@ -7,7 +7,7 @@ import type { EffectClip } from '../../../../src/domain/content.ts';
 import type { CostumePart, CostumePiece, CostumePose, WardrobeCatalog } from '../../../../src/domain/wardrobe.ts';
 import { SPEAR_EFFECT_SOURCES } from './effects-source.ts';
 import type { EffectFrameGrid, RgbaPalette } from './effects-source.ts';
-import { SPEAR_ACTION_RECIPES, SPEAR_CYCLE_RECIPES, SPEAR_PALETTE, SPEAR_SLICES, WEST_ARMS_PRESETS, WEST_LEGS_PRESETS } from './source.ts';
+import { SPEAR_ACTION_RECIPES, SPEAR_ARMS_PRESETS, SPEAR_CYCLE_RECIPES, SPEAR_PALETTE, SPEAR_SLICES, WEST_LEGS_PRESETS } from './source.ts';
 import type { SpearArmsPreset, SpearHeadPose, SpearHeadView, SpearInsertMode, SpearKeyframedPoseRecipe, SpearLegsPreset, SpearPoseRecipe } from './source.ts';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
@@ -310,52 +310,51 @@ function insertSpearIntoFrame(
   const poseApplied = applyHeadPose(legsApplied, headPose);
 
   if (armsPreset) {
-    const preset = WEST_ARMS_PRESETS[armsPreset];
+    const preset = SPEAR_ARMS_PRESETS[armsPreset];
     const bodyOnly = poseApplied.filter(part => !REMOVED_WEAPON_PARTS.has(part.part) && !isCoatFrontArm(part));
     const torsoIdx = bodyOnly.findIndex(part => part.part === 'coat-front');
     if (torsoIdx < 0) {
       throw new Error(`armsPreset=${armsPreset} 需要基础帧包含胸甲 coat-front 躯干切片`);
     }
     const torso = bodyOnly[torsoIdx];
-    const torsoDx = torso.x - (-1);
+    const baseTorsoX = preset.baseTorsoX ?? -1;
+    const torsoDx = torso.x - baseTorsoX;
     const torsoDy = torso.y;
-    const backArm: CostumePart = {
+    const buildArm = (arm: typeof preset.backArm): CostumePart => ({
       part: 'coat-front',
-      piece: preset.backArm.piece,
-      x: preset.backArm.x + torsoDx,
-      y: preset.backArm.y + torsoDy,
-      scaleX: preset.backArm.scaleX,
-      scaleY: preset.backArm.scaleY,
+      piece: arm.piece,
+      x: arm.x + torsoDx,
+      y: arm.y + torsoDy,
+      scaleX: arm.scaleX,
+      scaleY: arm.scaleY,
       angle: 0,
       alpha: 1,
-    };
-    const frontArm: CostumePart = {
-      part: 'coat-front',
-      piece: preset.frontArm.piece,
-      x: preset.frontArm.x + torsoDx,
-      y: preset.frontArm.y + torsoDy,
-      scaleX: preset.frontArm.scaleX,
-      scaleY: preset.frontArm.scaleY,
-      angle: 0,
-      alpha: 1,
-    };
+    });
     const beforeTorso = bodyOnly.slice(0, torsoIdx);
     const afterTorso = bodyOnly.slice(torsoIdx + 1);
     const transform = (part: CostumePart): CostumePart => shift(mirrorBaseFrame ? mirrorPartX(part) : part);
     const backList = beforeTorso.map(transform);
-    const backArmOut = transform(backArm);
     const torsoOut = transform(torso);
-    const frontArmOut = transform(frontArm);
     const afterList = afterTorso.map(transform);
 
+    const armsWithLayer: { part: CostumePart; layer: 'behind-torso' | 'behind-spear' | 'front-of-spear' }[] = [
+      { part: transform(buildArm(preset.backArm)), layer: preset.backArm.layer ?? 'behind-torso' },
+      { part: transform(buildArm(preset.frontArm)), layer: preset.frontArm.layer ?? 'front-of-spear' },
+    ];
+    const behindTorsoArms = armsWithLayer.filter(a => a.layer === 'behind-torso').map(a => a.part);
+    const behindSpearArms = armsWithLayer.filter(a => a.layer === 'behind-spear').map(a => a.part);
+    const frontSpearArms = armsWithLayer.filter(a => a.layer === 'front-of-spear').map(a => a.part);
+
     if (insertMode === 'back') {
-      return [shiftedSpear, ...backList, backArmOut, torsoOut, frontArmOut, ...afterList];
+      // 北向攻击 / 南向过顶蓄势：长枪在身前（镜头背面），behind-spear 手臂覆于枪杆之上且位于躯干/披风之后
+      return [...behindTorsoArms, shiftedSpear, ...behindSpearArms, ...backList, torsoOut, ...frontSpearArms, ...afterList];
     }
     if (insertMode === 'front') {
-      return [...backList, backArmOut, torsoOut, frontArmOut, ...afterList, shiftedSpear];
+      // 南向前景挥扫 / 上挑：长枪与实握前手位于身体及头脸前方
+      return [...backList, ...behindTorsoArms, torsoOut, ...behindSpearArms, ...afterList, shiftedSpear, ...frontSpearArms];
     }
-    // 默认双手实握遮挡顺序：远侧手在胸甲与枪杆后，近侧手在枪杆前、头发/头盔下方
-    return [...backList, backArmOut, torsoOut, shiftedSpear, frontArmOut, ...afterList];
+    // 默认双手实握遮挡顺序（西/东向与南向腰胸高度招式）：头脸压在肩上，前手实握于枪杆前方
+    return [...backList, ...behindTorsoArms, torsoOut, ...behindSpearArms, shiftedSpear, ...frontSpearArms, ...afterList];
   }
 
   const baseFrame = mirrorBaseFrame ? poseApplied.map(mirrorPartX) : poseApplied;
@@ -546,7 +545,7 @@ function run(): void {
       sweep: '基础横扫',
       'spear-upright-idle': '立枪待机',
       attack: '普攻 · 轻刺',
-      'attack-2': '普攻 · 斜撩',
+      'attack-2': '普攻 · 横扫',
       'attack-3': '普攻 · 上挑',
       'skill-dragon-pierce': '狂龙穿心破',
       'skill-whirl-sweep': '虬龙扫暴阵',
@@ -590,10 +589,10 @@ function run(): void {
       'attack-2': {
         cycleFrames: 7,
         cues: [
-          { effect: 'spear-basic-flick', startFrame: 2, variant: 'facing', placement: 'above-characters', source: '素银斜撩' },
+          { effect: 'spear-basic-flick', startFrame: 2, variant: 'facing', placement: 'above-characters', source: '素银横扫' },
         ],
         markers: [
-          { frame: 2, kind: 'swing', label: '出拨光（spear-basic-flick）' },
+          { frame: 2, kind: 'swing', label: '出横扫光（spear-basic-flick）' },
           { frame: 3, kind: 'strike', label: '普攻第二段命中' },
         ],
         sounds: ['Weapon_Dagger_Attack'],
