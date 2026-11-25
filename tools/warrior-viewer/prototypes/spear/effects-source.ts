@@ -1179,43 +1179,44 @@ function buildGaleSweep(direction: 'west' | 'south' | 'north'): DirectionalEffec
   const baseFrames: EffectFrameGrid[] = [];
   const addFrames: EffectFrameGrid[] = [];
 
-  // 四向 180° 前方半圈配置：起止角度贴合横扫轨迹，外圈加外推狂风流线表现击退风压
+  // 四向 180° 水平俯视椭圆统一口径（rx=50, ry=32，弧心严格对齐腰胸 y=-12）：
+  // 每向峰值帧（f2）精确对称于各自正方向（南 +90° / 西 -180° / 北 -90° / 东 0°），杜绝西/东向下垂偏斜与南/北左右偏心
   const cfg = direction === 'south'
     ? {
-        w: 120, h: 78, ox: 60, oy: 24, cx: 60, cy: 18, rx: 48, ry: 34,
-        // 南向：从左侧(178°)一路横扫过正南(90°)到右侧(2°)
+        w: 144, h: 76, ox: 72, oy: 24, cx: 72, cy: 12, rx: 50, ry: 32,
+        // 南向：从正西(180°)水平横扫过正南(+90°)到正东(0°)
         frames: [
-          { a0: 178, a1: 112, thick: 4.5, rAdd: 0, gusts: 1 },
-          { a0: 176, a1: 42, thick: 7.2, rAdd: 2, gusts: 2 },
-          { a0: 162, a1: 2, thick: 7.8, rAdd: 5, gusts: 3 },
-          { a0: 122, a1: -4, thick: 4.6, rAdd: 8, gusts: 2 },
-          { a0: 72, a1: -6, thick: 2.2, rAdd: 10, gusts: 1 },
-          { a0: 36, a1: -8, thick: 1.0, rAdd: 11, gusts: 0 },
+          { a0: 180, a1: 110, thick: 4.6, rAdd: 0, gusts: 1 },
+          { a0: 178, a1: 30, thick: 7.4, rAdd: 2, gusts: 2 },
+          { a0: 175, a1: 5, thick: 8.0, rAdd: 5, gusts: 3 },
+          { a0: 145, a1: 0, thick: 4.6, rAdd: 8, gusts: 2 },
+          { a0: 100, a1: 0, thick: 2.2, rAdd: 10, gusts: 1 },
+          { a0: 55, a1: 0, thick: 1.0, rAdd: 11, gusts: 0 },
         ],
       }
     : direction === 'west'
       ? {
-          w: 94, h: 114, ox: 72, oy: 64, cx: 64, cy: 52, rx: 46, ry: 40,
-          // 西向：从左上(-108°)横扫过正西(180°/-180°)到左下(-254°)
+          w: 104, h: 104, ox: 86, oy: 64, cx: 82, cy: 52, rx: 50, ry: 32,
+          // 西向（东向自动镜像）：从正北(-90°)水平横扫过正西(-180°)到正南(-270°)
           frames: [
-            { a0: -108, a1: -165, thick: 4.5, rAdd: 0, gusts: 1 },
-            { a0: -112, a1: -222, thick: 7.2, rAdd: 2, gusts: 2 },
-            { a0: -124, a1: -258, thick: 7.8, rAdd: 5, gusts: 3 },
-            { a0: -158, a1: -264, thick: 4.6, rAdd: 8, gusts: 2 },
-            { a0: -198, a1: -266, thick: 2.2, rAdd: 10, gusts: 1 },
-            { a0: -226, a1: -268, thick: 1.0, rAdd: 11, gusts: 0 },
+            { a0: -90, a1: -160, thick: 4.6, rAdd: 0, gusts: 1 },
+            { a0: -92, a1: -240, thick: 7.4, rAdd: 2, gusts: 2 },
+            { a0: -95, a1: -265, thick: 8.0, rAdd: 5, gusts: 3 },
+            { a0: -125, a1: -270, thick: 4.6, rAdd: 8, gusts: 2 },
+            { a0: -170, a1: -270, thick: 2.2, rAdd: 10, gusts: 1 },
+            { a0: -215, a1: -270, thick: 1.0, rAdd: 11, gusts: 0 },
           ],
         }
       : {
-          w: 120, h: 86, ox: 60, oy: 74, cx: 60, cy: 62, rx: 48, ry: 36,
-          // 北向：从右侧(-2°)横扫过正北(-90°)到左侧(-178°)
+          w: 144, h: 76, ox: 72, oy: 64, cx: 72, cy: 52, rx: 50, ry: 32,
+          // 北向：从正东(0°)水平横扫过正北(-90°)到正西(-180°)
           frames: [
-            { a0: -2, a1: -68, thick: 4.5, rAdd: 0, gusts: 1 },
-            { a0: -4, a1: -138, thick: 7.2, rAdd: 2, gusts: 2 },
-            { a0: -18, a1: -178, thick: 7.8, rAdd: 5, gusts: 3 },
-            { a0: -58, a1: -184, thick: 4.6, rAdd: 8, gusts: 2 },
-            { a0: -108, a1: -186, thick: 2.2, rAdd: 10, gusts: 1 },
-            { a0: -144, a1: -188, thick: 1.0, rAdd: 11, gusts: 0 },
+            { a0: 0, a1: -70, thick: 4.6, rAdd: 0, gusts: 1 },
+            { a0: -2, a1: -150, thick: 7.4, rAdd: 2, gusts: 2 },
+            { a0: -5, a1: -175, thick: 8.0, rAdd: 5, gusts: 3 },
+            { a0: -35, a1: -180, thick: 4.6, rAdd: 8, gusts: 2 },
+            { a0: -80, a1: -180, thick: 2.2, rAdd: 10, gusts: 1 },
+            { a0: -125, a1: -180, thick: 1.0, rAdd: 11, gusts: 0 },
           ],
         };
 

@@ -667,4 +667,57 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
       assert.ok(dxSpan + dySpan >= 2, `${actionKey}-${facing} (${poseId}) 头部总位移过小（dx=${dxSpan}, dy=${dySpan}）`);
     }
   }
+
+  // 防回归：狂龙穿心破、虬龙扫暴阵、连环点枪、万圣龙王破四招头部只动不转向（严格锁定当前朝向头部切片与正向 scaleX）。
+  const nonTurningHeadPiecesByFacing: Record<Facing, Set<number>> = {
+    south: new Set([0, 4]),
+    west: new Set([1, 5]),
+    north: new Set([3]),
+    east: new Set([1, 5]),
+  };
+  for (const skillKey of stationarySkills) {
+    for (const facing of directions) {
+      const poseId = proto.stancePoses[`${skillKey}-${facing}`];
+      const pose = mergedCatalog.poses[poseId];
+      const allowed = nonTurningHeadPiecesByFacing[facing];
+      for (let fi = 0; fi < pose.frames.length; fi++) {
+        for (const hf of pose.frames[fi].filter(p => p.part === 'head-front')) {
+          assert.ok(
+            allowed.has(hf.piece) && hf.scaleX === 1,
+            `${skillKey}-${facing} (${poseId}) F${fi} 头部发生转向：head-front[${hf.piece}](sx=${hf.scaleX})`,
+          );
+        }
+      }
+    }
+  }
+
+  // 防回归：虬龙扫暴阵四向横扫光弧 spear-gale-sweep 峰值帧（f2）精确对称于各自正方向（南 +90° / 西 ±180° / 北 -90° / 东 0°）。
+  const effPng = PNG.sync.read(effBytes);
+  const expectedCardinalDeg: Record<Facing, number> = { south: 90, west: 180, north: -90, east: 0 };
+  for (const facing of directions) {
+    const clip = proto.attackEffects?.['spear-gale-sweep']?.clips[facing];
+    assert.ok(clip, `missing spear-gale-sweep clip for ${facing}`);
+    const frameKey = proto.effectSheet.byFile[clip.layers[0].file]?.[2];
+    assert.ok(frameKey, `missing spear-gale-sweep f2 for ${facing}`);
+    const rect = proto.effectSheet.frames[frameKey];
+    const ox = clip.originX * clip.frameWidth;
+    const oy = clip.originY * clip.frameHeight;
+    let sumX = 0;
+    let sumY = 0;
+    let count = 0;
+    for (let y = 0; y < rect.height; y++) {
+      for (let x = 0; x < rect.width; x++) {
+        const alpha = effPng.data[((rect.y + y) * effPng.width + (rect.x + x)) * 4 + 3];
+        if (alpha > 20) {
+          sumX += clip.mirrorX ? (ox - x) : (x - ox);
+          sumY += y - oy;
+          count++;
+        }
+      }
+    }
+    assert.ok(count > 0, `spear-gale-sweep ${facing} f2 empty`);
+    const deg = (Math.atan2(sumY / count - (-12), sumX / count) * 180) / Math.PI;
+    const diff = Math.abs((((deg - expectedCardinalDeg[facing]) + 540) % 360) - 180);
+    assert.ok(diff <= 4, `spear-gale-sweep ${facing} 峰值质心方位角 ${deg.toFixed(1)}° 偏离正方向 ${expectedCardinalDeg[facing]}°（差 ${diff.toFixed(1)}°）`);
+  }
 });
