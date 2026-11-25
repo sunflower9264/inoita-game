@@ -808,6 +808,71 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
         const minDist = Math.sqrt(minDist2);
         assert.ok(minDist <= 4, `attack-3-${facing} (${poseId}) F${fi} 手臂 coat-front[${armEntry.part.piece}] 与长枪分离（最小距离 ${minDist.toFixed(1)}px）`);
       }
+
+      // 南北朝向「上挑」长枪不得为斜向（每帧均采用纯竖直切片且像素水平质心居中 |meanX| <= 1px、包络半宽 <= 5px）
+      if (facing === 'south' || facing === 'north') {
+        assert.ok(
+          spearEntry.part.piece === 7 || spearEntry.part.piece === 16 || spearEntry.part.piece === 17,
+          `attack-3-${facing} F${fi} 应使用纯竖直长枪切片 #7/#16/#17，实际为 #${spearEntry.part.piece}`,
+        );
+        const meanX = spearPts.reduce((acc, [px]) => acc + px, 0) / spearPts.length;
+        const maxAbsX = Math.max(...spearPts.map(([px]) => Math.abs(px)));
+        assert.ok(Math.abs(meanX) <= 1, `attack-3-${facing} F${fi} 长枪水平质心偏离中轴（meanX=${meanX.toFixed(2)}）`);
+        assert.ok(maxAbsX <= 5, `attack-3-${facing} F${fi} 长枪出现斜向横向延展（maxAbsX=${maxAbsX}）`);
+      }
+    }
+  }
+
+  // 防回归：spear-basic-lift 在南/北朝向全 3 帧均为正中纵向挑光（水平质心 |meanX| <= 1px）
+  for (const facing of ['south', 'north'] as const) {
+    const clip = proto.attackEffects?.['spear-basic-lift']?.clips[facing];
+    assert.ok(clip, `missing spear-basic-lift clip for ${facing}`);
+    const ox = clip.originX * clip.frameWidth;
+    for (let ef = 0; ef < 3; ef++) {
+      const frameKey = proto.effectSheet.byFile[clip.layers[0].file]?.[ef];
+      assert.ok(frameKey, `missing spear-basic-lift f${ef} for ${facing}`);
+      const rect = proto.effectSheet.frames[frameKey];
+      let sumX = 0;
+      let count = 0;
+      for (let y = 0; y < rect.height; y++) {
+        for (let x = 0; x < rect.width; x++) {
+          if (effPng.data[((rect.y + y) * effPng.width + (rect.x + x)) * 4 + 3] > 20) {
+            sumX += x - ox;
+            count++;
+          }
+        }
+      }
+      assert.ok(count > 0);
+      const meanX = sumX / count;
+      assert.ok(Math.abs(meanX) <= 1, `spear-basic-lift ${facing} f${ef} 挑光横向偏斜（meanX=${meanX.toFixed(2)}）`);
+    }
+  }
+
+  // 防回归：虬龙扫暴阵南向全程保持正视抬头（head-front[0]、y <= 3）不低头埋胸且南北向零横晃；
+  // 万圣龙王破南向盘枪与凝势段（F0..F8）保持正视抬头不低头，南北向消除左右往复甩头。
+  {
+    const whirlSouth = mergedCatalog.poses[proto.stancePoses['skill-whirl-sweep-south']];
+    for (let fi = 0; fi < whirlSouth.frames.length; fi++) {
+      const hf = whirlSouth.frames[fi].find(p => p.part === 'head-front')!;
+      assert.equal(hf.piece, 0, `skill-whirl-sweep-south F${fi} 不应切入低头切片 head-front[${hf.piece}]`);
+      assert.equal(hf.x, 0, `skill-whirl-sweep-south F${fi} 头部不应左右晃动（x=${hf.x}）`);
+      assert.ok(hf.y <= 3, `skill-whirl-sweep-south F${fi} 头部下沉过度（y=${hf.y}）`);
+    }
+    const whirlNorth = mergedCatalog.poses[proto.stancePoses['skill-whirl-sweep-north']];
+    for (let fi = 0; fi < whirlNorth.frames.length; fi++) {
+      const hf = whirlNorth.frames[fi].find(p => p.part === 'head-front')!;
+      assert.equal(hf.x, 0, `skill-whirl-sweep-north F${fi} 头部不应左右乱晃（x=${hf.x}）`);
+    }
+    const sovSouth = mergedCatalog.poses[proto.stancePoses['skill-sovereign-pierce-south']];
+    for (let fi = 0; fi <= 8; fi++) {
+      const hf = sovSouth.frames[fi].find(p => p.part === 'head-front')!;
+      assert.equal(hf.piece, 0, `skill-sovereign-pierce-south F${fi} 盘枪/凝势段不应低头（piece=${hf.piece}）`);
+      assert.equal(hf.x, 0, `skill-sovereign-pierce-south F${fi} 盘枪/凝势段头部不应左右晃动（x=${hf.x}）`);
+    }
+    const sovNorth = mergedCatalog.poses[proto.stancePoses['skill-sovereign-pierce-north']];
+    for (let fi = 0; fi < sovNorth.frames.length; fi++) {
+      const hf = sovNorth.frames[fi].find(p => p.part === 'head-front')!;
+      assert.equal(hf.x, 0, `skill-sovereign-pierce-north F${fi} 头部不应左右乱晃（x=${hf.x}）`);
     }
   }
 });
