@@ -469,27 +469,27 @@ export const SPEAR_SLICES: readonly PixelSliceSource[] = [
     }),
   },
   {
-    id: 'spear-lift-vert-mid',
-    label: '正南北纵向上挑（中段俯视透视纯竖直 · 0°零斜角）',
-    anchorX: 7,
-    anchorY: 24,
+    id: 'spear-lift-south-scoop',
+    label: '南向上挑低蓄（正南脚前 ~19° 透视下探）',
+    anchorX: 11,
+    anchorY: 18,
     rows: buildAngledSpear({
-      width: 15, height: 36,
-      tipX: 7, tipY: 2, buttX: 7, buttY: 33,
-      bladeLen: 12, collarLen: 2.0, buttLen: 4.0,
+      width: 24, height: 50,
+      tipX: 4, tipY: 46, buttX: 19, buttY: 3,
+      bladeLen: 15, collarLen: 2.2, buttLen: 4.5,
       sway: 0, upright: true, tasselMode: 'trail', bladeWidthScale: 1.0,
     }),
   },
   {
-    id: 'spear-lift-vert-high',
-    label: '正南北纵向上挑（高点冲天纯竖直 · 0°零斜角）',
-    anchorX: 7,
-    anchorY: 32,
+    id: 'spear-lift-steep-up',
+    label: '南北向上挑高点（~19° 窄透视陡角冲顶）',
+    anchorX: 11,
+    anchorY: 30,
     rows: buildAngledSpear({
-      width: 15, height: 52,
-      tipX: 7, tipY: 2, buttX: 7, buttY: 49,
+      width: 24, height: 50,
+      tipX: 19, tipY: 2, buttX: 4, buttY: 47,
       bladeLen: 15, collarLen: 2.2, buttLen: 4.5,
-      sway: 0, upright: true, tasselMode: 'trail', bladeWidthScale: 1.05,
+      sway: 0, upright: true, tasselMode: 'trail', bladeWidthScale: 1.02,
     }),
   },
   // 18..23：四向挺拔单手朝前微仰（~12.6°）持枪待机与行走专用切片（每向 2 帧红缨微摆）
@@ -612,6 +612,19 @@ export const SPEAR_SLICES: readonly PixelSliceSource[] = [
       tipX: 30, tipY: 2, buttX: 4, buttY: 43,
       bladeLen: 14, collarLen: 2.2, buttLen: 4.5,
       sway: 1,
+    }),
+  },
+  // 28：南北向 ~32° 透视起挑过渡切片（衔接低探与 19° 陡角冲顶）
+  {
+    id: 'spear-lift-mid-up',
+    label: '南北向上挑中段（~32° 透视仰起过渡）',
+    anchorX: 14,
+    anchorY: 23,
+    rows: buildAngledSpear({
+      width: 32, height: 40,
+      tipX: 27, tipY: 3, buttX: 3, buttY: 37,
+      bladeLen: 14, collarLen: 2.2, buttLen: 4.5,
+      sway: 0, tasselMode: 'trail',
     }),
   },
 ];
@@ -802,23 +815,23 @@ export const SPEAR_ARMS_PRESETS: Record<SpearArmsPreset, SpearArmsSpec> = {
     backArm: { piece: 11, x: -1, y: -1, scaleX: -1, scaleY: 1, layer: 'front-of-spear' },
     frontArm: { piece: 11, x: 1, y: -1, scaleX: 1, scaleY: 1, layer: 'front-of-spear' },
   },
-  // 南向上挑低蓄（双手压低居中紧扣正南下压竖枪 #7）
+  // 南向上挑低蓄（双手压低斜跨紧扣正南下探枪杆 #16）
   'south-lift-low': {
     baseTorsoX: 0,
-    backArm: { piece: 10, x: 0, y: 1, scaleX: -1, scaleY: 1, layer: 'front-of-spear' },
-    frontArm: { piece: 10, x: 0, y: 2, scaleX: 1, scaleY: 1, layer: 'front-of-spear' },
+    backArm: { piece: 13, x: 1, y: 0, scaleX: -1, scaleY: 1, layer: 'front-of-spear' },
+    frontArm: { piece: 10, x: 1, y: 1, scaleX: 1, scaleY: 1, layer: 'front-of-spear' },
   },
-  // 南向上挑起挑中段（双手一上一下在胸前实握正中竖枪 #16）
+  // 南向上挑起挑中段（双手随 ~32° 仰起枪杆 #28 上提）
   'south-lift-mid': {
     baseTorsoX: 0,
-    backArm: { piece: 10, x: 0, y: -2, scaleX: -1, scaleY: 1, layer: 'front-of-spear' },
-    frontArm: { piece: 13, x: 0, y: -2, scaleX: 1, scaleY: 1, layer: 'front-of-spear' },
+    backArm: { piece: 10, x: 0, y: -1, scaleX: -1, scaleY: 1, layer: 'front-of-spear' },
+    frontArm: { piece: 10, x: 1, y: -4, scaleX: 1, scaleY: 1, layer: 'front-of-spear' },
   },
-  // 南向上挑高空顶点（双手在胸锁骨下巴以下一上一下实握正中竖枪 #17，零斜角且绝不遮脸）
+  // 南向上挑高空顶点（右手稳托下段、左手上举紧扣 ~19° 陡角枪杆 #17，完整露出双眼不挡脸）
   'south-lift-high': {
     baseTorsoX: 0,
-    backArm: { piece: 10, x: 0, y: -3, scaleX: -1, scaleY: 1, layer: 'front-of-spear' },
-    frontArm: { piece: 13, x: 0, y: -4, scaleX: 1, scaleY: 1, layer: 'front-of-spear' },
+    backArm: { piece: 10, x: -1, y: -2, scaleX: -1, scaleY: 1, layer: 'front-of-spear' },
+    frontArm: { piece: 8, x: -1, y: -34, scaleX: 1, scaleY: -1, layer: 'front-of-spear' },
   },
   // 南向伏龙震过顶高举（双臂对称直举紧握头顶横枪 #12，兼容宽袖/重甲无外凸）
   'south-slam-overhead': {
@@ -876,17 +889,17 @@ export const SPEAR_ARMS_PRESETS: Record<SpearArmsPreset, SpearArmsSpec> = {
     backArm: { piece: 11, x: -1, y: -1, scaleX: -1, scaleY: 1, layer: 'behind-spear' },
     frontArm: { piece: 11, x: 1, y: -1, scaleX: 1, scaleY: 1, layer: 'behind-spear' },
   },
-  // 北向上挑低蓄与中段（双臂对称向正北前侧收拢紧握居中竖枪 #16/#17）
+  // 北向上挑中段（双臂向右上前收拢紧握 ~32° 仰起枪杆 #28）
   'north-lift-mid': {
     baseTorsoX: 0,
     backArm: { piece: 10, x: 0, y: -34, scaleX: -1, scaleY: -1, layer: 'behind-spear' },
-    frontArm: { piece: 10, x: 0, y: -34, scaleX: 1, scaleY: -1, layer: 'behind-spear' },
+    frontArm: { piece: 8, x: 0, y: -35, scaleX: 1, scaleY: -1, layer: 'behind-spear' },
   },
-  // 北向上挑高空顶点（双臂对称直举紧扣正北冲天竖枪 #17，零斜角、零手枪分离）
+  // 北向上挑高空顶点（双臂齐举紧扣 ~19° 陡角冲顶枪杆 #17，零手枪分离且不显头顶长角）
   'north-lift-high': {
     baseTorsoX: 0,
     backArm: { piece: 10, x: 0, y: -36, scaleX: -1, scaleY: -1, layer: 'behind-spear' },
-    frontArm: { piece: 10, x: 0, y: -36, scaleX: 1, scaleY: -1, layer: 'behind-spear' },
+    frontArm: { piece: 10, x: 1, y: -36, scaleX: 1, scaleY: -1, layer: 'behind-spear' },
   },
   // 北向伏龙震过顶高举（双臂对称直举紧握头顶横枪 #12，兼容宽袖/重甲）
   'north-slam-overhead': {
@@ -1280,37 +1293,37 @@ const ATK3_WEST_FRAMES: readonly SpearKeyframeSpec[] = [
 ];
 
 const ATK3_SOUTH_FRAMES: readonly SpearKeyframeSpec[] = [
-  // F0：正南竖枪居中起势（全程 x=0 纯竖直零斜角）
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 7, x: 0, y: -5, armsPreset: 'south-sweep-center', insertMode: 'between-south-arms' },
-  // F1：压身沉腕将枪尖下压至正南地面蓄挑
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 7, x: 0, y: 2, armsPreset: 'south-lift-low', headPose: { view: 'south-action', scaleX: 1, dx: 0, dy: 2, torsoDy: 1, cloakPiece: 2 }, insertMode: 'between-south-arms' },
-  // F2：沿正南竖直中轴翻锋猛挑破空（F2 触发正中纵向素银挑光 spear-basic-lift）
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 16, x: 0, y: -9, armsPreset: 'south-lift-mid', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0, cloakPiece: 1 }, insertMode: 'front' },
-  // F3：正中冲天挑枪命中帧（纯竖直 #17 直指正上方，双手于下巴以下紧扣木杆不遮脸）
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 17, x: 0, y: -21, armsPreset: 'south-lift-high', headPose: { view: 'south', scaleX: 1, dx: 0, dy: -2, torsoDy: -1, cloakPiece: 3 }, insertMode: 'front' },
+  // F0：双手斜持战姿起势（自然衔接二段横扫收势）
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 0, x: 0, y: -8, armsPreset: 'south-ready', insertMode: 'between-south-arms' },
+  // F1：沉身压眉将枪尖以 ~19° 透视下探正南脚前蓄挑
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 16, x: -1, y: 0, armsPreset: 'south-lift-low', headPose: { view: 'south-action', scaleX: 1, dx: 0, dy: 2, torsoDy: 1, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  // F2：沿窄 J 形透视立弧向上撩起（触发仿原版窄 J 形素银挑光 spear-basic-lift）
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 28, x: 3, y: -11, armsPreset: 'south-lift-mid', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0, cloakPiece: 1 }, insertMode: 'front' },
+  // F3：~19° 陡角冲顶命中帧（枪杆经右肩锁骨侧上挑，双眼完整露出不挡脸、不偏成东砍）
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 17, x: 2, y: -17, armsPreset: 'south-lift-high', headPose: { view: 'south', scaleX: 1, dx: 0, dy: -2, torsoDy: -1, cloakPiece: 3 }, insertMode: 'front' },
   // F4：挑势顶点微顿
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 17, x: 0, y: -24, armsPreset: 'south-lift-high', headPose: { view: 'south', scaleX: 1, dx: 0, dy: -3, torsoDy: -1, cloakPiece: 3 }, insertMode: 'front' },
-  // F5..F7：沿正中竖直轴顺滑回落归位
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 17, x: 0, y: -20, armsPreset: 'south-lift-high', headPose: { view: 'south', scaleX: 1, dx: 0, dy: -1, cloakPiece: 2 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 16, x: 0, y: -9, armsPreset: 'south-lift-mid', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0, cloakPiece: 1 }, insertMode: 'front' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 7, x: 0, y: -5, armsPreset: 'south-sweep-center', insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 17, x: 2, y: -19, armsPreset: 'south-lift-high', headPose: { view: 'south', scaleX: 1, dx: 0, dy: -3, torsoDy: -1, cloakPiece: 3 }, insertMode: 'front' },
+  // F5..F7：顺势回落归回战姿
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 17, x: 2, y: -17, armsPreset: 'south-lift-high', headPose: { view: 'south', scaleX: 1, dx: 0, dy: -1, cloakPiece: 2 }, insertMode: 'front' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 28, x: 3, y: -10, armsPreset: 'south-lift-mid', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 1, x: 0, y: -8, armsPreset: 'south-ready', insertMode: 'between-south-arms' },
 ];
 
 const ATK3_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
-  // F0：正北居中纯竖直执枪起势（枪尾底端 y=-14 < -8，双腿间 0 漏像素）
-  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 16, x: 0, y: -24, armsPreset: 'north-lift-mid', headPose: { view: 'north', scaleX: 1, dx: -1, dy: 0, cloakPiece: 8 }, insertMode: 'back' },
-  // F1：背身沉腕向正北地面压枪蓄挑（枪尾底端 y=-11 < -8，零斜角、零漏枪把）
-  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 16, x: 0, y: -21, armsPreset: 'north-lift-mid', headPose: { view: 'north', scaleX: 1, dx: -1, dy: 2, torsoDy: 1, cloakPiece: 9 }, insertMode: 'back' },
-  // F2：沿正北竖直中轴拔枪猛挑（F2 触发正北纵向素银挑光 spear-basic-lift）
-  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 17, x: 0, y: -29, armsPreset: 'north-lift-mid', headPose: { view: 'north', scaleX: 1, dx: -1, dy: -1, cloakPiece: 10 }, insertMode: 'back' },
-  // F3：正北冲天挑枪命中帧（纯竖直 #17 居中冲顶，双臂对称上举紧握枪杆）
-  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 17, x: 0, y: -34, armsPreset: 'north-lift-high', headPose: { view: 'north', scaleX: 1, dx: -1, dy: -2, torsoDy: -1, cloakPiece: 11 }, insertMode: 'back' },
+  // F0：北向右侧双手执枪起势
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 22, x: 8, y: -9, armsPreset: 'north-ready', insertMode: 'back' },
+  // F1：右肋沉把向正北低探蓄挑（枪把位于右胯外侧，双腿间 0 漏像素）
+  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 8, x: 9, y: -10, armsPreset: 'north-thrust-coil', headPose: { view: 'north', scaleX: 1, dx: -1, dy: 2, torsoDy: 1, cloakPiece: 9 }, insertMode: 'back' },
+  // F2：沿正北窄 J 形透视立弧陡角拔起（触发北向窄 J 形素银挑光 spear-basic-lift）
+  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 28, x: 2, y: -24, armsPreset: 'north-lift-mid', headPose: { view: 'north', scaleX: 1, dx: -1, dy: -1, cloakPiece: 10 }, insertMode: 'back' },
+  // F3：~19° 陡角冲向正北高空命中帧（避开脑门正中长角感，双臂齐举实握枪杆）
+  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 17, x: 2, y: -28, armsPreset: 'north-lift-high', headPose: { view: 'north', scaleX: 1, dx: -1, dy: -2, torsoDy: -1, cloakPiece: 11 }, insertMode: 'back' },
   // F4：挑势顶点微顿
-  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 17, x: 0, y: -37, armsPreset: 'north-lift-high', headPose: { view: 'north', scaleX: 1, dx: -1, dy: -3, torsoDy: -1, cloakPiece: 11 }, insertMode: 'back' },
-  // F5..F7：沿正北竖直中轴顺势回落归位
-  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 17, x: 0, y: -33, armsPreset: 'north-lift-high', headPose: { view: 'north', scaleX: 1, dx: -1, dy: -1, cloakPiece: 10 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 16, x: 0, y: -26, armsPreset: 'north-lift-mid', headPose: { view: 'north', scaleX: 1, dx: -1, dy: 0, cloakPiece: 9 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 16, x: 0, y: -24, armsPreset: 'north-lift-mid', headPose: { view: 'north', scaleX: 1, dx: -1, dy: 0, cloakPiece: 8 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 17, x: 2, y: -31, armsPreset: 'north-lift-high', headPose: { view: 'north', scaleX: 1, dx: -1, dy: -3, torsoDy: -1, cloakPiece: 11 }, insertMode: 'back' },
+  // F5..F7：顺势沿右侧收枪归位
+  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 17, x: 2, y: -28, armsPreset: 'north-lift-high', headPose: { view: 'north', scaleX: 1, dx: -1, dy: -1, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 8, y: -17, armsPreset: 'north-thrust-extend', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -1, cloakPiece: 9 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 23, x: 8, y: -9, armsPreset: 'north-ready', insertMode: 'back' },
 ];
 
 // 2. 旋风枪舞（18 帧：2 帧沉腰起转 → 12 帧三整圈 360° 周身疾旋 → 1 帧归位爆散终结 → 3 帧稳步收枪）

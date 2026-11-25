@@ -1857,116 +1857,43 @@ function buildSpinStorm(direction: 'west' | 'south' | 'north'): DirectionalEffec
 // 12. 普通攻击第三段：素银由下而上轻量上挑弧光（spear-basic-lift，3 帧，无控制）
 // ===========================================================================
 
-function drawVerticalLiftBlade(
-  base: string[][],
-  add: string[][],
-  x: number,
-  yTop: number,
-  yBot: number,
-  maxHalfW: number,
-): void {
-  const span = Math.max(1, yBot - yTop);
-  for (let y = yTop; y <= yBot; y++) {
-    // 顶部（yTop，挑击前锋尖端）锐利收尖，中上段饱满，下尾渐隐收束
-    const fromTop = (y - yTop) / span;
-    const halfW = fromTop < 0.24
-      ? 0.45 + (fromTop / 0.24) * maxHalfW
-      : maxHalfW * Math.sin(((1 - fromTop) / 0.76) * Math.PI * 0.5);
-    for (let dx = -Math.ceil(halfW); dx <= Math.ceil(halfW); dx++) {
-      const adx = Math.abs(dx);
-      if (adx > halfW + 0.1) continue;
-      const r = adx / Math.max(0.45, halfW);
-      if (adx <= 1.0 && fromTop < 0.78) { plotMax(base, x + dx, y, 'W'); plotMax(add, x + dx, y, 'W'); }
-      else if (r < 0.48) { plotMax(base, x + dx, y, 'L'); plotMax(add, x + dx, y, 'L'); }
-      else if (r < 0.76) { plotMax(base, x + dx, y, 'C'); plotMax(add, x + dx, y, 'B'); }
-      else { plotMax(base, x + dx, y, 'D'); }
-    }
-  }
-}
-
 function buildBasicLift(direction: 'west' | 'south' | 'north'): DirectionalEffectSource {
   const baseFrames: EffectFrameGrid[] = [];
   const addFrames: EffectFrameGrid[] = [];
 
-  if (direction === 'west') {
-    // 西向（东向自动水平镜像）：左下低位(130°) 顺时针上挑过正西(180°) 至左上高点(250°)
-    const w = 68;
-    const h = 76;
-    const ox = 52;
-    const oy = 56;
-    const cx = 46;
-    const cy = 38;
-    const rx = 30;
-    const ry = 30;
-    const arcs = [[130, 198, 2.3], [145, 250, 3.2], [205, 256, 1.5]] as const;
-    for (let i = 0; i < 3; i++) {
-      const base = blank(w, h);
-      const add = blank(w, h);
-      const [a0, a1, thick] = arcs[i];
-      drawArcCurve(base, add, cx, cy, rx, ry, a0, a1, thick, i !== 2, 180);
-      if (i === 1) {
-        drawArcCurve(base, add, cx, cy, rx + 4, ry + 4, a0 + (a1 - a0) * 0.28, a1, 0.85, true, 140);
-        const tipRad = (a1 * Math.PI) / 180;
-        plotSpark(base, add, cx + rx * Math.cos(tipRad), cy + ry * Math.sin(tipRad), 'W', plotMax, true);
-      } else if (i === 2) {
-        const tipRad = (a1 * Math.PI) / 180;
-        plotSpark(base, add, cx + (rx + 2) * Math.cos(tipRad), cy + (ry + 2) * Math.sin(tipRad), 'L', plotMax, false);
+  // 仿原版《艾诺迪亚4》heavy-swing-3 透视：
+  // - 西向（东向镜像）：左下(130°) 顺时针挑至左上(250°)
+  // - 南/北向：~19° 窄椭圆 J 形 3D 透视立弧（rx=11..12, ry=34），自正前低位贴身兜挑至头顶上方，不外飘成横斜且不硬化为 0° 直线
+  const cfg = direction === 'west'
+    ? {
+        w: 68, h: 76, ox: 52, oy: 56, cx: 46, cy: 38, rx: 30, ry: 30,
+        arcs: [[130, 198, 2.3], [145, 250, 3.2], [205, 256, 1.5]] as const,
+        wispDrx: 4, wispDry: 4,
       }
-      baseFrames.push({ id: `spear-basic-lift-${direction}-base-${i}`, rows: base.map(r => r.join('')) });
-      addFrames.push({ id: `spear-basic-lift-${direction}-add-${i}`, rows: add.map(r => r.join('')) });
-    }
-    return {
-      effectId: 'spear-basic-lift',
-      direction,
-      frameWidth: w,
-      frameHeight: h,
-      originX: ox / w,
-      originY: oy / h,
-      basePalette: SILVER_BASE_PALETTE,
-      addPalette: SILVER_ADD_PALETTE,
-      baseFrames,
-      addFrames,
-    };
-  }
-
-  // 南向 / 北向：正中纵向平面（x = 0 严格对称零侧偏）自下而上素银锐利挑弧
-  const w = 56;
-  const h = 92;
-  const isSouth = direction === 'south';
-  const ox = 28;
-  const oy = isSouth ? 56 : 74;
-  // 局部 y 区间 -> 画布像素 py = oy + worldY
-  const spans = isSouth
-    ? [
-        { top: -22, bot: 26, hw: 2.6, wisp: false, spark: null },
-        { top: -50, bot: 16, hw: 3.4, wisp: true, spark: { y: -50, ch: 'W', big: true } },
-        { top: -54, bot: -14, hw: 1.5, wisp: false, spark: { y: -53, ch: 'L', big: false } },
-      ] as const
-    : [
-        { top: -52, bot: -18, hw: 2.5, wisp: false, spark: null },
-        { top: -64, bot: -14, hw: 3.3, wisp: true, spark: { y: -64, ch: 'W', big: true } },
-        { top: -68, bot: -34, hw: 1.5, wisp: false, spark: { y: -67, ch: 'L', big: false } },
-      ] as const;
+    : direction === 'south'
+      ? {
+          w: 56, h: 88, ox: 26, oy: 52, cx: 28, cy: 40, rx: 12, ry: 34,
+          arcs: [[112, 3, 2.3], [98, -76, 3.1], [-12, -80, 1.5]] as const,
+          wispDrx: 3, wispDry: 3,
+        }
+      : {
+          w: 54, h: 90, ox: 26, oy: 72, cx: 27, cy: 50, rx: 11, ry: 34,
+          arcs: [[28, -36, 2.2], [18, -84, 3.0], [-42, -88, 1.5]] as const,
+          wispDrx: 3, wispDry: 3,
+        };
 
   for (let i = 0; i < 3; i++) {
-    const base = blank(w, h);
-    const add = blank(w, h);
-    const sp = spans[i];
-    drawVerticalLiftBlade(base, add, ox, oy + sp.top, oy + sp.bot, sp.hw);
-    if (sp.wisp) {
-      // 峰值帧左右对称补一对贴身破风细银丝（保持左右完全对称 meanX=0）
-      const wy0 = oy + sp.top + 8;
-      const wy1 = oy + sp.top + 34;
-      for (let py = wy0; py <= wy1; py += 2) {
-        const ch = py < wy0 + 10 ? 'L' : 'C';
-        plotMax(base, ox - 4, py, 'D');
-        plotMax(add, ox - 4, py, ch);
-        plotMax(base, ox + 4, py, 'D');
-        plotMax(add, ox + 4, py, ch);
-      }
-    }
-    if (sp.spark) {
-      plotSpark(base, add, ox, oy + sp.spark.y, sp.spark.ch, plotMax, sp.spark.big);
+    const base = blank(cfg.w, cfg.h);
+    const add = blank(cfg.w, cfg.h);
+    const [a0, a1, thick] = cfg.arcs[i];
+    drawArcCurve(base, add, cfg.cx, cfg.cy, cfg.rx, cfg.ry, a0, a1, thick, i !== 2, 180);
+    if (i === 1) {
+      drawArcCurve(base, add, cfg.cx, cfg.cy, cfg.rx + cfg.wispDrx, cfg.ry + cfg.wispDry, a0 + (a1 - a0) * 0.28, a1, 0.85, true, 140);
+      const tipRad = (a1 * Math.PI) / 180;
+      plotSpark(base, add, cfg.cx + cfg.rx * Math.cos(tipRad), cfg.cy + cfg.ry * Math.sin(tipRad), 'W', plotMax, true);
+    } else if (i === 2) {
+      const tipRad = (a1 * Math.PI) / 180;
+      plotSpark(base, add, cfg.cx + (cfg.rx + 2) * Math.cos(tipRad), cfg.cy + (cfg.ry + 2) * Math.sin(tipRad), 'L', plotMax, false);
     }
     baseFrames.push({ id: `spear-basic-lift-${direction}-base-${i}`, rows: base.map(r => r.join('')) });
     addFrames.push({ id: `spear-basic-lift-${direction}-add-${i}`, rows: add.map(r => r.join('')) });
@@ -1975,10 +1902,10 @@ function buildBasicLift(direction: 'west' | 'south' | 'north'): DirectionalEffec
   return {
     effectId: 'spear-basic-lift',
     direction,
-    frameWidth: w,
-    frameHeight: h,
-    originX: ox / w,
-    originY: oy / h,
+    frameWidth: cfg.w,
+    frameHeight: cfg.h,
+    originX: cfg.ox / cfg.w,
+    originY: cfg.oy / cfg.h,
     basePalette: SILVER_BASE_PALETTE,
     addPalette: SILVER_ADD_PALETTE,
     baseFrames,

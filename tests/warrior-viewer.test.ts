@@ -282,7 +282,7 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
   const pngBytes = fs.readFileSync(new URL(proto.texture.file, repoRoot));
   const pngWidth = pngBytes.readUInt32BE(16);
   const pngHeight = pngBytes.readUInt32BE(20);
-  assert.equal(Object.keys(proto.sprites).length, 28);
+  assert.equal(Object.keys(proto.sprites).length, 29);
   for (const sprite of Object.values(proto.sprites)) {
     assert.equal(sprite.texture, proto.texture.key);
     assert.ok(sprite.x >= 0 && sprite.y >= 0);
@@ -809,43 +809,40 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
         assert.ok(minDist <= 4, `attack-3-${facing} (${poseId}) F${fi} 手臂 coat-front[${armEntry.part.piece}] 与长枪分离（最小距离 ${minDist.toFixed(1)}px）`);
       }
 
-      // 南北朝向「上挑」长枪不得为斜向（每帧均采用纯竖直切片且像素水平质心居中 |meanX| <= 1px、包络半宽 <= 5px）
-      if (facing === 'south' || facing === 'north') {
-        assert.ok(
-          spearEntry.part.piece === 7 || spearEntry.part.piece === 16 || spearEntry.part.piece === 17,
-          `attack-3-${facing} F${fi} 应使用纯竖直长枪切片 #7/#16/#17，实际为 #${spearEntry.part.piece}`,
-        );
-        const meanX = spearPts.reduce((acc, [px]) => acc + px, 0) / spearPts.length;
-        const maxAbsX = Math.max(...spearPts.map(([px]) => Math.abs(px)));
-        assert.ok(Math.abs(meanX) <= 1, `attack-3-${facing} F${fi} 长枪水平质心偏离中轴（meanX=${meanX.toFixed(2)}）`);
-        assert.ok(maxAbsX <= 5, `attack-3-${facing} F${fi} 长枪出现斜向横向延展（maxAbsX=${maxAbsX}）`);
+      // 南北朝向「上挑」顶点帧（F3..F5）采用 ~19° 窄透视陡角切片 #17（既不外飘成 45° 东砍 maxX <= 14，也不硬化成 0° 挡脸竖棍 xSpan >= 14）
+      if ((facing === 'south' || facing === 'north') && fi >= 3 && fi <= 5) {
+        assert.equal(spearEntry.part.piece, 17, `attack-3-${facing} F${fi} 顶点应使用 ~19° 陡角透视切片 #17`);
+        const xs = spearPts.map(([px]) => px);
+        const minX = Math.min(...xs);
+        const maxX = Math.max(...xs);
+        assert.ok(maxX <= 14, `attack-3-${facing} F${fi} 枪尖不应外飘成大斜砍（maxX=${maxX}）`);
+        assert.ok(maxX - minX >= 14, `attack-3-${facing} F${fi} 枪身不应退化为 0° 鼻梁贴棍（xSpan=${maxX - minX}）`);
       }
     }
   }
 
-  // 防回归：spear-basic-lift 在南/北朝向全 3 帧均为正中纵向挑光（水平质心 |meanX| <= 1px）
+  // 防回归：spear-basic-lift 在南/北朝向采用仿原版窄 J 形 3D 透视立弧（峰值帧纵向跨度 >= 48px 且水平延展收束在肩宽附近 <= 18px）
   for (const facing of ['south', 'north'] as const) {
     const clip = proto.attackEffects?.['spear-basic-lift']?.clips[facing];
     assert.ok(clip, `missing spear-basic-lift clip for ${facing}`);
     const ox = clip.originX * clip.frameWidth;
-    for (let ef = 0; ef < 3; ef++) {
-      const frameKey = proto.effectSheet.byFile[clip.layers[0].file]?.[ef];
-      assert.ok(frameKey, `missing spear-basic-lift f${ef} for ${facing}`);
-      const rect = proto.effectSheet.frames[frameKey];
-      let sumX = 0;
-      let count = 0;
-      for (let y = 0; y < rect.height; y++) {
-        for (let x = 0; x < rect.width; x++) {
-          if (effPng.data[((rect.y + y) * effPng.width + (rect.x + x)) * 4 + 3] > 20) {
-            sumX += x - ox;
-            count++;
-          }
+    const frameKey = proto.effectSheet.byFile[clip.layers[0].file]?.[1];
+    assert.ok(frameKey, `missing spear-basic-lift f1 for ${facing}`);
+    const rect = proto.effectSheet.frames[frameKey];
+    let minLx = Infinity, maxLx = -Infinity, minLy = Infinity, maxLy = -Infinity;
+    for (let y = 0; y < rect.height; y++) {
+      for (let x = 0; x < rect.width; x++) {
+        if (effPng.data[((rect.y + y) * effPng.width + (rect.x + x)) * 4 + 3] > 20) {
+          const lx = x - ox;
+          if (lx < minLx) minLx = lx;
+          if (lx > maxLx) maxLx = lx;
+          if (y < minLy) minLy = y;
+          if (y > maxLy) maxLy = y;
         }
       }
-      assert.ok(count > 0);
-      const meanX = sumX / count;
-      assert.ok(Math.abs(meanX) <= 1, `spear-basic-lift ${facing} f${ef} 挑光横向偏斜（meanX=${meanX.toFixed(2)}）`);
     }
+    assert.ok(maxLy - minLy >= 48, `spear-basic-lift ${facing} f1 纵向挑弧跨度不足（${maxLy - minLy}px）`);
+    assert.ok(maxLx <= 20 && maxLx - minLx >= 8, `spear-basic-lift ${facing} f1 水平弧宽应在窄 J 形透视区间内（[${minLx.toFixed(1)}, ${maxLx.toFixed(1)}]）`);
   }
 
   // 防回归：虬龙扫暴阵南向全程保持正视抬头（head-front[0]、y <= 3）不低头埋胸且南北向零横晃；
