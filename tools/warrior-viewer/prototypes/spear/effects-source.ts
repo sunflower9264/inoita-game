@@ -1140,7 +1140,7 @@ function buildFlowerSpin(direction: 'west' | 'south' | 'north'): DirectionalEffe
   for (let i = 0; i < 6; i++) {
     const base = blank(w, h);
     const add = blank(w, h);
-    const radius = 28.0 * scales[i];
+    const radius = 25.5 * scales[i];
     const isHit = i === 2 || i === 4;
     const isFade = i === 5;
     // F0..F2 枪尖红缨在左、枪尾冷银在右；F3..F5 翻腕互换（枪尖在右、枪尾在左）
@@ -1148,10 +1148,10 @@ function buildFlowerSpin(direction: 'west' | 'south' | 'north'): DirectionalEffe
     const leftRot = -50 + i * 95;
     const rightRot = 130 + i * 95; // 与左侧反相上下交替运动
 
-    // 左侧 3D 透视枪花轮（/ 倾角）
-    draw3DSideFlowerWheel(base, add, cx, cy, -30.0, radius, leftRot, headOnLeft, isHit, isFade, i);
-    // 右侧 3D 透视枪花轮（\ 倾角）
-    draw3DSideFlowerWheel(base, add, cx, cy, +30.0, radius, rightRot, !headOnLeft, isHit, isFade, i);
+    // 左侧 3D 透视枪花轮（/ 倾角，与标准 52px 长枪左端 x=-25 严丝合缝）
+    draw3DSideFlowerWheel(base, add, cx, cy, -25.5, radius, leftRot, headOnLeft, isHit, isFade, i);
+    // 右侧 3D 透视枪花轮（\ 倾角，与标准 52px 长枪右端 x=+25 严丝合缝）
+    draw3DSideFlowerWheel(base, add, cx, cy, +25.5, radius, rightRot, !headOnLeft, isHit, isFade, i);
 
     baseFrames.push({ id: `spear-flower-spin-${direction}-base-${i}`, rows: base.map(r => r.join('')) });
     addFrames.push({ id: `spear-flower-spin-${direction}-add-${i}`, rows: add.map(r => r.join('')) });

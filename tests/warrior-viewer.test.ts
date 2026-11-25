@@ -282,7 +282,7 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
   const pngBytes = fs.readFileSync(new URL(proto.texture.file, repoRoot));
   const pngWidth = pngBytes.readUInt32BE(16);
   const pngHeight = pngBytes.readUInt32BE(20);
-  assert.equal(Object.keys(proto.sprites).length, 29);
+  assert.equal(Object.keys(proto.sprites).length, 30);
   for (const sprite of Object.values(proto.sprites)) {
     assert.equal(sprite.texture, proto.texture.key);
     assert.ok(sprite.x >= 0 && sprite.y >= 0);
@@ -408,14 +408,17 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
           assert.ok(pieces.some(p => p.part.part === 'coat-front'), `${action.poseId} should draw armor`);
           const spriteId = proto.variants[proto.variantId][frame[spearIdx].piece];
           assert.ok(spriteId?.startsWith(facing === 'west' || facing === 'east' ? 'spear-back-side-' : 'spear-back-diag-'));
-          if (facing === 'north') assert.ok(spearIdx > cloakIdx, `${action.poseId} north back-slung spear should draw over cloak`);
-          else assert.equal(spearIdx, 0, `${action.poseId} ${facing} back-slung spear should draw behind body/cloak`);
+          if (facing === 'north') {
+            const headFrontIdx = frame.findIndex(p => p.part === 'head-front');
+            assert.ok(spearIdx > cloakIdx, `${action.poseId} north back-slung spear should draw over cloak`);
+            assert.ok(headFrontIdx < 0 || spearIdx < headFrontIdx, `${action.poseId} north back-slung spear should sit beneath hair/helmet`);
+          } else assert.equal(spearIdx, 0, `${action.poseId} ${facing} back-slung spear should draw behind body/cloak`);
         }
       }
 
       // Check timelines across all 3 basic attacks + 6 damage skills + 3 self-buffs
       const skillsWithEffects = [
-        'attack', 'attack-2', 'attack-3', 'thrust',
+        'attack', 'attack-2', 'attack-3', 'thrust', 'sweep',
         'skill-dragon-pierce', 'skill-whirl-sweep', 'skill-spin-storm',
         'skill-flurry-thrust', 'skill-dragon-slam', 'skill-sovereign-pierce',
         'skill-focus-edge', 'skill-dragon-step', 'skill-gale-stance',
@@ -870,6 +873,44 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
     for (let fi = 0; fi < sovNorth.frames.length; fi++) {
       const hf = sovNorth.frames[fi].find(p => p.part === 'head-front')!;
       assert.equal(hf.x, 0, `skill-sovereign-pierce-north F${fi} 头部不应左右乱晃（x=${hf.x}）`);
+    }
+  }
+
+  // 美术一致性防回归：
+  // 1) 同平面全长长枪切片（#0..#7, #9..#15, #18..#19, #24..#27, #29）最大像素跨度统一在 50.0..53.0px（杜绝 61px 拉伸变形）；
+  // 2) 全部 70 套姿态中长枪部件禁止使用 scaleY < 0（保持 100% 顶光高光与红缨重力一致）。
+  {
+    const spearPng = loadedTextures.get(proto.texture.key)!;
+    const fullLengthIndices = [0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15, 18, 19, 24, 25, 26, 27, 29];
+    const variantKeys = proto.variants[proto.variantId];
+    for (const idx of fullLengthIndices) {
+      const spriteKey = variantKeys[idx]!;
+      const sp = proto.sprites[spriteKey];
+      const pts: [number, number][] = [];
+      for (let sy = 0; sy < sp.height; sy++) {
+        for (let sx = 0; sx < sp.width; sx++) {
+          if (spearPng.data[((sp.y + sy) * spearPng.width + (sp.x + sx)) * 4 + 3] > 20) {
+            pts.push([sx, sy]);
+          }
+        }
+      }
+      let maxD = 0;
+      for (let i = 0; i < pts.length; i++) {
+        for (let j = i + 1; j < pts.length; j++) {
+          const d = Math.hypot(pts[i][0] - pts[j][0], pts[i][1] - pts[j][1]);
+          if (d > maxD) maxD = d;
+        }
+      }
+      assert.ok(maxD >= 50.0 && maxD <= 53.0, `长枪同平面切片 #${idx} (${variantKeys[idx]}) 长度应统一在 50..53px，实际 ${maxD.toFixed(1)}px`);
+    }
+    for (const [poseId, pose] of Object.entries(proto.poses)) {
+      pose.frames.forEach((frame, fi) => {
+        for (const p of frame) {
+          if (p.part === 'spear') {
+            assert.equal(p.scaleY, 1, `${poseId} F${fi} 长枪禁止垂直翻转 scaleY=${p.scaleY}（破坏顶光一致性）`);
+          }
+        }
+      });
     }
   }
 });

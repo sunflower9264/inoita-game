@@ -271,7 +271,7 @@ function buildAngledSpear(options: {
 }
 
 export const SPEAR_SLICES: readonly PixelSliceSource[] = [
-  // 0..5：基础待机与行走切片（保持既有索引不变）
+  // 0..5：基础待机与行走切片（保持既有索引不变，同平面全长统一为 ~51.5px、枪头 15px）
   {
     id: 'spear-diag-0',
     label: '斜持长枪（红缨帧 1）',
@@ -280,7 +280,7 @@ export const SPEAR_SLICES: readonly PixelSliceSource[] = [
     rows: buildAngledSpear({
       width: 48, height: 29,
       tipX: 2, tipY: 2, buttX: 45, buttY: 26,
-      bladeLen: 14, collarLen: 2.2, buttLen: 4.5,
+      bladeLen: 15, collarLen: 2.2, buttLen: 4.5,
       sway: 0,
     }),
   },
@@ -292,7 +292,7 @@ export const SPEAR_SLICES: readonly PixelSliceSource[] = [
     rows: buildAngledSpear({
       width: 48, height: 29,
       tipX: 2, tipY: 2, buttX: 45, buttY: 26,
-      bladeLen: 14, collarLen: 2.2, buttLen: 4.5,
+      bladeLen: 15, collarLen: 2.2, buttLen: 4.5,
       sway: 1,
     }),
   },
@@ -324,11 +324,11 @@ export const SPEAR_SLICES: readonly PixelSliceSource[] = [
     id: 'spear-upright-0',
     label: '直立长枪（红缨帧 1）',
     anchorX: 9,
-    anchorY: 38,
+    anchorY: 39,
     rows: buildAngledSpear({
-      width: 16, height: 52,
-      tipX: 5, tipY: 2, buttX: 11, buttY: 49,
-      bladeLen: 14, collarLen: 2.2, buttLen: 4.5,
+      width: 16, height: 54,
+      tipX: 5, tipY: 2, buttX: 11, buttY: 51,
+      bladeLen: 15, collarLen: 2.2, buttLen: 4.5,
       sway: 0, upright: true,
     }),
   },
@@ -336,11 +336,11 @@ export const SPEAR_SLICES: readonly PixelSliceSource[] = [
     id: 'spear-upright-1',
     label: '直立长枪（红缨帧 2）',
     anchorX: 9,
-    anchorY: 38,
+    anchorY: 39,
     rows: buildAngledSpear({
-      width: 16, height: 52,
-      tipX: 5, tipY: 2, buttX: 11, buttY: 49,
-      bladeLen: 14, collarLen: 2.2, buttLen: 4.5,
+      width: 16, height: 54,
+      tipX: 5, tipY: 2, buttX: 11, buttY: 51,
+      bladeLen: 15, collarLen: 2.2, buttLen: 4.5,
       sway: 1, upright: true,
     }),
   },
@@ -348,12 +348,12 @@ export const SPEAR_SLICES: readonly PixelSliceSource[] = [
   {
     id: 'spear-thrust-west',
     label: '水平直刺长枪（西/东向）',
-    anchorX: 33,
+    anchorX: 32,
     anchorY: 7,
     rows: buildAngledSpear({
-      width: 56, height: 15,
-      tipX: 2, tipY: 7, buttX: 53, buttY: 7,
-      bladeLen: 16, collarLen: 2.2, buttLen: 4.5,
+      width: 55, height: 15,
+      tipX: 2, tipY: 7, buttX: 52, buttY: 7,
+      bladeLen: 15, collarLen: 2.2, buttLen: 4.5,
       sway: 0, tasselMode: 'trail', bladeWidthScale: 1.05,
     }),
   },
@@ -361,12 +361,12 @@ export const SPEAR_SLICES: readonly PixelSliceSource[] = [
     id: 'spear-thrust-south',
     label: '南向直刺长枪（朝镜头突刺）',
     anchorX: 7,
-    anchorY: 18,
+    anchorY: 19,
     rows: buildAngledSpear({
-      width: 15, height: 52,
-      tipX: 7, tipY: 49, buttX: 7, buttY: 2,
-      bladeLen: 16, collarLen: 2.2, buttLen: 4.5,
-      sway: 0, upright: true, tasselMode: 'trail', bladeWidthScale: 1.1,
+      width: 15, height: 54,
+      tipX: 7, tipY: 51, buttX: 7, buttY: 2,
+      bladeLen: 15, collarLen: 2.2, buttLen: 4.5,
+      sway: 0, upright: true, tasselMode: 'trail', bladeWidthScale: 1.08,
     }),
   },
   {
@@ -400,8 +400,8 @@ export const SPEAR_SLICES: readonly PixelSliceSource[] = [
     anchorX: 31,
     anchorY: 7,
     rows: buildAngledSpear({
-      width: 56, height: 17,
-      tipX: 2, tipY: 7, buttX: 53, buttY: 7,
+      width: 55, height: 17,
+      tipX: 2, tipY: 7, buttX: 52, buttY: 7,
       bladeLen: 15, collarLen: 2.2, buttLen: 4.5,
       sway: 0, tasselMode: 'sweep',
     }),
@@ -409,11 +409,11 @@ export const SPEAR_SLICES: readonly PixelSliceSource[] = [
   {
     id: 'spear-sweep-high-diag',
     label: '高斜蓄势长枪（上斜锋）',
-    anchorX: 26,
-    anchorY: 22,
+    anchorX: 28,
+    anchorY: 24,
     rows: buildAngledSpear({
-      width: 42, height: 36,
-      tipX: 3, tipY: 2, buttX: 38, buttY: 33,
+      width: 45, height: 39,
+      tipX: 3, tipY: 2, buttX: 40, buttY: 35,
       bladeLen: 15, collarLen: 2.2, buttLen: 4.5,
       sway: 0, tasselMode: 'trail',
     }),
@@ -425,8 +425,8 @@ export const SPEAR_SLICES: readonly PixelSliceSource[] = [
     anchorX: 25,
     anchorY: 11,
     rows: buildAngledSpear({
-      width: 53, height: 24,
-      tipX: 49, tipY: 3, buttX: 2, buttY: 15,
+      width: 54, height: 24,
+      tipX: 50, tipY: 3, buttX: 2, buttY: 15,
       bladeLen: 15, collarLen: 2.2, buttLen: 4.5,
       sway: 0, tasselMode: 'hang',
     }),
@@ -434,38 +434,38 @@ export const SPEAR_SLICES: readonly PixelSliceSource[] = [
   {
     id: 'spear-slam-low',
     label: '砸地低横长枪（红缨上扬）',
-    anchorX: 34,
+    anchorX: 33,
     anchorY: 14,
     rows: buildAngledSpear({
-      width: 56, height: 24,
-      tipX: 2, tipY: 20, buttX: 53, buttY: 11,
+      width: 54, height: 24,
+      tipX: 2, tipY: 20, buttX: 51, buttY: 11,
       bladeLen: 15, collarLen: 2.2, buttLen: 4.5,
       sway: 0, tasselMode: 'whip-up',
     }),
   },
-  // 14..17：虬龙扫暴阵「双侧 3D 透视枪花」专用居中切片（100% 实色自然长度 ~62px，使枪尖与枪尾刚好落在左右 ±30px 3D 侧轮中心内）
+  // 14..15（及 #29）：虬龙扫暴阵「双侧 3D 透视枪花」专用居中切片（统一标准 ~51.5px 枪长，与 ±25px 3D 侧轮严丝合缝，杜绝橡皮筋拉伸）
   {
     id: 'spear-windmill-horiz',
-    label: '双侧枪花（居中水平 · 尖左尾右）',
-    anchorX: 31,
+    label: '双侧枪花（居中水平 · 标准 52px）',
+    anchorX: 27,
     anchorY: 9,
     rows: buildAngledSpear({
-      width: 62, height: 18,
-      tipX: 2, tipY: 9, buttX: 59, buttY: 9,
-      bladeLen: 15, collarLen: 2.2, buttLen: 5.5,
+      width: 55, height: 18,
+      tipX: 2, tipY: 9, buttX: 52, buttY: 9,
+      bladeLen: 15, collarLen: 2.2, buttLen: 4.5,
       sway: 0, tasselMode: 'sweep', bladeWidthScale: 1.0,
     }),
   },
   {
     id: 'spear-windmill-diag-low',
-    label: '双侧枪花（居中低斜 20° · 上下摆动）',
-    anchorX: 30,
-    anchorY: 16,
+    label: '双侧枪花（居中左上斜 · 标准 52px 顶光）',
+    anchorX: 26,
+    anchorY: 13,
     rows: buildAngledSpear({
-      width: 60, height: 32,
-      tipX: 2, tipY: 5, buttX: 57, buttY: 26,
-      bladeLen: 15, collarLen: 2.2, buttLen: 5.5,
-      sway: 0, tasselMode: 'sweep', bladeWidthScale: 1.0,
+      width: 52, height: 26,
+      tipX: 2, tipY: 4, buttX: 49, buttY: 21,
+      bladeLen: 15, collarLen: 2.2, buttLen: 4.5,
+      sway: 0, tasselMode: 'trail', bladeWidthScale: 1.0,
     }),
   },
   {
@@ -501,7 +501,7 @@ export const SPEAR_SLICES: readonly PixelSliceSource[] = [
     rows: buildAngledSpear({
       width: 54, height: 22,
       tipX: 2, tipY: 3, buttX: 51, buttY: 14,
-      bladeLen: 14, collarLen: 2.2, buttLen: 4.5,
+      bladeLen: 15, collarLen: 2.2, buttLen: 4.5,
       sway: 0,
     }),
   },
@@ -513,7 +513,7 @@ export const SPEAR_SLICES: readonly PixelSliceSource[] = [
     rows: buildAngledSpear({
       width: 54, height: 22,
       tipX: 2, tipY: 3, buttX: 51, buttY: 14,
-      bladeLen: 14, collarLen: 2.2, buttLen: 4.5,
+      bladeLen: 15, collarLen: 2.2, buttLen: 4.5,
       sway: 1,
     }),
   },
@@ -565,7 +565,7 @@ export const SPEAR_SLICES: readonly PixelSliceSource[] = [
       sway: 1, upright: true, tasselScale: 0.82,
     }),
   },
-  // 24..27：四向脱战斜背背后专用切片（南/北斜跨肩背 + 西/东贴背斜背，各 2 帧红缨微摆）
+  // 24..27：四向脱战斜背背后专用切片（南/北斜跨肩背 + 西/东贴背斜背，各 2 帧红缨微摆，统一 ~51.3px 枪长）
   {
     id: 'spear-back-diag-0',
     label: '脱战斜背长枪（南/北斜跨 · 红缨帧 1）',
@@ -574,7 +574,7 @@ export const SPEAR_SLICES: readonly PixelSliceSource[] = [
     rows: buildAngledSpear({
       width: 38, height: 44,
       tipX: 34, tipY: 2, buttX: 3, buttY: 41,
-      bladeLen: 14, collarLen: 2.2, buttLen: 4.5,
+      bladeLen: 15, collarLen: 2.2, buttLen: 4.5,
       sway: 0,
     }),
   },
@@ -586,7 +586,7 @@ export const SPEAR_SLICES: readonly PixelSliceSource[] = [
     rows: buildAngledSpear({
       width: 38, height: 44,
       tipX: 34, tipY: 2, buttX: 3, buttY: 41,
-      bladeLen: 14, collarLen: 2.2, buttLen: 4.5,
+      bladeLen: 15, collarLen: 2.2, buttLen: 4.5,
       sway: 1,
     }),
   },
@@ -596,9 +596,9 @@ export const SPEAR_SLICES: readonly PixelSliceSource[] = [
     anchorX: 17,
     anchorY: 23,
     rows: buildAngledSpear({
-      width: 34, height: 46,
-      tipX: 30, tipY: 2, buttX: 4, buttY: 43,
-      bladeLen: 14, collarLen: 2.2, buttLen: 4.5,
+      width: 34, height: 47,
+      tipX: 30, tipY: 2, buttX: 4, buttY: 44,
+      bladeLen: 15, collarLen: 2.2, buttLen: 4.5,
       sway: 0,
     }),
   },
@@ -608,9 +608,9 @@ export const SPEAR_SLICES: readonly PixelSliceSource[] = [
     anchorX: 17,
     anchorY: 23,
     rows: buildAngledSpear({
-      width: 34, height: 46,
-      tipX: 30, tipY: 2, buttX: 4, buttY: 43,
-      bladeLen: 14, collarLen: 2.2, buttLen: 4.5,
+      width: 34, height: 47,
+      tipX: 30, tipY: 2, buttX: 4, buttY: 44,
+      bladeLen: 15, collarLen: 2.2, buttLen: 4.5,
       sway: 1,
     }),
   },
@@ -627,11 +627,25 @@ export const SPEAR_SLICES: readonly PixelSliceSource[] = [
       sway: 0, tasselMode: 'trail',
     }),
   },
+  // 29：双侧枪花正向顶光左下斜切片（消除 scaleY=-1 翻转造成的木杆与钢刃顶光颠倒）
+  {
+    id: 'spear-windmill-diag-up',
+    label: '双侧枪花（居中左下斜 · 标准 52px 顶光）',
+    anchorX: 26,
+    anchorY: 13,
+    rows: buildAngledSpear({
+      width: 52, height: 26,
+      tipX: 2, tipY: 21, buttX: 49, buttY: 4,
+      bladeLen: 15, collarLen: 2.2, buttLen: 4.5,
+      sway: 0, tasselMode: 'trail', bladeWidthScale: 1.0,
+    }),
+  },
 ];
 
 export type SpearInsertMode =
   | 'front'
   | 'back'
+  | 'on-back-north'
   | 'replace-staff'
   | 'between-south-arms'
   | 'between-south-walk-arms'
@@ -1071,7 +1085,7 @@ export const SPEAR_CYCLE_RECIPES: readonly SpearPoseRecipe[] = [
   },
   {
     id: 'prototype-spear-town-idle-north', clip: 'town-idle-north', basePoseId: 'pose-3982-north-ticks-0',
-    mirrorX: false, insertMode: 'front', pieceEven: 24, pieceOdd: 25, baseX: -2, baseY: -16, scaleX: -1, scaleY: 1, angle: 0,
+    mirrorX: false, insertMode: 'on-back-north', pieceEven: 24, pieceOdd: 25, baseX: -3, baseY: -15, scaleX: -1, scaleY: 1, angle: 0,
   },
   {
     id: 'prototype-spear-town-idle-east', clip: 'town-idle-east', basePoseId: 'pose-3981-east-ticks-0',
@@ -1088,7 +1102,7 @@ export const SPEAR_CYCLE_RECIPES: readonly SpearPoseRecipe[] = [
   },
   {
     id: 'prototype-spear-town-walk-north', clip: 'town-walk-north', basePoseId: 'pose-3985-north-ticks-0',
-    mirrorX: false, insertMode: 'front', pieceEven: 24, pieceOdd: 25, swayPeriod: 2, baseX: -2, baseY: -16, scaleX: -1, scaleY: 1, angle: 0,
+    mirrorX: false, insertMode: 'on-back-north', pieceEven: 24, pieceOdd: 25, swayPeriod: 2, baseX: -3, baseY: -15, scaleX: -1, scaleY: 1, angle: 0,
   },
   {
     id: 'prototype-spear-town-walk-east', clip: 'town-walk-east', basePoseId: 'pose-3984-east-ticks-0',
@@ -1105,7 +1119,7 @@ export const SPEAR_CYCLE_RECIPES: readonly SpearPoseRecipe[] = [
   },
   {
     id: 'prototype-spear-upright-idle-north', clip: 'spear-upright-idle-north', basePoseId: 'pose-4144-north-ticks-0',
-    mirrorX: false, insertMode: 'replace-staff', pieceEven: 4, pieceOdd: 5, baseX: 11, baseY: -10, scaleX: -1, scaleY: 1, angle: 0,
+    mirrorX: false, insertMode: 'replace-staff', pieceEven: 4, pieceOdd: 5, baseX: 8, baseY: -10, scaleX: -1, scaleY: 1, angle: 0,
   },
   {
     id: 'prototype-spear-upright-idle-east', clip: 'spear-upright-idle-east', basePoseId: 'pose-4143-east-ticks-0',
@@ -1509,11 +1523,11 @@ const DRAGON_SLAM_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
 const WHIRL_SWEEP_SOUTH_FRAMES: readonly SpearKeyframeSpec[] = [
   // F0..F5：双侧枪花蓄势（对齐狂龙头部质感：全程保持抬头正视 head-front[0] 不低头，head.x 恒定 0 不左右晃）
   { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 15, x: 0, y: -11, scaleX: 1, scaleY: 1, armsPreset: 'south-whirl-center', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0, cloakPiece: 1 }, insertMode: 'between-south-arms' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 15, x: 0, y: -11, scaleX: 1, scaleY: -1, armsPreset: 'south-whirl-center', headPose: { view: 'south', scaleX: 1, dx: 0, dy: -1, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 29, x: 0, y: -11, scaleX: 1, scaleY: 1, armsPreset: 'south-whirl-center', headPose: { view: 'south', scaleX: 1, dx: 0, dy: -1, cloakPiece: 2 }, insertMode: 'between-south-arms' },
   { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 14, x: 0, y: -11, scaleX: 1, scaleY: 1, armsPreset: 'south-whirl-center', headPose: { view: 'south', scaleX: 1, dx: 0, dy: -1, cloakPiece: 3 }, insertMode: 'between-south-arms' },
   { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 15, x: 0, y: -11, scaleX: -1, scaleY: 1, armsPreset: 'south-whirl-center', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0, cloakPiece: 1 }, insertMode: 'between-south-arms' },
   { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 14, x: 0, y: -11, scaleX: -1, scaleY: 1, armsPreset: 'south-whirl-center', headPose: { view: 'south', scaleX: 1, dx: 0, dy: -1, cloakPiece: 2 }, insertMode: 'between-south-arms' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 15, x: 0, y: -11, scaleX: -1, scaleY: -1, armsPreset: 'south-whirl-center', headPose: { view: 'south', scaleX: 1, dx: 0, dy: -1, cloakPiece: 3 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 29, x: 0, y: -11, scaleX: -1, scaleY: 1, armsPreset: 'south-whirl-center', headPose: { view: 'south', scaleX: 1, dx: 0, dy: -1, cloakPiece: 3 }, insertMode: 'between-south-arms' },
   // F6..F15：正南对称 180° 双手狂风大横扫（统一稳立骨架 pose-4067，抬头正视不埋胸、head.x=0 零横晃，仅做蓄力微抬与挥扫前顶）
   { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 11, x: -7, y: -11, armsPreset: 'south-sweep-left', headPose: { view: 'south', scaleX: 1, dx: 0, dy: -2, torsoDy: -1, cloakPiece: 1 }, insertMode: 'between-south-arms' },
   { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 9, x: -7, y: -5, armsPreset: 'south-sweep-left', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0, cloakPiece: 2 }, insertMode: 'between-south-arms' },
@@ -1530,11 +1544,11 @@ const WHIRL_SWEEP_SOUTH_FRAMES: readonly SpearKeyframeSpec[] = [
 const WHIRL_SWEEP_WEST_FRAMES: readonly SpearKeyframeSpec[] = [
   // F0..F5：全程沉马扎稳（planted cb[18]），双脚纹丝不动舞动左右双侧 3D 枪花（头锁正西只动不转向）
   { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 15, x: 0, y: -11, scaleX: 1, scaleY: 1, armsPreset: 'whirl-center', legsPreset: 'planted', headPose: { view: 'west-action', dx: -1, dy: 1, torsoDx: -1, cloakPiece: 5 }, insertMode: 'between-west-arms' },
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 15, x: 0, y: -11, scaleX: 1, scaleY: -1, armsPreset: 'whirl-center', legsPreset: 'planted', headPose: { view: 'west-action', dx: -2, dy: 2, torsoDx: -1, torsoDy: 1, cloakPiece: 7 }, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 29, x: 0, y: -11, scaleX: 1, scaleY: 1, armsPreset: 'whirl-center', legsPreset: 'planted', headPose: { view: 'west-action', dx: -2, dy: 2, torsoDx: -1, torsoDy: 1, cloakPiece: 7 }, insertMode: 'between-west-arms' },
   { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 14, x: 0, y: -11, scaleX: 1, scaleY: 1, armsPreset: 'whirl-center', legsPreset: 'planted', headPose: { view: 'west', dx: 0, dy: 1, cloakPiece: 6 }, insertMode: 'between-west-arms' },
   { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 15, x: 0, y: -11, scaleX: -1, scaleY: 1, armsPreset: 'whirl-center', legsPreset: 'planted', headPose: { view: 'west', dx: 1, dy: 0, torsoDx: 1, cloakPiece: 6 }, insertMode: 'between-west-arms' },
   { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 14, x: 0, y: -11, scaleX: -1, scaleY: 1, armsPreset: 'whirl-center', legsPreset: 'planted', headPose: { view: 'west', dx: -1, dy: 1, torsoDy: 1, cloakPiece: 5 }, insertMode: 'between-west-arms' },
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 15, x: 0, y: -11, scaleX: -1, scaleY: -1, armsPreset: 'whirl-center', legsPreset: 'planted', headPose: { view: 'west-action', dx: -2, dy: 2, torsoDx: -1, torsoDy: 1, cloakPiece: 7 }, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 29, x: 0, y: -11, scaleX: -1, scaleY: 1, armsPreset: 'whirl-center', legsPreset: 'planted', headPose: { view: 'west-action', dx: -2, dy: 2, torsoDx: -1, torsoDy: 1, cloakPiece: 7 }, insertMode: 'between-west-arms' },
   // F6..F15：正西对称 180° 水平狂风大横扫（水平腰高扫过正西，绝不下插斜砍、绝不转头朝南）
   { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 2, x: 2, y: -13, armsPreset: 'sweep-raise', headPose: { view: 'west', dx: 2, dy: -1, torsoDx: 1, cloakPiece: 6 }, insertMode: 'between-west-arms' },
   { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 2, x: -7, y: -12, armsPreset: 'sweep-cut', legsPreset: 'bow', headPose: { view: 'west-action', dx: -2, dy: 0, torsoDx: -1, cloakPiece: 5 }, insertMode: 'between-west-arms' },
@@ -1551,11 +1565,11 @@ const WHIRL_SWEEP_WEST_FRAMES: readonly SpearKeyframeSpec[] = [
 const WHIRL_SWEEP_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
   // F0..F5：双侧枪花凝气（消除左右乱晃，全 16 帧精确锁定 head.x=0，仅做南北纵向呼吸蓄发）
   { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 15, x: 0, y: -12, scaleX: 1, scaleY: 1, armsPreset: 'north-whirl-center', headPose: { view: 'north', scaleX: 1, dx: -1, dy: -1, cloakPiece: 9 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 15, x: 0, y: -12, scaleX: 1, scaleY: -1, armsPreset: 'north-whirl-center', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -2, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 29, x: 0, y: -12, scaleX: 1, scaleY: 1, armsPreset: 'north-whirl-center', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -2, cloakPiece: 10 }, insertMode: 'back' },
   { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 14, x: 0, y: -12, scaleX: 1, scaleY: 1, armsPreset: 'north-whirl-center', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -1, cloakPiece: 11 }, insertMode: 'back' },
   { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 15, x: 0, y: -12, scaleX: -1, scaleY: 1, armsPreset: 'north-whirl-center', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -2, cloakPiece: 10 }, insertMode: 'back' },
   { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 14, x: 0, y: -12, scaleX: -1, scaleY: 1, armsPreset: 'north-whirl-center', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -1, cloakPiece: 9 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 15, x: 0, y: -12, scaleX: -1, scaleY: -1, armsPreset: 'north-whirl-center', headPose: { view: 'north', scaleX: 1, dx: -1, dy: 0, cloakPiece: 11 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 29, x: 0, y: -12, scaleX: -1, scaleY: 1, armsPreset: 'north-whirl-center', headPose: { view: 'north', scaleX: 1, dx: -1, dy: 0, cloakPiece: 11 }, insertMode: 'back' },
   // F6..F15：正北对称 180° 双手胸肩高位狂风大横扫（head.x 恒为 0 零横晃，仅做 F6 微收蓄力 → F7..F10 向北发力前送 → 平稳归位）
   { sourcePoseId: 'pose-4069-north-ticks-0', sourceFrame: 0, piece: 11, x: 6, y: -19, scaleX: -1, armsPreset: 'north-sweep-right', headPose: { view: 'north', scaleX: 1, dx: -1, dy: 2, cloakPiece: 9 }, insertMode: 'back' },
   { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 10, x: 9, y: -21, scaleX: -1, armsPreset: 'north-sweep-right', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -3, cloakPiece: 10 }, insertMode: 'back' },

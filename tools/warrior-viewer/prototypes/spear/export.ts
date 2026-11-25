@@ -410,6 +410,13 @@ function insertSpearIntoFrame(
     if (idx >= 0) { stripped.splice(idx, 0, shiftedSpear); return stripped; }
     return [shiftedSpear, ...stripped];
   }
+  if (insertMode === 'on-back-north') {
+    // 北向脱战背枪：压在背部盔甲与披风表面，但位于颈脸与头发/头盔之下，避免枪杆横切后脑勺头发
+    const headIdx = stripped.findIndex(part => part.part === 'body' || part.part === 'head-front' || part.part === 'head-back');
+    if (headIdx >= 0) { stripped.splice(headIdx, 0, shiftedSpear); return stripped; }
+    stripped.push(shiftedSpear);
+    return stripped;
+  }
   stripped.push(shiftedSpear);
   return stripped;
 }
@@ -570,9 +577,11 @@ function run(): void {
       },
       sweep: {
         cycleFrames: 12,
-        swingFrame: null,
+        swingFrame: 3,
         strikeFrame: 4,
-        swings: [],
+        swings: ['spear-basic-flick'],
+        swingPlacement: 'above-characters',
+        swingLabel: '出横扫光（spear-basic-flick）',
         sound: 'Weapon_TwoHand_Sword_Attack',
       },
       attack: {
