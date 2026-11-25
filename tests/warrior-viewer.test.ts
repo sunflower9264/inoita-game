@@ -362,26 +362,32 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
         }
       }
 
-      // Check single-hand upright carry (idle/walk) and diagonal back-slung town movement (town-idle/town-walk) across all 4 directions
+      // Check single-hand upright carry (idle/walk) and diagonal back-slung town movement (town-idle/town-walk) across all 4 directions and all frames
       for (const [key, expectedCount] of [['idle', 14], ['walk', 8]] as const) {
         const action = choices.find(choice => choice.key === key)!;
         const pose = mergedCatalog.poses[action.poseId];
         assert.equal(pose.frames.length, expectedCount);
-        const f0 = pose.frames[0];
-        const spearIdx = f0.findIndex(p => p.part === 'spear');
-        const spear = f0[spearIdx];
-        assert.ok(spear);
         const expectedPrefix = facing === 'south' ? 'spear-carry-south-' : facing === 'north' ? 'spear-carry-north-' : 'spear-carry-side-';
-        assert.ok(proto.variants[proto.variantId][spear.piece]?.startsWith(expectedPrefix), `${action.poseId} should use ${expectedPrefix}`);
-        if (facing === 'west' || facing === 'east') {
-          const lastNearArmIdx = f0.reduce((acc, p, idx) => (p.part === 'coat-front' && (p.piece === 6 || p.piece === 8) ? idx : acc), -1);
-          assert.ok(spearIdx < lastNearArmIdx, `${action.poseId} spear should sit beneath near gripping arm`);
-        } else if (facing === 'south') {
-          const rightArmIdx = f0.findIndex(p => p.part === 'coat-front' && (p.piece === 9 || p.piece === 5) && p.scaleX === 1);
-          assert.ok(spearIdx < rightArmIdx, `${action.poseId} spear should sit beneath south right gripping arm`);
-        } else {
-          const cloakIdx = f0.findIndex(p => p.part === 'cloak');
-          assert.ok(spearIdx < cloakIdx, `${action.poseId} spear should sit before north cloak`);
+        let southGripOffset: number | undefined;
+        for (let fi = 0; fi < pose.frames.length; fi++) {
+          const frame = pose.frames[fi];
+          const spearIdx = frame.findIndex(p => p.part === 'spear');
+          const spear = frame[spearIdx];
+          assert.ok(spear, `${action.poseId} F${fi} missing spear`);
+          assert.ok(proto.variants[proto.variantId][spear.piece]?.startsWith(expectedPrefix), `${action.poseId} F${fi} should use ${expectedPrefix}`);
+          if (facing === 'west' || facing === 'east') {
+            const lastNearArmIdx = frame.reduce((acc, p, idx) => (p.part === 'coat-front' && (p.piece === 6 || p.piece === 8) ? idx : acc), -1);
+            assert.ok(spearIdx < lastNearArmIdx, `${action.poseId} F${fi} spear should sit beneath near gripping arm`);
+          } else if (facing === 'south') {
+            const rightArmIdx = frame.findIndex(p => p.part === 'coat-front' && (p.piece === 9 || p.piece === 5) && p.scaleX === -1);
+            assert.ok(rightArmIdx >= 0 && spearIdx < rightArmIdx, `${action.poseId} F${fi} spear should sit beneath south right gripping arm (scaleX=-1)`);
+            const offset = spear.y - frame[rightArmIdx].y;
+            if (southGripOffset === undefined) southGripOffset = offset;
+            else assert.equal(offset, southGripOffset, `${action.poseId} F${fi} spear should stay locked to south right hand`);
+          } else {
+            const cloakIdx = frame.findIndex(p => p.part === 'cloak');
+            assert.ok(spearIdx < cloakIdx, `${action.poseId} F${fi} spear should sit before north cloak`);
+          }
         }
       }
 

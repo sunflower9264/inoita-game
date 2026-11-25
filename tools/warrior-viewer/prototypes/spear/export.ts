@@ -334,7 +334,7 @@ function insertSpearIntoFrame(
     if (idx >= 0) { stripped.splice(idx, 0, shiftedSpear); return stripped; }
   }
   if (insertMode === 'before-right-arm-south') {
-    const idx = stripped.findIndex(part => part.part === 'coat-front' && (part.piece === 9 || part.piece === 5) && part.scaleX === 1);
+    const idx = stripped.findIndex(part => part.part === 'coat-front' && (part.piece === 9 || part.piece === 5) && part.scaleX === -1);
     if (idx >= 0) { stripped.splice(idx, 0, shiftedSpear); return stripped; }
     return [shiftedSpear, ...stripped];
   }
@@ -360,7 +360,10 @@ function buildCyclePose(wardrobe: WardrobeCatalog, recipe: SpearPoseRecipe): Cos
   if (!basePose) throw new Error(`基础姿态不存在：${recipe.basePoseId}`);
 
   const findRef = (frame: CostumePart[]) =>
-    frame.find(p => p.part === 'two-handed' || p.part === 'staff' || p.part === 'main-blade')
+    (recipe.insertMode === 'before-right-arm-south'
+      ? frame.find(p => p.part === 'coat-front' && (p.piece === 9 || p.piece === 5) && p.scaleX === -1)
+      : undefined)
+    ?? frame.find(p => p.part === 'two-handed' || p.part === 'staff' || p.part === 'main-blade')
     ?? frame.find(p => p.part === 'head-front');
   const firstRef = findRef(basePose.frames[0]);
   const originRefY = firstRef?.y ?? 0;
