@@ -874,6 +874,26 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
       const hf = sovNorth.frames[fi].find(p => p.part === 'head-front')!;
       assert.equal(hf.x, 0, `skill-sovereign-pierce-north F${fi} 头部不应左右乱晃（x=${hf.x}）`);
     }
+    // 连环点枪全四向在 F1..F8 高频急刺段保持稳姿定头（不逐帧抽搐切换切片或往复抖动），且南/北向全帧 head.x === 0 零横晃、纵向跨度克制无砸头跳变
+    for (const facing of directions) {
+      const flurryPose = mergedCatalog.poses[proto.stancePoses[`skill-flurry-thrust-${facing}`]];
+      const f1Head = flurryPose.frames[1].find(p => p.part === 'head-front')!;
+      for (let fi = 2; fi <= 8; fi++) {
+        const hf = flurryPose.frames[fi].find(p => p.part === 'head-front')!;
+        assert.equal(hf.piece, f1Head.piece, `skill-flurry-thrust-${facing} F${fi} 急刺段头部不应逐帧闪烁切片`);
+        assert.equal(hf.x, f1Head.x, `skill-flurry-thrust-${facing} F${fi} 急刺段头部不应水平抖动`);
+        assert.equal(hf.y, f1Head.y, `skill-flurry-thrust-${facing} F${fi} 急刺段头部不应上下抖动`);
+      }
+    }
+    for (const facing of ['south', 'north'] as const) {
+      const flurryPose = mergedCatalog.poses[proto.stancePoses[`skill-flurry-thrust-${facing}`]];
+      const ys = flurryPose.frames.map((frame, fi) => {
+        const hf = frame.find(p => p.part === 'head-front')!;
+        assert.equal(hf.x, 0, `skill-flurry-thrust-${facing} F${fi} 头部不应左右晃动（x=${hf.x}）`);
+        return hf.y;
+      });
+      assert.ok(Math.max(...ys) - Math.min(...ys) <= 6, `skill-flurry-thrust-${facing} 纵向头部位移过猛（span=${Math.max(...ys) - Math.min(...ys)}）`);
+    }
   }
 
   // 美术一致性防回归：
