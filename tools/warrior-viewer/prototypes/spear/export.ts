@@ -8,7 +8,7 @@ import type { CostumePart, CostumePiece, CostumePose, WardrobeCatalog } from '..
 import { SPEAR_EFFECT_SOURCES } from './effects-source.ts';
 import type { EffectFrameGrid, RgbaPalette } from './effects-source.ts';
 import { SPEAR_ACTION_RECIPES, SPEAR_CYCLE_RECIPES, SPEAR_PALETTE, SPEAR_SLICES, WEST_ARMS_PRESETS, WEST_LEGS_PRESETS } from './source.ts';
-import type { SpearArmsPreset, SpearInsertMode, SpearKeyframedPoseRecipe, SpearLegsPreset, SpearPoseRecipe } from './source.ts';
+import type { SpearArmsPreset, SpearHeadPose, SpearHeadView, SpearInsertMode, SpearKeyframedPoseRecipe, SpearLegsPreset, SpearPoseRecipe } from './source.ts';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(dir, '../../../..');
@@ -201,8 +201,66 @@ function packEffects(): {
   };
 }
 
+const HEAD_VIEW_PIECES: Record<SpearHeadView, { face: number; neck: number; head: number }> = {
+  south: { face: 0, neck: 4, head: 0 },
+  west: { face: 1, neck: 5, head: 1 },
+  'turn-back': { face: 2, neck: 6, head: 2 },
+  north: { face: 3, neck: 7, head: 3 },
+  'south-action': { face: 0, neck: 4, head: 4 },
+  'west-action': { face: 1, neck: 5, head: 5 },
+};
+
 function isCoatFrontArm(part: CostumePart): boolean {
   return part.part === 'coat-front' && part.piece >= 3 && part.piece <= 14;
+}
+
+function applyHeadPose(frame: CostumePart[], headPose?: SpearHeadPose): CostumePart[] {
+  if (!headPose) return frame;
+  const viewPieces = headPose.view ? HEAD_VIEW_PIECES[headPose.view] : undefined;
+  const dx = headPose.dx ?? 0;
+  const dy = headPose.dy ?? 0;
+  const torsoDx = headPose.torsoDx ?? 0;
+  const torsoDy = headPose.torsoDy ?? 0;
+  const cloakDx = headPose.cloakDx ?? torsoDx;
+  const cloakDy = headPose.cloakDy ?? torsoDy;
+
+  return frame.map(part => {
+    if (part.part === 'body') {
+      const piece = viewPieces ? (part.piece >= 4 ? viewPieces.neck : viewPieces.face) : part.piece;
+      return {
+        ...part,
+        piece,
+        x: part.x + dx,
+        y: part.y + dy,
+        scaleX: headPose.scaleX ?? part.scaleX,
+      };
+    }
+    if (part.part === 'head-front' || part.part === 'head-back') {
+      return {
+        ...part,
+        piece: viewPieces ? viewPieces.head : part.piece,
+        x: part.x + dx,
+        y: part.y + dy,
+        scaleX: headPose.scaleX ?? part.scaleX,
+      };
+    }
+    if (part.part === 'coat-front' && !isCoatFrontArm(part) && (torsoDx !== 0 || torsoDy !== 0)) {
+      return {
+        ...part,
+        x: part.x + torsoDx,
+        y: part.y + torsoDy,
+      };
+    }
+    if (part.part === 'cloak' && (headPose.cloakPiece !== undefined || cloakDx !== 0 || cloakDy !== 0)) {
+      return {
+        ...part,
+        piece: headPose.cloakPiece ?? part.piece,
+        x: part.x + cloakDx,
+        y: part.y + cloakDy,
+      };
+    }
+    return part;
+  });
 }
 
 function mirrorPartX(part: CostumePart): CostumePart {
@@ -223,6 +281,7 @@ function insertSpearIntoFrame(
   armsPreset?: SpearArmsPreset,
   mirrorBaseFrame = false,
   legsPreset?: SpearLegsPreset,
+  headPose?: SpearHeadPose,
 ): CostumePart[] {
   const shift = (part: CostumePart): CostumePart => ({
     ...part,
@@ -248,10 +307,11 @@ function insertSpearIntoFrame(
         }
       : part))
     : frame;
+  const poseApplied = applyHeadPose(legsApplied, headPose);
 
   if (armsPreset) {
     const preset = WEST_ARMS_PRESETS[armsPreset];
-    const bodyOnly = legsApplied.filter(part => !REMOVED_WEAPON_PARTS.has(part.part) && !isCoatFrontArm(part));
+    const bodyOnly = poseApplied.filter(part => !REMOVED_WEAPON_PARTS.has(part.part) && !isCoatFrontArm(part));
     const torsoIdx = bodyOnly.findIndex(part => part.part === 'coat-front');
     if (torsoIdx < 0) {
       throw new Error(`armsPreset=${armsPreset} 需要基础帧包含胸甲 coat-front 躯干切片`);
@@ -298,7 +358,7 @@ function insertSpearIntoFrame(
     return [...backList, backArmOut, torsoOut, shiftedSpear, frontArmOut, ...afterList];
   }
 
-  const baseFrame = mirrorBaseFrame ? legsApplied.map(mirrorPartX) : legsApplied;
+  const baseFrame = mirrorBaseFrame ? poseApplied.map(mirrorPartX) : poseApplied;
 
   if (insertMode === 'replace-staff') {
     const next: CostumePart[] = [];
@@ -420,6 +480,7 @@ function buildKeyframedPose(wardrobe: WardrobeCatalog, recipe: SpearKeyframedPos
       spec.armsPreset,
       spec.mirrorBaseFrame ?? false,
       spec.legsPreset,
+      spec.headPose,
     );
   });
 

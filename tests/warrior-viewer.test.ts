@@ -604,4 +604,67 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
       }
     }
   }
+
+  // 防回归：长枪全部战斗动作（基础直刺/横扫、三段普攻、6 项伤害主动技、3 项增益主动技）在全四向下均具备真实头部动画，
+  // 且每帧 head-front、head-back 与脸部 body 的位置/朝向/切片配对严格同步，兼容主角默认发型、多款头盔与奥拉夫佣兵预设。
+  const combatHeadActions = [
+    'thrust', 'sweep', 'attack', 'attack-2', 'attack-3',
+    'skill-dragon-pierce', 'skill-whirl-sweep', 'skill-spin-storm',
+    'skill-flurry-thrust', 'skill-dragon-slam', 'skill-sovereign-pierce',
+    'skill-focus-edge', 'skill-dragon-step', 'skill-gale-stance',
+  ];
+  const expectedFaceForHeadPiece: Record<number, number> = { 0: 0, 1: 1, 2: 2, 3: 3, 4: 0, 5: 1 };
+  const headStylesToVerify = [
+    viewerRecipe(mergedCatalog, mergedItems, { 'main-hand': proto.weaponId }, {}),
+    viewerRecipe(mergedCatalog, mergedItems, { 'main-hand': proto.weaponId, head: armorChoices(mergedCatalog, mergedItems, 'head')[1].id }, {}),
+    viewerRecipe(mergedCatalog, mergedItems, { 'main-hand': proto.weaponId, head: armorChoices(mergedCatalog, mergedItems, 'head')[8].id }, {}),
+    viewerRecipe(mergedCatalog, mergedItems, { 'main-hand': proto.weaponId }, {}, 'mercenary-olaf'),
+  ];
+  for (const actionKey of combatHeadActions) {
+    for (const facing of directions) {
+      const poseId = proto.stancePoses[`${actionKey}-${facing}`];
+      const pose = mergedCatalog.poses[poseId];
+      assert.ok(pose, `missing combat pose ${poseId}`);
+      const headStates = new Set<string>();
+      const xs: number[] = [];
+      const ys: number[] = [];
+      for (let fi = 0; fi < pose.frames.length; fi++) {
+        const frame = pose.frames[fi];
+        const headFronts = frame.filter(p => p.part === 'head-front');
+        const headBacks = frame.filter(p => p.part === 'head-back');
+        const bodyFaces = frame.filter(p => p.part === 'body' && p.piece < 4);
+        assert.ok(headFronts.length >= 1, `${poseId} F${fi} missing head-front`);
+        assert.ok(bodyFaces.length >= 1, `${poseId} F${fi} missing body face`);
+        const primary = headFronts[0];
+        headStates.add(`${primary.piece}:${primary.x}:${primary.y}:${primary.scaleX}`);
+        xs.push(primary.x);
+        ys.push(primary.y);
+        for (const hf of headFronts) {
+          const expectedFace = expectedFaceForHeadPiece[hf.piece];
+          assert.notEqual(expectedFace, undefined, `${poseId} F${fi} unexpected head-front piece ${hf.piece}`);
+          assert.ok(
+            bodyFaces.some(bf => bf.piece === expectedFace && bf.x === hf.x && bf.y === hf.y && bf.scaleX === hf.scaleX),
+            `${poseId} F${fi} head-front[${hf.piece}]@(${hf.x},${hf.y},sx=${hf.scaleX}) 未与脸部 body[${expectedFace}] 同步`,
+          );
+          if (headBacks.length > 0) {
+            assert.ok(
+              headBacks.some(hb => hb.piece === hf.piece && hb.x === hf.x && hb.y === hf.y && hb.scaleX === hf.scaleX),
+              `${poseId} F${fi} head-back 未与 head-front[${hf.piece}]@(${hf.x},${hf.y},sx=${hf.scaleX}) 同步`,
+            );
+          }
+        }
+        for (const recipe of headStylesToVerify) {
+          const pieces = framePieces(mergedCatalog, recipe.variants, frame);
+          assert.ok(pieces.some(p => p.part.part === 'body' && p.part.piece < 4), `${poseId} F${fi} should resolve body face`);
+          if (recipe.variants['head-front']) {
+            assert.ok(pieces.some(p => p.part.part === 'head-front'), `${poseId} F${fi} should resolve head-front`);
+          }
+        }
+      }
+      const dxSpan = Math.max(...xs) - Math.min(...xs);
+      const dySpan = Math.max(...ys) - Math.min(...ys);
+      assert.ok(headStates.size >= 3, `${actionKey}-${facing} (${poseId}) 头部状态过少（${headStates.size}），存在头部僵直`);
+      assert.ok(dxSpan + dySpan >= 2, `${actionKey}-${facing} (${poseId}) 头部总位移过小（dx=${dxSpan}, dy=${dySpan}）`);
+    }
+  }
 });
