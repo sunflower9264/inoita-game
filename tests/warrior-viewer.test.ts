@@ -671,26 +671,59 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
     }
   }
 
-  // 防回归：狂龙穿心破、虬龙扫暴阵、连环点枪、万圣龙王破四招头部只动不转向（严格锁定当前朝向头部切片与正向 scaleX）。
+  // 防回归：除 360° 旋风枪舞（skill-spin-storm）外，长枪全部 13 项战斗动作在全四向下：
+  // 1) 头部只动不转向（严格锁定当前朝向头部切片与正向 scaleX === 1，杜绝 turn-back、跨向转头与北向镜像翻转）；
+  // 2) 南/北向全程锁定 head.x === 0 零横晃（杜绝左右甩头或侧跳）；
+  // 3) 整段动作水平/纵向位移方向反转次数不超过阈值（单段动作 <= 2 次、二段式连环点枪 <= 3 次，杜绝逐帧啄木鸟抖头与多次反复点头）。
+  const nonSpinCombatActions = combatHeadActions.filter(a => a !== 'skill-spin-storm');
   const nonTurningHeadPiecesByFacing: Record<Facing, Set<number>> = {
     south: new Set([0, 4]),
     west: new Set([1, 5]),
     north: new Set([3]),
     east: new Set([1, 5]),
   };
-  for (const skillKey of stationarySkills) {
+  const countDirectionReversals = (vals: readonly number[]): number => {
+    let reversals = 0;
+    let prevSign = 0;
+    for (let i = 1; i < vals.length; i++) {
+      const diff = vals[i] - vals[i - 1];
+      if (diff === 0) continue;
+      const sign = diff > 0 ? 1 : -1;
+      if (prevSign !== 0 && sign !== prevSign) reversals++;
+      prevSign = sign;
+    }
+    return reversals;
+  };
+  for (const actionKey of nonSpinCombatActions) {
     for (const facing of directions) {
-      const poseId = proto.stancePoses[`${skillKey}-${facing}`];
+      const poseId = proto.stancePoses[`${actionKey}-${facing}`];
       const pose = mergedCatalog.poses[poseId];
       const allowed = nonTurningHeadPiecesByFacing[facing];
+      const xs: number[] = [];
+      const ys: number[] = [];
       for (let fi = 0; fi < pose.frames.length; fi++) {
         for (const hf of pose.frames[fi].filter(p => p.part === 'head-front')) {
           assert.ok(
             allowed.has(hf.piece) && hf.scaleX === 1,
-            `${skillKey}-${facing} (${poseId}) F${fi} 头部发生转向：head-front[${hf.piece}](sx=${hf.scaleX})`,
+            `${actionKey}-${facing} (${poseId}) F${fi} 头部发生转向或镜像：head-front[${hf.piece}](sx=${hf.scaleX})`,
           );
+          if (facing === 'south' || facing === 'north') {
+            assert.equal(hf.x, 0, `${actionKey}-${facing} (${poseId}) F${fi} 南北向头部不应左右晃动（x=${hf.x}）`);
+          }
         }
+        const primary = pose.frames[fi].find(p => p.part === 'head-front')!;
+        xs.push(primary.x);
+        ys.push(primary.y);
       }
+      const maxReversals = actionKey === 'skill-flurry-thrust' ? 3 : 2;
+      assert.ok(
+        countDirectionReversals(xs) <= maxReversals,
+        `${actionKey}-${facing} 头部水平方向往复抖动过多（reversals=${countDirectionReversals(xs)}, xs=${xs.join(',')}）`,
+      );
+      assert.ok(
+        countDirectionReversals(ys) <= maxReversals,
+        `${actionKey}-${facing} 头部纵向往复点头过多（reversals=${countDirectionReversals(ys)}, ys=${ys.join(',')}）`,
+      );
     }
   }
 
