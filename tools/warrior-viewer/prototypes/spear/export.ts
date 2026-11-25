@@ -393,8 +393,25 @@ function insertSpearIntoFrame(
     if (idx >= 0) { stripped.splice(idx, 0, shiftedSpear); return stripped; }
   }
   if (insertMode === 'before-right-arm-south') {
-    const idx = stripped.findIndex(part => part.part === 'coat-front' && (part.piece === 9 || part.piece === 5) && part.scaleX === -1);
-    if (idx >= 0) { stripped.splice(idx, 0, shiftedSpear); return stripped; }
+    // 南向单手持枪：插入在胸甲 coat-front[0] 与握枪右臂（scaleX=-1）之前，使手后配重杆自然收在右肩后、右手握于木杆之上、手前长杆与枪头伸于右前
+    const armIdx = stripped.findIndex(part => part.part === 'coat-front' && (part.piece === 9 || part.piece === 5) && part.scaleX === -1);
+    const torsoIdx = stripped.findIndex(part => part.part === 'coat-front' && part.piece < 5);
+    const candidates = [armIdx, torsoIdx].filter(i => i >= 0);
+    if (candidates.length > 0) {
+      stripped.splice(Math.min(...candidates), 0, shiftedSpear);
+      return stripped;
+    }
+    return [shiftedSpear, ...stripped];
+  }
+  if (insertMode === 'before-right-arm-north') {
+    // 北向单手持枪：插入在右侧握枪手臂（scaleX=1）与披风之前，无披风时右手实握木杆、有披风时手前长杆与枪头自右肩外侧向北探出
+    const armIdx = stripped.findIndex(part => part.part === 'coat-front' && (part.piece === 9 || part.piece === 5) && part.scaleX === 1);
+    const cloakIdx = stripped.findIndex(part => part.part === 'cloak');
+    const candidates = [armIdx, cloakIdx].filter(i => i >= 0);
+    if (candidates.length > 0) {
+      stripped.splice(Math.min(...candidates), 0, shiftedSpear);
+      return stripped;
+    }
     return [shiftedSpear, ...stripped];
   }
   if (insertMode === 'before-near-arm-west') {
@@ -425,21 +442,33 @@ function buildCyclePose(wardrobe: WardrobeCatalog, recipe: SpearPoseRecipe): Cos
   const basePose = wardrobe.poses[recipe.basePoseId];
   if (!basePose) throw new Error(`基础姿态不存在：${recipe.basePoseId}`);
 
-  const findRef = (frame: CostumePart[]) =>
-    (recipe.insertMode === 'before-right-arm-south'
-      ? frame.find(p => p.part === 'coat-front' && (p.piece === 9 || p.piece === 5) && p.scaleX === -1)
-      : undefined)
-    ?? frame.find(p => p.part === 'two-handed' || p.part === 'staff' || p.part === 'main-blade')
-    ?? frame.find(p => p.part === 'head-front');
+  const findRef = (frame: CostumePart[]) => {
+    if (recipe.insertMode === 'before-right-arm-south') {
+      return frame.find(p => p.part === 'coat-front' && (p.piece === 9 || p.piece === 5) && p.scaleX === -1);
+    }
+    if (recipe.insertMode === 'before-right-arm-north') {
+      return frame.find(p => p.part === 'coat-front' && (p.piece === 9 || p.piece === 5) && p.scaleX === 1);
+    }
+    if (recipe.insertMode === 'before-near-arm-west') {
+      for (let i = frame.length - 1; i >= 0; i--) {
+        const p = frame[i];
+        if (p.part === 'coat-front' && (p.piece === 6 || p.piece === 8)) return p;
+      }
+    }
+    return frame.find(p => p.part === 'two-handed' || p.part === 'staff' || p.part === 'main-blade')
+      ?? frame.find(p => p.part === 'head-front');
+  };
   const firstRef = findRef(basePose.frames[0]);
+  const originRefX = firstRef?.x ?? 0;
   const originRefY = firstRef?.y ?? 0;
   const period = recipe.swayPeriod ?? 7;
 
   const frames: CostumePart[][] = basePose.frames.map((frame, frameIndex) => {
     const ref = findRef(frame);
+    const refDx = (ref?.x ?? originRefX) - originRefX;
     const dy = (ref?.y ?? originRefY) - originRefY;
     const swayPhase = Math.floor(frameIndex / period) % 2;
-    const dx = recipe.stepDx?.[frameIndex] ?? 0;
+    const dx = (recipe.stepDx?.[frameIndex] ?? 0) + refDx;
     const extraDy = recipe.stepDy?.[frameIndex] ?? 0;
     const spearPart: CostumePart = {
       part: 'spear',

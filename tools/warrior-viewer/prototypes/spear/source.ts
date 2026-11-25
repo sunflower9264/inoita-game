@@ -519,50 +519,50 @@ export const SPEAR_SLICES: readonly PixelSliceSource[] = [
   },
   {
     id: 'spear-carry-south-0',
-    label: '单手持枪（南向朝前透视 · 红缨帧 1）',
-    anchorX: 9,
-    anchorY: 12,
+    label: '单手持枪（南向 3D 透视三段比例 · 红缨帧 1）',
+    anchorX: 15,
+    anchorY: 14,
     rows: buildAngledSpear({
-      width: 18, height: 32,
-      tipX: 6, tipY: 29, buttX: 11, buttY: 2,
-      bladeLen: 11, collarLen: 2.2, buttLen: 4.5,
-      sway: 0, upright: true, tasselBehindBlade: true,
+      width: 24, height: 45,
+      tipX: 4, tipY: 42, buttX: 19, buttY: 2,
+      bladeLen: 12, collarLen: 2.2, buttLen: 4.5,
+      sway: 0, upright: true, tasselBehindBlade: true, tasselScale: 0.88,
     }),
   },
   {
     id: 'spear-carry-south-1',
-    label: '单手持枪（南向朝前透视 · 红缨帧 2）',
-    anchorX: 9,
-    anchorY: 12,
+    label: '单手持枪（南向 3D 透视三段比例 · 红缨帧 2）',
+    anchorX: 15,
+    anchorY: 14,
     rows: buildAngledSpear({
-      width: 18, height: 32,
-      tipX: 6, tipY: 29, buttX: 11, buttY: 2,
-      bladeLen: 11, collarLen: 2.2, buttLen: 4.5,
-      sway: 1, upright: true, tasselBehindBlade: true,
+      width: 24, height: 45,
+      tipX: 4, tipY: 42, buttX: 19, buttY: 2,
+      bladeLen: 12, collarLen: 2.2, buttLen: 4.5,
+      sway: 1, upright: true, tasselBehindBlade: true, tasselScale: 0.88,
     }),
   },
   {
     id: 'spear-carry-north-0',
-    label: '单手持枪（北向朝前微仰透视 · 红缨帧 1）',
+    label: '单手持枪（北向 3D 透视三段比例 · 红缨帧 1）',
     anchorX: 8,
-    anchorY: 25,
+    anchorY: 33,
     rows: buildAngledSpear({
-      width: 18, height: 39,
-      tipX: 12, tipY: 2, buttX: 6, buttY: 36,
-      bladeLen: 10, collarLen: 2.2, buttLen: 4.5,
-      sway: 0, upright: true, tasselScale: 0.82,
+      width: 23, height: 47,
+      tipX: 19, tipY: 2, buttX: 6, buttY: 44,
+      bladeLen: 12, collarLen: 2.2, buttLen: 4.2,
+      sway: 0, upright: true, tasselScale: 0.85,
     }),
   },
   {
     id: 'spear-carry-north-1',
-    label: '单手持枪（北向朝前微仰透视 · 红缨帧 2）',
+    label: '单手持枪（北向 3D 透视三段比例 · 红缨帧 2）',
     anchorX: 8,
-    anchorY: 25,
+    anchorY: 33,
     rows: buildAngledSpear({
-      width: 18, height: 39,
-      tipX: 12, tipY: 2, buttX: 6, buttY: 36,
-      bladeLen: 10, collarLen: 2.2, buttLen: 4.5,
-      sway: 1, upright: true, tasselScale: 0.82,
+      width: 23, height: 47,
+      tipX: 19, tipY: 2, buttX: 6, buttY: 44,
+      bladeLen: 12, collarLen: 2.2, buttLen: 4.2,
+      sway: 1, upright: true, tasselScale: 0.85,
     }),
   },
   // 24..27：四向脱战斜背背后专用切片（南/北斜跨肩背 + 西/东贴背斜背，各 2 帧红缨微摆，统一 ~51.3px 枪长）
@@ -652,6 +652,7 @@ export type SpearInsertMode =
   | 'between-west-arms'
   | 'before-front-hand'
   | 'before-right-arm-south'
+  | 'before-right-arm-north'
   | 'before-near-arm-west'
   | 'before-cloak';
 
@@ -1048,10 +1049,10 @@ export interface SpearKeyframedPoseRecipe {
 }
 
 export const SPEAR_CYCLE_RECIPES: readonly SpearPoseRecipe[] = [
-  // 一、挺拔单手朝前微仰持枪待机（原版单手挺拔骨架 pose-3986..3988）
+  // 一、挺拔单手朝前微仰持枪待机（原版单手挺拔骨架 pose-3986..3988，全四向统一后三分之一重心握持：手后露配重枪尾、手前留长木杆与红缨柳叶锋）
   {
     id: 'prototype-spear-idle-south', clip: 'idle-south', basePoseId: 'pose-3986-south-ticks-0',
-    mirrorX: false, insertMode: 'before-right-arm-south', pieceEven: 20, pieceOdd: 21, baseX: -9, baseY: -9, scaleX: 1, scaleY: 1, angle: 0,
+    mirrorX: false, insertMode: 'before-right-arm-south', pieceEven: 20, pieceOdd: 21, baseX: -8, baseY: -8, scaleX: 1, scaleY: 1, angle: 0,
   },
   {
     id: 'prototype-spear-idle-west', clip: 'idle-west', basePoseId: 'pose-3987-west-ticks-0',
@@ -1059,7 +1060,7 @@ export const SPEAR_CYCLE_RECIPES: readonly SpearPoseRecipe[] = [
   },
   {
     id: 'prototype-spear-idle-north', clip: 'idle-north', basePoseId: 'pose-3988-north-ticks-0',
-    mirrorX: false, insertMode: 'before-cloak', pieceEven: 22, pieceOdd: 23, baseX: 9, baseY: -9, scaleX: 1, scaleY: 1, angle: 0,
+    mirrorX: false, insertMode: 'before-right-arm-north', pieceEven: 22, pieceOdd: 23, baseX: 8, baseY: -8, scaleX: 1, scaleY: 1, angle: 0,
   },
   {
     id: 'prototype-spear-idle-east', clip: 'idle-east', basePoseId: 'pose-3987-east-ticks-0',
@@ -1069,7 +1070,7 @@ export const SPEAR_CYCLE_RECIPES: readonly SpearPoseRecipe[] = [
   {
     id: 'prototype-spear-walk-south', clip: 'walk-south', basePoseId: 'pose-3989-south-ticks-0',
     mirrorX: false, insertMode: 'before-right-arm-south', pieceEven: 20, pieceOdd: 21, swayPeriod: 2,
-    baseX: -9, baseY: -9, scaleX: 1, scaleY: 1, angle: 0,
+    baseX: -8, baseY: -8, scaleX: 1, scaleY: 1, angle: 0,
   },
   {
     id: 'prototype-spear-walk-west', clip: 'walk-west', basePoseId: 'pose-3990-west-ticks-0',
@@ -1078,8 +1079,8 @@ export const SPEAR_CYCLE_RECIPES: readonly SpearPoseRecipe[] = [
   },
   {
     id: 'prototype-spear-walk-north', clip: 'walk-north', basePoseId: 'pose-3991-north-ticks-0',
-    mirrorX: false, insertMode: 'before-cloak', pieceEven: 22, pieceOdd: 23, swayPeriod: 2,
-    baseX: 9, baseY: -9, scaleX: 1, scaleY: 1, angle: 0,
+    mirrorX: false, insertMode: 'before-right-arm-north', pieceEven: 22, pieceOdd: 23, swayPeriod: 2,
+    baseX: 8, baseY: -8, scaleX: 1, scaleY: 1, angle: 0,
   },
   {
     id: 'prototype-spear-walk-east', clip: 'walk-east', basePoseId: 'pose-3990-east-ticks-0',

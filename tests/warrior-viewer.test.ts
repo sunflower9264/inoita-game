@@ -385,8 +385,13 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
             if (southGripOffset === undefined) southGripOffset = offset;
             else assert.equal(offset, southGripOffset, `${action.poseId} F${fi} spear should stay locked to south right hand`);
           } else {
+            const rightArmIdx = frame.findIndex(p => p.part === 'coat-front' && (p.piece === 9 || p.piece === 5) && p.scaleX === 1);
             const cloakIdx = frame.findIndex(p => p.part === 'cloak');
+            assert.ok(rightArmIdx >= 0 && spearIdx < rightArmIdx, `${action.poseId} F${fi} spear should sit beneath north right gripping arm (scaleX=1)`);
             assert.ok(spearIdx < cloakIdx, `${action.poseId} F${fi} spear should sit before north cloak`);
+            const offset = spear.y - frame[rightArmIdx].y;
+            if (southGripOffset === undefined) southGripOffset = offset;
+            else assert.equal(offset, southGripOffset, `${action.poseId} F${fi} spear should stay locked to north right hand`);
           }
         }
       }
@@ -972,6 +977,57 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
         } else {
           assert.ok(Math.max(...tipXs) >= 34, `${sweepAction}-east 正东伸展不足`);
         }
+      }
+    }
+    // 防回归：持枪待机与持枪行走（idle/walk）四向握持比例一致：
+    // 西/东侧视全长 ~50px（约 1.32x 身高），南/北俯视透视全长 40..45px（~83% 透视比），
+    // 且握枪右拳与金箍/枪尖之间必须保留充足裸露前木杆（枪尖距握拳中心 >= 24px，杜绝「握在枪尖/红缨上」）。
+    for (const key of ['idle', 'walk'] as const) {
+      for (const facing of directions) {
+        const poseId = proto.stancePoses[`${key}-${facing}`];
+        const pose = mergedCatalog.poses[poseId];
+        const sign = pose.mirrorX ? -1 : 1;
+        const frame = pose.frames[0];
+        const sp = frame.find(p => p.part === 'spear')!;
+        const rect = proto.sprites[sweepVariantKeys[sp.piece]!];
+        const allSpearPts: [number, number][] = [];
+        let tipSumX = 0, tipSumY = 0, tipCnt = 0;
+        for (let sy = 0; sy < rect.height; sy++) {
+          for (let sx = 0; sx < rect.width; sx++) {
+            const idx = ((rect.y + sy) * spearPngForSweep.width + (rect.x + sx)) * 4;
+            if (spearPngForSweep.data[idx + 3] > 20) {
+              const wx = (sp.x + (sx - rect.anchorX) * sp.scaleX) * sign;
+              const wy = sp.y + (sy - rect.anchorY) * sp.scaleY;
+              allSpearPts.push([wx, wy]);
+              if (spearPngForSweep.data[idx] > 205 && spearPngForSweep.data[idx + 1] > 215 && spearPngForSweep.data[idx + 2] > 225) {
+                tipSumX += wx;
+                tipSumY += wy;
+                tipCnt++;
+              }
+            }
+          }
+        }
+        let span = 0;
+        for (let i = 0; i < allSpearPts.length; i++) {
+          for (let j = i + 1; j < allSpearPts.length; j++) {
+            const d = Math.hypot(allSpearPts[i][0] - allSpearPts[j][0], allSpearPts[i][1] - allSpearPts[j][1]);
+            if (d > span) span = d;
+          }
+        }
+        if (facing === 'south' || facing === 'north') {
+          assert.ok(span >= 40 && span <= 46, `${key}-${facing} 南北向持枪透视总长应在 40..46px，实际 ${span.toFixed(1)}px`);
+        } else {
+          assert.ok(span >= 49 && span <= 53, `${key}-${facing} 东西向持枪总长应在 49..53px，实际 ${span.toFixed(1)}px`);
+        }
+        const gripX = sp.x * sign;
+        const gripY = sp.y;
+        const tipX = tipSumX / tipCnt;
+        const tipY = tipSumY / tipCnt;
+        const tipDistFromGrip = Math.hypot(tipX - gripX, tipY - gripY);
+        assert.ok(
+          tipDistFromGrip >= 25,
+          `${key}-${facing} 握点距枪尖过近（dist=${tipDistFromGrip.toFixed(1)}px），存在握到枪尖风险`,
+        );
       }
     }
   }
