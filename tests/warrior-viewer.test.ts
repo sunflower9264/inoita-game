@@ -927,6 +927,53 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
       });
       assert.ok(Math.max(...ys) - Math.min(...ys) <= 6, `skill-flurry-thrust-${facing} 纵向头部位移过猛（span=${Math.max(...ys) - Math.min(...ys)}）`);
     }
+    // 防回归：西/东朝向全部横扫招式（基础横扫 sweep、普攻二段 attack-2、虬龙扫暴阵 skill-whirl-sweep）枪尖必须扫出饱满 180° 纵深弧幅（北侧 <= -32px 至南侧 >= +18px，总纵向跨度 >= 55px），杜绝缩成小幅平戳。
+    const spearPngForSweep = loadedTextures.get(proto.texture.key)!;
+    const sweepVariantKeys = proto.variants[proto.variantId];
+    for (const sweepAction of ['sweep', 'attack-2', 'skill-whirl-sweep'] as const) {
+      for (const facing of ['west', 'east'] as const) {
+        const poseId = proto.stancePoses[`${sweepAction}-${facing}`];
+        const pose = mergedCatalog.poses[poseId];
+        const tipYs: number[] = [];
+        const tipXs: number[] = [];
+        const sign = pose.mirrorX ? -1 : 1;
+        for (const frame of pose.frames) {
+          const sp = frame.find(p => p.part === 'spear')!;
+          const rect = proto.sprites[sweepVariantKeys[sp.piece]!];
+          let sumX = 0;
+          let sumY = 0;
+          let cnt = 0;
+          for (let sy = 0; sy < rect.height; sy++) {
+            for (let sx = 0; sx < rect.width; sx++) {
+              const idx = ((rect.y + sy) * spearPngForSweep.width + (rect.x + sx)) * 4;
+              if (
+                spearPngForSweep.data[idx + 3] > 200
+                && spearPngForSweep.data[idx] > 205
+                && spearPngForSweep.data[idx + 1] > 215
+                && spearPngForSweep.data[idx + 2] > 225
+              ) {
+                sumX += (sp.x + (sx - rect.anchorX) * sp.scaleX) * sign;
+                sumY += sp.y + (sy - rect.anchorY) * sp.scaleY;
+                cnt++;
+              }
+            }
+          }
+          assert.ok(cnt > 0, `${poseId} spear tip pixels missing`);
+          tipXs.push(sumX / cnt);
+          tipYs.push(sumY / cnt);
+        }
+        const minTipY = Math.min(...tipYs);
+        const maxTipY = Math.max(...tipYs);
+        assert.ok(minTipY <= -32, `${sweepAction}-${facing} 横扫北侧起势不足（minTipY=${minTipY.toFixed(1)}）`);
+        assert.ok(maxTipY >= 18, `${sweepAction}-${facing} 横扫南侧随挥不足（maxTipY=${maxTipY.toFixed(1)}）`);
+        assert.ok(maxTipY - minTipY >= 55, `${sweepAction}-${facing} 横扫纵向运动范围过小（span=${(maxTipY - minTipY).toFixed(1)}）`);
+        if (facing === 'west') {
+          assert.ok(Math.min(...tipXs) <= -34, `${sweepAction}-west 正西伸展不足`);
+        } else {
+          assert.ok(Math.max(...tipXs) >= 34, `${sweepAction}-east 正东伸展不足`);
+        }
+      }
+    }
   }
 
   // 美术一致性防回归：
