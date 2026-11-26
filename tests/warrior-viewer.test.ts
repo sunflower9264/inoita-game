@@ -1030,6 +1030,90 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
         );
       }
     }
+    // 防回归：长枪「五段解剖分区与六大动态握把」规范：
+    // 1) 突刺/连刺/重刺/聚气动作全四向双拳投影严格落在 0%..66% 合法硬木握杆区（严禁 >66% 摸到金箍红缨/枪刃，或 <-2% 滑出铁镦悬空）；
+    // 2) 南向突刺与立枪聚气双拳必须拉开 >=12% 轴向前后握距（杜绝 1px 叠拳）；
+    // 3) 西/东向立枪聚气（skill-focus-edge 等）双拳与竖枪法向距离均 <= 4px（杜绝右手叉腰脱杆 13px）。
+    const getHandProjections = (poseId: string, fi: number) => {
+      const pose = mergedCatalog.poses[poseId];
+      const frame = pose.frames[fi];
+      const sp = frame.find(p => p.part === 'spear')!;
+      const rect = proto.sprites[sweepVariantKeys[sp.piece]!];
+      const allPts: [number, number][] = [];
+      let tipSX = 0, tipSY = 0, tipCnt = 0;
+      for (let sy = 0; sy < rect.height; sy++) {
+        for (let sx = 0; sx < rect.width; sx++) {
+          const idx = ((rect.y + sy) * spearPngForSweep.width + (rect.x + sx)) * 4;
+          if (spearPngForSweep.data[idx + 3] > 40) {
+            allPts.push([sx, sy]);
+            if (spearPngForSweep.data[idx] > 205 && spearPngForSweep.data[idx + 1] > 215 && spearPngForSweep.data[idx + 2] > 225) {
+              tipSX += sx; tipSY += sy; tipCnt++;
+            }
+          }
+        }
+      }
+      const tx0 = tipSX / tipCnt, ty0 = tipSY / tipCnt;
+      let butt = allPts[0]!, maxD = -1;
+      for (const p of allPts) { const d = Math.hypot(p[0] - tx0, p[1] - ty0); if (d > maxD) { maxD = d; butt = p; } }
+      let tip = allPts[0]!; maxD = -1;
+      for (const p of allPts) { const d = Math.hypot(p[0] - butt[0], p[1] - butt[1]); if (d > maxD) { maxD = d; tip = p; } }
+      const bx = sp.x + (butt[0] - rect.anchorX) * sp.scaleX;
+      const by = sp.y + (butt[1] - rect.anchorY) * sp.scaleY;
+      const tx = sp.x + (tip[0] - rect.anchorX) * sp.scaleX;
+      const ty = sp.y + (tip[1] - rect.anchorY) * sp.scaleY;
+      const vx = tx - bx, vy = ty - by, vlen2 = vx * vx + vy * vy;
+
+      const pieces = framePieces(mergedCatalog, defaultSpearRecipe.variants, frame);
+      const arms = pieces.filter(p => p.part.part === 'coat-front' && p.part.piece >= 5);
+      return arms.map(({ part, sprite }) => {
+        const tex = loadedTextures.get(sprite.texture)!;
+        const syStart = Math.max(0, sprite.height - 5);
+        const syEnd = sprite.height;
+        let sumX = 0, sumY = 0, cnt = 0;
+        for (let sy = syStart; sy < syEnd; sy++) {
+          for (let sx = 0; sx < sprite.width; sx++) {
+            if (tex.data[((sprite.y + sy) * tex.width + (sprite.x + sx)) * 4 + 3] > 30) {
+              sumX += part.x + (sx - sprite.anchorX) * part.scaleX;
+              sumY += part.y + (sy - sprite.anchorY) * part.scaleY;
+              cnt++;
+            }
+          }
+        }
+        const hx = sumX / cnt, hy = sumY / cnt;
+        const pct = (((hx - bx) * vx + (hy - by) * vy) / vlen2) * 100;
+        const perp = Math.abs((hx - bx) * (-vy) + (hy - by) * vx) / Math.sqrt(vlen2);
+        return { pct, perp };
+      }).sort((a, b) => a.pct - b.pct);
+    };
+
+    const thrustAndBuffActions = [
+      'thrust', 'attack', 'skill-dragon-pierce', 'skill-flurry-thrust', 'skill-sovereign-pierce', 'skill-focus-edge',
+    ] as const;
+    for (const actionKey of thrustAndBuffActions) {
+      for (const facing of directions) {
+        const poseId = proto.stancePoses[`${actionKey}-${facing}`];
+        const pose = mergedCatalog.poses[poseId];
+        for (let fi = 0; fi < pose.frames.length; fi++) {
+          const projs = getHandProjections(poseId, fi);
+          assert.equal(projs.length, 2, `${poseId} F${fi} should have 2 hands`);
+          for (const h of projs) {
+            assert.ok(
+              h.pct >= -2 && h.pct <= 55,
+              `${actionKey}-${facing} F${fi} 手掌落在非法区（pct=${h.pct.toFixed(1)}%，合法不碰红缨纯木杆区为 0%..55%）`,
+            );
+          }
+          if (facing === 'south') {
+            const sep = projs[1].pct - projs[0].pct;
+            assert.ok(sep >= 10, `${actionKey}-south F${fi} 双拳前后间距过小（sep=${sep.toFixed(1)}%），存在叠拳现象`);
+          }
+          if (actionKey === 'skill-focus-edge' && (facing === 'west' || facing === 'east')) {
+            for (const h of projs) {
+              assert.ok(h.perp <= 4.0, `${actionKey}-${facing} F${fi} 立枪聚气手掌脱杆过远（perp=${h.perp.toFixed(1)}px）`);
+            }
+          }
+        }
+      }
+    }
   }
 
   // 美术一致性防回归：
