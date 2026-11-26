@@ -294,7 +294,7 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
   const effBytes = fs.readFileSync(new URL(proto.effectSheet.texture.file, repoRoot));
   const effWidth = effBytes.readUInt32BE(16);
   const effHeight = effBytes.readUInt32BE(20);
-  assert.equal(Object.keys(proto.effectSheet.frames).length, 528);
+  assert.equal(Object.keys(proto.effectSheet.frames).length, 464);
   for (const rect of Object.values(proto.effectSheet.frames)) {
     assert.ok(rect.x >= 0 && rect.y >= 0);
     assert.ok(rect.x + rect.width <= effWidth && rect.y + rect.height <= effHeight);
@@ -496,11 +496,16 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
       assert.ok(slamTl.effects.some(e => e.effect === 'state-stun' && e.onTarget));
 
       const sovTl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, 'skill-sovereign-pierce', facing, audio, proto.actionTimelines);
-      assert.ok(sovTl.effects.some(e => e.effect === 'spear-sovereign-vortex' && e.variant === facing && e.startFrame === 0));
-      assert.ok(sovTl.effects.some(e => e.effect === 'spear-sovereign-charge' && e.variant === facing && e.startFrame === 12));
-      assert.ok(sovTl.effects.some(e => e.effect === 'spear-sovereign-beam' && e.variant === facing && e.startFrame === 16));
-      assert.equal(sovTl.markers.filter(m => m.kind === 'strike').length, 4, '万圣龙王破应含 3 段乱舞绞杀 + 1 段终结龙头破防共 4 次命中标记');
-      assert.ok(sovTl.appearanceColors && sovTl.appearanceColors.length > 0, '万圣龙王破应包含满怒苍蓝斗气染色');
+      assert.ok(sovTl.effects.some(e => e.effect === 'spear-sovereign-dome' && e.variant === 'default' && e.startFrame === 0));
+      assert.ok(sovTl.effects.some(e => e.effect === 'spear-sovereign-charge' && e.variant === 'default' && e.startFrame === 12));
+      for (const beamDir of ['west', 'east', 'south', 'north'] as const) {
+        assert.ok(
+          sovTl.effects.some(e => e.effect === 'spear-sovereign-beam' && e.variant === beamDir && e.startFrame === 16),
+          `万圣龙王破在 ${facing} 朝向下必须在 F16 同时释放 ${beamDir} 方向苍龙冲击波`,
+        );
+      }
+      assert.equal(sovTl.markers.filter(m => m.kind === 'strike').length, 4, '万圣龙王破应含 3 段能量罩触碰脉冲伤害 + 1 段四向苍龙破防重创共 4 次命中标记');
+      assert.equal(sovTl.appearanceColors, undefined, '万圣龙王破严禁使人物变色（appearanceColors 必须为空）');
       assert.equal(sovTl.afterimages, undefined, 'stationary sovereign-pierce should not draw dash afterimages');
       assert.deepEqual(sovTl.shakeFrames, [3, 6, 9, 16, 17, 18, 19]);
 
@@ -1154,9 +1159,9 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
             const sep = projs[1].pct - projs[0].pct;
             assert.ok(sep >= 10, `${actionKey}-south F${fi} 双拳前后间距过小（sep=${sep.toFixed(1)}%），存在叠拳现象`);
           }
-          if (actionKey === 'skill-focus-edge' && (facing === 'west' || facing === 'east')) {
+          if ((actionKey === 'skill-focus-edge' || actionKey === 'skill-sovereign-pierce') && (facing === 'west' || facing === 'east')) {
             for (const h of projs) {
-              assert.ok(h.perp <= 4.0, `${actionKey}-${facing} F${fi} 立枪聚气手掌脱杆过远（perp=${h.perp.toFixed(1)}px）`);
+              assert.ok(h.perp <= 4.0, `${actionKey}-${facing} F${fi} 立枪手掌脱杆过远（perp=${h.perp.toFixed(1)}px）`);
             }
           }
         }

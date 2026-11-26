@@ -13,9 +13,9 @@
  * 7. spear-gale-sweep       （6 帧）：虬龙扫暴阵主体 · 四向 180° 青白月牙狂风横扫枪芒
  * 8. spear-flurry-needles   （8 帧）：连环点枪前两段 · 暴雨梨花奇偶交替扇形针芒幻影（带红缨残影）
  * 9. spear-flurry-finisher  （4 帧）：连环点枪第三段 · 炽青加粗定音主刺芒 + 十字爆闪
- * 10A. spear-sovereign-vortex（12 帧）：万圣龙王破第一幕 · 满怒球形吸气光圈 + 立体交错旋舞枪影与绯红枪缨
- * 10B. spear-sovereign-charge（4 帧）：万圣龙王破第二幕 · 顿枪锁根蓄力枪尖龙珠坍缩雷核
- * 10C. spear-sovereign-beam  （10 帧）：万圣龙王破第三幕 · 咆哮东方苍龙首（东西侧面张颚/南北俯视双角对称）+ 皇金盘龙鳞螺旋 + 4 道破防音爆超远冲击波
+ * 10A. spear-sovereign-dome  （12 帧）：万圣龙王破第一幕 · 2.5D 半透明球形护体能量罩（闭合菲涅尔球壁 + 球面高光 + 经纬力场纹 + 3 次触碰电击脉冲）
+ * 10B. spear-sovereign-charge（4 帧）：万圣龙王破第二幕 · 立枪提聚核心能量罩坍缩苍龙雷核
+ * 10C. spear-sovereign-beam  （10 帧）：万圣龙王破第三幕 · 东/西/南/北四向十字齐发咆哮东方苍龙冲击波（东西侧面张颚/南北俯视双角对称）
  * 11. spear-spin-storm      （14 帧）：旋风枪舞 · 360° 俯视椭圆冷钢青白刃环 + 飞舞朱红红缨流光 + 末圈气浪爆散
  * 12. spear-basic-lift      （3 帧）：普通攻击第三段 · 素银由下而上轻量上挑弧光（无控制）
  */
@@ -1562,18 +1562,16 @@ function drawTiltedSlashArc(
   }
 }
 
-function buildSovereignVortex(direction: 'west' | 'south' | 'north'): DirectionalEffectSource {
-  // 148×118：角色脚底 (0,0) 在 (74, 66)，真气球心在腰胸 (74, 50)
-  const w = 148;
-  const h = 118;
-  const ox = 74;
+function buildSovereignDome(): DirectionalEffectSource {
+  // 144×116：角色脚底 (0,0) 在 (72, 66)，球形能量罩核心在腰胸立枪处 (72, 48)（y = -18）
+  // 完整包裹竖立长枪尖 (y = -50) 至脚底接地底环 (y = +16)，内部通透不遮糊角色且无任何多端枪花杂弧！
+  const w = 144;
+  const h = 116;
+  const ox = 72;
   const oy = 66;
-  const cx = 74;
-  const cy = 50;
-  const fwdAngle = direction === 'west' ? Math.PI : direction === 'south' ? Math.PI / 2 : -Math.PI / 2;
-  // 第 10..11 帧坍缩汇入的四向蓄力枪尖坐标
-  const coilTipX = direction === 'west' ? ox - 33 : direction === 'south' ? ox - 3 : ox + 6;
-  const coilTipY = direction === 'west' ? oy - 11 : direction === 'south' ? oy + 28 : oy - 42;
+  const cx = 72;
+  const cy = 48;
+  const coreY = oy - 22; // 提枪凝核坍缩中心 (72, 44)
 
   const baseFrames: EffectFrameGrid[] = [];
   const addFrames: EffectFrameGrid[] = [];
@@ -1582,136 +1580,165 @@ function buildSovereignVortex(direction: 'west' | 'south' | 'north'): Directiona
     const base = blank(w, h);
     const add = blank(w, h);
 
-    if (i <= 1) {
-      // f0..f1：100% 满怒开大气圈炸开 + 8 道柔和弧形向心吸气涡流
-      const rx = i === 0 ? 34 : 48;
-      const ry = i === 0 ? 25 : 35;
-      drawTiltedSlashArc(base, add, cx, cy + 2, rx, ry, 0, 0, 360, i === 0 ? 2.6 : 3.4, true);
-      for (let k = 0; k < 8; k++) {
-        const baseA = (k * 45 + i * 22) * (Math.PI / 180);
-        for (let s = 0; s <= 26; s++) {
-          const f = s / 26;
-          const rMul = 1.30 - f * 0.46;
-          const a = baseA + (1 - f) * 0.62;
-          const sx = cx + rx * rMul * Math.cos(a);
-          const sy = cy + ry * rMul * Math.sin(a);
-          const ch = f > 0.72 ? (k % 2 === 0 ? 'g' : 'L') : f > 0.38 ? 'C' : 'D';
-          plotMax(base, sx, sy, ch);
-          plotMax(add, sx, sy, f > 0.62 ? 'B' : 'd');
-        }
+    // 半径包络：f0..f1 撑罩展开 -> f2..f9 稳固球形能量罩（f3/f6/f9 触碰电弧震击脉冲）-> f10..f11 向心坍缩
+    const isStrike = i === 3 || i === 6 || i === 9;
+    const isAfterStrike = i === 4 || i === 7;
+    const isCollapse = i >= 10;
+    const scale = i === 0 ? 0.58
+      : i === 1 ? 0.86
+      : i === 10 ? 0.66
+      : i === 11 ? 0.34
+      : isStrike ? 1.04 : 0.99 + (i % 2) * 0.02;
+    const rx = 50 * scale;
+    const ry = 39 * scale;
+    const domeCy = isCollapse ? cy + (coreY - cy) * (i === 10 ? 0.5 : 0.9) : cy;
+
+    // 1. 接地能量底环（表现球形护罩与地面的物理交界圈）
+    if (!isCollapse && i >= 1) {
+      const groundY = oy - 2;
+      const grx = rx * 0.86;
+      const gry = 13.5 * scale;
+      for (let deg = 0; deg < 360; deg += 2) {
+        const rad = (deg * Math.PI) / 180;
+        const gx = cx + grx * Math.cos(rad);
+        const gy = groundY + gry * Math.sin(rad);
+        const front = Math.sin(rad) > 0;
+        plotMax(base, gx, gy, front ? (isStrike ? 'L' : 'C') : 'D');
+        if (front) plotMax(add, gx, gy, isStrike ? 'C' : 'd');
       }
-    } else if (i <= 9) {
-      // f2..f9：八帧立体交错龙王乱舞吸气光球（f3 / f6 / f9 为三段绞杀命中峰值！）
-      const step = i - 2;
-      const isStrike = i === 3 || i === 6 || i === 9;
-      const pulse = isStrike ? 1.07 : 0.96 + (step % 2) * 0.05;
-      const rx = 50 * pulse;
-      const ry = 37 * pulse;
-
-      // 1. 外围半透明龙王吸气球形界环 + 6 道向内卷吸的涡流丝（还原《流星》吸气光圈）
-      for (let k = 0; k < 6; k++) {
-        const segStart = step * 48 + k * 60;
-        drawTiltedSlashArc(base, add, cx, cy, rx + 3, ry + 2, 0, segStart, segStart + 42, isStrike ? 1.8 : 1.3, k % 2 === 0);
-        const inA = ((segStart + 46) * Math.PI) / 180;
-        for (let s = 0; s <= 20; s++) {
-          const f = s / 20;
-          const rr = 1.18 - f * 0.44;
-          const swirl = inA - f * 0.64;
-          const sx = cx + rx * rr * Math.cos(swirl);
-          const sy = cy + ry * rr * Math.sin(swirl);
-          plotMax(base, sx, sy, f > 0.68 ? 'C' : 'D');
-          plotMax(add, sx, sy, f > 0.65 ? (k % 2 === 0 ? 'G' : 'B') : 'd');
-        }
-      }
-
-      // 2. 双倾角 X 形 3D 交错立体刀光弧网（宽幅柔光层次，呈现立体球形狂舞笼罩感）
-      const tiltA = 30 + Math.sin(step * 1.2) * 11;
-      const tiltB = -30 + Math.cos(step * 1.1) * 11;
-      const headA = -step * 78 + (direction === 'south' ? 75 : direction === 'north' ? -95 : 165);
-      const headB = step * 84 + (direction === 'south' ? 115 : direction === 'north' ? -65 : 205);
-      drawTiltedSlashArc(base, add, cx, cy, rx - 2, ry - 4, tiltA, headA - 225, headA, isStrike ? 5.2 : 4.0, true);
-      drawTiltedSlashArc(base, add, cx, cy, rx - 5, ry - 6, tiltB, headB - 195, headB, isStrike ? 4.2 : 3.1, false);
-
-      // 3. 随立体枪弧飞舞的朱红枪缨火流丝
-      drawTasselRibbon(base, add, cx, cy, rx - 10, ry - 7, headA - 145, headA - 6, isStrike ? 2.0 : 1.5, i * 1.7);
-
-      // 4. 扇形放射柳叶枪锋寒芒（取代生硬平行梳齿！由手部放射状刺出 2~3 道柳叶尖锋 + 外切破风弯月刃）
-      const fanAngles = isStrike
-        ? [-0.36, 0, 0.36]
-        : step % 2 === 0
-          ? [-0.26, 0.18]
-          : [-0.18, 0.26];
-      fanAngles.forEach((angOff, idx) => {
-        const ang = fwdAngle + angOff;
-        const ca = Math.cos(ang);
-        const sa = Math.sin(ang);
-        const na = -sa;
-        const nb = ca;
-        const isMain = isStrike && idx === 1;
-        const startR = 15;
-        const reach = isMain ? 66 : isStrike ? 57 : 49 + (idx % 2) * 5;
-        for (let d = startR; d <= reach; d += 0.5) {
-          const f = (d - startR) / Math.max(1, reach - startR);
-          // 柳叶枪尖包络：中前段饱满（~3.4px）、尖端收束成 0.5px 锐利寒芒
-          const leafW = f < 0.62
-            ? 0.6 + Math.sin((f / 0.62) * Math.PI * 0.5) * (isMain ? 3.4 : 2.5)
-            : (isMain ? 4.0 : 3.1) * Math.pow(1 - (f - 0.62) / 0.38, 1.25);
-          const bx = cx + ca * d;
-          const by = cy + sa * d;
-          for (let o = -leafW; o <= leafW; o += 0.4) {
-            const norm = Math.abs(o) / Math.max(0.45, leafW);
-            const px = bx + na * o;
-            const py = by + nb * o;
-            const bCh = norm < 0.26 && f > 0.3 ? 'W' : norm < 0.58 ? 'C' : norm < 0.84 ? 'B' : 'D';
-            const aCh = norm < 0.3 && f > 0.35 ? 'L' : norm < 0.65 ? 'B' : 'd';
-            plotMax(base, px, py, bCh);
-            plotMax(add, px, py, aCh);
-          }
-        }
-        if (isStrike) {
-          plotSpark(base, add, cx + ca * (reach - 1), cy + sa * (reach - 1), isMain ? 'g' : 'L', plotMax, isMain);
-        }
-      });
-
-      // 命中峰值帧：在正前方球面外缘叠加一道凌厉的圣金冰青破风月牙刃弧
-      if (isStrike) {
-        const fDeg = (fwdAngle * 180) / Math.PI;
-        drawTiltedSlashArc(base, add, cx, cy, rx + 7, ry + 5, 0, fDeg - 48, fDeg + 48, 3.2, true);
-      }
-    } else {
-      // f10..f11：百川归海 —— 周身 110px 龙王光圈呈弧形旋涡极速向蓄力枪尖 (coilTipX, coilTipY) 坍缩聚拢！
-      const t = i === 10 ? 0.52 : 0.88;
-      const curX = cx + (coilTipX - cx) * t;
-      const curY = cy + (coilTipY - cy) * t;
-      const rx = i === 10 ? 28 : 13;
-      const ry = i === 10 ? 21 : 10;
-      drawTiltedSlashArc(base, add, curX, curY, rx, ry, i * 35, 0, 360, i === 10 ? 2.6 : 3.0, true);
-      for (let k = 0; k < 10; k++) {
-        const a = (k * 36 + i * 18) * (Math.PI / 180);
-        const outerR = i === 10 ? 52 : 30;
-        const sx0 = cx + outerR * Math.cos(a);
-        const sy0 = cy + outerR * 0.75 * Math.sin(a);
-        for (let s = 0; s <= 22; s++) {
-          const f = s / 22;
-          const curve = Math.sin(f * Math.PI) * 6;
-          const px = sx0 + (coilTipX - sx0) * f - Math.sin(a) * curve;
-          const py = sy0 + (coilTipY - sy0) * f + Math.cos(a) * curve * 0.75;
-          if (f < 0.22 && i === 11) continue;
-          const ch = f > 0.82 ? 'L' : f > 0.52 ? (k % 2 === 0 ? 'g' : 'C') : 'B';
-          plotMax(base, px, py, ch);
-          plotMax(add, px, py, f > 0.75 ? 'C' : 'd');
-        }
-      }
-      plotSpark(base, add, coilTipX, coilTipY, 'g', plotMax, true);
     }
 
-    baseFrames.push({ id: `spear-sovereign-vortex-${direction}-base-${i}`, rows: base.map(r => r.join('')) });
-    addFrames.push({ id: `spear-sovereign-vortex-${direction}-add-${i}`, rows: add.map(r => r.join('')) });
+    // 2. 真实 3D 球面菲涅尔半透明壳壁 + 左上玻璃高光弧（中心 u < 0.72 完全清透，保证原色人物纤毫毕现）
+    const irx = Math.ceil(rx + 2);
+    const iry = Math.ceil(ry + 2);
+    for (let dy = -iry; dy <= iry; dy++) {
+      for (let dx = -irx; dx <= irx; dx++) {
+        const nx = dx / rx;
+        const ny = dy / ry;
+        const u = Math.hypot(nx, ny);
+        if (u > 1.015) continue;
+
+        const nz = Math.sqrt(Math.max(0, 1 - Math.min(1, u * u)));
+        // 左上方球面镜面反光（塑造饱满凸球体立体感，一眼看出是透明球罩而非扁平圆环！）
+        const lightDot = nx * -0.48 + ny * -0.58 + nz * 0.66;
+        const isSpecular = !isCollapse && u >= 0.44 && u <= 0.78 && lightDot > 0.855;
+        const frontWeight = ny * 0.35 + 0.65; // 下前景壳壁更厚亮，上远景更柔和
+
+        if (u >= 0.935) {
+          // 闭合 360° 菲涅尔高光罩壁外缘
+          const rimCh = isStrike ? (frontWeight > 0.68 ? 'W' : 'L') : (frontWeight > 0.72 ? 'L' : 'C');
+          const addCh = isStrike ? (frontWeight > 0.65 ? 'L' : 'B') : (frontWeight > 0.72 ? 'B' : 'd');
+          plotMax(base, cx + dx, domeCy + dy, rimCh);
+          plotMax(add, cx + dx, domeCy + dy, addCh);
+        } else if (u >= 0.855) {
+          // 球罩次外层折射光壁
+          plotMax(base, cx + dx, domeCy + dy, frontWeight > 0.65 ? 'B' : 'D');
+          if (isStrike || frontWeight > 0.75) plotMax(add, cx + dx, domeCy + dy, 'd');
+        } else if (u >= 0.735) {
+          // 半透明棋盘渐变过渡带（营造通透蓝色玻璃力场感，绝不糊白）
+          if (u >= 0.80 || ((cx + dx + domeCy + dy) & 1) === 0) {
+            plotMax(base, cx + dx, domeCy + dy, 'd');
+          }
+        } else if (isSpecular) {
+          const specStrong = lightDot > 0.905;
+          if (specStrong || ((dx + dy) & 1) === 0) {
+            plotMax(base, cx + dx, domeCy + dy, specStrong ? 'C' : 'B');
+            if (specStrong) plotMax(add, cx + dx, domeCy + dy, 'd');
+          }
+        }
+      }
+    }
+
+    // 3. 3D 球面经纬能量场细纹（贴合前球面弧度缓慢流转，强化护盾力场质感）
+    if (i >= 1 && !isCollapse) {
+      for (const latDeg of [-24, 20]) {
+        const lat = (latDeg * Math.PI) / 180;
+        const cosLat = Math.cos(lat);
+        const sinLat = Math.sin(lat);
+        for (let lonDeg = -76; lonDeg <= 76; lonDeg += 3) {
+          const lon = (lonDeg * Math.PI) / 180;
+          const sx = cx + rx * cosLat * Math.sin(lon);
+          const sy = domeCy + ry * (sinLat * 0.88 + cosLat * Math.cos(lon) * 0.22);
+          // 留出角色头胸正中心 12px 清透视窗
+          if (Math.hypot(sx - cx, sy - domeCy) < 13) continue;
+          if (lonDeg % 6 === 0) {
+            plotMax(base, sx, sy, isStrike ? 'C' : 'D');
+            if (isStrike) plotMax(add, sx, sy, 'd');
+          }
+        }
+      }
+      for (let m = 0; m < 3; m++) {
+        const lonDeg = ((m * 60 + i * 14) % 180) - 90;
+        const lon = (lonDeg * Math.PI) / 180;
+        for (let latDeg = -74; latDeg <= 74; latDeg += 3) {
+          const lat = (latDeg * Math.PI) / 180;
+          const sx = cx + rx * Math.cos(lat) * Math.sin(lon);
+          const sy = domeCy + ry * Math.sin(lat);
+          if (Math.hypot(sx - cx, sy - domeCy) < 14) continue;
+          if (latDeg % 6 === 0) {
+            plotMax(base, sx, sy, isStrike ? 'C' : 'D');
+          }
+        }
+      }
+    }
+
+    // 4. 触碰伤害脉冲表现（f3 / f6 / f9）：罩壁外扩震波圈 + 8 簇护盾反击圣金冰青电弧！
+    if (isStrike) {
+      const prx = rx + 4.5;
+      const pry = ry + 3.5;
+      for (let deg = 0; deg < 360; deg += 1.5) {
+        const rad = (deg * Math.PI) / 180;
+        const px = cx + prx * Math.cos(rad);
+        const py = domeCy + pry * Math.sin(rad);
+        const goldSeg = Math.floor((deg + i * 25) / 45) % 2 === 0;
+        plotMax(base, px, py, goldSeg ? 'g' : 'C');
+        plotMax(add, px, py, goldSeg ? 'G' : 'B');
+      }
+      for (let k = 0; k < 8; k++) {
+        const baseA = ((k * 45 + i * 19) * Math.PI) / 180;
+        for (let s = 0; s <= 6; s++) {
+          const zig = (s % 2 === 0 ? 1 : -1) * 1.6;
+          const rr = 1.0 + s * 0.032;
+          const ax = cx + rx * rr * Math.cos(baseA) - Math.sin(baseA) * zig;
+          const ay = domeCy + ry * rr * Math.sin(baseA) + Math.cos(baseA) * zig * 0.8;
+          plotMax(base, ax, ay, s < 3 ? 'W' : 'g');
+          plotMax(add, ax, ay, s < 3 ? 'L' : 'G');
+        }
+      }
+    } else if (isAfterStrike) {
+      // 脉冲余波外扩消散环
+      const prx = rx + 8.5;
+      const pry = ry + 6.5;
+      for (let deg = 0; deg < 360; deg += 4) {
+        if (Math.floor(deg / 12) % 2 === 0) continue;
+        const rad = (deg * Math.PI) / 180;
+        plotMax(base, cx + prx * Math.cos(rad), domeCy + pry * Math.sin(rad), 'B');
+        plotMax(add, cx + prx * Math.cos(rad), domeCy + pry * Math.sin(rad), 'd');
+      }
+    }
+
+    // 5. f10..f11：球形能量罩向提枪中心急速收束光线
+    if (isCollapse) {
+      for (let k = 0; k < 8; k++) {
+        const a = ((k * 45 + i * 20) * Math.PI) / 180;
+        const r0 = i === 10 ? 48 : 30;
+        const r1 = rx * 0.9;
+        for (let s = 0; s <= 14; s++) {
+          const f = s / 14;
+          const rr = r0 + (r1 - r0) * f;
+          plotMax(base, cx + rr * Math.cos(a), domeCy + rr * 0.78 * Math.sin(a), f > 0.6 ? 'g' : 'C');
+          if (f > 0.65) plotMax(add, cx + rr * Math.cos(a), domeCy + rr * 0.78 * Math.sin(a), 'B');
+        }
+      }
+    }
+
+    baseFrames.push({ id: `spear-sovereign-dome-default-base-${i}`, rows: base.map(r => r.join('')) });
+    addFrames.push({ id: `spear-sovereign-dome-default-add-${i}`, rows: add.map(r => r.join('')) });
   }
 
   return {
-    effectId: 'spear-sovereign-vortex',
-    direction,
+    effectId: 'spear-sovereign-dome',
+    direction: 'default',
     frameWidth: w,
     frameHeight: h,
     originX: ox / w,
@@ -1723,14 +1750,14 @@ function buildSovereignVortex(direction: 'west' | 'south' | 'north'): Directiona
   };
 }
 
-function buildSovereignCharge(direction: 'west' | 'south' | 'north'): DirectionalEffectSource {
-  // 104×112：角色脚底 (0,0) 在 (52, 58)，龙珠蓄核精准锁定在 F12..F15 四向蓄力枪尖坐标
-  const w = 104;
-  const h = 112;
-  const ox = 52;
-  const oy = 58;
-  const tipX = direction === 'west' ? ox - 33 : direction === 'south' ? ox - 3 : ox + 6;
-  const tipY = direction === 'west' ? oy - 11 : direction === 'south' ? oy + 28 : oy - 42;
+function buildSovereignCharge(): DirectionalEffectSource {
+  // 96×96：角色脚底 (0,0) 在 (48, 62)，苍龙蓄核精准锁定在 F12..F15 提枪中心 (48, 40)（y = -22）
+  const w = 96;
+  const h = 96;
+  const ox = 48;
+  const oy = 62;
+  const tipX = ox;
+  const tipY = oy - 22;
   const baseFrames: EffectFrameGrid[] = [];
   const addFrames: EffectFrameGrid[] = [];
 
@@ -1740,8 +1767,14 @@ function buildSovereignCharge(direction: 'west' | 'south' | 'north'): Directiona
     const ringR = [20, 15, 10, 14][i]!;
     const coreR = [4.0, 5.2, 6.8, 7.6][i]!;
 
-    // 1. 内缩圣金青蓝聚气环 + 4 股旋入枪尖的螺旋真气臂（取代生硬白圆贴纸）
-    drawTiltedSlashArc(base, add, tipX, tipY, ringR, ringR, i * 40, 0, 360, i === 3 ? 2.2 : 1.6, true);
+    // 1. 球罩残余收缩环 + 4 股向心旋入枪身的螺旋真气臂
+    for (let deg = 0; deg < 360; deg += 3) {
+      const rad = (deg * Math.PI) / 180;
+      const rx = tipX + ringR * Math.cos(rad);
+      const ry = tipY + ringR * 0.82 * Math.sin(rad);
+      plotMax(base, rx, ry, deg % 9 === 0 ? 'g' : 'C');
+      plotMax(add, rx, ry, 'd');
+    }
     for (let k = 0; k < 4; k++) {
       const baseA = ((k * 90 + i * 38) * Math.PI) / 180;
       for (let s = 0; s <= 18; s++) {
@@ -1749,7 +1782,7 @@ function buildSovereignCharge(direction: 'west' | 'south' | 'north'): Directiona
         const r = (ringR + 5) * (1 - f * 0.82);
         const a = baseA + f * 1.15;
         const px = tipX + r * Math.cos(a);
-        const py = tipY + r * Math.sin(a);
+        const py = tipY + r * 0.85 * Math.sin(a);
         plotMax(base, px, py, f > 0.65 ? 'g' : 'C');
         plotMax(add, px, py, f > 0.7 ? 'L' : 'B');
       }
@@ -1768,8 +1801,8 @@ function buildSovereignCharge(direction: 'west' | 'south' | 'north'): Directiona
       }
     }
 
-    // 3. 菱形渐尖十字破防耀斑（根部宽 2px 渐收为 1px 针尖）
-    const rayLen = [13, 17, 24, 27][i]!;
+    // 3. 十字四方破防预兆星芒（预示即将朝东/西/南/北四个方向同时爆发！）
+    const rayLen = [13, 17, 23, 27][i]!;
     for (let s = -rayLen; s <= rayLen; s++) {
       const n = Math.abs(s) / rayLen;
       const halfW = (1 - n) * 1.6;
@@ -1784,31 +1817,14 @@ function buildSovereignCharge(direction: 'west' | 'south' | 'north'): Directiona
         }
       }
     }
-    if (i >= 2) {
-      const diagLen = i === 3 ? 14 : 10;
-      for (let s = -diagLen; s <= diagLen; s++) {
-        const n = Math.abs(s) / diagLen;
-        plotMax(base, tipX + s, tipY + s, n < 0.4 ? 'g' : 'C');
-        plotMax(base, tipX + s, tipY - s, n < 0.4 ? 'g' : 'C');
-        if (n < 0.5) {
-          plotMax(add, tipX + s, tipY + s, 'G');
-          plotMax(add, tipX + s, tipY - s, 'G');
-        }
-      }
-    }
-    for (let k = 0; k < 6; k++) {
-      const a = ((k * 60 + i * 28) * Math.PI) / 180;
-      const sr = ringR + 4 + (k % 2) * 3;
-      plotSpark(base, add, tipX + sr * Math.cos(a), tipY + sr * Math.sin(a), k % 2 === 0 ? 'g' : 'C', plotMax, false);
-    }
 
-    baseFrames.push({ id: `spear-sovereign-charge-${direction}-base-${i}`, rows: base.map(r => r.join('')) });
-    addFrames.push({ id: `spear-sovereign-charge-${direction}-add-${i}`, rows: add.map(r => r.join('')) });
+    baseFrames.push({ id: `spear-sovereign-charge-default-base-${i}`, rows: base.map(r => r.join('')) });
+    addFrames.push({ id: `spear-sovereign-charge-default-add-${i}`, rows: add.map(r => r.join('')) });
   }
 
   return {
     effectId: 'spear-sovereign-charge',
-    direction,
+    direction: 'default',
     frameWidth: w,
     frameHeight: h,
     originX: ox / w,
@@ -1979,23 +1995,22 @@ function drawDorsalDragonHead(
   jawFlare: number,
   putPt: (grid: string[][], along: number, across: number, ch: string) => void,
 ): void {
-  const headLen = 32;
+  const headLen = 24;
   const neckU = snoutU - headLen;
-  const maxHalfW = 11.5 + (jawFlare - 6.5) * 0.8;
+  const maxHalfW = 10.5 + (jawFlare - 6.5) * 0.7;
 
   // 1. 俯视楔形流线龙颅装甲（颈部宽阔，颧骨微鼓，向鼻尖锐利收束成破甲菱矛）
   for (let du = 0; du <= headLen; du++) {
     const f = du / headLen; // 0=龙颈根, 1=龙吻尖
     const u = neckU + du;
-    const cheekBulge = Math.sin(Math.pow(f, 0.72) * Math.PI) * 3.2;
+    const cheekBulge = Math.sin(Math.pow(f, 0.72) * Math.PI) * 2.8;
     const halfW = f < 0.58
       ? maxHalfW * (0.76 + f * 0.35) + cheekBulge * 0.45
-      : Math.max(1.2, (maxHalfW + 1.2) * Math.pow(1 - (f - 0.58) / 0.42, 0.82));
+      : Math.max(1.2, (maxHalfW + 1.0) * Math.pow(1 - (f - 0.58) / 0.42, 0.82));
     for (let v = -Math.ceil(halfW); v <= Math.ceil(halfW); v++) {
       const av = Math.abs(v);
       if (av > halfW + 0.15) continue;
       const r = av / Math.max(1, halfW);
-      // 中脊亮银冰青 -> 颅顶苍蓝 -> 两侧颧骨深王蓝立体明暗，拒绝平涂白块！
       const bCh = av <= 1.2 ? 'L' : r < 0.36 ? 'C' : r < 0.68 ? 'B' : r < 0.88 ? 'D' : 'd';
       const aCh = av <= 1.0 ? 'C' : r < 0.38 ? 'B' : r < 0.65 ? 'd' : '.';
       putPt(base, u, centerV + v, bCh);
@@ -2004,17 +2019,17 @@ function drawDorsalDragonHead(
   }
 
   // 2. 前端张颌深蓝裂口与中轴喷薄而出的圣金破防龙息矛尖
-  for (let du = headLen - 11; du <= headLen - 2; du++) {
+  for (let du = headLen - 9; du <= headLen - 2; du++) {
     const u = neckU + du;
     for (const side of [-1, 1] as const) {
       putPt(base, u, centerV + side * 3, 'd');
       putPt(base, u, centerV + side * 4, 'd');
     }
   }
-  for (let du = headLen - 10; du <= headLen + 6; du++) {
-    const f = (du - (headLen - 10)) / 16;
+  for (let du = headLen - 8; du <= headLen + 4; du++) {
+    const f = (du - (headLen - 8)) / 12;
     const u = neckU + du;
-    const tipW = f < 0.65 ? 1.8 : Math.max(0.4, 1.8 * (1 - (f - 0.65) / 0.35));
+    const tipW = f < 0.65 ? 1.7 : Math.max(0.4, 1.7 * (1 - (f - 0.65) / 0.35));
     for (let v = -Math.ceil(tipW); v <= Math.ceil(tipW); v++) {
       if (Math.abs(v) > tipW) continue;
       putPt(base, u, centerV + v, Math.abs(v) < 0.75 ? 'W' : 'g');
@@ -2023,7 +2038,7 @@ function drawDorsalDragonHead(
   }
 
   // 3. 龙吻两侧对称外呲的雪白锋利龙獠牙
-  for (const [fDu, outV] of [[headLen - 9, 7], [headLen - 5, 5]] as const) {
+  for (const [fDu, outV] of [[headLen - 7, 7], [headLen - 4, 5]] as const) {
     const u = neckU + fDu;
     for (const side of [-1, 1] as const) {
       putPt(base, u, centerV + side * outV, 'W');
@@ -2032,44 +2047,43 @@ function drawDorsalDragonHead(
     }
   }
 
-  // 4. 左右完全对称、向后高扬外展的分叉皇室圣金双龙角 + 颈侧逆鳞金刺
+  // 4. 左右完全对称、向后高扬外展的分叉皇室圣金双龙角 + 飘逸双龙须
   for (const side of [-1, 1] as const) {
-    for (let s = 0; s <= 22; s++) {
-      const f = s / 22;
-      const hu = neckU + 15 - s * 1.08;
-      const hv = centerV + side * (7.2 + s * 0.52 + Math.sin(f * Math.PI) * 1.5);
-      const thick = (1 - f * 0.72) * 2.2;
+    for (let s = 0; s <= 17; s++) {
+      const f = s / 17;
+      const hu = neckU + 12 - s * 1.02;
+      const hv = centerV + side * (6.8 + s * 0.56 + Math.sin(f * Math.PI) * 1.4);
+      const thick = (1 - f * 0.72) * 2.1;
       for (let o = -Math.ceil(thick); o <= Math.ceil(thick); o++) {
         if (Math.abs(o) > thick) continue;
         putPt(base, hu, hv + o, Math.abs(o) <= 0.65 ? 'g' : 'G');
         if (Math.abs(o) <= 0.7) putPt(add, hu, hv + o, f > 0.72 ? 'L' : 'G');
       }
-      if (s >= 7 && s <= 15) {
+      if (s >= 5 && s <= 12) {
         const b2u = hu + 2;
-        const b2v = hv + side * ((s - 6) * 0.48);
+        const b2v = hv + side * ((s - 4) * 0.52);
         putPt(base, b2u, b2v, 'g');
         putPt(add, b2u, b2v, 'G');
       }
     }
-    // 左右飘舞圣金长龙须
-    for (let s = 0; s <= 22; s++) {
-      const wu = snoutU - 5 - s * 0.92;
-      const wv = centerV + side * (5.5 + Math.sin(s * 0.34) * 3.0 + s * 0.25);
-      putPt(base, wu, wv, s < 12 ? 'g' : 'C');
-      if (s < 10) putPt(add, wu, wv, 'G');
+    for (let s = 0; s <= 16; s++) {
+      const wu = snoutU - 4 - s * 0.88;
+      const wv = centerV + side * (5.2 + Math.sin(s * 0.38) * 2.8 + s * 0.25);
+      putPt(base, wu, wv, s < 10 ? 'g' : 'C');
+      if (s < 8) putPt(add, wu, wv, 'G');
     }
   }
 
-  // 5. 深蓝眼窝包裹的左右对称怒目炽金双龙睛（俯视龙头点睛之笔！）
-  const eyeU = neckU + 16;
+  // 5. 深蓝眼窝包裹的左右对称怒目炽金双龙睛
+  const eyeU = neckU + 12;
   for (const side of [-1, 1] as const) {
-    const eyeV = centerV + side * 6;
+    const eyeV = centerV + side * 5.5;
     for (let du = -2; du <= 2; du++) {
       for (let dv = -2; dv <= 2; dv++) {
         if (Math.abs(du) + Math.abs(dv) > 3) continue;
         if (Math.abs(du) <= 1 && dv === 0) {
-          putPt(base, eyeU + du, eyeV + dv, du === 0 ? 'W' : 'g');
-          putPt(add, eyeU + du, eyeV + dv, 'W');
+          putPt(base, eyeU + du, Math.round(eyeV + dv), du === 0 ? 'W' : 'g');
+          putPt(add, eyeU + du, Math.round(eyeV + dv), 'W');
         } else {
           putPt(base, Math.round(eyeU + du), Math.round(eyeV + dv), 'd');
         }
@@ -2088,29 +2102,31 @@ function makeSovereignBeamDrawer(topDownSymmetric: boolean) {
     putPt: (grid: string[][], along: number, across: number, ch: string) => void,
   ): void {
     const drawHead = topDownSymmetric ? drawDorsalDragonHead : drawRoaringDragonHead;
+    const headBack = topDownSymmetric ? 17 : 22;
+    const waveFreq = topDownSymmetric ? 0.165 : 0.125;
     if (frameIndex === 0) {
       // f0（F16）：破膛龙吟震爆气环 + 苍龙首破空初现
-      for (let v = -24; v <= 24; v++) {
-        const norm = Math.abs(v) / 24;
-        const ru = 18 - Math.round(norm * norm * 13);
+      for (let v = -22; v <= 22; v++) {
+        const norm = Math.abs(v) / 22;
+        const ru = (topDownSymmetric ? 14 : 18) - Math.round(norm * norm * 11);
         putPt(base, ru, centerV + v, norm < 0.28 ? 'W' : norm < 0.6 ? 'g' : 'B');
         putPt(add, ru, centerV + v, norm < 0.35 ? 'L' : 'd');
         putPt(base, ru - 2, centerV + v, norm < 0.45 ? 'C' : 'D');
       }
-      drawHead(base, add, 58, centerV, 6.5, putPt);
+      drawHead(base, add, topDownSymmetric ? 42 : 54, centerV, 6.5, putPt);
       return;
     }
 
     if (frameIndex >= 1 && frameIndex <= 5) {
-      // f1..f5（F17..F21）：咆哮苍龙首推进 + 5层渐变王蓝亮青主柱（绝不过曝成白柱！）+ 皇金盘龙鳞螺旋 + 4道破防音爆环
-      const reachByFrame = [Math.round(axisLength * 0.72), axisLength - 3, axisLength - 1, axisLength - 1, axisLength - 1];
+      // f1..f5（F17..F21）：咆哮苍龙首推进 + 5层渐变王蓝亮青主柱 + 皇金盘龙鳞螺旋 + 破防音爆环
+      const reachByFrame = [Math.round(axisLength * 0.74), axisLength - 4, axisLength - 2, axisLength - 2, axisLength - 2];
       const end = reachByFrame[frameIndex - 1]!;
-      const start = frameIndex >= 4 ? 8 : 2;
-      const maxW = [9.0, 10.8, 11.2, 9.8, 7.0][frameIndex - 1]!;
+      const start = frameIndex >= 4 ? 6 : 1;
+      const maxW = [8.6, 10.2, 10.6, 9.2, 6.6][frameIndex - 1]!;
       const isPeak = frameIndex === 2 || frameIndex === 3;
 
-      // 1. 五层通透渐变王蓝主能量柱（仅最中心 <=1.6px 为炽白脊线，两侧呈现 C -> B -> D -> d 晶莹层次）
-      const bodyEnd = frameIndex <= 4 ? end - 24 : end - 4;
+      // 1. 五层通透渐变王蓝主能量柱
+      const bodyEnd = frameIndex <= 4 ? Math.max(start + 8, end - headBack) : end - 4;
       for (let u = start; u <= bodyEnd; u++) {
         const f = (u - start) / Math.max(1, bodyEnd - start);
         const halfW = f < 0.1 ? 2.0 + (f / 0.1) * (maxW * 0.68)
@@ -2120,7 +2136,7 @@ function makeSovereignBeamDrawer(topDownSymmetric: boolean) {
           const av = Math.abs(v);
           if (av > halfW + 0.15) continue;
           const r = av / Math.max(0.5, halfW);
-          if (av <= (isPeak ? 1.6 : 1.2)) {
+          if (av <= (isPeak ? 1.5 : 1.1)) {
             putPt(base, u, centerV + v, 'W');
             putPt(add, u, centerV + v, 'L');
           } else if (r < 0.36) {
@@ -2137,13 +2153,13 @@ function makeSovereignBeamDrawer(topDownSymmetric: boolean) {
         }
       }
 
-      // 2. 双股交织皇金 + 冰青盘龙鳞甲螺旋（在深邃王蓝主柱衬托下金光熠熠！）
+      // 2. 双股交织皇金 + 冰青盘龙鳞甲螺旋
       const phase = frameIndex * 1.35;
-      for (let u = start + 6; u <= bodyEnd + 4; u += 0.45) {
+      for (let u = start + 4; u <= bodyEnd + 3; u += 0.45) {
         const f = (u - start) / Math.max(1, end - start);
-        const amp = (frameIndex === 5 ? 13 : isPeak ? 18.5 : 16.0) * (0.35 + 0.65 * Math.sin(Math.min(1, f * 1.1) * Math.PI));
-        const w1 = Math.sin(u * 0.115 - phase) * amp;
-        const w2 = Math.sin(u * 0.115 - phase + Math.PI) * amp;
+        const amp = (frameIndex === 5 ? 12 : isPeak ? 17.0 : 15.0) * (0.35 + 0.65 * Math.sin(Math.min(1, f * 1.1) * Math.PI));
+        const w1 = Math.sin(u * waveFreq - phase) * amp;
+        const w2 = Math.sin(u * waveFreq - phase + Math.PI) * amp;
         for (let t = -1; t <= 1; t++) {
           putPt(base, u, centerV + w1 + t, t === 0 ? 'g' : 'G');
           if (t === 0) putPt(add, u, centerV + w1, 'G');
@@ -2152,23 +2168,26 @@ function makeSovereignBeamDrawer(topDownSymmetric: boolean) {
         }
       }
 
-      // 3. 四道前厚后薄破防月牙音爆气浪（渐变羽化翼，告别单像素铁丝圈！）
-      const ringPositions = frameIndex === 1
-        ? [{ u: 22, rad: 23 }, { u: 56, rad: 19 }]
+      // 3. 前厚后薄破防月牙音爆气浪
+      const ringPositions = topDownSymmetric
+        ? [
+            { u: 14 + frameIndex * 2, rad: 23 - frameIndex },
+            { u: 34 + frameIndex * 2, rad: 20 - frameIndex },
+            { u: 54 + frameIndex * 2, rad: 17 - frameIndex },
+          ]
         : [
-            { u: 20 + frameIndex * 3, rad: 26 - frameIndex },
-            { u: 52 + frameIndex * 3, rad: 23 - frameIndex },
-            { u: 84 + frameIndex * 3, rad: 20 - frameIndex },
-            { u: 114 + frameIndex * 2, rad: 17 - frameIndex },
+            { u: 18 + frameIndex * 3, rad: 24 - frameIndex },
+            { u: 46 + frameIndex * 3, rad: 21 - frameIndex },
+            { u: 74 + frameIndex * 3, rad: 18 - frameIndex },
           ];
       for (const ring of ringPositions) {
         if (ring.u > bodyEnd - 2) continue;
         for (let v = -ring.rad; v <= ring.rad; v++) {
           const norm = Math.abs(v) / ring.rad;
-          if (norm < 0.32) continue; // 中轴交给主能量束，两侧张开月牙破风翼！
-          const ru = ring.u - Math.round(norm * norm * 12);
+          if (norm < 0.32) continue;
+          const ru = ring.u - Math.round(norm * norm * 10);
           const wingTaper = 1 - (norm - 0.32) / 0.68;
-          const thick = Math.max(1, Math.round(wingTaper * 3.2));
+          const thick = Math.max(1, Math.round(wingTaper * 3.0));
           for (let du = 0; du < thick; du++) {
             const bCh = du === 0 ? (norm < 0.62 ? 'g' : 'C') : du === 1 ? 'B' : 'D';
             putPt(base, ru - du, centerV + v, bCh);
@@ -2177,23 +2196,23 @@ function makeSovereignBeamDrawer(topDownSymmetric: boolean) {
         }
       }
 
-      // 4. 最前锋：精细雕琢的张口咆哮苍龙首（f1..f4 实体龙首噬咬推进，f5 昂首化光崩散）
+      // 4. 最前锋：精细雕琢的张口咆哮苍龙首
       if (frameIndex <= 4) {
-        const jawOpen = frameIndex === 2 ? 7.8 : frameIndex === 3 ? 6.4 : 7.0;
+        const jawOpen = frameIndex === 2 ? 7.6 : frameIndex === 3 ? 6.4 : 6.8;
         drawHead(base, add, end, centerV, jawOpen, putPt);
       } else {
-        for (let s = -22; s <= 22; s++) {
-          const n = Math.abs(s) / 22;
-          putPt(base, end - 6, centerV + s, n < 0.22 ? 'W' : n < 0.55 ? 'g' : 'B');
-          if (n < 0.45) putPt(add, end - 6, centerV + s, 'G');
+        for (let s = -20; s <= 20; s++) {
+          const n = Math.abs(s) / 20;
+          putPt(base, end - 5, centerV + s, n < 0.22 ? 'W' : n < 0.55 ? 'g' : 'B');
+          if (n < 0.45) putPt(add, end - 5, centerV + s, 'G');
         }
       }
 
       // 5. 伴飞金青雷霆碎火
-      for (let k = 0; k < 7; k++) {
-        const su = 20 + k * 19 + ((frameIndex * 5) % 9);
+      for (let k = 0; k < 5; k++) {
+        const su = 16 + k * (topDownSymmetric ? 14 : 20) + ((frameIndex * 5) % 7);
         if (su > end - 6) continue;
-        const sv = (k % 2 === 0 ? -1 : 1) * (16 + ((k * 3 + frameIndex) % 9));
+        const sv = (k % 2 === 0 ? -1 : 1) * (15 + ((k * 3 + frameIndex) % 8));
         plotSpark(base, add, su, centerV + sv, k % 2 === 0 ? 'g' : 'C', putPt, false);
       }
       return;
@@ -2202,9 +2221,9 @@ function makeSovereignBeamDrawer(topDownSymmetric: boolean) {
     // f6..f9（F22..F25）：四帧龙鳞螺旋余威、高压离子拉丝与圣金星火渐次消散
     const fadeIdx = frameIndex - 6; // 0..3
     if (fadeIdx <= 1) {
-      const start = 18 + fadeIdx * 14;
+      const start = 12 + fadeIdx * 10;
       const end = axisLength - 2;
-      const maxW = fadeIdx === 0 ? 4.2 : 2.2;
+      const maxW = fadeIdx === 0 ? 4.0 : 2.1;
       for (let u = start; u <= end; u++) {
         const f = (u - start) / Math.max(1, end - start);
         const halfW = maxW * Math.sin(Math.pow(f, 0.8) * Math.PI);
@@ -2214,19 +2233,18 @@ function makeSovereignBeamDrawer(topDownSymmetric: boolean) {
           putPt(add, u, centerV + v, Math.abs(v) <= 0.7 ? 'C' : 'd');
         }
       }
-      for (let u = 24; u <= end - 8; u += 2) {
+      for (let u = 18; u <= end - 6; u += 2) {
         if ((u + fadeIdx * 3) % 8 < 2) continue;
-        const w1 = Math.sin(u * 0.115 - (6.8 + fadeIdx * 1.1)) * (15 - fadeIdx * 3);
+        const w1 = Math.sin(u * waveFreq - (6.8 + fadeIdx * 1.1)) * (14 - fadeIdx * 3);
         putPt(base, u, centerV + w1, 'g');
         putPt(add, u, centerV + w1, 'G');
         putPt(base, u, centerV - w1, 'B');
       }
     } else if (fadeIdx === 2) {
       for (const [s, e, v, ch] of [
-        [38, axisLength - 4, 0, 'C'],
-        [48, axisLength - 18, -9, 'g'],
-        [52, axisLength - 16, 9, 'B'],
-        [74, axisLength - 8, -4, 'L'],
+        [24, axisLength - 4, 0, 'C'],
+        [30, axisLength - 12, -8, 'g'],
+        [32, axisLength - 10, 8, 'B'],
       ] as const) {
         for (let u = s; u <= e; u += 2) {
           if ((u + Math.abs(v)) % 5 === 0) continue;
@@ -2236,10 +2254,10 @@ function makeSovereignBeamDrawer(topDownSymmetric: boolean) {
       }
     }
 
-    for (let k = 0; k < 6 - fadeIdx; k++) {
-      const su = 34 + k * 22 + fadeIdx * 7;
+    for (let k = 0; k < 5 - fadeIdx; k++) {
+      const su = 22 + k * (topDownSymmetric ? 15 : 22) + fadeIdx * 5;
       if (su >= axisLength) continue;
-      const sv = (k % 2 === 0 ? -1 : 1) * (14 - fadeIdx * 2 + (k % 3) * 3);
+      const sv = (k % 2 === 0 ? -1 : 1) * (13 - fadeIdx * 2 + (k % 3) * 3);
       plotSpark(base, add, su, centerV + sv, k % 2 === 0 ? 'g' : 'C', putPt, false);
     }
   };
@@ -2607,30 +2625,26 @@ export const SPEAR_EFFECT_SOURCES: readonly DirectionalEffectSource[] = [
     basePalette: BEAM_BASE_PALETTE, addPalette: BEAM_ADD_PALETTE, drawer: drawFlurryFinisherAxis,
   }),
 
-  // 10A. 万圣龙王破第一幕 · 满气吸气球形光圈 + 立体交错旋舞枪影弧网（12 帧）
-  buildSovereignVortex('west'),
-  buildSovereignVortex('south'),
-  buildSovereignVortex('north'),
+  // 10A. 万圣龙王破第一幕 · 2.5D 半透明球形护体能量罩（12 帧，全向共用 default，触碰受创电击脉冲）
+  buildSovereignDome(),
 
-  // 10B. 万圣龙王破第二幕 · 四向蓄力枪尖龙珠坍缩雷核（4 帧）
-  buildSovereignCharge('west'),
-  buildSovereignCharge('south'),
-  buildSovereignCharge('north'),
+  // 10B. 万圣龙王破第二幕 · 提枪中心能量罩坍缩苍龙雷核（4 帧，全向共用 default）
+  buildSovereignCharge(),
 
-  // 10C. 万圣龙王破第三幕 · 咆哮苍龙首螺旋缠绕 + 4 道破防音爆环终极冲击波（10 帧，152px 超远射程）
+  // 10C. 万圣龙王破第三幕 · 东/西/南/北四向十字齐发咆哮苍龙冲击波（10 帧，适配 420px 画布 2× 完整同屏可见）
   buildDirectionalLinearEffect({
     effectId: 'spear-sovereign-beam', direction: 'west', frameCount: 10,
-    width: 184, height: 68, originPx: [172, 46], startAlongPx: 158, axisLength: 152, centerCrossPx: 34,
+    width: 146, height: 64, originPx: [136, 44], startAlongPx: 126, axisLength: 122, centerCrossPx: 32,
     basePalette: SOVEREIGN_BASE_PALETTE, addPalette: SOVEREIGN_ADD_PALETTE, drawer: makeSovereignBeamDrawer(false),
   }),
   buildDirectionalLinearEffect({
     effectId: 'spear-sovereign-beam', direction: 'south', frameCount: 10,
-    width: 68, height: 182, originPx: [37, 8], startAlongPx: 22, axisLength: 152, centerCrossPx: 34,
+    width: 64, height: 98, originPx: [32, 8], startAlongPx: 10, axisLength: 84, centerCrossPx: 32,
     basePalette: SOVEREIGN_BASE_PALETTE, addPalette: SOVEREIGN_ADD_PALETTE, drawer: makeSovereignBeamDrawer(true),
   }),
   buildDirectionalLinearEffect({
     effectId: 'spear-sovereign-beam', direction: 'north', frameCount: 10,
-    width: 68, height: 188, originPx: [34, 182], startAlongPx: 154, axisLength: 148, centerCrossPx: 34,
+    width: 64, height: 104, originPx: [32, 98], startAlongPx: 84, axisLength: 82, centerCrossPx: 32,
     basePalette: SOVEREIGN_BASE_PALETTE, addPalette: SOVEREIGN_ADD_PALETTE, drawer: makeSovereignBeamDrawer(true),
   }),
 

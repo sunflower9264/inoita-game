@@ -1694,115 +1694,115 @@ const FLURRY_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
   { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 1, x: 3, y: -16, scaleX: -1, armsPreset: 'north-ready', insertMode: 'back' },
 ];
 
-// 7. 万圣龙王破（还原《流星蝴蝶剑.net》↓↑↑A 100% 满怒终极破防绝学，28 帧三幕式纯原地定脚）：
-// - 第一幕 F0..F11（12 帧）：满气爆环 · 龙王光圈高速交错旋刺乱舞（3 段密集绞杀吸气，头部沉稳平视正前衬托狂暴枪影）
-// - 第二幕 F12..F15（4 帧）：顿枪锁根 · 漫天蓝金气旋向枪尖一点坍缩成龙珠雷核（暴风雨前的刹那静止蓄力）
-// - 第三幕 F16..F27（12 帧）：万圣龙王破 · 双手滑杆锁根轰出咆哮苍龙破防超远冲击波，霸气定格压制后从容收枪
+// 7. 万圣龙王破（还原《流星蝴蝶剑.net》↓↑↑A 100% 满怒终极破防绝学，28 帧三幕式纯原地定脚、人物不变色、零杂乱枪花）：
+// - 第一幕 F0..F11（12 帧）：立枪撑罩 · 双手沉稳正握竖枪撑开半透明球形「护体能量罩」（敌人触碰能量罩即受 3 段电击脉冲伤害）
+// - 第二幕 F12..F15（4 帧）：提枪凝核 · 双手高提竖枪蓄劲，整座球形能量罩向枪身中心急速坍缩成苍龙雷核
+// - 第三幕 F16..F27（12 帧）：顿枪镇地 · 双手猛力将枪尾垂直顿砸入地，同时朝东、西、南、北四个方向轰出咆哮苍龙冲击波
 const SOVEREIGN_WEST_FRAMES: readonly SpearKeyframeSpec[] = [
-  // F0..F1：满气扎马起势 + 背枪扬起展开龙王光圈（目光沉稳平视正西 dx=0, dy=0）
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 19, x: 1, y: -7, armsPreset: 'west-ready', legsPreset: 'planted', headPose: { view: 'west', dx: 0, dy: 0, cloakPiece: 5 }, insertMode: 'between-west-arms' },
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 11, x: 3, y: -14, scaleX: -1, armsPreset: 'sweep-windup', legsPreset: 'planted', headPose: { view: 'west', dx: 0, dy: 0, cloakPiece: 6 }, insertMode: 'back' },
-  // F2..F11：第一幕 · 龙王光圈狂澜乱舞（三轮立体 8 字旋劈与疾刺交替，披风猎猎鼓荡，双脚零滑步、头部稳姿不晃）
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 11, x: -6, y: -13, armsPreset: 'sweep-raise', legsPreset: 'bow', headPose: { view: 'west', dx: 0, dy: 0, cloakPiece: 7 }, insertMode: 'between-west-arms' },
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 10, x: -13, y: -10, armsPreset: 'sweep-cut', legsPreset: 'bow', headPose: { view: 'west', dx: 0, dy: 0, cloakPiece: 5 }, insertMode: 'between-west-arms' }, // F3：第1段绞杀命中
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 9, x: -9, y: -6, armsPreset: 'sweep-low', legsPreset: 'planted', headPose: { view: 'west', dx: 0, dy: 0, cloakPiece: 6 }, insertMode: 'between-west-arms' },
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 4, x: 4, y: -14, armsPreset: 'sweep-windup', legsPreset: 'planted', headPose: { view: 'west', dx: 0, dy: 0, cloakPiece: 7 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 6, x: -13, y: -11, armsPreset: 'thrust-extend', legsPreset: 'bow', headPose: { view: 'west', dx: 0, dy: 0, cloakPiece: 5 }, insertMode: 'between-west-arms' }, // F6：第2段疾刺绞杀命中
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 2, x: -6, y: -8, armsPreset: 'flurry-mid', legsPreset: 'planted', headPose: { view: 'west', dx: 0, dy: 0, cloakPiece: 6 }, insertMode: 'between-west-arms' },
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 11, x: -6, y: -13, armsPreset: 'sweep-raise', legsPreset: 'bow', headPose: { view: 'west', dx: 0, dy: 0, cloakPiece: 7 }, insertMode: 'between-west-arms' },
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 10, x: -13, y: -10, armsPreset: 'sweep-cut', legsPreset: 'bow', headPose: { view: 'west', dx: 0, dy: 0, cloakPiece: 5 }, insertMode: 'between-west-arms' }, // F9：第3段狂风绞杀命中
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 9, x: -9, y: -6, armsPreset: 'sweep-low', legsPreset: 'planted', headPose: { view: 'west', dx: 0, dy: 0, cloakPiece: 6 }, insertMode: 'between-west-arms' },
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 2, x: -5, y: -9, armsPreset: 'flurry-mid', legsPreset: 'planted', headPose: { view: 'west', dx: 0, dy: 0, cloakPiece: 4 }, insertMode: 'between-west-arms' },
-  // F12..F15：第二幕 · 顿枪锁根蓄核（乱舞骤停！架桥收把 <=50% 纯木杆，单调后引聚满真气于枪尖龙珠）
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 6, x: 1, y: -11, armsPreset: 'thrust-coil', legsPreset: 'planted', headPose: { view: 'west', dx: 1, dy: -1, torsoDx: 1, cloakPiece: 6 }, insertMode: 'between-west-arms' },
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 6, x: 3, y: -11, armsPreset: 'thrust-coil', legsPreset: 'planted', headPose: { view: 'west', dx: 2, dy: -2, torsoDx: 1, torsoDy: -1, cloakPiece: 6 }, insertMode: 'between-west-arms' },
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 6, x: 4, y: -11, armsPreset: 'thrust-coil', legsPreset: 'planted', headPose: { view: 'west', dx: 2, dy: -2, torsoDx: 1, torsoDy: -1, cloakPiece: 7 }, insertMode: 'between-west-arms' },
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 6, x: 4, y: -11, armsPreset: 'thrust-coil', legsPreset: 'planted', headPose: { view: 'west', dx: 2, dy: -2, torsoDx: 1, torsoDy: -1, cloakPiece: 7 }, insertMode: 'between-west-arms' },
-  // F16..F24：第三幕 · 万圣龙王破全力轰出！（双手滑杆锁根 + 宽弓步压眉定格承载咆哮苍龙冲击波）
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 6, x: -13, y: -11, armsPreset: 'thrust-extend', legsPreset: 'bow', headPose: { view: 'west-action', dx: -3, dy: 1, torsoDx: -2, torsoDy: 1, cloakPiece: 5 }, insertMode: 'between-west-arms' },
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 6, x: -16, y: -11, armsPreset: 'thrust-extend', legsPreset: 'bow', headPose: { view: 'west-action', dx: -4, dy: 2, torsoDx: -2, torsoDy: 1, cloakPiece: 7 }, insertMode: 'between-west-arms' },
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 6, x: -16, y: -11, armsPreset: 'thrust-extend', legsPreset: 'bow', headPose: { view: 'west-action', dx: -4, dy: 3, torsoDx: -2, torsoDy: 1, cloakPiece: 6 }, insertMode: 'between-west-arms' },
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 6, x: -16, y: -11, armsPreset: 'thrust-extend', legsPreset: 'bow', headPose: { view: 'west-action', dx: -4, dy: 3, torsoDx: -2, torsoDy: 1, cloakPiece: 7 }, insertMode: 'between-west-arms' },
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 6, x: -16, y: -11, armsPreset: 'thrust-extend', legsPreset: 'bow', headPose: { view: 'west-action', dx: -4, dy: 3, torsoDx: -2, torsoDy: 1, cloakPiece: 6 }, insertMode: 'between-west-arms' },
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 6, x: -15, y: -11, armsPreset: 'thrust-extend', legsPreset: 'bow', headPose: { view: 'west-action', dx: -4, dy: 3, torsoDx: -2, torsoDy: 1, cloakPiece: 7 }, insertMode: 'between-west-arms' },
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 6, x: -12, y: -11, armsPreset: 'thrust-extend', legsPreset: 'bow', headPose: { view: 'west-action', dx: -3, dy: 2, torsoDx: -1, torsoDy: 1, cloakPiece: 5 }, insertMode: 'between-west-arms' },
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 6, x: -9, y: -11, armsPreset: 'flurry-mid', legsPreset: 'bow', headPose: { view: 'west-action', dx: -2, dy: 1, torsoDx: -1, cloakPiece: 5 }, insertMode: 'between-west-arms' },
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 6, x: -5, y: -11, armsPreset: 'flurry-mid', legsPreset: 'bow', headPose: { view: 'west', dx: -1, dy: 1, torsoDx: -1, cloakPiece: 4 }, insertMode: 'between-west-arms' },
-  // F25..F27：宗师沉稳收枪回防
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 2, x: -2, y: -10, armsPreset: 'thrust-coil', headPose: { view: 'west', dx: 0, dy: 0, cloakPiece: 4 }, insertMode: 'between-west-arms' },
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 2, x: -3, y: -10, headPose: { view: 'west', dx: 0, dy: 0 }, insertMode: 'between-west-arms' },
-  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 19, x: 1, y: -7, armsPreset: 'west-ready', insertMode: 'between-west-arms' },
+  // F0：起手扎稳戒备（人物保持原色不变，双脚零滑步）
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 19, x: 1, y: -7, armsPreset: 'west-ready', legsPreset: 'planted', headPose: { view: 'west', dx: 0, dy: 0, cloakPiece: 4 }, insertMode: 'between-west-arms' },
+  // F1..F11：第一幕 · 双手沉稳立枪撑开球形护体能量罩（零多端枪花乱舞，仅披风与红缨随能量场脉动，F3/F6/F9 护罩电击震伤触碰敌人）
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 4, x: -6, y: -11, armsPreset: 'buff-upright', legsPreset: 'planted', headPose: { view: 'west', dx: 0, dy: 0, cloakPiece: 5 }, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 4, x: -6, y: -11, armsPreset: 'buff-upright', legsPreset: 'planted', headPose: { view: 'west', dx: 0, dy: 0, cloakPiece: 6 }, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 5, x: -6, y: -11, armsPreset: 'buff-upright', legsPreset: 'planted', headPose: { view: 'west', dx: 0, dy: 0, cloakPiece: 7 }, insertMode: 'between-west-arms' }, // F3：能量罩第1段触碰脉冲
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 5, x: -6, y: -11, armsPreset: 'buff-upright', legsPreset: 'planted', headPose: { view: 'west', dx: 0, dy: 0, cloakPiece: 6 }, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 4, x: -6, y: -11, armsPreset: 'buff-upright', legsPreset: 'planted', headPose: { view: 'west', dx: 0, dy: 0, cloakPiece: 5 }, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 5, x: -6, y: -11, armsPreset: 'buff-upright', legsPreset: 'planted', headPose: { view: 'west', dx: 0, dy: 0, cloakPiece: 7 }, insertMode: 'between-west-arms' }, // F6：能量罩第2段触碰脉冲
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 5, x: -6, y: -11, armsPreset: 'buff-upright', legsPreset: 'planted', headPose: { view: 'west', dx: 0, dy: 0, cloakPiece: 6 }, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 4, x: -6, y: -11, armsPreset: 'buff-upright', legsPreset: 'planted', headPose: { view: 'west', dx: 0, dy: 0, cloakPiece: 5 }, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 5, x: -6, y: -11, armsPreset: 'buff-upright', legsPreset: 'planted', headPose: { view: 'west', dx: 0, dy: 0, cloakPiece: 7 }, insertMode: 'between-west-arms' }, // F9：能量罩第3段触碰脉冲
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 4, x: -6, y: -11, armsPreset: 'buff-upright', legsPreset: 'planted', headPose: { view: 'west', dx: 0, dy: 0, cloakPiece: 6 }, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 4, x: -6, y: -12, armsPreset: 'buff-upright', legsPreset: 'planted', headPose: { view: 'west', dx: 0, dy: 0, cloakPiece: 5 }, insertMode: 'between-west-arms' },
+  // F12..F15：第二幕 · 双手提枪凝核（能量罩向枪身中心急速坍缩成苍龙雷核）
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 4, x: -6, y: -13, armsPreset: 'buff-upright', legsPreset: 'planted', headPose: { view: 'west', dx: 1, dy: -1, torsoDy: -1, cloakPiece: 6 }, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 4, x: -6, y: -14, armsPreset: 'buff-upright', legsPreset: 'planted', headPose: { view: 'west', dx: 1, dy: -2, torsoDy: -2, cloakPiece: 7 }, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 4, x: -6, y: -14, armsPreset: 'buff-upright', legsPreset: 'planted', headPose: { view: 'west', dx: 1, dy: -2, torsoDy: -2, cloakPiece: 7 }, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 4, x: -6, y: -14, armsPreset: 'buff-upright', legsPreset: 'planted', headPose: { view: 'west', dx: 1, dy: -2, torsoDy: -2, cloakPiece: 7 }, insertMode: 'between-west-arms' },
+  // F16..F24：第三幕 · 顿枪镇地！双手猛力下顿枪杆入地，东/西/南/北四向苍龙冲击波同时轰出！
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 4, x: -6, y: -9, armsPreset: 'buff-upright', legsPreset: 'bow', headPose: { view: 'west-action', dx: -1, dy: 2, torsoDy: 1, cloakPiece: 7 }, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 5, x: -6, y: -8, armsPreset: 'buff-upright', legsPreset: 'bow', headPose: { view: 'west-action', dx: -2, dy: 3, torsoDy: 2, cloakPiece: 6 }, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 4, x: -6, y: -8, armsPreset: 'buff-upright', legsPreset: 'bow', headPose: { view: 'west-action', dx: -2, dy: 3, torsoDy: 2, cloakPiece: 7 }, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 5, x: -6, y: -8, armsPreset: 'buff-upright', legsPreset: 'bow', headPose: { view: 'west-action', dx: -2, dy: 3, torsoDy: 2, cloakPiece: 5 }, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 4, x: -6, y: -8, armsPreset: 'buff-upright', legsPreset: 'bow', headPose: { view: 'west-action', dx: -2, dy: 3, torsoDy: 2, cloakPiece: 7 }, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 5, x: -6, y: -8, armsPreset: 'buff-upright', legsPreset: 'bow', headPose: { view: 'west-action', dx: -2, dy: 3, torsoDy: 2, cloakPiece: 6 }, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 4, x: -6, y: -9, armsPreset: 'buff-upright', legsPreset: 'bow', headPose: { view: 'west-action', dx: -1, dy: 2, torsoDy: 1, cloakPiece: 5 }, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 4, x: -6, y: -9, armsPreset: 'buff-upright', legsPreset: 'planted', headPose: { view: 'west', dx: -1, dy: 2, torsoDy: 1, cloakPiece: 5 }, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 4, x: -6, y: -10, armsPreset: 'buff-upright', legsPreset: 'planted', headPose: { view: 'west', dx: 0, dy: 1, cloakPiece: 4 }, insertMode: 'between-west-arms' },
+  // F25..F27：沉稳收枪回防
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 4, x: -6, y: -10, armsPreset: 'buff-upright', legsPreset: 'planted', headPose: { view: 'west', dx: 0, dy: 0, cloakPiece: 4 }, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 18, x: 1, y: -7, armsPreset: 'west-ready', legsPreset: 'planted', headPose: { view: 'west', dx: 0, dy: 0, cloakPiece: 4 }, insertMode: 'between-west-arms' },
+  { sourcePoseId: 'pose-4068-west-ticks-0', sourceFrame: 0, piece: 19, x: 1, y: -7, armsPreset: 'west-ready', legsPreset: 'planted', insertMode: 'between-west-arms' },
 ];
 
 const SOVEREIGN_SOUTH_FRAMES: readonly SpearKeyframeSpec[] = [
-  // F0..F1：满气起势（全 28 帧基于稳立骨架 pose-4067 F0，严格锁定 head.x=0 零横晃，前两幕全程平视抬头 piece=0）
+  // F0：南向起势（全 28 帧基于稳立骨架 pose-4067 F0，严格锁定 head.x=0 零横晃，前两幕全程平视抬头 piece=0）
   { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 0, x: 0, y: -8, armsPreset: 'south-ready', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0, cloakPiece: 0 }, insertMode: 'between-south-arms' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 0, x: -2, y: -9, armsPreset: 'south-sweep-left', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0, cloakPiece: 1 }, insertMode: 'between-south-arms' },
-  // F2..F11：第一幕 · 龙王光圈狂澜乱舞（左旋劈 → 正南疾刺 → 右旋撩 → 左高挑 → 正南连刺，双拳始终保持 >=10% 宽矩握把）
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 11, x: -5, y: -10, armsPreset: 'south-sweep-left', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0, cloakPiece: 2 }, insertMode: 'between-south-arms' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 9, x: -7, y: -5, armsPreset: 'south-sweep-left', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0, cloakPiece: 3 }, insertMode: 'between-south-arms' }, // F3：第1段绞杀命中
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 9, x: 5, y: -5, scaleX: -1, armsPreset: 'south-sweep-right', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0, cloakPiece: 2 }, insertMode: 'between-south-arms' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 10, x: 6, y: -7, scaleX: -1, armsPreset: 'south-sweep-right', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0, cloakPiece: 1 }, insertMode: 'between-south-arms' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 7, x: -3, y: 5, armsPreset: 'south-thrust-extend', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0, cloakPiece: 3 }, insertMode: 'between-south-arms' }, // F6：第2段疾刺绞杀命中
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 0, x: 2, y: -8, scaleX: -1, armsPreset: 'south-sweep-right', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0, cloakPiece: 2 }, insertMode: 'between-south-arms' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 11, x: -5, y: -10, armsPreset: 'south-sweep-left', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0, cloakPiece: 1 }, insertMode: 'between-south-arms' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 9, x: 5, y: -5, scaleX: -1, armsPreset: 'south-sweep-right', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0, cloakPiece: 3 }, insertMode: 'between-south-arms' }, // F9：第3段狂风绞杀命中
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 10, x: 6, y: -7, scaleX: -1, armsPreset: 'south-sweep-right', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0, cloakPiece: 2 }, insertMode: 'between-south-arms' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 7, x: -4, y: -4, armsPreset: 'south-thrust-coil', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0, cloakPiece: 1 }, insertMode: 'between-south-arms' },
-  // F12..F15：第二幕 · 顿枪锁根蓄核（双手架桥收把，沿 head.x=0 稳健抬首聚力 dy: -1 -> -2，承接正南枪尖坍缩龙珠）
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 7, x: -5, y: -10, armsPreset: 'south-thrust-coil', headPose: { view: 'south', scaleX: 1, dx: 0, dy: -1, cloakPiece: 1 }, insertMode: 'between-south-arms' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 7, x: -5, y: -11, armsPreset: 'south-thrust-coil', headPose: { view: 'south', scaleX: 1, dx: 0, dy: -2, torsoDy: -1, cloakPiece: 2 }, insertMode: 'between-south-arms' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 7, x: -5, y: -12, armsPreset: 'south-thrust-coil', headPose: { view: 'south', scaleX: 1, dx: 0, dy: -2, torsoDy: -1, cloakPiece: 3 }, insertMode: 'between-south-arms' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 7, x: -5, y: -12, armsPreset: 'south-thrust-coil', headPose: { view: 'south', scaleX: 1, dx: 0, dy: -2, torsoDy: -1, cloakPiece: 3 }, insertMode: 'between-south-arms' },
-  // F16..F24：第三幕 · 万圣龙王破轰出！（双手锁根前送 + 压眉发力定格，承载正南咆哮苍龙破防波）
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 7, x: -3, y: 4, armsPreset: 'south-thrust-extend', headPose: { view: 'south-action', scaleX: 1, dx: 0, dy: 2, torsoDy: 2, cloakPiece: 2 }, insertMode: 'between-south-arms' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 7, x: -3, y: 7, armsPreset: 'south-thrust-extend', headPose: { view: 'south-action', scaleX: 1, dx: 0, dy: 3, torsoDy: 3, cloakPiece: 3 }, insertMode: 'between-south-arms' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 7, x: -3, y: 8, armsPreset: 'south-thrust-extend', headPose: { view: 'south-action', scaleX: 1, dx: 0, dy: 4, torsoDy: 3, cloakPiece: 2 }, insertMode: 'between-south-arms' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 7, x: -3, y: 8, armsPreset: 'south-thrust-extend', headPose: { view: 'south-action', scaleX: 1, dx: 0, dy: 4, torsoDy: 3, cloakPiece: 3 }, insertMode: 'between-south-arms' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 7, x: -3, y: 8, armsPreset: 'south-thrust-extend', headPose: { view: 'south-action', scaleX: 1, dx: 0, dy: 4, torsoDy: 3, cloakPiece: 2 }, insertMode: 'between-south-arms' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 7, x: -3, y: 7, armsPreset: 'south-thrust-extend', headPose: { view: 'south-action', scaleX: 1, dx: 0, dy: 4, torsoDy: 3, cloakPiece: 3 }, insertMode: 'between-south-arms' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 7, x: -3, y: 4, armsPreset: 'south-thrust-extend', headPose: { view: 'south-action', scaleX: 1, dx: 0, dy: 3, torsoDy: 2, cloakPiece: 2 }, insertMode: 'between-south-arms' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 7, x: -3, y: 1, armsPreset: 'south-thrust-extend', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 2, torsoDy: 1, cloakPiece: 1 }, insertMode: 'between-south-arms' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 7, x: -4, y: -3, armsPreset: 'south-thrust-extend', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 1, torsoDy: 1, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  // F1..F11：第一幕 · 双手立枪撑开护体能量罩（双拳拉开 ~16% 轴向握距，零多端枪花乱舞，F3/F6/F9 护罩电击震伤触碰敌人）
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 4, x: -5, y: -11, armsPreset: 'south-buff-upright', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 4, x: -5, y: -11, armsPreset: 'south-buff-upright', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 5, x: -5, y: -11, armsPreset: 'south-buff-upright', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0, cloakPiece: 3 }, insertMode: 'between-south-arms' }, // F3：能量罩第1段触碰脉冲
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 5, x: -5, y: -11, armsPreset: 'south-buff-upright', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 4, x: -5, y: -11, armsPreset: 'south-buff-upright', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 5, x: -5, y: -11, armsPreset: 'south-buff-upright', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0, cloakPiece: 3 }, insertMode: 'between-south-arms' }, // F6：能量罩第2段触碰脉冲
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 5, x: -5, y: -11, armsPreset: 'south-buff-upright', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 4, x: -5, y: -11, armsPreset: 'south-buff-upright', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 5, x: -5, y: -11, armsPreset: 'south-buff-upright', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0, cloakPiece: 3 }, insertMode: 'between-south-arms' }, // F9：能量罩第3段触碰脉冲
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 4, x: -5, y: -11, armsPreset: 'south-buff-upright', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 4, x: -5, y: -12, armsPreset: 'south-buff-upright', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  // F12..F15：第二幕 · 双手提枪凝核（沿 head.x=0 稳健抬首提枪，承接能量罩向心坍缩）
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 4, x: -5, y: -13, armsPreset: 'south-buff-upright', headPose: { view: 'south', scaleX: 1, dx: 0, dy: -1, torsoDy: -1, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 4, x: -5, y: -14, armsPreset: 'south-buff-upright', headPose: { view: 'south', scaleX: 1, dx: 0, dy: -2, torsoDy: -2, cloakPiece: 3 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 4, x: -5, y: -14, armsPreset: 'south-buff-upright', headPose: { view: 'south', scaleX: 1, dx: 0, dy: -2, torsoDy: -2, cloakPiece: 3 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 4, x: -5, y: -14, armsPreset: 'south-buff-upright', headPose: { view: 'south', scaleX: 1, dx: 0, dy: -2, torsoDy: -2, cloakPiece: 3 }, insertMode: 'between-south-arms' },
+  // F16..F24：第三幕 · 顿枪镇地！双手猛力砸枪入地，四向苍龙冲击波同时轰出！
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 4, x: -5, y: -9, armsPreset: 'south-buff-upright', headPose: { view: 'south-action', scaleX: 1, dx: 0, dy: 2, torsoDy: 1, cloakPiece: 3 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 5, x: -5, y: -8, armsPreset: 'south-buff-upright', headPose: { view: 'south-action', scaleX: 1, dx: 0, dy: 3, torsoDy: 2, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 4, x: -5, y: -8, armsPreset: 'south-buff-upright', headPose: { view: 'south-action', scaleX: 1, dx: 0, dy: 3, torsoDy: 2, cloakPiece: 3 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 5, x: -5, y: -8, armsPreset: 'south-buff-upright', headPose: { view: 'south-action', scaleX: 1, dx: 0, dy: 3, torsoDy: 2, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 4, x: -5, y: -8, armsPreset: 'south-buff-upright', headPose: { view: 'south-action', scaleX: 1, dx: 0, dy: 3, torsoDy: 2, cloakPiece: 3 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 5, x: -5, y: -8, armsPreset: 'south-buff-upright', headPose: { view: 'south-action', scaleX: 1, dx: 0, dy: 3, torsoDy: 2, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 4, x: -5, y: -9, armsPreset: 'south-buff-upright', headPose: { view: 'south-action', scaleX: 1, dx: 0, dy: 2, torsoDy: 1, cloakPiece: 2 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 4, x: -5, y: -9, armsPreset: 'south-buff-upright', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 2, torsoDy: 1, cloakPiece: 1 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 4, x: -5, y: -10, armsPreset: 'south-buff-upright', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 1, cloakPiece: 1 }, insertMode: 'between-south-arms' },
   // F25..F27：沉稳收枪回防
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 0, x: -1, y: -7, armsPreset: 'south-ready', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 1, cloakPiece: 0 }, insertMode: 'between-south-arms' },
-  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 0, x: 0, y: -8, armsPreset: 'south-ready', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 4, x: -5, y: -10, armsPreset: 'south-buff-upright', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0, cloakPiece: 0 }, insertMode: 'between-south-arms' },
+  { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 0, x: 0, y: -8, armsPreset: 'south-ready', headPose: { view: 'south', scaleX: 1, dx: 0, dy: 0, cloakPiece: 0 }, insertMode: 'between-south-arms' },
   { sourcePoseId: 'pose-4067-south-ticks-0', sourceFrame: 0, piece: 1, x: 0, y: -8, armsPreset: 'south-ready', insertMode: 'between-south-arms' },
 ];
 
 const SOVEREIGN_NORTH_FRAMES: readonly SpearKeyframeSpec[] = [
-  // F0..F1：北向满气起势（全 28 帧锁定 head.x=0 零横晃，胸肩高位舞枪确保双腿间 0 漏像素）
+  // F0：北向起势（全 28 帧基于稳立骨架 pose-3988 F0，严格锁定 head.x=0 零横晃且双腿间 0 漏像素）
   { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 0, x: 3, y: -16, scaleX: -1, armsPreset: 'north-ready', headPose: { view: 'north', scaleX: 1, dx: 0, dy: 0, cloakPiece: 8 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 0, x: 6, y: -18, scaleX: -1, armsPreset: 'north-sweep-right', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -2, cloakPiece: 9 }, insertMode: 'back' },
-  // F2..F11：第一幕 · 龙王光圈狂澜乱舞（统一基于 pose-4075 F4 保持 head=(0,-22) 定头不抖，双臂胸肩高位左右旋掠与正北疾刺交替）
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 11, x: 7, y: -19, scaleX: -1, armsPreset: 'north-sweep-right', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -2, cloakPiece: 10 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -21, armsPreset: 'north-thrust-extend', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -2, cloakPiece: 11 }, insertMode: 'back' }, // F3：第1段绞杀命中
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 10, x: -8, y: -21, armsPreset: 'north-sweep-left', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -2, cloakPiece: 10 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 0, x: -9, y: -18, armsPreset: 'north-sweep-left', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -2, cloakPiece: 9 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -22, armsPreset: 'north-thrust-extend', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -2, cloakPiece: 11 }, insertMode: 'back' }, // F6：第2段疾刺绞杀命中
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 0, x: 6, y: -18, scaleX: -1, armsPreset: 'north-sweep-right', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -2, cloakPiece: 10 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 11, x: 7, y: -19, scaleX: -1, armsPreset: 'north-sweep-right', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -2, cloakPiece: 9 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 10, x: -8, y: -21, armsPreset: 'north-sweep-left', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -2, cloakPiece: 11 }, insertMode: 'back' }, // F9：第3段狂风绞杀命中
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 0, x: -8, y: -18, armsPreset: 'north-sweep-left', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -2, cloakPiece: 10 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 8, y: -17, armsPreset: 'north-thrust-extend', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -2, cloakPiece: 9 }, insertMode: 'back' },
-  // F12..F15：第二幕 · 顿枪锁根蓄核（右侧双手架桥收把 <=55% 纯木杆，补偿 pose-4063 F1 基准 +2 使 head.x=0 平稳向后蓄满劲力）
-  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 0, piece: 8, x: 10, y: -13, armsPreset: 'north-thrust-coil', headPose: { view: 'north', scaleX: 1, dx: 0, dy: 0, cloakPiece: 9 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 1, piece: 8, x: 11, y: -12, armsPreset: 'north-thrust-coil', headPose: { view: 'north', scaleX: 1, dx: -2, dy: 1, torsoDy: 1, cloakPiece: 10 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 1, piece: 8, x: 11, y: -12, armsPreset: 'north-thrust-coil', headPose: { view: 'north', scaleX: 1, dx: -2, dy: 2, torsoDy: 1, cloakPiece: 11 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 1, piece: 8, x: 11, y: -12, armsPreset: 'north-thrust-coil', headPose: { view: 'north', scaleX: 1, dx: -2, dy: 2, torsoDy: 1, cloakPiece: 11 }, insertMode: 'back' },
-  // F16..F24：第三幕 · 万圣龙王破向正北轰出！（双手滑杆锁根向北猛顶定格，承载北向咆哮苍龙破防波）
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -21, armsPreset: 'north-thrust-extend', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -3, cloakPiece: 11 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -23, armsPreset: 'north-thrust-extend', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -4, torsoDy: -1, cloakPiece: 10 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -23, armsPreset: 'north-thrust-extend', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -5, torsoDy: -2, cloakPiece: 11 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -23, armsPreset: 'north-thrust-extend', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -5, torsoDy: -2, cloakPiece: 10 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -23, armsPreset: 'north-thrust-extend', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -5, torsoDy: -2, cloakPiece: 11 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 6, y: -22, armsPreset: 'north-thrust-extend', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -5, torsoDy: -2, cloakPiece: 10 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 7, y: -20, armsPreset: 'north-thrust-extend', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -4, torsoDy: -1, cloakPiece: 11 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4075-north-ticks-0', sourceFrame: 4, piece: 8, x: 8, y: -17, armsPreset: 'north-thrust-extend', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -3, cloakPiece: 9 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 0, piece: 8, x: 10, y: -13, armsPreset: 'north-thrust-coil', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -3, cloakPiece: 9 }, insertMode: 'back' },
+  // F1..F11：第一幕 · 双手立枪撑开护体能量罩（枪立右肩侧 x=8 彻底避开裆部，零多端枪花乱舞）
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 4, x: 8, y: -11, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { view: 'north', scaleX: 1, dx: 0, dy: 0, cloakPiece: 9 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 4, x: 8, y: -11, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { view: 'north', scaleX: 1, dx: 0, dy: 0, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 5, x: 8, y: -11, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { view: 'north', scaleX: 1, dx: 0, dy: 0, cloakPiece: 11 }, insertMode: 'back' }, // F3：能量罩第1段触碰脉冲
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 5, x: 8, y: -11, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { view: 'north', scaleX: 1, dx: 0, dy: 0, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 4, x: 8, y: -11, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { view: 'north', scaleX: 1, dx: 0, dy: 0, cloakPiece: 9 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 5, x: 8, y: -11, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { view: 'north', scaleX: 1, dx: 0, dy: 0, cloakPiece: 11 }, insertMode: 'back' }, // F6：能量罩第2段触碰脉冲
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 5, x: 8, y: -11, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { view: 'north', scaleX: 1, dx: 0, dy: 0, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 4, x: 8, y: -11, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { view: 'north', scaleX: 1, dx: 0, dy: 0, cloakPiece: 9 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 5, x: 8, y: -11, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { view: 'north', scaleX: 1, dx: 0, dy: 0, cloakPiece: 11 }, insertMode: 'back' }, // F9：能量罩第3段触碰脉冲
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 4, x: 8, y: -11, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { view: 'north', scaleX: 1, dx: 0, dy: 0, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 4, x: 8, y: -12, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { view: 'north', scaleX: 1, dx: 0, dy: 0, cloakPiece: 9 }, insertMode: 'back' },
+  // F12..F15：第二幕 · 双手提枪凝核（能量罩向心坍缩成苍龙雷核）
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 4, x: 8, y: -13, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -1, torsoDy: -1, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 4, x: 8, y: -14, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -2, torsoDy: -2, cloakPiece: 11 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 4, x: 8, y: -14, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -2, torsoDy: -2, cloakPiece: 11 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 4, x: 8, y: -14, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -2, torsoDy: -2, cloakPiece: 11 }, insertMode: 'back' },
+  // F16..F24：第三幕 · 顿枪镇地！四向苍龙冲击波同时轰出！
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 4, x: 8, y: -9, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { view: 'north', scaleX: 1, dx: 0, dy: 2, torsoDy: 1, cloakPiece: 11 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 5, x: 8, y: -8, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { view: 'north', scaleX: 1, dx: 0, dy: 3, torsoDy: 2, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 4, x: 8, y: -8, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { view: 'north', scaleX: 1, dx: 0, dy: 3, torsoDy: 2, cloakPiece: 11 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 5, x: 8, y: -8, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { view: 'north', scaleX: 1, dx: 0, dy: 3, torsoDy: 2, cloakPiece: 9 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 4, x: 8, y: -8, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { view: 'north', scaleX: 1, dx: 0, dy: 3, torsoDy: 2, cloakPiece: 11 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 5, x: 8, y: -8, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { view: 'north', scaleX: 1, dx: 0, dy: 3, torsoDy: 2, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 4, x: 8, y: -9, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { view: 'north', scaleX: 1, dx: 0, dy: 2, torsoDy: 1, cloakPiece: 10 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 4, x: 8, y: -9, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { view: 'north', scaleX: 1, dx: 0, dy: 1, torsoDy: 0, cloakPiece: 9 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 4, x: 8, y: -10, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { view: 'north', scaleX: 1, dx: 0, dy: 1, cloakPiece: 8 }, insertMode: 'back' },
   // F25..F27：沉稳收枪回防
-  { sourcePoseId: 'pose-4063-north-ticks-0', sourceFrame: 0, piece: 8, x: 10, y: -12, armsPreset: 'north-thrust-coil', headPose: { view: 'north', scaleX: 1, dx: 0, dy: -3, cloakPiece: 9 }, insertMode: 'back' },
-  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 0, x: 3, y: -17, scaleX: -1, armsPreset: 'north-ready', headPose: { view: 'north', scaleX: 1, dx: 0, dy: 0, cloakPiece: 8 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 4, x: 8, y: -10, scaleX: -1, armsPreset: 'north-buff-upright', headPose: { view: 'north', scaleX: 1, dx: 0, dy: 0, cloakPiece: 8 }, insertMode: 'back' },
+  { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 0, x: 3, y: -16, scaleX: -1, armsPreset: 'north-ready', headPose: { view: 'north', scaleX: 1, dx: 0, dy: 0, cloakPiece: 8 }, insertMode: 'back' },
   { sourcePoseId: 'pose-3988-north-ticks-0', sourceFrame: 0, piece: 1, x: 3, y: -16, scaleX: -1, armsPreset: 'north-ready', insertMode: 'back' },
 ];
 

@@ -91,7 +91,7 @@ export interface PrototypeEffectSheet {
 export interface PrototypeEffectCueSpec {
   effect: string;
   startFrame: number;
-  variant?: 'facing' | 'default';
+  variant?: 'facing' | 'default' | Facing;
   placement?: AttackPlacement;
   onTarget?: boolean;
   targetDistancePx?: number;
@@ -675,7 +675,7 @@ function resolvePrototypeTimeline(battle: BattleCatalog, spec: PrototypeActionTi
   if (spec.sound && !sounds.includes(spec.sound)) sounds.push(spec.sound);
 
   for (const cue of spec.cues ?? []) {
-    const preferredVariant = cue.variant === 'default' ? 'default' : facing;
+    const preferredVariant = !cue.variant || cue.variant === 'facing' ? facing : cue.variant;
     addCue(effects, seen, battle, cue.effect, preferredVariant, cue.startFrame,
       cue.placement ?? 'above-characters', cue.onTarget ?? false, cue.source, cue.targetDistancePx);
   }
