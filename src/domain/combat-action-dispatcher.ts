@@ -93,7 +93,7 @@ export class CombatActionDispatcher {
     for(const event of skillPlaybackEvents(skill.action,index,skill.level,action.repeatState)){
       switch(event.kind){
       case 'feedback':feedback(event);break;
-      case 'cast':this.visual(event.effect,'default',caster);break;
+      case 'cast':this.visual(event.effect,event.effect.variant??'default',caster);break;
       case 'units':{
         const work=()=>{
           const executeAt=(selectedTargetId?:string)=>{
@@ -122,10 +122,10 @@ export class CombatActionDispatcher {
         const work=()=>{this.summon(action,event);for(const effect of event.dispatch?.casterEffects??[])this.visual(effect,'default',caster);};
         if(event.dispatch)dispatch(event.dispatch,work);else work();break;
       }
-      case 'caster':for(const effect of event.effects)this.visual(effect,'default',caster);break;
+      case 'caster':for(const effect of event.effects)this.visual(effect,effect.variant??'default',caster);break;
       case 'swing':for(const effect of event.effects)for(const recipient of effect.recipient==='caster'?[caster]:target?[target]:[])
-        this.visual(effect,effect.recipient==='caster'?facing:'default',recipient);break;
-      case 'impact':for(const recipient of resolveCueTargets({target:event.target,targetRangePx:Infinity},caster,target,p.candidates()))this.visual(event.effect,'default',recipient);break;
+        this.visual(effect,effect.variant??(effect.recipient==='caster'?facing:'default'),recipient);break;
+      case 'impact':for(const recipient of resolveCueTargets({target:event.target,targetRangePx:Infinity},caster,target,p.candidates()))this.visual(event.effect,event.effect.variant??'default',recipient);break;
       case 'spawn':{
         const view=p.viewport(),x=Math.max(0,Math.floor(view.width/2)-event.marginPx),y=Math.max(0,Math.floor(view.height/2)-event.marginPx);
         const between=(span:number)=>Math.floor(p.random()*(span*2+1))-span;

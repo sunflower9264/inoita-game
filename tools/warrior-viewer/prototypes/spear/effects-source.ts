@@ -1934,56 +1934,60 @@ function makeSovereignBeamDrawer(foreshortened: boolean) {
     centerV: number,
     putPt: (grid: string[][], along: number, across: number, ch: string) => void,
   ): void {
-    const waveFreq = foreshortened ? 0.165 : 0.125;
+    // 适配全屏级长度（东西 320px、南北 228..230px），保持匀称舒展的蓝金双螺旋螺距
+    const waveFreq = foreshortened ? 0.115 : 0.095;
 
     if (frameIndex === 0) {
-      // f0（F16）：顿枪破膛起爆 —— 初生流线锥形气芒 + 蓝色/金色初始螺旋 + 前锋双层破空新月气浪（零龙头！）
-      const end = foreshortened ? 38 : 50;
+      // f0（F16）：顿枪破膛起爆 —— 初生高速流线气束喷涌而出 + 蓝金螺旋起卷 + 前锋双层破空新月气浪（零龙头！）
+      const end = Math.round(axisLength * 0.36);
       for (let u = 2; u <= end; u++) {
         const f = (u - 2) / Math.max(1, end - 2);
-        const halfW = f < 0.35 ? 1.8 + (f / 0.35) * 6.2 : 8.0 * Math.pow(1 - (f - 0.35) / 0.65, 1.15);
+        const halfW = f < 0.28 ? 2.0 + (f / 0.28) * 6.4 : 8.4 * Math.pow(1 - (f - 0.28) / 0.72, 1.05);
         for (let v = -Math.ceil(halfW); v <= Math.ceil(halfW); v++) {
           const av = Math.abs(v);
           if (av > halfW + 0.15) continue;
           const r = av / Math.max(0.5, halfW);
-          putPt(base, u, centerV + v, av <= 1.2 ? 'W' : r < 0.42 ? 'C' : r < 0.75 ? 'B' : 'D');
-          if (r < 0.65) putPt(add, u, centerV + v, av <= 1.2 ? 'L' : 'B');
+          putPt(base, u, centerV + v, av <= 1.3 ? 'W' : r < 0.42 ? 'C' : r < 0.75 ? 'B' : 'D');
+          if (r < 0.65) putPt(add, u, centerV + v, av <= 1.3 ? 'L' : 'B');
         }
       }
-      for (let u = 6; u <= end - 6; u += 0.5) {
+      for (let u = 6; u <= end - 6; u += 0.45) {
         const f = (u - 6) / Math.max(1, end - 12);
-        const amp = 11 * Math.sin(f * Math.PI);
+        const env = Math.min(1, f / 0.14) * Math.min(1, (1 - f) / 0.18);
+        const amp = 12.5 * (0.2 + 0.8 * env);
         const w1 = Math.sin(u * waveFreq) * amp;
         const w2 = Math.sin(u * waveFreq + Math.PI) * amp;
-        putPt(base, u, centerV + w1, 'g');
-        putPt(add, u, centerV + w1, 'G');
-        putPt(base, u, centerV + w2, 'L');
-        putPt(add, u, centerV + w2, 'B');
+        for (let t = -1; t <= 1; t++) {
+          putPt(base, u, centerV + w1 + t, t === 0 ? 'g' : 'G');
+          if (t === 0) putPt(add, u, centerV + w1, 'G');
+          putPt(base, u, centerV + w2 + t, t === 0 ? 'L' : 'B');
+          if (t === 0) putPt(add, u, centerV + w2, 'B');
+        }
       }
-      drawShockwaveCrescentFront(base, add, foreshortened ? 16 : 20, centerV, 18, 10, 2.6, putPt);
-      drawShockwaveCrescentFront(base, add, end - 2, centerV, 22, 13, 3.6, putPt);
+      drawShockwaveCrescentFront(base, add, Math.round(end * 0.42), centerV, 19, 11, 2.8, putPt);
+      drawShockwaveCrescentFront(base, add, end - 2, centerV, 23, 14, 3.8, putPt);
       return;
     }
 
     if (frameIndex >= 1 && frameIndex <= 5) {
-      // f1..f5（F17..F21）：流线锥形高压气束贯通到底 + 蓝金双股螺旋缠绕收尖 + 前锋大曲率破空月牙冲击刃 + 后掠音爆环
+      // f1..f5（F17..F21）：全屏高压气束贯通四方 + 全程连续蓝金双股螺旋 + 多道后掠音爆环 + 前锋破空月牙气刃
       const reachByFrame = [Math.round(axisLength * 0.76), axisLength - 2, axisLength - 1, axisLength - 1, axisLength - 1];
       const end = reachByFrame[frameIndex - 1]!;
       const start = frameIndex >= 4 ? 6 : 1;
-      const maxW = [8.4, 10.2, 10.6, 9.0, 6.4][frameIndex - 1]!;
+      const maxW = [9.0, 11.0, 11.4, 9.6, 6.8][frameIndex - 1]!;
       const isPeak = frameIndex === 2 || frameIndex === 3;
 
-      // 1. 五层通透渐变流线锥形主冲击波束（一路贯通并在最前端自然收束成锐利破空气尖，无任何方头或龙头！）
+      // 1. 五层通透渐变全屏冲击波束（主体饱满贯通全屏，最末端顺滑收束为锐利气尖）
       for (let u = start; u <= end; u++) {
         const f = (u - start) / Math.max(1, end - start);
-        const halfW = f < 0.10 ? 1.8 + (f / 0.10) * (maxW * 0.68)
-          : f < 0.70 ? maxW * (0.68 + Math.sin(((f - 0.10) / 0.60) * Math.PI) * 0.32)
-          : maxW * 0.72 * Math.pow(1 - (f - 0.70) / 0.30, 1.22);
+        const halfW = f < 0.06 ? 2.2 + (f / 0.06) * (maxW * 0.72)
+          : f < 0.80 ? maxW * (0.76 + Math.sin(((f - 0.06) / 0.74) * Math.PI) * 0.24)
+          : maxW * 0.76 * Math.pow(1 - (f - 0.80) / 0.20, 1.18);
         for (let v = -Math.ceil(halfW); v <= Math.ceil(halfW); v++) {
           const av = Math.abs(v);
           if (av > halfW + 0.15) continue;
           const r = av / Math.max(0.5, halfW);
-          if (av <= (isPeak && f < 0.92 ? 1.5 : 1.0)) {
+          if (av <= (isPeak && f < 0.94 ? 1.6 : 1.05)) {
             putPt(base, u, centerV + v, 'W');
             putPt(add, u, centerV + v, 'L');
           } else if (r < 0.36) {
@@ -2000,13 +2004,13 @@ function makeSovereignBeamDrawer(foreshortened: boolean) {
         }
       }
 
-      // 2. 保留蓝金双股交织螺旋（前端随锥形气尖平滑收束汇入波锋！）
-      const phase = frameIndex * 1.35;
-      const helixEnd = end - 6;
+      // 2. 全屏贯通蓝金双股交织螺旋（两端顺滑收束，中段全程饱满盘绕）
+      const phase = frameIndex * 1.45;
+      const helixEnd = end - 8;
       for (let u = start + 4; u <= helixEnd; u += 0.45) {
         const f = (u - (start + 4)) / Math.max(1, helixEnd - (start + 4));
-        const envelope = Math.sin(Math.pow(f, 0.82) * Math.PI);
-        const amp = (frameIndex === 5 ? 11.5 : isPeak ? 16.5 : 14.5) * (0.18 + 0.82 * envelope);
+        const envelope = Math.min(1, f / 0.08) * Math.min(1, (1 - f) / 0.12);
+        const amp = (frameIndex === 5 ? 12.0 : isPeak ? 17.0 : 15.0) * (0.20 + 0.80 * envelope);
         const w1 = Math.sin(u * waveFreq - phase) * amp;
         const w2 = Math.sin(u * waveFreq - phase + Math.PI) * amp;
         for (let t = -1; t <= 1; t++) {
@@ -2017,23 +2021,16 @@ function makeSovereignBeamDrawer(foreshortened: boolean) {
         }
       }
 
-      // 3. 中后段推进破风月牙音爆翼
-      const ringPositions = foreshortened
-        ? [
-            { u: 16 + frameIndex * 2, rad: 21 - frameIndex },
-            { u: 40 + frameIndex * 2, rad: 18 - frameIndex },
-          ]
-        : [
-            { u: 20 + frameIndex * 3, rad: 23 - frameIndex },
-            { u: 52 + frameIndex * 3, rad: 20 - frameIndex },
-            { u: 82 + frameIndex * 3, rad: 17 - frameIndex },
-          ];
-      for (const ring of ringPositions) {
-        if (ring.u > end - 22) continue;
-        for (let v = -ring.rad; v <= ring.rad; v++) {
-          const norm = Math.abs(v) / ring.rad;
+      // 3. 沿全屏走廊分布的推进破风月牙音爆环
+      const ringFracs = foreshortened ? [0.14, 0.36, 0.58, 0.78] : [0.10, 0.28, 0.46, 0.64, 0.82];
+      for (let ri = 0; ri < ringFracs.length; ri++) {
+        const ru0 = Math.round(axisLength * ringFracs[ri]!) + frameIndex * 5;
+        if (ru0 > end - 24) continue;
+        const rad = Math.max(15, (foreshortened ? 22 : 24) - ri - Math.floor(frameIndex * 0.7));
+        for (let v = -rad; v <= rad; v++) {
+          const norm = Math.abs(v) / rad;
           if (norm < 0.32) continue;
-          const ru = ring.u - Math.round(norm * norm * 10);
+          const ru = ru0 - Math.round(norm * norm * 11);
           const wingTaper = 1 - (norm - 0.32) / 0.68;
           const thick = Math.max(1, Math.round(wingTaper * 2.8));
           for (let du = 0; du < thick; du++) {
@@ -2044,13 +2041,12 @@ function makeSovereignBeamDrawer(foreshortened: boolean) {
         }
       }
 
-      // 4. 最前锋：干净凌厉的大曲率破空新月冲击波刃面（取代原龙头！）
+      // 4. 最前锋：干净凌厉的大曲率破空新月冲击波刃面（无龙头！）
       if (frameIndex <= 4) {
-        const frontRad = foreshortened ? (isPeak ? 22 : 20) : (isPeak ? 25 : 22);
-        const sweepBack = foreshortened ? 13 : 16;
-        drawShockwaveCrescentFront(base, add, end - 2, centerV, frontRad, sweepBack, isPeak ? 4.2 : 3.4, putPt);
+        const frontRad = foreshortened ? (isPeak ? 23 : 20) : (isPeak ? 26 : 23);
+        const sweepBack = foreshortened ? 14 : 18;
+        drawShockwaveCrescentFront(base, add, end - 2, centerV, frontRad, sweepBack, isPeak ? 4.4 : 3.5, putPt);
         if (isPeak) {
-          // 峰值帧前缘再叠一道纤薄超音速激波前弧，拉满纯粹破防冲击感！
           for (let v = -(frontRad - 4); v <= frontRad - 4; v++) {
             const norm = Math.abs(v) / Math.max(1, frontRad - 4);
             const ru = end - Math.round(norm * norm * (sweepBack - 3));
@@ -2059,60 +2055,65 @@ function makeSovereignBeamDrawer(foreshortened: boolean) {
           }
         }
       } else {
-        drawShockwaveCrescentFront(base, add, end - 1, centerV, foreshortened ? 18 : 20, 12, 2.2, putPt);
+        drawShockwaveCrescentFront(base, add, end - 1, centerV, foreshortened ? 18 : 20, 12, 2.3, putPt);
       }
 
-      // 5. 伴飞金青冲击碎火
-      for (let k = 0; k < 5; k++) {
-        const su = 16 + k * (foreshortened ? 14 : 20) + ((frameIndex * 5) % 7);
+      // 5. 沿全屏伴飞的金青冲击碎火
+      const sparkCount = foreshortened ? 8 : 11;
+      const sparkStep = Math.floor((axisLength - 28) / sparkCount);
+      for (let k = 0; k < sparkCount; k++) {
+        const su = 18 + k * sparkStep + ((frameIndex * 7 + k * 5) % 11);
         if (su > end - 6) continue;
-        const sv = (k % 2 === 0 ? -1 : 1) * (15 + ((k * 3 + frameIndex) % 8));
+        const sv = (k % 2 === 0 ? -1 : 1) * (15 + ((k * 3 + frameIndex) % 9));
         plotSpark(base, add, su, centerV + sv, k % 2 === 0 ? 'g' : 'C', putPt, false);
       }
       return;
     }
 
-    // f6..f9（F22..F25）：四帧蓝金螺旋余威、前锋残余激波弧与离子拉丝消散
+    // f6..f9（F22..F25）：四帧全屏蓝金螺旋余威、前锋残余激波弧与离子拉丝消散
     const fadeIdx = frameIndex - 6; // 0..3
     if (fadeIdx <= 1) {
-      const start = 12 + fadeIdx * 10;
+      const start = 16 + fadeIdx * 16;
       const end = axisLength - 2;
-      const maxW = fadeIdx === 0 ? 4.0 : 2.1;
+      const maxW = fadeIdx === 0 ? 4.2 : 2.2;
       for (let u = start; u <= end; u++) {
         const f = (u - start) / Math.max(1, end - start);
-        const halfW = maxW * Math.sin(Math.pow(f, 0.8) * Math.PI);
+        const env = Math.min(1, f / 0.10) * Math.min(1, (1 - f) / 0.14);
+        const halfW = maxW * env;
         for (let v = -Math.ceil(halfW); v <= Math.ceil(halfW); v++) {
           if (Math.abs(v) > halfW) continue;
           putPt(base, u, centerV + v, Math.abs(v) <= 0.7 ? 'L' : 'B');
           putPt(add, u, centerV + v, Math.abs(v) <= 0.7 ? 'C' : 'd');
         }
       }
-      for (let u = 18; u <= end - 8; u += 2) {
+      for (let u = 20; u <= end - 8; u += 2) {
         if ((u + fadeIdx * 3) % 8 < 2) continue;
-        const w1 = Math.sin(u * waveFreq - (6.8 + fadeIdx * 1.1)) * (13 - fadeIdx * 3);
+        const w1 = Math.sin(u * waveFreq - (7.2 + fadeIdx * 1.1)) * (13.5 - fadeIdx * 3);
         putPt(base, u, centerV + w1, 'g');
         putPt(add, u, centerV + w1, 'G');
         putPt(base, u, centerV - w1, 'B');
       }
       if (fadeIdx === 0) {
-        drawShockwaveCrescentFront(base, add, end - 1, centerV, foreshortened ? 15 : 17, 10, 1.5, putPt);
+        drawShockwaveCrescentFront(base, add, end - 1, centerV, foreshortened ? 16 : 18, 11, 1.6, putPt);
       }
     } else if (fadeIdx === 2) {
       for (const [s, e, v, ch] of [
         [24, axisLength - 4, 0, 'C'],
-        [30, axisLength - 12, -8, 'g'],
-        [32, axisLength - 10, 8, 'B'],
+        [36, axisLength - 16, -9, 'g'],
+        [32, axisLength - 12, 9, 'B'],
       ] as const) {
         for (let u = s; u <= e; u += 2) {
-          if ((u + Math.abs(v)) % 5 === 0) continue;
+          if ((u + Math.abs(v)) % 6 === 0) continue;
           putPt(base, u, centerV + v, ch);
           putPt(add, u, centerV + v, 'd');
         }
       }
     }
 
-    for (let k = 0; k < 5 - fadeIdx; k++) {
-      const su = 22 + k * (foreshortened ? 15 : 22) + fadeIdx * 5;
+    const fadeSparks = Math.max(3, (foreshortened ? 7 : 10) - fadeIdx * 2);
+    const fadeStep = Math.floor((axisLength - 32) / fadeSparks);
+    for (let k = 0; k < fadeSparks; k++) {
+      const su = 24 + k * fadeStep + fadeIdx * 6;
       if (su >= axisLength) continue;
       const sv = (k % 2 === 0 ? -1 : 1) * (13 - fadeIdx * 2 + (k % 3) * 3);
       plotSpark(base, add, su, centerV + sv, k % 2 === 0 ? 'g' : 'C', putPt, false);
@@ -2489,20 +2490,20 @@ export const SPEAR_EFFECT_SOURCES: readonly DirectionalEffectSource[] = [
   // 10C. 万圣龙王破第二幕 · 能量罩消散后提枪蓄势十字星芒（4 帧，无收缩环）
   buildSovereignCharge(),
 
-  // 10D. 万圣龙王破第三幕 · 东/西/南/北四向纯粹破空冲击波（10 帧，保留蓝金双螺旋 + 前锋破空月牙气刃，无龙头）
+  // 10D. 万圣龙王破第三幕 · 东/西/南/北四向全屏级破空冲击波（10 帧，参考祭司 blinding-flash 666×666 全屏口径：水平 660px 跨度、垂直 476px 跨度）
   buildDirectionalLinearEffect({
     effectId: 'spear-sovereign-beam', direction: 'west', frameCount: 10,
-    width: 146, height: 64, originPx: [136, 44], startAlongPx: 126, axisLength: 122, centerCrossPx: 32,
+    width: 344, height: 64, originPx: [334, 44], startAlongPx: 324, axisLength: 320, centerCrossPx: 32,
     basePalette: SOVEREIGN_BASE_PALETTE, addPalette: SOVEREIGN_ADD_PALETTE, drawer: makeSovereignBeamDrawer(false),
   }),
   buildDirectionalLinearEffect({
     effectId: 'spear-sovereign-beam', direction: 'south', frameCount: 10,
-    width: 64, height: 98, originPx: [32, 8], startAlongPx: 10, axisLength: 84, centerCrossPx: 32,
+    width: 64, height: 244, originPx: [32, 8], startAlongPx: 10, axisLength: 230, centerCrossPx: 32,
     basePalette: SOVEREIGN_BASE_PALETTE, addPalette: SOVEREIGN_ADD_PALETTE, drawer: makeSovereignBeamDrawer(true),
   }),
   buildDirectionalLinearEffect({
     effectId: 'spear-sovereign-beam', direction: 'north', frameCount: 10,
-    width: 64, height: 104, originPx: [32, 98], startAlongPx: 84, axisLength: 82, centerCrossPx: 32,
+    width: 64, height: 252, originPx: [32, 246], startAlongPx: 230, axisLength: 228, centerCrossPx: 32,
     basePalette: SOVEREIGN_BASE_PALETTE, addPalette: SOVEREIGN_ADD_PALETTE, drawer: makeSovereignBeamDrawer(true),
   }),
 

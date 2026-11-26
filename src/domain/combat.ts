@@ -149,6 +149,7 @@ export function areaShapeMaxReachPx(shape: import('./battle.ts').AreaShape | und
   if (!shape) return fallbackPx;
   if (shape.kind === 'line') return Math.max(fallbackPx, shape.lengthPx);
   if (shape.kind === 'sector') return Math.max(fallbackPx, shape.radiusPx);
+  if (shape.kind === 'cross') return Math.max(fallbackPx, shape.lengthPx, shape.verticalLengthPx ?? shape.lengthPx);
   return Math.max(fallbackPx, shape.forwardOffsetPx + shape.radiusPx);
 }
 
@@ -210,6 +211,20 @@ function resolveShapedAreaTargets(
         || Math.atan2(perp, forward) <= halfRad + 1e-6
         || (shape.angleDeg >= 180 && forward >= -backSlack);
       if (inCone) hits.push({ actor, distance: dist });
+    }
+    return hits;
+  }
+  if (shape.kind === 'cross') {
+    const horizLen = shape.lengthPx + bonusPx;
+    const vertLen = (shape.verticalLengthPx ?? shape.lengthPx) + bonusPx;
+    for (const actor of pool) {
+      const dx = actor.position.x - center.x;
+      const dy = actor.position.y - center.y;
+      const ax = Math.abs(dx);
+      const ay = Math.abs(dy);
+      if ((ax <= horizLen && ay <= shape.halfWidthPx) || (ay <= vertLen && ax <= shape.halfWidthPx)) {
+        hits.push({ actor, distance: Math.hypot(dx, dy) });
+      }
     }
     return hits;
   }

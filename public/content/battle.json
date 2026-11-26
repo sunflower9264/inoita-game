@@ -6242,11 +6242,11 @@
             ]
           },
           "skill-sovereign-pierce-south": {
-            "frameWidth": 76,
-            "frameHeight": 80,
-            "frames": 19,
-            "originX": 0.5,
-            "originY": 0.45,
+            "frameWidth": 50,
+            "frameHeight": 62,
+            "frames": 28,
+            "originX": 0.62,
+            "originY": 0.8709677419354839,
             "frameRate": 16.666666666666668,
             "mirrorX": false,
             "layers": [
@@ -6258,11 +6258,11 @@
             ]
           },
           "skill-sovereign-pierce-west": {
-            "frameWidth": 81,
-            "frameHeight": 67,
-            "frames": 19,
-            "originX": 0.6049382716049383,
-            "originY": 0.8059701492537313,
+            "frameWidth": 56,
+            "frameHeight": 62,
+            "frames": 28,
+            "originX": 0.5714285714285714,
+            "originY": 0.8709677419354839,
             "frameRate": 16.666666666666668,
             "mirrorX": false,
             "layers": [
@@ -6274,11 +6274,11 @@
             ]
           },
           "skill-sovereign-pierce-north": {
-            "frameWidth": 77,
-            "frameHeight": 64,
-            "frames": 19,
-            "originX": 0.5194805194805194,
-            "originY": 0.875,
+            "frameWidth": 50,
+            "frameHeight": 62,
+            "frames": 28,
+            "originX": 0.32,
+            "originY": 0.8709677419354839,
             "frameRate": 16.666666666666668,
             "mirrorX": false,
             "layers": [
@@ -6290,11 +6290,11 @@
             ]
           },
           "skill-sovereign-pierce-east": {
-            "frameWidth": 81,
-            "frameHeight": 67,
-            "frames": 19,
-            "originX": 0.6049382716049383,
-            "originY": 0.8059701492537313,
+            "frameWidth": 56,
+            "frameHeight": 62,
+            "frames": 28,
+            "originX": 0.5714285714285714,
+            "originY": 0.8709677419354839,
             "frameRate": 16.666666666666668,
             "mirrorX": true,
             "layers": [
@@ -126435,7 +126435,7 @@
       "name": "万圣龙王破",
       "kind": "active",
       "icon": "assets/skills/lancer-sovereign-pierce.png",
-      "description": "盘枪引动苍穹风云凝聚于枪尖，化出巨型青金螺旋怒龙枪芒，超远距离一击贯穿整列强敌。",
+      "description": "双手立枪撑开扣地半球护体能量罩，持续震伤触碰周身之敌，随即顿枪镇地朝东、西、南、北四方齐发全屏蓝金螺旋冲击波。",
       "normalMaxLevel": 3,
       "requiredInvestedSkillPoints": 24,
       "ranks": [
@@ -126457,15 +126457,15 @@
               "kind": "cooldown"
             },
             {
-              "label": "（物理攻击力+力量x1.6+敏捷x1.2）x",
-              "value": "330.0%",
+              "label": "每段（物理攻击力+力量x1.6+敏捷x1.2）x",
+              "value": "120.0%",
               "kind": "effect",
               "effectIndex": 0,
               "valueSpacing": false,
               "zeroValue": "0.0%",
               "valueParts": [
                 {
-                  "text": "330.0%",
+                  "text": "120.0%",
                   "color": "#00b4ff"
                 }
               ]
@@ -126490,15 +126490,15 @@
               "kind": "cooldown"
             },
             {
-              "label": "（物理攻击力+力量x1.6+敏捷x1.2）x",
-              "value": "368.0%",
+              "label": "每段（物理攻击力+力量x1.6+敏捷x1.2）x",
+              "value": "134.0%",
               "kind": "effect",
               "effectIndex": 0,
               "valueSpacing": false,
               "zeroValue": "0.0%",
               "valueParts": [
                 {
-                  "text": "368.0%",
+                  "text": "134.0%",
                   "color": "#00b4ff"
                 }
               ]
@@ -126523,15 +126523,15 @@
               "kind": "cooldown"
             },
             {
-              "label": "（物理攻击力+力量x1.6+敏捷x1.2）x",
-              "value": "410.0%",
+              "label": "每段（物理攻击力+力量x1.6+敏捷x1.2）x",
+              "value": "150.0%",
               "kind": "effect",
               "effectIndex": 0,
               "valueSpacing": false,
               "zeroValue": "0.0%",
               "valueParts": [
                 {
-                  "text": "410.0%",
+                  "text": "150.0%",
                   "color": "#00b4ff"
                 }
               ]
@@ -126556,15 +126556,15 @@
               "kind": "cooldown"
             },
             {
-              "label": "（物理攻击力+力量x1.6+敏捷x1.2）x",
-              "value": "455.0%",
+              "label": "每段（物理攻击力+力量x1.6+敏捷x1.2）x",
+              "value": "168.0%",
               "kind": "effect",
               "effectIndex": 0,
               "valueSpacing": false,
               "zeroValue": "0.0%",
               "valueParts": [
                 {
-                  "text": "455.0%",
+                  "text": "168.0%",
                   "color": "#00b4ff"
                 }
               ]
@@ -126589,15 +126589,15 @@
               "kind": "cooldown"
             },
             {
-              "label": "（物理攻击力+力量x1.6+敏捷x1.2）x",
-              "value": "480.0%",
+              "label": "每段（物理攻击力+力量x1.6+敏捷x1.2）x",
+              "value": "178.0%",
               "kind": "effect",
               "effectIndex": 0,
               "valueSpacing": false,
               "zeroValue": "0.0%",
               "valueParts": [
                 {
-                  "text": "480.0%",
+                  "text": "178.0%",
                   "color": "#00b4ff"
                 }
               ]
@@ -126622,15 +126622,15 @@
               "kind": "cooldown"
             },
             {
-              "label": "（物理攻击力+力量x1.6+敏捷x1.2）x",
-              "value": "505.0%",
+              "label": "每段（物理攻击力+力量x1.6+敏捷x1.2）x",
+              "value": "188.0%",
               "kind": "effect",
               "effectIndex": 0,
               "valueSpacing": false,
               "zeroValue": "0.0%",
               "valueParts": [
                 {
-                  "text": "505.0%",
+                  "text": "188.0%",
                   "color": "#00b4ff"
                 }
               ]
@@ -126655,15 +126655,15 @@
               "kind": "cooldown"
             },
             {
-              "label": "（物理攻击力+力量x1.6+敏捷x1.2）x",
-              "value": "530.0%",
+              "label": "每段（物理攻击力+力量x1.6+敏捷x1.2）x",
+              "value": "198.0%",
               "kind": "effect",
               "effectIndex": 0,
               "valueSpacing": false,
               "zeroValue": "0.0%",
               "valueParts": [
                 {
-                  "text": "530.0%",
+                  "text": "198.0%",
                   "color": "#00b4ff"
                 }
               ]
@@ -126688,15 +126688,15 @@
               "kind": "cooldown"
             },
             {
-              "label": "（物理攻击力+力量x1.6+敏捷x1.2）x",
-              "value": "560.0%",
+              "label": "每段（物理攻击力+力量x1.6+敏捷x1.2）x",
+              "value": "210.0%",
               "kind": "effect",
               "effectIndex": 0,
               "valueSpacing": false,
               "zeroValue": "0.0%",
               "valueParts": [
                 {
-                  "text": "560.0%",
+                  "text": "210.0%",
                   "color": "#00b4ff"
                 }
               ]
@@ -126708,37 +126708,15 @@
         "events": [
           {
             "kind": "caster",
-            "frame": 1,
+            "frame": 0,
             "effects": [
               {
-                "effect": "curse-wind-ring",
+                "effect": "spear-sovereign-dome-back",
                 "recipient": "caster",
                 "placement": "ground"
-              }
-            ]
-          },
-          {
-            "kind": "feedback",
-            "frame": 1,
-            "sound": "Wa_Storm"
-          },
-          {
-            "kind": "caster",
-            "frame": 5,
-            "effects": [
+              },
               {
-                "effect": "aura-ring",
-                "recipient": "caster",
-                "placement": "ground"
-              }
-            ]
-          },
-          {
-            "kind": "swing",
-            "frame": 9,
-            "effects": [
-              {
-                "effect": "spear-sovereign-beam",
+                "effect": "spear-sovereign-dome",
                 "recipient": "caster",
                 "placement": "above-characters"
               }
@@ -126746,24 +126724,151 @@
           },
           {
             "kind": "feedback",
-            "frame": 10,
-            "shake": true,
-            "vibrationMs": 120
+            "frame": 0,
+            "sound": "Wa_Defense"
           },
           {
             "kind": "units",
-            "frame": 11,
+            "frame": 3,
             "cues": [
               {
                 "target": "area",
-                "targetRangePx": 96,
+                "targetRangePx": 56,
+                "maxTargets": 8,
+                "targetSelection": "search",
+                "effects": [
+                  {
+                    "effect": "impact-spark",
+                    "recipient": "target",
+                    "placement": "above-characters"
+                  }
+                ]
+              }
+            ],
+            "dispatch": {
+              "breaksStealth": true,
+              "shake": true,
+              "vibrationMs": 90,
+              "sound": "Wa_Wheel_Wind"
+            }
+          },
+          {
+            "kind": "units",
+            "frame": 6,
+            "cues": [
+              {
+                "target": "area",
+                "targetRangePx": 56,
+                "maxTargets": 8,
+                "targetSelection": "search",
+                "effects": [
+                  {
+                    "effect": "impact-spark",
+                    "recipient": "target",
+                    "placement": "above-characters"
+                  }
+                ]
+              }
+            ],
+            "dispatch": {
+              "breaksStealth": true,
+              "shake": true,
+              "vibrationMs": 90,
+              "sound": "Wa_Wheel_Wind"
+            }
+          },
+          {
+            "kind": "units",
+            "frame": 9,
+            "cues": [
+              {
+                "target": "area",
+                "targetRangePx": 56,
+                "maxTargets": 8,
+                "targetSelection": "search",
+                "effects": [
+                  {
+                    "effect": "impact-spark",
+                    "recipient": "target",
+                    "placement": "above-characters"
+                  }
+                ]
+              }
+            ],
+            "dispatch": {
+              "breaksStealth": true,
+              "shake": true,
+              "vibrationMs": 110,
+              "sound": "Wa_Wheel_Wind"
+            }
+          },
+          {
+            "kind": "caster",
+            "frame": 12,
+            "effects": [
+              {
+                "effect": "spear-sovereign-charge",
+                "recipient": "caster",
+                "placement": "above-characters"
+              }
+            ]
+          },
+          {
+            "kind": "caster",
+            "frame": 16,
+            "effects": [
+              {
+                "effect": "curse-wind-ring",
+                "recipient": "caster",
+                "placement": "ground"
+              },
+              {
+                "effect": "spear-sovereign-beam",
+                "recipient": "caster",
+                "placement": "ground",
+                "variant": "north"
+              },
+              {
+                "effect": "spear-sovereign-beam",
+                "recipient": "caster",
+                "placement": "above-characters",
+                "variant": "west"
+              },
+              {
+                "effect": "spear-sovereign-beam",
+                "recipient": "caster",
+                "placement": "above-characters",
+                "variant": "east"
+              },
+              {
+                "effect": "spear-sovereign-beam",
+                "recipient": "caster",
+                "placement": "above-characters",
+                "variant": "south"
+              }
+            ]
+          },
+          {
+            "kind": "feedback",
+            "frame": 16,
+            "shake": true,
+            "vibrationMs": 140,
+            "sound": "Wa_Storm"
+          },
+          {
+            "kind": "units",
+            "frame": 17,
+            "cues": [
+              {
+                "target": "area",
+                "targetRangePx": 320,
                 "areaShape": {
-                  "kind": "line",
-                  "lengthPx": 96,
-                  "halfWidthPx": 20,
-                  "backSlackPx": 10
+                  "kind": "cross",
+                  "lengthPx": 320,
+                  "verticalLengthPx": 230,
+                  "halfWidthPx": 24
                 },
-                "maxTargets": 4,
+                "maxTargets": 12,
                 "targetSelection": "search",
                 "effects": [
                   {
@@ -126777,18 +126882,48 @@
             "dispatch": {
               "breaksStealth": true,
               "shake": true,
-              "vibrationMs": 280,
+              "vibrationMs": 220,
               "sound": "Wa_Titan_Attack"
+            }
+          },
+          {
+            "kind": "units",
+            "frame": 19,
+            "cues": [
+              {
+                "target": "area",
+                "targetRangePx": 320,
+                "areaShape": {
+                  "kind": "cross",
+                  "lengthPx": 320,
+                  "verticalLengthPx": 230,
+                  "halfWidthPx": 24
+                },
+                "maxTargets": 12,
+                "targetSelection": "search",
+                "effects": [
+                  {
+                    "effect": "impact-burst",
+                    "recipient": "target",
+                    "placement": "above-characters"
+                  }
+                ]
+              }
+            ],
+            "dispatch": {
+              "breaksStealth": true,
+              "shake": true,
+              "vibrationMs": 260
             }
           }
         ],
         "manaGemDrop": "skill",
         "hitEffectStyle": "skill",
         "cooldownFrames": 200,
-        "approachDistanceUnits": 10,
-        "searchRadiusPx": 112,
+        "approachDistanceUnits": 0,
+        "searchRadiusPx": 320,
         "transition": null,
-        "requiresTarget": true,
+        "requiresTarget": false,
         "usesSkillDamageBuff": true,
         "combatUnits": [
           {
@@ -126806,56 +126941,56 @@
                 "fixedAddition": 0,
                 "operation": {
                   "kind": "multiply-thousandth",
-                  "ratePerThousand": 3300
+                  "ratePerThousand": 1200
                 }
               },
               {
                 "fixedAddition": 0,
                 "operation": {
                   "kind": "multiply-thousandth",
-                  "ratePerThousand": 3680
+                  "ratePerThousand": 1340
                 }
               },
               {
                 "fixedAddition": 0,
                 "operation": {
                   "kind": "multiply-thousandth",
-                  "ratePerThousand": 4100
+                  "ratePerThousand": 1500
                 }
               },
               {
                 "fixedAddition": 0,
                 "operation": {
                   "kind": "multiply-thousandth",
-                  "ratePerThousand": 4550
+                  "ratePerThousand": 1680
                 }
               },
               {
                 "fixedAddition": 0,
                 "operation": {
                   "kind": "multiply-thousandth",
-                  "ratePerThousand": 4800
+                  "ratePerThousand": 1780
                 }
               },
               {
                 "fixedAddition": 0,
                 "operation": {
                   "kind": "multiply-thousandth",
-                  "ratePerThousand": 5050
+                  "ratePerThousand": 1880
                 }
               },
               {
                 "fixedAddition": 0,
                 "operation": {
                   "kind": "multiply-thousandth",
-                  "ratePerThousand": 5300
+                  "ratePerThousand": 1980
                 }
               },
               {
                 "fixedAddition": 0,
                 "operation": {
                   "kind": "multiply-thousandth",
-                  "ratePerThousand": 5600
+                  "ratePerThousand": 2100
                 }
               }
             ]
@@ -126883,15 +127018,15 @@
                 "kind": "cooldown"
               },
               {
-                "label": "（物理攻击力+力量x1.6+敏捷x1.2）x",
-                "value": "330.0%",
+                "label": "每段（物理攻击力+力量x1.6+敏捷x1.2）x",
+                "value": "120.0%",
                 "kind": "effect",
                 "effectIndex": 0,
                 "valueSpacing": false,
                 "zeroValue": "0.0%",
                 "valueParts": [
                   {
-                    "text": "330.0%",
+                    "text": "120.0%",
                     "color": "#00b4ff"
                   }
                 ]
@@ -126916,15 +127051,15 @@
                 "kind": "cooldown"
               },
               {
-                "label": "（物理攻击力+力量x1.6+敏捷x1.2）x",
-                "value": "368.0%",
+                "label": "每段（物理攻击力+力量x1.6+敏捷x1.2）x",
+                "value": "134.0%",
                 "kind": "effect",
                 "effectIndex": 0,
                 "valueSpacing": false,
                 "zeroValue": "0.0%",
                 "valueParts": [
                   {
-                    "text": "368.0%",
+                    "text": "134.0%",
                     "color": "#00b4ff"
                   }
                 ]
@@ -126949,15 +127084,15 @@
                 "kind": "cooldown"
               },
               {
-                "label": "（物理攻击力+力量x1.6+敏捷x1.2）x",
-                "value": "410.0%",
+                "label": "每段（物理攻击力+力量x1.6+敏捷x1.2）x",
+                "value": "150.0%",
                 "kind": "effect",
                 "effectIndex": 0,
                 "valueSpacing": false,
                 "zeroValue": "0.0%",
                 "valueParts": [
                   {
-                    "text": "410.0%",
+                    "text": "150.0%",
                     "color": "#00b4ff"
                   }
                 ]
@@ -126982,15 +127117,15 @@
                 "kind": "cooldown"
               },
               {
-                "label": "（物理攻击力+力量x1.6+敏捷x1.2）x",
-                "value": "455.0%",
+                "label": "每段（物理攻击力+力量x1.6+敏捷x1.2）x",
+                "value": "168.0%",
                 "kind": "effect",
                 "effectIndex": 0,
                 "valueSpacing": false,
                 "zeroValue": "0.0%",
                 "valueParts": [
                   {
-                    "text": "455.0%",
+                    "text": "168.0%",
                     "color": "#00b4ff"
                   }
                 ]
@@ -127015,15 +127150,15 @@
                 "kind": "cooldown"
               },
               {
-                "label": "（物理攻击力+力量x1.6+敏捷x1.2）x",
-                "value": "480.0%",
+                "label": "每段（物理攻击力+力量x1.6+敏捷x1.2）x",
+                "value": "178.0%",
                 "kind": "effect",
                 "effectIndex": 0,
                 "valueSpacing": false,
                 "zeroValue": "0.0%",
                 "valueParts": [
                   {
-                    "text": "480.0%",
+                    "text": "178.0%",
                     "color": "#00b4ff"
                   }
                 ]
@@ -127048,15 +127183,15 @@
                 "kind": "cooldown"
               },
               {
-                "label": "（物理攻击力+力量x1.6+敏捷x1.2）x",
-                "value": "505.0%",
+                "label": "每段（物理攻击力+力量x1.6+敏捷x1.2）x",
+                "value": "188.0%",
                 "kind": "effect",
                 "effectIndex": 0,
                 "valueSpacing": false,
                 "zeroValue": "0.0%",
                 "valueParts": [
                   {
-                    "text": "505.0%",
+                    "text": "188.0%",
                     "color": "#00b4ff"
                   }
                 ]
@@ -127081,15 +127216,15 @@
                 "kind": "cooldown"
               },
               {
-                "label": "（物理攻击力+力量x1.6+敏捷x1.2）x",
-                "value": "530.0%",
+                "label": "每段（物理攻击力+力量x1.6+敏捷x1.2）x",
+                "value": "198.0%",
                 "kind": "effect",
                 "effectIndex": 0,
                 "valueSpacing": false,
                 "zeroValue": "0.0%",
                 "valueParts": [
                   {
-                    "text": "530.0%",
+                    "text": "198.0%",
                     "color": "#00b4ff"
                   }
                 ]
@@ -127114,15 +127249,15 @@
                 "kind": "cooldown"
               },
               {
-                "label": "（物理攻击力+力量x1.6+敏捷x1.2）x",
-                "value": "560.0%",
+                "label": "每段（物理攻击力+力量x1.6+敏捷x1.2）x",
+                "value": "210.0%",
                 "kind": "effect",
                 "effectIndex": 0,
                 "valueSpacing": false,
                 "zeroValue": "0.0%",
                 "valueParts": [
                   {
-                    "text": "560.0%",
+                    "text": "210.0%",
                     "color": "#00b4ff"
                   }
                 ]
@@ -127134,37 +127269,15 @@
           "events": [
             {
               "kind": "caster",
-              "frame": 1,
+              "frame": 0,
               "effects": [
                 {
-                  "effect": "curse-wind-ring",
+                  "effect": "spear-sovereign-dome-back",
                   "recipient": "caster",
                   "placement": "ground"
-                }
-              ]
-            },
-            {
-              "kind": "feedback",
-              "frame": 1,
-              "sound": "Wa_Storm"
-            },
-            {
-              "kind": "caster",
-              "frame": 5,
-              "effects": [
+                },
                 {
-                  "effect": "aura-ring",
-                  "recipient": "caster",
-                  "placement": "ground"
-                }
-              ]
-            },
-            {
-              "kind": "swing",
-              "frame": 9,
-              "effects": [
-                {
-                  "effect": "spear-sovereign-beam",
+                  "effect": "spear-sovereign-dome",
                   "recipient": "caster",
                   "placement": "above-characters"
                 }
@@ -127172,24 +127285,151 @@
             },
             {
               "kind": "feedback",
-              "frame": 10,
-              "shake": true,
-              "vibrationMs": 120
+              "frame": 0,
+              "sound": "Wa_Defense"
             },
             {
               "kind": "units",
-              "frame": 11,
+              "frame": 3,
               "cues": [
                 {
                   "target": "area",
-                  "targetRangePx": 96,
+                  "targetRangePx": 56,
+                  "maxTargets": 8,
+                  "targetSelection": "search",
+                  "effects": [
+                    {
+                      "effect": "impact-spark",
+                      "recipient": "target",
+                      "placement": "above-characters"
+                    }
+                  ]
+                }
+              ],
+              "dispatch": {
+                "breaksStealth": true,
+                "shake": true,
+                "vibrationMs": 90,
+                "sound": "Wa_Wheel_Wind"
+              }
+            },
+            {
+              "kind": "units",
+              "frame": 6,
+              "cues": [
+                {
+                  "target": "area",
+                  "targetRangePx": 56,
+                  "maxTargets": 8,
+                  "targetSelection": "search",
+                  "effects": [
+                    {
+                      "effect": "impact-spark",
+                      "recipient": "target",
+                      "placement": "above-characters"
+                    }
+                  ]
+                }
+              ],
+              "dispatch": {
+                "breaksStealth": true,
+                "shake": true,
+                "vibrationMs": 90,
+                "sound": "Wa_Wheel_Wind"
+              }
+            },
+            {
+              "kind": "units",
+              "frame": 9,
+              "cues": [
+                {
+                  "target": "area",
+                  "targetRangePx": 56,
+                  "maxTargets": 8,
+                  "targetSelection": "search",
+                  "effects": [
+                    {
+                      "effect": "impact-spark",
+                      "recipient": "target",
+                      "placement": "above-characters"
+                    }
+                  ]
+                }
+              ],
+              "dispatch": {
+                "breaksStealth": true,
+                "shake": true,
+                "vibrationMs": 110,
+                "sound": "Wa_Wheel_Wind"
+              }
+            },
+            {
+              "kind": "caster",
+              "frame": 12,
+              "effects": [
+                {
+                  "effect": "spear-sovereign-charge",
+                  "recipient": "caster",
+                  "placement": "above-characters"
+                }
+              ]
+            },
+            {
+              "kind": "caster",
+              "frame": 16,
+              "effects": [
+                {
+                  "effect": "curse-wind-ring",
+                  "recipient": "caster",
+                  "placement": "ground"
+                },
+                {
+                  "effect": "spear-sovereign-beam",
+                  "recipient": "caster",
+                  "placement": "ground",
+                  "variant": "north"
+                },
+                {
+                  "effect": "spear-sovereign-beam",
+                  "recipient": "caster",
+                  "placement": "above-characters",
+                  "variant": "west"
+                },
+                {
+                  "effect": "spear-sovereign-beam",
+                  "recipient": "caster",
+                  "placement": "above-characters",
+                  "variant": "east"
+                },
+                {
+                  "effect": "spear-sovereign-beam",
+                  "recipient": "caster",
+                  "placement": "above-characters",
+                  "variant": "south"
+                }
+              ]
+            },
+            {
+              "kind": "feedback",
+              "frame": 16,
+              "shake": true,
+              "vibrationMs": 140,
+              "sound": "Wa_Storm"
+            },
+            {
+              "kind": "units",
+              "frame": 17,
+              "cues": [
+                {
+                  "target": "area",
+                  "targetRangePx": 320,
                   "areaShape": {
-                    "kind": "line",
-                    "lengthPx": 96,
-                    "halfWidthPx": 20,
-                    "backSlackPx": 10
+                    "kind": "cross",
+                    "lengthPx": 320,
+                    "verticalLengthPx": 230,
+                    "halfWidthPx": 24
                   },
-                  "maxTargets": 4,
+                  "maxTargets": 12,
                   "targetSelection": "search",
                   "effects": [
                     {
@@ -127203,18 +127443,48 @@
               "dispatch": {
                 "breaksStealth": true,
                 "shake": true,
-                "vibrationMs": 280,
+                "vibrationMs": 220,
                 "sound": "Wa_Titan_Attack"
+              }
+            },
+            {
+              "kind": "units",
+              "frame": 19,
+              "cues": [
+                {
+                  "target": "area",
+                  "targetRangePx": 320,
+                  "areaShape": {
+                    "kind": "cross",
+                    "lengthPx": 320,
+                    "verticalLengthPx": 230,
+                    "halfWidthPx": 24
+                  },
+                  "maxTargets": 12,
+                  "targetSelection": "search",
+                  "effects": [
+                    {
+                      "effect": "impact-burst",
+                      "recipient": "target",
+                      "placement": "above-characters"
+                    }
+                  ]
+                }
+              ],
+              "dispatch": {
+                "breaksStealth": true,
+                "shake": true,
+                "vibrationMs": 260
               }
             }
           ],
           "manaGemDrop": "skill",
           "hitEffectStyle": "skill",
           "cooldownFrames": 200,
-          "approachDistanceUnits": 10,
-          "searchRadiusPx": 112,
+          "approachDistanceUnits": 0,
+          "searchRadiusPx": 320,
           "transition": null,
-          "requiresTarget": true,
+          "requiresTarget": false,
           "usesSkillDamageBuff": true,
           "combatUnits": [
             {
@@ -127232,56 +127502,56 @@
                   "fixedAddition": 0,
                   "operation": {
                     "kind": "multiply-thousandth",
-                    "ratePerThousand": 3300
+                    "ratePerThousand": 1200
                   }
                 },
                 {
                   "fixedAddition": 0,
                   "operation": {
                     "kind": "multiply-thousandth",
-                    "ratePerThousand": 3680
+                    "ratePerThousand": 1340
                   }
                 },
                 {
                   "fixedAddition": 0,
                   "operation": {
                     "kind": "multiply-thousandth",
-                    "ratePerThousand": 4100
+                    "ratePerThousand": 1500
                   }
                 },
                 {
                   "fixedAddition": 0,
                   "operation": {
                     "kind": "multiply-thousandth",
-                    "ratePerThousand": 4550
+                    "ratePerThousand": 1680
                   }
                 },
                 {
                   "fixedAddition": 0,
                   "operation": {
                     "kind": "multiply-thousandth",
-                    "ratePerThousand": 4800
+                    "ratePerThousand": 1780
                   }
                 },
                 {
                   "fixedAddition": 0,
                   "operation": {
                     "kind": "multiply-thousandth",
-                    "ratePerThousand": 5050
+                    "ratePerThousand": 1880
                   }
                 },
                 {
                   "fixedAddition": 0,
                   "operation": {
                     "kind": "multiply-thousandth",
-                    "ratePerThousand": 5300
+                    "ratePerThousand": 1980
                   }
                 },
                 {
                   "fixedAddition": 0,
                   "operation": {
                     "kind": "multiply-thousandth",
-                    "ratePerThousand": 5600
+                    "ratePerThousand": 2100
                   }
                 }
               ]
@@ -155536,15 +155806,105 @@
         }
       }
     },
+    "spear-sovereign-dome-back": {
+      "clips": {
+        "default": {
+          "version": 1,
+          "frameWidth": 148,
+          "frameHeight": 112,
+          "frames": 12,
+          "originX": 0.5,
+          "originY": 0.6785714285714286,
+          "frameRate": 16.666666666666668,
+          "mirrorX": false,
+          "layers": [
+            {
+              "key": "spear-sovereign-dome-back-default-base",
+              "file": "assets/battle-effects/spear/spear-sovereign-dome-back/default-base.png",
+              "blend": "normal",
+              "operations": []
+            },
+            {
+              "key": "spear-sovereign-dome-back-default-add",
+              "file": "assets/battle-effects/spear/spear-sovereign-dome-back/default-add.png",
+              "blend": "add",
+              "operations": [
+                "add"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "spear-sovereign-dome": {
+      "clips": {
+        "default": {
+          "version": 1,
+          "frameWidth": 148,
+          "frameHeight": 112,
+          "frames": 12,
+          "originX": 0.5,
+          "originY": 0.6785714285714286,
+          "frameRate": 16.666666666666668,
+          "mirrorX": false,
+          "layers": [
+            {
+              "key": "spear-sovereign-dome-default-base",
+              "file": "assets/battle-effects/spear/spear-sovereign-dome/default-base.png",
+              "blend": "normal",
+              "operations": []
+            },
+            {
+              "key": "spear-sovereign-dome-default-add",
+              "file": "assets/battle-effects/spear/spear-sovereign-dome/default-add.png",
+              "blend": "add",
+              "operations": [
+                "add"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "spear-sovereign-charge": {
+      "clips": {
+        "default": {
+          "version": 1,
+          "frameWidth": 96,
+          "frameHeight": 96,
+          "frames": 4,
+          "originX": 0.5,
+          "originY": 0.6458333333333334,
+          "frameRate": 16.666666666666668,
+          "mirrorX": false,
+          "layers": [
+            {
+              "key": "spear-sovereign-charge-default-base",
+              "file": "assets/battle-effects/spear/spear-sovereign-charge/default-base.png",
+              "blend": "normal",
+              "operations": []
+            },
+            {
+              "key": "spear-sovereign-charge-default-add",
+              "file": "assets/battle-effects/spear/spear-sovereign-charge/default-add.png",
+              "blend": "add",
+              "operations": [
+                "add"
+              ]
+            }
+          ]
+        }
+      }
+    },
     "spear-sovereign-beam": {
       "clips": {
         "west": {
           "version": 1,
-          "frameWidth": 158,
-          "frameHeight": 48,
-          "frames": 7,
-          "originX": 0.9367088607594937,
-          "originY": 0.7291666666666666,
+          "frameWidth": 344,
+          "frameHeight": 64,
+          "frames": 10,
+          "originX": 0.9709302325581395,
+          "originY": 0.6875,
           "frameRate": 16.666666666666668,
           "mirrorX": false,
           "layers": [
@@ -155566,11 +155926,11 @@
         },
         "east": {
           "version": 1,
-          "frameWidth": 158,
-          "frameHeight": 48,
-          "frames": 7,
-          "originX": 0.9367088607594937,
-          "originY": 0.7291666666666666,
+          "frameWidth": 344,
+          "frameHeight": 64,
+          "frames": 10,
+          "originX": 0.9709302325581395,
+          "originY": 0.6875,
           "frameRate": 16.666666666666668,
           "mirrorX": true,
           "layers": [
@@ -155592,11 +155952,11 @@
         },
         "south": {
           "version": 1,
-          "frameWidth": 48,
-          "frameHeight": 156,
-          "frames": 7,
-          "originX": 0.5625,
-          "originY": 0.038461538461538464,
+          "frameWidth": 64,
+          "frameHeight": 244,
+          "frames": 10,
+          "originX": 0.5,
+          "originY": 0.03278688524590164,
           "frameRate": 16.666666666666668,
           "mirrorX": false,
           "layers": [
@@ -155618,11 +155978,11 @@
         },
         "north": {
           "version": 1,
-          "frameWidth": 48,
-          "frameHeight": 164,
-          "frames": 7,
+          "frameWidth": 64,
+          "frameHeight": 252,
+          "frames": 10,
           "originX": 0.5,
-          "originY": 0.975609756097561,
+          "originY": 0.9761904761904762,
           "frameRate": 16.666666666666668,
           "mirrorX": false,
           "layers": [

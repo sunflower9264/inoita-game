@@ -69,9 +69,19 @@ test('every active skill carries its action timeline, effect assets and target r
       for (const name of names) {
         const effect = catalog.attackEffects[name];
         assert.ok(effect, `${id}: ${name}`);
-        // 挥击槽按朝向取变体；跟随施法者的那一版也要有方向变体。
-        const swung = action.events.some(event => event.kind === 'swing' && event.effects.some(visual => visual.effect === name));
-        const wanted = swung ? facings
+        // 显式指定了 variant 的视觉项按声明变体验证；挥击槽按朝向取变体；投射物按十六向取变体；其余用 default。
+        const explicitVariants = [...new Set(action.events.flatMap(event => {
+          if (event.kind === 'caster' || event.kind === 'swing') {
+            return event.effects.filter(visual => visual.effect === name && visual.variant).map(visual => visual.variant!);
+          }
+          if ((event.kind === 'cast' || event.kind === 'impact') && event.effect.effect === name && event.effect.variant) {
+            return [event.effect.variant];
+          }
+          return [];
+        }))];
+        const swung = action.events.some(event => event.kind === 'swing' && event.effects.some(visual => visual.effect === name && !visual.variant));
+        const wanted = explicitVariants.length > 0 ? explicitVariants
+          : swung ? facings
           : name === flight ? ['heading-0','heading-90','heading-180','heading-270'] : ['default'];
         assert.ok(wanted.every(variant => effect.clips[variant]), `${id}: ${name}`);
         for (const clip of Object.values(effect.clips))

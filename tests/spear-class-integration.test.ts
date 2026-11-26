@@ -14,7 +14,9 @@ import {
 } from '../src/application/content-validation.ts';
 import { resolveBasicAttack } from '../src/domain/basic-attack.ts';
 import { BattleCharacter } from '../src/domain/character-stats.ts';
+import { CombatActionDispatcher } from '../src/domain/combat-action-dispatcher.ts';
 import { CombatCooldownStore } from '../src/domain/combat-cooldowns.ts';
+import { CombatRuntime } from '../src/domain/combat-runtime.ts';
 import { CombatController, resolveCueTargets, type Combatant } from '../src/domain/combat.ts';
 import type { Facing } from '../src/domain/content.ts';
 import { passiveModifiers } from '../src/domain/passive-skills.ts';
@@ -121,18 +123,19 @@ test('directional line, sector and front-circle hitboxes match spear reach acros
     const behind = actorAt('behind', 200 - fx * 24, 200 - fy * 24);
     const pool = [caster, farFront, flankLeft, behind, midFront, nearFront];
 
-    // 1. 万圣龙王破：前方 96px 直线走廊贯穿，由近到远，绝不打中背后和宽侧翼
-    const sovereignCue = battle.skills['sovereign-pierce']!.action!.events.find(e => e.kind === 'units')!;
-    assert.equal(sovereignCue.kind, 'units');
-    const lineHits = resolveCueTargets(sovereignCue.cues[0]!, caster, undefined, pool).map(a => a.id);
-    assert.deepEqual(lineHits, ['near-front', 'mid-front', 'far-front'], `line facing ${facing}`);
-
-    // 2. 狂龙穿心破：72px 直线走廊且上限 2 名目标（farFront 超距、即使不超距也截断为最近 2 个）
+    // 1. 狂龙穿心破：72px 直线走廊且上限 2 名目标（farFront 超距、即使不超距也截断为最近 2 个）
     const dragonCue = battle.skills['dragon-pierce']!.action!.events.find(e => e.kind === 'units')!;
     assert.equal(dragonCue.kind, 'units');
     const extraMid = actorAt('mid-2', 200 + fx * 46, 200 + fy * 46);
     const pierceHits = resolveCueTargets(dragonCue.cues[0]!, caster, undefined, [...pool, extraMid]).map(a => a.id);
     assert.deepEqual(pierceHits, ['near-front', 'mid-2'], `pierce cap facing ${facing}`);
+
+    // 2. 连环点枪终结段：80px 直线走廊贯穿，不打背后与宽侧翼
+    const flurryUnits = battle.skills['flurry-thrust']!.action!.events.filter(e => e.kind === 'units');
+    const flurryFinisherCue = flurryUnits[2]!;
+    assert.equal(flurryFinisherCue.kind, 'units');
+    const lineHits = resolveCueTargets(flurryFinisherCue.cues[0]!, caster, undefined, pool).map(a => a.id);
+    assert.deepEqual(lineHits, ['near-front', 'mid-front'], `line facing ${facing}`);
 
     // 3. 虬龙扫暴阵终结段：前方 190° 宽扇形（68px），扫中近前、中前及侧前方 flankLeft，但不打背后与 86px 远敌
     const sweepUnits = battle.skills['whirl-sweep']!.action!.events.filter(e => e.kind === 'units');
@@ -147,6 +150,84 @@ test('directional line, sector and front-circle hitboxes match spear reach acros
     const slamHits = resolveCueTargets(slamCue.cues[0]!, caster, undefined, pool).map(a => a.id);
     assert.deepEqual(slamHits, ['near-front', 'mid-front'], `front-circle facing ${facing}`);
   }
+});
+
+test('sovereign-pierce executes 3-act dome pulses, full-screen 4-way cross shockwaves and explicit directional visuals without tinting', () => {
+  const skill = battle.skills['sovereign-pierce']!;
+  const action = skill.action!;
+  assert.equal(action.requiresTarget, false);
+
+  const unitEvents = action.events.filter(e => e.kind === 'units');
+  assert.deepEqual(unitEvents.map(e => e.frame), [3, 6, 9, 17, 19]);
+
+  // Act 1 扣地半球能量罩触碰伤害（F3 / F6 / F9，半径 56px 全周身）
+  const caster = actorAt('player', 400, 400, 'party', 'south');
+  const domeTouch = actorAt('dome-touch', 400 + 48, 400 - 20); // ~52px，触碰罩面
+  const farEast = actorAt('far-east', 400 + 300, 400 + 12);    // 东向全屏走廊内
+  const farWest = actorAt('far-west', 400 - 290, 400 - 10);    // 西向全屏走廊内
+  const farSouth = actorAt('far-south', 400 + 8, 400 + 215);   // 南向全屏走廊内
+  const farNorth = actorAt('far-north', 400 - 12, 400 - 210);  // 北向全屏走廊内
+  const diagCorner = actorAt('diag-corner', 400 + 110, 400 + 110); // 斜对角空隙，不应被十字波打中
+  const pool = [caster, farEast, farWest, farSouth, farNorth, diagCorner, domeTouch];
+
+  for (const domeEvent of unitEvents.slice(0, 3)) {
+    const domeHits = resolveCueTargets(domeEvent.cues[0]!, caster, undefined, pool).map(a => a.id);
+    assert.deepEqual(domeHits, ['dome-touch']);
+  }
+
+  // Act 3 全屏四向十字冲击波（F17 / F19）：同时命中东/西 320px、南/北 230px 四路目标，且不伤斜角空位
+  for (const crossEvent of unitEvents.slice(3)) {
+    assert.equal(crossEvent.cues[0]!.areaShape?.kind, 'cross');
+    const crossHits = resolveCueTargets(crossEvent.cues[0]!, caster, undefined, pool).map(a => a.id);
+    assert.deepEqual(new Set(crossHits), new Set(['dome-touch', 'far-north', 'far-south', 'far-west', 'far-east']));
+    assert.equal(crossHits.includes('diag-corner'), false);
+  }
+
+  // 确认四向全屏特效尺寸及调度器在 F0 / F12 / F16 精确派发全部分层与四向变体
+  assert.ok(battle.attackEffects['spear-sovereign-beam']!.clips.west!.frameWidth >= 320);
+  assert.ok(battle.attackEffects['spear-sovereign-beam']!.clips.south!.frameHeight >= 220);
+  assert.ok(battle.attackEffects['spear-sovereign-dome-back']!.clips.default);
+  assert.ok(battle.attackEffects['spear-sovereign-dome']!.clips.default);
+  assert.ok(battle.attackEffects['spear-sovereign-charge']!.clips.default);
+
+  const spawned: { name: string; variant: string; placement?: string }[] = [];
+  const dispatcher = new CombatActionDispatcher({
+    runtime: new CombatRuntime(() => 0),
+    catalog: battle,
+    actor: id => (id === caster.id ? caster : undefined),
+    candidates: () => pool,
+    random: () => 0.5,
+    viewport: () => ({ width: 320, height: 213 }),
+    pose: () => {},
+    effect: (name, variant, _pos, placement) => { spawned.push({ name, variant, placement }); },
+    flight: () => {},
+    screen: () => {},
+    notify: () => {},
+    canSummonAt: () => true,
+    nearestSummonSpot: (_p, _b, pref) => pref,
+    beginSummons: () => {},
+    summon: () => undefined,
+  });
+
+  const playback = { caster, basicAttack: null, skill: { id: 'sovereign-pierce', level: 1, action }, facing: 'west' as Facing };
+  dispatcher.frame(playback, 0);
+  dispatcher.frame(playback, 12);
+  dispatcher.frame(playback, 16);
+
+  assert.ok(spawned.some(e => e.name === 'spear-sovereign-dome-back' && e.variant === 'default' && e.placement === 'ground'));
+  assert.ok(spawned.some(e => e.name === 'spear-sovereign-dome' && e.variant === 'default' && e.placement === 'above-characters'));
+  assert.ok(spawned.some(e => e.name === 'spear-sovereign-charge' && e.variant === 'default'));
+  assert.ok(spawned.some(e => e.name === 'spear-sovereign-beam' && e.variant === 'north' && e.placement === 'ground'));
+  assert.ok(spawned.some(e => e.name === 'spear-sovereign-beam' && e.variant === 'west' && e.placement === 'above-characters'));
+  assert.ok(spawned.some(e => e.name === 'spear-sovereign-beam' && e.variant === 'east' && e.placement === 'above-characters'));
+  assert.ok(spawned.some(e => e.name === 'spear-sovereign-beam' && e.variant === 'south' && e.placement === 'above-characters'));
+
+  // 角色 28 帧完整技能动画，且不附带任何变色 buff
+  const lancerClass = battle.classes.find(c => c.id === 'lancer')!;
+  for (const facing of ['south', 'west', 'north', 'east'] as const) {
+    assert.equal(lancerClass.actor.clips[`skill-sovereign-pierce-${facing}`]?.frames, 28, facing);
+  }
+  assert.equal(action.combatUnits!.some(u => u.effect === 'buff'), false, '万圣龙王破不应附带令角色变色的 buff');
 });
 
 test('spear passive polearm-reach extends directional hitbox reach only when wielding a spear', () => {

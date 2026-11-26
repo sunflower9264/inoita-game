@@ -603,12 +603,12 @@ function resolveSkillTimeline(battle: BattleCatalog, audio: AudioCatalogLite | u
   for (const event of action.events) {
     switch (event.kind) {
       case 'cast':
-        addCue(effects, seen, battle, event.effect.effect, 'default', event.frame, event.effect.placement, false, '起手施法');
+        addCue(effects, seen, battle, event.effect.effect, event.effect.variant ?? 'default', event.frame, event.effect.placement, false, '起手施法');
         markers.push({ frame: event.frame, kind: 'effect', label: `起手特效（${event.effect.effect}）` });
         break;
       case 'caster':
         for (const visual of event.effects) {
-          addCue(effects, seen, battle, visual.effect, 'default', event.frame, visual.placement, false, '自身特效');
+          addCue(effects, seen, battle, visual.effect, visual.variant ?? 'default', event.frame, visual.placement, false, '自身特效');
         }
         if (event.effects.length) {
           markers.push({ frame: event.frame, kind: 'effect', label: `自身特效（${event.effects.map(e => e.effect).join(' / ')}）` });
@@ -616,7 +616,7 @@ function resolveSkillTimeline(battle: BattleCatalog, audio: AudioCatalogLite | u
         break;
       case 'swing':
         for (const visual of event.effects) {
-          const variant = visual.recipient === 'caster' ? facing : 'default';
+          const variant = visual.variant ?? (visual.recipient === 'caster' ? facing : 'default');
           addCue(effects, seen, battle, visual.effect, variant, event.frame, visual.placement, visual.recipient === 'target', '技能挥砍');
         }
         if (event.effects.length) {
@@ -625,7 +625,7 @@ function resolveSkillTimeline(battle: BattleCatalog, audio: AudioCatalogLite | u
         break;
       case 'impact': {
         const onTarget = event.target !== 'self' && event.effect.recipient === 'target';
-        addCue(effects, seen, battle, event.effect.effect, 'default', event.frame, event.effect.placement, onTarget, onTarget ? '目标特效' : '自身环绕特效');
+        addCue(effects, seen, battle, event.effect.effect, event.effect.variant ?? 'default', event.frame, event.effect.placement, onTarget, onTarget ? '目标特效' : '自身环绕特效');
         markers.push({ frame: event.frame, kind: 'effect', label: `特效（${event.effect.effect}）` });
         break;
       }

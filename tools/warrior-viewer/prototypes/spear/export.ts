@@ -111,46 +111,81 @@ function packEffects(): {
     });
   }
 
-  let sheetWidth = PADDING;
-  let sheetHeight = PADDING;
-  for (const strip of strips) {
-    const rowWidth = PADDING + strip.frames.length * (strip.width + PADDING);
-    sheetWidth = Math.max(sheetWidth, rowWidth);
-    sheetHeight += strip.height + PADDING;
+  // 货架式矩形装箱（限制单行最大宽 <= 3840px），避免单列堆叠撑爆 4096px WebGL 纹理高度上限
+  const MAX_SHEET_WIDTH = 3840;
+  interface PlacedFrame {
+    grid: EffectFrameGrid;
+    palette: RgbaPalette;
+    width: number;
+    height: number;
+    x: number;
+    y: number;
   }
+  const allFrames: {
+    file: string;
+    indexInFile: number;
+    grid: EffectFrameGrid;
+    palette: RgbaPalette;
+    width: number;
+    height: number;
+  }[] = [];
+  const byFile: Record<string, string[]> = {};
+  for (const strip of strips) {
+    byFile[strip.file] = strip.frames.map(f => f.id);
+    strip.frames.forEach((grid, indexInFile) => {
+      allFrames.push({ file: strip.file, indexInFile, grid, palette: strip.palette, width: strip.width, height: strip.height });
+    });
+  }
+  // 按高度降序排列以最大化货架紧凑度
+  allFrames.sort((a, b) => b.height - a.height || b.width - a.width);
+
+  const placed: PlacedFrame[] = [];
+  let cursorX = PADDING;
+  let cursorY = PADDING;
+  let shelfHeight = 0;
+  let sheetWidth = PADDING;
+  for (const item of allFrames) {
+    if (cursorX > PADDING && cursorX + item.width + PADDING > MAX_SHEET_WIDTH) {
+      cursorY += shelfHeight + PADDING;
+      cursorX = PADDING;
+      shelfHeight = 0;
+    }
+    placed.push({
+      grid: item.grid,
+      palette: item.palette,
+      width: item.width,
+      height: item.height,
+      x: cursorX,
+      y: cursorY,
+    });
+    cursorX += item.width + PADDING;
+    sheetWidth = Math.max(sheetWidth, cursorX);
+    shelfHeight = Math.max(shelfHeight, item.height);
+  }
+  const sheetHeight = cursorY + shelfHeight + PADDING;
 
   const png = new PNG({ width: sheetWidth, height: sheetHeight });
   png.data.fill(0);
 
   const frames: Record<string, { x: number; y: number; width: number; height: number }> = {};
-  const byFile: Record<string, string[]> = {};
-  let cursorY = PADDING;
-
-  for (const strip of strips) {
-    let cursorX = PADDING;
-    const frameKeys: string[] = [];
-    for (const grid of strip.frames) {
-      if (grid.rows.length !== strip.height) throw new Error(`特效帧高度不一致：${grid.id}`);
-      for (let y = 0; y < strip.height; y++) {
-        const row = grid.rows[y];
-        if (row.length !== strip.width) throw new Error(`特效帧宽度不一致：${grid.id} 第 ${y} 行`);
-        for (let x = 0; x < strip.width; x++) {
-          const ch = row[x];
-          const rgba = strip.palette[ch];
-          if (!rgba) throw new Error(`未知特效色板字符 '${ch}'：${grid.id} (${x}, ${y})`);
-          const dst = ((cursorY + y) * sheetWidth + (cursorX + x)) * 4;
-          png.data[dst] = rgba[0];
-          png.data[dst + 1] = rgba[1];
-          png.data[dst + 2] = rgba[2];
-          png.data[dst + 3] = rgba[3];
-        }
+  for (const item of placed) {
+    const { grid, palette, width, height, x: fx, y: fy } = item;
+    if (grid.rows.length !== height) throw new Error(`特效帧高度不一致：${grid.id}`);
+    for (let y = 0; y < height; y++) {
+      const row = grid.rows[y];
+      if (row.length !== width) throw new Error(`特效帧宽度不一致：${grid.id} 第 ${y} 行`);
+      for (let x = 0; x < width; x++) {
+        const ch = row[x];
+        const rgba = palette[ch];
+        if (!rgba) throw new Error(`未知特效色板字符 '${ch}'：${grid.id} (${x}, ${y})`);
+        const dst = ((fy + y) * sheetWidth + (fx + x)) * 4;
+        png.data[dst] = rgba[0];
+        png.data[dst + 1] = rgba[1];
+        png.data[dst + 2] = rgba[2];
+        png.data[dst + 3] = rgba[3];
       }
-      frames[grid.id] = { x: cursorX, y: cursorY, width: strip.width, height: strip.height };
-      frameKeys.push(grid.id);
-      cursorX += strip.width + PADDING;
     }
-    byFile[strip.file] = frameKeys;
-    cursorY += strip.height + PADDING;
+    frames[grid.id] = { x: fx, y: fy, width, height };
   }
 
   const attackEffects: BattleCatalog['attackEffects'] = {};
@@ -801,10 +836,10 @@ function run(): void {
           { effect: 'spear-sovereign-dome', startFrame: 0, variant: 'default', placement: 'above-characters', source: '扣地薄边柔光半球 + 持续螺旋气流（结束原地渐隐）' },
           { effect: 'spear-sovereign-charge', startFrame: 12, variant: 'default', placement: 'above-characters', source: '提枪蓄势十字星芒' },
           { effect: 'curse-wind-ring', startFrame: 16, variant: 'default', placement: 'ground', source: '顿枪镇地十字震波环' },
-          { effect: 'spear-sovereign-beam', startFrame: 16, variant: 'north', placement: 'ground', source: '北向蓝金螺旋破空冲击波' },
-          { effect: 'spear-sovereign-beam', startFrame: 16, variant: 'west', placement: 'above-characters', source: '西向蓝金螺旋破空冲击波' },
-          { effect: 'spear-sovereign-beam', startFrame: 16, variant: 'east', placement: 'above-characters', source: '东向蓝金螺旋破空冲击波' },
-          { effect: 'spear-sovereign-beam', startFrame: 16, variant: 'south', placement: 'above-characters', source: '南向蓝金螺旋破空冲击波' },
+          { effect: 'spear-sovereign-beam', startFrame: 16, variant: 'north', placement: 'ground', source: '北向全屏蓝金螺旋冲击波' },
+          { effect: 'spear-sovereign-beam', startFrame: 16, variant: 'west', placement: 'above-characters', source: '西向全屏蓝金螺旋冲击波' },
+          { effect: 'spear-sovereign-beam', startFrame: 16, variant: 'east', placement: 'above-characters', source: '东向全屏蓝金螺旋冲击波' },
+          { effect: 'spear-sovereign-beam', startFrame: 16, variant: 'south', placement: 'above-characters', source: '南向全屏蓝金螺旋冲击波' },
         ],
         markers: [
           { frame: 0, kind: 'effect', label: '立枪撑罩 · 扣地半球能量罩展开' },
@@ -812,8 +847,9 @@ function run(): void {
           { frame: 6, kind: 'strike', label: '能量罩触碰伤害 · 第 2 段脉冲' },
           { frame: 9, kind: 'strike', label: '能量罩触碰伤害 · 第 3 段脉冲' },
           { frame: 12, kind: 'charge', label: '能量罩消散 · 提枪蓄势闪光' },
-          { frame: 16, kind: 'swing', label: '顿枪镇地 · 四向冲击波齐发' },
-          { frame: 18, kind: 'strike', label: '东/西/南/北四向破防冲击波重创' },
+          { frame: 16, kind: 'swing', label: '顿枪镇地 · 四向全屏冲击波齐发' },
+          { frame: 17, kind: 'strike', label: '四向全屏冲击波 · 第 1 段破空重创' },
+          { frame: 19, kind: 'strike', label: '四向全屏冲击波 · 第 2 段贯通爆发' },
         ],
         shakeFrames: [3, 6, 9, 16, 17, 18, 19],
         sounds: ['Wa_Defense', 'Wa_Wheel_Wind', 'Wa_Storm', 'Wa_Titan_Attack'],

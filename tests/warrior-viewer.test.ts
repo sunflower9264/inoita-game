@@ -505,10 +505,14 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
           `万圣龙王破在 ${facing} 朝向下必须在 F16 同时释放 ${beamDir} 方向纯冲击波`,
         );
       }
-      assert.equal(sovTl.markers.filter(m => m.kind === 'strike').length, 4, '万圣龙王破应含 3 段能量罩触碰脉冲伤害 + 1 段四向苍龙破防重创共 4 次命中标记');
+      assert.equal(sovTl.markers.filter(m => m.kind === 'strike').length, 5, '万圣龙王破应含 3 段能量罩触碰脉冲伤害 + 2 段四向全屏冲击波重创共 5 次命中标记');
       assert.equal(sovTl.appearanceColors, undefined, '万圣龙王破严禁使人物变色（appearanceColors 必须为空）');
       assert.equal(sovTl.afterimages, undefined, 'stationary sovereign-pierce should not draw dash afterimages');
       assert.deepEqual(sovTl.shakeFrames, [3, 6, 9, 16, 17, 18, 19]);
+      const sovWestClip = mergedBattle.attackEffects['spear-sovereign-beam']?.clips.west;
+      const sovSouthClip = mergedBattle.attackEffects['spear-sovereign-beam']?.clips.south;
+      assert.ok(sovWestClip && sovWestClip.frameWidth >= 320, '东西向全屏冲击波单臂宽度应达到全屏跨度 (>= 320px)');
+      assert.ok(sovSouthClip && sovSouthClip.frameHeight >= 220, '南北向全屏冲击波单臂高度应达到全屏跨度 (>= 220px)');
 
       const focusTl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, 'skill-focus-edge', facing, audio, proto.actionTimelines);
       assert.ok(focusTl.appearanceColors && focusTl.appearanceColors.length > 0);

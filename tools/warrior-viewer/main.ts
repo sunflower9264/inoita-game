@@ -403,7 +403,8 @@ class CharacterScene extends Phaser.Scene {
       const combinedH = Math.max(charHeight, Math.max(bounds.bottom, effBounds.bottom) - Math.min(bounds.top, effBounds.top) + 1);
       const combinedFit = Math.max(1, Math.floor(Math.min((this.scale.width - margin) / combinedW,
         (this.scale.height - margin) / combinedH)));
-      fit = Math.min(charFit, Math.max(2, combinedFit));
+      const minEffectFit = combinedW > 360 || combinedH > 220 ? 1 : 2;
+      fit = Math.min(charFit, Math.max(minEffectFit, combinedFit));
     }
     const requested = Number(zoomSelect.value);
     const zoom = Math.min(fit, requested);

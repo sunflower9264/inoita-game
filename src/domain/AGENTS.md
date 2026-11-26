@@ -130,7 +130,7 @@
 - `CombatConditions.activeBuffReactions()` 为结算提供按角色复用的只读反应定义；状态与增益变化、恢复和清空使缓存失效。计时和叠层写入独立的运行状态，寿命换算创建新定义；对外 `buffReactions()` 继续返回隔离副本。
 - `CombatConditions.update` 在没有状态和增益时直接返回；有按时间增长的蓝耗修正（`attributeRamps` 指向 `manaCostRate` 或 `manaCostReductionRate`）时，`hasManaCostAttributeRamp` 必须返回真，调用方不得缓存蓝耗。
 - `CombatController.basicAttackRange` 读取已解析普攻的接近距离；换装备通过 `setBasicAttack` 更新，决策查询只叠加实时射程加成。
-- 范围攻击与技能触发项支持可选的朝向几何 `areaShape`（`line` 前方直线贯穿走廊、`sector` 前方扇形横扫、`front-circle` 身前落点震波）与单次命中上限 `maxTargets`；玩家出招、普攻范围连段与队友 AI 评估统一经 `resolveCueTargets` 计算，射程加成同步延伸几何半径与走廊长度。
+- 范围攻击与技能触发项支持可选的几何范围 `areaShape`（`line` 前方直线贯穿走廊、`sector` 前方扇形横扫、`front-circle` 身前落点震波、`cross` 四向十字走廊）与单次命中上限 `maxTargets`；玩家出招、普攻范围连段与队友 AI 评估统一经 `resolveCueTargets` 计算，射程加成同步延伸几何半径与走廊长度。技能视觉项 `SkillVisualEffect` 支持可选 `variant`（`'default' | Facing`），允许单个事件同时指定多个方向变体（如四向齐发冲击波）。
 - 职业条目可用 `debugOnly` 标记仅在调试模式开放的新游戏可选职业；`visibleStoryClasses` 负责新游戏入口过滤，读档与会话仍按完整职业表解析。
 - 手动攻击性技能完整结束后，普攻连打先尝试一次：有目标沿用目标，无目标按普攻规则搜索；搜索不到或玩家移动时停止。自身、队友和召唤技能不启动连打。
 

@@ -718,7 +718,7 @@ const campaign=shape<Campaign>({version:(v,p)=>requireValue(v===2,p,'剧情内�
   exitRules:optional(array(object({id:text,map:text,condition:storyCondition})))});
 const target=oneOf('self','current','area','target-area','ally','ally-heal','party','party-ally','enemy','none');
 const transition=shape<SkillTransition>({directional:optional(boolean),missEffects:optional(array(object({effect:text,recipient:oneOf('caster','target'),placement:oneOf('attached','ground','above-characters')}))),casterStrikes:optional(object({effect:text,offsets:array(object({x:offsetInteger,y:offsetInteger}))})),anchor:optional(oneOf('target','caster')),kind:oneOf('stationary','trace','position'),effect:nullable(text),actionEffect:nullable(text),switchFrame:integer,stepDistancePx:number,offsetX:number,offsetY:number});
-const visualEffect=shape<SkillVisualEffect>({effect:text,recipient:oneOf('caster','target'),placement:oneOf('attached','ground','above-characters')});
+const visualEffect=shape<SkillVisualEffect>({effect:text,recipient:oneOf('caster','target'),placement:oneOf('attached','ground','above-characters'),variant:optional(oneOf('default','north','south','east','west'))});
 const actionDispatch=shape<ActionDispatchDefinition>({breaksStealth:boolean,casterEffects:optional(array(object({effect:text,recipient:oneOf('caster'),placement:oneOf('attached','ground','above-characters')}))),shake:optional(boolean),vibrationMs:optional(count),sound:optional(text)});
 const charge=shape<SkillCharge>({arrivalFrame:integer,closeDistanceUnits:positive,lungeDistancePx:positive,stoppingDistanceUnits:positive,gridSizePx:positive});
 const afterimages=shape<SkillAfterimages>({frame:integer,opacity:number,distancesPx:array(positive)});
@@ -727,6 +727,7 @@ const areaShape=variant('kind',{
   line:object({kind:oneOf('line'),lengthPx:positive,halfWidthPx:positive,backSlackPx:optional(nonnegative)}),
   sector:object({kind:oneOf('sector'),radiusPx:positive,angleDeg:angleDegrees,backSlackPx:optional(nonnegative)}),
   'front-circle':object({kind:oneOf('front-circle'),forwardOffsetPx:nonnegative,radiusPx:positive}),
+  cross:object({kind:oneOf('cross'),lengthPx:positive,verticalLengthPx:optional(positive),halfWidthPx:positive,backSlackPx:optional(nonnegative)}),
 });
 const basicTargeting=object({target:oneOf('area'),targetRangePx:positive,targetRangeMetric:optional(oneOf('octagonal-grid')),areaShape:optional(areaShape),maxTargets:optional(count)});
 const cue=shape<SkillEffectCue>({target,targetRangePx:number,targetSelection:optional(oneOf('search','reuse-previous')),unitFeedbackPolicy:optional(oneOf('always')),sound:optional(text),targetRangeMetric:optional(oneOf('octagonal-grid')),areaShape:optional(areaShape),maxTargets:optional(count),effects:array(visualEffect)});
@@ -1125,9 +1126,9 @@ export function parseBattle(value:unknown,wardrobe?:WardrobeCatalog):BattleCatal
       if(action.afterimages)requireValue(action.afterimages.opacity>=0&&action.afterimages.opacity<=1&&action.afterimages.distancesPx.length>0,id,'残影透明度或数量无效');
       for(const event of action.events){
         if(event.kind==='units'){
-          for(const item of [...event.cues.flatMap(item=>item.effects),...event.dispatch?.casterEffects??[]]){effect(item.effect,['default']);placements.push(item.placement);}
+          for(const item of [...event.cues.flatMap(item=>item.effects),...event.dispatch?.casterEffects??[]]){effect(item.effect,item.variant?[item.variant]:['default']);placements.push(item.placement);}
         }else if(event.kind==='swing'){
-          for(const item of event.effects){effect(item.effect,facings);placements.push(item.placement);}
+          for(const item of event.effects){effect(item.effect,item.variant?[item.variant]:facings);placements.push(item.placement);}
         }else if(event.kind==='spawn'){
           requireValue(event.frame<event.until,id,'逐帧生成事件的结束帧必须晚于开始帧');
           effect(event.effect,['default']);placements.push(event.placement);
@@ -1136,7 +1137,7 @@ export function parseBattle(value:unknown,wardrobe?:WardrobeCatalog):BattleCatal
         }else if(event.kind==='captured-effect'){
           effect(event.effect,['default']);placements.push(event.placement);
         }else if(event.kind==='summon'){
-          for(const item of event.dispatch?.casterEffects??[]){effect(item.effect,['default']);placements.push(item.placement);}
+          for(const item of event.dispatch?.casterEffects??[]){effect(item.effect,item.variant?[item.variant]:['default']);placements.push(item.placement);}
           effect(event.effect,['default']);
           requireValue(event.creatures.length>0&&event.placement.offsetChoices.length>0,id,'召唤需要生物与落点');
           for(const creature of event.creatures)requireValue(result.enemies.some(enemy=>enemy.id===creature.enemyId),id,`召唤对象缺失 ${creature.enemyId}`);
@@ -1145,9 +1146,9 @@ export function parseBattle(value:unknown,wardrobe?:WardrobeCatalog):BattleCatal
         }else if(event.kind==='feedback'){
           requireValue(event.shake||!!event.sound||!!event.vibrationMs,id,'动作反馈需要震屏、振动或音效');
         }else if('effects' in event){
-          for(const item of event.effects){effect(item.effect,['default']);placements.push(item.placement);}
+          for(const item of event.effects){effect(item.effect,item.variant?[item.variant]:['default']);placements.push(item.placement);}
         }else{
-          effect(event.effect.effect,['default']);placements.push(event.effect.placement);
+          effect(event.effect.effect,event.effect.variant?[event.effect.variant]:['default']);placements.push(event.effect.placement);
         }
       }
       if(action.transition){for(const visual of action.transition.missEffects??[]){effect(visual.effect,['default']);placements.push(visual.placement);}effect(action.transition.actionEffect,['default']);effect(action.transition.effect,action.transition.kind==='trace'&&action.transition.directional!==false?headings:['default']);}

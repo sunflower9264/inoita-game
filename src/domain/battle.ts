@@ -8,15 +8,17 @@ import type { BuffReaction } from './buff-reactions.ts';
 import type { CombatFeedbackDefinition, HitEffectStyle } from './combat-feedback.ts';
 
 /**
- * 方向性范围几何（以施法者当前朝向为正前方）：
+ * 方向性范围几何（以施法者当前朝向为正前方，或以施法者为中心的四向十字）：
  * - `line`：前方直线贯穿走廊（纵向 `lengthPx`，左右半宽 `halfWidthPx`）；
  * - `sector`：前方扇形/半圆弧横扫（半径 `radiusPx`，总张角 `angleDeg`）；
- * - `front-circle`：身前指定落点圆形震波（沿朝向前移 `forwardOffsetPx`，半径 `radiusPx`）。
+ * - `front-circle`：身前指定落点圆形震波（沿朝向前移 `forwardOffsetPx`，半径 `radiusPx`）；
+ * - `cross`：东/西/南/北四向十字走廊（东西各 `lengthPx`，南北各 `verticalLengthPx ?? lengthPx`，走廊半宽 `halfWidthPx`）。
  */
 export type AreaShape =
   | { kind: 'line'; lengthPx: number; halfWidthPx: number; backSlackPx?: number }
   | { kind: 'sector'; radiusPx: number; angleDeg: number; backSlackPx?: number }
-  | { kind: 'front-circle'; forwardOffsetPx: number; radiusPx: number };
+  | { kind: 'front-circle'; forwardOffsetPx: number; radiusPx: number }
+  | { kind: 'cross'; lengthPx: number; verticalLengthPx?: number; halfWidthPx: number; backSlackPx?: number };
 
 export interface BasicAttackTargeting {
   target: 'area';
@@ -112,6 +114,8 @@ export interface SkillVisualEffect {
   effect: string;
   recipient: 'caster' | 'target';
   placement: EffectPlacement;
+  /** 显式指定特效变体（例如四向齐发冲击波分别指定 east/west/south/north）；省略时沿用事件默认规则。 */
+  variant?: 'default' | Facing;
 }
 /** 一个特效触发项：定义作用范围和有序的视觉效果。 */
 export interface SkillEffectCue {

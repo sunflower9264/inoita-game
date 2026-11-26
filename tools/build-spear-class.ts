@@ -100,6 +100,9 @@ const ACTIVE_SPEAR_EFFECT_IDS = new Set([
   'spear-gale-sweep',
   'spear-flurry-needles',
   'spear-flurry-finisher',
+  'spear-sovereign-dome-back',
+  'spear-sovereign-dome',
+  'spear-sovereign-charge',
   'spear-sovereign-beam',
   'spear-spin-storm',
 ]);
@@ -1675,48 +1678,118 @@ function buildSpearSkills(): { skillIds: string[]; definitions: Record<string, S
     },
   });
 
-  // 6. 万圣龙王破：终极奥义，超远起手 10 格 + 前方 96x40px 贯穿 4 名敌人
-  const sovereignRates = [3300, 3680, 4100, 4550, 4800, 5050, 5300, 5600];
+  // 6. 万圣龙王破：三幕终极奥义 —— 扣地半球护体能量罩 3 段触碰脉冲 + 提枪蓄势 + 东/西/南/北四向全屏蓝金螺旋冲击波 2 段爆发
+  const sovereignRates = [1200, 1340, 1500, 1680, 1780, 1880, 1980, 2100];
   definitions['sovereign-pierce'] = makeActiveSkill({
     id: 'sovereign-pierce',
     name: '万圣龙王破',
-    description: '盘枪引动苍穹风云凝聚于枪尖，化出巨型青金螺旋怒龙枪芒，超远距离一击贯穿整列强敌。',
+    description: '双手立枪撑开扣地半球护体能量罩，持续震伤触碰周身之敌，随即顿枪镇地朝东、西、南、北四方齐发全屏蓝金螺旋冲击波。',
     normalMaxLevel: 3,
     requiredInvestedSkillPoints: 24,
     mana: [90, 98, 106, 114, 122, 130, 138, 146],
     cooldownFrames: 200, // 12秒
     pointCosts: [4, 4, 5, 1, 1, 1, 1, 1],
     effectRows: i => [
-      detailEffect('（物理攻击力+力量x1.6+敏捷x1.2）x', `${(sovereignRates[i]! / 10).toFixed(1)}%`, '0.0%', 0, false),
+      detailEffect('每段（物理攻击力+力量x1.6+敏捷x1.2）x', `${(sovereignRates[i]! / 10).toFixed(1)}%`, '0.0%', 0, false),
     ],
     action: {
       events: [
-        { kind: 'caster', frame: 1, effects: [{ effect: 'curse-wind-ring', recipient: 'caster', placement: 'ground' }] },
-        { kind: 'feedback', frame: 1, sound: 'Wa_Storm' },
-        { kind: 'caster', frame: 5, effects: [{ effect: 'aura-ring', recipient: 'caster', placement: 'ground' }] },
-        { kind: 'swing', frame: 9, effects: [{ effect: 'spear-sovereign-beam', recipient: 'caster', placement: 'above-characters' }] },
-        { kind: 'feedback', frame: 10, shake: true, vibrationMs: 120 },
+        {
+          kind: 'caster',
+          frame: 0,
+          effects: [
+            { effect: 'spear-sovereign-dome-back', recipient: 'caster', placement: 'ground' },
+            { effect: 'spear-sovereign-dome', recipient: 'caster', placement: 'above-characters' },
+          ],
+        },
+        { kind: 'feedback', frame: 0, sound: 'Wa_Defense' },
         {
           kind: 'units',
-          frame: 11,
+          frame: 3,
           cues: [{
             target: 'area',
-            targetRangePx: 96,
-            areaShape: { kind: 'line', lengthPx: 96, halfWidthPx: 20, backSlackPx: 10 },
-            maxTargets: 4,
+            targetRangePx: 56,
+            maxTargets: 8,
+            targetSelection: 'search',
+            effects: [{ effect: 'impact-spark', recipient: 'target', placement: 'above-characters' }],
+          }],
+          dispatch: { breaksStealth: true, shake: true, vibrationMs: 90, sound: 'Wa_Wheel_Wind' },
+        },
+        {
+          kind: 'units',
+          frame: 6,
+          cues: [{
+            target: 'area',
+            targetRangePx: 56,
+            maxTargets: 8,
+            targetSelection: 'search',
+            effects: [{ effect: 'impact-spark', recipient: 'target', placement: 'above-characters' }],
+          }],
+          dispatch: { breaksStealth: true, shake: true, vibrationMs: 90, sound: 'Wa_Wheel_Wind' },
+        },
+        {
+          kind: 'units',
+          frame: 9,
+          cues: [{
+            target: 'area',
+            targetRangePx: 56,
+            maxTargets: 8,
+            targetSelection: 'search',
+            effects: [{ effect: 'impact-spark', recipient: 'target', placement: 'above-characters' }],
+          }],
+          dispatch: { breaksStealth: true, shake: true, vibrationMs: 110, sound: 'Wa_Wheel_Wind' },
+        },
+        {
+          kind: 'caster',
+          frame: 12,
+          effects: [{ effect: 'spear-sovereign-charge', recipient: 'caster', placement: 'above-characters' }],
+        },
+        {
+          kind: 'caster',
+          frame: 16,
+          effects: [
+            { effect: 'curse-wind-ring', recipient: 'caster', placement: 'ground' },
+            { effect: 'spear-sovereign-beam', recipient: 'caster', placement: 'ground', variant: 'north' },
+            { effect: 'spear-sovereign-beam', recipient: 'caster', placement: 'above-characters', variant: 'west' },
+            { effect: 'spear-sovereign-beam', recipient: 'caster', placement: 'above-characters', variant: 'east' },
+            { effect: 'spear-sovereign-beam', recipient: 'caster', placement: 'above-characters', variant: 'south' },
+          ],
+        },
+        { kind: 'feedback', frame: 16, shake: true, vibrationMs: 140, sound: 'Wa_Storm' },
+        {
+          kind: 'units',
+          frame: 17,
+          cues: [{
+            target: 'area',
+            targetRangePx: 320,
+            areaShape: { kind: 'cross', lengthPx: 320, verticalLengthPx: 230, halfWidthPx: 24 },
+            maxTargets: 12,
             targetSelection: 'search',
             effects: [{ effect: 'impact-burst', recipient: 'target', placement: 'above-characters' }],
           }],
-          dispatch: { breaksStealth: true, shake: true, vibrationMs: 280, sound: 'Wa_Titan_Attack' },
+          dispatch: { breaksStealth: true, shake: true, vibrationMs: 220, sound: 'Wa_Titan_Attack' },
+        },
+        {
+          kind: 'units',
+          frame: 19,
+          cues: [{
+            target: 'area',
+            targetRangePx: 320,
+            areaShape: { kind: 'cross', lengthPx: 320, verticalLengthPx: 230, halfWidthPx: 24 },
+            maxTargets: 12,
+            targetSelection: 'search',
+            effects: [{ effect: 'impact-burst', recipient: 'target', placement: 'above-characters' }],
+          }],
+          dispatch: { breaksStealth: true, shake: true, vibrationMs: 260 },
         },
       ],
       manaGemDrop: 'skill',
       hitEffectStyle: 'skill',
       cooldownFrames: 200,
-      approachDistanceUnits: 10,
-      searchRadiusPx: 112,
+      approachDistanceUnits: 0,
+      searchRadiusPx: 320,
       transition: null,
-      requiresTarget: true,
+      requiresTarget: false,
       usesSkillDamageBuff: true,
       combatUnits: [physicalUnit(16, 12, sovereignRates)],
     },
