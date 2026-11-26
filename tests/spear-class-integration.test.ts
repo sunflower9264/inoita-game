@@ -222,12 +222,23 @@ test('sovereign-pierce executes 3-act dome pulses, full-screen 4-way cross shock
   assert.ok(spawned.some(e => e.name === 'spear-sovereign-beam' && e.variant === 'east' && e.placement === 'above-characters'));
   assert.ok(spawned.some(e => e.name === 'spear-sovereign-beam' && e.variant === 'south' && e.placement === 'above-characters'));
 
-  // 角色 28 帧完整技能动画，且不附带任何变色 buff
+  // 角色 28 帧完整技能动画，且不附带任何变色 buff；龙枪全职业仅保留伏龙震 F4 与万圣龙王破 F17 共 2 次克制震屏
   const lancerClass = battle.classes.find(c => c.id === 'lancer')!;
   for (const facing of ['south', 'west', 'north', 'east'] as const) {
     assert.equal(lancerClass.actor.clips[`skill-sovereign-pierce-${facing}`]?.frames, 28, facing);
   }
   assert.equal(action.combatUnits!.some(u => u.effect === 'buff'), false, '万圣龙王破不应附带令角色变色的 buff');
+
+  const shakeSummary: Record<string, number[]> = {};
+  for (const sid of lancerClass.skills) {
+    const sk = battle.skills[sid]!;
+    if (!sk.action) continue;
+    const frames = sk.action.events
+      .filter(ev => (ev.kind === 'feedback' && ev.shake) || (ev.kind === 'units' && ev.dispatch?.shake))
+      .map(ev => ev.frame);
+    if (frames.length) shakeSummary[sid] = frames;
+  }
+  assert.deepEqual(shakeSummary, { 'dragon-slam': [4], 'sovereign-pierce': [17] });
 });
 
 test('spear passive polearm-reach extends directional hitbox reach only when wielding a spear', () => {

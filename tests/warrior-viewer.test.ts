@@ -467,12 +467,13 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
 
       const pierceTl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, 'skill-dragon-pierce', facing, audio, proto.actionTimelines);
       assert.equal(pierceTl.afterimages, undefined, 'stationary dragon-pierce should not draw dash afterimages');
-      assert.deepEqual(pierceTl.shakeFrames, [5]);
+      assert.deepEqual(pierceTl.shakeFrames, []);
       assert.ok(pierceTl.effects.some(e => e.effect === 'spear-heavy-pierce' && e.variant === facing));
       assert.ok(pierceTl.effects.some(e => e.effect === 'impact-burst' && e.onTarget));
 
       const whirlTl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, 'skill-whirl-sweep', facing, audio, proto.actionTimelines);
       assert.equal(whirlTl.markers.filter(m => m.kind === 'strike').length, 3);
+      assert.deepEqual(whirlTl.shakeFrames, []);
       assert.ok(whirlTl.effects.some(e => e.effect === 'spear-flower-spin' && e.variant === facing && e.startFrame === 0));
       assert.ok(whirlTl.effects.some(e => e.effect === 'spear-gale-sweep' && e.variant === facing));
       const whirlPose = mergedCatalog.poses[proto.stancePoses[`skill-whirl-sweep-${facing}`]];
@@ -481,12 +482,13 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
 
       const spinTl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, 'skill-spin-storm', facing, audio, proto.actionTimelines);
       assert.equal(spinTl.markers.filter(m => m.kind === 'strike').length, 4);
-      assert.deepEqual(spinTl.shakeFrames, [3, 7, 11, 14]);
+      assert.deepEqual(spinTl.shakeFrames, []);
       assert.ok(spinTl.effects.some(e => e.effect === 'spear-spin-storm' && e.variant === facing && e.startFrame === 2));
       assert.ok(spinTl.effects.some(e => e.effect === 'curse-wind-ring' && e.placement === 'ground'));
 
       const flurryTl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, 'skill-flurry-thrust', facing, audio, proto.actionTimelines);
       assert.equal(flurryTl.markers.filter(m => m.kind === 'strike').length, 3);
+      assert.deepEqual(flurryTl.shakeFrames, []);
       assert.ok(flurryTl.effects.some(e => e.effect === 'spear-flurry-needles' && e.variant === facing));
       assert.ok(flurryTl.effects.some(e => e.effect === 'spear-flurry-finisher' && e.variant === facing));
 
@@ -508,7 +510,7 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
       assert.equal(sovTl.markers.filter(m => m.kind === 'strike').length, 5, '万圣龙王破应含 3 段能量罩触碰脉冲伤害 + 2 段四向全屏冲击波重创共 5 次命中标记');
       assert.equal(sovTl.appearanceColors, undefined, '万圣龙王破严禁使人物变色（appearanceColors 必须为空）');
       assert.equal(sovTl.afterimages, undefined, 'stationary sovereign-pierce should not draw dash afterimages');
-      assert.deepEqual(sovTl.shakeFrames, [3, 6, 9, 16, 17, 18, 19]);
+      assert.deepEqual(sovTl.shakeFrames, [17]);
       const sovWestClip = mergedBattle.attackEffects['spear-sovereign-beam']?.clips.west;
       const sovSouthClip = mergedBattle.attackEffects['spear-sovereign-beam']?.clips.south;
       assert.ok(sovWestClip && sovWestClip.frameWidth >= 320, '东西向全屏冲击波单臂宽度应达到全屏跨度 (>= 320px)');

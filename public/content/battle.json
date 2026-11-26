@@ -121467,8 +121467,6 @@
             ],
             "dispatch": {
               "breaksStealth": true,
-              "shake": true,
-              "vibrationMs": 160,
               "sound": "Wa_Anger_Rush"
             }
           }
@@ -122176,8 +122174,6 @@
               ],
               "dispatch": {
                 "breaksStealth": true,
-                "shake": true,
-                "vibrationMs": 160,
                 "sound": "Wa_Anger_Rush"
               }
             }
@@ -122821,8 +122817,6 @@
             ],
             "dispatch": {
               "breaksStealth": true,
-              "shake": true,
-              "vibrationMs": 180,
               "sound": "Weapon_TwoHand_Sword_Attack"
             }
           }
@@ -123260,8 +123254,6 @@
               ],
               "dispatch": {
                 "breaksStealth": true,
-                "shake": true,
-                "vibrationMs": 180,
                 "sound": "Weapon_TwoHand_Sword_Attack"
               }
             }
@@ -123660,8 +123652,6 @@
             ],
             "dispatch": {
               "breaksStealth": true,
-              "shake": true,
-              "vibrationMs": 140,
               "sound": "Wa_Wheel_Wind"
             }
           },
@@ -123679,8 +123669,6 @@
             ],
             "dispatch": {
               "breaksStealth": true,
-              "shake": true,
-              "vibrationMs": 140,
               "sound": "Wa_Wheel_Wind"
             }
           },
@@ -123709,8 +123697,6 @@
             ],
             "dispatch": {
               "breaksStealth": true,
-              "shake": true,
-              "vibrationMs": 140,
               "sound": "Wa_Wheel_Wind"
             }
           },
@@ -123734,8 +123720,6 @@
             ],
             "dispatch": {
               "breaksStealth": true,
-              "shake": true,
-              "vibrationMs": 220,
               "sound": "Wa_Storm"
             }
           }
@@ -124126,8 +124110,6 @@
               ],
               "dispatch": {
                 "breaksStealth": true,
-                "shake": true,
-                "vibrationMs": 140,
                 "sound": "Wa_Wheel_Wind"
               }
             },
@@ -124145,8 +124127,6 @@
               ],
               "dispatch": {
                 "breaksStealth": true,
-                "shake": true,
-                "vibrationMs": 140,
                 "sound": "Wa_Wheel_Wind"
               }
             },
@@ -124175,8 +124155,6 @@
               ],
               "dispatch": {
                 "breaksStealth": true,
-                "shake": true,
-                "vibrationMs": 140,
                 "sound": "Wa_Wheel_Wind"
               }
             },
@@ -124200,8 +124178,6 @@
               ],
               "dispatch": {
                 "breaksStealth": true,
-                "shake": true,
-                "vibrationMs": 220,
                 "sound": "Wa_Storm"
               }
             }
@@ -124658,8 +124634,6 @@
             ],
             "dispatch": {
               "breaksStealth": true,
-              "shake": true,
-              "vibrationMs": 180,
               "sound": "Weapon_Sword_Critical"
             }
           }
@@ -125108,8 +125082,6 @@
               ],
               "dispatch": {
                 "breaksStealth": true,
-                "shake": true,
-                "vibrationMs": 180,
                 "sound": "Weapon_Sword_Critical"
               }
             }
@@ -126747,8 +126719,6 @@
             ],
             "dispatch": {
               "breaksStealth": true,
-              "shake": true,
-              "vibrationMs": 90,
               "sound": "Wa_Wheel_Wind"
             }
           },
@@ -126772,8 +126742,6 @@
             ],
             "dispatch": {
               "breaksStealth": true,
-              "shake": true,
-              "vibrationMs": 90,
               "sound": "Wa_Wheel_Wind"
             }
           },
@@ -126797,8 +126765,6 @@
             ],
             "dispatch": {
               "breaksStealth": true,
-              "shake": true,
-              "vibrationMs": 110,
               "sound": "Wa_Wheel_Wind"
             }
           },
@@ -126851,8 +126817,6 @@
           {
             "kind": "feedback",
             "frame": 16,
-            "shake": true,
-            "vibrationMs": 140,
             "sound": "Wa_Storm"
           },
           {
@@ -126882,7 +126846,7 @@
             "dispatch": {
               "breaksStealth": true,
               "shake": true,
-              "vibrationMs": 220,
+              "vibrationMs": 240,
               "sound": "Wa_Titan_Attack"
             }
           },
@@ -126911,9 +126875,7 @@
               }
             ],
             "dispatch": {
-              "breaksStealth": true,
-              "shake": true,
-              "vibrationMs": 260
+              "breaksStealth": true
             }
           }
         ],
@@ -127308,8 +127270,6 @@
               ],
               "dispatch": {
                 "breaksStealth": true,
-                "shake": true,
-                "vibrationMs": 90,
                 "sound": "Wa_Wheel_Wind"
               }
             },
@@ -127333,8 +127293,6 @@
               ],
               "dispatch": {
                 "breaksStealth": true,
-                "shake": true,
-                "vibrationMs": 90,
                 "sound": "Wa_Wheel_Wind"
               }
             },
@@ -127358,8 +127316,6 @@
               ],
               "dispatch": {
                 "breaksStealth": true,
-                "shake": true,
-                "vibrationMs": 110,
                 "sound": "Wa_Wheel_Wind"
               }
             },
@@ -127412,8 +127368,6 @@
             {
               "kind": "feedback",
               "frame": 16,
-              "shake": true,
-              "vibrationMs": 140,
               "sound": "Wa_Storm"
             },
             {
@@ -127443,7 +127397,7 @@
               "dispatch": {
                 "breaksStealth": true,
                 "shake": true,
-                "vibrationMs": 220,
+                "vibrationMs": 240,
                 "sound": "Wa_Titan_Attack"
               }
             },
@@ -127472,9 +127426,7 @@
                 }
               ],
               "dispatch": {
-                "breaksStealth": true,
-                "shake": true,
-                "vibrationMs": 260
+                "breaksStealth": true
               }
             }
           ],

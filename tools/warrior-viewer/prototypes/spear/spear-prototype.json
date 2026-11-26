@@ -554,9 +554,6 @@
           "label": "穿心重刺命中"
         }
       ],
-      "shakeFrames": [
-        5
-      ],
       "sounds": [
         "Wa_Anger_Rush",
         "Weapon_TwoHand_Sword_Critical"
@@ -606,9 +603,6 @@
           "kind": "strike",
           "label": "半圈大扫终结 + 推退硬直"
         }
-      ],
-      "shakeFrames": [
-        8
       ],
       "sounds": [
         "Wa_Wheel_Wind",
@@ -668,12 +662,6 @@
           "label": "末圈气浪爆散终结"
         }
       ],
-      "shakeFrames": [
-        3,
-        7,
-        11,
-        14
-      ],
       "sounds": [
         "Wa_Wheel_Wind",
         "Wa_Storm"
@@ -732,9 +720,6 @@
           "kind": "strike",
           "label": "第三段定音命中（40%）"
         }
-      ],
-      "shakeFrames": [
-        12
       ],
       "sounds": [
         "Weapon_Dagger_Attack",
@@ -898,13 +883,7 @@
         }
       ],
       "shakeFrames": [
-        3,
-        6,
-        9,
-        16,
-        17,
-        18,
-        19
+        17
       ],
       "sounds": [
         "Wa_Defense",

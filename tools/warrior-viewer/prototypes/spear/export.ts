@@ -761,7 +761,6 @@ function run(): void {
           { frame: 4, kind: 'swing', label: '原地贯刺 + 出破甲芒' },
           { frame: 5, kind: 'strike', label: '穿心重刺命中' },
         ],
-        shakeFrames: [5],
         sounds: ['Wa_Anger_Rush', 'Weapon_TwoHand_Sword_Critical'],
       },
       'skill-whirl-sweep': {
@@ -777,7 +776,6 @@ function run(): void {
           { frame: 7, kind: 'swing', label: '顺势抽把 · 180° 狂风大扫' },
           { frame: 8, kind: 'strike', label: '半圈大扫终结 + 推退硬直' },
         ],
-        shakeFrames: [8],
         sounds: ['Wa_Wheel_Wind', 'Weapon_Dagger_Attack', 'Weapon_TwoHand_Sword_Attack'],
       },
       'skill-spin-storm': {
@@ -794,7 +792,6 @@ function run(): void {
           { frame: 11, kind: 'strike', label: '第 3 圈周身斩击' },
           { frame: 14, kind: 'strike', label: '末圈气浪爆散终结' },
         ],
-        shakeFrames: [3, 7, 11, 14],
         sounds: ['Wa_Wheel_Wind', 'Wa_Storm'],
       },
       'skill-flurry-thrust': {
@@ -811,7 +808,6 @@ function run(): void {
           { frame: 11, kind: 'swing', label: '定音主刺爆发' },
           { frame: 12, kind: 'strike', label: '第三段定音命中（40%）' },
         ],
-        shakeFrames: [12],
         sounds: ['Weapon_Dagger_Attack', 'Weapon_Sword_Critical'],
       },
       'skill-dragon-slam': {
@@ -851,7 +847,7 @@ function run(): void {
           { frame: 17, kind: 'strike', label: '四向全屏冲击波 · 第 1 段破空重创' },
           { frame: 19, kind: 'strike', label: '四向全屏冲击波 · 第 2 段贯通爆发' },
         ],
-        shakeFrames: [3, 6, 9, 16, 17, 18, 19],
+        shakeFrames: [17],
         sounds: ['Wa_Defense', 'Wa_Wheel_Wind', 'Wa_Storm', 'Wa_Titan_Attack'],
       },
       'skill-focus-edge': {
