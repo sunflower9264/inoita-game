@@ -102,6 +102,41 @@ test('挑战模式先按出生点刷怪，补怪达到上限时不加载素材',
   assert.equal(created.length,3);
 });
 
+test('挑战模式异步加载刷怪期间若世界已暂停，加载完成后不再刷怪', async () => {
+  const created: string[] = [];
+  let paused = false;
+  let releaseLoad!: (ok: boolean) => void;
+  let callback = () => {};
+  const host = Object.setPrototypeOf({
+    app: { pressureMode: true, battleCatalog: battle, session: { hero: { level: 1 } } },
+    request: new AbortController(),
+    destroyed: false,
+    pressureStartPoints: [],
+    scene: { isPaused: () => paused },
+    combat: {
+      canSpawnPressureEnemy: () => true,
+      preparePressureEnemy: () => new Promise<boolean>(resolve => { releaseLoad = resolve; }),
+      spawnPressureEnemy: (id: string) => { created.push(id); return true; },
+    },
+    time: { addEvent: (options: { callback: () => void }) => { callback = options.callback; return {}; } },
+  }, WorldScene.prototype) as InstanceType<typeof WorldScene>;
+
+  await host.startPressureSpawner();
+  callback();
+  paused = true;
+  releaseLoad(true);
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.deepEqual(created, [], '暂停期间不应把刚加载完的怪刷到场上');
+
+  paused = false;
+  callback();
+  releaseLoad(true);
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(created.length, 1, '恢复运行后继续正常刷怪');
+});
+
 test('挑战调试参数归一化遵守默认与上下限边界', () => {
   assert.equal(normalizePressureMaxEnemies(Number.NaN), PRESSURE_DEFAULT_MAX_ENEMIES);
   assert.equal(normalizePressureMaxEnemies(-5), 0);

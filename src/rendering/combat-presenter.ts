@@ -164,7 +164,7 @@ export class CombatPresenter {
   }
   showEffects(id:string,effects:SkillVisualEffect[]):void{
     const actor=this.candidates().find(candidate=>candidate.id===id);
-    if(actor)for(const visual of effects)this.visualEffect(visual,'default',actor);
+    if(actor)for(const visual of effects)this.visualEffect(visual,visual.variant??'default',actor);
   }
   /** Unit feedback follows its resolved outcome, before the next unit executes. */
   showUnitFeedback(hit:SkillUnitHit,outcome:SkillUnitOutcome,cue:SkillEffectCue):void {
@@ -173,7 +173,7 @@ export class CombatPresenter {
     for(const visual of cue.effects){
       const id=visual.recipient==='caster'?hit.casterId:hit.targetId;
       const actor=candidates.find(candidate=>candidate.id===id);
-      if(actor)this.visualEffect(visual,'default',actor);
+      if(actor)this.visualEffect(visual,visual.variant??'default',actor);
     }
   }
   /** 增益应用动画附着受术者，独立于当前攻击；多次成功刷新可以重叠播放。 */

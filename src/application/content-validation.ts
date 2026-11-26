@@ -719,7 +719,7 @@ const campaign=shape<Campaign>({version:(v,p)=>requireValue(v===2,p,'剧情内�
 const target=oneOf('self','current','area','target-area','ally','ally-heal','party','party-ally','enemy','none');
 const transition=shape<SkillTransition>({directional:optional(boolean),missEffects:optional(array(object({effect:text,recipient:oneOf('caster','target'),placement:oneOf('attached','ground','above-characters')}))),casterStrikes:optional(object({effect:text,offsets:array(object({x:offsetInteger,y:offsetInteger}))})),anchor:optional(oneOf('target','caster')),kind:oneOf('stationary','trace','position'),effect:nullable(text),actionEffect:nullable(text),switchFrame:integer,stepDistancePx:number,offsetX:number,offsetY:number});
 const visualEffect=shape<SkillVisualEffect>({effect:text,recipient:oneOf('caster','target'),placement:oneOf('attached','ground','above-characters'),variant:optional(oneOf('default','north','south','east','west'))});
-const actionDispatch=shape<ActionDispatchDefinition>({breaksStealth:boolean,casterEffects:optional(array(object({effect:text,recipient:oneOf('caster'),placement:oneOf('attached','ground','above-characters')}))),shake:optional(boolean),vibrationMs:optional(count),sound:optional(text)});
+const actionDispatch=shape<ActionDispatchDefinition>({breaksStealth:boolean,casterEffects:optional(array(object({effect:text,recipient:oneOf('caster'),placement:oneOf('attached','ground','above-characters'),variant:optional(oneOf('default','north','south','east','west'))}))),shake:optional(boolean),vibrationMs:optional(count),sound:optional(text)});
 const charge=shape<SkillCharge>({arrivalFrame:integer,closeDistanceUnits:positive,lungeDistancePx:positive,stoppingDistanceUnits:positive,gridSizePx:positive});
 const afterimages=shape<SkillAfterimages>({frame:integer,opacity:number,distancesPx:array(positive)});
 const angleDegrees:Check=(v,p)=>{positive(v,p);requireValue((v as number)<=360,p,'张角不能超过 360 度');};
@@ -727,7 +727,7 @@ const areaShape=variant('kind',{
   line:object({kind:oneOf('line'),lengthPx:positive,halfWidthPx:positive,backSlackPx:optional(nonnegative)}),
   sector:object({kind:oneOf('sector'),radiusPx:positive,angleDeg:angleDegrees,backSlackPx:optional(nonnegative)}),
   'front-circle':object({kind:oneOf('front-circle'),forwardOffsetPx:nonnegative,radiusPx:positive}),
-  cross:object({kind:oneOf('cross'),lengthPx:positive,verticalLengthPx:optional(positive),halfWidthPx:positive,backSlackPx:optional(nonnegative)}),
+  cross:object({kind:oneOf('cross'),lengthPx:positive,verticalLengthPx:optional(positive),halfWidthPx:positive}),
 });
 const basicTargeting=object({target:oneOf('area'),targetRangePx:positive,targetRangeMetric:optional(oneOf('octagonal-grid')),areaShape:optional(areaShape),maxTargets:optional(count)});
 const cue=shape<SkillEffectCue>({target,targetRangePx:number,targetSelection:optional(oneOf('search','reuse-previous')),unitFeedbackPolicy:optional(oneOf('always')),sound:optional(text),targetRangeMetric:optional(oneOf('octagonal-grid')),areaShape:optional(areaShape),maxTargets:optional(count),effects:array(visualEffect)});

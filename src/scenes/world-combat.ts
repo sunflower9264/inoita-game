@@ -1520,10 +1520,18 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
   }
 
   private learnedReactionBuff(id:string,skillId:LearnedReactionSkill):SkillReactionBuff|undefined {
-    if(this.preparedSkillIds&&!this.preparedSkillIds.get(id)?.has(skillId))return;
     const member=this.memberOf(id);if(!member)return;
-    const level=this.reactionSkills(id)?.loadout.levels[skillId];
-    if(!level||level<1)return;
+    const skills=this.reactionSkills(id);if(!skills)return;
+    const level=skills.loadout.levels[skillId];
+    if(!level||level<1){
+      // 破甲类被动（如龙枪武士「穿甲枪劲」）共享 armor-penetration 反应类型，已按 preparedSkillIds 过滤。
+      if(skillId==='armor-penetration'){
+        const fallback=skills.reactions.find(reaction=>reaction.kind==='armor-penetration');
+        return fallback&&'buff' in fallback?fallback.buff:undefined;
+      }
+      return;
+    }
+    if(this.preparedSkillIds&&!this.preparedSkillIds.get(id)?.has(skillId))return;
     if(skillId==='whist'){
       const unit=skillForMember(this.app.battleCatalog,id,'whist')?.action?.combatUnits?.find(value=>value.effect==='buff');
       if(unit?.effect!=='buff')return;

@@ -71,7 +71,7 @@ export class CombatActionDispatcher {
           else if(target){
             const arrive=()=>{
               const live=p.actor(target.id);if(!live)return;
-              for(const effect of basicAttack.targetEffects??[]){const recipient=effect.recipient==='caster'?p.actor(caster.id):live;if(recipient)this.visual(effect,'default',recipient);}
+              for(const effect of basicAttack.targetEffects??[]){const recipient=effect.recipient==='caster'?p.actor(caster.id):live;if(recipient)this.visual(effect,effect.variant??'default',recipient);}
               p.notify('basic-attack-impact',{casterId:caster.id,targetId:target.id,...detail});contact(target.id,hand);
             };
             if(basicAttack.projectile){const flight=basicAttack.projectile;
@@ -82,7 +82,7 @@ export class CombatActionDispatcher {
               {actor:id=>p.actor(id),emit:event=>p.flight(event),effect:(name,spot)=>p.effect(name,'default',spot)},arrive);
             else arrive();
           }
-          for(const effect of basicAttack.dispatch?.casterEffects??[])this.visual(effect,'default',caster);
+          for(const effect of basicAttack.dispatch?.casterEffects??[])this.visual(effect,effect.variant??'default',caster);
         };
         const after=basicAttack.swingOrder==='after-strike'&&ordinal===strikes.length-1?swing:undefined;
         if(basicAttack.dispatch)dispatch(basicAttack.dispatch,work,after);else{work();after?.();}
@@ -112,14 +112,14 @@ export class CombatActionDispatcher {
               this.transition(action,{...(target??caster),id:captured.id,position:captured.position},executeAt(captured.id));
             else this.transition(action,anchor,executeAt(anchor?.id));
           }else executeAt(target?.id)();
-          for(const effect of event.dispatch?.casterEffects??[])this.visual(effect,'default',caster);
+          for(const effect of event.dispatch?.casterEffects??[])this.visual(effect,effect.variant??'default',caster);
         };
         if(event.dispatch)dispatch(event.dispatch,work);else work();break;
       }
       case 'capture-targets':break;
       case 'captured-effect':for(const captured of action.capturedTargets??[])p.effect(event.effect,'default',captured.position,event.placement,caster.id);break;
       case 'summon':{
-        const work=()=>{this.summon(action,event);for(const effect of event.dispatch?.casterEffects??[])this.visual(effect,'default',caster);};
+        const work=()=>{this.summon(action,event);for(const effect of event.dispatch?.casterEffects??[])this.visual(effect,effect.variant??'default',caster);};
         if(event.dispatch)dispatch(event.dispatch,work);else work();break;
       }
       case 'caster':for(const effect of event.effects)this.visual(effect,effect.variant??'default',caster);break;

@@ -18,7 +18,7 @@ export type AreaShape =
   | { kind: 'line'; lengthPx: number; halfWidthPx: number; backSlackPx?: number }
   | { kind: 'sector'; radiusPx: number; angleDeg: number; backSlackPx?: number }
   | { kind: 'front-circle'; forwardOffsetPx: number; radiusPx: number }
-  | { kind: 'cross'; lengthPx: number; verticalLengthPx?: number; halfWidthPx: number; backSlackPx?: number };
+  | { kind: 'cross'; lengthPx: number; verticalLengthPx?: number; halfWidthPx: number };
 
 export interface BasicAttackTargeting {
   target: 'area';

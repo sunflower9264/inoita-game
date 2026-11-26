@@ -1935,7 +1935,7 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
       if(!enemy)return;
       pending=true;
       try {
-        if(await combat.preparePressureEnemy(enemy.id,signal) && !signal.aborted)combat.spawnPressureEnemy(enemy.id,point);
+        if(await combat.preparePressureEnemy(enemy.id,signal) && !signal.aborted && !this.destroyed && !this.scene?.isPaused())combat.spawnPressureEnemy(enemy.id,point);
       } catch(error) { if(!signal.aborted)console.error('挑战怪物加载失败',error); }
       finally { pending=false; }
     };

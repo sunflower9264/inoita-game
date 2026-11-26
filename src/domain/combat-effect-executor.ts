@@ -112,7 +112,7 @@ export class CombatEffectExecutor {
       case 'physical':case 'magic':{
         const target=p.fighter(event.targetId);if(!target)return 'skipped';
         const position=p.position(event.targetId);
-        const bonus=event.skill.action.usesSkillDamageBuff?p.conditions.attribute(event.casterId,'skillDamageBonus',0):0;
+        const bonus=event.skill.action.usesSkillDamageBuff?p.attribute(event.casterId,'skillDamageBonus'):0;
         const hit=unit.effect==='magic'
           ?rollMagicHit(source,target,amount,p.random,bonus+(event.skill.action.usesSkillDamageBuff?source.conditionalMagicDamageRate??0:0))
           :rollPhysicalHit(source,target,p.random,amount,bonus+p.rearBonus(event.casterId,event.targetId),

@@ -15,13 +15,27 @@ import {
 import { resolveBasicAttack } from '../src/domain/basic-attack.ts';
 import { BattleCharacter } from '../src/domain/character-stats.ts';
 import { CombatActionDispatcher } from '../src/domain/combat-action-dispatcher.ts';
+import { CombatConditions } from '../src/domain/combat-conditions.ts';
 import { CombatCooldownStore } from '../src/domain/combat-cooldowns.ts';
+import { CombatEffectExecutor, type CombatEffectPort } from '../src/domain/combat-effect-executor.ts';
 import { CombatRuntime } from '../src/domain/combat-runtime.ts';
 import { CombatController, resolveCueTargets, type Combatant } from '../src/domain/combat.ts';
 import type { Facing } from '../src/domain/content.ts';
 import { passiveModifiers } from '../src/domain/passive-skills.ts';
 import { newStorySession, visibleStoryClasses } from '../src/domain/story-class.ts';
 import { costumeRecipe } from '../src/domain/wardrobe.ts';
+import { registerHooks } from 'node:module';
+
+const phaserHook = registerHooks({
+  resolve(specifier, context, next) {
+    return specifier === 'phaser'
+      ? { url: 'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}', shortCircuit: true }
+      : next(specifier, context);
+  },
+});
+const { CombatPresenter } = await import('../src/rendering/combat-presenter.ts');
+const { WorldCombat } = await import('../src/scenes/world-combat.ts');
+phaserHook.deregister();
 
 const read = (file: string) => JSON.parse(fs.readFileSync(new URL('../public/content/' + file, import.meta.url), 'utf8'));
 
@@ -339,4 +353,173 @@ test('spear 3-hit basic attack combo chains mid-range thrust into 180-degree swe
   playComplete!();
   assert.deepEqual(new Set(hitLog[2]), new Set(['front-a', 'front-b']));
   assert.equal(hitLog[2]!.includes('behind'), false);
+});
+
+test('CombatEffectExecutor reads passive skillDamageBonus via port.attribute rather than buffs-only conditions', () => {
+  const conditions = new CombatConditions();
+  const baseFighter = {
+    level: 10, physicalAttack: 100, defense: 0, defenseRate: 0, physicalResistanceBonus: 0,
+    magicAttack: 100, maxHealth: 500, hitBase: 1000, hitBonus: 0, evasionBase: 0, evasionBonus: 0,
+    criticalRate: 0, criticalResistance: 1000, criticalDamage: 1500, criticalDamageResistance: 0,
+    weaponBlock: 0, shieldBlock: 0, physicalResistance: 0, magicResistance: 0,
+  };
+  const runWithSkillDamageBonus = (passiveBonus: number): number => {
+    let dealt = 0;
+    const port: CombatEffectPort = {
+      conditions,
+      random: () => 0.5,
+      run: work => work(),
+      available: () => true,
+      partySide: id => id === 'player',
+      fighter: () => baseFighter,
+      position: () => ({ x: 0, y: 0 }),
+      vitals: () => ({ health: 500, mana: 100, maxMana: 100 }),
+      attribute: (_id, key) => (key === 'skillDamageBonus' ? passiveBonus : key === 'physicalAttack' ? 100 : 0),
+      valueSourceId: id => id,
+      prepare: () => ({ source: 'physicalAttack', weightedAddition: 0, fixedAddition: 0, operation: { kind: 'multiply-thousandth', ratePerThousand: 1000 } }),
+      applyBuff: () => true,
+      stateRequest: (_s, _t, state) => ({ state, sourceRelation: 'hostile' }),
+      stateAccepted: () => {},
+      commandSummons: () => 'success',
+      summon: () => 'success',
+      restoreHealth: () => {},
+      setMana: () => {},
+      healAccepted: () => {},
+      learnedBuff: () => undefined,
+      rearBonus: () => 0,
+      reactions: () => {},
+      hit: (_ev, hit) => { dealt = hit.damage; },
+      dropMana: () => {},
+      showHit: () => {},
+    };
+    const executor = new CombatEffectExecutor(port);
+    const unit = battle.skills['dragon-pierce']!.action!.combatUnits![0]!;
+    executor.execute({
+      casterId: 'player',
+      targetId: 'enemy',
+      cueIndex: 0,
+      skill: {
+        id: 'dragon-pierce',
+        level: 1,
+        action: { ...battle.skills['dragon-pierce']!.action!, combatUnits: [unit] },
+      },
+    });
+    return dealt;
+  };
+
+  const withoutPassive = runWithSkillDamageBonus(0);
+  const withDragonSpirit = runWithSkillDamageBonus(270); // +27% passive skillDamageBonus
+  assert.ok(withDragonSpirit > withoutPassive, `被动技能增伤应提高伤害：${withoutPassive} -> ${withDragonSpirit}`);
+});
+
+test('CombatActionDispatcher and CombatPresenter honor explicit visual effect variants across all dispatch paths', () => {
+  const caster = actorAt('player', 100, 100, 'party', 'east');
+  const target = actorAt('enemy', 140, 100, 'hostile', 'west');
+  const spawned: { name: string; variant: string; recipientId?: string }[] = [];
+  const dispatcher = new CombatActionDispatcher({
+    runtime: new CombatRuntime(() => 0),
+    catalog: battle,
+    actor: id => (id === 'player' ? caster : id === 'enemy' ? target : undefined),
+    candidates: () => [caster, target],
+    random: () => 0.5,
+    viewport: () => ({ width: 320, height: 213 }),
+    pose: () => {},
+    effect: (name, variant, _pos, _placement, recipientId) => { spawned.push({ name, variant, recipientId }); },
+    flight: () => {},
+    screen: () => {},
+    notify: () => {},
+    canSummonAt: () => true,
+    nearestSummonSpot: (_p, _b, pref) => pref,
+    beginSummons: () => {},
+    summon: () => undefined,
+  });
+
+  // 1. basicAttack.targetEffects & dispatch.casterEffects
+  const basic = {
+    ...resolveBasicAttack(battle, battle.classes[0]!),
+    strikeFrame: 0,
+    swingFrame: null,
+    targetEffects: [{ effect: 'spear-sovereign-beam', recipient: 'target' as const, placement: 'above-characters' as const, variant: 'south' as const }],
+    dispatch: {
+      breaksStealth: true,
+      casterEffects: [{ effect: 'spear-sovereign-beam', recipient: 'caster' as const, placement: 'ground' as const, variant: 'north' as const }],
+    },
+  };
+  dispatcher.frame({ caster, target, basicAttack: basic, facing: 'east' }, 0);
+
+  // 2. units dispatch.casterEffects & summon dispatch.casterEffects
+  const syntheticAction = {
+    ...battle.skills['sovereign-pierce']!.action!,
+    events: [
+      {
+        kind: 'units' as const,
+        frame: 0,
+        cues: [],
+        dispatch: {
+          breaksStealth: true,
+          casterEffects: [{ effect: 'spear-sovereign-beam', recipient: 'caster' as const, placement: 'above-characters' as const, variant: 'west' as const }],
+        },
+      },
+      {
+        kind: 'summon' as const,
+        frame: 1,
+        creatures: [],
+        placement: { searchGapPx: 8, searchExtentPx: 16, offsetChoices: [{ x: 0, y: 0 }], jitterPx: 0 },
+        effect: 'impact-spark',
+        dispatch: {
+          breaksStealth: false,
+          casterEffects: [{ effect: 'spear-sovereign-beam', recipient: 'caster' as const, placement: 'above-characters' as const, variant: 'east' as const }],
+        },
+      },
+    ],
+  };
+  dispatcher.frame({ caster, target, basicAttack: null, skill: { id: 'test', level: 1, action: syntheticAction }, facing: 'east' }, 0);
+  dispatcher.frame({ caster, target, basicAttack: null, skill: { id: 'test', level: 1, action: syntheticAction }, facing: 'east' }, 1);
+
+  assert.deepEqual(
+    spawned.map(s => `${s.variant}:${s.recipientId}`),
+    ['south:enemy', 'north:player', 'west:player', 'east:player'],
+  );
+
+  // 3. CombatPresenter.showEffects & showUnitFeedback
+  const presenterCalls: { name: string; variant: string }[] = [];
+  const fakePresenter = Object.setPrototypeOf({
+    candidates: () => [caster, target],
+    visualEffect: (visual: { effect: string }, variant: string) => { presenterCalls.push({ name: visual.effect, variant }); },
+  }, CombatPresenter.prototype) as InstanceType<typeof CombatPresenter>;
+
+  fakePresenter.showEffects('player', [{ effect: 'spear-sovereign-beam', recipient: 'caster', placement: 'ground', variant: 'north' }]);
+  fakePresenter.showUnitFeedback(
+    { casterId: 'player', targetId: 'enemy', cueIndex: 0, skill: { id: 'test', level: 1, action: syntheticAction } },
+    'success',
+    { target: 'area', targetRangePx: 80, effects: [{ effect: 'spear-sovereign-beam', recipient: 'target', placement: 'above-characters', variant: 'west' }] },
+  );
+  assert.deepEqual(presenterCalls, [
+    { name: 'spear-sovereign-beam', variant: 'north' },
+    { name: 'spear-sovereign-beam', variant: 'west' },
+  ]);
+});
+
+test('WorldCombat.learnedReactionBuff resolves armor-penetration from learned class passive reactions when prepared', () => {
+  const fakeBuff = {
+    key: 'armor-break' as const,
+    rankPriority: 1900,
+    effect: { durationMs: 3660, tickMs: 0, states: [], maxStacks: 1, modifiers: [], periodic: [] },
+  };
+  let prepared: Map<string, Set<string>> | undefined = new Map([['player', new Set(['piercing-momentum'])]]);
+  const host = Object.setPrototypeOf({
+    get preparedSkillIds() { return prepared; },
+    memberOf: () => ({ id: 'player', classId: 'lancer' }),
+    reactionSkills: () => ({
+      loadout: { levels: { 'piercing-momentum': 1 } },
+      reactions: prepared?.get('player')?.has('piercing-momentum') ? [{ kind: 'armor-penetration', buff: fakeBuff }] : [],
+    }),
+    app: { battleCatalog: battle },
+  }, WorldCombat.prototype);
+  const read = Reflect.get(WorldCombat.prototype, 'learnedReactionBuff') as (this: unknown, id: string, skillId: string) => unknown;
+  assert.deepEqual(read.call(host, 'player', 'armor-penetration'), fakeBuff);
+
+  // 素材尚未就绪时（reactionSkills 过滤后不含该反应），不得提前触发。
+  prepared = new Map([['player', new Set()]]);
+  assert.equal(read.call(host, 'player', 'armor-penetration'), undefined);
 });
