@@ -442,7 +442,11 @@ function buildCyclePose(wardrobe: WardrobeCatalog, recipe: SpearPoseRecipe): Cos
   const basePose = wardrobe.poses[recipe.basePoseId];
   if (!basePose) throw new Error(`基础姿态不存在：${recipe.basePoseId}`);
 
+  const findTorso = (frame: CostumePart[]) => frame.find(p => p.part === 'coat-front' && !isCoatFrontArm(p));
   const findRef = (frame: CostumePart[]) => {
+    if (recipe.armsPreset) {
+      return findTorso(frame);
+    }
     if (recipe.insertMode === 'before-right-arm-south') {
       return frame.find(p => p.part === 'coat-front' && (p.piece === 9 || p.piece === 5) && p.scaleX === -1);
     }
@@ -465,8 +469,15 @@ function buildCyclePose(wardrobe: WardrobeCatalog, recipe: SpearPoseRecipe): Cos
 
   const frames: CostumePart[][] = basePose.frames.map((frame, frameIndex) => {
     const ref = findRef(frame);
-    const refDx = (ref?.x ?? originRefX) - originRefX;
-    const dy = (ref?.y ?? originRefY) - originRefY;
+    const extraTorsoDy = recipe.stepTorsoDy?.[frameIndex] ?? 0;
+    const frameHeadPose: SpearHeadPose | undefined = (recipe.headPose || extraTorsoDy !== 0)
+      ? {
+          ...recipe.headPose,
+          torsoDy: (recipe.headPose?.torsoDy ?? 0) + extraTorsoDy,
+        }
+      : undefined;
+    const refDx = (ref?.x ?? originRefX) + (frameHeadPose?.torsoDx ?? 0) - originRefX;
+    const dy = (ref?.y ?? originRefY) + (frameHeadPose?.torsoDy ?? 0) - originRefY;
     const swayPhase = Math.floor(frameIndex / period) % 2;
     const dx = (recipe.stepDx?.[frameIndex] ?? 0) + refDx;
     const extraDy = recipe.stepDy?.[frameIndex] ?? 0;
@@ -480,7 +491,17 @@ function buildCyclePose(wardrobe: WardrobeCatalog, recipe: SpearPoseRecipe): Cos
       angle: recipe.angle,
       alpha: 1,
     };
-    return insertSpearIntoFrame(frame, spearPart, recipe.insertMode);
+    return insertSpearIntoFrame(
+      frame,
+      spearPart,
+      recipe.insertMode,
+      0,
+      0,
+      recipe.armsPreset,
+      false,
+      undefined,
+      frameHeadPose,
+    );
   });
 
   return {

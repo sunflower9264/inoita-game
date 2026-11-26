@@ -362,36 +362,44 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
         }
       }
 
-      // Check single-hand upright carry (idle/walk) and diagonal back-slung town movement (town-idle/town-walk) across all 4 directions and all frames
+      // Check two-handed middle-guard combat carry (idle/walk) and diagonal back-slung town movement (town-idle/town-walk) across all 4 directions and all frames
       for (const [key, expectedCount] of [['idle', 14], ['walk', 8]] as const) {
         const action = choices.find(choice => choice.key === key)!;
         const pose = mergedCatalog.poses[action.poseId];
         assert.equal(pose.frames.length, expectedCount);
-        const expectedPrefix = facing === 'south' ? 'spear-carry-south-' : facing === 'north' ? 'spear-carry-north-' : 'spear-carry-side-';
-        let southGripOffset: number | undefined;
+        const expectedPrefix = facing === 'west' || facing === 'east' ? 'spear-carry-side-' : 'spear-diag-';
+        let baseGripDx: number | undefined;
+        let baseGripDy: number | undefined;
         for (let fi = 0; fi < pose.frames.length; fi++) {
           const frame = pose.frames[fi];
           const spearIdx = frame.findIndex(p => p.part === 'spear');
           const spear = frame[spearIdx];
           assert.ok(spear, `${action.poseId} F${fi} missing spear`);
           assert.ok(proto.variants[proto.variantId][spear.piece]?.startsWith(expectedPrefix), `${action.poseId} F${fi} should use ${expectedPrefix}`);
+          const armIndices = frame
+            .map((p, idx) => (p.part === 'coat-front' && p.piece >= 5 ? idx : -1))
+            .filter(idx => idx >= 0);
+          assert.equal(armIndices.length, 2, `${action.poseId} F${fi} should have two 0-deg gripping arms`);
+          for (const ai of armIndices) {
+            assert.equal(frame[ai].angle ?? 0, 0, `${action.poseId} F${fi} arm should be unrotated`);
+          }
           if (facing === 'west' || facing === 'east') {
-            const lastNearArmIdx = frame.reduce((acc, p, idx) => (p.part === 'coat-front' && (p.piece === 6 || p.piece === 8) ? idx : acc), -1);
-            assert.ok(spearIdx < lastNearArmIdx, `${action.poseId} F${fi} spear should sit beneath near gripping arm`);
+            assert.ok(armIndices[0] < spearIdx && spearIdx < armIndices[1], `${action.poseId} F${fi} spear should sit between far and near gripping arms`);
           } else if (facing === 'south') {
-            const rightArmIdx = frame.findIndex(p => p.part === 'coat-front' && (p.piece === 9 || p.piece === 5) && p.scaleX === -1);
-            assert.ok(rightArmIdx >= 0 && spearIdx < rightArmIdx, `${action.poseId} F${fi} spear should sit beneath south right gripping arm (scaleX=-1)`);
-            const offset = spear.y - frame[rightArmIdx].y;
-            if (southGripOffset === undefined) southGripOffset = offset;
-            else assert.equal(offset, southGripOffset, `${action.poseId} F${fi} spear should stay locked to south right hand`);
+            assert.ok(spearIdx < armIndices[0] && spearIdx < armIndices[1], `${action.poseId} F${fi} south spear should sit beneath both gripping arms`);
           } else {
-            const rightArmIdx = frame.findIndex(p => p.part === 'coat-front' && (p.piece === 9 || p.piece === 5) && p.scaleX === 1);
             const cloakIdx = frame.findIndex(p => p.part === 'cloak');
-            assert.ok(rightArmIdx >= 0 && spearIdx < rightArmIdx, `${action.poseId} F${fi} spear should sit beneath north right gripping arm (scaleX=1)`);
-            assert.ok(spearIdx < cloakIdx, `${action.poseId} F${fi} spear should sit before north cloak`);
-            const offset = spear.y - frame[rightArmIdx].y;
-            if (southGripOffset === undefined) southGripOffset = offset;
-            else assert.equal(offset, southGripOffset, `${action.poseId} F${fi} spear should stay locked to north right hand`);
+            assert.ok(spearIdx < armIndices[0] && spearIdx < armIndices[1], `${action.poseId} F${fi} north spear should sit before behind-spear gripping arms`);
+            assert.ok(cloakIdx < 0 || spearIdx < cloakIdx, `${action.poseId} F${fi} north spear should sit before cloak`);
+          }
+          const dx = spear.x - frame[armIndices[0]].x;
+          const dy = spear.y - frame[armIndices[0]].y;
+          if (baseGripDx === undefined) {
+            baseGripDx = dx;
+            baseGripDy = dy;
+          } else {
+            assert.equal(dx, baseGripDx, `${action.poseId} F${fi} spear X should stay locked to gripping hands`);
+            assert.equal(dy, baseGripDy, `${action.poseId} F${fi} spear Y should stay locked to gripping hands`);
           }
         }
       }
@@ -979,55 +987,78 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
         }
       }
     }
-    // 防回归：持枪待机与持枪行走（idle/walk）四向握持比例一致：
-    // 西/东侧视全长 ~50px（约 1.32x 身高），南/北俯视透视全长 40..45px（~83% 透视比），
-    // 且握枪右拳与金箍/枪尖之间必须保留充足裸露前木杆（枪尖距握拳中心 >= 24px，杜绝「握在枪尖/红缨上」）。
+    // 防回归：持枪待机与持枪行走（idle/walk）四向采用双手「中段戒备把（后手 ~26%..36% + 前手 ~47%..55% 重心）」：
+    // 四向全长统一 ~49..53px，前手握在 ~50% 物理平衡重心（手前仅留 ~6px 短木杆接红缨枪头，彻底杜绝 <35% 握得太靠后漏长杆或 >55% 握到红缨/枪尖），且双手紧贴枪杆（perp <= 2.5px）。
+    const measurePoseGrip = (poseId: string, fi: number) => {
+      const pose = mergedCatalog.poses[poseId];
+      const frame = pose.frames[fi];
+      const sp = frame.find(p => p.part === 'spear')!;
+      const rect = proto.sprites[sweepVariantKeys[sp.piece]!];
+      const allPts: [number, number][] = [];
+      let tipSX = 0, tipSY = 0, tipCnt = 0;
+      for (let sy = 0; sy < rect.height; sy++) {
+        for (let sx = 0; sx < rect.width; sx++) {
+          const idx = ((rect.y + sy) * spearPngForSweep.width + (rect.x + sx)) * 4;
+          if (spearPngForSweep.data[idx + 3] > 40) {
+            allPts.push([sx, sy]);
+            if (spearPngForSweep.data[idx] > 205 && spearPngForSweep.data[idx + 1] > 215 && spearPngForSweep.data[idx + 2] > 225) {
+              tipSX += sx; tipSY += sy; tipCnt++;
+            }
+          }
+        }
+      }
+      const tx0 = tipSX / tipCnt, ty0 = tipSY / tipCnt;
+      let butt = allPts[0]!, maxD = -1;
+      for (const p of allPts) { const d = Math.hypot(p[0] - tx0, p[1] - ty0); if (d > maxD) { maxD = d; butt = p; } }
+      let tip = allPts[0]!; maxD = -1;
+      for (const p of allPts) { const d = Math.hypot(p[0] - butt[0], p[1] - butt[1]); if (d > maxD) { maxD = d; tip = p; } }
+      const bx = sp.x + (butt[0] - rect.anchorX) * sp.scaleX;
+      const by = sp.y + (butt[1] - rect.anchorY) * sp.scaleY;
+      const tx = sp.x + (tip[0] - rect.anchorX) * sp.scaleX;
+      const ty = sp.y + (tip[1] - rect.anchorY) * sp.scaleY;
+      const vx = tx - bx, vy = ty - by, vlen = Math.hypot(vx, vy), vlen2 = vx * vx + vy * vy;
+      const pieces = framePieces(mergedCatalog, defaultSpearRecipe.variants, frame);
+      const arms = pieces.filter(p => p.part.part === 'coat-front' && p.part.piece >= 5);
+      const hands = arms.map(({ part, sprite }) => {
+        const tex = loadedTextures.get(sprite.texture)!;
+        let sumX = 0, sumY = 0, cnt = 0;
+        for (let sy = Math.max(0, sprite.height - 5); sy < sprite.height; sy++) {
+          for (let sx = 0; sx < sprite.width; sx++) {
+            if (tex.data[((sprite.y + sy) * tex.width + (sprite.x + sx)) * 4 + 3] > 30) {
+              sumX += part.x + (sx - sprite.anchorX) * part.scaleX;
+              sumY += part.y + (sy - sprite.anchorY) * part.scaleY;
+              cnt++;
+            }
+          }
+        }
+        const hx = sumX / cnt, hy = sumY / cnt;
+        const pct = (((hx - bx) * vx + (hy - by) * vy) / vlen2) * 100;
+        const perp = Math.abs((hx - bx) * (-vy) + (hy - by) * vx) / vlen;
+        return { pct, perp };
+      }).sort((a, b) => a.pct - b.pct);
+      return { span: vlen, hands };
+    };
+
     for (const key of ['idle', 'walk'] as const) {
       for (const facing of directions) {
         const poseId = proto.stancePoses[`${key}-${facing}`];
         const pose = mergedCatalog.poses[poseId];
-        const sign = pose.mirrorX ? -1 : 1;
-        const frame = pose.frames[0];
-        const sp = frame.find(p => p.part === 'spear')!;
-        const rect = proto.sprites[sweepVariantKeys[sp.piece]!];
-        const allSpearPts: [number, number][] = [];
-        let tipSumX = 0, tipSumY = 0, tipCnt = 0;
-        for (let sy = 0; sy < rect.height; sy++) {
-          for (let sx = 0; sx < rect.width; sx++) {
-            const idx = ((rect.y + sy) * spearPngForSweep.width + (rect.x + sx)) * 4;
-            if (spearPngForSweep.data[idx + 3] > 20) {
-              const wx = (sp.x + (sx - rect.anchorX) * sp.scaleX) * sign;
-              const wy = sp.y + (sy - rect.anchorY) * sp.scaleY;
-              allSpearPts.push([wx, wy]);
-              if (spearPngForSweep.data[idx] > 205 && spearPngForSweep.data[idx + 1] > 215 && spearPngForSweep.data[idx + 2] > 225) {
-                tipSumX += wx;
-                tipSumY += wy;
-                tipCnt++;
-              }
-            }
+        for (let fi = 0; fi < pose.frames.length; fi++) {
+          const { span, hands } = measurePoseGrip(poseId, fi);
+          assert.ok(span >= 48 && span <= 53, `${key}-${facing} F${fi} 持枪总长应在 48..53px，实际 ${span.toFixed(1)}px`);
+          assert.equal(hands.length, 2, `${key}-${facing} F${fi} 应为双手握持`);
+          assert.ok(
+            hands[0].pct >= 24 && hands[0].pct <= 38,
+            `${key}-${facing} F${fi} 后手握位异常（pct=${hands[0].pct.toFixed(1)}%，应在 24%..38% 后把区）`,
+          );
+          assert.ok(
+            hands[1].pct >= 46 && hands[1].pct <= 55,
+            `${key}-${facing} F${fi} 前手未握在 ~50% 重心中段（pct=${hands[1].pct.toFixed(1)}%，应在 46%..55% 以免漏长杆或摸红缨）`,
+          );
+          for (const h of hands) {
+            assert.ok(h.perp <= 2.5, `${key}-${facing} F${fi} 手掌未紧贴枪杆（perp=${h.perp.toFixed(1)}px）`);
           }
         }
-        let span = 0;
-        for (let i = 0; i < allSpearPts.length; i++) {
-          for (let j = i + 1; j < allSpearPts.length; j++) {
-            const d = Math.hypot(allSpearPts[i][0] - allSpearPts[j][0], allSpearPts[i][1] - allSpearPts[j][1]);
-            if (d > span) span = d;
-          }
-        }
-        if (facing === 'south' || facing === 'north') {
-          assert.ok(span >= 40 && span <= 46, `${key}-${facing} 南北向持枪透视总长应在 40..46px，实际 ${span.toFixed(1)}px`);
-        } else {
-          assert.ok(span >= 49 && span <= 53, `${key}-${facing} 东西向持枪总长应在 49..53px，实际 ${span.toFixed(1)}px`);
-        }
-        const gripX = sp.x * sign;
-        const gripY = sp.y;
-        const tipX = tipSumX / tipCnt;
-        const tipY = tipSumY / tipCnt;
-        const tipDistFromGrip = Math.hypot(tipX - gripX, tipY - gripY);
-        assert.ok(
-          tipDistFromGrip >= 25,
-          `${key}-${facing} 握点距枪尖过近（dist=${tipDistFromGrip.toFixed(1)}px），存在握到枪尖风险`,
-        );
       }
     }
     // 防回归：长枪「五段解剖分区与六大动态握把」规范：
