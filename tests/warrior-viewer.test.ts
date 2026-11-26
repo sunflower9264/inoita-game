@@ -294,7 +294,7 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
   const effBytes = fs.readFileSync(new URL(proto.effectSheet.texture.file, repoRoot));
   const effWidth = effBytes.readUInt32BE(16);
   const effHeight = effBytes.readUInt32BE(20);
-  assert.equal(Object.keys(proto.effectSheet.frames).length, 414);
+  assert.equal(Object.keys(proto.effectSheet.frames).length, 528);
   for (const rect of Object.values(proto.effectSheet.frames)) {
     assert.ok(rect.x >= 0 && rect.y >= 0);
     assert.ok(rect.x + rect.width <= effWidth && rect.y + rect.height <= effHeight);
@@ -333,7 +333,7 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
     'skill-spin-storm': 18,
     'skill-flurry-thrust': 17,
     'skill-dragon-slam': 11,
-    'skill-sovereign-pierce': 19,
+    'skill-sovereign-pierce': 28,
     'skill-focus-edge': 12,
     'skill-dragon-step': 12,
     'skill-gale-stance': 12,
@@ -496,9 +496,13 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
       assert.ok(slamTl.effects.some(e => e.effect === 'state-stun' && e.onTarget));
 
       const sovTl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, 'skill-sovereign-pierce', facing, audio, proto.actionTimelines);
-      assert.ok(sovTl.effects.some(e => e.effect === 'spear-sovereign-beam' && e.variant === facing));
+      assert.ok(sovTl.effects.some(e => e.effect === 'spear-sovereign-vortex' && e.variant === facing && e.startFrame === 0));
+      assert.ok(sovTl.effects.some(e => e.effect === 'spear-sovereign-charge' && e.variant === facing && e.startFrame === 12));
+      assert.ok(sovTl.effects.some(e => e.effect === 'spear-sovereign-beam' && e.variant === facing && e.startFrame === 16));
+      assert.equal(sovTl.markers.filter(m => m.kind === 'strike').length, 4, '万圣龙王破应含 3 段乱舞绞杀 + 1 段终结龙头破防共 4 次命中标记');
+      assert.ok(sovTl.appearanceColors && sovTl.appearanceColors.length > 0, '万圣龙王破应包含满怒苍蓝斗气染色');
       assert.equal(sovTl.afterimages, undefined, 'stationary sovereign-pierce should not draw dash afterimages');
-      assert.deepEqual(sovTl.shakeFrames, [10, 11]);
+      assert.deepEqual(sovTl.shakeFrames, [3, 6, 9, 16, 17, 18, 19]);
 
       const focusTl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, 'skill-focus-edge', facing, audio, proto.actionTimelines);
       assert.ok(focusTl.appearanceColors && focusTl.appearanceColors.length > 0);
@@ -915,10 +919,10 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
       assert.equal(hf.x, 0, `skill-whirl-sweep-north F${fi} 头部不应左右乱晃（x=${hf.x}）`);
     }
     const sovSouth = mergedCatalog.poses[proto.stancePoses['skill-sovereign-pierce-south']];
-    for (let fi = 0; fi <= 8; fi++) {
+    for (let fi = 0; fi <= 15; fi++) {
       const hf = sovSouth.frames[fi].find(p => p.part === 'head-front')!;
-      assert.equal(hf.piece, 0, `skill-sovereign-pierce-south F${fi} 盘枪/凝势段不应低头（piece=${hf.piece}）`);
-      assert.equal(hf.x, 0, `skill-sovereign-pierce-south F${fi} 盘枪/凝势段头部不应左右晃动（x=${hf.x}）`);
+      assert.equal(hf.piece, 0, `skill-sovereign-pierce-south F${fi} 乱舞/蓄核段不应低头（piece=${hf.piece}）`);
+      assert.equal(hf.x, 0, `skill-sovereign-pierce-south F${fi} 乱舞/蓄核段头部不应左右晃动（x=${hf.x}）`);
     }
     const sovNorth = mergedCatalog.poses[proto.stancePoses['skill-sovereign-pierce-north']];
     for (let fi = 0; fi < sovNorth.frames.length; fi++) {
