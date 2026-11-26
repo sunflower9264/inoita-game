@@ -46,12 +46,12 @@ test('passive skills share the original rank shape and split cleanly on reaction
     assert.equal(skill.ranks.length,8,skill.id);
     assert.deepEqual(skill.ranks.map(rank=>rank.manaCost),Array(8).fill(0),skill.id);
   }
-  // 原版 16 个 + 龙枪 6 个纯数值被动没有逐级反应表，另 20 个有。两侧一起钉死：多一个少一个都报错。
+  // 原版 16 个 + 龙枪 5 个纯数值被动没有逐级反应表，另 21 个有（含龙枪「穿甲枪劲」破甲反应）。两侧一起钉死：多一个少一个都报错。
   const withoutReactions=passives.filter(skill=>skill.reactionsByRank===undefined).map(skill=>skill.id).sort();
   assert.deepEqual(withoutReactions,[
     'blade-of-darkness','blood-feast','coiling-dragon-footwork','divine-arms','dragon-spirit',
     'forest-knowledge','fortitude','healing-enhancement','improved-defense','insanity-thrills',
-    'piercing-momentum','polearm-reach','rear-penetration','shadow-phantom','shaft-parry',
+    'polearm-reach','rear-penetration','shadow-phantom','shaft-parry',
     'skin-of-steel','soul-s-thirst','spear-mastery','spiritual-affinity','twin-blade',
     'warrior-s-instinct','weapon-specializing',
   ]);

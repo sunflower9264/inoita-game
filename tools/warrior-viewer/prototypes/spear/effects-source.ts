@@ -31,6 +31,7 @@ export interface EffectFrameGrid {
 export interface DirectionalEffectSource {
   effectId: string;
   direction: 'west' | 'south' | 'north' | 'default';
+  sharedDirections?: readonly ('south' | 'north')[];
   frameWidth: number;
   frameHeight: number;
   originX: number;
@@ -254,6 +255,12 @@ export const SPIN_ADD_PALETTE: RgbaPalette = {
   P: [0xff, 0xa6, 0x88, 230],
 };
 
+let clippedEffectPixels = 0;
+
+export function getSpearEffectClippedPixels(): number {
+  return clippedEffectPixels;
+}
+
 function blank(w: number, h: number): string[][] {
   return Array.from({ length: h }, () => Array.from({ length: w }, () => '.'));
 }
@@ -261,7 +268,10 @@ function blank(w: number, h: number): string[][] {
 function plotMax(grid: string[][], x: number, y: number, ch: string): void {
   const rx = Math.round(x);
   const ry = Math.round(y);
-  if (ry < 0 || ry >= grid.length || rx < 0 || rx >= grid[0].length) return;
+  if (ry < 0 || ry >= grid.length || rx < 0 || rx >= grid[0].length) {
+    clippedEffectPixels++;
+    return;
+  }
   if ((COLOR_RANK[ch] ?? 0) > (COLOR_RANK[grid[ry][rx]] ?? 0)) grid[ry][rx] = ch;
 }
 
@@ -518,13 +528,14 @@ function drawLanceAxis(
     return;
   }
 
-  const flickers: [number, number, number, string][] = [[38, 46, -6, 'B'], [54, 65, 0, 'C'], [68, 76, 5, 'B'], [74, 82, -3, 'L']];
+  const maxU = axisLength - 2;
+  const flickers: [number, number, number, string][] = [[38, 46, -6, 'B'], [54, 65, 0, 'C'], [68, 76, 5, 'B'], [74, Math.min(82, maxU), -3, 'L']];
   for (const [s, e, v, ch] of flickers) {
-    for (let u = s; u <= e; u += 2) { putPt(base, u, centerV + v, 'D'); putPt(add, u, centerV + v, ch); }
+    for (let u = s; u <= Math.min(e, maxU); u += 2) { putPt(base, u, centerV + v, 'D'); putPt(add, u, centerV + v, ch); }
   }
   plotSpark(base, add, 46, centerV - 10, 'C', putPt, false);
   plotSpark(base, add, 62, centerV + 8, 'g', putPt, true);
-  plotSpark(base, add, 78, centerV - 7, 'L', putPt, false);
+  plotSpark(base, add, Math.min(78, maxU), centerV - 7, 'L', putPt, false);
   plotSpark(base, add, axisLength - 4, centerV + 1, 'W', putPt, true);
 }
 
@@ -950,25 +961,25 @@ function buildSlamArc(direction: 'west' | 'south' | 'north'): DirectionalEffectS
     };
   }
 
-  // 南向 / 北向：82×96 纵向正中力劈 + 落点地面震波环
+  // 南向（82×96） / 北向（82×104，上方预留劈弧空间防裁切）：纵向正中力劈 + 落点地面震波环
   const w = 82;
-  const h = 96;
   const isSouth = direction === 'south';
+  const h = isSouth ? 96 : 104;
   const ox = 41;
-  const oy = isSouth ? 56 : 78;
+  const oy = isSouth ? 56 : 86;
   const impX = 41;
-  const impY = isSouth ? 76 : 44;
+  const impY = isSouth ? 76 : 52;
 
   for (let i = 0; i < 4; i++) {
     const base = blank(w, h);
     const add = blank(w, h);
     if (i === 0) {
       // 从头顶高空竖直劈落
-      drawVerticalCleaver(base, add, impX, isSouth ? 8 : 6, impY - 4, 4.6);
+      drawVerticalCleaver(base, add, impX, isSouth ? 8 : 14, impY - 4, 4.6);
       drawArcCurve(base, add, impX, impY - 24, 14, 24, -120, -60, 2.0, true, 40);
     } else if (i === 1) {
       // 砸地峰值：粗重暗金劈光砸进地面 + 宽椭圆震裂冲击环 + 冲天裂纹与碎石
-      drawVerticalCleaver(base, add, impX, isSouth ? 16 : 8, impY + 2, 5.4);
+      drawVerticalCleaver(base, add, impX, 16, impY + 2, 5.4);
       drawGroundShockRing(base, add, impX, impY, 26, 11, 2.3, false);
       for (let s = -15; s <= 15; s++) {
         plotMax(add, impX + s, impY, Math.abs(s) <= 5 ? 'W' : 'L');
@@ -1037,11 +1048,13 @@ function drawDisc(grid: string[][], x: number, y: number, radius: number, ch: st
   const cy = Math.round(y);
   for (let dy = -r; dy <= r; dy++) {
     const gy = cy + dy;
-    if (gy < 0 || gy >= h) continue;
     for (let dx = -r; dx <= r; dx++) {
       if (dx * dx + dy * dy > r2 + 0.15) continue;
       const gx = cx + dx;
-      if (gx < 0 || gx >= w) continue;
+      if (gy < 0 || gy >= h || gx < 0 || gx >= w) {
+        clippedEffectPixels++;
+        continue;
+      }
       if (overwrite) grid[gy][gx] = ch;
       else plotMax(grid, gx, gy, ch);
     }
@@ -1159,8 +1172,9 @@ function draw3DSideFlowerWheel(
   plotSpark(base, add, cx + leadP.sx, cy + leadP.sy, isSpearHead ? 'W' : 'g', plotMax, !isFade && leadFront);
 }
 
-function buildFlowerSpin(direction: 'west' | 'south' | 'north'): DirectionalEffectSource {
+function buildFlowerSpin(): DirectionalEffectSource {
   // 112×98：角色脚底 (0,0) 在 (56, 60)，3D 旋转中心落在腰胸 (56, 46)（y = -14）
+  // 西/南/北三向视觉完全一致，仅生成 1 份 west 源帧并由 south/north 复用，东向自动镜像
   const w = 112;
   const h = 98;
   const ox = 56;
@@ -1187,13 +1201,14 @@ function buildFlowerSpin(direction: 'west' | 'south' | 'north'): DirectionalEffe
     // 右侧 3D 透视枪花轮（\ 倾角，与标准 52px 长枪右端 x=+25 严丝合缝）
     draw3DSideFlowerWheel(base, add, cx, cy, +25.5, radius, rightRot, !headOnLeft, isHit, isFade, i);
 
-    baseFrames.push({ id: `spear-flower-spin-${direction}-base-${i}`, rows: base.map(r => r.join('')) });
-    addFrames.push({ id: `spear-flower-spin-${direction}-add-${i}`, rows: add.map(r => r.join('')) });
+    baseFrames.push({ id: `spear-flower-spin-west-base-${i}`, rows: base.map(r => r.join('')) });
+    addFrames.push({ id: `spear-flower-spin-west-add-${i}`, rows: add.map(r => r.join('')) });
   }
 
   return {
     effectId: 'spear-flower-spin',
-    direction,
+    direction: 'west',
+    sharedDirections: ['south', 'north'],
     frameWidth: w,
     frameHeight: h,
     originX: ox / w,
@@ -1372,10 +1387,10 @@ function buildFlurryNeedles(direction: 'west' | 'south' | 'north'): DirectionalE
   const addFrames: EffectFrameGrid[] = [];
 
   const cfg = direction === 'west'
-    ? { w: 94, h: 66, ox: 82, oy: 44, sx: 68, sy: 33, baseDeg: 180 }
+    ? { w: 102, h: 66, ox: 90, oy: 44, sx: 76, sy: 33, baseDeg: 180 }
     : direction === 'south'
-      ? { w: 66, h: 94, ox: 36, oy: 12, sx: 33, sy: 24, baseDeg: 90 }
-      : { w: 66, h: 100, ox: 33, oy: 94, sx: 33, sy: 68, baseDeg: -90 };
+      ? { w: 66, h: 102, ox: 36, oy: 12, sx: 33, sy: 24, baseDeg: 90 }
+      : { w: 66, h: 108, ox: 33, oy: 102, sx: 33, sy: 76, baseDeg: -90 };
 
   // 奇偶帧交替闪烁的 6 组扇形角位：每帧亮 3~4 道错落针芒，干净锐利且像暴雨连刺！
   const patterns: readonly (readonly { deg: number; s: number; len: number; w: number; bright: boolean; tassel: boolean }[])[] = [
@@ -1511,57 +1526,11 @@ function drawFlurryFinisherAxis(
 
 // ===========================================================================
 // 10. 万圣龙王破（《流星蝴蝶剑.net》↓↑↑A 三幕式满怒必杀特效群）：
-//   10A. spear-sovereign-vortex（12 帧）：满气球形吸气光圈 + 立体交错旋舞枪影弧网 + 归海坍缩
-//   10B. spear-sovereign-charge（4 帧）：枪尖坍缩龙珠雷核 + 十字耀斑蓄势
-//   10C. spear-sovereign-beam  （10 帧）：152px 咆哮苍龙首螺旋缠绕 + 4 道破防音爆环终极冲击波
+//   10A. spear-sovereign-dome-back（12 帧）：第一幕底层 · 扣地半球后半圈贴地柔光流与背面螺旋真气
+//   10B. spear-sovereign-dome     （12 帧）：第一幕前层 · 扣地半球与表面旋转螺旋气流
+//   10C. spear-sovereign-charge   （4 帧）：第二幕 · 立枪蓄势十字星芒闪光
+//   10D. spear-sovereign-beam     （10 帧）：第三幕 · 东/西/南/北四向全屏破空冲击波
 // ===========================================================================
-
-function drawTiltedSlashArc(
-  base: string[][],
-  add: string[][],
-  cx: number,
-  cy: number,
-  rx: number,
-  ry: number,
-  tiltDeg: number,
-  startDeg: number,
-  endDeg: number,
-  maxThick: number,
-  goldRim: boolean,
-): void {
-  const tilt = (tiltDeg * Math.PI) / 180;
-  const ct = Math.cos(tilt);
-  const st = Math.sin(tilt);
-  const steps = Math.max(240, Math.ceil(Math.abs(endDeg - startDeg) * 1.8));
-  for (let s = 0; s <= steps; s++) {
-    const f = s / steps;
-    const deg = startDeg + (endDeg - startDeg) * f;
-    const rad = (deg * Math.PI) / 180;
-    const ex = rx * Math.cos(rad);
-    const ey = ry * Math.sin(rad);
-    const px = cx + ex * ct - ey * st;
-    const py = cy + ex * st + ey * ct;
-    // 中心面部呼吸透窗（r < 11px 时留出透空，绝不把角色五官糊白）
-    const centerDist = Math.hypot(px - cx, py - (cy - 4));
-    if (centerDist < 11.0 && f < 0.88) continue;
-
-    const taper = Math.sin(Math.pow(f, 0.65) * Math.PI);
-    const hw = Math.max(0.55, maxThick * taper * (0.32 + 0.68 * f));
-    const nx = -Math.sin(rad) * ct - Math.cos(rad) * st;
-    const ny = -Math.sin(rad) * st + Math.cos(rad) * ct;
-    for (let o = -hw; o <= hw; o += 0.28) {
-      const norm = Math.abs(o) / Math.max(0.5, hw);
-      // base 承载饱满王蓝/冰青/圣金层次，add 仅点亮锋脊与柔光，杜绝叠加过曝成生硬白线
-      const baseCh = norm < 0.20 && f > 0.62 ? 'W'
-        : norm < 0.42 ? (f > 0.5 ? 'C' : 'B')
-        : norm < 0.72 ? (goldRim && o > 0 && f > 0.35 ? 'G' : 'B')
-        : (goldRim && o > 0 ? 'g' : 'D');
-      const addCh = norm < 0.22 && f > 0.58 ? 'L' : norm < 0.52 ? (goldRim && o > 0 ? 'G' : 'B') : 'd';
-      plotMax(base, px + nx * o, py + ny * o, baseCh);
-      plotMax(add, px + nx * o, py + ny * o, addCh);
-    }
-  }
-}
 
 const DOME_ALPHA_CHARS = 'abcdefghijklmnop';
 const DOME_GOLD_CHARS = 'ABCDEFGH';
@@ -2158,6 +2127,8 @@ function drawTasselRibbon(
       if (gy >= 0 && gy < base.length && gx >= 0 && gx < base[0].length) {
         if (base[gy][gx] !== 'W') base[gy][gx] = ch;
         if (add[gy][gx] !== 'W') add[gy][gx] = ch;
+      } else {
+        clippedEffectPixels++;
       }
     }
     // 副股细红缨飘丝（略偏外侧、反相波动，增强真丝甩尾质感）
@@ -2171,19 +2142,21 @@ function drawTasselRibbon(
         const ch2 = f > 0.55 ? 'R' : 'r';
         if (base[gy2][gx2] !== 'W' && base[gy2][gx2] !== 'P') base[gy2][gx2] = ch2;
         if (add[gy2][gx2] !== 'W' && add[gy2][gx2] !== 'P') add[gy2][gx2] = ch2;
+      } else {
+        clippedEffectPixels++;
       }
     }
   }
 }
 
 function buildSpinStorm(direction: 'west' | 'south' | 'north'): DirectionalEffectSource {
-  // 140×104：角色脚底 (0,0) 在 (70, 60)，旋风中心在 (70, 48)（腰胸高度 y = -12），南北枪尖完整贴合弧锋不穿帮
+  // 140×112：角色脚底 (0,0) 在 (70, 64)，旋风中心在 (70, 52)（腰胸高度 y = -12），末圈外扩气浪零裁切
   const w = 140;
-  const h = 104;
+  const h = 112;
   const ox = 70;
-  const oy = 60;
+  const oy = 64;
   const cx = 70;
-  const cy = 48;
+  const cy = 52;
   // 起始角度与 source.ts 四向起旋严丝合缝咬合，每帧逆时针旋转 -90°（东向由西向自动镜像成顺时针）
   const startDeg = direction === 'south' ? 90 : direction === 'west' ? 180 : -90;
   const baseFrames: EffectFrameGrid[] = [];
@@ -2381,7 +2354,7 @@ function buildBasicLift(direction: 'west' | 'south' | 'north'): DirectionalEffec
 }
 
 // ===========================================================================
-// 汇总全套 12 组原创特效源（export.ts 自动打包到 spear-effects.png）
+// 汇总全套 15 组原创特效源（export.ts 自动打包到 spear-effects.png）
 // ===========================================================================
 
 export const SPEAR_EFFECT_SOURCES: readonly DirectionalEffectSource[] = [
@@ -2451,10 +2424,8 @@ export const SPEAR_EFFECT_SOURCES: readonly DirectionalEffectSource[] = [
   buildSlamArc('south'),
   buildSlamArc('north'),
 
-  // 6. 虬龙扫暴阵前半段 · 四向前置延长枪花绞杀涡轮（6 帧，东向自动镜像）
-  buildFlowerSpin('west'),
-  buildFlowerSpin('south'),
-  buildFlowerSpin('north'),
+  // 6. 虬龙扫暴阵前半段 · 四向前置延长枪花绞杀涡轮（6 帧，西/南/北共用源帧，东向自动镜像）
+  buildFlowerSpin(),
 
   // 7. 虬龙扫暴阵主体 · 四向 180° 青白月牙狂风枪芒（6 帧）
   buildGaleSweep('west'),

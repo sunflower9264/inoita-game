@@ -3,7 +3,7 @@
  *
  * 1. 生成换装部件图集页 `asset-source/assets/wardrobe/parts-2.png` 与 `public/assets/wardrobe/parts-2.png`
  *    （含 `spear-style-1` 红缨铁枪、`spear-style-2` 龙牙长枪两套 30 切片样式，页宽 <= 1024）；
- * 2. 生成 11 套战斗特效源网格图至 `asset-source/assets/battle-effects/spear/<id>/<dir>-base|add.png`；
+ * 2. 生成 14 套战斗特效源网格图至 `asset-source/assets/battle-effects/spear/<id>/<dir>-base|add.png`；
  * 3. 生成武器图标、15 枚技能图标、选职徽章、状态栏增益小图标、队伍/状态立绘与地面掉落贴图至 `asset-source/assets/`；
  * 4. 离线合成 `story-preview-lancer` 与 `battle-lancer` 角色长条图至 `asset-source/assets/characters/`；
  * 5. 幂等更新 `public/content/` 下的 `wardrobe.json`、`battle.json`、`items.json`、`character-stats.json`、
@@ -28,13 +28,12 @@ import type {
   BattleBuffEffect,
   BattleCatalog,
   CombatUnit,
-  EffectClip,
   SkillAction,
   SkillDefinition,
   SkillDetail,
   SkillRank,
 } from '../src/domain/battle.ts';
-import type { ActorDefinition, AnimationClip, Facing } from '../src/domain/content.ts';
+import type { ActorDefinition, AnimationClip, EffectClip, Facing } from '../src/domain/content.ts';
 import type { CharacterStatsCatalog, EquipmentNumbers } from '../src/domain/character-stats.ts';
 import type { ItemCatalog, ItemDefinition } from '../src/domain/items.ts';
 import type { MenuPanels } from '../src/domain/menu-panels.ts';
@@ -137,7 +136,7 @@ function readJson<T>(relContentFile: string): T {
 }
 
 function writeJson(relContentFile: string, data: unknown, pretty = true): void {
-  const text = pretty ? JSON.stringify(data, null, 2) + '\n' : JSON.stringify(data);
+  const text = (pretty ? JSON.stringify(data, null, 2) : JSON.stringify(data)) + '\n';
   fs.writeFileSync(path.join(CONTENT, relContentFile), text);
 }
 
@@ -546,7 +545,7 @@ function buildFormalSpearPoses(wardrobe: WardrobeCatalog): {
     rawMap[recipe.clip] = id;
   }
   for (const recipe of SPEAR_ACTION_RECIPES) {
-    if (recipe.clip.startsWith('thrust-')) continue;
+    if (recipe.clip.startsWith('thrust-') || recipe.clip.startsWith('spear-die-')) continue;
     const id = formalPoseId(recipe.id);
     poses[id] = buildKeyframedPose(wardrobe, recipe);
     rawMap[recipe.clip] = id;
@@ -568,7 +567,6 @@ function buildFormalSpearPoses(wardrobe: WardrobeCatalog): {
     weaponStance[`attack-2-${facing}`] = rawMap[`attack-2-${facing}`]!;
     weaponStance[`attack-3-${facing}`] = rawMap[`attack-3-${facing}`]!;
     weaponStance[`frenzy-spear-${facing}`] = rawMap[`sweep-${facing}`]!;
-    weaponStance[`die-${facing}`] = facing === 'east' ? rawMap['spear-die-east']! : rawMap['spear-die-south']!;
   }
   // sweep-* 仅供 frenzy-spear-* 使用，poses 保留即可
   for (const skillId of [
@@ -642,8 +640,23 @@ function buildBattleEffects(): BattleCatalog['attackEffects'] {
       entry.clips.east = {
         ...clip,
         mirrorX: true,
-        layers: clip.layers.map(layer => ({ ...layer, key: layer.key.replace('-west-', '-east-') })),
+        layers: clip.layers.map(layer => ({ ...layer, key: layer.key.replace(/-west-(base|add)$/, '-east-$1') })),
       };
+    }
+    for (const sharedDir of src.sharedDirections ?? []) {
+      entry.clips[sharedDir] = {
+        ...clip,
+        mirrorX: false,
+        layers: clip.layers.map(layer => ({
+          ...layer,
+          key: layer.key.replace(new RegExp(`-${src.direction}-(base|add)$`), `-${sharedDir}-$1`),
+        })),
+      };
+      // 清理历史上曾独立落盘的冗余方向贴图，保持 asset-source 干净
+      for (const suffix of ['base', 'add'] as const) {
+        const staleFile = path.join(ASSET_SOURCE, `assets/battle-effects/spear/${src.effectId}/${sharedDir}-${suffix}.png`);
+        if (fs.existsSync(staleFile)) fs.unlinkSync(staleFile);
+      }
     }
   }
   return attackEffects;
@@ -709,13 +722,13 @@ function composePoseStrip(
       const co = Math.cos(rad);
       const si = Math.sin(rad);
       for (let py = 0; py < frameHeight; py++) {
-        const wy = py + top - part.y;
+        const wy = py + 0.5 + top - part.y;
         for (let px = 0; px < frameWidth; px++) {
-          const wx = px + left - part.x;
+          const wx = px + 0.5 + left - part.x;
           const u = (wx * co + wy * si) / part.scaleX + piece.anchorX;
           const v = (-wx * si + wy * co) / part.scaleY + piece.anchorY;
-          const sx = Math.floor(u + 1e-5);
-          const sy = Math.floor(v + 1e-5);
+          const sx = Math.floor(u);
+          const sy = Math.floor(v);
           if (sx < 0 || sx >= piece.width || sy < 0 || sy >= piece.height) continue;
           const srcIdx = ((piece.y + sy) * tex.width + (piece.x + sx)) * 4;
           const sa = (tex.data[srcIdx + 3]! / 255) * part.alpha;
@@ -758,10 +771,12 @@ function buildCharacterActors(
     [WARDROBE_TEXTURE_KEY]: parts2Png,
   };
 
-  // 选职界面预览采用轻甲武士胸甲外观 + 红缨铁枪，与其余六职业选职展示一致
+  // 选职界面预览采用龙鳞板甲（dragon-scale-armor）+ 红缨铁枪，与其余六职业选职展示一致
+  const previewArmor = wardrobe.equipment['dragon-scale-armor'];
+  if (!previewArmor) throw new Error('缺少龙枪预览护甲装备：dragon-scale-armor');
   const previewVariants: Record<string, string> = {
     ...wardrobe.defaults,
-    ...(wardrobe.equipment['scale-armor']?.main ?? {}),
+    ...previewArmor.main,
     spear: 'spear-style-1',
   };
   const battleVariants: Record<string, string> = {
@@ -912,35 +927,6 @@ function drawPolygon(png: PNG, pts: readonly [number, number][], fill: (x: numbe
         }
       }
       if (inside) blendPixel(png, x, y, fill(x, y));
-    }
-  }
-}
-
-function drawArcBand(
-  png: PNG,
-  cx: number,
-  cy: number,
-  rInner: number,
-  rOuter: number,
-  startDeg: number,
-  endDeg: number,
-  color: Rgba,
-): void {
-  const minX = Math.max(0, Math.floor(cx - rOuter - 1));
-  const maxX = Math.min(png.width - 1, Math.ceil(cx + rOuter + 1));
-  const minY = Math.max(0, Math.floor(cy - rOuter - 1));
-  const maxY = Math.min(png.height - 1, Math.ceil(cy + rOuter + 1));
-  for (let y = minY; y <= maxY; y++) {
-    for (let x = minX; x <= maxX; x++) {
-      const dx = x - cx;
-      const dy = y - cy;
-      const r = Math.hypot(dx, dy);
-      if (r < rInner - 0.6 || r > rOuter + 0.6) continue;
-      let deg = (Math.atan2(dy, dx) * 180) / Math.PI;
-      while (deg < startDeg) deg += 360;
-      if (deg > endDeg) continue;
-      const edge = Math.min(r - (rInner - 0.6), rOuter + 0.6 - r, 1);
-      blendPixel(png, x, y, [color[0], color[1], color[2], Math.round(color[3] * Math.max(0, edge))]);
     }
   }
 }
@@ -1260,6 +1246,7 @@ function makePassiveSkill(spec: {
   pointCosts: readonly number[];
   effectRows: (idx: number) => SkillDetail[];
   passiveUnits: NonNullable<SkillDefinition['passiveUnits']>;
+  reactionsByRank?: SkillDefinition['reactionsByRank'];
 }): SkillDefinition {
   const ranks = buildRanks(spec.normalMaxLevel, [0, 0, 0, 0, 0, 0, 0, 0], null, spec.pointCosts, spec.effectRows);
   return {
@@ -1273,11 +1260,13 @@ function makePassiveSkill(spec: {
     ranks,
     action: null,
     passiveUnits: spec.passiveUnits,
+    ...(spec.reactionsByRank ? { reactionsByRank: spec.reactionsByRank } : {}),
     companion: {
       ...(spec.requiredInvestedSkillPoints ? { requiredInvestedSkillPoints: spec.requiredInvestedSkillPoints } : {}),
       ranks: structuredClone(ranks),
       action: null,
       passiveUnits: structuredClone(spec.passiveUnits),
+      ...(spec.reactionsByRank ? { reactionsByRank: structuredClone(spec.reactionsByRank) } : {}),
     },
   };
 }
@@ -1347,6 +1336,7 @@ function buildSpearSkills(): { skillIds: string[]; definitions: Record<string, S
     effectRows: i => [
       detailEffect('（物理攻击力+力量x1.3）x', `${(pierceRates[i]! / 10).toFixed(1)}%`, '0.0%', 0, false),
       detailEffect('目标防御力降低：', `-${(shredRates[i]! / 10).toFixed(1)}%`, '-0.0%', 1, true),
+      detailEffect('持续时间：', '6.0秒', '0.0秒', 2, true),
     ],
     action: {
       events: [
@@ -1397,7 +1387,10 @@ function buildSpearSkills(): { skillIds: string[]; definitions: Record<string, S
               simulationFrames: { lastActiveFrame: 99 },
               maxStacks: 1,
               states: [],
-              modifiers: [{ attribute: 'defenseRate', operation: { kind: 'subtract', amount: rate } }],
+              modifiers: [
+                { attribute: 'defense', operation: { kind: 'decrease-thousandth', ratePerThousand: rate } },
+                { attribute: 'physicalResistanceBonus', operation: { kind: 'decrease-thousandth', ratePerThousand: rate } },
+              ],
               periodic: [],
             } satisfies BattleBuffEffect,
           })),
@@ -1530,7 +1523,7 @@ function buildSpearSkills(): { skillIds: string[]; definitions: Record<string, S
     cooldownFrames: 90, // 5.4秒
     pointCosts: [2, 3, 3, 4, 1, 1, 1, 1],
     effectRows: i => [
-      detailEffect('每击（物理攻击力+敏捷x1.4）x', `${(flurryRates[i]! / 10).toFixed(1)}%`, '0.0%', 0, false),
+      detailEffect('每击（物理攻击力+力量x0.6+敏捷x1.4）x', `${(flurryRates[i]! / 10).toFixed(1)}%`, '0.0%', 0, false),
     ],
     action: {
       events: [
@@ -1592,8 +1585,8 @@ function buildSpearSkills(): { skillIds: string[]; definitions: Record<string, S
 
   // 5. 伏龙震：双手过顶力劈身前 30px 落点圆 + 范围眩晕
   const slamRates = [2050, 2260, 2480, 2750, 2900, 3050, 3200, 3360];
-  const stunFrames = [15, 16, 17, 19, 20, 21, 22, 23]; // (lastActiveFrame+1)*60ms = 0.96s..1.44s -> 显示 1位小数
-  const stunDisplaySec = stunFrames.map(f => (((f + 1) * 60) / 1000).toFixed(1));
+  const stunFrames = [15, 16, 17, 19, 20, 21, 22, 23]; // (lastActiveFrame+1)*60ms = 0.96s..1.44s -> 保留 2 位小数区分每级成长
+  const stunDisplaySec = stunFrames.map(f => (((f + 1) * 60) / 1000).toFixed(2));
   definitions['dragon-slam'] = makeActiveSkill({
     id: 'dragon-slam',
     name: '伏龙震',
@@ -1605,7 +1598,7 @@ function buildSpearSkills(): { skillIds: string[]; definitions: Record<string, S
     pointCosts: [2, 3, 3, 4, 1, 1, 1, 1],
     effectRows: i => [
       detailEffect('（物理攻击力+力量x1.5）x', `${(slamRates[i]! / 10).toFixed(1)}%`, '0.0%', 0, false),
-      detailEffect('眩晕时间：', `${stunDisplaySec[i]}秒`, '0.0秒', 1, true),
+      detailEffect('眩晕时间：', `${stunDisplaySec[i]}秒`, '0.00秒', 1, true),
     ],
     action: {
       events: [
@@ -2037,18 +2030,40 @@ function buildSpearSkills(): { skillIds: string[]; definitions: Record<string, S
   definitions['piercing-momentum'] = makePassiveSkill({
     id: 'piercing-momentum',
     name: '穿甲枪劲',
-    description: '将螺旋暗劲灌入枪尖锋脊，大幅提升暴击伤害，并令普通攻击有几率附加破甲。',
+    description: '将螺旋暗劲灌入枪尖锋脊，大幅提升暴击伤害，并令物理攻击有几率附加破甲。',
     normalMaxLevel: 4,
     requiredInvestedSkillPoints: 12,
     pointCosts: [2, 3, 3, 4, 1, 1, 1, 1],
     effectRows: i => [
       detailEffect('暴击伤害增加：', `+${(critDmg[i]! / 10).toFixed(1)}%`, '+0.0%', 0),
-      detailEffect('普攻破甲几率：', `+${(armorBreakChance[i]! / 10).toFixed(1)}%`, '+0.0%', 1),
+      detailEffect('物理攻击破甲几率：', `+${(armorBreakChance[i]! / 10).toFixed(1)}%`, '+0.0%', 1),
     ],
     passiveUnits: [
       { attribute: 'criticalDamage', condition: 'always', ranks: critDmg.map(amount => ({ kind: 'add', amount })) },
       { attribute: 'armorBreakChance', condition: 'always', ranks: armorBreakChance.map(amount => ({ kind: 'add', amount })) },
     ],
+    reactionsByRank: Array.from({ length: 8 }, (_, idx) => [
+      {
+        kind: 'armor-penetration',
+        buff: {
+          key: 'armor-break',
+          rankPriority: 1900 + idx,
+          effect: {
+            durationMs: 3660,
+            tickMs: 0,
+            states: [],
+            simulationFrames: { lastActiveFrame: 60 },
+            maxStacks: 1,
+            applicationEffect: 'armor-break-impact',
+            modifiers: [
+              { attribute: 'defense', operation: { kind: 'multiply-thousandth', ratePerThousand: 0 } },
+              { attribute: 'physicalResistanceBonus', operation: { kind: 'multiply-thousandth', ratePerThousand: 0 } },
+            ],
+            periodic: [],
+          } satisfies BattleBuffEffect,
+        },
+      },
+    ]),
   });
 
   const footworkEvade = [40, 60, 80, 105, 120, 135, 150, 165];
@@ -2439,12 +2454,12 @@ async function main(): Promise<void> {
   };
   Object.assign(audio.skills, skillSounds);
 
-  // 保持与原仓库一致的 JSON 格式（wardrobe / story-classes 为单行紧凑，其余 2 空格缩进）
+  // 保持与原仓库一致的 JSON 格式（5 份大型内容表用单行紧凑 JSON，其余小型配置用 2 空格缩进）
   writeJson('wardrobe.json', wardrobe, false);
   writeJson('story-classes.json', storyClasses, false);
-  writeJson('battle.json', battle, true);
-  writeJson('items.json', items, true);
-  writeJson('character-stats.json', stats, true);
+  writeJson('battle.json', battle, false);
+  writeJson('items.json', items, false);
+  writeJson('character-stats.json', stats, false);
   writeJson('menu-panels.json', menuPanels, true);
   writeJson('status-hud.json', statusHud, true);
   writeJson('companions.json', companions, true);

@@ -205,7 +205,7 @@ function packEffects(): {
           key: `${src.effectId}-${src.direction}-base`,
           file: `prototype/${src.effectId}/${src.direction}-base.png`,
           blend: 'normal',
-          operations: ['normal'],
+          operations: [],
         },
         {
           key: `${src.effectId}-${src.direction}-add`,
@@ -220,7 +220,17 @@ function packEffects(): {
       entry.clips.east = {
         ...clip,
         mirrorX: true,
-        layers: clip.layers.map(layer => ({ ...layer, key: layer.key.replace('-west-', '-east-') })),
+        layers: clip.layers.map(layer => ({ ...layer, key: layer.key.replace(/-west-(base|add)$/, '-east-$1') })),
+      };
+    }
+    for (const sharedDir of src.sharedDirections ?? []) {
+      entry.clips[sharedDir] = {
+        ...clip,
+        mirrorX: false,
+        layers: clip.layers.map(layer => ({
+          ...layer,
+          key: layer.key.replace(new RegExp(`-${src.direction}-(base|add)$`), `-${sharedDir}-$1`),
+        })),
       };
     }
   }

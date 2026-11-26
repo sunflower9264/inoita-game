@@ -21,7 +21,9 @@ import { CombatEffectExecutor, type CombatEffectPort } from '../src/domain/comba
 import { CombatRuntime } from '../src/domain/combat-runtime.ts';
 import { CombatController, resolveCueTargets, type Combatant } from '../src/domain/combat.ts';
 import type { Facing } from '../src/domain/content.ts';
+import { calculateEnemy } from '../src/domain/enemy-stats.ts';
 import { passiveModifiers } from '../src/domain/passive-skills.ts';
+import { learnedSkillReactions, resolveSkillReactions } from '../src/domain/skill-reactions.ts';
 import { newStorySession, visibleStoryClasses } from '../src/domain/story-class.ts';
 import { costumeRecipe } from '../src/domain/wardrobe.ts';
 import { registerHooks } from 'node:module';
@@ -522,4 +524,67 @@ test('WorldCombat.learnedReactionBuff resolves armor-penetration from learned cl
   // 素材尚未就绪时（reactionSkills 过滤后不含该反应），不得提前触发。
   prepared = new Map([['player', new Set()]]);
   assert.equal(read.call(host, 'player', 'armor-penetration'), undefined);
+});
+
+test('dragon-pierce armor shred reduces real enemy physicalResistance and displays 6.0s duration', () => {
+  const skill = battle.skills['dragon-pierce']!;
+  const rank1 = skill.ranks[0]!;
+  assert.ok(rank1.details?.some(d => d.label === '持续时间：' && d.value === '6.0秒'));
+
+  const buffUnit = skill.action!.combatUnits!.find(u => u.effect === 'buff');
+  assert.ok(buffUnit && buffUnit.effect === 'buff');
+  const enemy = battle.enemies.find(e => e.attributes.physicalResistanceBonus > 100)!;
+  assert.ok(enemy, 'should find a real enemy with positive physicalResistanceBonus');
+
+  const conditions = new CombatConditions();
+  const baseFighter = calculateEnemy(enemy);
+  const before = conditions.fighter('enemy', baseFighter).physicalResistance;
+  conditions.applyBuff('enemy', buffUnit.buff, buffUnit.ranks[0]!.strength, buffUnit.ranks[0]!.effect, 'player');
+  const after = conditions.fighter('enemy', baseFighter).physicalResistance;
+  assert.ok(after < before, `狂龙穿心破破甲应降低怪物物理抗性：${before} -> ${after}`);
+});
+
+test('piercing-momentum declares 8-rank armor-penetration reactions and triggers armor-break on physical hit', () => {
+  const skill = battle.skills['piercing-momentum']!;
+  assert.equal(skill.reactionsByRank?.length, 8);
+  assert.equal(skill.companion?.reactionsByRank?.length, 8);
+  assert.ok(skill.description.includes('物理攻击'));
+
+  const loadout = { levels: { 'piercing-momentum': 4 } };
+  const reactions = learnedSkillReactions(battle, 'lancer', loadout, 'hero');
+  const armorPen = reactions.find(r => r.kind === 'armor-penetration');
+  assert.ok(armorPen && armorPen.kind === 'armor-penetration');
+
+  const host = Object.setPrototypeOf({
+    preparedSkillIds: new Map([['player', new Set(['piercing-momentum'])]]),
+    memberOf: () => ({ id: 'player', classId: 'lancer' }),
+    reactionSkills: () => ({ loadout, reactions }),
+    app: { battleCatalog: battle },
+  }, WorldCombat.prototype);
+  const read = Reflect.get(WorldCombat.prototype, 'learnedReactionBuff') as (this: unknown, id: string, skillId: string) => unknown;
+
+  const commands = resolveSkillReactions(
+    reactions,
+    { kind: 'physical-attack-effects', ownerId: 'player', opponentId: 'enemy', damageKind: 'physical', outcome: 'hit', armorBreakChance: 120 },
+    {
+      random: () => 0.01,
+      learnedBuff: (id, sid) => read.call(host, id, sid) as never,
+    },
+  );
+  assert.equal(commands.length, 1);
+  assert.equal(commands[0]!.kind, 'apply-buff');
+  if (commands[0]!.kind === 'apply-buff') {
+    assert.equal(commands[0]!.buff.key, 'armor-break');
+    assert.equal(commands[0]!.buff.effect.applicationEffect, 'armor-break-impact');
+  }
+});
+
+test('wardrobe spear stance excludes die poses and lancer preview wears dragon-scale-armor', () => {
+  const spearStance = wardrobe.stances['spear:empty']!;
+  for (const facing of ['south', 'west', 'north', 'east'] as const) {
+    assert.equal(spearStance[`die-${facing}` as keyof typeof spearStance], undefined);
+  }
+  const previewPng = fs.readFileSync(new URL('../asset-source/assets/characters/story-preview-lancer/idle-south-normal.png', import.meta.url));
+  const battlePng = fs.readFileSync(new URL('../asset-source/assets/characters/battle-lancer/idle-south-normal.png', import.meta.url));
+  assert.equal(previewPng.equals(battlePng), false, '龙枪选职预览应身着龙鳞板甲，与无甲战斗默认图不同');
 });

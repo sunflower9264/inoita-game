@@ -1,7 +1,7 @@
 // 由 npm run atlas:ui 生成，勿手改。
 export interface UiAtlasPage { key: string; file: string; data: string; frame: string; width: number; height: number; group: string }
 export const UI_ATLAS_PAGES: readonly UiAtlasPage[] = ([
-  ["assets/ui/shop/category-divider.png",2047,1720,"menu/core"],
+  ["assets/ui/shop/category-divider.png",2048,1722,"menu/core"],
   ["assets/ui/story/portrait-alexander-057.png",1538,1744,"story/portraits"],
   ["assets/ui/story/portrait-red-dragon.png",1538,1024,"story/portraits"],
   ["assets/ui/story-classes/panel-left.png",1975,248,"story/portraits"],
@@ -44,4 +44,4 @@ eachRow(FRAME_ROWS, (file, [page, frame]) => {
   frames[file] = { key: UI_ATLAS_PAGES[Number(page)]!.key, frame: frame ?? file, page: Number(page) };
 });
 export const UI_ATLAS_FRAMES: Readonly<Record<string, { key: string; frame: string; page: number }>> = frames;
-export const UI_ATLAS_SOURCE_DIGEST = "97f27478fee4967e98074399420e6b13c245c0034e119c2b65b8fb434a4e90fd";
+export const UI_ATLAS_SOURCE_DIGEST = "179fa86154f1c80bd5f37c77a53d7317d2daf5a7d4c43393963b6b0f1fb8338d";

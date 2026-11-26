@@ -7990,7 +7990,7 @@ export const CHARACTER_ATLAS_ALIASES: Readonly<Record<string, string>> = {
   "assets/characters/story-pope-erasmus-6425bd68/walk-west-normal.png": "assets/characters/enemy-berkel-priest-1/walk-east-normal.png",
   "assets/characters/story-preview-assassin/idle-south-normal.png": "assets/characters/story-preview-assassin/idle-south-normal.png",
   "assets/characters/story-preview-dark-knight/idle-south-normal.png": "assets/characters/story-preview-dark-knight/idle-south-normal.png",
-  "assets/characters/story-preview-lancer/idle-south-normal.png": "assets/characters/battle-lancer/idle-south-normal.png",
+  "assets/characters/story-preview-lancer/idle-south-normal.png": "assets/characters/story-preview-lancer/idle-south-normal.png",
   "assets/characters/story-preview-priest/idle-south-normal.png": "assets/characters/story-preview-priest/idle-south-normal.png",
   "assets/characters/story-preview-ranger/idle-south-normal.png": "assets/characters/story-preview-ranger/idle-south-normal.png",
   "assets/characters/story-preview-warlock/idle-south-normal.png": "assets/characters/story-preview-warlock/idle-south-normal.png",

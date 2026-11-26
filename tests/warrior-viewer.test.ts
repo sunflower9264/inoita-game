@@ -7,6 +7,7 @@ import type { Facing } from '../src/domain/content.ts';
 import type { ItemCatalog } from '../src/domain/items.ts';
 import { costumeRecipe, type CostumePose, type WardrobeCatalog } from '../src/domain/wardrobe.ts';
 import { EFFECT_ATLAS_BY_FILE } from '../src/generated/effect-atlas.ts';
+import { getSpearEffectClippedPixels, SPEAR_EFFECT_SOURCES } from '../tools/warrior-viewer/prototypes/spear/effects-source.ts';
 import {
   actionChoices, actionNotices, actionTimeline, activeEffectsAtFrame, armorChoices,
   compatibleOffhands, effectOverlayBounds, formatInventoryMarkdown, framePieces,
@@ -291,10 +292,12 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
 
   // Validate prototype spear effect sheet PNG and frame bounds
   assert.ok(proto.effectSheet);
+  assert.ok(SPEAR_EFFECT_SOURCES.length > 0);
+  assert.equal(getSpearEffectClippedPixels(), 0, 'spear effect sources must have zero out-of-bounds clipped pixels');
   const effBytes = fs.readFileSync(new URL(proto.effectSheet.texture.file, repoRoot));
   const effWidth = effBytes.readUInt32BE(16);
   const effHeight = effBytes.readUInt32BE(20);
-  assert.equal(Object.keys(proto.effectSheet.frames).length, 488);
+  assert.equal(Object.keys(proto.effectSheet.frames).length, 464);
   for (const rect of Object.values(proto.effectSheet.frames)) {
     assert.ok(rect.x >= 0 && rect.y >= 0);
     assert.ok(rect.x + rect.width <= effWidth && rect.y + rect.height <= effHeight);
