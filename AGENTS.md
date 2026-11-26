@@ -112,7 +112,7 @@ tools/                 构建、校验、图集、素材、静态服务、诊断
 deploy/                nginx 站点等部署配置（当前入口 `catgo.online-web.conf`）
 docs/                  架构、模块原理、剧情创作、音频、掉落、云存档、部署、服务地址、热更新、调试、诊断与补丁管理
 android/               Android 自带 Chromium 156 的壳（minSdk 29，规则见 AGENTS.md）
-.agents/skills/        Phaser 4 开发技能
+.agents/skills/        Phaser 4 开发技能与项目内动画工坊技能（`character-animation-craft`）
 .claude/skills         指向 ../.agents/skills 的符号链接
 ```
 
