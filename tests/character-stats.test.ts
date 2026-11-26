@@ -15,7 +15,7 @@ const find=(hero:BattleCharacter,predicate:(d:ItemDefinition)=>boolean)=>hero.ba
 
 test('native player progression: six bases, level HP, manual points, no companion auto-growth',()=>{
   validateCharacterStats(catalog,items,battle);
-  const expected=[[13,9,12,9,5],[9,15,11,7,5],[5,7,9,15,11],[11,7,9,9,15],[7,15,10,5,11],[13,11,12,5,6]];
+  const expected=[[13,9,12,9,5],[9,15,11,7,5],[5,7,9,15,11],[11,7,9,9,15],[7,15,10,5,11],[13,11,12,5,6],[12,13,11,5,6]];
   battle.classes.forEach((c,index)=>{
     const naked=calculateCharacter(catalog,items,c.id,1,zero,{});
     assert.deepEqual(PRIMARY_STATS.map(key=>naked.attributes[key]),expected[index]);

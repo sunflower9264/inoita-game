@@ -125,11 +125,11 @@ const panelValue = (panel: CharacterPanel, stat: string): number => {
 };
 
 test('content exposes the complete equipment, gem, scroll and modifier tables', () => {
-  assert.equal(EQUIPMENT_IDS.length, 662, '装备数量');
+  assert.equal(EQUIPMENT_IDS.length, 664, '装备数量');
   assert.equal(GEM_IDS.length, 5, '宝石种类');
   assert.equal(SCROLL_IDS.length, 12, '强化卷轴数量');
   assert.equal(ATTRIBUTE_IDS.length, 36, '词条属性名数量');
-  assert.equal(CLASS_IDS.length, 6, '职业数量');
+  assert.equal(CLASS_IDS.length, 7, '职业数量');
 
   for (const id of EQUIPMENT_IDS) {
     const definition = items.items[id]!;
@@ -165,7 +165,7 @@ test('content exposes the complete equipment, gem, scroll and modifier tables', 
   }
 });
 
-test('all 662 equipment entries expose their class, slot and dual-wield rules', () => {
+test('all 664 equipment entries expose their class, slot and dual-wield rules', () => {
   const hero = heroAt('dark-knight', MAX_LEVEL);
   for (const id of EQUIPMENT_IDS) if(!items.items[id]!.equipment!.locked)hero.bag.add(id);
   const instanceIds = new Map(hero.bag.entries.map(entry => [entry.item, entry.id]));
@@ -183,10 +183,10 @@ test('all 662 equipment entries expose their class, slot and dual-wield rules', 
       checks++;
     }
   }
-  assert.equal(checks, 662 * 6);
+  assert.equal(checks, 664 * 7);
 });
 
-test('all 662 equipment entries honor the level gate resolved from item level and chaos offset', () => {
+test('all 664 equipment entries honor the level gate resolved from item level and chaos offset', () => {
   const heroes = new Map(CLASS_IDS.map(classId => [classId, heroAt(classId, 1)]));
   for (const id of EQUIPMENT_IDS) {
     const definition = items.items[id]!;
@@ -215,11 +215,11 @@ test('all 662 equipment entries honor the level gate resolved from item level an
       allowed++;
     }
   }
-  assert.equal(blocked + allowed, 662 - 26);
+  assert.equal(blocked + allowed, 664 - 26);
   assert.ok(blocked > 0 && allowed > 0);
 });
 
-test('all 636 player-equippable equipment pieces keep every rolled value across equip and unequip', () => {
+test('all 638 player-equippable equipment pieces keep every rolled value across equip and unequip', () => {
   const heroes = new Map(CLASS_IDS.map(classId => [classId, heroAt(classId, MAX_LEVEL)]));
   for (const id of EQUIPMENT_IDS) {
     const definition = items.items[id]!;
@@ -248,7 +248,7 @@ test('all 636 player-equippable equipment pieces keep every rolled value across 
     assert.deepEqual(equipmentPower(catalog.equipment[id]!, worn), equipmentPower(catalog.equipment[id]!, original));
     checked++;
   }
-  assert.equal(checked, 662 - 26);
+  assert.equal(checked, 664 - 26);
 });
 
 test('story equipment keeps its rolls while worn and leaves with the scripted removal', () => {
@@ -742,8 +742,8 @@ test('every scroll rule entry enchants its real equipment kind with the right od
       }
     }
   }
-  assert.equal(combos, 132, '6 张武器卷轴 × 9 类 + 6 张防具卷轴 × 13 类');
-  assert.equal(kinds.size, 22, '9 种武器 + 13 种防具');
+  assert.equal(combos, 138, '6 张武器卷轴 × 10 类 + 6 张防具卷轴 × 13 类');
+  assert.equal(kinds.size, 23, '10 种武器 + 13 种防具');
   assert.deepEqual([...clonedKinds].sort(), ['cloak', 'necklace', 'ring'],
     '披风、项链、戒指没有可强化的真实装备');
   assert.equal(clonedCatalogCombos, 18,

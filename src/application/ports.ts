@@ -26,6 +26,7 @@ import type { DomUi } from '../ui/dom/dom-ui.ts';
 export interface StoryClassContext {
   readonly inputRouter: InputRouter;
   readonly storyClasses: StoryClassCatalog;
+  readonly debugMode?: boolean;
   readonly ui: Pick<GameUI,'ready'|'loading'|'loaded'|'error'>;
   readonly suspended: boolean;
   startStory?: (classId: string) => void;

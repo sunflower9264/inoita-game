@@ -67,7 +67,7 @@
       },
       "experience": {
         "x": 13.53,
-        "y": 91.0,
+        "y": 91,
         "fillOffset": 2,
         "fillWidth": 37,
         "startWidth": 2,
@@ -183,7 +183,10 @@
       "whist": "assets/ui/status/buff-whist.png",
       "spring-potion-sickness": "assets/ui/status/buff-spring-potion-sickness.png",
       "spring-potion-weakened": "assets/ui/status/buff-spring-potion-weakened.png",
-      "spring-skill-seal": "assets/ui/status/buff-spring-skill-seal.png"
+      "spring-skill-seal": "assets/ui/status/buff-spring-skill-seal.png",
+      "focus-edge": "assets/ui/status/buff-focus-edge.png",
+      "dragon-step": "assets/ui/status/buff-dragon-step.png",
+      "gale-stance": "assets/ui/status/buff-gale-stance.png"
     }
   },
   "target": {

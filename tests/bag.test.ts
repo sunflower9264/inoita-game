@@ -34,10 +34,10 @@ const pouchItems=(pouch:ReturnType<typeof pouchFor>,count:number)=>Object.entrie
 const weapons=(count:number)=>pouchItems('weapon',count);
 
 test('complete physical catalogue has every use flow and isolated starting equipment',()=>{
-  assert.equal(Object.keys(catalog.items).length,987);
+  assert.equal(Object.keys(catalog.items).length,989);
   assert.deepEqual(new Set(Object.values(catalog.items).flatMap(d=>d.use?[d.use.kind]:[])),new Set(ITEM_USES));
   const physical=Object.entries(catalog.items).filter(([,item])=>!item.pickup);
-  assert.equal(physical.length,986);
+  assert.equal(physical.length,988);
   for(const [item] of physical){
     if(catalog.items[item].equipment?.locked)continue;
     const bag=new Bag(()=>{},catalog);bag.add(item);

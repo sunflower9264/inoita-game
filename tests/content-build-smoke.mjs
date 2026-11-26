@@ -66,7 +66,9 @@ try {
         }
       }
   }
-  assert.equal(battle.classes.length, 6);
+  const storyClasses = JSON.parse(await fs.readFile(path.join(contentDir, 'story-classes.json'), 'utf8'));
+  assert.equal(storyClasses.classes.filter(entry => !entry.debugOnly).length, 6);
+  assert.equal(battle.classes.length, storyClasses.classes.length);
   const darkness = world.actors['enemy-dark-forces-of-evil-1'];
   const dialogue = new Set(characterAssets(darkness, characterSceneClips(darkness)).map(asset => asset.key));
   const meteor = characterAssets(darkness, Object.keys(darkness.clips).filter(name => name.includes('meteor')));

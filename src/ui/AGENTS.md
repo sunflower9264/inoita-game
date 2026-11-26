@@ -91,7 +91,7 @@
 ### 页面与场景职责
 
 - `status-page.ts` 持有固定会话的人物页、加点草稿、数字输入和确认流程；普通离开先处理草稿，释放会话直接丢弃草稿并清理页面。
-- `title-menu-controller.ts` 管理标题页面树、存档槽、云存档、设置和更新日志的状态、请求与 DOM；`class-selection-page.ts` 管理职业选择和预览。场景连接启动、恢复与关闭，页面关闭后忽略迟到资源。
+- `title-menu-controller.ts` 管理标题页面树、存档槽、云存档、设置和更新日志的状态、请求与 DOM；`class-selection-page.ts` 管理职业选择和预览（未开启调试模式时过滤 `debugOnly` 职业，开启调试模式时额外显示调试职业槽位）。场景连接启动、恢复与关闭，页面关闭后忽略迟到资源。
 - `formal-ui-view.ts` 连接剧情显示组件；`formal-presentation.ts` 只计算显示优先关系；`formal-choice-view.ts` 独立持有选项按钮与滚动；`formal-modal-view.ts` 管理加载、阵亡和横屏提示。
 - `world-hud.ts` 持有一次地图访问的屏幕控件、布局、操作模式订阅和释放；状态订阅绑定装配时的会话，旧地图输入不能操作新会话。
 - `skills-page.ts` 持有固定会话的技能选择、学习和初始化确认；`settings-page.ts`、`system-page.ts` 各自管理页面节点与文字；`shortcut-editor.ts` 持有一次登记的对象、分组和槽位。菜单只提供公共显示设施与导航。

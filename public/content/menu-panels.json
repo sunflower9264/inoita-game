@@ -127,7 +127,8 @@
     "craft-button-disabled": "assets/ui/menus/craft-button-disabled.png",
     "craft-money-gold": "assets/ui/menus/craft-money-gold.png",
     "craft-money-silver": "assets/ui/menus/craft-money-silver.png",
-    "craft-money-copper": "assets/ui/menus/craft-money-copper.png"
+    "craft-money-copper": "assets/ui/menus/craft-money-copper.png",
+    "party-class-lancer": "assets/ui/menus/party-class-lancer.png"
   },
   "equipmentSlots": [
     {
@@ -295,6 +296,9 @@
     },
     "warrior": {
       "preview": "assets/characters/battle-warrior/preview.png"
+    },
+    "lancer": {
+      "preview": "assets/characters/battle-lancer/preview.png"
     }
   },
   "character": {
@@ -326,7 +330,8 @@
       "warlock": "assets/ui/menus/class-warlock.png",
       "priest": "assets/ui/menus/class-priest.png",
       "ranger": "assets/ui/menus/class-ranger.png",
-      "warrior": "assets/ui/menus/class-warrior.png"
+      "warrior": "assets/ui/menus/class-warrior.png",
+      "lancer": "assets/ui/menus/class-lancer.png"
     },
     "combatLabels": [
       "物理攻击",

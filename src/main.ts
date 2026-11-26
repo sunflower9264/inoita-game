@@ -18,7 +18,7 @@ import { commonAssetBatches } from './application/entry-plan.ts';
 import { loadSceneAssets } from './rendering/scene-assets.ts';
 import { trustedContentNow } from './application/content-trust.ts';
 import type { Session } from './domain/session.ts';
-import { newStorySession } from './domain/story-class.ts';
+import { newStorySession, visibleStoryClasses } from './domain/story-class.ts';
 import { StoryClassScene } from './scenes/story-class-scene.ts';
 import { StoryStageScene } from './scenes/story-stage-scene.ts';
 import {captureSessionSave} from './application/saved-game.ts';
@@ -107,6 +107,7 @@ const addressParams = new URLSearchParams(location.search);
  */
 const gmFromAddress = addressParams.has('gm');
 const gmOn = (): boolean => gmFromAddress || app.gmMode.on;
+app.isDebugMode = gmOn;
 // 生产构建信任构建期校验；?gm 或持久 GM 强制走完整校验。
 app.content.trusted = trustedContentNow() && !gmOn();
 
@@ -392,7 +393,7 @@ async function enterGame(slot?:number): Promise<void> {
 }
 function startStory(classId: string): void {
   if (app.mode !== 'class-select' || !ui.ready || app.suspended || !app.game?.scene.isActive('story-class-select')) return;
-  const selected = app.storyClasses.classes.find(entry => entry.id === classId);
+  const selected = visibleStoryClasses(app.storyClasses, gmOn()).find(entry => entry.id === classId);
   if (!selected) return;
   void finishStoryStart(classId);
 }

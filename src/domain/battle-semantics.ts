@@ -44,5 +44,6 @@ export const BATTLE_BUFF_KEYS = [
   // 状态来源与消费者见 work/findings/257_equipment_attributes_78_82_and_potion_states_2026-10-31.md。
   'story-trap','spring-mana-recovery','spring-health-recovery','spring-mana-cost','spring-power-up','spring-frenzy',
   'spring-potion-sickness','spring-potion-weakened','spring-skill-seal',
+  'focus-edge','dragon-step','gale-stance',
 ] as const;
 export type BattleBuffKey = typeof BATTLE_BUFF_KEYS[number];

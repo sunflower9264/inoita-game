@@ -1,6 +1,6 @@
 import { attackDistance, PIXELS_PER_DISTANCE_UNIT, targetDistance } from './basic-attack.ts';
 import type { CombatUnit, EnemyPlayableSkill, SkillAction, SkillEffectCue } from './battle.ts';
-import { canTargetCombatant, chargeLanding, rearLanding, resolveCueTargets, type SkillMovementPort, type Combatant, type CombatController } from './combat.ts';
+import { areaShapeMaxReachPx, canTargetCombatant, chargeLanding, rearLanding, resolveCueTargets, type SkillMovementPort, type Combatant, type CombatController } from './combat.ts';
 import { attackRangeQueryRadius, awarenessRangeQueryRadius } from './combat-spatial-index.ts';
 import type { PartySkillUse } from './party.ts';
 import type { PartyPort } from './party-ai.ts';
@@ -31,9 +31,10 @@ function skillProfile(action:SkillAction):SkillProfile {
       if(cue.targetSelection!=='reuse-previous'||!search)search=cue;
       const usedCue=search,unit=action.combatUnits?.[index];
       if(!unit||effects.some(effect=>effect.unit===unit&&effect.cue.target===usedCue.target
-        &&effect.cue.targetRangePx===usedCue.targetRangePx&&effect.cue.targetRangeMetric===usedCue.targetRangeMetric))continue;
+        &&effect.cue.targetRangePx===usedCue.targetRangePx&&effect.cue.targetRangeMetric===usedCue.targetRangeMetric
+        &&JSON.stringify(effect.cue.areaShape)===JSON.stringify(usedCue.areaShape)&&effect.cue.maxTargets===usedCue.maxTargets))continue;
       effects.push({cue:usedCue,unit});
-      radius=Math.max(radius,usedCue.targetRangePx);
+      radius=Math.max(radius,areaShapeMaxReachPx(usedCue.areaShape,usedCue.targetRangePx));
     }
   }
   const result={effects,enemyRequired:needsTarget(action),radius,costsHealth:effects.some(({unit})=>unit.effect==='self-damage')};

@@ -126,11 +126,11 @@ test('trusted wardrobe returns the core file and fetches only requested poses', 
   } finally { globalThis.fetch = original; }
 });
 
-test('title and direct entry share eight town poses across session cleanup', async t => {
+test('title and direct entry share town poses across session cleanup', async t => {
+  const { allTownMovementPoseIds } = await import('../src/domain/wardrobe.ts');
   const wardrobe = JSON.parse(readFileSync(wardrobeFile, 'utf8'));
   const { poses, ...core } = wardrobe;
-  const ids = Object.entries(wardrobe.stances['unarmed:empty'] as Record<string,string>)
-    .filter(([clip]) => clip.startsWith('idle-') || clip.startsWith('walk-')).map(([,id]) => id);
+  const ids = allTownMovementPoseIds(wardrobe);
   const requested: string[] = [];
   t.mock.method(globalThis, 'fetch', async (input: string | URL | Request) => {
     const url = String(input);
@@ -144,14 +144,14 @@ test('title and direct entry share eight town poses across session cleanup', asy
   loader.trusted = true;
   const catalog = await loader.wardrobe();
   await Promise.all([loader.prepareTownPoses(catalog), loader.prepareTownPoses(catalog)]);
-  assert.equal(new Set(ids).size, 8);
+  assert.equal(new Set(ids).size, 16);
   assert.deepEqual(requested.sort(), [...ids].sort());
   const before = await loader.wardrobePoses(ids);
   loader.clearSessionCaches();
   await loader.prepareTownPoses(catalog);
   const after = await loader.wardrobePoses(ids);
   for (const id of ids) assert.equal(after[id], before[id]);
-  assert.equal(requested.length, 8);
+  assert.equal(requested.length, ids.length);
 });
 
 test('map cache retains two recently read results without invalidating returned maps or in-flight downloads', async () => {

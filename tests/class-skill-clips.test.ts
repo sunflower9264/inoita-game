@@ -19,5 +19,5 @@ test('every class actor skill clip has a Wardrobe pose, so the current class pac
       checked++;
     }
   }
-  assert.equal(checked, 216, '6 classes × 36 skill clips');
+  assert.equal(checked, 252, '7 classes × 36 skill clips');
 });

@@ -10,10 +10,10 @@ import { sourceAssetPath } from '../tools/asset-source.ts';
 const publicRoot = new URL('../public/', import.meta.url);
 const catalog: BattleCatalog = JSON.parse(readFileSync(new URL('content/battle.json', publicRoot), 'utf8'));
 
-test('six complete classes, legal ranks, original assets and independent actor animations', () => {
-  assert.equal(catalog.classes.length, 6); assert.equal(Object.keys(catalog.skills).length, 90);
+test('seven complete classes, legal ranks, original assets and independent actor animations', () => {
+  assert.equal(catalog.classes.length, 7); assert.equal(Object.keys(catalog.skills).length, 105);
   const allSkills = catalog.classes.flatMap(c => c.skills);
-  assert.equal(new Set(allSkills).size, 90);
+  assert.equal(new Set(allSkills).size, 105);
   for (const character of catalog.classes) {
     assert.equal(character.skills.length, 15);
     assert.equal(character.skills.filter(id => catalog.skills[id].kind === 'active').length, 9);
@@ -86,7 +86,7 @@ test('every active skill carries its action timeline, effect assets and target r
       needsTarget(action) ? targeted++ : selfOnly++;
     }
   }
-  assert.equal(targeted + selfOnly, 54);
+  assert.equal(targeted + selfOnly, 63);
   assert.ok(selfOnly > 0 && targeted > 0, `self ${selfOnly} targeted ${targeted}`);
 });
 

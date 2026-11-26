@@ -53,7 +53,7 @@
 
 - `map-prop-baseline.test.ts` 与 `story-actor-ledger.test.ts` 分别校验 `fixtures/` 的两份基线；台账变化必须显式更新基线。
 - `world-frame-work.test.ts` 验证饰品换装保留角色、碰撞体和攻击动作，随后投影不重复准备；`world-skill-cache.test.ts` 验证饰品不触发技能资源补载、新技能等待外观合成，并覆盖共享贴图、退队清理、迟到失败、入队换装重试和读档等待全队资源。
-- `scene-assets.test.ts` 验证资源齐全时不等待无关下载、缺帧修复按队列执行；`content-loader.test.ts` 用拆包与完整衣柜两种格式验证八份城镇动作跨会话常驻、并发只下载一次。
+- `scene-assets.test.ts` 验证资源齐全时不等待无关下载、缺帧修复按队列执行；`content-loader.test.ts` 用拆包与完整衣柜两种格式验证城镇动作（含徒手与长枪背负姿态）跨会话常驻、并发只下载一次。
 - `movement-content-recovery.test.ts` 覆盖内容机关压住队伍单位后的自愈；`movement.test.ts` 验证移动平滑；`display-settings.test.ts` 验证画面偏好默认值与持久化；`game-timing.test.ts` 验证 30/60 限帧、120 帧压力、实际耗时和寻路额度。
 
 ### 界面与菜单
@@ -78,7 +78,7 @@
 
 ### 调试
 
-- `gm-actions.test.ts` 验证调试道具隐藏剧情专属装备并保留其他职业可穿戴；`gm-quest-jump.test.ts` 覆盖跳转传送、接取剧情与交接、等待战斗结束、失败回滚、播放失败报告和并发拒绝；`gm-quest-panel.test.ts` 验证任务页只把跳转交给宿主先存档；`gm-complete-golem.test.ts` 覆盖状态页完成任务先结算石魔遭遇。
+- `gm-actions.test.ts` 验证调试道具隐藏剧情专属装备并保留其他职业可穿戴；`spear-class-integration.test.ts` 验证调试专属职业「龙枪武士」仅在调试模式开放、正式商店/佣兵零污染、长枪换装与城镇斜背切换、三段连击及直线/扇形/前圆方向攻击范围与被动加距；`gm-quest-jump.test.ts` 覆盖跳转传送、接取剧情与交接、等待战斗结束、失败回滚、播放失败报告和并发拒绝；`gm-quest-panel.test.ts` 验证任务页只把跳转交给宿主先存档；`gm-complete-golem.test.ts` 覆盖状态页完成任务先结算石魔遭遇。
 
 ## 验证
 

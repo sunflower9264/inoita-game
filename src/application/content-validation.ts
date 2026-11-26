@@ -257,7 +257,7 @@ const itemCatalog=shape<ItemCatalog>({items:record(object({name:text,description
 export function parseItemCatalog(value:unknown):ItemCatalog {
   itemCatalog(value,'items');const result=value as ItemCatalog;
   const classes=Object.keys(result.startingEquipment);
-  requireValue(classes.length===6,'items.startingEquipment','需要六个职业');
+  requireValue(classes.length>=6&&classes.length===Object.keys(result.classSkills).length,'items.startingEquipment','需要至少六个职业且与职业技能表一致');
   for(const [id,item]of Object.entries(result.items)) {
     requireValue(!!item.equipment===(item.category==='equipment'),id,'装备分类与穿戴规则不一致');
     if(item.equipment){requireValue(!item.stackable,id,'装备按实例存放');for(const key of item.equipment.classes)requireValue(classes.includes(key),id,'职业引用不存在');}
@@ -529,6 +529,7 @@ export function validateMenuClasses(menu:MenuPanels,catalog:BattleCatalog):void 
   for(const c of catalog.classes){
     requireValue(menu.classes[c.id]&&c.skills.length===menu.skillPositions.length,c.id,'缺少职业菜单资料或技能排列不匹配');
     requireValue(menu.character.classPortraits[c.id],'menuPanels.character.classPortraits',`缺少职业立绘 ${c.id}`);
+    requireValue(menu.assets[`party-class-${c.id}`],'menuPanels.assets',`缺少队伍职业图标 party-class-${c.id}`);
   }
 }
 const box={x:number,y:number,width:positive,height:positive};
@@ -536,12 +537,13 @@ const clip=shape<AnimationClip>({frameWidth:positive,frameHeight:positive,frames
 const actor=shape<ActorDefinition>({chest:optional(oneOf('ordinary','improved')),service:optional(oneOf('soul-healer','fusion-machine','legendary-sword','innkeeper')),id:text,name:text,description:text,clips:record(clip),portrait:nullable(text),collision:optional(object(box)),effectAnchor:optional(object({x:number,y:number})),headAnchor:optional(object({x:number,y:number}))});
 const storyClasses=shape<StoryClassCatalog>({defaultClass:text,background:file,
   assets:object({selected:file,title:file,start:file,startPressed:file,descriptionTop:file,attributesTop:file,panelLeft:file,panelRight:file}),
-  classes:array(object({id:text,name:text,description:text,icon:file,attributes:array(object({name:text,value:integer})),
+  classes:array(object({id:text,name:text,description:text,icon:file,debugOnly:optional(boolean),attributes:array(object({name:text,value:integer})),
     previewActor:actor,playerActor:actor,player:object({level:count,health:integer,maxHealth:count,mana:integer,maxMana:count,experience:integer,nextLevelExperience:count})}))});
 export function parseStoryClasses(value:unknown):StoryClassCatalog {
   storyClasses(value,'storyClasses'); const result=value as StoryClassCatalog;
-  requireValue(result.classes.length===6&&new Set(result.classes.map(c=>c.id)).size===6,'storyClasses','需要六个不同职业');
-  requireValue(result.classes.some(c=>c.id===result.defaultClass),'storyClasses.defaultClass','默认职业不存在');
+  const formalClasses=result.classes.filter(c=>!c.debugOnly);
+  requireValue(formalClasses.length===6&&new Set(result.classes.map(c=>c.id)).size===result.classes.length,'storyClasses','需要六个不同正式职业且职业标识不能重复');
+  requireValue(formalClasses.some(c=>c.id===result.defaultClass),'storyClasses.defaultClass','默认职业不存在或不能是仅调试职业');
   for(const entry of result.classes){
     requireValue(entry.playerActor.headAnchor,entry.id,'头顶状态条需要人物头部锚点');
     requireValue(entry.previewActor.clips['idle-south'],'storyClasses.'+entry.id,'缺少预览待机动画');
@@ -720,7 +722,14 @@ const visualEffect=shape<SkillVisualEffect>({effect:text,recipient:oneOf('caster
 const actionDispatch=shape<ActionDispatchDefinition>({breaksStealth:boolean,casterEffects:optional(array(object({effect:text,recipient:oneOf('caster'),placement:oneOf('attached','ground','above-characters')}))),shake:optional(boolean),vibrationMs:optional(count),sound:optional(text)});
 const charge=shape<SkillCharge>({arrivalFrame:integer,closeDistanceUnits:positive,lungeDistancePx:positive,stoppingDistanceUnits:positive,gridSizePx:positive});
 const afterimages=shape<SkillAfterimages>({frame:integer,opacity:number,distancesPx:array(positive)});
-const cue=shape<SkillEffectCue>({target,targetRangePx:number,targetSelection:optional(oneOf('search','reuse-previous')),unitFeedbackPolicy:optional(oneOf('always')),sound:optional(text),targetRangeMetric:optional(oneOf('octagonal-grid')),effects:array(visualEffect)});
+const angleDegrees:Check=(v,p)=>{positive(v,p);requireValue((v as number)<=360,p,'张角不能超过 360 度');};
+const areaShape=variant('kind',{
+  line:object({kind:oneOf('line'),lengthPx:positive,halfWidthPx:positive,backSlackPx:optional(nonnegative)}),
+  sector:object({kind:oneOf('sector'),radiusPx:positive,angleDeg:angleDegrees,backSlackPx:optional(nonnegative)}),
+  'front-circle':object({kind:oneOf('front-circle'),forwardOffsetPx:nonnegative,radiusPx:positive}),
+});
+const basicTargeting=object({target:oneOf('area'),targetRangePx:positive,targetRangeMetric:optional(oneOf('octagonal-grid')),areaShape:optional(areaShape),maxTargets:optional(count)});
+const cue=shape<SkillEffectCue>({target,targetRangePx:number,targetSelection:optional(oneOf('search','reuse-previous')),unitFeedbackPolicy:optional(oneOf('always')),sound:optional(text),targetRangeMetric:optional(oneOf('octagonal-grid')),areaShape:optional(areaShape),maxTargets:optional(count),effects:array(visualEffect)});
 const skillEvent=(v:unknown,p:string)=>{
   requireValue(v&&typeof v==='object',p,'需要技能事件');
   const event=v as {kind?:string};
@@ -819,7 +828,7 @@ const combatUnit=variant('effect',{
 });
 const skillAction=shape<SkillAction>({requiredOffhand:optional(oneOf('shield')),requiresActiveSummon:optional(boolean),hitEffectStyle:optional(oneOf('weapon','skill')),manaGemDrop:optional(oneOf('skill','weapon')),combatUnits:optional(array(combatUnit)),usesSkillDamageBuff:optional(boolean),repeat:optional(object({restartAfterFrame:count,countByLevel:array(count),requiresLivingTarget:optional(boolean),endsWithoutTarget:optional(boolean),facesTargetOnRelease:optional(boolean)})),charge:optional(charge),rearTeleport:optional(object({frame:count})),afterimages:optional(afterimages),requiresTarget:optional(boolean),minHealthRatePerThousand:optional(count),events:array(skillEvent),cooldownFrames:integer,approachDistanceUnits:number,searchRadiusPx:positive,transition:nullable(transition),effectNames:optional(strings),soundNames:optional(strings),summonNames:optional(strings),eventFrames:optional(record(array(integer)))});
 const passiveUnit=object({attribute:oneOf(...BATTLE_STAT_KEYS),
-  condition:oneOf('always','weapon-two-handed','weapon-short-or-long-sword','weapon-mace','stealthed'),ranks:array(combatOperation)});
+  condition:oneOf('always','weapon-two-handed','weapon-short-or-long-sword','weapon-mace','weapon-spear','stealthed'),ranks:array(combatOperation)});
 const reactionBuff=shape<BuffReactionBuff>({key:oneOf(...BATTLE_BUFF_KEYS),rankPriority:count,effect:buffEffect});
 const buffReaction=variant('kind',{
   ...Object.fromEntries(['physical-avoidance','physical-success-party'].map(kind=>[kind,object({kind:oneOf(kind),buff:reactionBuff})])),
@@ -860,7 +869,7 @@ const basicAttackDamage:Check=(value,path)=>{
 const basicAttackComboStep=shape<BasicAttackComboStep>({
   clips:object({north:text,south:text,east:text,west:text}),
   dispatch:optional(actionDispatch),hitEffectStyle:optional(oneOf('weapon','skill')),manaGemDrop:optional(oneOf('skill','weapon')),
-  timing:optional(oneOf('fixed-animation')),targeting:optional(object({target:oneOf('area'),targetRangePx:positive,targetRangeMetric:oneOf('octagonal-grid')})),
+  timing:optional(oneOf('fixed-animation')),targeting:optional(basicTargeting),
   frameDurationMs:optional(positive),cycleFrames:optional(count),approachDistanceUnits:optional(number),searchRadiusPx:optional(positive),
   strikeFrame:optional(integer),strikes:optional(array(object({frame:integer,hand:oneOf('main-hand','offhand')}))),
   swingFrame:optional(nullable(integer)),swingOrder:optional(oneOf('after-strike')),
@@ -868,7 +877,7 @@ const basicAttackComboStep=shape<BasicAttackComboStep>({
   swings:optional(strings),impacts:optional(strings),targetEffects:optional(array(visualEffect)),transition:optional(transition),
   projectile:optional(nullable(object({effect:text,stepDistancePx:positive,stepDurationMs:positive,offsetX:number,offsetY:number}))),
 });
-const basicAttackFields=shape<BasicAttackDefinition>({damage:basicAttackDamage,dispatch:optional(actionDispatch),hitEffectStyle:optional(oneOf('weapon','skill')),manaGemDrop:optional(oneOf('skill','weapon')),timing:optional(oneOf('fixed-animation')),targeting:optional(object({target:oneOf('area'),targetRangePx:positive,targetRangeMetric:oneOf('octagonal-grid')})),frameDurationMs:positive,cycleFrames:count,approachDistanceUnits:number,searchRadiusPx:positive,strikeFrame:integer,strikes:optional(array(object({frame:integer,hand:oneOf('main-hand','offhand')}))),swingFrame:nullable(integer),swingOrder:optional(oneOf('after-strike')),projectilePlacement:optional(oneOf('world','above-characters')),swingPlacement:optional(oneOf('world','above-characters')),impactPlacement:optional(oneOf('world','attached')),swings:strings,impacts:strings,targetEffects:optional(array(visualEffect)),transition:optional(transition),projectile:nullable(object({effect:text,stepDistancePx:positive,stepDurationMs:positive,offsetX:number,offsetY:number})),combo:optional(array(basicAttackComboStep))});
+const basicAttackFields=shape<BasicAttackDefinition>({damage:basicAttackDamage,dispatch:optional(actionDispatch),hitEffectStyle:optional(oneOf('weapon','skill')),manaGemDrop:optional(oneOf('skill','weapon')),timing:optional(oneOf('fixed-animation')),targeting:optional(basicTargeting),frameDurationMs:positive,cycleFrames:count,approachDistanceUnits:number,searchRadiusPx:positive,strikeFrame:integer,strikes:optional(array(object({frame:integer,hand:oneOf('main-hand','offhand')}))),swingFrame:nullable(integer),swingOrder:optional(oneOf('after-strike')),projectilePlacement:optional(oneOf('world','above-characters')),swingPlacement:optional(oneOf('world','above-characters')),impactPlacement:optional(oneOf('world','attached')),swings:strings,impacts:strings,targetEffects:optional(array(visualEffect)),transition:optional(transition),projectile:nullable(object({effect:text,stepDistancePx:positive,stepDurationMs:positive,offsetX:number,offsetY:number})),combo:optional(array(basicAttackComboStep))});
 const basicAttack:Check=(value,path)=>{
   basicAttackFields(value,path);
   const attack=value as BattleCatalog['basicAttacks'][string];

@@ -4768,6 +4768,21 @@
         "critical": "Weapon_Punch_Critical",
         "miss": null,
         "blocked": "Weapon_Punch"
+      },
+      "spear": {
+        "normal": [
+          {
+            "sound": "Weapon_Sword_Attack",
+            "weight": 5
+          },
+          {
+            "sound": "Weapon_TwoHand_Sword_Attack",
+            "weight": 5
+          }
+        ],
+        "critical": "Weapon_TwoHand_Sword_Critical",
+        "miss": "Weapon_TwoHand_Sword_Miss",
+        "blocked": "Weapon_Punch"
       }
     },
     "shieldBlock": "Common_Buckler_Defense",
@@ -4827,7 +4842,16 @@
     "swirling-storm": "Wa_Wheel_Wind",
     "blood-thirst": "A_Skill_04",
     "storm-of-frenzy": "Wa_Storm",
-    "enrage": "Wa_Boom"
+    "enrage": "Wa_Boom",
+    "dragon-pierce": "Wa_Anger_Rush",
+    "whirl-sweep": "Wa_Wheel_Wind",
+    "spin-storm": "Wa_Storm",
+    "flurry-thrust": "Weapon_Sword_Critical",
+    "dragon-slam": "Wa_Titan_Attack",
+    "sovereign-pierce": "Wa_Storm",
+    "focus-edge": "Wa_Defense",
+    "dragon-step": "Wa_Wheel_Wind",
+    "gale-stance": "Wa_Storm"
   },
   "ui": {
     "open": "UI_Menu_Op",

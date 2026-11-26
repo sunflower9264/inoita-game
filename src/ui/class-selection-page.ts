@@ -2,6 +2,7 @@ import type Phaser from 'phaser';
 import { addClassSelectionHighlight, applyClassSelectionFilters, createClassSelectionBackground, setClassSelectionBackdrop } from './phaser/class-selection-view.ts';
 import type { StoryClassContext } from '../application/ports.ts';
 import type { StoryClass } from '../domain/story-class.ts';
+import { visibleStoryClasses } from '../domain/story-class.ts';
 import { characterAssets, createCharacter } from '../rendering/characters.ts';
 import { LiveCharacterPreview } from './phaser/live-character-preview.ts';
 import type { UiImage } from './dom/node.ts';
@@ -25,6 +26,7 @@ interface ClassDomText {
 /** 960×640 页面坐标：说明滚动区和五行属性的位置。 */
 const DESCRIPTION = { x: 80, y: 485, width: 622, height: 132 } as const;
 const ATTRIBUTE = { nameX: 782, valueX: 894, top: 482, step: 28 } as const;
+const CLASS_POSITIONS = [[37,118],[70,251],[198,313],[648,313],[776,251],[809,118],[668,106],[176,106]] as const;
 const GOLD = '#f3deb0';
 
 export class ClassSelectionPage {
@@ -98,12 +100,15 @@ export class ClassSelectionPage {
     if(event.key==='Escape'){this.app.returnToMenu?.();return true;}
     return this.surface?.key(event)??false;
   };
+  private availableClasses():StoryClass[]{
+    return visibleStoryClasses(this.app.storyClasses,!!this.app.debugMode);
+  }
   private async open(signal:AbortSignal):Promise<void>{
-    const catalog=this.app.storyClasses;
+    const catalog=this.app.storyClasses,classes=this.availableClasses();
     // 预览角色可能由角色图集页承载，也可能仍是独立长条图；用同一份加载描述取真实纹理键。
-    const previewAssets=catalog.classes.flatMap(entry=>characterAssets(entry.previewActor));
+    const previewAssets=classes.flatMap(entry=>characterAssets(entry.previewActor));
     await Promise.all([
-      loadUiImages(this.scene,[...Object.values(catalog.assets),...catalog.classes.map(entry=>entry.icon),'/assets/ui/menus/close.png','/assets/ui/menus/close-pressed.png'],value=>{if(!signal.aborted)this.app.ui.loading('正在准备职业…',value);},signal).then(lease=>{if(signal.aborted){lease.release();signal.throwIfAborted();}this.releaseUi=()=>lease.release();}),
+      loadUiImages(this.scene,[...Object.values(catalog.assets),...classes.map(entry=>entry.icon),'/assets/ui/menus/close.png','/assets/ui/menus/close-pressed.png'],value=>{if(!signal.aborted)this.app.ui.loading('正在准备职业…',value);},signal).then(lease=>{if(signal.aborted){lease.release();signal.throwIfAborted();}this.releaseUi=()=>lease.release();}),
       loadSceneAssets(this.scene,[{kind:'image',key:`class-background:${catalog.background}`,file:catalog.background},...previewAssets],{ progress: ()=>{}, signal }).then(lease=>{if(signal.aborted){lease.release();signal.throwIfAborted();}this.releaseSceneAssets=()=>lease.release();})
     ]);
     signal.throwIfAborted();
@@ -111,17 +116,16 @@ export class ClassSelectionPage {
     this.background=createClassSelectionBackground(this.scene,`class-background:${catalog.background}`);
     this.surface=new UiSurface(this.scene,960,640);
     this.preview=new LiveCharacterPreview(this.scene,()=>{},actor=>createCharacter(this.scene,actor,{id:'class-preview',actor:actor.id,x:0,y:0}),null);
-    this.buildPage();this.choose(catalog.classes.find(entry=>entry.id===catalog.defaultClass)!);
+    this.buildPage();this.choose(classes.find(entry=>entry.id===catalog.defaultClass)??classes[0]!);
     this.app.ui.loaded();this.app.syncLifecycle?.();this.app.prefetchStory?.();
   }
   private buildPage():void{
-    const view=this.surface!,catalog=this.app.storyClasses;
+    const view=this.surface!,catalog=this.app.storyClasses,classes=this.availableClasses();
     view.image(catalog.assets.title,263,20,434,56);
     const guard=()=>this.app.ui.ready&&!this.app.suspended;view.enabled=guard;
     view.button('',12,16,67,67,()=>this.app.returnToMenu?.(),{image:'/assets/ui/menus/close.png',pressed:'/assets/ui/menus/close-pressed.png',guard}).setData('label','返回主菜单');
-    const positions=[[37,118],[70,251],[198,313],[648,313],[776,251],[809,118]];
-    catalog.classes.forEach((character,index)=>{
-      const [x,y]=positions[index];const button=view.button('',x,y,116,114,()=>this.choose(character),{image:character.icon,guard}).setData('label',character.name);
+    classes.forEach((character,index)=>{
+      const [x,y]=CLASS_POSITIONS[index]??CLASS_POSITIONS[CLASS_POSITIONS.length-1];const button=view.button('',x,y,116,114,()=>this.choose(character),{image:character.icon,guard}).setData('label',character.name);
       this.selections.push(addClassSelectionHighlight(view,catalog.assets.selected,0,0,116,114,button).setVisible(false));
     });
     view.button('',334,388,292,77,()=>{
@@ -141,7 +145,8 @@ export class ClassSelectionPage {
   private choose(entry:StoryClass):void{
     if(this.selected===entry)return;
     this.selected=entry;
-    this.selections.forEach((selection,index)=>{const shown=this.app.storyClasses.classes[index].id===entry.id;if(selection.visible!==shown)selection.setVisible(shown);});
+    const classes=this.availableClasses();
+    this.selections.forEach((selection,index)=>{const shown=classes[index]?.id===entry.id;if(selection.visible!==shown)selection.setVisible(shown);});
     if(this.descriptionScroll)this.descriptionScroll.scrollTop=0;
     const clip=entry.previewActor.clips['idle-south']!;this.preview!.show(this.surface!,entry.previewActor,{x:480-clip.frameWidth*1.5,y:290-clip.originY*clip.frameHeight*3,width:clip.frameWidth*3,height:clip.frameHeight*3});
     this.preview!.visible(this.app.ui.ready&&!this.app.suspended);

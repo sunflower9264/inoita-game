@@ -17,8 +17,8 @@ test('content loading rejects missing companion data and incomplete companion co
   assert.throws(()=>parseBattle(incomplete),/全部技能等级/);
 });
 
-test('all ninety skills provide eight ranks for both stable character identities',()=>{
-  assert.equal(Object.keys(catalog.skills).length,90);
+test('all 105 skills provide eight ranks for both stable character identities',()=>{
+  assert.equal(Object.keys(catalog.skills).length,105);
   for(const skill of Object.values(catalog.skills)){
     assert.ok(skill.companion,skill.id);
     for(const member of ['player','story-companion','recruited-companion']){
@@ -32,7 +32,7 @@ test('all ninety skills provide eight ranks for both stable character identities
 });
 
 /**
- * 36 个被动技能的通用形状集中在这里断言。各个技能自己的用例不再重复这几条规则——
+ * 42 个被动技能的通用形状集中在这里断言。各个技能自己的用例不再重复这几条规则——
  * 从前它们散在 5~7 个文件里各写一遍，规则一变就要改多处，漏掉哪处只会表现为
  * 「部分技能测了新规则、部分没测」，从红绿看不出来。
  *
@@ -40,18 +40,20 @@ test('all ninety skills provide eight ranks for both stable character identities
  */
 test('passive skills share the original rank shape and split cleanly on reaction tables',()=>{
   const passives=Object.values(catalog.skills).filter(skill=>skill.kind==='passive');
-  assert.equal(passives.length,36);
+  assert.equal(passives.length,42);
   for(const skill of passives){
     assert.equal(skill.action,null,skill.id);
     assert.equal(skill.ranks.length,8,skill.id);
     assert.deepEqual(skill.ranks.map(rank=>rank.manaCost),Array(8).fill(0),skill.id);
   }
-  // 原版只有这 16 个被动没有逐级反应表，另 20 个有。两侧一起钉死：多一个少一个都报错。
+  // 原版 16 个 + 龙枪 6 个纯数值被动没有逐级反应表，另 20 个有。两侧一起钉死：多一个少一个都报错。
   const withoutReactions=passives.filter(skill=>skill.reactionsByRank===undefined).map(skill=>skill.id).sort();
   assert.deepEqual(withoutReactions,[
-    'blade-of-darkness','blood-feast','divine-arms','forest-knowledge','fortitude','healing-enhancement',
-    'improved-defense','insanity-thrills','rear-penetration','shadow-phantom','skin-of-steel','soul-s-thirst',
-    'spiritual-affinity','twin-blade','warrior-s-instinct','weapon-specializing',
+    'blade-of-darkness','blood-feast','coiling-dragon-footwork','divine-arms','dragon-spirit',
+    'forest-knowledge','fortitude','healing-enhancement','improved-defense','insanity-thrills',
+    'piercing-momentum','polearm-reach','rear-penetration','shadow-phantom','shaft-parry',
+    'skin-of-steel','soul-s-thirst','spear-mastery','spiritual-affinity','twin-blade',
+    'warrior-s-instinct','weapon-specializing',
   ]);
 });
 

@@ -137,7 +137,7 @@ function expectedPanel(
 
   const main = equipped['main-hand'];
   const kind = main ? itemCatalog.items[main.item].kind : 'unarmed';
-  const strengthRate = kind === 'two-handed' ? 700 : ['longsword', 'axe', 'mace'].includes(kind) ? 600 : 500;
+  const strengthRate = kind === 'two-handed' ? 700 : kind === 'spear' ? 650 : ['longsword', 'axe', 'mace'].includes(kind) ? 600 : 500;
   const intelligenceRate = kind === 'unarmed' ? 0 : kind === 'staff' ? 600 : kind === 'orb' ? 700 : 1000;
   const mentalityRate = kind === 'unarmed' ? 0 : ['staff', 'orb'].includes(kind) ? 600 : 1000;
 
@@ -236,7 +236,7 @@ function generatedNumbers(definition: EquipmentNumbers, end: 'min' | 'max'): Ite
 /* calculateCharacter：职业基础、等级与武器系数                        */
 /* ------------------------------------------------------------------ */
 
-test('six classes expose the documented base attributes and the native level-1 unarmed panel', () => {
+test('seven classes expose the documented base attributes and the native level-1 unarmed panel', () => {
   const expected: Record<string, [number, number, number, number, number]> = {
     'dark-knight': [13, 9, 12, 9, 5],
     assassin: [9, 15, 11, 7, 5],
@@ -244,6 +244,7 @@ test('six classes expose the documented base attributes and the native level-1 u
     priest: [11, 7, 9, 9, 15],
     ranger: [7, 15, 10, 5, 11],
     warrior: [13, 11, 12, 5, 6],
+    lancer: [12, 13, 11, 5, 6],
   };
   assert.deepEqual(CLASS_IDS.sort(), Object.keys(expected).sort());
   for (const [classId, values] of Object.entries(expected)) {
@@ -273,8 +274,8 @@ test('levels 0..105 scale health by 72 and keep the documented hit, evasion and 
   }
 });
 
-test('weapon kind selects strength 700/600/500 and staff/orb intelligence-mentality casting rates', () => {
-  const kinds = ['dagger', 'longsword', 'axe', 'mace', 'two-handed', 'orb', 'staff', 'bow', 'crossbow'];
+test('weapon kind selects strength 700/650/600/500 and staff/orb intelligence-mentality casting rates', () => {
+  const kinds = ['dagger', 'longsword', 'axe', 'mace', 'two-handed', 'spear', 'orb', 'staff', 'bow', 'crossbow'];
   const definitions: Record<string, EquipmentNumbers> = {};
   const itemDefinitions: FixtureItemDefinition[] = [];
   for (const kind of kinds) {
@@ -286,6 +287,7 @@ test('weapon kind selects strength 700/600/500 and staff/orb intelligence-mental
   const fixtureItems = makeFixtureItems(itemDefinitions);
   const rates: Record<string, [number, number, number]> = {
     'two-handed': [700, 1000, 1000],
+    spear: [650, 1000, 1000],
     longsword: [600, 1000, 1000],
     axe: [600, 1000, 1000],
     mace: [600, 1000, 1000],
@@ -482,11 +484,11 @@ test('defense adds vitality, applies the raw defense rate, and physical resistan
 });
 
 /* ------------------------------------------------------------------ */
-/* 全量 662 件装备定义                                                 */
+/* 全量 664 件装备定义                                                 */
 /* ------------------------------------------------------------------ */
 
-test('content exposes all 662 equipment definitions and every one is an equippable item', () => {
-  assert.equal(EQUIPMENT_IDS.length, 662);
+test('content exposes all 664 equipment definitions and every one is an equippable item', () => {
+  assert.equal(EQUIPMENT_IDS.length, 664);
   for (const id of EQUIPMENT_IDS) {
     assert.ok(items.items[id]?.equipment, `${id} has an item equipment definition`);
   }
@@ -524,7 +526,7 @@ test('every equipment definition contributes each scalar field exactly once to t
       assert.equal(panel.magicAttack, 0, id);
     }
   }
-  assert.equal(mainHands, 272);
+  assert.equal(mainHands, 274);
   assert.equal(offhandShields, 28);
   assert.equal(negativeHitBonus, 34, 'bows carry the native negative hit bonus');
   assert.equal(magicRateArmor, 36);
@@ -796,7 +798,7 @@ test('equipmentPower applies enhancement to every definition base for levels 0..
       checked += 1;
     }
   }
-  assert.equal(checked, 662 * 31);
+  assert.equal(checked, 664 * 31);
 });
 
 test('equipmentPower covers every distinct content enhancement rule at every level', () => {

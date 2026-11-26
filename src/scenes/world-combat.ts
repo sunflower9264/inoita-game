@@ -1216,7 +1216,8 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
     (this.hitResolution??=new CombatHitResolution()).run(()=>{
       const caster=this.combatant(event.casterId),targeting=event.basicAttack.targeting;
       if(!caster||!targeting)return;
-      const targets=resolveCueTargets(targeting,caster,undefined,this.combatants(),[],
+      const source=event.facing?{...caster,facing:event.facing}:caster;
+      const targets=resolveCueTargets(targeting,source,undefined,this.combatants(),[],
         this.actorAttribute(event.casterId,'attackRangeBonusUnits')).slice(0,MAX_SKILL_TARGETS);
       for(const target of targets)this.attackContact({casterId:event.casterId,targetId:target.id,basicAttack:event.basicAttack});
     });

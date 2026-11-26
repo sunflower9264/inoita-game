@@ -58,13 +58,13 @@ test('catalogue pouches are complete, disjoint and keep crafting and equipment m
     assert.ok(consumables.has(item), item);
   }
   const sizes = Object.fromEntries(INVENTORY_POUCHES.map(pouch=>[pouch, inPouch(pouch).length])) as Record<InventoryPouch, number>;
-  assert.equal(sizes.weapon + sizes.armor, 662, '武器与防具合起来正好是装备类');
+  assert.equal(sizes.weapon + sizes.armor, 664, '武器与防具合起来正好是装备类');
   assert.equal(sizes.consumable, 109);
   assert.equal(sizes.material, 32);
   assert.equal(sizes.quest, 183);
   // 每个物品只属于一个袋：五个袋必须不重不漏地覆盖整个目录。
   const placed = INVENTORY_POUCHES.flatMap(inPouch);
-  assert.equal(entries.length, 986);
+  assert.equal(entries.length, 988);
   assert.equal(placed.length, entries.length);
   assert.equal(new Set(placed).size, entries.length);
 });

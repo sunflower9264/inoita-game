@@ -69,8 +69,10 @@ test('class selection plays live previews and retains the page when changing cla
     setOrigin(){return this;},setBlendMode(){return this;},setScale(){return this;},play(config:{key:string}){played.push(config.key);return this;}})};
   await scene.open(new AbortController().signal);
   const page=[...scene.surface.root.list],preview=scene.preview,first=containers[0];
+  const visibleClasses=catalog.classes.filter((entry:any)=>!entry.debugOnly);
+  assert.equal(visibleClasses.length,6,'默认非调试模式只加载并展示六个正式职业');
   const expectedPreviewTextures=new Set<string>();
-  for(const entry of catalog.classes)for(const clip of Object.values(entry.previewActor.clips))
+  for(const entry of visibleClasses)for(const clip of Object.values(entry.previewActor.clips))
     for(const layer of (clip as any).layers){
       const pages=characterAtlasPageKeys(layer.file);
       if(pages.length)for(const key of pages)expectedPreviewTextures.add(key);
@@ -78,9 +80,9 @@ test('class selection plays live previews and retains the page when changing cla
     }
   assert.deepEqual([...new Set(filters)].sort(),[...expectedPreviewTextures].sort(),'每个职业的动画使用真实纹理并保持清晰像素');
   assert.equal(played.length,1);assert.equal(animations.get(played[0]).repeat,-1);
-  scene.choose(catalog.classes.find((entry:any)=>entry.id===catalog.defaultClass));
+  scene.choose(visibleClasses.find((entry:any)=>entry.id===catalog.defaultClass));
   assert.equal(containers.length,1,'重复选择当前职业不重建角色');
-  for(const [index,entry] of catalog.classes.entries()){
+  for(const [index,entry] of visibleClasses.entries()){
     scene.choose(entry);
     assert.deepEqual(scene.surface.root.list,page,'切换职业保留原来的按钮和面板');
     assert.equal(scene.preview,preview);assert.equal(scene.selections[index].visible,true);

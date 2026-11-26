@@ -6,10 +6,13 @@ import {PIXELS_PER_DISTANCE_UNIT} from './basic-attack.ts';
 import {MAX_SKILL_TARGETS,resolveSkillUnitSequence,type ResolvedSkillUnit} from './skill-unit-sequence.ts';
 import type {PreparedActionDamage} from './action-damage.ts';
 
+import type {Facing} from './content.ts';
+
 interface SkillExecution extends SkillUnitStart {
   cues:readonly SkillEffectCue[];
   origin?:Point;
   selectedTargetId?:string;
+  facing?:Facing;
 }
 interface SkillExecutionPort extends Pick<CombatPort,'actor'|'candidates'|'partySlots'|'rangeBonusUnits'|'healScore'|'healCandidates'|'prepareUnit'|'unit'|'unitFeedback'|'runUnitSequence'> {
   currentTargetId?():string|undefined;
@@ -33,7 +36,7 @@ export function executeSkillUnits(request:Omit<SkillExecution,'cueIndex'>,port:S
         if(cue.targetSelection==='reuse-previous')return targets;
         const caster=port.actor(casterId);
         if(!caster||!origin)return targets=[];
-        const source={...caster,position:origin};
+        const source={...caster,position:origin,...(request.facing?{facing:request.facing}:{})};
         if(cue.target==='target-area'){
           const id=port.currentTargetId?.()??selectedTargetId;
           const current=id?port.actor(id):undefined;

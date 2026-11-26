@@ -19,7 +19,8 @@ export function passiveModifiers(catalog:BattleCatalog,classId:string,loadout:Sk
         unit.condition==='stealthed'&&stealthed||
         unit.condition==='weapon-two-handed'&&weaponKind==='two-handed'||
         unit.condition==='weapon-short-or-long-sword'&&['dagger','shortsword','longsword'].includes(weaponKind)||
-        unit.condition==='weapon-mace'&&weaponKind==='mace';
+        unit.condition==='weapon-mace'&&weaponKind==='mace'||
+        unit.condition==='weapon-spear'&&weaponKind==='spear';
       if(allowed)result.push({attribute:unit.attribute,operation:unit.ranks[Math.min(unit.ranks.length-1,rank-1)]!});
     }
   }

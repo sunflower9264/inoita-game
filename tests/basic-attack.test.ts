@@ -170,7 +170,7 @@ test('two characters sharing a profile keep their own images and cycles',()=>{
   twin.id='knight-twin'; twin.actor=structuredClone(shared.classes[1].actor);
   shared.classes.push(twin);
   const first=resolveBasicAttack(shared,shared.classes[0]);
-  const second=resolveBasicAttack(shared,shared.classes[6],6);
+  const second=resolveBasicAttack(shared,twin,6);
   assert.equal(first.clips.south,second.clips.south);
   assert.deepEqual(first.sequence.south,[0,1,2,3,4,5,6,7,7,7]);
   assert.deepEqual(second.sequence.south,[0,1,2,3,4,4]);
@@ -205,7 +205,7 @@ test('basic attack references are resolved at load time and follow the binding',
   assert.doesNotThrow(()=>parseBattle(content));
   for(const character of content.classes){
     const profile=content.basicAttacks[character.basicAttack.profileId];
-    const melee=['dark-knight','assassin','priest','warrior'].includes(character.id);
+    const melee=['dark-knight','assassin','priest','warrior','lancer'].includes(character.id);
     assert.equal(profile.swingPlacement,melee?'above-characters':undefined);
     assert.equal(profile.impactPlacement,'attached');
     assert.equal(profile.projectilePlacement,['ranger','warlock'].includes(character.id)?'above-characters':undefined);

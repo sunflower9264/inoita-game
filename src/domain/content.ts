@@ -21,7 +21,7 @@ export const STORY_POSE_NAMES = ['stand', 'fall-down', 'heavy-blow', 'recovery',
 export type StoryPose = typeof STORY_POSE_NAMES[number];
 
 /** 动作名，形如 `walk-east`、`idle-south`、`cry-west`。 */
-export type ClipName = `${'walk' | 'idle' | 'attack' | 'attack-2' | 'attack-3' | 'dual-attack' | 'dual-quick-attack' | 'frenzy-blade' | 'frenzy-two-handed' | 'frenzy-dagger' | 'frenzy-staff' | 'die' | StoryPose}-${Facing}` | `skill-${string}-${Facing}`;
+export type ClipName = `${'walk' | 'idle' | 'town-walk' | 'town-idle' | 'attack' | 'attack-2' | 'attack-3' | 'dual-attack' | 'dual-quick-attack' | 'frenzy-blade' | 'frenzy-two-handed' | 'frenzy-dagger' | 'frenzy-staff' | 'frenzy-spear' | 'die' | StoryPose}-${Facing}` | `skill-${string}-${Facing}`;
 
 /**
  * 混合模式名，来自导出数据。

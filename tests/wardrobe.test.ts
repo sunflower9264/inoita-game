@@ -391,8 +391,10 @@ test('town movement replaces only locomotion and keeps equipped parts and combat
   const items = JSON.parse(await readFile(new URL('../public/content/items.json', import.meta.url), 'utf8'));
   const town = townMovementPoses(catalog);
   assert.equal(Object.keys(town).length, 8);
+  assert.equal(townMovementPoses(catalog, 'spear')['idle-south'], 'spear-town-idle-south');
   for (const [stance, poses] of Object.entries(catalog.stances) as [string,Record<string,string>][]) {
     const [main, off] = stance.split(':');
+    const stanceTown = townMovementPoses(catalog, main);
     const equipment:Record<string,string> = {};
     for (const [slot, kind] of [['main-hand',main],['off-hand',off]]) {
       if (kind === 'unarmed' || kind === 'empty') continue;
@@ -403,7 +405,7 @@ test('town movement replaces only locomotion and keeps equipped parts and combat
     const city = costumeRecipe(catalog, items, equipment, undefined, undefined, undefined, true);
     assert.deepEqual(city.variants, field.variants);
     for (const [name,id] of Object.entries(city.poses))
-      assert.equal(id, name.startsWith('idle-') || name.startsWith('walk-') ? town[name as keyof typeof town] : poses[name]);
+      assert.equal(id, name.startsWith('idle-') || name.startsWith('walk-') ? stanceTown[name as keyof typeof stanceTown] : poses[name]);
   }
 });
 

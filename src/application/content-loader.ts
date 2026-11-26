@@ -7,7 +7,7 @@ import type { ChangelogCatalog } from '../domain/changelog.ts';
 import type { StoryInterface } from '../domain/story-interface.ts';
 import type { ShopCatalog } from '../domain/shop.ts';
 import { parseSprings, type SpringCatalog } from '../domain/springs.ts';
-import { townMovementPoses, wardrobePoseFile, type CostumePose, type WardrobeCatalog } from '../domain/wardrobe.ts';
+import { allTownMovementPoseIds, wardrobePoseFile, type CostumePose, type WardrobeCatalog } from '../domain/wardrobe.ts';
 import { contentVersionNow, versionedContent } from './asset-version.ts';
 import { storyDevMode } from '../domain/dev-mode.ts';
 
@@ -89,7 +89,7 @@ export class ContentLoader {
   /** 标题预载与直接进图共用，动作保留到本次应用退出。 */
   async prepareTownPoses(wardrobe: WardrobeCatalog, signal?: AbortSignal): Promise<void> {
     signal?.throwIfAborted();
-    const ids = new Set(Object.values(townMovementPoses(wardrobe)).filter((id): id is string => id !== undefined));
+    const ids = new Set(allTownMovementPoseIds(wardrobe));
     await Promise.all([...ids].map(async id => {
       if (this.townPoses.has(id)) return;
       const pose = wardrobe.poses[id] ?? (await this.readWardrobePoses([id], signal))[id];

@@ -43,16 +43,28 @@ export function hasOffhandShield(items:ItemCatalog,equipment:Partial<Record<Equi
   const offhand=equipment['off-hand'];
   return offhand!==undefined?items.items[offhand]?.kind==='shield':defaultShield;
 }
-/** 所有可换装角色在城镇共用的四向站立和行走动作。 */
-export function townMovementPoses(catalog: WardrobeCatalog): Partial<Record<ClipName,string>> {
+/** 可换装角色在城镇使用的四向站立和行走动作；配备自定义城镇背负姿态（如长枪）的武器优先取其专属姿态。 */
+export function townMovementPoses(catalog: WardrobeCatalog, mainWeaponKind = 'unarmed'): Partial<Record<ClipName,string>> {
   const poses: Partial<Record<ClipName,string>> = {};
+  const weaponStance = mainWeaponKind !== 'unarmed' ? catalog.stances[`${mainWeaponKind}:empty`] : undefined;
   for (const movement of ['idle','walk'] as const) for (const facing of ['south','west','north','east'] as const) {
     const name = `${movement}-${facing}` as const;
-    const id = catalog.stances['unarmed:empty']?.[name];
+    const customTown = weaponStance?.[`town-${name}` as ClipName];
+    const id = customTown ?? catalog.stances['unarmed:empty']?.[name];
     if (!id) throw new Error(`城镇动作缺失：${name}`);
     poses[name] = id;
   }
   return poses;
+}
+/** 枚举所有城镇模式可能引用的姿态 ID（含默认徒手与武器的专属背负姿态），供预载缓存使用。 */
+export function allTownMovementPoseIds(catalog: WardrobeCatalog): string[] {
+  const ids = new Set<string>(Object.values(townMovementPoses(catalog)).filter((id): id is string => !!id));
+  for (const stance of Object.values(catalog.stances)) {
+    for (const [clip, poseId] of Object.entries(stance)) {
+      if (poseId && (clip.startsWith('town-idle-') || clip.startsWith('town-walk-'))) ids.add(poseId);
+    }
+  }
+  return [...ids];
 }
 export function costumeRecipe(catalog: WardrobeCatalog, items: ItemCatalog, equipment: Partial<Record<EquipmentSlot,string>>, classId?:string,appearanceId?:string,learnedSkills?:ReadonlySet<string>,townPose=false) {
   const companion=appearanceId?catalog.companions?.[appearanceId]:undefined;
@@ -66,8 +78,11 @@ export function costumeRecipe(catalog: WardrobeCatalog, items: ItemCatalog, equi
   }
   const main=equipment['main-hand']?items.items[equipment['main-hand']].kind:'unarmed';
   const off=equipment['off-hand']?items.items[equipment['off-hand']].kind:'empty';
-  const weaponPoses=catalog.stances[`${main}:${off}`];
-  const townPoses=townPose?townMovementPoses(catalog):{};
+  const rawWeaponPoses=catalog.stances[`${main}:${off}`];
+  const weaponPoses=rawWeaponPoses
+    ?Object.fromEntries(Object.entries(rawWeaponPoses).filter(([name])=>!name.startsWith('town-idle-')&&!name.startsWith('town-walk-'))) as Partial<Record<ClipName,string>>
+    :undefined;
+  const townPoses=townPose?townMovementPoses(catalog,main):{};
   const poses=weaponPoses?{...weaponPoses,...townPoses}:undefined;
   if(!poses)throw new Error('这组武器缺少人物动作');
   const skills=classId?catalog.skillStances[classId]?.[`${main}:${off}`]:undefined;

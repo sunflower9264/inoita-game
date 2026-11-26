@@ -12,6 +12,8 @@ export interface StoryClass {
   name: string;
   description: string;
   icon: string;
+  /** 仅在调试（GM）模式的新游戏职业选择页显示；正式模式隐藏。 */
+  debugOnly?: boolean;
   attributes: { name: string; value: number }[];
   previewActor: ActorDefinition;
   playerActor: ActorDefinition;
@@ -23,6 +25,11 @@ export interface StoryClassCatalog {
   assets: { selected: string; title: string; start: string; startPressed: string;
     descriptionTop: string; attributesTop: string; panelLeft: string; panelRight: string };
   classes: StoryClass[];
+}
+
+/** 按当前是否处于调试模式过滤新游戏可选职业；读档仍直接查全量 `catalog.classes`。 */
+export function visibleStoryClasses(catalog: StoryClassCatalog, debugMode = false): StoryClass[] {
+  return debugMode ? catalog.classes : catalog.classes.filter(entry => !entry.debugOnly);
 }
 
 /** 职业决定装备与属性；剧情仍通过同一个主角身份引用凯恩。

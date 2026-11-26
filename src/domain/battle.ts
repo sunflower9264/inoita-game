@@ -8,6 +8,25 @@ import type { BuffReaction } from './buff-reactions.ts';
 import type { CombatFeedbackDefinition, HitEffectStyle } from './combat-feedback.ts';
 
 /**
+ * 方向性范围几何（以施法者当前朝向为正前方）：
+ * - `line`：前方直线贯穿走廊（纵向 `lengthPx`，左右半宽 `halfWidthPx`）；
+ * - `sector`：前方扇形/半圆弧横扫（半径 `radiusPx`，总张角 `angleDeg`）；
+ * - `front-circle`：身前指定落点圆形震波（沿朝向前移 `forwardOffsetPx`，半径 `radiusPx`）。
+ */
+export type AreaShape =
+  | { kind: 'line'; lengthPx: number; halfWidthPx: number; backSlackPx?: number }
+  | { kind: 'sector'; radiusPx: number; angleDeg: number; backSlackPx?: number }
+  | { kind: 'front-circle'; forwardOffsetPx: number; radiusPx: number };
+
+export interface BasicAttackTargeting {
+  target: 'area';
+  targetRangePx: number;
+  targetRangeMetric?: 'octagonal-grid';
+  areaShape?: AreaShape;
+  maxTargets?: number;
+}
+
+/**
  * 一份普攻规则：武器动作、时序、距离与特效。多个角色可以引用同一份规则，
  * 各自的图片和周期由绑定与装配决定。
  */
@@ -20,7 +39,7 @@ export interface BasicAttackDefinition {
   /** 固定动画按完整素材帧播放；省略时由当前攻速决定周期。 */
   timing?:'fixed-animation';
   /** 出手时以自身为中心收集一批敌人，在一次派发内依次结算。 */
-  targeting?:{target:'area';targetRangePx:number;targetRangeMetric:'octagonal-grid'};
+  targeting?:BasicAttackTargeting;
   /** 一个逻辑帧的时长。逻辑帧是动作推进的一步，屏幕刷新率可以更高。 */
   frameDurationMs: number;
   /** 一次普攻占用的逻辑帧数，含挥动和末帧停留。 */
@@ -104,6 +123,10 @@ export interface SkillEffectCue {
   sound?: string;
   /** 八方向近似距离按八像素取整；省略时使用圆形范围。 */
   targetRangeMetric?: 'octagonal-grid';
+  /** 朝向相关的几何范围（直线贯穿/扇形横扫/身前震波）；省略时使用以自身为圆心的全向范围。 */
+  areaShape?: AreaShape;
+  /** 本触发项单次最多命中的目标数（按由近及远截取）；省略时采用通用技能目标上限。 */
+  maxTargets?: number;
   effects: SkillVisualEffect[];
 }
 /** 一次动作派发的收尾；入口记录隐身，完成直接单元或发射过渡后按序执行。 */
@@ -379,7 +402,7 @@ interface SkillGrowthDefinition {
   followUpAction?: SkillAction;
   reactionsByRank?: SkillReaction[][];
   passiveUnits?: {attribute:BattleStatKey;
-    condition:'always'|'weapon-two-handed'|'weapon-short-or-long-sword'|'weapon-mace'|'stealthed';ranks:CombatOperation[]}[];
+    condition:'always'|'weapon-two-handed'|'weapon-short-or-long-sword'|'weapon-mace'|'weapon-spear'|'stealthed';ranks:CombatOperation[]}[];
 }
 
 export interface SkillDefinition extends SkillGrowthDefinition {

@@ -7530,6 +7530,52 @@
       "uses": [
         "buff"
       ]
+    },
+    "dragon-pierce": {
+      "uses": [
+        "damage"
+      ]
+    },
+    "whirl-sweep": {
+      "uses": [
+        "damage"
+      ]
+    },
+    "spin-storm": {
+      "uses": [
+        "damage"
+      ]
+    },
+    "flurry-thrust": {
+      "uses": [
+        "damage"
+      ]
+    },
+    "dragon-slam": {
+      "uses": [
+        "damage",
+        "control"
+      ]
+    },
+    "sovereign-pierce": {
+      "uses": [
+        "damage"
+      ]
+    },
+    "focus-edge": {
+      "uses": [
+        "buff"
+      ]
+    },
+    "dragon-step": {
+      "uses": [
+        "buff"
+      ]
+    },
+    "gale-stance": {
+      "uses": [
+        "buff"
+      ]
     }
   }
 }

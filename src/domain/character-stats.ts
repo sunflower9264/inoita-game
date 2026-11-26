@@ -89,8 +89,8 @@ const trunc = Math.trunc;
  */
 /** 千分比满额，同时是各加成式的分母。 */
 const PER_MILLE=1000;
-/** 武器类型给力量的加成率（千分比）：双手 700、长剑／斧／锤 600、其余武器 500。 */
-const STRENGTH_RATE_TWO_HANDED=700,STRENGTH_RATE_MARTIAL=600,STRENGTH_RATE_OTHER=500;
+/** 武器类型给力量的加成率（千分比）：双手 700、长枪 650、长剑／斧／锤 600、其余武器 500。 */
+const STRENGTH_RATE_TWO_HANDED=700,STRENGTH_RATE_SPEAR=650,STRENGTH_RATE_MARTIAL=600,STRENGTH_RATE_OTHER=500;
 /** 法杖与宝珠给智力的加成率（千分比）：法杖 600、宝珠 700，其余武器满额。 */
 const INTELLIGENCE_RATE_STAFF=600,INTELLIGENCE_RATE_ORB=700;
 /** 法杖与宝珠给精力的加成率（千分比），其余武器满额。 */
@@ -196,7 +196,7 @@ export function calculateCharacter(catalog:CharacterStatsCatalog, items:ItemCata
     for(const key of ['criticalRate','hitBonus','magicAttackRate','shieldBlock'] as const)add(key,definition[key]);
   }
   const main=equipped['main-hand'],weapon=main?items.items[main.item].kind:'unarmed';
-  const strengthRate=weapon==='two-handed'?STRENGTH_RATE_TWO_HANDED:['longsword','axe','mace'].includes(weapon)?STRENGTH_RATE_MARTIAL:STRENGTH_RATE_OTHER;
+  const strengthRate=weapon==='two-handed'?STRENGTH_RATE_TWO_HANDED:weapon==='spear'?STRENGTH_RATE_SPEAR:['longsword','axe','mace'].includes(weapon)?STRENGTH_RATE_MARTIAL:STRENGTH_RATE_OTHER;
   const intelligenceRate=weapon==='unarmed'?0:weapon==='staff'?INTELLIGENCE_RATE_STAFF:weapon==='orb'?INTELLIGENCE_RATE_ORB:PER_MILLE;
   const mentalityRate=weapon==='unarmed'?0:['staff','orb'].includes(weapon)?MENTALITY_RATE_CASTING:PER_MILLE;
   const bonusOf=(key:string)=>(bonuses[key]??0)+(modifiers.get(key)??0);

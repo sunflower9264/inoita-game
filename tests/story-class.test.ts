@@ -117,8 +117,10 @@ test('cross-map performances place native actors before the map is revealed', ()
 test('class content rejects missing defaults, duplicate choices and incomplete player poses', () => {
   const missing = structuredClone(catalog); missing.defaultClass = 'unknown';
   assert.throws(() => parseStoryClasses(missing), /默认职业不存在/);
+  const debugDefault = structuredClone(catalog); debugDefault.defaultClass = 'lancer';
+  assert.throws(() => parseStoryClasses(debugDefault), /不能是仅调试职业/);
   const duplicate = structuredClone(catalog); duplicate.classes[1].id = duplicate.classes[0].id;
-  assert.throws(() => parseStoryClasses(duplicate), /六个不同职业/);
+  assert.throws(() => parseStoryClasses(duplicate), /六个不同正式职业|标识不能重复/);
   const pose = structuredClone(catalog); delete pose.classes[0].playerActor.clips['walk-east'];
   assert.throws(() => parseStoryClasses(pose), /walk-east/);
 });

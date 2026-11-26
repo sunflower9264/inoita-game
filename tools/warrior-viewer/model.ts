@@ -410,7 +410,7 @@ export function actionChoices(catalog: WardrobeCatalog, items: ItemCatalog, equi
     const label = customLabels?.[key] ?? (skill ? skillNames[key.slice(6)] ?? key : ACTION_NAMES[key] ?? key);
     result.push({ key, label, group, poseId });
   }
-  const town = townMovementPoses(catalog);
+  const town = townMovementPoses(catalog, mainKind);
   const poseMap = recipe.poses as Record<string, string | undefined>;
   for (const movement of ['idle', 'walk'] as const) {
     const key = `town-${movement}`;

@@ -175,6 +175,9 @@ export class StoryApp {
   director!: StoryDirector;
   /** GM（调试）开关本身：一直存在，标题页手势与 `?gm` 都作用在它上面。 */
   readonly gmMode = new GmMode();
+  /** 当前是否开启调试模式；`main.ts` 会把 `?gm` 地址参数一并并入。 */
+  isDebugMode: () => boolean = () => this.gmMode.on;
+  get debugMode(): boolean { return this.isDebugMode(); }
   /** GM（调试）动作层。**只在开关打开时装配**：关闭时它是 undefined，任何调试路径都跑不起来。 */
   gm?: GmActions;
   /** 系统菜单的「脱离卡死」；由 main.ts 接到当前世界场景。 */

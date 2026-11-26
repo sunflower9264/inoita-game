@@ -41,6 +41,7 @@
     "atlas:ui": "node tools/build-ui-atlas.ts",
     "atlas:characters": "node tools/build-character-atlas.ts",
     "atlas:all": "npm run atlas:icons && npm run atlas:props && npm run atlas:ui && npm run atlas:effects && npm run atlas:characters",
+    "spear:build": "node tools/build-spear-class.ts",
     "apk": "node tools/build-apk.mjs",
     "verify:apk": "node tools/verify-apk.mjs",
     "update:key": "node tools/update-key.ts",
