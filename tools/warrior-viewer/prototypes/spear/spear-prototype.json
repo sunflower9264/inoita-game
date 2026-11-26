@@ -803,21 +803,21 @@
           "startFrame": 0,
           "variant": "default",
           "placement": "ground",
-          "source": "扣地半球能量罩后侧贴地封边"
+          "source": "扣地半球后侧螺旋气流与柔光底沿"
         },
         {
           "effect": "spear-sovereign-dome",
           "startFrame": 0,
           "variant": "default",
           "placement": "above-characters",
-          "source": "扣地半球能量罩穹顶与前侧封边（触碰受创）"
+          "source": "扣地薄边柔光半球 + 持续螺旋气流（结束原地渐隐）"
         },
         {
           "effect": "spear-sovereign-charge",
           "startFrame": 12,
           "variant": "default",
           "placement": "above-characters",
-          "source": "半球收束提枪真气雷核"
+          "source": "提枪蓄势十字星芒"
         },
         {
           "effect": "curse-wind-ring",
@@ -879,7 +879,7 @@
         {
           "frame": 12,
           "kind": "charge",
-          "label": "提枪凝核 · 半球能量罩向心坍缩"
+          "label": "能量罩消散 · 提枪蓄势闪光"
         },
         {
           "frame": 16,

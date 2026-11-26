@@ -757,6 +757,43 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
 
   // 防回归：虬龙扫暴阵四向横扫光弧 spear-gale-sweep 峰值帧（f2）精确对称于各自正方向（南 +90° / 西 ±180° / 北 -90° / 东 0°）。
   const effPng = PNG.sync.read(effBytes);
+  // 防回归：万圣龙王破半球能量罩（spear-sovereign-dome）零暗蓝黑边（base 层仅含高亮青/淡金色阶，不压暗灰底），且 f10/f11 结束帧保持原大尺寸原地渐隐消散（绝不向内收缩）。
+  {
+    const domeClip = proto.attackEffects?.['spear-sovereign-dome']?.clips.default;
+    assert.ok(domeClip, 'missing spear-sovereign-dome default clip');
+    const baseFile = domeClip.layers[0]!.file;
+    const addFile = domeClip.layers[1]!.file;
+    const measureDomeFrame = (fi: number) => {
+      const baseRect = proto.effectSheet!.frames[proto.effectSheet!.byFile[baseFile]![fi]!]!;
+      const addRect = proto.effectSheet!.frames[proto.effectSheet!.byFile[addFile]![fi]!]!;
+      let minX = Infinity, maxX = -Infinity, sumAddAlpha = 0;
+      for (let y = 0; y < addRect.height; y++) {
+        for (let x = 0; x < addRect.width; x++) {
+          const bIdx = ((baseRect.y + y) * effPng.width + (baseRect.x + x)) * 4;
+          if (effPng.data[bIdx + 3] > 0) {
+            assert.ok(
+              effPng.data[bIdx] >= 160 && effPng.data[bIdx + 1] >= 220,
+              `spear-sovereign-dome f${fi} base 存在压暗灰底的深暗色像素 rgb(${effPng.data[bIdx]},${effPng.data[bIdx + 1]},${effPng.data[bIdx + 2]})`,
+            );
+            assert.ok(effPng.data[bIdx + 3] <= 90, `spear-sovereign-dome f${fi} base 不透明度过高（${effPng.data[bIdx + 3]}），会产生厚硬粗边`);
+          }
+          const aAlpha = effPng.data[((addRect.y + y) * effPng.width + (addRect.x + x)) * 4 + 3];
+          if (aAlpha >= 8) {
+            minX = Math.min(minX, x);
+            maxX = Math.max(maxX, x);
+            sumAddAlpha += aAlpha;
+          }
+        }
+      }
+      return { spanX: maxX - minX, sumAddAlpha };
+    };
+    const f8 = measureDomeFrame(8);
+    const f10 = measureDomeFrame(10);
+    const f11 = measureDomeFrame(11);
+    assert.ok(Math.abs(f10.spanX - f8.spanX) <= 3, `spear-sovereign-dome f10 不应向内收缩（f8=${f8.spanX}, f10=${f10.spanX}）`);
+    assert.ok(Math.abs(f11.spanX - f8.spanX) <= 3, `spear-sovereign-dome f11 不应向内收缩（f8=${f8.spanX}, f11=${f11.spanX}）`);
+    assert.ok(f8.sumAddAlpha > f10.sumAddAlpha && f10.sumAddAlpha > f11.sumAddAlpha, 'spear-sovereign-dome f8 -> f10 -> f11 应平滑渐隐消失');
+  }
   const expectedCardinalDeg: Record<Facing, number> = { south: 90, west: 180, north: -90, east: 0 };
   for (const facing of directions) {
     const clip = proto.attackEffects?.['spear-gale-sweep']?.clips[facing];
