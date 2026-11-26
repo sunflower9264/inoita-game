@@ -17,6 +17,7 @@ import {StoryDirector} from './domain/story-director.ts';
 import {installStorySkipDiagnostics,startLoadResourceMeter} from './application/game-diagnostics.ts';
 import {createGmActions, type GmStoryJumpPort, type GmStoryJumpSnapshot} from './debug/gm-actions.ts';
 import type {CheckpointSnapshot} from './domain/session-checkpoint.ts';
+import {defaultPressureSettings} from './domain/pressure-enemies.ts';
 
 interface SessionLifecycleHooks {
   lifetime: {current:AbortController};
@@ -355,6 +356,7 @@ export function createSessionLifecycle(app:StoryApp,hooks:SessionLifecycleHooks)
     if (!ui.canReturn) return;
     if (app.mode === 'game' && worldScene()?.loadingWorld && !ui.failed) return;
     app.pressureMode = false;
+    app.pressureSettings = defaultPressureSettings();
     const returnPage=app.mode==='class-select'?'slots':'home';
     const departedSession = app.session;
     savedGameLoader.cancel();stopCurrentWork();lifetime.current=new AbortController();clearMenuPreparations();

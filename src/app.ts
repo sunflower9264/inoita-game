@@ -37,6 +37,7 @@ import { StoryAssetPreparation } from './application/story-asset-preparation.ts'
 import { ControlLayoutPreferences } from './ui/control-layout.ts';
 import { keyBindings as defaultKeyBindings } from './application/key-bindings.ts';
 import { InputRouter } from './application/input-router.ts';
+import { defaultPressureSettings, type PressureSettings } from './domain/pressure-enemies.ts';
 
 /**
  * 运行上下文：启动时先建界面，资源取回来之后再补上内容、状态和 Phaser 实例。
@@ -153,6 +154,10 @@ export class StoryApp {
   enterGame?: (slot?:number) => Promise<void>;
   /** 压测模式：不写自动存档/检查点/手动存档，退出时清掉。 */
   pressureMode?: boolean;
+  /** 挑战模式的调试参数：换职业重开期间保留，退出回主菜单时恢复默认。 */
+  pressureSettings: PressureSettings = defaultPressureSettings();
+  updatePressureSettings?: (patch:Partial<PressureSettings>)=>void;
+  pressureEnemyCount?: ()=>number;
   startPressureTest?: () => Promise<void>;
   changePressureClass?: (classId:string)=>Promise<void>;
   pausePressure?: (paused:boolean)=>void;

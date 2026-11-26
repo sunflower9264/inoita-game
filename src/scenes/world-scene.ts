@@ -1937,6 +1937,13 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
     if(signal.aborted||this.destroyed||!this.app.pressureMode)return;
     this.pressureSpawner=this.time.addEvent({delay:PRESSURE_SPAWN_INTERVAL_MS,loop:true,callback:()=>{void spawn();}});
   }
+  applyPressureSettings(options?:{applyHealth?:boolean}):void {
+    if(!this.app.pressureMode||this.destroyed)return;
+    this.combat?.applyPressureSettings(options);
+  }
+  pressureEnemyCount():number {
+    return this.app.pressureMode&&!this.destroyed?(this.combat?.pressureEnemyCount()??0):0;
+  }
   private captureCheckpoint():boolean {
     // 压测现场不是玩家进度：不覆盖检查点。
     if(this.app.pressureMode)return false;

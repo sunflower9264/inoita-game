@@ -45,6 +45,7 @@ import { requestNativeFrameRate } from './application/native-frame-rate.ts';
 import { installDiagnosticMetrics, installDiagnosticSnapshot, FrameStats } from './application/game-diagnostics.ts';
 import { type GmActions } from './debug/gm-actions.ts';
 import { DomUi } from './ui/dom/dom-ui.ts';
+import { defaultPressureSettings, normalizePressureEnemyHealth, normalizePressureMaxEnemies, type PressureSettings } from './domain/pressure-enemies.ts';
 
 declare global {
   /** GM 入口暴露出来的运行实例，浏览器测试用它检查状态。 */
@@ -411,6 +412,7 @@ async function startPressureTest(): Promise<void> {
     || sessionLifecycle.busy) return;
   const signal = sessionLifecycle.beginEntry();
   app.pressureMode = true;
+  app.pressureSettings = defaultPressureSettings();
   ui.loading('正在准备压测…');
   const fail = (error: unknown): void => {
     // 取消或失败都要清掉压测标记，否则自动存档会一直停着，入口也进不去。
@@ -688,7 +690,8 @@ function runtimeDiagnostics(): Record<string, unknown> {
   return {
     mode: app.mode, ready: ui.ready, locked: ui.locked, lockOwners: ui.lockOwners,
     saveSlot: app.saveSlot ?? null, saveFormat: SAVE_FORMAT,
-    pressureMode: app.pressureMode, gm: gmOn(), trustedContent: app.content.trusted,
+    pressureMode: app.pressureMode, pressureSettings: app.pressureMode ? app.pressureSettings : undefined,
+    gm: gmOn(), trustedContent: app.content.trusted,
     input: { editingText: editingText(),
       visualViewport: visualViewport ? { width: visualViewport.width, height: visualViewport.height,
         scale: visualViewport.scale, offsetTop: visualViewport.offsetTop } : null },
@@ -722,6 +725,16 @@ function boot(): void {
   app.enterGame = enterGame; app.returnToMenu = returnToMenu; app.startStory = startStory;
   app.startPressureTest = startPressureTest;
   app.changePressureClass = changePressureClass;
+  app.updatePressureSettings = patch => {
+    if (!app.pressureMode) return;
+    const next: PressureSettings = { ...app.pressureSettings };
+    const applyHealth = Object.prototype.hasOwnProperty.call(patch, 'enemyMaxHealth');
+    if (patch.maxEnemies !== undefined) next.maxEnemies = normalizePressureMaxEnemies(patch.maxEnemies);
+    if (applyHealth) next.enemyMaxHealth = normalizePressureEnemyHealth(patch.enemyMaxHealth);
+    app.pressureSettings = next;
+    worldScene()?.applyPressureSettings({ applyHealth });
+  };
+  app.pressureEnemyCount = () => worldScene()?.pressureEnemyCount() ?? 0;
   app.pausePressure = paused => { const scene=worldScene(); if(!scene)return; if(paused)scene.scene.pause(); else if(!app.suspended)scene.scene.resume(); };
   app.resumeSlot = resumeSlot;
   app.validateCloudSave=async(game,signal,slot)=>{await sessionLifecycle.prepareCandidate(game,signal,slot);};
@@ -930,7 +943,7 @@ function lifecycle(): void {
     const scene = currentScene();
     // 同一帧内的 pagehide/pageshow 也按事件顺序排队，避免漏掉恢复。
     if (scene?.sys?.isActive() || scene?.sys?.isPaused()) {
-      if (suspended) scene.scene.pause(); else if(!ui.lockOwners.includes('pressure-class')) scene.scene.resume();
+      if (suspended) scene.scene.pause(); else if(!ui.lockOwners.includes('pressure-debug')) scene.scene.resume();
     }
     const stage = app.game?.scene.getScene(SCENE_KEYS.storyStage);
     if (stage?.sys.isActive() || stage?.sys.isPaused()) {

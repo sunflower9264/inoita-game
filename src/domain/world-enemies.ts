@@ -323,6 +323,11 @@ capturePreparedState():{roster:ReturnType<EnemyRoster['captureState']>;breakable
     const snapshot=this.enemySnapshot(key,definition,this.session.hero?.level??1);
     if(snapshot)this.session.setEnemyVitals(key,snapshot.health,snapshot.mana);
   }
+  override setEnemyMaxHealthOverride(key:string,maxHealth:number|undefined,definition:EnemyDefinition):void {
+    super.setEnemyMaxHealthOverride(key,maxHealth,definition);
+    const snapshot=this.enemySnapshot(key,definition,this.session.hero?.level??1);
+    if(snapshot)this.session.setEnemyVitals(key,snapshot.health,snapshot.mana);
+  }
   override setEnemyMana(key:string,value:number,definition:EnemyDefinition):void {
     super.setEnemyMana(key,value,definition);
     const snapshot=this.enemySnapshot(key,definition,this.session.hero?.level??1);

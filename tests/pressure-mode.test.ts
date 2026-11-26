@@ -4,7 +4,15 @@ import { readFileSync } from 'node:fs';
 import { registerHooks } from 'node:module';
 import { PendingEnemyDefeats } from '../src/domain/combat-outcomes.ts';
 import type { BattleCatalog } from '../src/domain/battle.ts';
-import { pressureEnemy } from '../src/domain/pressure-enemies.ts';
+import { EnemyRoster } from '../src/domain/enemy-roster.ts';
+import {
+  PRESSURE_DEFAULT_MAX_ENEMIES,
+  PRESSURE_MAX_ENEMIES_LIMIT,
+  PRESSURE_MAX_HEALTH_LIMIT,
+  normalizePressureEnemyHealth,
+  normalizePressureMaxEnemies,
+  pressureEnemy,
+} from '../src/domain/pressure-enemies.ts';
 
 const hook = registerHooks({
   resolve(specifier, context, next) {
@@ -92,4 +100,121 @@ test('挑战模式先按出生点刷怪，补怪达到上限时不加载素材',
   assert.equal(created.length,2);
   allowed=true;callback();await Promise.resolve();
   assert.equal(created.length,3);
+});
+
+test('挑战调试参数归一化遵守默认与上下限边界', () => {
+  assert.equal(normalizePressureMaxEnemies(Number.NaN), PRESSURE_DEFAULT_MAX_ENEMIES);
+  assert.equal(normalizePressureMaxEnemies(-5), 0);
+  assert.equal(normalizePressureMaxEnemies(12.9), 12);
+  assert.equal(normalizePressureMaxEnemies(999), PRESSURE_MAX_ENEMIES_LIMIT);
+  assert.equal(normalizePressureEnemyHealth(undefined), undefined);
+  assert.equal(normalizePressureEnemyHealth(Number.NaN), undefined);
+  assert.equal(normalizePressureEnemyHealth(0), 1);
+  assert.equal(normalizePressureEnemyHealth(-100), 1);
+  assert.equal(normalizePressureEnemyHealth(12345.8), 12345);
+  assert.equal(normalizePressureEnemyHealth(PRESSURE_MAX_HEALTH_LIMIT + 500), PRESSURE_MAX_HEALTH_LIMIT);
+});
+
+test('EnemyRoster 覆写与清除最大血量会更新活怪上限、允许高血量扣血且不复活 0 血怪', () => {
+  const roster = new EnemyRoster();
+  const definition = battle.enemies.find(enemy => enemy.id === 'enemy-red-snake-1')!;
+  const alive = roster.placeEnemy(definition.id, 10, 20);
+  const dead = roster.placeEnemy(definition.id, 30, 40);
+  const defaultMax = roster.enemySnapshot(alive.key, definition)!.maxHealth;
+  roster.setEnemyHealth(dead.key, 0, definition);
+
+  roster.setEnemyMaxHealthOverride(alive.key, 10_000, definition);
+  roster.setEnemyMaxHealthOverride(dead.key, 10_000, definition);
+  assert.equal(roster.enemySnapshot(alive.key, definition)!.maxHealth, 10_000);
+  assert.equal(roster.enemySnapshot(alive.key, definition)!.health, 10_000);
+  assert.equal(roster.enemySnapshot(dead.key, definition)!.health, 0, '不复活 0 血待结算怪');
+
+  roster.setEnemyHealth(alive.key, 6_500, definition);
+  assert.equal(roster.enemySnapshot(alive.key, definition)!.health, 6_500, '受击扣血不被原版低上限截断');
+
+  roster.setPartySize(3, battle.enemies);
+  assert.equal(roster.enemySnapshot(alive.key, definition)!.maxHealth, 10_000, '队伍人数变化保留血量覆盖');
+  assert.equal(roster.enemySnapshot(alive.key, definition)!.health, 6_500);
+
+  roster.setEnemyMaxHealthOverride(alive.key, undefined, definition);
+  const restored = roster.enemySnapshot(alive.key, definition)!;
+  assert.notEqual(restored.maxHealth, 10_000);
+  assert.equal(restored.health, restored.maxHealth);
+  assert.ok(restored.maxHealth >= defaultMax);
+});
+
+test('挑战调试修改怪物数量与血量：新刷怪遵循自定义参数，调低数量立刻裁减且跳过召唤物与待死亡怪', () => {
+  const definition = battle.enemies.find(enemy => enemy.id === 'enemy-red-snake-1')!;
+  const roster = new EnemyRoster();
+  const placed1 = roster.placeEnemy(definition.id, 10, 10);
+  const placed2 = roster.placeEnemy(definition.id, 20, 10);
+  const placed3 = roster.placeEnemy(definition.id, 30, 10);
+  const summon = roster.placeEnemy(definition.id, 40, 10);
+  const dying = roster.placeEnemy(definition.id, 50, 10);
+  const pendingDefeats = new PendingEnemyDefeats();
+  pendingDefeats.add(dying.key, () => {});
+
+  const removed: string[] = [];
+  const capacityUpdated: string[] = [];
+  let targetRefreshes = 0;
+  const arena = [
+    { key: placed1.key, definition },
+    { key: placed2.key, definition },
+    { key: placed3.key, definition },
+    { key: summon.key, definition, summonedBy: 'player' },
+    { key: dying.key, definition },
+  ];
+  const pressureSettings: { maxEnemies: number; enemyMaxHealth?: number } = { maxEnemies: 2, enemyMaxHealth: undefined };
+  const host = Object.setPrototypeOf({
+    closed: false, defeated: false, movement: {
+      position: () => ({ x: 100, y: 100 }),
+      navigation: { canPlaceBody: () => true },
+    },
+    controlledVisual: {},
+    roster,
+    arena,
+    pendingDefeats,
+    app: { pressureMode: true, pressureSettings, battleCatalog: battle, session: { party: { activeIds: [] } } },
+    scene: { refreshCombatTarget: () => { targetRefreshes++; } },
+    removeEnemy(key: string) {
+      removed.push(key);
+      const index = arena.findIndex(entry => entry.key === key);
+      if (index >= 0) arena.splice(index, 1);
+      roster.removeEnemy(key);
+    },
+    resourceCapacityInputs(key: string) { capacityUpdated.push(key); },
+    buildEnemy(placed: { key: string }, def: typeof definition) { return { key: placed.key, definition: def }; },
+  }, WorldCombat.prototype) as unknown as {
+    canSpawnPressureEnemy(): boolean;
+    spawnPressureEnemy(enemyId?: string, initialPoint?: { x: number; y: number }): boolean;
+    pressureEnemyCount(): number;
+    applyPressureSettings(options?: { applyHealth?: boolean }): void;
+  };
+
+  assert.equal(host.pressureEnemyCount(), 3, '只统计活着的非召唤普通怪');
+  host.applyPressureSettings();
+  assert.deepEqual(removed, [placed3.key], '调低上限后立刻裁减超出部分且不碰召唤物和待死亡怪');
+  assert.equal(host.pressureEnemyCount(), 2);
+  assert.equal(host.canSpawnPressureEnemy(), false, '达到自定义上限 2 时不可继续刷怪');
+
+  pressureSettings.enemyMaxHealth = 50_000;
+  host.applyPressureSettings({ applyHealth: true });
+  assert.equal(roster.enemySnapshot(placed1.key, definition)!.maxHealth, 50_000);
+  assert.equal(roster.enemySnapshot(placed2.key, definition)!.health, 50_000);
+  assert.notEqual(roster.enemySnapshot(summon.key, definition)!.maxHealth, 50_000, '友方召唤物不应用怪物血量覆盖');
+  assert.notEqual(roster.enemySnapshot(dying.key, definition)!.maxHealth, 50_000, '待死亡结算怪不应用血量覆盖');
+  assert.deepEqual(capacityUpdated, [placed1.key, placed2.key]);
+  assert.equal(targetRefreshes, 1);
+
+  pressureSettings.maxEnemies = 3;
+  assert.equal(host.canSpawnPressureEnemy(), true, '提高上限后允许继续刷怪');
+  assert.equal(host.spawnPressureEnemy(definition.id, { x: 60, y: 60 }), true);
+  assert.equal(host.pressureEnemyCount(), 3);
+  const newest = arena.at(-1)!;
+  assert.equal(roster.enemySnapshot(newest.key, definition)!.maxHealth, 50_000, '新刷出的怪立即继承固定血量覆盖');
+
+  pressureSettings.maxEnemies = 0;
+  host.applyPressureSettings();
+  assert.equal(host.pressureEnemyCount(), 0, '设为 0 时清空场上所有普通怪');
+  assert.equal(host.spawnPressureEnemy(definition.id), false);
 });

@@ -4,7 +4,7 @@ import type { PlacedEnemy, EnemyDefinition } from './battle.ts';
 
 type CalculatedEnemyStats=ReturnType<typeof calculateEnemy>;
 
-/** 稳定派生属性：定义、等级、精英、队伍人数、主角/场景等级和召唤覆盖都没变时复用。 */
+/** 稳定派生属性：定义、等级、精英、队伍人数、主角/场景等级、血量覆盖和召唤覆盖都没变时复用。 */
 interface EnemyStatsEntry {
   definition:EnemyDefinition;
   level:number|undefined;
@@ -12,16 +12,18 @@ interface EnemyStatsEntry {
   partySize:number;
   playerLevel:number;
   sceneLevel:number;
+  overrideMaxHealth:number|undefined;
   summonedStats:PlacedEnemy['summonedStats'];
   stats:CalculatedEnemyStats;
 }
 
-/** 血蓝上限只随定义、等级、精英、队伍人数和召唤覆盖变化。 */
+/** 血蓝上限只随定义、等级、精英、队伍人数、血量覆盖和召唤覆盖变化。 */
 interface EnemyLimitsEntry {
   definition:EnemyDefinition;
   level:number|undefined;
   elite:boolean|undefined;
   partySize:number;
+  overrideMaxHealth:number|undefined;
   summonedStats:PlacedEnemy['summonedStats'];
   maxHealth:number;
   maxMana:number;
@@ -108,22 +110,27 @@ export class EnemyRoster {
     const cached=this.statsCache.get(key);
     if(cached&&cached.definition===definition&&cached.level===placed.level&&cached.elite===placed.elite&&
       cached.partySize===this.partySize&&cached.playerLevel===playerLevel&&cached.sceneLevel===sceneLevel&&
-      cached.summonedStats===placed.summonedStats)return cached;
+      cached.overrideMaxHealth===placed.overrideMaxHealth&&cached.summonedStats===placed.summonedStats)return cached;
     const calculated=calculateEnemy(definition,{level:placed.level,elite:placed.elite,partySize:this.partySize,playerLevel,sceneLevel});
-    // 召唤物的派生属性覆盖自身数据里的对应项，其余沿用计算值。
-    const stats=placed.summonedStats?Object.freeze({...calculated,...placed.summonedStats}):calculated;
+    // 召唤物的派生属性覆盖自身数据里的对应项，挑战调试可再覆盖最大血量。
+    const withSummon=placed.summonedStats?{...calculated,...placed.summonedStats}:calculated;
+    const stats=placed.overrideMaxHealth!==undefined
+      ?Object.freeze({...withSummon,maxHealth:placed.overrideMaxHealth})
+      :(placed.summonedStats?Object.freeze(withSummon):calculated);
     const entry:EnemyStatsEntry={definition,level:placed.level,elite:placed.elite,partySize:this.partySize,
-      playerLevel,sceneLevel,summonedStats:placed.summonedStats,stats};
+      playerLevel,sceneLevel,overrideMaxHealth:placed.overrideMaxHealth,summonedStats:placed.summonedStats,stats};
     this.statsCache.set(key,entry);return entry;
   }
   /** 生命/法力上限的缓存；只按影响上限的输入失效。 */
   private healthLimits(key:string,definition:EnemyDefinition,placed:PlacedEnemy):EnemyLimitsEntry {
     const cached=this.limitsCache.get(key);
     if(cached&&cached.definition===definition&&cached.level===placed.level&&cached.elite===placed.elite&&
-      cached.partySize===this.partySize&&cached.summonedStats===placed.summonedStats)return cached;
+      cached.partySize===this.partySize&&cached.overrideMaxHealth===placed.overrideMaxHealth&&
+      cached.summonedStats===placed.summonedStats)return cached;
     const calculated=calculateEnemy(definition,{level:placed.level,elite:placed.elite,partySize:this.partySize});
     const entry:EnemyLimitsEntry={definition,level:placed.level,elite:placed.elite,partySize:this.partySize,
-      summonedStats:placed.summonedStats,maxHealth:placed.summonedStats?.maxHealth??calculated.maxHealth,maxMana:calculated.maxMana};
+      overrideMaxHealth:placed.overrideMaxHealth,summonedStats:placed.summonedStats,
+      maxHealth:placed.overrideMaxHealth??placed.summonedStats?.maxHealth??calculated.maxHealth,maxMana:calculated.maxMana};
     this.limitsCache.set(key,entry);return entry;
   }
   enemySnapshot(key:string,definition:EnemyDefinition,playerLevel=1,sceneLevel=1):Readonly<EnemySnapshot>|undefined {
@@ -156,6 +163,19 @@ export class EnemyRoster {
     if(health===boundedHealth(placed.health??limits.maxHealth,limits.maxHealth)){this.trackZeroHealth(key,health);return;}
     placed.health=health;this.trackZeroHealth(key,health);this.notifyEnemies();
   }
+  /** 设定或清除最大血量覆盖，并按新上限回满活着的敌人（0 血待结算怪保持不变）。 */
+  setEnemyMaxHealthOverride(key:string,maxHealth:number|undefined,definition:EnemyDefinition):void {
+    const placed=this.byKey.get(key);
+    if(!placed||placed.enemyId!==definition.id)return;
+    placed.overrideMaxHealth=maxHealth===undefined?undefined:Math.max(1,Math.trunc(maxHealth));
+    this.forgetCaches(key);
+    if(!this.zeroHealth.has(key)){
+      const limits=this.healthLimits(key,definition,placed);
+      placed.health=limits.maxHealth;
+      this.trackZeroHealth(key,placed.health);
+    }
+    this.notifyEnemies();
+  }
   setEnemyMana(key:string,value:number,definition:EnemyDefinition):void {
     const placed=this.byKey.get(key);
     if(!placed||placed.enemyId!==definition.id)return;
@@ -172,7 +192,7 @@ export class EnemyRoster {
       if(!definition)throw new Error(`怪物内容缺失：${placed.enemyId}`);
       const before=this.enemySnapshot(placed.key,definition)!;
       const after=calculateEnemy(definition,{level:placed.level,elite:placed.elite,partySize:size});
-      const maxHealth=placed.summonedStats?.maxHealth??after.maxHealth;
+      const maxHealth=placed.overrideMaxHealth??placed.summonedStats?.maxHealth??after.maxHealth;
       const minimumHealth=before.health>0?1:0;
       return {placed,health:placed.health===undefined?undefined:
         Math.max(minimumHealth,Math.trunc(before.health*maxHealth/before.maxHealth))};

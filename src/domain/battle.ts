@@ -525,7 +525,10 @@ export interface SkillLoadout {
 }
 
 /** 地图敌人的实例标识、种类、脚底坐标与当前资源。 */
-export interface PlacedEnemy { key: string; enemyId: string; x: number; y: number; health?:number; mana?:number; level?:number; elite?:boolean;summonedBy?:string;
+export interface PlacedEnemy { key: string; enemyId: string; x: number; y: number; health?:number; mana?:number; level?:number; elite?:boolean;
+  /** 挑战调试覆盖的最大血量；仅挑战模式普通怪运行时使用，不写入正式存档。 */
+  overrideMaxHealth?:number;
+  summonedBy?:string;
   /** 召唤物按主人等级派生的属性；快照在计算后覆盖这几项。 */
   summonedStats?:{maxHealth:number;physicalAttack?:number;magicAttack?:number;physicalResistanceBonus:number;magicResistance:number};
   /** 召唤物命中后按主人的嘲讽机会尝试拉走目标。 */

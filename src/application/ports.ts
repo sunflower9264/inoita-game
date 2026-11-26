@@ -22,6 +22,7 @@ import type { KeyBindingPreferences } from './key-bindings.ts';
 import type { InputRouter } from './input-router.ts';
 import type { SaveWorldResult, StoryWorldViewSnapshot } from './world-snapshot.ts';
 import type { DomUi } from '../ui/dom/dom-ui.ts';
+import type { PressureSettings } from '../domain/pressure-enemies.ts';
 
 export interface StoryClassContext {
   readonly inputRouter: InputRouter;
@@ -51,6 +52,8 @@ type SceneUI = Pick<GameUI,'ready'|'locked'|'mode'|'loading'|'loaded'|'error'|'t
 export interface StoryContext {
   /** 压测模式：不写存档/检查点，世界持续刷怪并自动复活队伍。 */
   readonly pressureMode?: boolean;
+  /** 挑战调试参数：同屏上限与可选固定血量。 */
+  readonly pressureSettings?: Readonly<PressureSettings>;
   readonly inputRouter: InputRouter;
   readonly domUi?: DomUi;
   readonly controlLayout:ControlLayoutPreferences;
@@ -102,6 +105,9 @@ export interface StoryContext {
 }
 export interface StoryUIContext {
   readonly pressureMode?: boolean;
+  readonly pressureSettings?: Readonly<PressureSettings>;
+  updatePressureSettings?: (patch:Partial<PressureSettings>)=>void;
+  pressureEnemyCount?: ()=>number;
   changePressureClass?: (classId:string)=>Promise<void>;
   pausePressure?: (paused:boolean)=>void;
   readonly inputRouter: InputRouter;

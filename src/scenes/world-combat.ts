@@ -101,10 +101,11 @@ import {moltenReflectionDamage,rollMoltenSplash,moltenSplashTargets} from '../do
 import { CombatOutcomes } from '../rendering/combat-outcomes.ts';
 import { classSummonEnemyIds, enemyCombatAssets, equipmentAttackFor, partyMemberCombatAssets, playerCombatAssets, sharedCombatAssets } from '../rendering/combat-assets.ts';
 import { learnedSkillIds } from '../domain/skill-configuration.ts';
+import { PRESSURE_DEFAULT_MAX_ENEMIES, normalizePressureEnemyHealth, normalizePressureMaxEnemies } from '../domain/pressure-enemies.ts';
 import type { CombatWorldHost } from './world-combat-host.ts';
 
 /** 本次战斗使用的固定会话和共享服务；控制状态由调用方提供实时查询。 */
-type CombatServices = Readonly<Pick<StoryContext, 'session'|'director'|'audio'|'battleCatalog'|'characterStats'|'items'|'wardrobe'|'world'|'statusHud'|'ui'|'locked'|'suspended'|'pressureMode'|'gmSpeedMultiplier'>>;
+type CombatServices = Readonly<Pick<StoryContext, 'session'|'director'|'audio'|'battleCatalog'|'characterStats'|'items'|'wardrobe'|'world'|'statusHud'|'ui'|'locked'|'suspended'|'pressureMode'|'pressureSettings'|'gmSpeedMultiplier'>>;
 
 interface MapAlly {
   id:string;member:CompanionMember;visual:CharacterVisual;body:Phaser.Physics.Arcade.Body;facing:Facing;
@@ -168,7 +169,6 @@ const PATH_BUDGET_PER_RENDER_FRAME=512;
 
 /** 压测模式：刷一个会主动放技能、无召唤/全屏技能的普通怪。 */
 const PRESSURE_ENEMY_ID='enemy-red-snake-1';
-const PRESSURE_MAX_ENEMIES=40;
 const PRESSURE_SPAWN_MIN_DISTANCE=96;
 const PRESSURE_SPAWN_MAX_DISTANCE=240;
 const PRESSURE_REVIVE_FRAME_INTERVAL=10;
@@ -348,7 +348,8 @@ export class WorldCombat {
       characterStats:app.characterStats,items:app.items,wardrobe:app.wardrobe,world:app.world,
       statusHud:app.statusHud,ui:app.ui,
       get locked(){return app.locked;},get suspended(){return app.suspended;},
-      get pressureMode(){return app.pressureMode;},get gmSpeedMultiplier(){return app.gmSpeedMultiplier;}};
+      get pressureMode(){return app.pressureMode;},get pressureSettings(){return app.pressureSettings;},
+      get gmSpeedMultiplier(){return app.gmSpeedMultiplier;}};
     this.roster=roster;this.hero=hero;this.drops=drops;
     this.threat=this.createThreatSystem();
     this.outcomes=new CombatOutcomes(scene.phaserScene,app.battleCatalog);
@@ -3217,16 +3218,23 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
    * 压测刷怪：在玩家周围找一个整个碰撞盒都站得下的随机点，按正式实例路径生成敌人。
    * 找不到合法点时返回 false，让下一次刷怪再试，不把敌人塞进墙里或人堆里。
    */
+  private pressureMaxEnemies():number {
+    return normalizePressureMaxEnemies(this.app.pressureSettings?.maxEnemies ?? PRESSURE_DEFAULT_MAX_ENEMIES);
+  }
+  private pressureEnemyMaxHealth():number|undefined {
+    return normalizePressureEnemyHealth(this.app.pressureSettings?.enemyMaxHealth);
+  }
   canSpawnPressureEnemy():boolean {
-    return !this.closed&&!this.defeated&&!!this.movement&&this.pressureEnemyCount()<PRESSURE_MAX_ENEMIES;
+    return !this.closed&&!this.defeated&&!!this.movement&&this.pressureEnemyCount()<this.pressureMaxEnemies();
   }
   spawnPressureEnemy(enemyId=PRESSURE_ENEMY_ID,initialPoint?:{x:number;y:number}):boolean {
     if(this.closed||this.defeated||!this.movement)return false;
-    if(this.pressureEnemyCount()>=PRESSURE_MAX_ENEMIES)return false;
+    if(this.pressureEnemyCount()>=this.pressureMaxEnemies())return false;
     const definition=this.app.battleCatalog.enemies.find(enemy=>enemy.id===enemyId);
     const collision=definition?.actor.collision;
     if(!definition||!collision)return false;
     const center=this.movement.position(this.controlledVisual);
+    const overrideHealth=this.pressureEnemyMaxHealth();
     for(let attempt=0;attempt<PRESSURE_SPAWN_ATTEMPTS;attempt++){
       const angle=Math.random()*Math.PI*2;
       const distance=PRESSURE_SPAWN_MIN_DISTANCE
@@ -3234,14 +3242,34 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
       const point=attempt===0&&initialPoint?initialPoint:{x:center.x+Math.cos(angle)*distance,y:center.y+Math.sin(angle)*distance};
       if(!this.movement.navigation.canPlaceBody({collision},point))continue;
       const placed=this.roster.placeEnemy(enemyId,point.x,point.y);
+      if(overrideHealth!==undefined)this.roster.setEnemyMaxHealthOverride(placed.key,overrideHealth,definition);
       const enemy=this.buildEnemy(placed,definition);
       this.arena.push(enemy);refreshCombatActors(this.arena);
       return true;
     }
     return false;
   }
-  private pressureEnemyCount():number {
+  /** 场上当前活着的挑战普通怪数量（不含召唤物和待死亡结算怪）。 */
+  pressureEnemyCount():number {
     return this.arena.filter(enemy=>!enemy.summonedBy&&!this.pendingDefeats.has(enemy.key)).length;
+  }
+  /** 挑战调试修改数量上限或血量后立即同步到当前战场：超量裁减，改血量时覆写所有活着的普通怪。 */
+  applyPressureSettings(options:{applyHealth?:boolean}={}):void {
+    if(this.closed)return;
+    const limit=this.pressureMaxEnemies();
+    const live=this.arena.filter(enemy=>!enemy.summonedBy&&!this.pendingDefeats.has(enemy.key));
+    if(live.length>limit){
+      for(const enemy of live.slice(limit))this.removeEnemy(enemy.key);
+    }
+    if(options.applyHealth){
+      const overrideHealth=this.pressureEnemyMaxHealth();
+      for(const enemy of this.arena){
+        if(enemy.summonedBy||this.pendingDefeats.has(enemy.key))continue;
+        this.roster.setEnemyMaxHealthOverride(enemy.key,overrideHealth,enemy.definition);
+        this.resourceCapacityInputs(enemy.key);
+      }
+      this.scene.refreshCombatTarget();
+    }
   }
   /** 压测阵亡不结束：把倒下的上阵成员补满生命和法力，继续留在场上。 */
   reviveFallenForPressure():void {

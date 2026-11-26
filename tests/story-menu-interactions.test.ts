@@ -3607,49 +3607,154 @@ test('mercenary allocation commits to the selected member and can be reset',t=>{
   assert.equal(member.allocated.strength,0);assert.equal(member.statPoints,(member.level-1)*5);
 });
 
-test('挑战换职业可取消或确认后重开，透明无棕底、缩图防碰撞且点击切换零重建闪烁', t => {
+test('挑战调试页支持职业与怪物双页签切换、调整怪物数量与血量且全程零重建闪烁', t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
   const f=fixture();t.after(f.cleanup);
   const pauses:boolean[]=[];const chosen:string[]=[];
-  Object.assign(f.app,{pressureMode:true,pausePressure:(value:boolean)=>pauses.push(value),changePressureClass:async(id:string)=>{chosen.push(id);}});
+  const settings:{maxEnemies:number;enemyMaxHealth?:number}={maxEnemies:40,enemyMaxHealth:undefined};
+  let liveEnemies=7;
+  const patches:Array<Partial<{maxEnemies:number;enemyMaxHealth?:number}>>=[];
+  Object.assign(f.app,{
+    pressureMode:true,
+    pressureSettings:settings,
+    pressureEnemyCount:()=>liveEnemies,
+    updatePressureSettings:(patch:Partial<{maxEnemies:number;enemyMaxHealth?:number}>)=>{
+      patches.push(patch);
+      if(patch.maxEnemies!==undefined){
+        settings.maxEnemies=patch.maxEnemies;
+        liveEnemies=Math.min(liveEnemies,settings.maxEnemies);
+      }
+      if(Object.prototype.hasOwnProperty.call(patch,'enemyMaxHealth'))settings.enemyMaxHealth=patch.enemyMaxHealth;
+    },
+    pausePressure:(value:boolean)=>pauses.push(value),
+    changePressureClass:async(id:string)=>{chosen.push(id);},
+  });
   f.controls.mode='menu';f.menu.sync();f.controls.mode='game';f.menu.sync();
-  f.scene.click(f.scene.button('换职业'));
+  assert.equal(f.scene.buttons('换职业').length,0,'原换职按钮已替换为调试按钮');
+  f.scene.click(f.scene.button('调试'));
   assert.deepEqual(pauses,[true]);
 
-  const picker=(f.menu as any).pressurePicker;
-  assert.ok(picker,'应打开独立挑战换职弹层');
-  assert.ok(picker.backdrop.element.style.background.includes('rgba(0, 0, 0')||picker.backdrop.element.style.background.includes('rgba(0,0,0'),'保留全屏半透明黑色遮罩');
+  const panel=(f.menu as any).pressureDebug;
+  assert.ok(panel,'应打开独立挑战调试弹层');
+  assert.equal(panel.currentTab,'class','默认停留在职业页签');
+  assert.ok(panel.backdrop.element.style.background.includes('rgba(0, 0, 0')||panel.backdrop.element.style.background.includes('rgba(0,0,0'),'保留全屏半透明黑色遮罩');
   // 弹层自身透明无棕色实体底框
-  const hasBrownRect=picker.surface.root.list.some((node:any)=>
+  const hasBrownRect=panel.surface.root.list.some((node:any)=>
     typeof node.element?.style?.background==='string'&&node.element.style.background.includes('33, 25, 15'));
-  assert.equal(hasBrownRect,false,'挑战换职弹层不应有棕色背景底框');
+  assert.equal(hasBrownRect,false,'挑战调试弹层不应有棕色背景底框');
 
-  // 所有 7 个职业卡片底边严格高于底部「取消 / 以 1 级重新挑战」按钮行，留白 >= 40px
-  const cancelBtn=f.scene.button('取消');
+  // 所有 7 个职业卡片底边严格高于底部「关闭 / 以 1 级重新挑战」按钮行，留白 >= 40px
+  const closeBtn=f.scene.button('关闭');
   const confirmBtn=f.scene.button('以 1 级重新挑战');
-  const actionTop=Math.min(cancelBtn.y,confirmBtn.y);
+  const actionTop=Math.min(closeBtn.y,confirmBtn.y);
   for(const entry of f.app.storyClasses.classes){
     const card=f.scene.button(entry.name);
     assert.ok(card.y+card.height<=actionTop-40,`${entry.name} 卡片底边 (${card.y+card.height}) 不得接近或碰到底部按钮行 (${actionTop})`);
   }
 
-  // 点击切换职业时保留同一批 DOM 节点引用，不触发 clear/重建（零闪烁）
-  const beforeNodes=[...picker.surface.root.list];
+  // 点击切换职业与切换页签均严格复用同一批根节点，零重建闪烁
+  const beforeNodes=[...panel.surface.root.list];
   assert.equal(confirmBtn.input?.enabled,false,'初始选中当前职业时确认按钮禁用');
   f.scene.click(f.scene.button('忍者'));
-  assert.deepEqual(picker.surface.root.list,beforeNodes,'点击切换职业不得销毁或重建弹层节点');
+  assert.deepEqual(panel.surface.root.list,beforeNodes,'点击切换职业不得销毁或重建弹层节点');
   assert.equal(confirmBtn.input?.enabled,true,'切换为其他职业后确认按钮立即启用');
   f.scene.click(f.scene.button('龙枪武士'));
-  assert.deepEqual(picker.surface.root.list,beforeNodes,'多次切换职业仍严格复用原节点');
-  assert.equal(picker.selectedClassId,'lancer');
+  assert.deepEqual(panel.surface.root.list,beforeNodes,'多次切换职业仍严格复用原节点');
+  assert.equal(panel.selectedClassId,'lancer');
 
-  f.scene.click(cancelBtn);
+  // 切换到怪物页签
+  const panelTexts=()=>f.scene.nodes.filter(node=>node.shown&&node.list.length===0&&node.element.textContent).map(node=>node.element.textContent!);
+  f.scene.click(f.scene.button('怪物'));
+  assert.equal(panel.currentTab,'monster');
+  assert.deepEqual(panel.surface.root.list,beforeNodes,'切换页签不重建节点');
+  assert.equal(f.scene.button('恢复默认').input?.enabled,false,'初始默认状态下恢复默认按钮禁用');
+  assert.ok(panelTexts().includes('当前场上：7 只'),'显示当前场上怪物数量');
+
+  // 怪物数量：快捷挡位、加减、数字输入卡与防碰撞
+  const monsterClose=f.scene.button('关闭');
+  const healthPresetBottom=f.scene.button('怪物血量 100万').y+f.scene.button('怪物血量 100万').height;
+  assert.ok(healthPresetBottom<=monsterClose.y-40,'怪物页签内容与底部操作行保留足够净空');
+
+  f.scene.click(f.scene.button('怪物数量 5'));
+  assert.equal(settings.maxEnemies,5);
+  assert.equal(liveEnemies,5);
+  assert.ok(panelTexts().includes('当前场上：5 只'),'裁减后实时刷新场上数量');
+  assert.equal(f.scene.button('恢复默认').input?.enabled,true);
+
+  f.scene.click(f.scene.button('增加怪物数量'));
+  assert.equal(settings.maxEnemies,6);
+  f.scene.click(f.scene.button('怪物数量 0'));
+  assert.equal(settings.maxEnemies,0);
+  assert.equal(f.scene.button('减少怪物数量').input?.enabled,false,'数量为 0 时禁用减号');
+  f.scene.click(f.scene.button('怪物数量 100'));
+  assert.equal(settings.maxEnemies,100);
+  assert.equal(f.scene.button('增加怪物数量').input?.enabled,false,'数量为 100 时禁用加号');
+
+  // 长按减号后打开数字输入卡：停止长按、校验超限、Escape 仅关输入卡不误关调试页
+  const documentRoot=domWindow.children[0]!;
+  const findPrompt=()=>documentRoot.children.filter(node=>String(node.className).includes('number-prompt')).at(-1);
+  const findNode=(node:any,predicate:(entry:any)=>boolean):any=>
+    predicate(node)?node:[...node.children].map((child:any)=>findNode(child,predicate)).find(Boolean);
+
+  f.scene.press(f.scene.button('减少怪物数量'));t.mock.timers.tick(350);
+  assert.equal(settings.maxEnemies,99);
+  f.scene.click(f.scene.button('输入怪物数量'));
+  let promptRoot=findPrompt();
+  assert.ok(promptRoot,'数量数字输入卡已打开');
+  t.mock.timers.tick(70);
+  assert.equal(settings.maxEnemies,99,'打开数字输入卡后长按立即停止');
+  let input=findNode(promptRoot,node=>node.inputMode==='numeric');
+  let confirm=findNode(promptRoot,node=>node.type==='submit');
+  input.value='101';input.dispatchEvent(new Event('input',{bubbles:true}));
+  assert.equal(confirm.disabled,true,'超过 100 禁用确定');
+  // Escape 由输入卡处理，不关闭挑战调试页
+  assert.equal(f.scene.key('Escape'),false,'输入卡打开时调试页键盘让路');
+  const escEvent=new Event('keydown',{bubbles:true,cancelable:true});Object.assign(escEvent,{key:'Escape'});
+  documentRoot.dispatchEvent(escEvent);
+  assert.equal(findPrompt(),undefined,'Escape 关闭输入卡');
+  assert.ok((f.menu as any).pressureDebug,'挑战调试页保持打开');
+
+  // 重新输入有效怪物数量 25
+  f.scene.click(f.scene.button('输入怪物数量'));
+  promptRoot=findPrompt()!;
+  input=findNode(promptRoot,node=>node.inputMode==='numeric');
+  input.value='25';input.dispatchEvent(new Event('input',{bubbles:true}));
+  input.parentElement!.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));
+  assert.equal(settings.maxEnemies,25);
+
+  // 怪物血量：快捷挡位、自定义数字输入、恢复默认
+  f.scene.click(f.scene.button('怪物血量 1万'));
+  assert.equal(settings.enemyMaxHealth,10_000);
+  assert.ok(panelTexts().includes('10,000'));
+  assert.ok(panelTexts().includes('固定血量'));
+
+  f.scene.click(f.scene.button('输入怪物血量'));
+  promptRoot=findPrompt()!;
+  input=findNode(promptRoot,node=>node.inputMode==='numeric');
+  input.value='12345';input.dispatchEvent(new Event('input',{bubbles:true}));
+  input.parentElement!.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));
+  assert.equal(settings.enemyMaxHealth,12_345);
+  assert.ok(panelTexts().includes('12,345'));
+
+  f.scene.click(f.scene.button('怪物血量默认'));
+  assert.equal(settings.enemyMaxHealth,undefined);
+  assert.ok(panelTexts().includes('原版公式'));
+
+  f.scene.click(f.scene.button('恢复默认'));
+  assert.equal(settings.maxEnemies,40);
+  assert.equal(settings.enemyMaxHealth,undefined);
+  assert.equal(f.scene.button('恢复默认').input?.enabled,false);
+
+  // 关闭恢复世界，再重新打开并换职业
+  f.scene.click(f.scene.button('关闭'));
   assert.deepEqual(pauses,[true,false]);
   assert.deepEqual(chosen,[]);
-  f.scene.click(f.scene.button('换职业'));
+  f.scene.click(f.scene.button('调试'));
   f.scene.click(f.scene.button('忍者'));
   f.scene.click(f.scene.button('以 1 级重新挑战'));
   assert.deepEqual(chosen,['assassin']);
   assert.deepEqual(pauses,[true,false,true]);
+  assert.ok(patches.length>=6);
 });
 
 function pendingEquipmentChange(){

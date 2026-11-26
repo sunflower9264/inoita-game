@@ -1,5 +1,6 @@
 import { ShortcutEditor } from './shortcut-editor.ts';
-import { PressureClassPicker } from './pressure-class-picker.ts';
+import { PressureDebugPanel } from './pressure-debug-panel.ts';
+import { defaultPressureSettings } from '../domain/pressure-enemies.ts';
 import { SystemPage } from './system-page.ts';
 import { SettingsPage } from './settings-page.ts';
 import { SkillsPage } from './skills-page.ts';
@@ -115,7 +116,7 @@ export class StoryUI {
   private session?:Session;private world?:WorldIndex;private content?:StoryInterface;private unsubscribe?:()=>void;private unsubscribeFullscreen?:()=>void;
   /** 菜单作用域的注销函数；重新 attach 或场景 shutdown 时先摘掉旧的。 */
   private unregisterKeyboard?:()=>void;
-  private pressurePicker?:PressureClassPicker;
+  private pressureDebug?:PressureDebugPanel;
   /** 菜单是否打开；诊断用，和 `locked` 里的 `story-menu` 对应。 */
   get menuOpen():boolean{return this.open;}
   private page:Page='bag';private open=false;/** 从阵亡面板打开的读档页：关掉时要回到阵亡面板。 */private loadReturnToDefeat=false;private selectedMemberId='player';private questPanel?:QuestPanel;
@@ -321,7 +322,7 @@ export class StoryUI {
     scene.scale.on('resize',this.resize,this);
     // 菜单只注册一个 menu 作用域；打开时独占键盘，关闭时把未消费的按键让给剧情和世界。
     this.unregisterKeyboard?.();this.unregisterKeyboard=this.app.inputRouter.register('menu',this.key,{
-      exclusive:()=>!!this.pressurePicker||this.open||this.app.ui.keyBindingEditing||this.app.ui.controlLayoutEditing
+      exclusive:()=>!!this.pressureDebug||this.open||this.app.ui.keyBindingEditing||this.app.ui.controlLayoutEditing
     });
     // 浏览器自身的退出（Esc、手势）不会走设置页的按钮，靠事件把开关状态同步回来。
     this.unsubscribeFullscreen?.();
@@ -336,30 +337,35 @@ export class StoryUI {
     window.addEventListener('blur',()=>{this.statusPage?.cancelPress();this.cancelDrag();},{signal:nativeInput.signal});
     scene.events.once('shutdown',()=>nativeInput.abort());
     scene.game.events.on(UI_EVENTS.minimapLayout,this.onMinimap,this);scene.game.events.on(UI_EVENTS.cancelInput,this.cancelDrag,this);
-    scene.events.once('shutdown',()=>{this.closePressurePicker();this.unregisterKeyboard?.();this.unregisterKeyboard=undefined;this.unsubscribe?.();this.unsubscribeFullscreen?.();this.statusPage?.destroy();this.skillsPage?.destroy();this.settingsPage?.destroy();this.menuText?.destroy();this.menuText=undefined;this.shortcutPrompt?.remove();this.shortcutPrompt=undefined;scene.scale.off('resize',this.resize,this);scene.game.events.off(UI_EVENTS.minimapLayout,this.onMinimap,this);scene.game.events.off(UI_EVENTS.cancelInput,this.cancelDrag,this);this.cancelOperation();this.bagPage?.destroy();this.savePage.destroy();this.surface!.root.remove(this.body!.root);this.surface?.destroy();this.body?.destroy();this.modal?.destroy();this.hudButtons?.destroy();this.description?.destroy();this.shortcutScreen?.destroy();this.backTab?.destroy();this.bagPortrait?.destroy();this.backdrop?.destroy();this.popupMask?.destroy();this.popupMask=undefined;this.controlEditor?.destroy();this.controlEditor=undefined;this.keyBindingEditor?.destroy();this.keyBindingEditor=undefined;});
+    scene.events.once('shutdown',()=>{this.closePressureDebug();this.unregisterKeyboard?.();this.unregisterKeyboard=undefined;this.unsubscribe?.();this.unsubscribeFullscreen?.();this.statusPage?.destroy();this.skillsPage?.destroy();this.settingsPage?.destroy();this.menuText?.destroy();this.menuText=undefined;this.shortcutPrompt?.remove();this.shortcutPrompt=undefined;scene.scale.off('resize',this.resize,this);scene.game.events.off(UI_EVENTS.minimapLayout,this.onMinimap,this);scene.game.events.off(UI_EVENTS.cancelInput,this.cancelDrag,this);this.cancelOperation();this.bagPage?.destroy();this.savePage.destroy();this.surface!.root.remove(this.body!.root);this.surface?.destroy();this.body?.destroy();this.modal?.destroy();this.hudButtons?.destroy();this.description?.destroy();this.shortcutScreen?.destroy();this.backTab?.destroy();this.bagPortrait?.destroy();this.backdrop?.destroy();this.popupMask?.destroy();this.popupMask=undefined;this.controlEditor?.destroy();this.controlEditor=undefined;this.keyBindingEditor?.destroy();this.keyBindingEditor=undefined;});
     this.sync();
   }
-  private openPressurePicker():void {
-    if(!this.scene||!this.app.pressureMode||this.pressurePicker)return;
+  private openPressureDebug():void {
+    if(!this.scene||!this.app.pressureMode||this.pressureDebug)return;
     const currentClassId=this.session?.hero?.classId ?? this.app.storyClasses.defaultClass;
-    this.app.ui.resetInput();this.app.ui.lock(true,'pressure-class');this.app.pausePressure?.(true);
-    this.pressurePicker=new PressureClassPicker({
+    this.app.ui.resetInput();this.app.ui.lock(true,'pressure-debug');this.app.pausePressure?.(true);
+    const closeAssets=this.content?{close:this.content.assets.close,closePressed:this.content.assets['close-pressed']}:undefined;
+    this.pressureDebug=new PressureDebugPanel({
       scene:this.scene,
       catalog:this.app.storyClasses,
       classes:this.app.storyClasses.classes,
       currentClassId,
+      settings:this.app.pressureSettings??defaultPressureSettings(),
+      getLiveEnemyCount:()=>this.app.pressureEnemyCount?.()??0,
+      closeAssets,
       enabled:()=>!this.app.ui.suspended,
-      onCancel:()=>this.closePressurePicker(),
-      onConfirm:classId=>{
-        this.closePressurePicker(false);void this.app.changePressureClass?.(classId);
+      onClose:()=>this.closePressureDebug(),
+      onConfirmClass:classId=>{
+        this.closePressureDebug(false);void this.app.changePressureClass?.(classId);
       },
+      onUpdateSettings:patch=>this.app.updatePressureSettings?.(patch),
     });
     this.sync();
   }
-  private closePressurePicker(resume=true):void {
-    if(!this.pressurePicker)return;
-    this.pressurePicker.destroy();this.pressurePicker=undefined;
-    this.app.ui.lock(false,'pressure-class');
+  private closePressureDebug(resume=true):void {
+    if(!this.pressureDebug)return;
+    this.pressureDebug.destroy();this.pressureDebug=undefined;
+    this.app.ui.lock(false,'pressure-debug');
     if(resume)this.app.pausePressure?.(false);
     this.sync();
   }
@@ -446,12 +452,13 @@ export class StoryUI {
   }
   sync():void{
     if(this.app.ui.suspended){this.cancelDrag();this.savePage?.closeInput();}
-    this.pressurePicker?.setVisible(!this.app.ui.suspended);
     const active=this.app.ui.mode==='game'&&this.app.ui.ready&&!!this.session;
+    if(!active&&this.pressureDebug)this.closePressureDebug(false);
+    this.pressureDebug?.setVisible(!this.app.ui.suspended);
     if(!active&&this.open&&!((this.busy||this.savePage?.isLoading)&&this.app.ui.mode==='game'&&this.session)){this.statusPage?.discardAllocation();this.close();}
     if(this.app.ui.mode!=='game')this.hudButtons?.clear();
     this.hudButtons?.visible(active&&(!this.app.ui.locked||this.app.ui.controlLayoutEditing)&&!this.app.ui.suspended);
-    if(active&&this.hudButtons&&this.hudButtons.root.list.every(child=>child===this.hudButtons!.staticRoot)){const v=this.hudButtons;v.button('',0,0,HUD_SIDE_BUTTON_SIZE,HUD_SIDE_BUTTON_SIZE,()=>this.show('save'),{image:this.content!.assets.save}).setData('label','存档');v.button('',0,HUD_SIDE_BUTTON_SIZE+8,HUD_SIDE_BUTTON_SIZE,HUD_SIDE_BUTTON_SIZE,()=>this.show('bag'),{image:this.content!.assets.menu}).setData('label','菜单');if(this.app.pressureMode)v.button('换职',0,0,HUD_SIDE_BUTTON_SIZE,HUD_SIDE_BUTTON_SIZE,()=>this.openPressurePicker(),{fontSize:18}).setData('label','换职业');}
+    if(active&&this.hudButtons&&this.hudButtons.root.list.every(child=>child===this.hudButtons!.staticRoot)){const v=this.hudButtons;v.button('',0,0,HUD_SIDE_BUTTON_SIZE,HUD_SIDE_BUTTON_SIZE,()=>this.show('save'),{image:this.content!.assets.save}).setData('label','存档');v.button('',0,HUD_SIDE_BUTTON_SIZE+8,HUD_SIDE_BUTTON_SIZE,HUD_SIDE_BUTTON_SIZE,()=>this.show('bag'),{image:this.content!.assets.menu}).setData('label','菜单');if(this.app.pressureMode)v.button('调试',0,0,HUD_SIDE_BUTTON_SIZE,HUD_SIDE_BUTTON_SIZE,()=>this.openPressureDebug(),{fontSize:18}).setData('label','调试');}
     // 登记快捷键时菜单本体整块让位，只留背后的遮罩与这一屏自己，画面里那层游戏背景就露出来了。
     const menu=this.open&&this.app.ui.ready&&!this.app.ui.suspended&&!this.shortcutEditor?.active&&!this.app.ui.controlLayoutEditing&&!this.app.ui.keyBindingEditing;
     this.surface?.visible(menu);this.body?.visible(menu);this.description?.visible(menu&&!this.forge);
@@ -624,6 +631,7 @@ export class StoryUI {
   }
   releaseSession(expected:Session|undefined):void{
     if(this.session!==expected)return;
+    this.closePressureDebug(false);
     this.statusPage?.discardAllocation();this.close();this.discardBagPage();this.releaseDebugPanel();this.unsubscribe?.();this.unsubscribe=undefined;
     this.questPanel=undefined;this.partyPanel?.destroyPreview();this.partyPanel=undefined;
     // 页面节点已经随 close/discardBagPage 销毁，清掉包装引用，别让旧会话的 DOM 留到下一次渲染。
@@ -655,7 +663,7 @@ export class StoryUI {
   /** 返回是否消费这次按键；菜单关闭时把未消费的按键让给剧情层和世界。 */
   private key=(event:KeyboardEvent):boolean=>{
     if(this.app.ui.suspended)return false;
-    if(this.pressurePicker){if(event.key==='Escape'){event.preventDefault();this.closePressurePicker();return true;}this.pressurePicker.key(event);return true;}
+    if(this.pressureDebug){if(this.pressureDebug.prompting)return true;if(event.key==='Escape'){event.preventDefault();this.closePressureDebug();return true;}this.pressureDebug.key(event);return true;}
     // 捕获按键时整块键盘归键位面板：Tab、Enter、空格不再操作菜单。
     if(this.app.ui.keyBindingEditing){this.keyBindingEditor?.key(event);return true;}
     if(!this.open){
@@ -699,7 +707,7 @@ export class StoryUI {
   private layout():void{
     const frame=frameRect();
     this.controlEditor?.layout();this.keyBindingEditor?.layout();
-    this.pressurePicker?.layout();
+    this.pressureDebug?.layout();
     this.surface?.layout(12);this.positionModal();this.modal?.relayoutOverlay();
     if(this.open&&this.page==='debug'&&this.gmPanel&&this.body)this.gmPanel.layoutSearch(this.body);
     // 说明面板不在 surface 之下，位置与缩放按 surface 的世界变换同步，坐标系与内容块一致。
