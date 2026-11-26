@@ -160,7 +160,7 @@ function buildIndex(campaign: Campaign): ContentIndex {
       }
     }
     const writers = new Map<string, string[]>();
-    for (const node of campaign.scripts[info.event.script].nodes) {
+    for (const node of reachableNodes(campaign.scripts, nodes, info.event.script)) {
       if (node.exit.type === 'choice') for (const value of Object.keys(node.exit.cases))
         pushMap(writers, node.exit.choice, value);
       for (const command of node.commands)
@@ -245,11 +245,13 @@ function scriptRank(script: string | undefined, quest: CampaignQuest | undefined
   return 3;
 }
 
-function reachableCommands(scripts: Record<string, StoryScript>,
-  nodes: Map<string, Map<string, StoryNode>>, name: string): StoryCommand[] {
-  const commands: StoryCommand[] = [];
+function reachableNodes(scripts: Record<string, StoryScript>,
+  nodes: Map<string, Map<string, StoryNode>>, name: string): StoryNode[] {
+  const result: StoryNode[] = [];
   const seen = new Set<string>();
-  const stack: StoryNodeRef[] = [{ script: name, node: scripts[name].entry }];
+  const start = scripts[name];
+  if (!start) return result;
+  const stack: StoryNodeRef[] = [{ script: name, node: start.entry }];
   while (stack.length) {
     const cursor = stack.pop()!;
     const key = cursor.script + '/' + cursor.node;
@@ -257,9 +259,17 @@ function reachableCommands(scripts: Record<string, StoryScript>,
     seen.add(key);
     const node = nodes.get(cursor.script)?.get(cursor.node);
     if (!node) continue;
-    commands.push(...node.commands);
-    for (const target of storyExitTargets(node.exit)) stack.push(target);
+    result.push(node);
+    const targets = storyExitTargets(node.exit);
+    for (let i = targets.length - 1; i >= 0; i--) stack.push(targets[i]!);
   }
+  return result;
+}
+
+function reachableCommands(scripts: Record<string, StoryScript>,
+  nodes: Map<string, Map<string, StoryNode>>, name: string): StoryCommand[] {
+  const commands: StoryCommand[] = [];
+  for (const node of reachableNodes(scripts, nodes, name)) commands.push(...node.commands);
   return commands;
 }
 
@@ -422,10 +432,12 @@ class Planner {
    * 4. 目标任务活动地图上的剧情常驻敌怪摆放（enemy-location）：若放置它的事件依赖的前置任务已在历史中完成，投影其 enemy-location 命令。
    */
   ensureVisibilityAndPassageEvents(state: HistoryState): void {
+    // 与 StoryWorldState.absentKey 保持同一口径：按 map + (characterId ?? actor) 索引显隐
+    const visKey = (map: string, actor: string, characterId?: string): string => `${map}\0${characterId ?? actor}`;
     const visibility = new Map<string, { map: string; actor: string; characterId?: string; visible: boolean }>();
     for (const cmd of state.world) {
       if (cmd.type === 'world' && cmd.command.kind === 'actor-visibility') {
-        const key = `${cmd.command.map}\0${cmd.command.actor}\0${cmd.command.characterId ?? ''}`;
+        const key = visKey(cmd.command.map, cmd.command.actor, cmd.command.characterId);
         visibility.set(key, {
           map: cmd.command.map,
           actor: cmd.command.actor,
@@ -443,12 +455,13 @@ class Planner {
     );
     const lastVisWriteIndex = new Map<string, number>();
     const lastFlagFalseIndex = new Map<string, number>();
+    const lastEnemyWriteIndex = new Map<string, number>();
     for (const evId of state.completedEvents) {
       const info = this.index.events.get(evId);
       if (!info) continue;
       for (const cmd of info.commands) {
         if (cmd.type === 'world' && cmd.command.kind === 'actor-visibility') {
-          const key = `${cmd.command.map}\0${cmd.command.actor}\0${cmd.command.characterId ?? ''}`;
+          const key = visKey(cmd.command.map, cmd.command.actor, cmd.command.characterId);
           lastVisWriteIndex.set(key, Math.max(lastVisWriteIndex.get(key) ?? -1, info.index));
         }
         if (cmd.type === 'flag' && cmd.value === false) {
@@ -456,6 +469,9 @@ class Planner {
         }
         if (cmd.type === 'world' && cmd.command.kind === 'flag' && !cmd.command.value) {
           lastFlagFalseIndex.set(cmd.command.id, Math.max(lastFlagFalseIndex.get(cmd.command.id) ?? -1, info.index));
+        }
+        if (cmd.type === 'world' && cmd.command.kind === 'enemy-location' && cmd.command.scope !== 'visit') {
+          lastEnemyWriteIndex.set(cmd.command.enemyId, Math.max(lastEnemyWriteIndex.get(cmd.command.enemyId) ?? -1, info.index));
         }
       }
     }
@@ -465,13 +481,42 @@ class Planner {
       return info.commands.some(cmd => cmd.type === 'quest' && 'quest' in cmd.command && cmd.command.quest === this.questId);
     };
 
+    const isUnconditionalCondition = (cond: StoryCondition | undefined): boolean => {
+      if (!cond) return true;
+      if (cond.type === 'always') return cond.value;
+      if (cond.type === 'all') return cond.conditions.every(isUnconditionalCondition);
+      return false;
+    };
+
+    const questRefSatisfied = (ref: { quest: string; status: string }, allowOpened: boolean): boolean => {
+      if (ref.status === 'completed' || ref.status === 'settled') return state.delivered.has(ref.quest);
+      if (ref.status === 'ready') return state.delivered.has(ref.quest) || (allowOpened && state.ready.has(ref.quest));
+      if (ref.status === 'active' || ref.status === 'accepted') return state.delivered.has(ref.quest) || (allowOpened && state.opened.has(ref.quest));
+      return conditionHolds({ type: 'quest', quest: ref.quest, status: ref.status as QuestStatus }, state);
+    };
+
+    const eventRefsSatisfied = (info: EventInfo): boolean => {
+      const evRefs = eventRefs(info.event.condition);
+      return evRefs.every(ref => {
+        if (ref.status !== 'completed') return !state.completedEvents.has(ref.event);
+        if (state.completedEvents.has(ref.event)) return true;
+        const depIndex = this.index.events.get(ref.event)?.index;
+        if (depIndex === undefined) return false;
+        if (targetAcceptIndex >= 0 && depIndex < targetAcceptIndex) return true;
+        return maxCompletedIndex >= 0 && depIndex <= maxCompletedIndex;
+      });
+    };
+
     const withinChronology = (info: EventInfo, allowOpened: boolean): boolean => {
-      if (targetAcceptIndex < 0 || info.index < targetAcceptIndex) return true;
+      if (targetAcceptIndex >= 0 && info.index < targetAcceptIndex) return true;
       const refs = positiveQuestRefs(info.event.condition);
-      return (
-        refs.length > 0 &&
-        refs.every(ref => state.delivered.has(ref.quest) || (allowOpened && state.opened.has(ref.quest)))
-      );
+      if (refs.length > 0) {
+        return refs.every(ref => questRefSatisfied(ref, allowOpened)) && eventRefsSatisfied(info);
+      }
+      if (targetAcceptIndex >= 0) return false;
+      // 无独立接取事件的发布人任务（targetAcceptIndex < 0）：严禁无条件放行未来章节事件
+      if (eventRefs(info.event.condition).length > 0) return eventRefsSatisfied(info);
+      return conditionHolds(info.event.condition, state);
     };
 
     const targetCharIds = new Set<string>(
@@ -506,8 +551,9 @@ class Planner {
             c.command.kind === 'actor-visibility' &&
             c.command.visible === true &&
             c.command.map === entry.map &&
-            c.command.actor === entry.actor &&
-            (entry.characterId === undefined || c.command.characterId === entry.characterId),
+            (entry.characterId !== undefined
+              ? c.command.characterId === entry.characterId
+              : c.command.characterId === undefined && c.command.actor === entry.actor),
         );
         if (cmd) {
           state.world.push(cmd);
@@ -517,16 +563,33 @@ class Planner {
       }
     }
 
-    // 2. 补齐目标任务相关角色所需的前置登记摆放（仅针对受 flag 门控且尚未在历史中退场的角色）
+    // 2. 补齐目标任务相关角色所需的前置登记摆放（仅针对受正向 flag 门控且尚未在历史中退场的角色）
     const acceptScriptFlags = new Set<string>();
-    const acceptScriptName = this.targetAccept?.kind === 'event' ? this.targetAccept.event!.script : this.targetAccept?.script;
-    if (acceptScriptName) {
-      const acceptCmds = this.index.commandsByScript.get(acceptScriptName) ?? [];
-      for (const cmd of acceptCmds) {
-        if (cmd.type === 'flag' && (cmd.value ?? true)) acceptScriptFlags.add(cmd.flag);
-        if (cmd.type === 'world' && cmd.command.kind === 'flag' && cmd.command.value) acceptScriptFlags.add(cmd.command.id);
+    if (this.mode === 'available') {
+      const acceptScriptName = this.targetAccept?.kind === 'event' ? this.targetAccept.event!.script : this.targetAccept?.script;
+      if (acceptScriptName) {
+        const acceptCmds = this.index.commandsByScript.get(acceptScriptName) ?? [];
+        for (const cmd of acceptCmds) {
+          if (cmd.type === 'flag' && (cmd.value ?? true)) acceptScriptFlags.add(cmd.flag);
+          if (cmd.type === 'world' && cmd.command.kind === 'flag' && cmd.command.value) acceptScriptFlags.add(cmd.command.id);
+        }
       }
     }
+    const requiredTrueFlags = (cond: StoryCondition | undefined): string[] | undefined => {
+      if (!cond) return [];
+      if (cond.type === 'always') return cond.value ? [] : undefined;
+      if (cond.type === 'flag') return cond.value === false ? undefined : [cond.flag];
+      if (cond.type === 'all') {
+        const result: string[] = [];
+        for (const child of cond.conditions) {
+          const sub = requiredTrueFlags(child);
+          if (!sub) return undefined;
+          for (const f of sub) if (!result.includes(f)) result.push(f);
+        }
+        return result;
+      }
+      return undefined;
+    };
     const placementCharIds = new Set<string>(
       [
         this.target.giverCharacterId,
@@ -534,43 +597,78 @@ class Planner {
         ...this.target.goals.map(g => g.characterId),
       ].filter((id): id is string => !!id),
     );
+    const projectedPlaces = new Set<string>();
     for (const charId of placementCharIds) {
       const placements = this.campaign.placements.filter(p => p.characterId === charId);
       if (!placements.length) continue;
-      const hasUnconditional = placements.some(p => !p.condition || (p.condition.type === 'always' && p.condition.value));
+      const hasUnconditional = placements.some(p => isUnconditionalCondition(p.condition));
       if (hasUnconditional) continue;
       for (const p of placements) {
-        if (p.condition?.type !== 'flag') continue;
-        const flag = p.condition.flag;
-        if (state.flags.get(flag) || acceptScriptFlags.has(flag)) continue;
-        const placer = this.index.eventOrder.find(info => {
-          if (info.event.id === targetAcceptId || state.completedEvents.has(info.event.id)) return false;
-          if (info.event.repeat || this.conditionConflicts(info.event.condition) || eventTouchesTargetQuest(info)) return false;
-          if ((lastFlagFalseIndex.get(flag) ?? -1) > info.index) return false;
-          if (!withinChronology(info, true)) return false;
-          return info.commands.some(
-            cmd =>
-              (cmd.type === 'flag' && cmd.flag === flag && (cmd.value ?? true)) ||
-              (cmd.type === 'world' && cmd.command.kind === 'flag' && cmd.command.id === flag && cmd.command.value),
-          );
-        });
-        if (!placer) continue;
-        for (const cmd of placer.commands) {
-          if (cmd.type === 'world' && cmd.command.kind === 'place' && cmd.command.scope !== 'visit' && cmd.command.entity.characterId === charId) {
-            state.world.push(cmd);
-            this.recordPlacement(state, cmd.command.entity);
-          } else if (cmd.type === 'flag' && cmd.flag === flag && (cmd.value ?? true)) {
-            state.flags.set(flag, true);
-            state.world.push(cmd);
-          } else if (cmd.type === 'world' && cmd.command.kind === 'flag' && cmd.command.id === flag && cmd.command.value) {
-            state.flags.set(flag, true);
-            state.world.push(cmd);
+        const neededFlags = requiredTrueFlags(p.condition);
+        if (!neededFlags?.length) continue;
+        if (neededFlags.some(flag => this.flagPins.get(flag) === false)) continue;
+        for (const flag of neededFlags) {
+          if (state.flags.get(flag) || acceptScriptFlags.has(flag)) continue;
+          const eligiblePlacers = this.index.eventOrder.filter(info => {
+            if (info.event.id === targetAcceptId || state.completedEvents.has(info.event.id)) return false;
+            if (info.event.repeat || this.conditionConflicts(info.event.condition) || eventTouchesTargetQuest(info)) return false;
+            if ((lastFlagFalseIndex.get(flag) ?? -1) > info.index) return false;
+            if (!withinChronology(info, true)) return false;
+            return info.commands.some(
+              cmd =>
+                (cmd.type === 'flag' && cmd.flag === flag && (cmd.value ?? true)) ||
+                (cmd.type === 'world' && cmd.command.kind === 'flag' && cmd.command.id === flag && cmd.command.value),
+            );
+          });
+          if (!eligiblePlacers.length) continue;
+          // 优先选择把该角色摆到当前 placement 所在地图的最新事件，否则取最新合法事件
+          let placer = eligiblePlacers[eligiblePlacers.length - 1]!;
+          for (let i = eligiblePlacers.length - 1; i >= 0; i--) {
+            const candidate = eligiblePlacers[i]!;
+            const candMap = this.triggerMap(candidate.event, state);
+            const placesOnTargetMap = candidate.commands.some(cmd => {
+              if (cmd.type !== 'world' || cmd.command.kind !== 'place' || cmd.command.scope === 'visit') return false;
+              const resolved = persistentWorldCommand(cmd.command, candMap);
+              return resolved?.kind === 'place' && resolved.entity.characterId === charId && resolved.entity.map === p.map;
+            });
+            if (placesOnTargetMap) {
+              placer = candidate;
+              break;
+            }
+          }
+          const placerMap = this.triggerMap(placer.event, state);
+          let flagPushed = false;
+          for (const cmd of placer.commands) {
+            if (cmd.type === 'world' && cmd.command.kind === 'place' && cmd.command.scope !== 'visit' && cmd.command.entity.characterId === charId) {
+              const resolved = persistentWorldCommand(cmd.command, placerMap);
+              if (resolved?.kind === 'place') {
+                const placeKey = `${resolved.entity.id}\0${resolved.entity.map}\0${resolved.entity.x}\0${resolved.entity.y}`;
+                if (!projectedPlaces.has(placeKey)) {
+                  projectedPlaces.add(placeKey);
+                  state.world.push({ type: 'world', command: resolved });
+                  this.recordPlacement(state, resolved.entity);
+                }
+              }
+            } else if (!flagPushed && cmd.type === 'flag' && cmd.flag === flag && (cmd.value ?? true)) {
+              state.flags.set(flag, true);
+              state.world.push(cmd);
+              flagPushed = true;
+            } else if (!flagPushed && cmd.type === 'world' && cmd.command.kind === 'flag' && cmd.command.id === flag && cmd.command.value) {
+              state.flags.set(flag, true);
+              state.world.push(cmd);
+              flagPushed = true;
+            }
           }
         }
       }
     }
 
-    // 3. 目标接取或完成事件为 region 触发框时，投影更早章节清除该图路障/打开通道出口的 actor-visibility 命令
+    // 3. 目标接取或完成事件为 region 触发框时，按事件净显隐状态投影更早章节清除该图路障/打开通道出口的 actor-visibility 命令
+    const OBSTACLE_ACTOR_TOKENS = [
+      'barricade', 'boulder', 'fence', 'steel-door', 'closed-door',
+      'prison-gates', 'stone-gate', 'gateway', 'sealed-dungeon-barrier', 'door-of-memories',
+    ] as const;
+    const isObstacleActor = (actor: string): boolean => OBSTACLE_ACTOR_TOKENS.some(token => actor.includes(token));
     const targetRegionEvents: StoryEvent[] = [];
     if (this.targetAccept?.kind === 'event' && this.targetAccept.event!.source === 'region' && this.targetAccept.event!.map) {
       targetRegionEvents.push(this.targetAccept.event!);
@@ -584,38 +682,53 @@ class Planner {
       const appliedPassageKeys = new Set<string>();
       for (const regEv of targetRegionEvents) {
         const targetIndex = this.index.events.get(regEv.id)?.index ?? -1;
-        if (targetIndex <= 0) continue;
+        // available 模式下只清理早于目标接取事件的前序章节路障，绝不提前清理接取之后、交付之前才解锁的本任务过程路障
+        const cutoffIndex = this.mode === 'available' && targetAcceptIndex >= 0
+          ? Math.min(targetIndex, targetAcceptIndex)
+          : targetIndex;
+        if (cutoffIndex <= 0) continue;
+        const latestByKey = new Map<string, { cmd: Extract<StoryCommand, { type: 'world' }>; visible: boolean; actor: string }>();
         for (const info of this.index.eventOrder) {
-          if (info.index >= targetIndex) continue;
-          const isUnconditional =
-            !info.event.condition ||
-            (info.event.condition.type === 'all' && info.event.condition.conditions.length === 0);
-          if (info.index >= maxCompletedIndex && !isUnconditional) continue;
+          if (info.index >= cutoffIndex) continue;
           if (info.event.repeat || state.completedEvents.has(info.event.id)) continue;
           if (this.conditionConflicts(info.event.condition) || eventTouchesTargetQuest(info)) continue;
+          const isUncond = isUnconditionalCondition(info.event.condition);
+          if (!isUncond && (info.index >= maxCompletedIndex || !withinChronology(info, false))) continue;
           for (const cmd of info.commands) {
             if (cmd.type !== 'world' || cmd.command.kind !== 'actor-visibility') continue;
             if (cmd.command.map !== regEv.map) continue;
-            const key = `${cmd.command.map}\0${cmd.command.actor}\0${cmd.command.characterId ?? ''}`;
+            if (!cmd.command.actor.startsWith('map-exit') && !isObstacleActor(cmd.command.actor)) continue;
+            const key = visKey(cmd.command.map, cmd.command.actor, cmd.command.characterId);
             if ((lastVisWriteIndex.get(key) ?? -1) > info.index) continue;
-            if (appliedPassageKeys.has(key)) continue;
-            const clearsExit =
-              cmd.command.visible === true &&
-              visibility.get(key)?.visible === false &&
-              cmd.command.actor.startsWith('map-exit');
-            const clearsObstacle =
-              cmd.command.visible === false &&
-              (cmd.command.actor.includes('barricade') || cmd.command.actor.includes('boulder-obstacle'));
-            if (clearsExit || clearsObstacle) {
-              state.world.push(cmd);
-              appliedPassageKeys.add(key);
+            latestByKey.set(key, { cmd, visible: cmd.command.visible, actor: cmd.command.actor });
+          }
+        }
+        for (const [key, latest] of latestByKey) {
+          if (appliedPassageKeys.has(key)) continue;
+          const clearsExit =
+            latest.visible === true &&
+            visibility.get(key)?.visible === false &&
+            latest.actor.startsWith('map-exit');
+          const clearsObstacle =
+            latest.visible === false &&
+            isObstacleActor(latest.actor);
+          if (clearsExit || clearsObstacle) {
+            state.world.push(latest.cmd);
+            if (latest.cmd.command.kind === 'actor-visibility') {
+              visibility.set(key, {
+                map: latest.cmd.command.map,
+                actor: latest.cmd.command.actor,
+                characterId: latest.cmd.command.characterId,
+                visible: latest.visible,
+              });
             }
+            appliedPassageKeys.add(key);
           }
         }
       }
     }
 
-    // 4. 目标任务活动地图上的剧情常驻敌怪摆放（enemy-location）：若放置它的事件依赖的前置任务已在历史中完成，投影其 enemy-location 命令
+    // 4. 目标任务活动地图上的剧情常驻敌怪摆放（enemy-location）：按 enemyId 全局追踪摆放与清除（location: null），已清除敌怪不再复活
     const activePlace = this.target.places?.active;
     const activeMaps = new Set<string>(
       activePlace?.type === 'fixed'
@@ -625,52 +738,159 @@ class Planner {
           : [],
     );
     if (activeMaps.size > 0) {
-      const placedEnemies = new Set<string>();
+      const existingEnemyMap = new Map<string, string | null>();
       for (const cmd of state.world) {
-        if (cmd.type === 'world' && cmd.command.kind === 'enemy-location' && cmd.command.location) {
-          placedEnemies.add(`${cmd.command.location.map}\0${cmd.command.enemyId}`);
+        if (cmd.type === 'world' && cmd.command.kind === 'enemy-location' && cmd.command.scope !== 'visit') {
+          existingEnemyMap.set(cmd.command.enemyId, cmd.command.location?.map ?? null);
         }
       }
+      const projectedEnemy = new Map<string, { map: string | null; cmd?: StoryCommand }>();
       for (const info of this.index.eventOrder) {
         if (info.event.id === targetAcceptId || info.event.repeat || state.completedEvents.has(info.event.id)) continue;
         if (this.conditionConflicts(info.event.condition) || eventTouchesTargetQuest(info)) continue;
         const refs = positiveQuestRefs(info.event.condition);
-        if (!refs.length || !refs.every(ref => state.delivered.has(ref.quest))) continue;
+        if (!refs.length || !refs.every(ref => questRefSatisfied(ref, false)) || !eventRefsSatisfied(info)) continue;
+        const evMap = this.triggerMap(info.event, state);
         for (const cmd of info.commands) {
-          if (cmd.type !== 'world' || cmd.command.kind !== 'enemy-location') continue;
-          if (cmd.command.scope === 'visit' || !cmd.command.location) continue;
-          if (!activeMaps.has(cmd.command.location.map)) continue;
-          const key = `${cmd.command.location.map}\0${cmd.command.enemyId}`;
-          if (placedEnemies.has(key)) continue;
-          state.world.push(cmd);
-          placedEnemies.add(key);
+          if (cmd.type !== 'world' || cmd.command.kind !== 'enemy-location' || cmd.command.scope === 'visit') continue;
+          if ((lastEnemyWriteIndex.get(cmd.command.enemyId) ?? -1) > info.index) continue;
+          const resolved = persistentWorldCommand(cmd.command, evMap);
+          if (!resolved || resolved.kind !== 'enemy-location') continue;
+          if (!resolved.location) {
+            projectedEnemy.set(resolved.enemyId, { map: null, cmd: { type: 'world', command: resolved } });
+          } else {
+            projectedEnemy.set(resolved.enemyId, { map: resolved.location.map, cmd: { type: 'world', command: resolved } });
+          }
+        }
+      }
+      for (const [enemyId, entry] of projectedEnemy) {
+        if (!entry.cmd) continue;
+        if (entry.map === null) {
+          if (existingEnemyMap.get(enemyId)) state.world.push(entry.cmd);
+        } else if (activeMaps.has(entry.map) && existingEnemyMap.get(enemyId) !== entry.map) {
+          state.world.push(entry.cmd);
         }
       }
     }
   }
 
-  eventPresupposesTargetCompletion(event: StoryEvent | undefined): boolean {
-    if (!event?.condition) return false;
-    for (const ref of positiveQuestRefs(event.condition)) {
-      if (ref.status !== 'completed' && ref.status !== 'settled') continue;
-      const depCompleters = this.index.completers.get(ref.quest) ?? [];
-      const primary = depCompleters[0];
-      if (primary?.kind === 'event' && primary.event) {
-        const cmds = this.index.events.get(primary.event.id)?.commands ?? [];
-        if (
-          cmds.some(
-            cmd =>
-              cmd.type === 'quest' &&
-              'quest' in cmd.command &&
-              cmd.command.quest === this.questId &&
-              (cmd.command.type === 'complete' || cmd.command.type === 'script-complete'),
-          )
-        ) {
-          return true;
-        }
+  private primaryAcceptorFor(questId: string, consumerEventId?: string): Producer | undefined {
+    const quest = this.index.quests.get(questId);
+    if (!quest) return undefined;
+    const candidates = (this.index.acceptors.get(questId) ?? [])
+      .filter(candidate => candidate.kind !== 'event'
+        || (candidate.event!.id !== consumerEventId && !this.conditionConflicts(candidate.event!.condition)));
+    if (quest.offerScript) {
+      const offered = candidates.find(entry => entry.script === quest.offerScript);
+      if (offered) return offered;
+    }
+    return candidates[0];
+  }
+
+  private primaryReadyProducerFor(questId: string, consumerEventId?: string): Producer | undefined {
+    const quest = this.index.quests.get(questId);
+    if (!quest || quest.completion !== 'story') return undefined;
+    const candidates = (this.index.readyProducers.get(questId) ?? [])
+      .filter(candidate => candidate.kind !== 'event'
+        || (candidate.event!.id !== consumerEventId && !this.conditionConflicts(candidate.event!.condition)));
+    return candidates[0];
+  }
+
+  private primaryCompleterFor(questId: string, consumerEventId?: string): Producer | undefined {
+    const quest = this.index.quests.get(questId);
+    if (!quest) return undefined;
+    if (quest.completeScript && this.campaign.scripts[quest.completeScript]) {
+      return { kind: 'script', script: quest.completeScript };
+    }
+    const candidates = (this.index.completers.get(questId) ?? [])
+      .filter(candidate => candidate.kind !== 'event'
+        || (candidate.event!.id !== consumerEventId && !this.conditionConflicts(candidate.event!.condition)));
+    return candidates[0];
+  }
+
+  private commandsForProducer(producer: Producer | undefined): StoryCommand[] {
+    if (!producer) return [];
+    if (producer.kind === 'event' && producer.event) {
+      return this.index.events.get(producer.event.id)?.commands ?? [];
+    }
+    if (producer.kind === 'script' && producer.script) {
+      return this.index.commandsByScript.get(producer.script) ?? [];
+    }
+    return [];
+  }
+
+  private producerCompletesTarget(producer: Producer | undefined): boolean {
+    return this.commandsForProducer(producer).some(
+      cmd =>
+        cmd.type === 'quest' &&
+        'quest' in cmd.command &&
+        cmd.command.quest === this.questId &&
+        (cmd.command.type === 'complete' || cmd.command.type === 'script-complete'),
+    );
+  }
+
+  private conditionPresupposesTargetCompletion(
+    condition: StoryCondition | undefined,
+    visited: Set<string>,
+    consumerEventId?: string,
+  ): boolean {
+    if (!condition) return false;
+    for (const ref of positiveQuestRefs(condition)) {
+      if (
+        ref.status !== 'accepted' &&
+        ref.status !== 'active' &&
+        ref.status !== 'ready' &&
+        ref.status !== 'completed' &&
+        ref.status !== 'settled'
+      ) continue;
+      if (this.questPresupposesTargetCompletion(ref.quest, ref.status, visited, consumerEventId)) return true;
+    }
+    return false;
+  }
+
+  private questPresupposesTargetCompletion(
+    questId: string,
+    status: string,
+    visited: Set<string>,
+    consumerEventId?: string,
+  ): boolean {
+    if (questId === this.questId) return true;
+    const visitKey = `${questId}:${status}`;
+    if (visited.has(visitKey)) return false;
+    visited.add(visitKey);
+
+    const quest = this.index.quests.get(questId);
+    if (quest?.availableWhen && this.conditionPresupposesTargetCompletion(quest.availableWhen, visited, consumerEventId)) {
+      return true;
+    }
+
+    const acceptor = this.primaryAcceptorFor(questId, consumerEventId);
+    if (this.producerCompletesTarget(acceptor)) return true;
+    if (acceptor?.kind === 'event' && this.conditionPresupposesTargetCompletion(acceptor.event?.condition, visited, acceptor.event?.id)) {
+      return true;
+    }
+
+    if (status === 'ready' || status === 'completed' || status === 'settled') {
+      const readyProd = this.primaryReadyProducerFor(questId, consumerEventId);
+      if (this.producerCompletesTarget(readyProd)) return true;
+      if (readyProd?.kind === 'event' && this.conditionPresupposesTargetCompletion(readyProd.event?.condition, visited, readyProd.event?.id)) {
+        return true;
+      }
+    }
+
+    if (status === 'completed' || status === 'settled') {
+      const completer = this.primaryCompleterFor(questId, consumerEventId);
+      if (this.producerCompletesTarget(completer)) return true;
+      if (completer?.kind === 'event' && this.conditionPresupposesTargetCompletion(completer.event?.condition, visited, completer.event?.id)) {
+        return true;
       }
     }
     return false;
+  }
+
+  eventPresupposesTargetCompletion(event: StoryEvent | undefined): boolean {
+    if (!event?.condition) return false;
+    return this.conditionPresupposesTargetCompletion(event.condition, new Set(), event.id);
   }
 
   acceptProducer(): Producer | undefined {
@@ -1184,9 +1404,15 @@ class Planner {
         this.applyAccept(state, node.quest!);
         this.nodeMaps.set(node.id, state.currentMap);
         if (this.acceptNodeId === node.id) this.acceptMap = state.currentMap;
+        if (node.quest !== this.questId && state.status.get(node.quest!) === 'ready') {
+          this.replayReadyWorldEvents(state, node.quest!, equipment, inParty);
+        }
       } else if (node.kind === 'ready') {
         this.applyReady(state, node.quest!);
         this.nodeMaps.set(node.id, state.currentMap);
+        if (node.quest !== this.questId) {
+          this.replayReadyWorldEvents(state, node.quest!, equipment, inParty);
+        }
       } else if (node.kind === 'deliver') {
         this.applyDeliver(state, node.quest!);
         this.nodeMaps.set(node.id, state.currentMap);
@@ -1198,6 +1424,23 @@ class Planner {
     if (!this.acceptMap) this.acceptMap = this.mode === 'available' ? this.acceptMapForAvailable(state) : state.currentMap;
     if (this.acceptMap) state.currentMap = this.acceptMap;
     return state;
+  }
+
+  replayReadyWorldEvents(state: HistoryState, questId: string,
+    equipment: Map<string, StoryCommand>, inParty: Set<string>): void {
+    for (const info of this.index.eventOrder) {
+      const ev = info.event;
+      if (ev.repeat || ev.source !== 'quest' || info.hasQuestCommands || state.completedEvents.has(ev.id)) continue;
+      if (this.conditionConflicts(ev.condition)) continue;
+      if (!positiveQuestRefs(ev.condition).some(ref => ref.quest === questId && ref.status === 'ready')) continue;
+      if (!conditionHolds(ev.condition, state)) continue;
+      const evMap = this.triggerMap(ev, state);
+      const prevMap = state.currentMap;
+      state.currentMap = evMap;
+      this.replayScript(ev.script, state, ev.condition, evMap, equipment, inParty);
+      state.currentMap = prevMap;
+      state.completedEvents.add(ev.id);
+    }
   }
 
   acceptMap: string | undefined;
@@ -1462,7 +1705,7 @@ class Planner {
     if (accept?.kind === 'event') return this.triggerMap(accept.event!, state);
     const places = this.target.places?.available;
     if (places?.type === 'fixed') return places.map;
-    if (places?.type === 'alternatives') return places.spots[0]?.map;
+    if (places?.type === 'alternatives') return undefined;
     return state.currentMap;
   }
 

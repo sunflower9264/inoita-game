@@ -388,7 +388,10 @@ export function planQuestStart(campaign: Campaign, session: Session, questId: st
   conditionPatch.removedEvents = campaign.events.filter(event => !history.completedEvents.has(event.id)).map(event => event.id);
   conditionPatch.choices = [...history.choices].map(([choice, value]) => ({ choice, value }));
   const flags = new Map<string, boolean>();
-  for (const command of history.world) if (command.type === 'flag') flags.set(command.flag, command.value ?? true);
+  for (const command of history.world) {
+    if (command.type === 'flag') flags.set(command.flag, command.value ?? true);
+    else if (command.type === 'world' && command.command.kind === 'flag') flags.set(command.command.id, command.command.value);
+  }
   conditionPatch.flags = [...flags].map(([flag, value]) => ({ flag, value }));
   conditionPatch.quests = campaign.quests.map(q => ({ id: q.id, status: history.progress.get(q.id) ?? 'available' }));
   const context = plannedContext(session, conditionPatch);

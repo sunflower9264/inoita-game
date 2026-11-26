@@ -330,6 +330,230 @@ test('Session.forgetEnemyVitalsByPrefix 精准按前缀清理，历史显形与�
   assert.equal(futurePlaced, false, '更晚章节的登记摆放标志不应提前投影到早期任务');
 });
 
+test('无独立接取事件的任务也受先后护栏约束，且精确区分 characterId、all/false 摆放、净路障显隐、敌怪清除、两跳自环与世界标志', () => {
+  // 1. 正式战役两跳自环任务（quest-402 / quest-407 / quest-428 / quest-445）在 available 模式下不再自我完成
+  for (const qid of ['quest-402', 'quest-407', 'quest-428', 'quest-445']) {
+    const h = questJumpHistory(campaign, qid, 'available');
+    assert.equal(h.completedQuests.has(qid), false, `${qid} 在 available 模式下不应被两跳环路提前完成`);
+    assert.notEqual(h.progress.get(qid), 'completed', `${qid} 在 available 模式下进度不应为 completed`);
+  }
+
+  // 2. 构造最小合成战役，集中覆盖：
+  //    - 无接取事件的发布人任务拦截未来章节事件（targetAcceptIndex < 0）
+  //    - Step 1 无 characterId 隐身不被带 characterId 的显形误匹配并继续匹配正确命令
+  //    - Step 2 解包 all 内的正向 flag 摆放，同时绝不把 value:false 的摆放标志反手设真
+  //    - Step 3 路障先隐藏后重新显形时按净状态不再投影旧隐藏命令
+  //    - Step 4 enemy-location 后续被 location:null 清除时不再复活
+  //    - quest-jump.ts 提取 world/flag 到 conditionPatch.flags 避免被覆写回 false
+  const synthetic: Campaign = {
+    version: 2,
+    contentVersion: 1,
+    start: { map: 'map-a', x: 64, y: 64, actor: 'kiyan', facing: 'south', script: 'start' },
+    quests: [
+      {
+        id: 'q-pre',
+        title: 'q-pre',
+        description: 'q-pre',
+        guidance: { available: '', active: '' },
+        progressText: '',
+        completeText: '',
+        goals: [],
+        availableWhen: { type: 'always', value: true },
+        completion: 'story',
+      },
+      {
+        id: 'q-target',
+        title: 'q-target',
+        description: 'q-target',
+        guidance: { available: '', active: '' },
+        progressText: '',
+        completeText: '',
+        giver: 'guard',
+        delivery: 'ally',
+        deliveryCharacterId: 'npc-ally',
+        goals: [{ id: 'g1', kind: 'talk', target: 'scout', characterId: 'npc-scout', quantity: 1 }],
+        places: { active: { type: 'fixed', map: 'map-a', x: 64, y: 64, source: 'test' } },
+        availableWhen: { type: 'quest', quest: 'q-pre', status: 'completed' },
+        completion: 'all',
+      },
+      {
+        id: 'q-future',
+        title: 'q-future',
+        description: 'q-future',
+        guidance: { available: '', active: '' },
+        progressText: '',
+        completeText: '',
+        goals: [],
+        availableWhen: { type: 'quest', quest: 'q-target', status: 'completed' },
+        completion: 'story',
+      },
+    ],
+    questGroups: [{ id: 'g', title: 'g', kind: 'main', questIds: ['q-pre', 'q-target', 'q-future'] }],
+    placements: [
+      {
+        id: 'p-ally',
+        map: 'map-a',
+        actor: 'ally',
+        characterId: 'npc-ally',
+        x: 96,
+        y: 96,
+        condition: { type: 'all', conditions: [{ type: 'flag', flag: 'flag-ally-placed', value: true }] },
+      },
+      {
+        id: 'p-scout-neg',
+        map: 'map-a',
+        actor: 'scout',
+        characterId: 'npc-scout',
+        x: 112,
+        y: 96,
+        condition: { type: 'flag', flag: 'flag-scout-gone', value: false },
+      },
+    ],
+    scripts: {
+      start: { entry: 'n', nodes: [{ id: 'n', presentation: [], commands: [], exit: { type: 'end' } }] },
+      's-pre': {
+        entry: 'n',
+        nodes: [{
+          id: 'n',
+          presentation: [],
+          commands: [
+            { type: 'quest', command: { type: 'accept', quest: 'q-pre' } },
+            { type: 'quest', command: { type: 'script-complete', quest: 'q-pre' } },
+            { type: 'world', command: { kind: 'actor-visibility', map: 'map-a', actor: 'guard', visible: false } },
+            { type: 'world', command: { kind: 'flag', id: 'world-flag-kept', value: true } },
+          ],
+          exit: { type: 'end' },
+        }],
+      },
+      's-wrong-char-reveal': {
+        entry: 'n',
+        nodes: [{
+          id: 'n',
+          presentation: [],
+          commands: [
+            { type: 'world', command: { kind: 'actor-visibility', map: 'map-a', actor: 'guard', characterId: 'npc-other', visible: true } },
+          ],
+          exit: { type: 'end' },
+        }],
+      },
+      's-right-reveal-and-place': {
+        entry: 'n',
+        nodes: [{
+          id: 'n',
+          presentation: [],
+          commands: [
+            { type: 'world', command: { kind: 'actor-visibility', map: 'map-a', actor: 'guard', visible: true } },
+            { type: 'world', command: { kind: 'flag', id: 'flag-ally-placed', value: true } },
+            { type: 'world', command: { kind: 'place', mapFromStage: true, entity: { id: 'p-ally', map: 'placeholder', actor: 'ally', characterId: 'npc-ally', x: 96, y: 96 } } },
+            { type: 'world', command: { kind: 'enemy-location', enemyId: 'enemy-boss', location: { map: 'map-a', x: 80, y: 80 } } },
+          ],
+          exit: { type: 'end' },
+        }],
+      },
+      's-clear-enemy': {
+        entry: 'n',
+        nodes: [{
+          id: 'n',
+          presentation: [],
+          commands: [
+            { type: 'world', command: { kind: 'enemy-location', enemyId: 'enemy-boss', location: null } },
+          ],
+          exit: { type: 'end' },
+        }],
+      },
+      's-future-noise': {
+        entry: 'n',
+        nodes: [{
+          id: 'n',
+          presentation: [],
+          commands: [
+            { type: 'flag', flag: 'flag-scout-gone', value: true },
+          ],
+          exit: { type: 'end' },
+        }],
+      },
+    },
+    events: [
+      { id: 'ev-pre', source: 'event', map: 'map-a', script: 's-pre', condition: { type: 'always', value: true } },
+      { id: 'ev-wrong-reveal', source: 'event', map: 'map-a', script: 's-wrong-char-reveal', condition: { type: 'quest', quest: 'q-pre', status: 'completed' } },
+      { id: 'ev-right-reveal', source: 'event', map: 'map-a', script: 's-right-reveal-and-place', condition: { type: 'quest', quest: 'q-pre', status: 'completed' } },
+      { id: 'ev-clear-enemy', source: 'event', map: 'map-a', script: 's-clear-enemy', condition: { type: 'quest', quest: 'q-pre', status: 'completed' } },
+      { id: 'ev-future-noise', source: 'event', map: 'map-a', script: 's-future-noise', condition: { type: 'quest', quest: 'q-future', status: 'active' } },
+    ],
+  };
+
+  const session = newStorySession(
+    synthetic,
+    headlessContent.world.actors['kiyan'],
+    headlessContent.storyClasses.classes[0],
+    headlessContent.items,
+    headlessContent.stats,
+    headlessContent.battle,
+    headlessContent.companions,
+  );
+  const plan = planQuestStart(synthetic, session, 'q-target', 'available');
+  applyQuestStartPlan(session, plan);
+
+  // Step 1: 跳过带 characterId='npc-other' 的伪匹配，找到真正无 characterId 的 guard 显形命令
+  assert.equal(session.storyWorld.actorVisible('map-a', 'guard'), true, '无编号隐藏角色应精确匹配无编号显形命令');
+  // Step 2: 解包 all 内的 flag-ally-placed 且 mapFromStage 正确解析为 map-a；绝不把 flag-scout-gone(value:false) 设成 true
+  assert.equal(session.storyWorld.hasFlag('flag-ally-placed'), true, 'all 包装内的正向摆放标志应投影生效');
+  assert.equal(session.storyWorld.entity('p-ally')?.map, 'map-a', 'mapFromStage 的 place 命令应解析为事件地图');
+  assert.equal(session.storyWorld.hasFlag('flag-scout-gone'), false, 'value:false 的摆放标志与未来章节事件不得反手设真');
+  // Step 4: 被后续 location:null 清除的 enemy-boss 不得复活
+  assert.equal(session.storyWorld.enemySpawns('map-a').some(s => s.enemyId === 'enemy-boss'), false, '后续已清除的敌怪不得复活');
+  // quest-jump.ts: world/flag 命令应同步进 conditionPatch.flags 并保留在会话中
+  assert.equal(plan.conditionPatch.flags.some(f => f.flag === 'world-flag-kept' && f.value), true);
+  assert.equal(session.storyWorld.hasFlag('world-flag-kept'), true);
+
+  // 3. Step 3 净显隐状态：路障先隐藏后被更晚合法事件重新显形时，不再投影陈旧的隐藏命令
+  const netObstacleCampaign: Campaign = {
+    version: 2,
+    contentVersion: 1,
+    start: { map: 'map-a', x: 64, y: 64, actor: 'kiyan', facing: 'south', script: 'start' },
+    quests: [
+      {
+        id: 'q-reg',
+        title: 'q-reg',
+        description: 'q-reg',
+        guidance: { available: '', active: '' },
+        progressText: '',
+        completeText: '',
+        goals: [],
+        availableWhen: { type: 'always', value: true },
+        completion: 'story',
+      },
+    ],
+    questGroups: [{ id: 'g', title: 'g', kind: 'main', questIds: ['q-reg'] }],
+    placements: [],
+    scripts: {
+      start: { entry: 'n', nodes: [{ id: 'n', presentation: [], commands: [], exit: { type: 'end' } }] },
+      's-hide-door': {
+        entry: 'n',
+        nodes: [{ id: 'n', presentation: [], commands: [{ type: 'world', command: { kind: 'actor-visibility', map: 'map-a', actor: 'steel-door-1', visible: false } }], exit: { type: 'end' } }],
+      },
+      's-reshow-door': {
+        entry: 'n',
+        nodes: [{ id: 'n', presentation: [], commands: [{ type: 'world', command: { kind: 'actor-visibility', map: 'map-a', actor: 'steel-door-1', visible: true } }], exit: { type: 'end' } }],
+      },
+      's-reg-accept': {
+        entry: 'n',
+        nodes: [{ id: 'n', presentation: [], commands: [{ type: 'quest', command: { type: 'accept', quest: 'q-reg' } }], exit: { type: 'end' } }],
+      },
+    },
+    events: [
+      { id: 'ev-1-hide', source: 'event', map: 'map-a', script: 's-hide-door', condition: { type: 'always', value: true } },
+      { id: 'ev-2-reshow', source: 'event', map: 'map-a', script: 's-reshow-door', condition: { type: 'always', value: true } },
+      { id: 'ev-3-reg', source: 'region', map: 'map-a', region: { x: 0, y: 0, width: 32, height: 32 }, script: 's-reg-accept', condition: { type: 'always', value: true } },
+    ],
+  };
+  const netHistory = questJumpHistory(netObstacleCampaign, 'q-reg', 'available');
+  const staleHidden = netHistory.world.some(
+    cmd => cmd.type === 'world' && cmd.command.kind === 'actor-visibility' && cmd.command.actor === 'steel-door-1' && !cmd.command.visible,
+  );
+  assert.equal(staleHidden, false, '路障被后续合法事件重新显形后，不应再投影更早的隐藏命令');
+});
+
 function repeatCampaign(): Campaign {
   const quest = (id: string, extra: Partial<CampaignQuest> = {}): CampaignQuest => ({
     id, title: id, description: id, guidance: { available: id, active: id },
