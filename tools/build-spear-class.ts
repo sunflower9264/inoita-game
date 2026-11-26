@@ -16,6 +16,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PNG } from 'pngjs';
 import sharp from 'sharp';
+import {
+  CANONICAL_RIM_SAMPLES,
+  SKILL_ICON_SIZE,
+  composeSkillIcon,
+  extractCanonicalSkillRim,
+} from './skill-icon-rim.ts';
 import type {
   AreaShape,
   BasicAttackDefinition,
@@ -1066,13 +1072,13 @@ const SKILL_ICON_IDS = [
 
 /**
  * 将 `asset-source/raw-art/skills/lancer-<id>.png` 中的生图原画高精缩放至 75×75，
- * 并封装原版《艾诺迪亚4》青铜圆框与透明四角；同时从 3 项增益技能原画派生 24×24 状态栏小图标。
+ * 并封装经共识校验的原版《艾诺迪亚4》青铜圆框与透明四角；同时从 3 项增益技能原画派生 24×24 状态栏小图标。
  */
 async function buildSkillAndBuffIcons(): Promise<void> {
   const rawDir = path.join(ASSET_SOURCE, 'raw-art/skills');
-  const rimSource = PNG.sync.read(fs.readFileSync(path.join(ASSET_SOURCE, 'assets/skills/rush-of-anger.png')));
-  const cx = 37;
-  const cy = 37;
+  const rim = extractCanonicalSkillRim(
+    CANONICAL_RIM_SAMPLES.map(rel => PNG.sync.read(fs.readFileSync(path.join(ASSET_SOURCE, rel)))),
+  );
 
   // 逐技能可选微调内裁比例（默认裁掉最外 4% 安全出血，确保圆框内构图饱满无白边）
   const cropMarginBySkill: Partial<Record<(typeof SKILL_ICON_IDS)[number], number>> = {
@@ -1095,38 +1101,13 @@ async function buildSkillAndBuffIcons(): Promise<void> {
 
     const { data: rawRgba } = await sharp(rawFile)
       .extract({ left: cropLeft, top: cropTop, width: cropSize, height: cropSize })
-      .resize(75, 75, { kernel: sharp.kernel.lanczos3, fit: 'cover' })
+      .resize(SKILL_ICON_SIZE, SKILL_ICON_SIZE, { kernel: sharp.kernel.lanczos3, fit: 'cover' })
       .sharpen({ sigma: 0.65 })
       .ensureAlpha()
       .raw()
       .toBuffer({ resolveWithObject: true });
 
-    const png = new PNG({ width: 75, height: 75 });
-    for (let y = 0; y < 75; y++) {
-      for (let x = 0; x < 75; x++) {
-        const idx = (y * 75 + x) * 4;
-        const r = Math.hypot(x - cx, y - cy);
-        if (r >= 33.4) {
-          // 完整沿用原版外圈青铜金属圆环与圆外透明像素
-          png.data[idx] = rimSource.data[idx]!;
-          png.data[idx + 1] = rimSource.data[idx + 1]!;
-          png.data[idx + 2] = rimSource.data[idx + 2]!;
-          png.data[idx + 3] = rimSource.data[idx + 3]!;
-        } else if (r > 32.0) {
-          // 1.4px 抗锯齿内环自然衔接原版暗金内阴影
-          const t = (r - 32.0) / 1.4;
-          png.data[idx] = Math.round(rawRgba[idx]! * (1 - t) + rimSource.data[idx]! * t);
-          png.data[idx + 1] = Math.round(rawRgba[idx + 1]! * (1 - t) + rimSource.data[idx + 1]! * t);
-          png.data[idx + 2] = Math.round(rawRgba[idx + 2]! * (1 - t) + rimSource.data[idx + 2]! * t);
-          png.data[idx + 3] = 255;
-        } else {
-          png.data[idx] = rawRgba[idx]!;
-          png.data[idx + 1] = rawRgba[idx + 1]!;
-          png.data[idx + 2] = rawRgba[idx + 2]!;
-          png.data[idx + 3] = 255;
-        }
-      }
-    }
+    const png = composeSkillIcon(rawRgba, rim);
 
     writePng(path.join(ASSET_SOURCE, `assets/skills/lancer-${id}.png`), png);
     writePng(path.join(PUBLIC, `assets/skills/lancer-${id}.png`), png);
@@ -2475,4 +2456,6 @@ async function main(): Promise<void> {
   );
 }
 
-await main();
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  await main();
+}

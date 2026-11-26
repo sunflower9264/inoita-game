@@ -2,7 +2,7 @@
 export const UI_ICON_ATLAS_FILE = "assets/ui/menu-icons.webp";
 export const UI_ICON_ATLAS_DATA = "assets/ui/menu-icons.json";
 export const UI_ICON_ATLAS_KEY = "interface:assets/ui/menu-icons.webp";
-export const UI_ICON_SOURCE_DIGEST = "7b6589cf49d8df996bf915990e2a9d119a105e626c1aea57341a9dfea6b99abf";
+export const UI_ICON_SOURCE_DIGEST = "54984c0aa07d6a74e0e4d4b31222f7d2d6f646125bb637ea6fe1387d4943c47e";
 const eachRow = (groups: readonly string[], visit: (file: string, fields: string[]) => void): void => {
   for (const group of groups) {
     const [dir, ...rows] = group.split('|');
