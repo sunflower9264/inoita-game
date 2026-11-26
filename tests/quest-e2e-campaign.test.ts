@@ -4,6 +4,7 @@ import { moneyGain } from '../src/domain/economy.ts';
 import { storyConditionReferences } from '../src/domain/story-condition.ts';
 import type { StoryCondition } from '../src/domain/story-condition.ts';
 import type { StoryNode } from '../src/domain/story-graph.ts';
+import { storyExitId } from '../src/domain/story-world.ts';
 import {
   buildCampaignIndexes,
   createQuestE2EHarness,
@@ -103,24 +104,41 @@ test('全量 487 个正式任务在条件依赖图上从开局全部可解锁且
     const maxTries = Math.max(1, ...(evChoiceNodes.get(ev.id) ?? []).map(c => c.options.length));
     return (repeatFiresThisEpoch.get(ev.id) ?? 0) < maxTries;
   };
+  const exitRuleByKey = new Map<string, StoryCondition>();
+  for (const rule of campaign.exitRules ?? []) {
+    exitRuleByKey.set(`${rule.map}\0${rule.id}`, rule.condition);
+  }
+  const disabledExits = new Set<string>();
   const activeEncounterEnemies = new Set<string>();
   const visitedMaps = new Set<string>();
-  const addVisitedMap = (startMap: string | undefined) => {
+  const seedVisitedMap = (startMap: string | undefined) => {
     if (!startMap || visitedMaps.has(startMap)) return;
-    const queue = [startMap];
     visitedMaps.add(startMap);
-    while (queue.length > 0) {
-      const cur = queue.shift()!;
-      const mapObj = official.maps.get(cur);
-      for (const ex of mapObj?.exits ?? []) {
-        if (!visitedMaps.has(ex.destination)) {
+  };
+  const expandVisitedMaps = () => {
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const cur of [...visitedMaps]) {
+        const mapObj = official.maps.get(cur);
+        for (const ex of mapObj?.exits ?? []) {
+          if (visitedMaps.has(ex.destination)) continue;
+          const eid = storyExitId(cur, ex);
+          if (disabledExits.has(eid)) continue;
+          const ruleCond = exitRuleByKey.get(`${cur}\0${eid}`);
+          if (ruleCond && !evalCond(ruleCond)) continue;
           visitedMaps.add(ex.destination);
-          queue.push(ex.destination);
+          grew = true;
         }
       }
     }
   };
-  addVisitedMap(campaign.start.map);
+  const addVisitedMap = (startMap: string | undefined) => {
+    if (!startMap) return;
+    seedVisitedMap(startMap);
+    expandVisitedMaps();
+  };
+  seedVisitedMap(campaign.start.map);
 
   const placeReachable = (place: (typeof campaign.events)[number]['place']): boolean => {
     if (!place || place.type === 'current' || place.type === 'unavailable') return true;
@@ -164,6 +182,8 @@ test('全量 487 个正式任务在条件依赖图上从开局全部可解锁且
         return true;
     }
   };
+  // evalCond 就绪后立刻按 exitRules + exit 开关展开初始连通图
+  expandVisitedMaps();
 
   const evalCondIgnoringChoice = (cond: StoryCondition | undefined): boolean => {
     if (!cond) return true;
@@ -249,6 +269,25 @@ test('全量 487 个正式任务在条件依赖图上从开局全部可解锁且
         else flags.delete(cmd.flag);
         bumpEpoch();
       }
+    } else if (cmd.type === 'world' && cmd.command.kind === 'flag') {
+      const nextVal = cmd.command.value;
+      if (flags.has(cmd.command.id) !== nextVal) {
+        if (nextVal) flags.add(cmd.command.id);
+        else flags.delete(cmd.command.id);
+        bumpEpoch();
+      }
+    } else if (cmd.type === 'world' && cmd.command.kind === 'exit') {
+      const wasDisabled = disabledExits.has(cmd.command.id);
+      if (cmd.command.enabled) {
+        if (wasDisabled) {
+          disabledExits.delete(cmd.command.id);
+          expandVisitedMaps();
+          bumpEpoch();
+        }
+      } else if (!wasDisabled) {
+        disabledExits.add(cmd.command.id);
+        bumpEpoch();
+      }
     } else if (cmd.type === 'item-give') {
       items.set(cmd.item, (items.get(cmd.item) ?? 0) + (cmd.quantity ?? 1));
       bumpEpoch();
@@ -332,6 +371,7 @@ test('全量 487 个正式任务在条件依赖图上从开局全部可解锁且
   const runScript = (scriptId: string, evId: string) => {
     let curScript: string | undefined = scriptId;
     let curNodeId: string | undefined = campaign.scripts[scriptId]!.entry;
+    const callStack: { script: string; node: string }[] = [];
     let guard = 0;
     while (curScript && curNodeId && guard++ < 400) {
       const targetNodeId: string = curNodeId;
@@ -343,8 +383,18 @@ test('全量 487 个正式任务在条件依赖图上从开局全部可解锁且
       }
       for (const c of cur.commands) applyCmd(c);
       const ex: StoryNode['exit'] = cur.exit;
-      if (ex.type === 'end') break;
-      if (ex.type === 'next') {
+      if (ex.type === 'end') {
+        const ret = callStack.pop();
+        if (!ret) break;
+        curScript = ret.script;
+        curNodeId = ret.node;
+      } else if (ex.type === 'defer') {
+        break;
+      } else if (ex.type === 'call') {
+        callStack.push(ex.then);
+        curScript = ex.target.script;
+        curNodeId = ex.target.node;
+      } else if (ex.type === 'next') {
         curScript = ex.target.script;
         curNodeId = ex.target.node;
       } else if (ex.type === 'branch') {
@@ -448,6 +498,7 @@ test('全量 487 个正式任务在条件依赖图上从开局全部可解锁且
   let iterations = 0;
   while (changed && iterations++ < 6000) {
     changed = false;
+    expandVisitedMaps();
     const sidePending = hasPendingSideQuests();
 
     // 1. 自动任务/事件链/开场事件优先
@@ -657,13 +708,13 @@ test('全部 487 个正式任务逐一独立跑通「接取 → 目标达成 →
   let landmarkQuestsVerified = 0;
   let saveRoundtripsVerified = 0;
   const crossIslandQuestIds = new Set<string>();
-  const sharedHarness = createQuestE2EHarness(official, { validateStages: false });
-  t.after(() => sharedHarness.dispose());
 
   for (const group of campaign.questGroups) {
     await t.test(`[${group.kind === 'main' ? '主线组' : '支线组'}] ${group.title} (${group.id})`, async () => {
-      const h = sharedHarness;
-      for (const questId of group.questIds) {
+      // 每组重建独立干净会话（复用已解析的只读 official 内容与索引），彻底杜绝跨组状态污染
+      const h = createQuestE2EHarness(official, { validateStages: false });
+      try {
+        for (const questId of group.questIds) {
         const quest = indexes.questById.get(questId);
         assert.ok(quest, `任务组 ${group.id} 引用了不存在的任务 ${questId}`);
         verifiedQuestIds.add(questId);
@@ -747,6 +798,9 @@ test('全部 487 个正式任务逐一独立跑通「接取 → 目标达成 →
           }
           throw error;
         }
+      }
+      } finally {
+        h.dispose();
       }
     });
   }

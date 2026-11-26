@@ -240,9 +240,9 @@ test('可选接取脚本拒绝后重接、交互反馈去重、残血变身捕�
     await h.fulfillQuestGoals(miniContent.campaign.quests.find(q => q.id === 'q-wolf-capture')!);
     assert.equal(h.session.status('q-wolf-capture'), 'ready');
     assert.equal(
-      h.visibleEntities('camp').some(e => e.id.startsWith('quest-target:')),
+      h.visibleEntities('wilds').some(e => e.id.startsWith('quest-target:')),
       false,
-      'removeAfterInteraction 捕获后立即移除临时捕捉实体',
+      'removeAfterInteraction 捕获后立即从 wilds 移除临时捕捉实体',
     );
     await h.interactByIdentity('captain', 'npc-captain');
     assert.equal(h.session.status('q-wolf-capture'), 'completed');

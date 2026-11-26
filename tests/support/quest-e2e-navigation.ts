@@ -49,7 +49,7 @@ export function createQuestNavigation(
    */
   const reachableMapsFrom = (originMapId?: string): ReadonlySet<string> => {
     const startMap = originMapId ?? session.storyWorld.currentLocation?.map ?? content.campaign.start.map;
-    const key = `${startMap}\0${session.storyWorld.revision}\0${session.questBook.version}\0${session.runtimeState.completedEvents.length}`;
+    const key = `${startMap}\0${session.storyWorld.revision}\0${session.questBook.version}\0${session.runtimeState.sequence}`;
     if (key === reachCacheKey) return reachCacheValue;
 
     const reached = new Set<string>([startMap]);
@@ -153,21 +153,37 @@ export function createQuestNavigation(
       return cells;
     };
 
-    const baseStarts: Point[] = [...(sources.mapEntrances.get(mapId) ?? []), ...(options?.extraStarts ?? [])];
+    const reachable = reachableMapsFrom();
+    const enabledEntrances: Point[] = [];
+    if (mapId === content.campaign.start.map && reachable.has(mapId)) {
+      enabledEntrances.push({ x: content.campaign.start.x, y: content.campaign.start.y });
+    }
+    for (const incoming of sources.mapIncomingExits.get(mapId) ?? []) {
+      if (!reachable.has(incoming.fromMap)) continue;
+      const eid = storyExitId(incoming.fromMap, incoming.exit);
+      const ruleCond = sources.exitRuleByKey.get(`${incoming.fromMap}\0${eid}`);
+      const ruleOk = !ruleCond || session.evaluateCondition(ruleCond);
+      if (!ruleOk || !session.storyWorld.exitEnabled(incoming.fromMap, incoming.exit)) continue;
+      enabledEntrances.push(incoming.point);
+    }
+    if (reachable.has(mapId)) {
+      const completedEvents = new Set(session.runtimeState.completedEvents);
+      for (const landing of sources.storyEntryLandingsByMap.get(mapId) ?? []) {
+        if (completedEvents.has(landing.eventId)) {
+          enabledEntrances.push(landing.point);
+        }
+      }
+    }
+    const staticEntrances = enabledEntrances.length > 0
+      ? enabledEntrances
+      : (sources.mapEntrances.get(mapId) ?? []);
+    const baseStarts: Point[] = [...staticEntrances, ...(options?.extraStarts ?? [])];
     const loc = session.storyWorld.currentLocation;
+    // 仅当目标地图不存在任何静态入口（如纯脚本落点室内图）时回退当前位置，严禁用 GM 跳转落点绕过路障 BFS
     if (baseStarts.length === 0 && loc?.map === mapId) {
       return { cells: computeBfs([{ x: loc.x, y: loc.y }]), entities };
     }
-    const baseCells = computeBfs(baseStarts);
-    if (loc?.map === mapId) {
-      const locAlreadyCovered = baseCells.some(
-        pt => Math.abs(pt.x - loc.x) <= map.tileSize && Math.abs(pt.y - loc.y) <= map.tileSize,
-      );
-      if (!locAlreadyCovered) {
-        return { cells: computeBfs([...baseStarts, { x: loc.x, y: loc.y }]), entities };
-      }
-    }
-    return { cells: baseCells, entities };
+    return { cells: computeBfs(baseStarts), entities };
   };
 
   /** 静态格子硬校验：region 触发框内至少有一格主角可站立、重叠脚底框且从当前入口不被当前在场动态路障堵死。 */
@@ -226,10 +242,8 @@ export function createQuestNavigation(
       if (target.kind === 'entity' && entity.id === target.entity.id) continue;
       const col = mirroredCollision(content.world.actors[entity.actor]?.collision, entity.flip);
       if (!col) continue;
-      const evs = [
-        ...(entity.characterId ? sources.eventsHidingActorOnMap.get(`${mapId}\0${entity.characterId}`) ?? [] : []),
-        ...(sources.eventsHidingActorOnMap.get(`${mapId}\0${entity.actor}`) ?? []),
-      ].filter((ev, idx, arr) => arr.indexOf(ev) === idx && isCandidateEvent(ev));
+      const evs = (sources.eventsHidingActorOnMap.get(`${mapId}\0${entity.characterId ?? entity.actor}`) ?? [])
+        .filter((ev, idx, arr) => arr.indexOf(ev) === idx && isCandidateEvent(ev));
       if (!evs.length) continue;
       allRemovableIds.add(entity.id);
       for (const ev of evs) {

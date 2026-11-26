@@ -181,7 +181,14 @@ export function createStoryPresentationPorts(params: {
       assertScenePlan(planScene(stage.scene, stage.bindings));
     },
     getStageState() {
-      return stage ? structuredClone(stage) : undefined;
+      if (!stage) return undefined;
+      remember();
+      const otherScenes = [...scenes.values()].filter(visited => visited.map !== stage!.map);
+      return structuredClone(
+        otherScenes.length > 0
+          ? { ...stage, scenes: otherScenes }
+          : stage,
+      );
     },
     getWorldChanges() {
       remember();

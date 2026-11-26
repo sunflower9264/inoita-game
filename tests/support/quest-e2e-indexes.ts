@@ -12,7 +12,7 @@ import {
 import type { BattleCatalog } from '../../src/domain/battle.ts';
 import type { Campaign, CampaignQuest } from '../../src/domain/campaign.ts';
 import type { CharacterStatsCatalog } from '../../src/domain/character-stats.ts';
-import type { QuestItemSpawn, WorldIndex, WorldMap } from '../../src/domain/content.ts';
+import type { MapExit, QuestItemSpawn, WorldIndex, WorldMap } from '../../src/domain/content.ts';
 import { parseDrops, type DropCatalog } from '../../src/domain/drops.ts';
 import type { ItemCatalog } from '../../src/domain/items.ts';
 import type { Point } from '../../src/domain/navigation.ts';
@@ -74,6 +74,63 @@ export interface CampaignIndexes {
 
 const indexCache = new WeakMap<Campaign, CampaignIndexes>();
 
+/** 递归遍历 StoryCondition 语法树（不依赖 JSON 字符串正则）。 */
+export function walkStoryCondition(
+  cond: StoryCondition | undefined,
+  visit: (node: StoryCondition, negated: boolean) => void,
+  negated = false,
+): void {
+  if (!cond) return;
+  visit(cond, negated);
+  switch (cond.type) {
+    case 'all':
+    case 'any':
+      for (const child of cond.conditions) walkStoryCondition(child, visit, negated);
+      break;
+    case 'not':
+      walkStoryCondition(cond.condition, visit, !negated);
+      break;
+    default:
+      break;
+  }
+}
+
+export function extractChoiceCondition(cond: StoryCondition | undefined): { choice: string; value: string } | undefined {
+  let found: { choice: string; value: string } | undefined;
+  walkStoryCondition(cond, (node, negated) => {
+    if (!found && !negated && node.type === 'choice') {
+      found = { choice: node.choice, value: node.value };
+    }
+  });
+  return found;
+}
+
+export function extractFlagExpectations(cond: StoryCondition | undefined): Map<string, boolean> {
+  const result = new Map<string, boolean>();
+  walkStoryCondition(cond, (node, negated) => {
+    if (node.type === 'flag') {
+      const wanted = (node.value ?? true) !== negated;
+      if (!result.has(node.flag)) result.set(node.flag, wanted);
+    }
+  });
+  return result;
+}
+
+export function extractQuestStatuses(cond: StoryCondition | undefined): Map<string, Set<string>> {
+  const result = new Map<string, Set<string>>();
+  walkStoryCondition(cond, (node, negated) => {
+    if (!negated && node.type === 'quest') {
+      let set = result.get(node.quest);
+      if (!set) {
+        set = new Set();
+        result.set(node.quest, set);
+      }
+      set.add(node.status);
+    }
+  });
+  return result;
+}
+
 export function buildCampaignIndexes(campaign: Campaign): CampaignIndexes {
   const existing = indexCache.get(campaign);
   if (existing) return existing;
@@ -85,9 +142,9 @@ export function buildCampaignIndexes(campaign: Campaign): CampaignIndexes {
   const choiceEvents = new Map<string, StoryEvent[]>();
   for (const ev of campaign.events) {
     if (ev.source !== 'choice') continue;
-    const match = JSON.stringify(ev.condition ?? {}).match(/"choice":"([^"]+)","value":"([^"]+)"/);
-    if (match) {
-      const key = `${match[1]}=${match[2]}`;
+    const picked = extractChoiceCondition(ev.condition);
+    if (picked) {
+      const key = `${picked.choice}=${picked.value}`;
       const list = choiceEvents.get(key) ?? [];
       list.push(ev);
       choiceEvents.set(key, list);
@@ -149,13 +206,27 @@ export function buildCampaignIndexes(campaign: Campaign): CampaignIndexes {
   return built;
 }
 
+export interface IncomingMapEntrance {
+  fromMap: string;
+  exit: MapExit;
+  point: Point;
+}
+
+export interface StoryEntryLanding {
+  eventId: string;
+  point: Point;
+}
+
 export interface ContentSourceIndexes {
   mapEntrances: Map<string, Point[]>;
+  mapIncomingExits: Map<string, IncomingMapEntrance[]>;
   exitRuleByKey: Map<string, StoryCondition>;
   /** 忽略出口锁后，每张地图沿静态出口有向可达的全部地图集合（用于区分“同岛出口上锁”与“真跨岛”）。 */
   staticReachableByMap: Map<string, ReadonlySet<string>>;
   /** 存在正式剧情 stage / travel 切图入口可达的地图集合（用于核验跨岛目标岛确有正式剧情桥接）。 */
   storyBridgeMaps: ReadonlySet<string>;
+  /** 正式剧情事件终态把主角落点放到某地图的坐标清单（仅限非 mapFromWorld 的正式剧情切图/传送，供已完成剧情桥接地图作为合法入口）。 */
+  storyEntryLandingsByMap: Map<string, StoryEntryLanding[]>;
   mapsByEnemy: Map<string, string[]>;
   mapsByQuestItemKey: Map<string, { mapId: string; spawn: QuestItemSpawn }[]>;
   mapsByItemSpawn: Map<string, { mapId: string; spawn: QuestItemSpawn }[]>;
@@ -185,11 +256,17 @@ export function buildContentSourceIndexes(content: QuestHarnessContent): Content
   };
 
   const mapEntrances = new Map<string, Point[]>();
-  for (const m of content.maps.values()) mapEntrances.set(m.id, []);
+  const mapIncomingExits = new Map<string, IncomingMapEntrance[]>();
+  for (const m of content.maps.values()) {
+    mapEntrances.set(m.id, []);
+    mapIncomingExits.set(m.id, []);
+  }
   mapEntrances.get(content.campaign.start.map)?.push({ x: content.campaign.start.x, y: content.campaign.start.y });
   for (const src of content.maps.values()) {
     for (const ex of src.exits) {
-      mapEntrances.get(ex.destination)?.push({ x: ex.spawn.x, y: ex.spawn.y });
+      const point = { x: ex.spawn.x, y: ex.spawn.y };
+      mapEntrances.get(ex.destination)?.push(point);
+      mapIncomingExits.get(ex.destination)?.push({ fromMap: src.id, exit: ex, point });
     }
   }
 
@@ -238,6 +315,72 @@ export function buildContentSourceIndexes(content: QuestHarnessContent): Content
           storyBridgeMaps.add(cmd.destination.map);
         } else if (cmd.type === 'world' && cmd.command.kind === 'travel' && content.maps.has(cmd.command.destination.map)) {
           storyBridgeMaps.add(cmd.command.destination.map);
+        }
+      }
+    }
+  }
+
+  const storyEntryLandingsByMap = new Map<string, StoryEntryLanding[]>();
+  const recordStoryLanding = (mapId: string, eventId: string, point: Point) => {
+    const list = storyEntryLandingsByMap.get(mapId) ?? [];
+    if (!list.some(entry => entry.eventId === eventId && entry.point.x === point.x && entry.point.y === point.y)) {
+      list.push({ eventId, point });
+      storyEntryLandingsByMap.set(mapId, list);
+    }
+  };
+  for (const ev of content.campaign.events) {
+    const startScript = content.campaign.scripts[ev.script];
+    if (!startScript) continue;
+    type Landing = { map: string; x: number; y: number } | undefined;
+    const seen = new Set<string>();
+    const stack: { scriptId: string; nodeId: string; landing: Landing; returnTo?: { script: string; node: string } }[] = [
+      { scriptId: ev.script, nodeId: startScript.entry, landing: undefined },
+    ];
+    while (stack.length > 0) {
+      const frame = stack.pop()!;
+      const landingKey = frame.landing ? `${frame.landing.map}@${frame.landing.x},${frame.landing.y}` : '';
+      const returnKey = frame.returnTo ? `${frame.returnTo.script}#${frame.returnTo.node}` : '';
+      const stateKey = `${frame.scriptId}#${frame.nodeId}|${landingKey}|${returnKey}`;
+      if (seen.has(stateKey)) continue;
+      seen.add(stateKey);
+      const script = content.campaign.scripts[frame.scriptId];
+      const node = script?.nodes.find(n => n.id === frame.nodeId);
+      if (!node) continue;
+      let landing: Landing = frame.landing;
+      if (node.stage && !node.stage.mapFromWorld && content.maps.has(node.stage.map)) {
+        landing = { map: node.stage.map, x: node.stage.x, y: node.stage.y };
+      }
+      for (const act of node.presentation) {
+        if (act.type === 'stage' && !act.mapFromWorld && content.maps.has(act.map)) {
+          landing = { map: act.map, x: act.x, y: act.y };
+        } else if (act.type === 'walk' && act.target === 'player' && landing) {
+          landing = { map: landing.map, x: act.x, y: act.y };
+        }
+      }
+      for (const cmd of node.commands) {
+        if (cmd.type === 'travel' && content.maps.has(cmd.destination.map)) {
+          landing = { map: cmd.destination.map, x: cmd.destination.x, y: cmd.destination.y };
+        } else if (cmd.type === 'world' && cmd.command.kind === 'travel' && content.maps.has(cmd.command.destination.map)) {
+          landing = { map: cmd.command.destination.map, x: cmd.command.destination.x, y: cmd.command.destination.y };
+        }
+      }
+      const ex = node.exit;
+      if (ex.type === 'next') {
+        stack.push({ scriptId: ex.target.script, nodeId: ex.target.node, landing, returnTo: frame.returnTo });
+      } else if (ex.type === 'branch') {
+        stack.push({ scriptId: ex.then.script, nodeId: ex.then.node, landing, returnTo: frame.returnTo });
+        stack.push({ scriptId: ex.otherwise.script, nodeId: ex.otherwise.node, landing, returnTo: frame.returnTo });
+      } else if (ex.type === 'choice') {
+        for (const target of Object.values(ex.cases)) {
+          stack.push({ scriptId: target.script, nodeId: target.node, landing, returnTo: frame.returnTo });
+        }
+      } else if (ex.type === 'call') {
+        stack.push({ scriptId: ex.target.script, nodeId: ex.target.node, landing, returnTo: ex.then });
+      } else if (ex.type === 'end' || ex.type === 'defer') {
+        if (ex.type === 'end' && frame.returnTo) {
+          stack.push({ scriptId: frame.returnTo.script, nodeId: frame.returnTo.node, landing });
+        } else if (landing) {
+          recordStoryLanding(landing.map, ev.id, { x: landing.x, y: landing.y });
         }
       }
     }
@@ -323,8 +466,7 @@ export function buildContentSourceIndexes(content: QuestHarnessContent): Content
           pushUnique(eventsSpawningEnemy, cmd.command.enemyId, ev);
         }
         if (cmd.type === 'world' && cmd.command.kind === 'actor-visibility' && !cmd.command.visible) {
-          if (cmd.command.characterId) pushUnique(eventsHidingActorOnMap, `${cmd.command.map}\0${cmd.command.characterId}`, ev);
-          pushUnique(eventsHidingActorOnMap, `${cmd.command.map}\0${cmd.command.actor}`, ev);
+          pushUnique(eventsHidingActorOnMap, `${cmd.command.map}\0${cmd.command.characterId ?? cmd.command.actor}`, ev);
         }
       }
     }
@@ -337,9 +479,11 @@ export function buildContentSourceIndexes(content: QuestHarnessContent): Content
 
   const built: ContentSourceIndexes = {
     mapEntrances,
+    mapIncomingExits,
     exitRuleByKey,
     staticReachableByMap,
     storyBridgeMaps,
+    storyEntryLandingsByMap,
     mapsByEnemy,
     mapsByQuestItemKey,
     mapsByItemSpawn,

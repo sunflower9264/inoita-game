@@ -21,6 +21,7 @@ import { storyConditionReferences, type StoryCondition } from '../../src/domain/
 import { StoryDirector, type StoryWorldPort } from '../../src/domain/story-director.ts';
 import type { StoryEvent } from '../../src/domain/story-graph.ts';
 import type { PerformanceAction } from '../../src/domain/story-performance.ts';
+import { storyExitId } from '../../src/domain/story-world.ts';
 import { applyStoryEnemyRemovals, encounterSpawnId, WorldEnemyRoster } from '../../src/domain/world-enemies.ts';
 import { applyQuestStartPlan, planQuestStart } from '../../src/debug/quest-jump.ts';
 import { GameUI } from '../../src/ui/game-ui.ts';
@@ -28,6 +29,9 @@ import { questNotices, type QuestNoticeState } from '../../src/ui/quest-progress
 import {
   buildCampaignIndexes,
   buildContentSourceIndexes,
+  extractChoiceCondition,
+  extractFlagExpectations,
+  extractQuestStatuses,
   loadOfficialQuestContent,
   type QuestHarnessContent,
 } from './quest-e2e-indexes.ts';
@@ -752,9 +756,14 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
           sp => sp.enemyId === enemyId && session.enemyVitals(sp.id).capture !== undefined,
         );
         if (hasCapturedSlots) {
-          const neighbor = map.exits.find(
-            ex => ex.destination !== mid && content.maps.has(ex.destination) && session.storyWorld.exitEnabled(mid, ex),
-          )?.destination;
+          const neighbor = map.exits.find(ex => {
+            if (ex.destination === mid || !content.maps.has(ex.destination)) return false;
+            const eid = storyExitId(mid, ex);
+            const ruleCond = sources.exitRuleByKey.get(`${mid}\0${eid}`);
+            const ruleOk = !ruleCond || session.evaluateCondition(ruleCond);
+            if (!ruleOk || !session.storyWorld.exitEnabled(mid, ex)) return false;
+            return reachableMapsFrom(mid).has(ex.destination) && reachableMapsFrom(ex.destination).has(mid);
+          })?.destination;
           if (neighbor) {
             travelToMapEntrance(neighbor);
             travelToMapEntrance(mid);
@@ -1001,9 +1010,9 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
         break;
       }
       case 'choice': {
-        const choiceMatch = JSON.stringify(event.condition ?? {}).match(/"choice":"([^"]+)","value":"([^"]+)"/);
-        const choiceKey = event.key ?? choiceMatch?.[1];
-        const choiceVal = choiceMatch?.[2];
+        const choiceCond = extractChoiceCondition(event.condition);
+        const choiceKey = event.key ?? choiceCond?.choice;
+        const choiceVal = choiceCond?.value;
         const parents = choiceKey
           ? (sources.choiceParentEvents.get(choiceKey) ?? []).filter(
               pe => pe.id !== event.id && (pe.repeat || director.runtime.eventStatus(pe.id) !== 'completed'),
@@ -1204,7 +1213,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     }
     if (session.itemCount(itemId) >= targetQty) return;
 
-    // 渠道 6：真实商店货架购买（Storefront，仅限当前可达地图上的在场商店）
+    // 渠道 6：真实商店货架购买（Storefront，仅限当前可达地图上真实在场且可走近的商店）
     if (content.shops) {
       const reachableForShops = reachableMapsFrom();
       for (const [shopId, def] of Object.entries(content.shops.shops)) {
@@ -1221,8 +1230,29 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
               itemDef.level <= r.maximumLevel,
           );
         if (!sellsFixed && !sellsByRule) continue;
-        const shopMap = (sources.mapsByActor.get(shopId) ?? []).find(mid => reachableForShops.has(mid));
-        if (!shopMap) continue;
+        const shopMaps = (sources.mapsByActor.get(shopId) ?? []).filter(mid => reachableForShops.has(mid));
+        if (!shopMaps.length) continue;
+        const locatedShop = tryLocateVisibleEntity(shopId, undefined, shopMaps);
+        if (!locatedShop) continue;
+        travelToMapEntrance(locatedShop.mapId);
+        try {
+          assertEntityApproachable(locatedShop.mapId, locatedShop.entity, `shop:${shopId}`);
+        } catch {
+          const unlocked = await tryUnlockMapObstacles(
+            locatedShop.mapId,
+            { kind: 'entity', entity: locatedShop.entity },
+            visitedQuests,
+          );
+          if (!unlocked) continue;
+          travelToMapEntrance(locatedShop.mapId);
+          if (!visibleEntities(locatedShop.mapId).some(e => e.id === locatedShop.entity.id)) continue;
+          try {
+            assertEntityApproachable(locatedShop.mapId, locatedShop.entity, `shop:${shopId}`);
+          } catch {
+            continue;
+          }
+        }
+        const shopMap = locatedShop.mapId;
         const storefront = new Storefront(content.shops, content.items, content.stats, session, shopId, shopMap, () => 0);
         if (sellsByRule && itemDef) storefront.selectCategory(itemDef.kind);
         while (session.itemCount(itemId) < targetQty) {
@@ -1514,11 +1544,12 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     visitedEvents = new Set<string>(),
   ): Promise<void> => {
     if (!cond || session.evaluateCondition(cond)) return;
-    const condJson = JSON.stringify(cond);
+    const flagExpectations = extractFlagExpectations(cond);
+    const questStatuses = extractQuestStatuses(cond);
     const refs = storyConditionReferences(cond);
 
     for (const flag of refs.flags) {
-      const wanted = !condJson.includes(`"flag":"${flag}","value":false`);
+      const wanted = flagExpectations.get(flag) ?? true;
       if (session.storyWorld.hasFlag(flag) === wanted) continue;
       const writer = (sources.eventsSettingFlag.get(`${flag}=${wanted}`) ?? []).find(
         e => !visitedEvents.has(e.id) && (e.repeat || director.runtime.eventStatus(e.id) !== 'completed'),
@@ -1550,9 +1581,9 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
       const depQuest = indexes.questById.get(depQuestId);
       if (!depQuest) continue;
 
+      const expectedStatuses = questStatuses.get(depQuestId);
       const wantsActiveOrReady =
-        condJson.includes(`"quest":"${depQuestId}","status":"ready"`) ||
-        condJson.includes(`"quest":"${depQuestId}","status":"active"`);
+        !!expectedStatuses && (expectedStatuses.has('ready') || expectedStatuses.has('active'));
 
       if (session.status(depQuestId) === 'locked') {
         await satisfyEventCondition(depQuest.availableWhen, visitedQuests, visitedEvents);
@@ -1580,8 +1611,11 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
 
       if (session.status(depQuestId) === 'active') {
         await fulfillQuestGoals(depQuest, visitedQuests);
-        const readyEv = (indexes.eventsReadyingQuest.get(depQuestId) ?? [])[0];
+        const readyEv = (indexes.eventsReadyingQuest.get(depQuestId) ?? []).find(
+          e => !visitedEvents.has(e.id) && (e.repeat || director.runtime.eventStatus(e.id) !== 'completed'),
+        );
         if (readyEv && session.status(depQuestId) === 'active') {
+          visitedEvents.add(readyEv.id);
           await satisfyEventCondition(readyEv.condition, visitedQuests, visitedEvents);
           await fireStoryEvent(readyEv, visitedQuests);
         }
