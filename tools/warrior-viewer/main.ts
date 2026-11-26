@@ -29,7 +29,7 @@ interface AtlasJsonFrame {
   sourceSize?: { w: number; h: number };
 }
 interface AtlasJson { frames: Record<string, AtlasJsonFrame> }
-interface LoadedAtlas { key: string; image: HTMLImageElement; data: AtlasJson }
+interface LoadedAtlas { key: string; image: HTMLImageElement; data: AtlasJson; registerInPhaser: boolean }
 
 function element<T extends HTMLElement>(id: string): T {
   const found = document.getElementById(id);
@@ -130,6 +130,7 @@ let revision = 0;
 let ready = false;
 let currentView: 'inspector' | 'inventory' = 'inspector';
 let inventoryBuilt = false;
+let inventoryPending: Promise<void> | undefined;
 let inventoryData: WarriorAssetInventory | undefined;
 let inventoryCategoryFilter = '全部';
 let scene: CharacterScene | undefined;
@@ -153,15 +154,21 @@ function report(message: string, error = false): void {
   status.classList.toggle('error', error);
 }
 
-async function loadAtlas(key: string, file: string, dataFile: string): Promise<LoadedAtlas> {
+async function loadAtlas(key: string, file: string, dataFile: string, registerInPhaser = false): Promise<LoadedAtlas> {
   const existing = atlasStore.get(key);
-  if (existing) return existing;
+  if (existing) {
+    if (registerInPhaser) {
+      existing.registerInPhaser = true;
+      if (scene && !scene.textures.exists(key)) scene.textures.addAtlas(key, existing.image, existing.data);
+    }
+    return existing;
+  }
   let pending = atlasPending.get(key);
   if (!pending) {
     pending = Promise.all([readImage(file), readJson<AtlasJson>(`/${dataFile}`)]).then(([image, data]) => {
-      const loaded: LoadedAtlas = { key, image, data };
+      const loaded: LoadedAtlas = { key, image, data, registerInPhaser };
       atlasStore.set(key, loaded);
-      if (scene && !scene.textures.exists(key)) scene.textures.addAtlas(key, image, data);
+      if (loaded.registerInPhaser && scene && !scene.textures.exists(key)) scene.textures.addAtlas(key, image, data);
       return loaded;
     }).catch(error => {
       atlasPending.delete(key);
@@ -169,7 +176,12 @@ async function loadAtlas(key: string, file: string, dataFile: string): Promise<L
     });
     atlasPending.set(key, pending);
   }
-  return pending;
+  const loaded = await pending;
+  if (registerInPhaser) {
+    loaded.registerInPhaser = true;
+    if (scene && !scene.textures.exists(key)) scene.textures.addAtlas(key, loaded.image, loaded.data);
+  }
+  return loaded;
 }
 
 function cropAtlasFrame(atlas: LoadedAtlas, frameName: string): string {
@@ -205,7 +217,7 @@ async function resolveUiThumb(file: string): Promise<string> {
   return `/${file}`;
 }
 
-async function ensureEffectPages(effectFiles: Iterable<string>): Promise<void> {
+async function ensureEffectPages(effectFiles: Iterable<string>, registerInPhaser = true): Promise<void> {
   const pageIndices = new Set<number>();
   for (const file of effectFiles) {
     const frames = EFFECT_ATLAS_BY_FILE[file];
@@ -214,7 +226,7 @@ async function ensureEffectPages(effectFiles: Iterable<string>): Promise<void> {
   }
   await Promise.all([...pageIndices].map(index => {
     const page = EFFECT_ATLAS_PAGES[index];
-    return page ? loadAtlas(page.key, page.file, page.data) : Promise.resolve();
+    return page ? loadAtlas(page.key, page.file, page.data, registerInPhaser) : Promise.resolve();
   }));
 }
 
@@ -225,7 +237,7 @@ async function ensureTimelineEffectsLoaded(tl: ActionTimeline): Promise<void> {
     if (!clip) continue;
     for (const layer of clip.layers) files.add(layer.file);
   }
-  if (files.size) await ensureEffectPages(files);
+  if (files.size) await ensureEffectPages(files, true);
 }
 
 /** 原图集里的切片按像素原样裁出；缩放只交给 CSS 的整数倍显示。 */
@@ -253,6 +265,7 @@ function playSound(soundId: string): void {
   previewAudio.src = `/${file}`;
   previewAudio.currentTime = 0;
   void previewAudio.play().catch(error => {
+    if (error instanceof DOMException && error.name === 'AbortError') return;
     report(`音效播放失败（${soundId}）：${error instanceof Error ? error.message : String(error)}`, true);
   });
 }
@@ -309,7 +322,9 @@ class CharacterScene extends Phaser.Scene {
       }
     }
     for (const atlas of atlasStore.values()) {
-      if (!this.textures.exists(atlas.key)) this.textures.addAtlas(atlas.key, atlas.image, atlas.data);
+      if (atlas.registerInPhaser && !this.textures.exists(atlas.key)) {
+        this.textures.addAtlas(atlas.key, atlas.image, atlas.data);
+      }
     }
     this.bgSolid = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x777c79).setOrigin(0, 0);
     this.bgChecker = this.add.tileSprite(0, 0, this.scale.width, this.scale.height, CHECKER_TEXTURE_KEY).setOrigin(0, 0);
@@ -344,10 +359,9 @@ class CharacterScene extends Phaser.Scene {
     for (const active of itemsToDraw) {
       const { cue, clip, effectFrame } = active;
       const dist = cue.targetDistancePx ?? 28;
-      const baseX = cue.onTarget ? dir.x * dist : 0;
-      const baseY = cue.onTarget
-        ? dir.y * dist
-        : (cue.placement === 'attached' && cue.attachmentPoint !== 'feet' ? effectAnchor.y : 0);
+      const useAnchor = cue.placement === 'attached' && cue.attachmentPoint !== 'feet';
+      const baseX = (cue.onTarget ? dir.x * dist : 0) + (useAnchor ? effectAnchor.x : 0);
+      const baseY = (cue.onTarget ? dir.y * dist : 0) + (useAnchor ? effectAnchor.y : 0);
       for (const layer of clip.layers) {
         let textureKey: string | undefined;
         let frameName: string | undefined;
@@ -398,18 +412,24 @@ class CharacterScene extends Phaser.Scene {
     const showEffects = showEffectsInput.checked && soloOrder === undefined;
     const effBounds = showEffects ? effectOverlayBounds(battle, currentTimeline, facing, effectAnchor) : null;
     let fit = charFit;
+    let centerX = (bounds.left + bounds.right) / 2;
+    let centerY = (bounds.top + bounds.bottom) / 2;
     if (effBounds) {
-      const combinedW = Math.max(charWidth, Math.max(bounds.right, effBounds.right) - Math.min(bounds.left, effBounds.left) + 1);
-      const combinedH = Math.max(charHeight, Math.max(bounds.bottom, effBounds.bottom) - Math.min(bounds.top, effBounds.top) + 1);
+      const uLeft = Math.min(bounds.left, effBounds.left);
+      const uRight = Math.max(bounds.right, effBounds.right);
+      const uTop = Math.min(bounds.top, effBounds.top);
+      const uBottom = Math.max(bounds.bottom, effBounds.bottom);
+      const combinedW = Math.max(charWidth, uRight - uLeft + 1);
+      const combinedH = Math.max(charHeight, uBottom - uTop + 1);
       const combinedFit = Math.max(1, Math.floor(Math.min((this.scale.width - margin) / combinedW,
         (this.scale.height - margin) / combinedH)));
       const minEffectFit = combinedW > 360 || combinedH > 220 ? 1 : 2;
       fit = Math.min(charFit, Math.max(minEffectFit, combinedFit));
+      centerX = (uLeft + uRight) / 2;
+      centerY = (uTop + uBottom) / 2;
     }
     const requested = Number(zoomSelect.value);
     const zoom = Math.min(fit, requested);
-    const centerX = (bounds.left + bounds.right) / 2;
-    const centerY = (bounds.top + bounds.bottom) / 2;
     const originX = Math.round(this.scale.width / 2 - centerX * zoom);
     const originY = Math.round(this.scale.height / 2 - centerY * zoom);
 
@@ -1041,7 +1061,16 @@ async function renderInventorySupplemental(inventory: WarriorAssetInventory): Pr
   element('inventory-buffs').replaceChildren(...buffCards);
   element('inventory-ui-count').textContent = `${identity.length} 项职业图 · ${skills.length} 技能图标 · ${buffIcons.length} 状态图标`;
 
-  await ensureEffectPages(effects.map(e => e.previewFile).filter(Boolean));
+  const thumbPageIndices = new Set<number>();
+  for (const e of effects) {
+    const refs = EFFECT_ATLAS_BY_FILE[e.previewFile];
+    if (!refs?.length) continue;
+    thumbPageIndices.add(refs[Math.floor(refs.length / 2)].page);
+  }
+  await Promise.all([...thumbPageIndices].map(index => {
+    const page = EFFECT_ATLAS_PAGES[index];
+    return page ? loadAtlas(page.key, page.file, page.data, false) : Promise.resolve();
+  }));
   const effectCards = effects.map(e => {
     const card = document.createElement('article');
     card.className = 'effect-card';
@@ -1102,21 +1131,31 @@ async function renderInventorySupplemental(inventory: WarriorAssetInventory): Pr
 
 async function openInventory(): Promise<void> {
   if (inventoryBuilt && inventoryData) return;
-  report('正在汇总狂战士全部 117 个姿态与配套素材…');
-  try {
-    const ids = warriorPoseIds(catalog, items);
-    await Promise.all(ids.map(id => repository.get(id)));
-    inventoryData = warriorAssetInventory(catalog, items, battle, storyClasses, menuPanels, statusHud, audioCatalog);
-    element('inventory-summary').textContent =
-      `合法武器组合 ${inventoryData.stanceCount} 种 · 独立四向动作模板 ${inventoryData.templates.length} 组（${inventoryData.totalPoseFiles} 个姿态文件） · 换装部位 ${inventoryData.parts.length} 个 · 技能 ${inventoryData.supplemental.skills.length} 项 · 状态图标 ${inventoryData.supplemental.buffIcons.length} 枚 · 特效 ${inventoryData.supplemental.effects.length} 组 · 音效 ${inventoryData.supplemental.sounds.length} 个`;
-    renderInventoryPoses(inventoryData);
-    renderInventoryParts(inventoryData);
-    await renderInventorySupplemental(inventoryData);
-    inventoryBuilt = true;
-    report('狂战士全量素材规格已就绪 · 可点击任意动作模板跳转画布，或导出规格清单');
-  } catch (error) {
-    report(error instanceof Error ? error.message : String(error), true);
-  }
+  if (inventoryPending) return inventoryPending;
+  const ids = warriorPoseIds(catalog, items);
+  if (currentView === 'inventory') report(`正在汇总狂战士全部 ${ids.length} 个姿态与配套素材…`);
+  inventoryPending = (async () => {
+    try {
+      await Promise.all(ids.map(id => repository.get(id)));
+      inventoryData = warriorAssetInventory(catalog, items, battle, storyClasses, menuPanels, statusHud, audioCatalog);
+      element('inventory-summary').textContent =
+        `合法武器组合 ${inventoryData.stanceCount} 种 · 独立四向动作模板 ${inventoryData.templates.length} 组（${inventoryData.totalPoseFiles} 个姿态文件） · 换装部位 ${inventoryData.parts.length} 个 · 技能 ${inventoryData.supplemental.skills.length} 项 · 状态图标 ${inventoryData.supplemental.buffIcons.length} 枚 · 特效 ${inventoryData.supplemental.effects.length} 组 · 音效 ${inventoryData.supplemental.sounds.length} 个`;
+      renderInventoryPoses(inventoryData);
+      renderInventoryParts(inventoryData);
+      await renderInventorySupplemental(inventoryData);
+      inventoryBuilt = true;
+      if (currentView === 'inventory') {
+        report('狂战士全量素材规格已就绪 · 可点击任意动作模板跳转画布，或导出规格清单');
+      }
+    } catch (error) {
+      if (currentView === 'inventory') {
+        report(error instanceof Error ? error.message : String(error), true);
+      }
+    } finally {
+      inventoryPending = undefined;
+    }
+  })();
+  return inventoryPending;
 }
 
 function switchView(view: 'inspector' | 'inventory'): void {
@@ -1134,6 +1173,14 @@ function switchView(view: 'inspector' | 'inventory'): void {
     void openInventory();
   }
 }
+
+const onKeyDown = (event: KeyboardEvent): void => {
+  if (!ready || currentView !== 'inspector' || event.altKey || event.metaKey || event.ctrlKey) return;
+  if (event.target instanceof Element && event.target.closest('input, select, textarea, button, [contenteditable]')) return;
+  if (event.code === 'Space') { event.preventDefault(); playButton.click(); }
+  if (event.code === 'ArrowLeft') { event.preventDefault(); selectFrame(playback.frame - 1); }
+  if (event.code === 'ArrowRight') { event.preventDefault(); selectFrame(playback.frame + 1); }
+};
 
 function wireControls(): void {
   tabInspector.onclick = () => switchView('inspector');
@@ -1224,13 +1271,7 @@ function wireControls(): void {
     };
   });
 
-  window.addEventListener('keydown', event => {
-    if (!ready || currentView !== 'inspector' || event.altKey || event.metaKey || event.ctrlKey) return;
-    if ((event.target as HTMLElement).closest('input, select, textarea, button, [contenteditable]')) return;
-    if (event.code === 'Space') { event.preventDefault(); playButton.click(); }
-    if (event.code === 'ArrowLeft') { event.preventDefault(); selectFrame(playback.frame - 1); }
-    if (event.code === 'ArrowRight') { event.preventDefault(); selectFrame(playback.frame + 1); }
-  });
+  window.addEventListener('keydown', onKeyDown);
 }
 
 async function boot(): Promise<void> {
@@ -1329,6 +1370,7 @@ async function boot(): Promise<void> {
 }
 
 window.addEventListener('pagehide', () => {
+  window.removeEventListener('keydown', onKeyDown);
   observer?.disconnect();
   previewAudio?.pause();
   game?.destroy(true);

@@ -14,7 +14,7 @@
 
 ## 数据与绘制
 
-- 从同源 `/content/wardrobe.json`、`/content/items.json`、`/content/battle.json`、`/content/story-classes.json`、`/content/menu-panels.json`、`/content/status-hud.json`、`/content/companions.json` 和 `/content/audio.json` 读取游戏数据；纸娃娃使用衣柜两张部件图集，战斗特效按需读取 `public/assets/effect-atlas/` 无损 WebP 图集，图标与职业图读取 `menu-icons.webp` 与 `menu-ui-*.webp`。姿势加载同时支持完整 JSON 与开发服务拆分后的 `/content/wardrobe/poses/<id>.json`。
+- 从同源 `/content/wardrobe.json`、`/content/items.json`、`/content/battle.json`、`/content/story-classes.json`、`/content/menu-panels.json`、`/content/status-hud.json`、`/content/companions.json` 和 `/content/audio.json` 读取游戏数据；纸娃娃使用衣柜三张部件图集，战斗特效按需读取 `public/assets/effect-atlas/` 无损 WebP 图集，图标与职业图读取 `menu-icons.webp` 与 `menu-ui-*.webp`。姿势加载同时支持完整 JSON 与开发服务拆分后的 `/content/wardrobe/poses/<id>.json`。
 - 初始为狂战士主角默认外观、基础双手剑外形、南向待机。动作目录跟随合法主副手组合，包含技能覆盖、普攻三段连击、双持、狂暴、独立的地图待机与行走，以及取自 `wardrobe.sharedPoses` 的 23 帧战斗阵亡动作 `die`（该字段仅供按需读取，不改变主游戏默认合成列表）。
 - 播放普攻、双持、狂暴和 9 个主动技能时，画布默认按游戏实际事件帧叠加对应挥砍刀光、技能特效与 Buff 外观染色（如「血之狂暴」红色脉冲、「狮子吼」蓝色着色），时间轴下方标出出刀光帧、命中帧、冲锋帧与震屏帧，并支持点击跳帧与音效试听。画布背景由 Phaser 内部以最底层不透明实色或 24×24 棋盘贴图绘制（`transparent: false`），保证原版 `add`/`screen`/`multiply` 特效的纯黑底帧与背景像素正确混合，不出现透明帧缓冲黑框。
 - 部位外观按「狂战士可用 / 其他职业与佣兵款式」分组；右侧支持切换狂战士角色预设（主角凯恩 + 狂战士佣兵/剧情伙伴）及主副手、盔甲、头盔、披风装备。

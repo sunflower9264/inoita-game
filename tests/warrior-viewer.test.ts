@@ -7,6 +7,9 @@ import type { Facing } from '../src/domain/content.ts';
 import type { ItemCatalog } from '../src/domain/items.ts';
 import { costumeRecipe, type CostumePose, type WardrobeCatalog } from '../src/domain/wardrobe.ts';
 import { EFFECT_ATLAS_BY_FILE } from '../src/generated/effect-atlas.ts';
+import { UI_ICON_FRAMES } from '../src/generated/icon-atlas.ts';
+import { UI_ATLAS_FRAMES } from '../src/generated/ui-atlas.ts';
+import { effectProblems } from '../src/rendering/effect-colors.ts';
 import { getSpearEffectClippedPixels, SPEAR_EFFECT_SOURCES } from '../tools/warrior-viewer/prototypes/spear/effects-source.ts';
 import {
   actionChoices, actionNotices, actionTimeline, activeEffectsAtFrame, armorChoices,
@@ -198,6 +201,19 @@ test('asset inventory covers all 30 pose templates, 12 warrior parts (with die-o
   assert.ok(inventory.supplemental.effects.length >= 30);
   assert.ok(inventory.supplemental.sounds.length >= 10);
 
+  // Every supplemental UI icon / effect preview / sound path must resolve to generated atlases or disk
+  const assetResolvable = (file: string) =>
+    Boolean(UI_ICON_FRAMES[file] || UI_ATLAS_FRAMES[file] || fs.existsSync(new URL(file, root)));
+  for (const item of inventory.supplemental.identity) assert.ok(assetResolvable(item.file), `missing identity asset: ${item.file}`);
+  for (const s of inventory.supplemental.skills) assert.ok(assetResolvable(s.icon), `missing skill icon: ${s.icon}`);
+  for (const b of inventory.supplemental.buffIcons) assert.ok(assetResolvable(b.file), `missing buff icon: ${b.file}`);
+  for (const e of inventory.supplemental.effects) {
+    assert.ok(e.previewFile && EFFECT_ATLAS_BY_FILE[e.previewFile]?.length, `missing effect preview atlas entry: ${e.id} -> ${e.previewFile}`);
+  }
+  for (const s of inventory.supplemental.sounds) {
+    assert.ok(fs.existsSync(new URL(s.file, root)), `missing sound file: ${s.id} -> ${s.file}`);
+  }
+
   const md = formatInventoryMarkdown(inventory);
   assert.ok(md.includes('# 狂战士完整动作与素材规格清单'));
   assert.ok(md.includes('战斗阵亡'));
@@ -303,10 +319,16 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
     assert.ok(rect.x + rect.width <= effWidth && rect.y + rect.height <= effHeight);
   }
 
+  // Validate prototype attackEffects schema/blend rules (no illegal operations such as ['normal'])
+  assert.deepEqual(effectProblems(proto.attackEffects!), []);
+
   const { catalog: mergedCatalog, items: mergedItems } = mergePrototypeWeapon(catalog, items, proto);
   const mergedBattle = mergePrototypeBattle(battle, proto);
-  // Original catalogs & warrior asset inventory remain untouched
+  // Original catalogs, production spear stance/variant & warrior asset inventory remain untouched
   assert.equal(catalog.equipment[proto.weaponId], undefined);
+  assert.equal(mergedCatalog.stances['spear:empty'], catalog.stances['spear:empty']);
+  assert.equal(mergedCatalog.attacks['spear:empty'], catalog.attacks['spear:empty']);
+  assert.equal(mergedCatalog.variants['spear-style-1'], catalog.variants['spear-style-1']);
   assert.equal(battle.attackEffects['spear-thrust-beam'], undefined);
   assert.equal(warriorPoseIds(mergedCatalog, mergedItems).length, 117);
   assert.equal(warriorPoseMatrix(mergedCatalog, mergedItems, skillNames).length, 30);
@@ -345,10 +367,12 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
 
   for (const appearance of [undefined, 'mercenary-olaf']) {
     const recipe = viewerRecipe(mergedCatalog, mergedItems, spearEquipment, {}, appearance);
-    assert.equal(recipe.variants.spear, proto.variantId);
+    assert.equal(recipe.variants.spear, mergedCatalog.equipment[proto.weaponId].main.spear);
     for (const facing of directions) {
       const choices = actionChoices(mergedCatalog, mergedItems, spearEquipment, facing, skillNames, proto.actionLabels);
-      const protoActions = choices.filter(choice => !choice.key.startsWith('town-') && choice.key !== 'die');
+      // 武器样板已提供自有阵亡动作时，左侧动作列表不得重复追加共享 die
+      assert.equal(choices.filter(choice => choice.group === '阵亡动作').length, 1);
+      const protoActions = choices.filter(choice => !choice.key.startsWith('town-'));
       assert.equal(protoActions.length, Object.keys(expectedFrames).length);
       for (const [key, count] of Object.entries(expectedFrames)) {
         const action = protoActions.find(choice => choice.key === key);
@@ -766,10 +790,11 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
 
   // 防回归：虬龙扫暴阵四向横扫光弧 spear-gale-sweep 峰值帧（f2）精确对称于各自正方向（南 +90° / 西 ±180° / 北 -90° / 东 0°）。
   const effPng = PNG.sync.read(effBytes);
-  // 防回归：万圣龙王破半球能量罩（spear-sovereign-dome）零暗蓝黑边（base 层仅含高亮青/淡金色阶，不压暗灰底），且 f10/f11 结束帧保持原大尺寸原地渐隐消散（绝不向内收缩）。
-  {
-    const domeClip = proto.attackEffects?.['spear-sovereign-dome']?.clips.default;
-    assert.ok(domeClip, 'missing spear-sovereign-dome default clip');
+  // 防回归：万圣龙王破前后双层半球能量罩（spear-sovereign-dome / spear-sovereign-dome-back）零暗蓝黑边（base 层仅含高亮青/淡金色阶，不压暗灰底），
+  // 脉冲帧饱满、且 f10/f11 结束帧保持原大尺寸原地渐隐消散（绝不向内收缩）。
+  for (const domeEffectId of ['spear-sovereign-dome', 'spear-sovereign-dome-back'] as const) {
+    const domeClip = proto.attackEffects?.[domeEffectId]?.clips.default;
+    assert.ok(domeClip, `missing ${domeEffectId} default clip`);
     const baseFile = domeClip.layers[0]!.file;
     const addFile = domeClip.layers[1]!.file;
     const measureDomeFrame = (fi: number) => {
@@ -782,9 +807,9 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
           if (effPng.data[bIdx + 3] > 0) {
             assert.ok(
               effPng.data[bIdx] >= 160 && effPng.data[bIdx + 1] >= 220,
-              `spear-sovereign-dome f${fi} base 存在压暗灰底的深暗色像素 rgb(${effPng.data[bIdx]},${effPng.data[bIdx + 1]},${effPng.data[bIdx + 2]})`,
+              `${domeEffectId} f${fi} base 存在压暗灰底的深暗色像素 rgb(${effPng.data[bIdx]},${effPng.data[bIdx + 1]},${effPng.data[bIdx + 2]})`,
             );
-            assert.ok(effPng.data[bIdx + 3] <= 90, `spear-sovereign-dome f${fi} base 不透明度过高（${effPng.data[bIdx + 3]}），会产生厚硬粗边`);
+            assert.ok(effPng.data[bIdx + 3] <= 90, `${domeEffectId} f${fi} base 不透明度过高（${effPng.data[bIdx + 3]}），会产生厚硬粗边`);
           }
           const aAlpha = effPng.data[((addRect.y + y) * effPng.width + (addRect.x + x)) * 4 + 3];
           if (aAlpha >= 8) {
@@ -796,12 +821,15 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
       }
       return { spanX: maxX - minX, sumAddAlpha };
     };
+    const f4 = measureDomeFrame(4);
     const f8 = measureDomeFrame(8);
     const f10 = measureDomeFrame(10);
     const f11 = measureDomeFrame(11);
-    assert.ok(Math.abs(f10.spanX - f8.spanX) <= 3, `spear-sovereign-dome f10 不应向内收缩（f8=${f8.spanX}, f10=${f10.spanX}）`);
-    assert.ok(Math.abs(f11.spanX - f8.spanX) <= 3, `spear-sovereign-dome f11 不应向内收缩（f8=${f8.spanX}, f11=${f11.spanX}）`);
-    assert.ok(f8.sumAddAlpha > f10.sumAddAlpha && f10.sumAddAlpha > f11.sumAddAlpha, 'spear-sovereign-dome f8 -> f10 -> f11 应平滑渐隐消失');
+    const maxSpanDrop = domeEffectId === 'spear-sovereign-dome' ? 3 : 8;
+    assert.ok(f4.spanX >= 60 && f4.sumAddAlpha > f10.sumAddAlpha, `${domeEffectId} 脉冲帧 f4 应饱满明亮`);
+    assert.ok(Math.abs(f10.spanX - f8.spanX) <= maxSpanDrop, `${domeEffectId} f10 不应向内收缩（f8=${f8.spanX}, f10=${f10.spanX}）`);
+    assert.ok(Math.abs(f11.spanX - f8.spanX) <= maxSpanDrop, `${domeEffectId} f11 不应向内收缩（f8=${f8.spanX}, f11=${f11.spanX}）`);
+    assert.ok(f8.sumAddAlpha > f10.sumAddAlpha && f10.sumAddAlpha > f11.sumAddAlpha, `${domeEffectId} f8 -> f10 -> f11 应平滑渐隐消失`);
   }
   const expectedCardinalDeg: Record<Facing, number> = { south: 90, west: 180, north: -90, east: 0 };
   for (const facing of directions) {
@@ -1187,7 +1215,8 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
     };
 
     const thrustAndBuffActions = [
-      'thrust', 'attack', 'skill-dragon-pierce', 'skill-flurry-thrust', 'skill-sovereign-pierce', 'skill-focus-edge',
+      'thrust', 'attack', 'skill-dragon-pierce', 'skill-flurry-thrust', 'skill-sovereign-pierce',
+      'skill-focus-edge', 'skill-dragon-step', 'skill-gale-stance',
     ] as const;
     for (const actionKey of thrustAndBuffActions) {
       for (const facing of directions) {
@@ -1206,7 +1235,10 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
             const sep = projs[1].pct - projs[0].pct;
             assert.ok(sep >= 10, `${actionKey}-south F${fi} 双拳前后间距过小（sep=${sep.toFixed(1)}%），存在叠拳现象`);
           }
-          if ((actionKey === 'skill-focus-edge' || actionKey === 'skill-sovereign-pierce') && (facing === 'west' || facing === 'east')) {
+          if (
+            (actionKey === 'skill-focus-edge' || actionKey === 'skill-dragon-step' || actionKey === 'skill-gale-stance' || actionKey === 'skill-sovereign-pierce')
+            && (facing === 'west' || facing === 'east')
+          ) {
             for (const h of projs) {
               assert.ok(h.perp <= 4.0, `${actionKey}-${facing} F${fi} 立枪手掌脱杆过远（perp=${h.perp.toFixed(1)}px）`);
             }

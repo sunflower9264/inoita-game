@@ -3,7 +3,7 @@
  * 新武器 / 新职业动画样板初始化脚手架。
  *
  * 自动生成可直接导出并挂入 `warrior-viewer` 的 `source.ts`、`effects-source.ts`、`export.ts`：
- * - 自带 14 色量化像素绘制基元、兼容 63 套盔甲的手臂预设、62 套贴地战斗腿、70 款头饰联动与 13 种遮挡层序；
+ * - 自带 14 色量化像素绘制基元、兼容 63 套盔甲的手臂预设、62 套贴地战斗腿、70 款头饰联动与多套遮挡层序（含双手预设、单手持握、背负与前后夹层）；
  * - 自带 4 向待机 / 行走 / 城镇背负 / 普攻与 1 套 normal+add 双层像素挥砍光效，且开箱即通过动画质量体检脚本。
  *
  * 用法：
@@ -60,9 +60,13 @@ function parseArgs(argv: readonly string[]): {
   return { weapon, name: name.trim(), outDir: outDir ? path.resolve(outDir) : undefined, dryRun, force };
 }
 
+function safeComment(text: string): string {
+  return text.replaceAll('*/', '* /');
+}
+
 function makeSourceTs(weapon: string, name: string): string {
   return `/**
- * ${name}（${weapon}）动画样板可编辑像素源数据。
+ * ${safeComment(name)}（${weapon}）动画样板可编辑像素源数据。
  *
  * 修改切片像素、色板、握点或关键帧后运行：
  *   node export.ts
@@ -443,7 +447,7 @@ export const WEAPON_ACTION_RECIPES: readonly WeaponActionRecipe[] = [
 
 function makeEffectsSourceTs(weapon: string, name: string): string {
   return `/**
- * ${name}（${weapon}）双层像素特效源数据（normal 底光 + add 炽核）。
+ * ${safeComment(name)}（${weapon}）双层像素特效源数据（normal 底光 + add 炽核）。
  */
 import type { RgbaPalette } from './source.ts';
 
@@ -553,7 +557,7 @@ export const WEAPON_EFFECT_SOURCES: readonly DirectionalEffectSource[] = [
 `;
 }
 
-function makeExportTs(weapon: string, name: string): string {
+function makeExportTs(weapon: string, name: string, relProtoDir: string): string {
   return `import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -627,9 +631,9 @@ const effectsPngOutPath = path.join(dir, '${weapon}-effects.png');
 const jsonOutPath = path.join(dir, '${weapon}-prototype.json');
 
 const TEXTURE_KEY = 'prototype-${weapon}-parts';
-const TEXTURE_URL = 'tools/warrior-viewer/prototypes/${weapon}/${weapon}-parts.png';
+const TEXTURE_URL = ${JSON.stringify(`${relProtoDir}/${weapon}-parts.png`)};
 const EFFECT_TEXTURE_KEY = 'prototype-${weapon}-effects';
-const EFFECT_TEXTURE_URL = 'tools/warrior-viewer/prototypes/${weapon}/${weapon}-effects.png';
+const EFFECT_TEXTURE_URL = ${JSON.stringify(`${relProtoDir}/${weapon}-effects.png`)};
 const PADDING = 2;
 const EFFECT_FPS = 50 / 3;
 const MAX_EFFECT_SHEET_WIDTH = 3840;
@@ -735,6 +739,14 @@ function insertWeaponIntoFrame(
   const baseFrame = mirrorBaseFrame ? poseApplied.map(mirrorPartX) : poseApplied;
   const stripped = baseFrame.filter(part => !REMOVED_WEAPON_PARTS.has(part.part)).map(shift);
   if (insertMode === 'back') return [shiftedWeapon, ...stripped];
+  if (insertMode === 'between-west-arms') {
+    const idx = stripped.findIndex(part => part.part === 'coat-front' && part.piece === 8);
+    if (idx >= 0) { stripped.splice(idx, 0, shiftedWeapon); return stripped; }
+  }
+  if (insertMode === 'between-south-arms') {
+    const idx = stripped.findIndex(part => part.part === 'coat-front' && part.piece === 10);
+    if (idx >= 0) { stripped.splice(idx, 0, shiftedWeapon); return stripped; }
+  }
   if (insertMode === 'on-back-north') {
     const headIdx = stripped.findIndex(part => part.part === 'body' || part.part === 'head-front' || part.part === 'head-back');
     if (headIdx >= 0) { stripped.splice(headIdx, 0, shiftedWeapon); return stripped; }
@@ -744,6 +756,7 @@ function insertWeaponIntoFrame(
     const torsoIdx = stripped.findIndex(part => part.part === 'coat-front' && part.piece < 5);
     const hits = [armIdx, torsoIdx].filter(i => i >= 0);
     if (hits.length) { stripped.splice(Math.min(...hits), 0, shiftedWeapon); return stripped; }
+    return [shiftedWeapon, ...stripped];
   }
   if (insertMode === 'before-right-arm-north') {
     const upgraded = stripped.map(part => (
@@ -848,13 +861,13 @@ function packEffects() {
       version: 1, frameWidth: src.frameWidth, frameHeight: src.frameHeight, frames: src.baseFrames.length,
       originX: src.originX, originY: src.originY, frameRate: EFFECT_FPS, mirrorX: false,
       layers: [
-        { key: \`\${src.effectId}-\${src.direction}-base\`, file: \`prototype/\${src.effectId}/\${src.direction}-base.png\`, blend: 'normal', operations: ['normal'] },
+        { key: \`\${src.effectId}-\${src.direction}-base\`, file: \`prototype/\${src.effectId}/\${src.direction}-base.png\`, blend: 'normal', operations: [] },
         { key: \`\${src.effectId}-\${src.direction}-add\`, file: \`prototype/\${src.effectId}/\${src.direction}-add.png\`, blend: 'add', operations: ['add'] },
       ],
     };
     entry.clips[src.direction] = clip;
     if (src.direction === 'west') {
-      entry.clips.east = { ...clip, mirrorX: true, layers: clip.layers.map(l => ({ ...l, key: l.key.replace('-west-', '-east-') })) };
+      entry.clips.east = { ...clip, mirrorX: true, layers: clip.layers.map(l => ({ ...l, key: l.key.replace(/-west-(base|add)$/, '-east-$1') })) };
     }
   }
   return { png, effectSheet: { texture: { key: EFFECT_TEXTURE_KEY, file: EFFECT_TEXTURE_URL }, frames, byFile }, attackEffects };
@@ -923,7 +936,7 @@ function run(): void {
 
   const bundle = {
     weaponId: 'prototype-${weapon}-basic',
-    weaponName: '${name}（样板）',
+    weaponName: ${JSON.stringify(`${name}（样板）`)},
     weaponKind: '${weapon}',
     partName: '${weapon}',
     variantId: '${weapon}-style-1',
@@ -955,7 +968,7 @@ function run(): void {
   };
 
   fs.writeFileSync(jsonOutPath, JSON.stringify(bundle));
-  console.log(\`已导出 ${name} 样板：\${WEAPON_SLICES.length} 切片 (\${png.width}x\${png.height})，\${Object.keys(effectSheet.frames).length} 特效帧 (\${effectPng.width}x\${effectPng.height})，\${Object.keys(poses).length} 姿态\`);
+  console.log(\`已导出 \${${JSON.stringify(name)}} 样板：\${WEAPON_SLICES.length} 切片 (\${png.width}x\${png.height})，\${Object.keys(effectSheet.frames).length} 特效帧 (\${effectPng.width}x\${effectPng.height})，\${Object.keys(poses).length} 姿态\`);
 }
 
 run();
@@ -967,11 +980,12 @@ function main(): void {
   const scriptDir = path.dirname(fileURLToPath(import.meta.url));
   const repoRoot = findRepoRoot(scriptDir);
   const targetDir = outDir ?? path.join(repoRoot, 'tools/warrior-viewer/prototypes', weapon);
+  const relProtoDir = path.relative(repoRoot, targetDir).split(path.sep).join('/');
 
   const files: readonly [string, string][] = [
     ['source.ts', makeSourceTs(weapon, name)],
     ['effects-source.ts', makeEffectsSourceTs(weapon, name)],
-    ['export.ts', makeExportTs(weapon, name)],
+    ['export.ts', makeExportTs(weapon, name, relProtoDir)],
   ];
 
   if (!force) {

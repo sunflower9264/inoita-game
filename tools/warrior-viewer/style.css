@@ -400,13 +400,6 @@ select{
   line-height:1.65;
   color:#254638
 }
-.effect-summary code{
-  font-family:ViewerMono,monospace;
-  font-size:10px;
-  background:#dce8de;
-  padding:1px 4px;
-  border-radius:3px
-}
 .pieces{
   display:grid;
   grid-template-columns:repeat(auto-fill,minmax(155px,1fr));

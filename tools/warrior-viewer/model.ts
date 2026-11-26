@@ -328,18 +328,27 @@ export function warriorPresets(catalog: WardrobeCatalog, companions?: CompanionC
 
 export function mergePrototypeWeapon(catalog: WardrobeCatalog, items: ItemCatalog,
   prototype: PrototypeWeaponBundle): { catalog: WardrobeCatalog; items: ItemCatalog } {
-  const stanceKey = `${prototype.weaponKind}:empty`;
-  const fallbackAttack = catalog.attacks['two-handed:empty'] ?? Object.values(catalog.attacks)[0];
+  const baseStanceKey = `${prototype.weaponKind}:empty`;
+  const mergedKind = catalog.stances[baseStanceKey] ? `prototype-${prototype.weaponKind}` : prototype.weaponKind;
+  const stanceKey = `${mergedKind}:empty`;
+  const mergedVariantId = catalog.variants[prototype.variantId] ? `prototype-${prototype.variantId}` : prototype.variantId;
+  const mergedVariants = Object.fromEntries(
+    Object.entries(prototype.variants).map(([k, v]) => [
+      k === prototype.variantId ? mergedVariantId : (catalog.variants[k] ? `prototype-${k}` : k),
+      v,
+    ]),
+  );
+  const fallbackAttack = catalog.attacks[baseStanceKey] ?? catalog.attacks['two-handed:empty'] ?? Object.values(catalog.attacks)[0];
   const mergedCatalog: WardrobeCatalog = {
     ...catalog,
     textures: catalog.textures.some(t => t.key === prototype.texture.key)
       ? catalog.textures
       : [...catalog.textures, prototype.texture],
     sprites: { ...catalog.sprites, ...prototype.sprites },
-    variants: { ...catalog.variants, ...prototype.variants },
+    variants: { ...catalog.variants, ...mergedVariants },
     equipment: {
       ...catalog.equipment,
-      [prototype.weaponId]: { main: { [prototype.partName]: prototype.variantId }, offHand: {} },
+      [prototype.weaponId]: { main: { [prototype.partName]: mergedVariantId }, offHand: {} },
     },
     poses: { ...catalog.poses, ...prototype.poses },
     stances: { ...catalog.stances, [stanceKey]: prototype.stancePoses },
@@ -353,7 +362,7 @@ export function mergePrototypeWeapon(catalog: WardrobeCatalog, items: ItemCatalo
       [prototype.weaponId]: {
         ...sampleItem,
         name: prototype.weaponName,
-        kind: prototype.weaponKind as ItemCatalog['items'][string]['kind'],
+        kind: mergedKind as ItemCatalog['items'][string]['kind'],
         equipment: {
           ...sampleItem.equipment!,
           slot: 'main-hand',
@@ -411,17 +420,18 @@ export function actionChoices(catalog: WardrobeCatalog, items: ItemCatalog, equi
     result.push({ key, label, group, poseId });
   }
   const town = townMovementPoses(catalog, mainKind);
-  const poseMap = recipe.poses as Record<string, string | undefined>;
   for (const movement of ['idle', 'walk'] as const) {
     const key = `town-${movement}`;
-    const poseId = poseMap[`${key}-${facing}`] ?? town[`${movement}-${facing}`]!;
+    const poseId = town[`${movement}-${facing}`]!;
     const label = customLabels?.[key] ?? (movement === 'idle' ? '地图待机' : '地图行走');
     result.push({ key, label, group: '地图动作', poseId });
   }
-  const shared = sharedWardrobePoses(catalog);
-  const diePose = shared[`die-${facing}`];
-  if (diePose) {
-    result.push({ key: 'die', label: ACTION_NAMES.die, group: '阵亡动作', poseId: diePose });
+  if (!result.some(choice => choice.group === '阵亡动作')) {
+    const shared = sharedWardrobePoses(catalog);
+    const diePose = shared[`die-${facing}`];
+    if (diePose) {
+      result.push({ key: 'die', label: ACTION_NAMES.die, group: '阵亡动作', poseId: diePose });
+    }
   }
   return result;
 }
@@ -430,15 +440,16 @@ export function actionNotices(catalog: WardrobeCatalog, items: ItemCatalog, equi
   actionKey: string, pose: CostumePose): string[] {
   const notices: string[] = [];
   const mainKind = equipment['main-hand'] ? items.items[equipment['main-hand']].kind : 'unarmed';
+  const normalizedMainKind = mainKind.replace(/^prototype-/, '');
   const offKind = equipment['off-hand'] ? items.items[equipment['off-hand']].kind : 'empty';
   const stance = `${mainKind}:${offKind}`;
   const wait = catalog.frenzyWaitFrames?.[stance];
   if (wait !== undefined && !catalog.frenzyAttacks?.[stance]) {
-    notices.push(`当前架势（${KIND_LABELS[mainKind] ?? mainKind} + ${KIND_LABELS[offKind] ?? offKind}）无狂暴攻击动作，触发「战栗的狂气」时走 ${wait} 帧等待。`);
+    notices.push(`当前架势（${KIND_LABELS[normalizedMainKind] ?? normalizedMainKind} + ${KIND_LABELS[offKind] ?? offKind}）无狂暴攻击动作，触发「战栗的狂气」时走 ${wait} 帧等待。`);
   }
   const partsInPose = new Set<string>();
   for (const frame of pose.frames) for (const part of frame) partsInPose.add(part.part);
-  const mainPart = WEAPON_PART_BY_KIND[mainKind]?.main;
+  const mainPart = (WEAPON_PART_BY_KIND[mainKind] ?? WEAPON_PART_BY_KIND[normalizedMainKind])?.main;
   if (mainPart && !partsInPose.has(mainPart)) {
     notices.push(`原版骨架提示：该动作（${actionKey}）的帧数据不含「${PART_NAMES[mainPart] ?? mainPart}」槽位，播放期间主手武器会隐藏。`);
   }
@@ -548,7 +559,7 @@ function addCue(target: EffectCueSpec[], seen: Set<string>, battle: BattleCatalo
 }
 
 function weaponAttackSounds(audio: AudioCatalogLite | undefined, weaponKind: string): string[] {
-  const entry = audio?.combat?.weapons?.[weaponKind];
+  const entry = audio?.combat?.weapons?.[weaponKind] ?? audio?.combat?.weapons?.[weaponKind.replace(/^prototype-/, '')];
   if (!entry) return [];
   const sounds: string[] = [];
   for (const item of entry.normal ?? []) if (!sounds.includes(item.sound)) sounds.push(item.sound);
@@ -1088,7 +1099,7 @@ export function warriorSupplementalAssets(catalog: WardrobeCatalog, battle: Batt
   });
 
   const sounds = [...soundUsers.entries()]
-    .sort(([, a], [, b]) => a.category.localeCompare(b.category))
+    .sort(([idA, a], [idB, b]) => a.category.localeCompare(b.category) || idA.localeCompare(idB))
     .map(([id, info]) => ({ id, file: audio.effects[id]!, category: info.category, usedBy: [...info.usedBy].sort() }));
 
   return { identity, skills, buffIcons, effects, sounds };
@@ -1212,7 +1223,7 @@ export class Playback {
   toggle(): void { this.playing = !this.playing; this.elapsed = 0; }
 
   advance(delta: number): boolean {
-    if (!this.playing) return false;
+    if (!this.playing || delta <= 0) return false;
     this.elapsed += delta * this.speed;
     const duration = 1000 / this.rate;
     const steps = Math.floor(this.elapsed / duration);

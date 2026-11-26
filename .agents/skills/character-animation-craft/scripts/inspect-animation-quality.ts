@@ -66,11 +66,11 @@ function parseArgs(argv: readonly string[]): { prototypePath: string; verbose: b
 }
 
 function resolveTextureFile(repoRoot: string, protoDir: string, file: string): string {
-  const fromRepo = path.join(repoRoot, file);
-  if (fs.existsSync(fromRepo)) return fromRepo;
   const fromProto = path.join(protoDir, path.basename(file));
   if (fs.existsSync(fromProto)) return fromProto;
-  throw new Error(`找不到纹理文件：${file}（已检查 ${fromRepo} 与 ${fromProto}）`);
+  const fromRepo = path.join(repoRoot, file);
+  if (fs.existsSync(fromRepo)) return fromRepo;
+  throw new Error(`找不到纹理文件：${file}（已检查 ${fromProto} 与 ${fromRepo}）`);
 }
 
 function isArmPart(part: CostumePart): boolean {
@@ -344,7 +344,7 @@ function main(): void {
         let leakPixels = 0;
         for (let dy = -8; dy <= 24; dy++) {
           for (let dx = legX - 4; dx <= legX + 4; dx++) {
-            const localX = pose.mirrorX ? -dx : dx;
+            const localX = dx;
             let topPart: string | null = null;
             for (const { part, sprite } of pieces) {
               const png = textures.get(sprite.texture);
@@ -391,6 +391,7 @@ function main(): void {
         const armPng = textures.get(arm.sprite.texture);
         if (!armPng) continue;
         const armPts = collectWorldPixels(arm.part, arm.sprite, armPng);
+        if (!armPts.length) continue;
         let minDist2 = Infinity;
         for (const [ax, ay] of armPts) {
           for (const [wx, wy] of weaponPts) {
@@ -399,7 +400,7 @@ function main(): void {
           }
         }
         const minDist = Math.sqrt(minDist2);
-        if (minDist > 5.0) {
+        if (minDist > 4.0) {
           detachedWarnings++;
           warn('手械贴合', `${clip} (${poseId}) F${fi} 手臂 coat-front[${arm.part.piece}] 与武器最小距离 ${minDist.toFixed(1)}px（建议 <= 4px）`);
         }
@@ -447,7 +448,7 @@ function main(): void {
       totalShakes += frames.length;
     }
   }
-  if (totalShakes > 4) {
+  if (totalShakes > 2) {
     warn('震屏过多', `当前共有 ${totalShakes} 处强制震屏（推荐全职业克制保留 1~2 处核心重击/大招爆发帧）`);
   }
 
