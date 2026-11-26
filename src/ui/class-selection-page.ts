@@ -24,9 +24,15 @@ interface ClassDomText {
 }
 
 /** 960×640 页面坐标：说明滚动区和五行属性的位置。 */
+const BASE_WIDTH = 960;
+const BASE_HEIGHT = 640;
+/** 调试模式展示超过 6 个职业时左右对称扩宽的安全留白，确保狂战士右侧的龙枪武士在任意屏幕比例下均不被裁切。 */
+const DEBUG_SIDE_PADDING = 104;
+const CLASS_BUTTON_WIDTH = 116;
+const CLASS_BUTTON_HEIGHT = 114;
 const DESCRIPTION = { x: 80, y: 485, width: 622, height: 132 } as const;
 const ATTRIBUTE = { nameX: 782, valueX: 894, top: 482, step: 28 } as const;
-const CLASS_POSITIONS = [[37,118],[70,251],[198,313],[648,313],[776,251],[809,118],[668,106],[176,106]] as const;
+const CLASS_POSITIONS = [[37,118],[70,251],[198,313],[648,313],[776,251],[809,118],[941,118],[-95,118]] as const;
 const GOLD = '#f3deb0';
 
 export class ClassSelectionPage {
@@ -36,6 +42,8 @@ export class ClassSelectionPage {
   private releaseSceneAssets?:()=>void;
   private readonly app:StoryClassApp;
   private surface?:UiSurface;
+  /** 当显示调试扩展职业时，原始 960 坐标系相对画布左缘的水平居中偏移。 */
+  private pageOffsetX=0;
   private preview?:LiveCharacterPreview;
   private background?:Phaser.GameObjects.Image;
   private selections:UiImage[]=[];
@@ -114,33 +122,35 @@ export class ClassSelectionPage {
     signal.throwIfAborted();
     applyClassSelectionFilters(this.scene,previewAssets.map(asset=>asset.key));
     this.background=createClassSelectionBackground(this.scene,`class-background:${catalog.background}`);
-    this.surface=new UiSurface(this.scene,960,640);
+    this.pageOffsetX=classes.length>6?DEBUG_SIDE_PADDING:0;
+    this.surface=new UiSurface(this.scene,BASE_WIDTH+this.pageOffsetX*2,BASE_HEIGHT);
     this.preview=new LiveCharacterPreview(this.scene,()=>{},actor=>createCharacter(this.scene,actor,{id:'class-preview',actor:actor.id,x:0,y:0}),null);
     this.buildPage();this.choose(classes.find(entry=>entry.id===catalog.defaultClass)??classes[0]!);
     this.app.ui.loaded();this.app.syncLifecycle?.();this.app.prefetchStory?.();
   }
   private buildPage():void{
-    const view=this.surface!,catalog=this.app.storyClasses,classes=this.availableClasses();
-    view.image(catalog.assets.title,263,20,434,56);
+    const view=this.surface!,catalog=this.app.storyClasses,classes=this.availableClasses(),ox=this.pageOffsetX;
+    view.image(catalog.assets.title,263+ox,20,434,56);
     const guard=()=>this.app.ui.ready&&!this.app.suspended;view.enabled=guard;
-    view.button('',12,16,67,67,()=>this.app.returnToMenu?.(),{image:'/assets/ui/menus/close.png',pressed:'/assets/ui/menus/close-pressed.png',guard}).setData('label','返回主菜单');
+    view.button('',12+ox,16,67,67,()=>this.app.returnToMenu?.(),{image:'/assets/ui/menus/close.png',pressed:'/assets/ui/menus/close-pressed.png',guard}).setData('label','返回主菜单');
     classes.forEach((character,index)=>{
-      const [x,y]=CLASS_POSITIONS[index]??CLASS_POSITIONS[CLASS_POSITIONS.length-1];const button=view.button('',x,y,116,114,()=>this.choose(character),{image:character.icon,guard}).setData('label',character.name);
-      this.selections.push(addClassSelectionHighlight(view,catalog.assets.selected,0,0,116,114,button).setVisible(false));
+      const [x,y]=CLASS_POSITIONS[index]??CLASS_POSITIONS[CLASS_POSITIONS.length-1];
+      const button=view.button('',x+ox,y,CLASS_BUTTON_WIDTH,CLASS_BUTTON_HEIGHT,()=>this.choose(character),{image:character.icon,guard}).setData('label',character.name);
+      this.selections.push(addClassSelectionHighlight(view,catalog.assets.selected,0,0,CLASS_BUTTON_WIDTH,CLASS_BUTTON_HEIGHT,button).setVisible(false));
     });
-    view.button('',334,388,292,77,()=>{
+    view.button('',334+ox,388,292,77,()=>{
       // 加载页由正式界面场景画在画布上，DOM 文案要先让位，别浮到加载背景上面。
       this.domShown=false;this.setDomVisible(false);this.preview?.visible(false);
       this.app.startStory?.(this.selected!.id);
     },{image:catalog.assets.start,pressed:catalog.assets.startPressed,guard}).setData('label','开始游戏');
-    view.rect(42,464,699,174,0x000000,.4);
-    view.image(catalog.assets.descriptionTop,71,456);
-    view.image(catalog.assets.panelLeft,32,455);view.image(catalog.assets.panelRight,712,455);
-    const description=view.scroll(DESCRIPTION.x,DESCRIPTION.y,DESCRIPTION.width,DESCRIPTION.height);
+    view.rect(42+ox,464,699,174,0x000000,.4);
+    view.image(catalog.assets.descriptionTop,71+ox,456);
+    view.image(catalog.assets.panelLeft,32+ox,455);view.image(catalog.assets.panelRight,712+ox,455);
+    const description=view.scroll(DESCRIPTION.x+ox,DESCRIPTION.y,DESCRIPTION.width,DESCRIPTION.height);
     this.descriptionScroll=description;description.onScroll=()=>this.positionDescription();
-    view.rect(767,464,151,174,0x000000,.4);
-    view.image(catalog.assets.attributesTop,796,455);
-    view.image(catalog.assets.panelLeft,757,454);view.image(catalog.assets.panelRight,888,454);
+    view.rect(767+ox,464,151,174,0x000000,.4);
+    view.image(catalog.assets.attributesTop,796+ox,455);
+    view.image(catalog.assets.panelLeft,757+ox,454);view.image(catalog.assets.panelRight,888+ox,454);
   }
   private choose(entry:StoryClass):void{
     if(this.selected===entry)return;
@@ -148,14 +158,14 @@ export class ClassSelectionPage {
     const classes=this.availableClasses();
     this.selections.forEach((selection,index)=>{const shown=classes[index]?.id===entry.id;if(selection.visible!==shown)selection.setVisible(shown);});
     if(this.descriptionScroll)this.descriptionScroll.scrollTop=0;
-    const clip=entry.previewActor.clips['idle-south']!;this.preview!.show(this.surface!,entry.previewActor,{x:480-clip.frameWidth*1.5,y:290-clip.originY*clip.frameHeight*3,width:clip.frameWidth*3,height:clip.frameHeight*3});
+    const clip=entry.previewActor.clips['idle-south']!;this.preview!.show(this.surface!,entry.previewActor,{x:480+this.pageOffsetX-clip.frameWidth*1.5,y:290-clip.originY*clip.frameHeight*3,width:clip.frameWidth*3,height:clip.frameHeight*3});
     this.preview!.visible(this.app.ui.ready&&!this.app.suspended);
     this.renderDomText(entry);this.layout();
   }
   layout():void{
     this.surface?.layout(8);
     if(this.surface&&this.background){
-      const matrix=this.surface.root.getWorldTransformMatrix(),point=matrix.transformPoint(80,0);
+      const matrix=this.surface.root.getWorldTransformMatrix(),point=matrix.transformPoint(80+this.pageOffsetX,0);
       const box=screenRectToCanvas(this.scene,{x:point.x,y:point.y,width:800*matrix.scaleX,height:640*matrix.scaleY});
       this.background.setPosition(box.x,box.y).setDisplaySize(box.width,box.height);
     }
@@ -217,10 +227,10 @@ export class ClassSelectionPage {
   }
   private layoutDomText():void{
     const dom=this.domText,selected=this.selected;if(!dom||!selected)return;
-    const {scale,point}=this.domMatrix();
+    const {scale,point}=this.domMatrix(),ox=this.pageOffsetX;
     this.styleDomText(scale);
-    const title=point(480,31);dom.title.setPosition(title.x,title.y);
-    const origin=point(DESCRIPTION.x,DESCRIPTION.y);
+    const title=point(480+ox,31);dom.title.setPosition(title.x,title.y);
+    const origin=point(DESCRIPTION.x+ox,DESCRIPTION.y);
     dom.descriptionClip.setStyle({width:`${DESCRIPTION.width*scale}px`,height:`${DESCRIPTION.height*scale}px`}).setPosition(origin.x,origin.y);
     const scroll=this.descriptionScroll;
     if(scroll){
@@ -231,8 +241,8 @@ export class ClassSelectionPage {
     this.positionDescription();
     selected.attributes.forEach((_attribute,index)=>{
       const pair=dom.attributes[index];if(!pair)return;
-      const name=point(ATTRIBUTE.nameX,ATTRIBUTE.top+index*ATTRIBUTE.step);
-      const value=point(ATTRIBUTE.valueX,ATTRIBUTE.top+index*ATTRIBUTE.step);
+      const name=point(ATTRIBUTE.nameX+ox,ATTRIBUTE.top+index*ATTRIBUTE.step);
+      const value=point(ATTRIBUTE.valueX+ox,ATTRIBUTE.top+index*ATTRIBUTE.step);
       pair.name.setPosition(name.x,name.y);
       pair.value.setPosition(value.x,value.y);
     });

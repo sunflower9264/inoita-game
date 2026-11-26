@@ -44,4 +44,4 @@ eachRow(FRAME_ROWS, (file, [page, frame]) => {
   frames[file] = { key: UI_ATLAS_PAGES[Number(page)]!.key, frame: frame ?? file, page: Number(page) };
 });
 export const UI_ATLAS_FRAMES: Readonly<Record<string, { key: string; frame: string; page: number }>> = frames;
-export const UI_ATLAS_SOURCE_DIGEST = "b53aad99d61ba5e48f24e1f9a3cb9a6c1b9b93ca695a0c561548a1196ba48b8f";
+export const UI_ATLAS_SOURCE_DIGEST = "97f27478fee4967e98074399420e6b13c245c0034e119c2b65b8fb434a4e90fd";

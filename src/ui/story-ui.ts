@@ -1,4 +1,5 @@
 import { ShortcutEditor } from './shortcut-editor.ts';
+import { PressureClassPicker } from './pressure-class-picker.ts';
 import { SystemPage } from './system-page.ts';
 import { SettingsPage } from './settings-page.ts';
 import { SkillsPage } from './skills-page.ts';
@@ -114,9 +115,7 @@ export class StoryUI {
   private session?:Session;private world?:WorldIndex;private content?:StoryInterface;private unsubscribe?:()=>void;private unsubscribeFullscreen?:()=>void;
   /** 菜单作用域的注销函数；重新 attach 或场景 shutdown 时先摘掉旧的。 */
   private unregisterKeyboard?:()=>void;
-  private pressurePicker?:UiSurface;
-  private pressureBackdrop?:UiNode;
-  private pressureClassId?:string;
+  private pressurePicker?:PressureClassPicker;
   /** 菜单是否打开；诊断用，和 `locked` 里的 `story-menu` 对应。 */
   get menuOpen():boolean{return this.open;}
   private page:Page='bag';private open=false;/** 从阵亡面板打开的读档页：关掉时要回到阵亡面板。 */private loadReturnToDefeat=false;private selectedMemberId='player';private questPanel?:QuestPanel;
@@ -342,34 +341,25 @@ export class StoryUI {
   }
   private openPressurePicker():void {
     if(!this.scene||!this.app.pressureMode||this.pressurePicker)return;
-    this.pressureClassId=this.session?.hero?.classId ?? this.app.storyClasses.defaultClass;
+    const currentClassId=this.session?.hero?.classId ?? this.app.storyClasses.defaultClass;
     this.app.ui.resetInput();this.app.ui.lock(true,'pressure-class');this.app.pausePressure?.(true);
-    this.pressureBackdrop=new UiNode(this.scene).setDepth(499).setSize(frameRect().width,frameRect().height).setFillStyle(0,.65).setInteractive();
-    this.pressurePicker=new UiSurface(this.scene,720,400,500);
-    this.pressurePicker.enabled=()=>!this.app.ui.suspended;
-    this.drawPressurePicker();this.sync();
-  }
-  private drawPressurePicker():void {
-    const view=this.pressurePicker;if(!view)return;
-    view.clear();view.rect(0,0,720,400,0x21190f,1);
-    view.text('选择职业',360,30,300,26).setOrigin(.5);
-    this.app.storyClasses.classes.forEach((entry,index)=>{
-      const x=45+index%3*220,y=60+Math.floor(index/3)*115;
-      view.button(entry.name,x,y,200,95,()=>{this.pressureClassId=entry.id;this.drawPressurePicker();},{selected:entry.id===this.pressureClassId});
-      view.image(entry.icon,x+8,y+8,58,58);
+    this.pressurePicker=new PressureClassPicker({
+      scene:this.scene,
+      catalog:this.app.storyClasses,
+      classes:this.app.storyClasses.classes,
+      currentClassId,
+      enabled:()=>!this.app.ui.suspended,
+      onCancel:()=>this.closePressurePicker(),
+      onConfirm:classId=>{
+        this.closePressurePicker(false);void this.app.changePressureClass?.(classId);
+      },
     });
-    view.button('取消',150,320,180,55,()=>this.closePressurePicker());
-    view.button('以 1 级重新挑战',370,320,220,55,()=>{
-      const classId=this.pressureClassId;
-      if(!classId)return;
-      this.closePressurePicker(false);void this.app.changePressureClass?.(classId);
-    },{fontSize:19,disabled:this.pressureClassId===this.session?.hero?.classId});
-    view.layout();
+    this.sync();
   }
   private closePressurePicker(resume=true):void {
     if(!this.pressurePicker)return;
-    this.pressurePicker.destroy();this.pressurePicker=undefined;this.pressureBackdrop?.destroy();this.pressureBackdrop=undefined;
-    this.pressureClassId=undefined;this.app.ui.lock(false,'pressure-class');
+    this.pressurePicker.destroy();this.pressurePicker=undefined;
+    this.app.ui.lock(false,'pressure-class');
     if(resume)this.app.pausePressure?.(false);
     this.sync();
   }
@@ -456,7 +446,7 @@ export class StoryUI {
   }
   sync():void{
     if(this.app.ui.suspended){this.cancelDrag();this.savePage?.closeInput();}
-    this.pressurePicker?.visible(!this.app.ui.suspended);this.pressureBackdrop?.setVisible(!this.app.ui.suspended);
+    this.pressurePicker?.setVisible(!this.app.ui.suspended);
     const active=this.app.ui.mode==='game'&&this.app.ui.ready&&!!this.session;
     if(!active&&this.open&&!((this.busy||this.savePage?.isLoading)&&this.app.ui.mode==='game'&&this.session)){this.statusPage?.discardAllocation();this.close();}
     if(this.app.ui.mode!=='game')this.hudButtons?.clear();
@@ -709,7 +699,7 @@ export class StoryUI {
   private layout():void{
     const frame=frameRect();
     this.controlEditor?.layout();this.keyBindingEditor?.layout();
-    this.pressurePicker?.layout();this.pressureBackdrop?.setSize(frame.width,frame.height);
+    this.pressurePicker?.layout();
     this.surface?.layout(12);this.positionModal();this.modal?.relayoutOverlay();
     if(this.open&&this.page==='debug'&&this.gmPanel&&this.body)this.gmPanel.layoutSearch(this.body);
     // 说明面板不在 surface 之下，位置与缩放按 surface 的世界变换同步，坐标系与内容块一致。

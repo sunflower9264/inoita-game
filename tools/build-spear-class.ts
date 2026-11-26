@@ -15,6 +15,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PNG } from 'pngjs';
+import sharp from 'sharp';
 import type {
   AreaShape,
   BasicAttackDefinition,
@@ -1042,188 +1043,130 @@ function buildWeaponIcons(): void {
   writePng(path.join(PUBLIC, 'assets/items/ground/spear.png'), ground);
 }
 
-interface SkillIconTheme {
-  id: string;
-  bgInner: Rgba;
-  bgOuter: Rgba;
-  accent: Rgba;
-  core: Rgba;
-  motif: 'pierce' | 'whirl' | 'storm' | 'flurry' | 'slam' | 'sovereign' | 'focus' | 'step' | 'gale' | 'mastery' | 'reach' | 'parry' | 'crit' | 'evade' | 'spirit';
-}
+const SKILL_ICON_IDS = [
+  'dragon-pierce',
+  'whirl-sweep',
+  'spin-storm',
+  'flurry-thrust',
+  'dragon-slam',
+  'sovereign-pierce',
+  'focus-edge',
+  'dragon-step',
+  'gale-stance',
+  'spear-mastery',
+  'polearm-reach',
+  'shaft-parry',
+  'piercing-momentum',
+  'coiling-dragon-footwork',
+  'dragon-spirit',
+] as const;
 
-function buildSkillAndBuffIcons(): void {
+/**
+ * 将 `asset-source/raw-art/skills/lancer-<id>.png` 中的生图原画高精缩放至 75×75，
+ * 并封装原版《艾诺迪亚4》青铜圆框与透明四角；同时从 3 项增益技能原画派生 24×24 状态栏小图标。
+ */
+async function buildSkillAndBuffIcons(): Promise<void> {
+  const rawDir = path.join(ASSET_SOURCE, 'raw-art/skills');
   const rimSource = PNG.sync.read(fs.readFileSync(path.join(ASSET_SOURCE, 'assets/skills/rush-of-anger.png')));
-  const themes: SkillIconTheme[] = [
-    { id: 'dragon-pierce', bgInner: [110, 28, 12, 255], bgOuter: [18, 6, 4, 255], accent: [255, 148, 36, 255], core: [255, 248, 214, 255], motif: 'pierce' },
-    { id: 'whirl-sweep', bgInner: [18, 72, 112, 255], bgOuter: [6, 14, 26, 255], accent: [104, 224, 255, 255], core: [244, 252, 255, 255], motif: 'whirl' },
-    { id: 'spin-storm', bgInner: [28, 64, 96, 255], bgOuter: [8, 12, 22, 255], accent: [236, 74, 62, 255], core: [228, 248, 255, 255], motif: 'storm' },
-    { id: 'flurry-thrust', bgInner: [24, 82, 118, 255], bgOuter: [6, 16, 28, 255], accent: [132, 232, 255, 255], core: [255, 255, 255, 255], motif: 'flurry' },
-    { id: 'dragon-slam', bgInner: [98, 62, 16, 255], bgOuter: [20, 12, 4, 255], accent: [242, 186, 58, 255], core: [255, 248, 212, 255], motif: 'slam' },
-    { id: 'sovereign-pierce', bgInner: [22, 92, 148, 255], bgOuter: [6, 14, 34, 255], accent: [255, 216, 98, 255], core: [238, 252, 255, 255], motif: 'sovereign' },
-    { id: 'focus-edge', bgInner: [108, 76, 14, 255], bgOuter: [22, 14, 4, 255], accent: [255, 214, 78, 255], core: [255, 252, 232, 255], motif: 'focus' },
-    { id: 'dragon-step', bgInner: [16, 96, 108, 255], bgOuter: [4, 18, 24, 255], accent: [118, 242, 255, 255], core: [240, 255, 255, 255], motif: 'step' },
-    { id: 'gale-stance', bgInner: [26, 86, 128, 255], bgOuter: [6, 16, 30, 255], accent: [158, 228, 255, 255], core: [246, 252, 255, 255], motif: 'gale' },
-    { id: 'spear-mastery', bgInner: [76, 48, 26, 255], bgOuter: [16, 10, 6, 255], accent: [226, 182, 112, 255], core: [250, 244, 232, 255], motif: 'mastery' },
-    { id: 'polearm-reach', bgInner: [32, 68, 104, 255], bgOuter: [8, 14, 24, 255], accent: [128, 208, 255, 255], core: [244, 250, 255, 255], motif: 'reach' },
-    { id: 'shaft-parry', bgInner: [58, 64, 78, 255], bgOuter: [12, 14, 20, 255], accent: [188, 206, 228, 255], core: [248, 252, 255, 255], motif: 'parry' },
-    { id: 'piercing-momentum', bgInner: [98, 24, 28, 255], bgOuter: [20, 6, 8, 255], accent: [255, 106, 88, 255], core: [255, 238, 224, 255], motif: 'crit' },
-    { id: 'coiling-dragon-footwork', bgInner: [20, 84, 76, 255], bgOuter: [6, 18, 16, 255], accent: [112, 238, 198, 255], core: [238, 255, 248, 255], motif: 'evade' },
-    { id: 'dragon-spirit', bgInner: [56, 34, 108, 255], bgOuter: [12, 8, 26, 255], accent: [186, 142, 255, 255], core: [246, 238, 255, 255], motif: 'spirit' },
-  ];
+  const cx = 37;
+  const cy = 37;
 
-  for (const theme of themes) {
+  // 逐技能可选微调内裁比例（默认裁掉最外 4% 安全出血，确保圆框内构图饱满无白边）
+  const cropMarginBySkill: Partial<Record<(typeof SKILL_ICON_IDS)[number], number>> = {
+    'dragon-pierce': 0.06,
+    'spin-storm': 0.02,
+  };
+
+  for (const id of SKILL_ICON_IDS) {
+    const rawFile = path.join(rawDir, `lancer-${id}.png`);
+    if (!fs.existsSync(rawFile)) {
+      throw new Error(`缺少龙枪技能图标原图：${rawFile}`);
+    }
+    const meta = await sharp(rawFile).metadata();
+    const srcW = meta.width ?? 256;
+    const srcH = meta.height ?? 256;
+    const margin = cropMarginBySkill[id] ?? 0.04;
+    const cropLeft = Math.round(srcW * margin);
+    const cropTop = Math.round(srcH * margin);
+    const cropSize = Math.max(1, Math.min(srcW - cropLeft * 2, srcH - cropTop * 2));
+
+    const { data: rawRgba } = await sharp(rawFile)
+      .extract({ left: cropLeft, top: cropTop, width: cropSize, height: cropSize })
+      .resize(75, 75, { kernel: sharp.kernel.lanczos3, fit: 'cover' })
+      .sharpen({ sigma: 0.65 })
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
     const png = new PNG({ width: 75, height: 75 });
-    rimSource.data.copy(png.data);
-    const cx = 37;
-    const cy = 37;
-    // 清空内圆 r < 33.2 并铺设径向暗底
     for (let y = 0; y < 75; y++) {
       for (let x = 0; x < 75; x++) {
-        const r = Math.hypot(x - cx, y - cy);
-        if (r > 33.4) continue;
-        const t = Math.min(1, r / 33.4);
         const idx = (y * 75 + x) * 4;
-        png.data[idx] = Math.round(theme.bgInner[0] * (1 - t) + theme.bgOuter[0] * t);
-        png.data[idx + 1] = Math.round(theme.bgInner[1] * (1 - t) + theme.bgOuter[1] * t);
-        png.data[idx + 2] = Math.round(theme.bgInner[2] * (1 - t) + theme.bgOuter[2] * t);
-        png.data[idx + 3] = 255;
-      }
-    }
-
-    switch (theme.motif) {
-      case 'pierce':
-        drawCapsule(png, 58, 58, 16, 16, 5.2, [theme.accent[0], theme.accent[1], theme.accent[2], 185]);
-        drawPolygon(png, [[13, 13], [34, 25], [25, 34]], () => theme.core);
-        drawCapsule(png, 24, 24, 58, 58, 2.4, theme.core);
-        drawArcBand(png, 26, 26, 9, 13, 195, 345, theme.accent);
-        break;
-      case 'whirl':
-        drawArcBand(png, 37, 39, 16, 25, 190, 365, theme.accent);
-        drawArcBand(png, 37, 39, 19, 23, 205, 350, theme.core);
-        drawCapsule(png, 54, 52, 20, 24, 2.2, theme.core);
-        drawPolygon(png, [[15, 20], [27, 23], [22, 30]], () => theme.core);
-        break;
-      case 'storm':
-        drawArcBand(png, 37, 37, 15, 23, 0, 300, theme.core);
-        drawArcBand(png, 37, 37, 20, 26, 120, 410, theme.accent);
-        drawCapsule(png, 22, 52, 52, 22, 2.2, theme.core);
-        break;
-      case 'flurry':
-        for (const [ox, oy] of [[-9, 7], [0, 0], [8, -8]] as const) {
-          drawCapsule(png, 52 + ox, 54 + oy, 18 + ox, 20 + oy, 2.2, theme.accent);
-          drawPolygon(png, [[14 + ox, 16 + oy], [25 + ox, 20 + oy], [20 + ox, 27 + oy]], () => theme.core);
-        }
-        break;
-      case 'slam':
-        drawArcBand(png, 37, 54, 10, 17, 190, 350, theme.accent);
-        drawCapsule(png, 37, 13, 37, 48, 3.2, theme.accent);
-        drawPolygon(png, [[37, 56], [29, 41], [45, 41]], () => theme.core);
-        drawCapsule(png, 19, 55, 55, 55, 2.2, theme.core);
-        break;
-      case 'sovereign':
-        drawArcBand(png, 37, 37, 18, 24, 30, 330, theme.accent);
-        drawCapsule(png, 60, 60, 14, 14, 4.6, [92, 214, 255, 210]);
-        drawPolygon(png, [[11, 11], [34, 23], [23, 34]], () => theme.core);
-        drawCapsule(png, 14, 14, 58, 58, 2.2, theme.core);
-        break;
-      case 'focus':
-        drawCapsule(png, 37, 59, 37, 20, 2.4, theme.core);
-        drawPolygon(png, [[37, 12], [29, 29], [45, 29]], () => theme.core);
-        drawCapsule(png, 21, 26, 53, 26, 1.8, theme.accent);
-        drawCapsule(png, 37, 10, 37, 42, 1.8, theme.accent);
-        break;
-      case 'step':
-        drawArcBand(png, 37, 42, 12, 19, 160, 380, theme.accent);
-        drawArcBand(png, 37, 30, 9, 14, 20, 230, theme.core);
-        drawPolygon(png, [[48, 17], [34, 28], [43, 31], [32, 46], [51, 31], [42, 28]], () => theme.core);
-        break;
-      case 'gale':
-        drawArcBand(png, 34, 38, 14, 20, 210, 390, theme.accent);
-        drawArcBand(png, 40, 36, 14, 20, 30, 210, theme.accent);
-        drawCapsule(png, 53, 53, 20, 20, 2.4, theme.core);
-        drawPolygon(png, [[15, 15], [30, 22], [22, 30]], () => theme.core);
-        break;
-      case 'mastery':
-        drawCapsule(png, 56, 56, 20, 20, 2.5, theme.accent);
-        drawPolygon(png, [[14, 14], [31, 22], [22, 31]], () => theme.core);
-        drawArcBand(png, 37, 37, 21, 24, 0, 360, [theme.accent[0], theme.accent[1], theme.accent[2], 160]);
-        break;
-      case 'reach':
-        drawCapsule(png, 14, 56, 56, 14, 2.2, theme.core);
-        drawPolygon(png, [[60, 10], [46, 15], [55, 24]], () => theme.core);
-        drawArcBand(png, 20, 54, 12, 15, 270, 360, theme.accent);
-        drawArcBand(png, 20, 54, 22, 25, 270, 360, theme.accent);
-        break;
-      case 'parry':
-        drawPolygon(png, [[37, 15], [55, 24], [51, 46], [37, 59], [23, 46], [19, 24]], () => [theme.accent[0], theme.accent[1], theme.accent[2], 180]);
-        drawCapsule(png, 18, 54, 56, 18, 2.6, theme.core);
-        break;
-      case 'crit':
-        drawCapsule(png, 18, 18, 56, 56, 2.8, theme.accent);
-        drawCapsule(png, 56, 18, 18, 56, 2.8, theme.core);
-        drawPolygon(png, [[37, 24], [44, 37], [37, 50], [30, 37]], () => theme.core);
-        break;
-      case 'evade':
-        drawArcBand(png, 37, 37, 13, 21, 40, 290, theme.accent);
-        drawPolygon(png, [[53, 20], [36, 24], [46, 36]], () => theme.core);
-        break;
-      case 'spirit':
-        drawArcBand(png, 37, 39, 12, 20, 140, 400, theme.accent);
-        drawPolygon(png, [[37, 14], [47, 36], [37, 56], [27, 36]], () => theme.core);
-        break;
-    }
-
-    // 重叠外圈原版青铜圆框边缘，保证锯齿与光泽 100% 原生
-    for (let y = 0; y < 75; y++) {
-      for (let x = 0; x < 75; x++) {
         const r = Math.hypot(x - cx, y - cy);
-        if (r >= 32.6) {
-          const idx = (y * 75 + x) * 4;
+        if (r >= 33.4) {
+          // 完整沿用原版外圈青铜金属圆环与圆外透明像素
           png.data[idx] = rimSource.data[idx]!;
           png.data[idx + 1] = rimSource.data[idx + 1]!;
           png.data[idx + 2] = rimSource.data[idx + 2]!;
           png.data[idx + 3] = rimSource.data[idx + 3]!;
+        } else if (r > 32.0) {
+          // 1.4px 抗锯齿内环自然衔接原版暗金内阴影
+          const t = (r - 32.0) / 1.4;
+          png.data[idx] = Math.round(rawRgba[idx]! * (1 - t) + rimSource.data[idx]! * t);
+          png.data[idx + 1] = Math.round(rawRgba[idx + 1]! * (1 - t) + rimSource.data[idx + 1]! * t);
+          png.data[idx + 2] = Math.round(rawRgba[idx + 2]! * (1 - t) + rimSource.data[idx + 2]! * t);
+          png.data[idx + 3] = 255;
+        } else {
+          png.data[idx] = rawRgba[idx]!;
+          png.data[idx + 1] = rawRgba[idx + 1]!;
+          png.data[idx + 2] = rawRgba[idx + 2]!;
+          png.data[idx + 3] = 255;
         }
       }
     }
 
-    writePng(path.join(ASSET_SOURCE, `assets/skills/lancer-${theme.id}.png`), png);
-    writePng(path.join(PUBLIC, `assets/skills/lancer-${theme.id}.png`), png);
+    writePng(path.join(ASSET_SOURCE, `assets/skills/lancer-${id}.png`), png);
+    writePng(path.join(PUBLIC, `assets/skills/lancer-${id}.png`), png);
   }
 
-  // 状态栏 24x24 增益小图标：复用 buff-enrage.png 外框 (r >= 8.8)
+  // 状态栏 24×24 增益小图标：直接从对应 3 枚 AI 增益技能原画中心派生，叠加原版 buff-enrage.png 金属边环
   const buffFrame = PNG.sync.read(fs.readFileSync(path.join(ASSET_SOURCE, 'assets/ui/status/buff-enrage.png')));
-  const buffSpecs: { file: string; bg: Rgba; fg: Rgba; hi: Rgba; mode: 'focus' | 'step' | 'gale' }[] = [
-    { file: 'assets/ui/status/buff-focus-edge.png', bg: [92, 62, 12, 255], fg: [255, 206, 68, 255], hi: [255, 252, 224, 255], mode: 'focus' },
-    { file: 'assets/ui/status/buff-dragon-step.png', bg: [14, 78, 92, 255], fg: [96, 232, 255, 255], hi: [236, 255, 255, 255], mode: 'step' },
-    { file: 'assets/ui/status/buff-gale-stance.png', bg: [20, 68, 112, 255], fg: [148, 218, 255, 255], hi: [244, 252, 255, 255], mode: 'gale' },
+  const buffPairs: readonly [string, string][] = [
+    ['focus-edge', 'assets/ui/status/buff-focus-edge.png'],
+    ['dragon-step', 'assets/ui/status/buff-dragon-step.png'],
+    ['gale-stance', 'assets/ui/status/buff-gale-stance.png'],
   ];
-  for (const spec of buffSpecs) {
+  for (const [skillId, outRel] of buffPairs) {
+    const rawFile = path.join(rawDir, `lancer-${skillId}.png`);
+    const meta = await sharp(rawFile).metadata();
+    const srcW = meta.width ?? 256;
+    const srcH = meta.height ?? 256;
+    const inset = Math.round(Math.min(srcW, srcH) * 0.08);
+    const cropSize = Math.max(1, Math.min(srcW, srcH) - inset * 2);
+    const { data: buffRgba } = await sharp(rawFile)
+      .extract({ left: inset, top: inset, width: cropSize, height: cropSize })
+      .resize(24, 24, { kernel: sharp.kernel.lanczos3, fit: 'cover' })
+      .sharpen({ sigma: 0.55 })
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
     const out = new PNG({ width: 24, height: 24 });
     buffFrame.data.copy(out.data);
     for (let y = 0; y < 24; y++) {
       for (let x = 0; x < 24; x++) {
-        if (Math.hypot(x - 11.5, y - 11.5) <= 8.6) {
+        const dist = Math.hypot(x - 11.5, y - 11.5);
+        if (dist <= 8.8) {
           const idx = (y * 24 + x) * 4;
-          out.data[idx] = spec.bg[0];
-          out.data[idx + 1] = spec.bg[1];
-          out.data[idx + 2] = spec.bg[2];
+          const blend = dist <= 7.8 ? 0 : (dist - 7.8) / 1.0;
+          out.data[idx] = Math.round(buffRgba[idx]! * (1 - blend) + buffFrame.data[idx]! * blend);
+          out.data[idx + 1] = Math.round(buffRgba[idx + 1]! * (1 - blend) + buffFrame.data[idx + 1]! * blend);
+          out.data[idx + 2] = Math.round(buffRgba[idx + 2]! * (1 - blend) + buffFrame.data[idx + 2]! * blend);
           out.data[idx + 3] = 255;
         }
       }
     }
-    if (spec.mode === 'focus') {
-      drawCapsule(out, 12, 18, 12, 6, 1.4, spec.fg);
-      drawCapsule(out, 8, 9, 16, 9, 1.1, spec.hi);
-      drawCapsule(out, 12, 5, 12, 11, 1.2, spec.hi);
-    } else if (spec.mode === 'step') {
-      drawArcBand(out, 12, 12, 4, 7, 170, 380, spec.fg);
-      drawCapsule(out, 9, 15, 15, 7, 1.2, spec.hi);
-    } else {
-      drawArcBand(out, 12, 12, 4.5, 7.2, 30, 320, spec.fg);
-      drawCapsule(out, 16, 16, 8, 8, 1.2, spec.hi);
-    }
-    writePng(path.join(ASSET_SOURCE, spec.file), out);
+    writePng(path.join(ASSET_SOURCE, outRel), out);
   }
 }
 
@@ -2256,7 +2199,7 @@ function buildWeaponItemsAndStats(statsTemplate: EquipmentNumbers): {
 // 主流程：生成素材并幂等写入全部内容 JSON
 // ---------------------------------------------------------------------------
 
-function main(): void {
+async function main(): Promise<void> {
   const wardrobe = readJson<WardrobeCatalog>('wardrobe.json');
   const battle = readJson<BattleCatalog>('battle.json');
   const items = readJson<ItemCatalog>('items.json');
@@ -2330,7 +2273,7 @@ function main(): void {
   const spearAttackEffects = buildBattleEffects();
   buildClassBadgeAndPortraits();
   buildWeaponIcons();
-  buildSkillAndBuffIcons();
+  await buildSkillAndBuffIcons();
   const { previewActor, battleActor, playerActor } = buildCharacterActors(wardrobe, parts2Png, weaponStance, skillPoses);
 
   // 3. 更新 battle.json
@@ -2459,4 +2402,4 @@ function main(): void {
   );
 }
 
-main();
+await main();

@@ -108,6 +108,44 @@ test('class selection plays live previews and retains the page when changing cla
   await new Promise(resolve=>setTimeout(resolve,0));
 });
 
+test('class selection aligns lancer to the right of warrior in debug mode without clipping narrow viewports',async t=>{
+  const restore=installMenuDom();t.after(restore);
+  t.mock.method(domAssets,'preloadFiles',async()=>({release(){}}));
+  const catalog=JSON.parse(readFileSync(new URL('../public/content/story-classes.json',import.meta.url),'utf8'));
+  const app={storyClasses:catalog,debugMode:true,ui:{ready:true,loading(){},loaded(){},error(){}},suspended:false};
+  const runtime={} as any;
+  const scene=new ClassSelectionPage(runtime,app as never) as any;
+  runtime.events=new EventEmitter();runtime.scale=Object.assign(new EventEmitter(),{width:1024,height:640});
+  runtime.game={events:new EventEmitter(),canvas:{getBoundingClientRect:()=>({...menuFrame})}};
+  runtime.textures=Object.assign(new EventEmitter(),{exists:()=>true,get:()=>({has:()=>true,setFilter(){}}),remove(){}});
+  runtime.anims={exists:()=>false,get:()=>undefined,generateFrameNumbers:()=>[],create(){},remove(){}};
+  const background={width:0,height:0,setOrigin(){return this;},setScrollFactor(){return this;},setDepth(){return this;},
+    setPosition(x:number,y:number){Object.assign(this,{x,y});return this;},setDisplaySize(width:number,height:number){Object.assign(this,{width,height});return this;},destroy(){}};
+  runtime.add={image:()=>background,container:()=>({list:[] as any[],destroyed:false,visible:true,x:0,y:0,scale:1,
+    setDepth(){return this;},setScrollFactor(){return this;},setVisible(value:boolean){this.visible=value;return this;},
+    setScale(value:number){this.scale=value;return this;},setPosition(x:number,y:number){this.x=x;this.y=y;return this;},
+    addAt(sprite:any,index:number){this.list.splice(index,0,sprite);return this;},destroy(){this.destroyed=true;}}),
+    sprite:()=>({scene:runtime,alpha:1,anims:{timeScale:1,accumulator:0},setOrigin(){return this;},setBlendMode(){return this;},setScale(){return this;},play(){return this;}})};
+  await scene.open(new AbortController().signal);
+  const buttons=scene.surface.root.list.filter((node:any)=>node.getData('uiAction'));
+  const warrior=buttons.find((node:any)=>node.getData('label')==='狂战士');
+  const lancer=buttons.find((node:any)=>node.getData('label')==='龙枪武士');
+  assert.ok(warrior&&lancer,'调试模式下狂战士与龙枪武士按钮同时存在');
+  assert.equal(lancer.y,warrior.y,'龙枪武士与狂战士水平对齐');
+  assert.equal(lancer.height,warrior.height);
+  assert.equal(lancer.width,warrior.width);
+  assert.equal(lancer.x,warrior.x+warrior.width+16,'龙枪武士紧贴狂战士右侧');
+  // 切到 800×480 窄屏与 1024×640 屏，验证龙枪按钮完整落在可视画框内无裁切
+  for(const [w,h] of [[800,480],[1024,640]] as const){
+    Object.assign(menuFrame,{width:w,height:h});runtime.scale.width=w;runtime.scale.height=h;scene.layout();
+    const bounds=lancer.getBounds();
+    assert.ok(bounds.x>=0&&bounds.x+bounds.width<=w+0.5,`${w}x${h} 下龙枪武士横向不能越界: ${JSON.stringify(bounds)}`);
+    assert.ok(bounds.y>=0&&bounds.y+bounds.height<=h+0.5,`${w}x${h} 下龙枪武士纵向不能越界: ${JSON.stringify(bounds)}`);
+  }
+  scene.dispose();
+  await new Promise(resolve=>setTimeout(resolve,0));
+});
+
 test('dialogue and choice text stays above its shade and hides during occlusion',t=>{
   const restore=installMenuDom();
   const dom=new DomUi();
