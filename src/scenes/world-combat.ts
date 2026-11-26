@@ -368,6 +368,10 @@ export class WorldCombat {
       has:id=>this.app.session.isInvincible(id),
       add:id=>this.app.session.setInvincible(id,true),
       delete:id=>this.app.session.setInvincible(id,false),
+    },{
+      has:id=>this.app.session.isInfiniteMana(id),
+      add:id=>this.app.session.setInfiniteMana(id,true),
+      delete:id=>this.app.session.setInfiniteMana(id,false),
     });
   }
   private applyBuffResources(id:string,effect:BattleBuffEffect,entry:Readonly<ResourceCapacities>):void {
@@ -2334,11 +2338,11 @@ captureStoryActors(includeEnemyAppearance=true):SceneActorState[] {
       }this.presentActionFrame(presenter,action,index,contact,unitsReady,event=>this.skillFeedback(action,event),(definition,work,afterDispatch)=>this.runActionDispatch(action,definition,work,afterDispatch),areaContact);},
       canSelectSkill:skill=>this.canSelectSkill(id,skill),
       manaCost:skill=>this.skillManaCost(id,skill.id,skill.level),
-      canSpendMana:cost=>this.conditions.isInvincible(id)||(this.memberOf(id)?.player.mana??0)>=cost,
+      canSpendMana:cost=>this.conditions.isInfiniteMana(id)||(this.memberOf(id)?.player.mana??0)>=cost,
       spendMana:cost=>{
         const member=this.memberOf(id);if(!member)return false;
-        // GM 调试无敌期间技能免费：返回成功但不扣 MP。
-        return this.conditions.isInvincible(id)?true:member.spendMana(cost);
+        // GM 调试无限蓝期间技能免费：返回成功但不扣 MP。
+        return this.conditions.isInfiniteMana(id)?true:member.spendMana(cost);
       },
       contact:event=>this.attackContact(event),areaContact:event=>this.basicAreaContact(event),prepareUnit:event=>this.prepareSkillUnit(event),unit:event=>this.skillUnit(event),
         runUnitSequence:work=>(this.hitResolution??=new CombatHitResolution()).run(work),

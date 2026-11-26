@@ -141,6 +141,11 @@ export class CompanionSkillProgression extends SkillConfiguration {
   }
   level(id:string):number{this.skill(id);return this.skillLevels()[id]??0;}
   points():number{return this.manual?(this.characterLevel-1)*this.context!.pointsPerLevel+this.pointState.legacyBonusPoints-this.pointState.spentPoints:0;}
+  /** 仅给手动培养佣兵补充额外技能点（写入历史补点字段，便于存档校验与重置保留）。 */
+  grantBonusPoints(amount:number):void{
+    if(!this.manual||!Number.isSafeInteger(amount)||amount<=0)return;
+    this.pointState.legacyBonusPoints+=amount;this.markChanged();
+  }
   investedPoints():number{
     return this.context?.catalog?investedSkillPoints(this.context.catalog,this.context.classId,this.skillLevels()):0;
   }

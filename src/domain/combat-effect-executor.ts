@@ -99,7 +99,7 @@ export class CombatEffectExecutor {
         p.healAccepted(event.casterId,event.targetId);return 'success';
       }
       case 'drain':{
-        // GM 调试无敌期间目标 MP 不被吸走，施法者也不因此获得 MP。
+        // GM 调试无限蓝期间目标 MP 不被吸走，施法者也不因此获得 MP。
         if(!p.conditions.losesMana(event.targetId))return 'success';
         const caster=p.vitals(event.casterId);if(caster){const result=drainMana(amount,p.vitals(event.targetId)?.mana??0,caster.mana,caster.maxMana);
           p.setMana(event.targetId,result.targetMana);p.setMana(event.casterId,result.casterMana);}return 'success';

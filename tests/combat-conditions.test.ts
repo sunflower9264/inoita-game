@@ -358,11 +358,11 @@ test('periodic events report the current capped stack count for every effect',()
   assert.deepEqual(layers,[3,3]);
 });
 
-test('GM invincibility blocks HP damage without changing the other capabilities',()=>{
+test('GM invincibility blocks HP damage without affecting mana loss or other capabilities',()=>{
   const conditions=new CombatConditions();
   conditions.setInvincible('ally',true);
   assert.equal(conditions.canLoseHealth('ally'),false);
-  assert.equal(conditions.losesMana('ally'),false,'GM 无敌期间 MP 不扣除');
+  assert.equal(conditions.losesMana('ally'),true,'无敌与无限蓝分离，开启无敌仍允许扣除 MP');
   assert.equal(conditions.canReceiveDamage('ally'),true,'GM 无敌不是原版状态 14，不拦非伤害单元');
   assert.equal(conditions.canMove('ally'),true);
   assert.equal(conditions.canAct('ally'),true);
@@ -371,9 +371,23 @@ test('GM invincibility blocks HP damage without changing the other capabilities'
   assert.deepEqual(conditions.captureState().states,[]);
   conditions.clear();
   assert.equal(conditions.canLoseHealth('ally'),false);
-  assert.equal(conditions.losesMana('ally'),false);
+  assert.equal(conditions.losesMana('ally'),true);
   conditions.setInvincible('ally',false);
   assert.equal(conditions.canLoseHealth('ally'),true);
+  assert.equal(conditions.losesMana('ally'),true);
+});
+
+test('GM infinite mana blocks MP loss independently from invincibility',()=>{
+  const conditions=new CombatConditions();
+  conditions.setInfiniteMana('ally',true);
+  assert.equal(conditions.isInfiniteMana('ally'),true);
+  assert.equal(conditions.losesMana('ally'),false,'GM 无限蓝期间 MP 不扣除');
+  assert.equal(conditions.canLoseHealth('ally'),true,'无限蓝不挡战斗 HP 伤害');
+  assert.deepEqual(conditions.captureState().states,[]);
+  conditions.clear();
+  assert.equal(conditions.losesMana('ally'),false);
+  conditions.setInfiniteMana('ally',false);
+  assert.equal(conditions.isInfiniteMana('ally'),false);
   assert.equal(conditions.losesMana('ally'),true);
 });
 
@@ -392,16 +406,28 @@ test('GM invincibility stays independent from the damage-immune state',()=>{
   assert.equal(conditions.canReceiveDamage('ally'),true);
 });
 
-test('the invincibility port reads and writes the shared host set',()=>{
-  const host=new Set<string>();
+test('the invincibility and infinite mana ports read and write their shared host sets independently',()=>{
+  const invincibleHost=new Set<string>();
+  const manaHost=new Set<string>();
   const conditions=new CombatConditions(undefined,{
-    has:id=>host.has(id),add:id=>host.add(id),delete:id=>host.delete(id),
+    has:id=>invincibleHost.has(id),add:id=>invincibleHost.add(id),delete:id=>invincibleHost.delete(id),
+  },{
+    has:id=>manaHost.has(id),add:id=>manaHost.add(id),delete:id=>manaHost.delete(id),
   });
   conditions.setInvincible('ally',true);
-  assert.equal(host.has('ally'),true);
+  assert.equal(invincibleHost.has('ally'),true);
+  assert.equal(manaHost.has('ally'),false);
   assert.equal(conditions.isInvincible('ally'),true);
+  assert.equal(conditions.isInfiniteMana('ally'),false);
+  conditions.setInfiniteMana('ally',true);
+  assert.equal(manaHost.has('ally'),true);
+  assert.equal(conditions.isInfiniteMana('ally'),true);
+  assert.equal(conditions.losesMana('ally'),false);
   conditions.setInvincible('ally',false);
-  assert.equal(host.has('ally'),false);
+  assert.equal(invincibleHost.has('ally'),false);
+  assert.equal(manaHost.has('ally'),true);
+  conditions.setInfiniteMana('ally',false);
+  assert.equal(manaHost.has('ally'),false);
 });
 
 test('condition appearance lists track only affected actors and reuse unchanged state reads',()=>{

@@ -74,6 +74,7 @@ export interface GmCharacterState {
   maxMana: number;
   alive: boolean;
   invincible: boolean;
+  infiniteMana: boolean;
   oneHitKill: boolean;
   noCooldown: boolean;
 }
@@ -101,6 +102,8 @@ interface GmMoneyResult extends GmResult { money?: number }
 export interface GmCombatPort {
   setInvincible(actorId: string, enabled: boolean): GmResult;
   isInvincible(actorId: string): boolean;
+  setInfiniteMana(actorId: string, enabled: boolean): GmResult;
+  isInfiniteMana(actorId: string): boolean;
   setOneHitKill(actorId: string, enabled: boolean): GmResult;
   isOneHitKill(actorId: string): boolean;
   /** 把倒下角色救回来并做表现收尾；没有战斗场景时省略。 */
@@ -148,6 +151,8 @@ const LOG_LIMIT = 40;
 /** GM 单次发物品与加钱的上限，防止误操作把存档数值撑爆。 */
 const MAX_GM_ITEM_QUANTITY = 999;
 const MAX_GM_MONEY_GAIN = 100_000_000;
+/** 开启「升级10技能点」后，每次升级获得的技能点数。 */
+const GM_LEVEL_UP_SKILL_POINTS = 10;
 /** 诊断上报载荷的协议版本；上报端点按它解析条目。 */
 const DIAGNOSTIC_PAYLOAD_VERSION = 1;
 
@@ -170,10 +175,15 @@ export interface GmActions {
   recoverParty(): GmResult;
   /** 切换某个角色的无敌开关。 */
   setInvincible(id: string, enabled: boolean): GmResult;
+  /** 切换某个角色的无限蓝开关（技能不扣 MP 且免疫吸蓝）。 */
+  setInfiniteMana(id: string, enabled: boolean): GmResult;
   /** 切换某个角色的一击必杀开关。 */
   setOneHitKill(id: string, enabled: boolean): GmResult;
   /** 切换某个角色的技能无冷却。 */
   setNoCooldown(id: string, enabled: boolean): GmResult;
+  /** 切换每次升级获得 10 个技能点（关闭恢复默认 1 个）。 */
+  setTenSkillPointsPerLevel(enabled: boolean): GmResult;
+  isTenSkillPointsPerLevel(): boolean;
   /** 可发放物品：排除只能地面拾取的物品。 */
   items(filter?: GmItemFilter): readonly GmItemEntry[];
   /** 把指定数量加入背包。 */
@@ -339,6 +349,7 @@ export function createGmActions(ports: GmPorts): GmActions {
       health: player.health, maxHealth: player.maxHealth, mana: player.mana, maxMana: player.maxMana,
       alive: player.health > 0,
       invincible: ports.combat?.isInvincible(id) ?? false,
+      infiniteMana: ports.combat?.isInfiniteMana(id) ?? false,
       oneHitKill: ports.combat?.isOneHitKill(id) ?? false,
       noCooldown: session.cooldowns.isFree(id),
     };
@@ -596,6 +607,12 @@ export function createGmActions(ports: GmPorts): GmActions {
       if (!combat) return { ok: false, reason: '当前会话没有战斗场景，无法切换无敌' };
       return combat.setInvincible(id, enabled);
     }),
+    setInfiniteMana: (id, enabled) => run('setInfiniteMana', [id, enabled], () => {
+      if (!activeMember(id)) return { ok: false, reason: `没有上阵角色：${id}` };
+      const combat = ports.combat;
+      if (!combat) return { ok: false, reason: '当前会话没有战斗场景，无法切换无限蓝' };
+      return combat.setInfiniteMana(id, enabled);
+    }),
     setOneHitKill: (id, enabled) => run('setOneHitKill', [id, enabled], () => {
       if (!activeMember(id)) return { ok: false, reason: `没有上阵角色：${id}` };
       const combat = ports.combat;
@@ -607,6 +624,11 @@ export function createGmActions(ports: GmPorts): GmActions {
       session.cooldowns.setFree(id, enabled);
       return { ok: true };
     }),
+    setTenSkillPointsPerLevel: enabled => run('setTenSkillPointsPerLevel', [enabled], () => {
+      session.setLevelUpSkillPoints(enabled ? GM_LEVEL_UP_SKILL_POINTS : undefined);
+      return { ok: true };
+    }),
+    isTenSkillPointsPerLevel: () => session.levelUpSkillPoints === GM_LEVEL_UP_SKILL_POINTS,
     items: (filter = 'all') => {
       const definitions = session.bag.catalog.items;
       const counts = session.bag.counts;

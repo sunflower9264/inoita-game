@@ -335,6 +335,11 @@ export function createSessionLifecycle(app:StoryApp,hooks:SessionLifecycleHooks)
         },
         // 开关存在会话上，换图重建战斗后仍然有效，所以读取不必经过场景。
         isInvincible: id => session.isInvincible(id),
+        setInfiniteMana: (id, enabled) => {
+          const scene = worldScene();
+          return scene ? scene.setInfiniteMana(id, enabled) : { ok: false, reason: '不在游戏场景里' };
+        },
+        isInfiniteMana: id => session.isInfiniteMana(id),
         setOneHitKill: (id, enabled) => {
           const scene = worldScene();
           return scene ? scene.setOneHitKill(id, enabled) : { ok: false, reason: '不在游戏场景里' };

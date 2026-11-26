@@ -233,12 +233,30 @@ export class Session {
     if(enabled)this.invincible.add(actorId);else this.invincible.delete(actorId);
   }
   isInvincible(actorId:string):boolean { return this.invincible.has(actorId); }
+  /** GM 调试开关：这些角色施放技能不扣 MP 且免疫吸蓝。与无敌独立，不写存档。 */
+  private readonly infiniteMana = new Set<string>();
+  setInfiniteMana(actorId:string,enabled:boolean):void {
+    if(enabled)this.infiniteMana.add(actorId);else this.infiniteMana.delete(actorId);
+  }
+  isInfiniteMana(actorId:string):boolean { return this.infiniteMana.has(actorId); }
   /** GM 调试开关：这些角色命中敌人时直接击杀。和无敌一样不写存档、不随剧情回退。 */
   private readonly oneHitKill = new Set<string>();
   setOneHitKill(actorId:string,enabled:boolean):void {
     if(enabled)this.oneHitKill.add(actorId);else this.oneHitKill.delete(actorId);
   }
   isOneHitKill(actorId:string):boolean { return this.oneHitKill.has(actorId); }
+  /** GM 调试开关：覆写每次升级获得的技能点数；未设置时沿用目录默认值，不写存档。 */
+  private levelUpSkillPointsOverride?:number;
+  setLevelUpSkillPoints(points:number|undefined):void {
+    this.levelUpSkillPointsOverride=points;
+  }
+  get levelUpSkillPoints():number {
+    return this.levelUpSkillPointsOverride??this.stats?.skillPointsPerLevel??1;
+  }
+  private levelUpBonusSkillPoints():number {
+    const base=this.stats?.skillPointsPerLevel??1;
+    return this.levelUpSkillPointsOverride===undefined?0:Math.max(0,this.levelUpSkillPointsOverride-base);
+  }
   readonly frenzyAnimations = new FrenzyAnimationMemory();
   readonly skills: StorySkillProgression;
   /** 战斗目录只读访问：GM 拉满佣兵技能需要职业技能表与伙伴成长表的最高等级。 */
@@ -463,8 +481,9 @@ export class Session {
       const rank=member.skills.book(skill,battle);
       return `${battle.skills[skill].name}提升至 ${rank} 级`;
     });
+    hero?.setBonusSkillPointsPerLevel(()=>this.levelUpBonusSkillPoints());
     this.party=hero&&items&&stats&&companions?new PartyRoster(hero,stats,items,companions,()=>{this.recordPerformance(['party','bag']);this.emit();},id=>{this.cooldowns.removeActor(id);this.frenzyAnimations.removeActor(id);this.lootPity.removeMember(id);},
-      sourceItem=>this.recordQuestFact('recruit',sourceItem,'recruit'),operation=>this.atomic(operation,['bag','party','questBook']),battle):undefined;
+      sourceItem=>this.recordQuestFact('recruit',sourceItem,'recruit'),operation=>this.atomic(operation,['bag','party','questBook']),battle,()=>this.levelUpBonusSkillPoints()):undefined;
     this.bag = hero?.bag ?? new Bag(()=>{this.recordPerformance(['bag']);this.emit();},items,character?.classId,items?'game':'none');
     if(this.party&&battle)this.bag.setSkillUnlockRules({
       has:skill=>this.party!.hasSharedSkill(skill),

@@ -23,10 +23,10 @@ interface FighterEquipment { offhandShield?:boolean }
 export type ResourceCapacityKey='maxHealth'|'maxMana';
 export interface ResourceCapacities {maxHealth:number;maxMana:number}
 /**
- * 无敌开关的宿主。调试开关存在会话上，`CombatConditions` 只读取它；没有宿主时退化为类内集合。
- * 开关刻意不进入 `captureState`，因此不写存档、也不随剧情标记回退。
+ * 角色级运行时调试开关的宿主（无敌、无限蓝等）。开关存在会话上，`CombatConditions` 只读取它；
+ * 没有宿主时退化为类内集合。开关刻意不进入 `captureState`，因此不写存档、也不随剧情标记回退。
  */
-interface InvincibilityPort {has(actorId:string):boolean;add(actorId:string):void;delete(actorId:string):void}
+interface ActorFlagPort {has(actorId:string):boolean;add(actorId:string):void;delete(actorId:string):void}
 interface BuffResourcePort {
   captureResourceCapacities(actorId:string):ResourceCapacities;
   onApply(actorId:string,effect:BattleBuffEffect,entry:Readonly<ResourceCapacities>):void;
@@ -61,8 +61,10 @@ export class CombatConditions {
   private resourceCapacities=new Map<string,Map<ResourceCapacityKey,number>>();
   private resourceCapacityInputs=new Map<string,Map<ResourceCapacityKey,number>>();
   private readonly resources:BuffResourcePort|undefined;
-  private readonly invincibility:InvincibilityPort|undefined;
+  private readonly invincibility:ActorFlagPort|undefined;
   private readonly invincible=new Set<string>();
+  private readonly infiniteManaPort:ActorFlagPort|undefined;
+  private readonly infiniteMana=new Set<string>();
   private simulationFrameRemainderMs=0;
   private revisionValue=0;
   private readonly stateLists=new Map<string,readonly BattleStateKey[]>();
@@ -97,8 +99,8 @@ export class CombatConditions {
    * 计时推进、只读快照和属性临时缓存不改变它。
    */
   get revision():number{return this.revisionValue;}
-  constructor(resources?:BuffResourcePort,invincibility?:InvincibilityPort){
-    this.resources=resources;this.invincibility=invincibility;
+  constructor(resources?:BuffResourcePort,invincibility?:ActorFlagPort,infiniteMana?:ActorFlagPort){
+    this.resources=resources;this.invincibility=invincibility;this.infiniteManaPort=infiniteMana;
   }
   setInvincible(actorId:string,enabled:boolean):void {
     if(this.invincibility){if(enabled)this.invincibility.add(actorId);else this.invincibility.delete(actorId);return;}
@@ -106,6 +108,13 @@ export class CombatConditions {
   }
   isInvincible(actorId:string):boolean {
     return this.invincibility?this.invincibility.has(actorId):this.invincible.has(actorId);
+  }
+  setInfiniteMana(actorId:string,enabled:boolean):void {
+    if(this.infiniteManaPort){if(enabled)this.infiniteManaPort.add(actorId);else this.infiniteManaPort.delete(actorId);return;}
+    if(enabled)this.infiniteMana.add(actorId);else this.infiniteMana.delete(actorId);
+  }
+  isInfiniteMana(actorId:string):boolean {
+    return this.infiniteManaPort?this.infiniteManaPort.has(actorId):this.infiniteMana.has(actorId);
   }
   captureState():CombatConditionsState {
     return structuredClone({buffs:[...this.buffs].map(([id,own])=>[id,[...own.values()]]),
@@ -411,8 +420,8 @@ export class CombatConditions {
   canReceiveDamage(actorId:string):boolean{return this.capabilities(actorId).canReceiveDamage;}
   /** HP 伤害门：GM 调试无敌与状态 14 都挡伤害；状态、增益等非伤害效果不受 GM 无敌影响。 */
   canLoseHealth(actorId:string):boolean{return !this.isInvincible(actorId)&&this.canReceiveDamage(actorId);}
-  /** MP 扣除门：GM 调试无敌期间技能费用与吸蓝都不扣 MP。 */
-  losesMana(actorId:string):boolean{return !this.isInvincible(actorId);}
+  /** MP 扣除门：GM 调试无限蓝期间技能费用与吸蓝都不扣 MP，与无敌独立。 */
+  losesMana(actorId:string):boolean{return !this.isInfiniteMana(actorId);}
   canAutoApproach(actorId:string):boolean{return this.capabilities(actorId).canAutoApproach;}
   /** 药水病禁药：只挡一次性恢复物品，再生药水不受影响。 */
   canUseRecoveryItems(actorId:string):boolean{return this.capabilities(actorId).canUseRecoveryItems;}

@@ -23,7 +23,7 @@ function fixture(){
     setHealth(value:number){player.health=Math.max(0,Math.min(player.maxHealth,value));},
     setMana(value:number){player.mana=Math.max(0,Math.min(player.maxMana,value));}};
   const hitResolution=new CombatHitResolution();
-  const host=Object.setPrototypeOf({hero:member,app:{battleCatalog:catalog,session:{party:{activeIds:['player']},isInvincible:()=>false}},
+  const host=Object.setPrototypeOf({hero:member,app:{battleCatalog:catalog,session:{party:{activeIds:['player']},isInvincible:()=>false,isInfiniteMana:()=>false}},
     conditions:undefined as unknown as CombatConditions,hitResolution,arena:[],fallen:new Set<string>(),pendingDefeats:new Set<string>(),
     memberOf:(id:string)=>id==='player'?member:undefined,partyPassives:()=>[],combatProcs:()=>({zealotRate:0}),applyStateConsequences:()=>{},
     showBuffApplication:()=>assert.fail('enrage has no independent Buff application effect'),

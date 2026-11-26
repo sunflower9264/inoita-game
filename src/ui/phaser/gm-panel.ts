@@ -161,7 +161,13 @@ export class GmPanel {
   private reportSerial=0;
   private characterControls?:{
     members:Map<string,{button:UiNode;key:string}>;values:string[];level:UiNode;mana:UiNode;
-    toggles:{invincible:{button:UiNode;key:string};noCooldown:{button:UiNode;key:string};oneHitKill:{button:UiNode;key:string}};
+    toggles:{
+      invincible:{button:UiNode;key:string};
+      infiniteMana:{button:UiNode;key:string};
+      noCooldown:{button:UiNode;key:string};
+      oneHitKill:{button:UiNode;key:string};
+    };
+    tenSkillPoints:{button:UiNode;key:string};
   };
   private textSerial = 0;
   private resultTextKey?:string;
@@ -316,24 +322,28 @@ export class GmPanel {
     value(`等级 Lv.${selected.level}`,112,20);
     value(selected.nextLevelExperience>0?`经验 ${selected.experience} / ${selected.nextLevelExperience}`:'经验 —（已满级）',144,18);
     value(`HP ${selected.health} / ${selected.maxHealth}`,176,18);value(`MP ${selected.mana} / ${selected.maxMana}`,208,18);
-    value(`无敌 ${selected.invincible?'开':'关'} · 一击必杀 ${selected.oneHitKill?'开':'关'} · 技能 ${selected.noCooldown?'无 CD':'正常冷却'}`,240,18);
-    const level=this.button(body,'升一级',60,286,160,46,()=>this.onLevelUp(),{disabled:!selected.alive||selected.nextLevelExperience<=0}).setData('label','升一级');
-    this.button(body,'回满 HP',232,286,160,46,()=>this.onRestoreHealth()).setData('label','回满 HP');
-    const mana=this.button(body,'回满 MP',404,286,160,46,()=>this.onRestoreMana(),{disabled:!selected.alive}).setData('label','回满 MP');
-    this.button(body,'全队回满',576,286,160,46,()=>this.onRecoverParty()).setData('label','全队回满');
+    value(`无敌 ${selected.invincible?'开':'关'} · 无限蓝 ${selected.infiniteMana?'开':'关'} · 一击必杀 ${selected.oneHitKill?'开':'关'} · 技能 ${selected.noCooldown?'无 CD':'正常冷却'}`,240,18);
+    const level=this.button(body,'升一级',60,276,160,44,()=>this.onLevelUp(),{disabled:!selected.alive||selected.nextLevelExperience<=0}).setData('label','升一级');
+    this.button(body,'回满 HP',232,276,160,44,()=>this.onRestoreHealth()).setData('label','回满 HP');
+    const mana=this.button(body,'回满 MP',404,276,160,44,()=>this.onRestoreMana(),{disabled:!selected.alive}).setData('label','回满 MP');
+    this.button(body,'全队回满',576,276,160,44,()=>this.onRecoverParty()).setData('label','全队回满');
     const toggle=(name:string,x:number,width:number,selectedValue:boolean,run:(current:GmCharacterState)=>void)=>{
       const key=`gm-text-${this.textSerial}`;
-      const button=this.button(body,`${name}：${selectedValue?'开':'关'}`,x,346,width,46,()=>{
+      const button=this.button(body,`${name}：${selectedValue?'开':'关'}`,x,332,width,44,()=>{
         const current=this.gm.characters().find(character=>character.id===this.characterId);if(current)run(current);
       },{selected:selectedValue}).setData('label',name);
       return {button,key};
     };
-    const toggles={invincible:toggle('无敌',60,160,selected.invincible,current=>this.onToggleInvincible(current)),
-      noCooldown:toggle('技能无 CD',232,170,selected.noCooldown,current=>this.onToggleNoCooldown(current)),
-      oneHitKill:toggle('一击必杀',416,190,selected.oneHitKill,current=>this.onToggleOneHitKill(current))};
-    this.button(body,'技能全满',624,346,200,46,()=>this.onMaxSkills()).setData('label','技能全满');
-    this.characterControls={members,values,level,mana,toggles};
-    return '升级只升不降；倒下角色点「回满 HP」即可复活。无敌只挡战斗伤害，不挡剧情直接改血；一击必杀在命中敌人时直接击杀，未命中仍然落空。技能全满会直接拉满当前角色全部技能，不耗技能点。';
+    const toggles={invincible:toggle('无敌',60,180,selected.invincible,current=>this.onToggleInvincible(current)),
+      infiniteMana:toggle('无限蓝',252,190,selected.infiniteMana,current=>this.onToggleInfiniteMana(current)),
+      noCooldown:toggle('技能无 CD',454,210,selected.noCooldown,current=>this.onToggleNoCooldown(current)),
+      oneHitKill:toggle('一击必杀',676,200,selected.oneHitKill,current=>this.onToggleOneHitKill(current))};
+    this.button(body,'技能全满',60,388,180,44,()=>this.onMaxSkills()).setData('label','技能全满');
+    const tenEnabled=this.gm.isTenSkillPointsPerLevel();
+    const tenKey=`gm-text-${this.textSerial}`;
+    const tenButton=this.button(body,`升级10技能点：${tenEnabled?'开':'关'}`,252,388,260,44,()=>this.onToggleTenSkillPoints(),{selected:tenEnabled}).setData('label','升级10技能点');
+    this.characterControls={members,values,level,mana,toggles,tenSkillPoints:{button:tenButton,key:tenKey}};
+    return '无敌只挡战斗伤害，不挡剧情改血；无限蓝让技能不耗 MP 且免疫吸蓝；开启「升级10技能点」后每次升级获得 10 个技能点。';
   }
   /** 切换 GM 页或重画前保存任务页自己的滚动位置；滚动区随后会被销毁。 */
   private captureQuestScrolls():void {
@@ -808,13 +818,16 @@ export class GmPanel {
       setText(control.key,`${character.name} Lv.${character.level}`);control.button.getData('setSelected')?.(character.id===this.characterId);}
     const values=[`等级 Lv.${selected.level}`,selected.nextLevelExperience>0?`经验 ${selected.experience} / ${selected.nextLevelExperience}`:'经验 —（已满级）',
       `HP ${selected.health} / ${selected.maxHealth}`,`MP ${selected.mana} / ${selected.maxMana}`,
-      `无敌 ${selected.invincible?'开':'关'} · 一击必杀 ${selected.oneHitKill?'开':'关'} · 技能 ${selected.noCooldown?'无 CD':'正常冷却'}`];
+      `无敌 ${selected.invincible?'开':'关'} · 无限蓝 ${selected.infiniteMana?'开':'关'} · 一击必杀 ${selected.oneHitKill?'开':'关'} · 技能 ${selected.noCooldown?'无 CD':'正常冷却'}`];
     values.forEach((value,index)=>setText(controls.values[index],value));
     controls.level.getData('setEnabled')?.(selected.alive&&selected.nextLevelExperience>0);controls.mana.getData('setEnabled')?.(selected.alive);
-    for(const [key,label] of [['invincible','无敌'],['noCooldown','技能无 CD'],['oneHitKill','一击必杀']] as const){
+    for(const [key,label] of [['invincible','无敌'],['infiniteMana','无限蓝'],['noCooldown','技能无 CD'],['oneHitKill','一击必杀']] as const){
       const control=controls.toggles[key],enabled=selected[key];control.button.getData('setSelected')?.(enabled);setText(control.key,`${label}：${enabled?'开':'关'}`);
     }
-    if(this.resultTextKey)setText(this.resultTextKey,this.result||'升级只升不降；倒下角色点「回满 HP」即可复活。无敌只挡战斗伤害，不挡剧情直接改血；一击必杀在命中敌人时直接击杀，未命中仍然落空。技能全满会直接拉满当前角色全部技能，不耗技能点。');
+    const tenEnabled=this.gm.isTenSkillPointsPerLevel();
+    controls.tenSkillPoints.button.getData('setSelected')?.(tenEnabled);
+    setText(controls.tenSkillPoints.key,`升级10技能点：${tenEnabled?'开':'关'}`);
+    if(this.resultTextKey)setText(this.resultTextKey,this.result||'无敌只挡战斗伤害，不挡剧情改血；无限蓝让技能不耗 MP 且免疫吸蓝；开启「升级10技能点」后每次升级获得 10 个技能点。');
   }
 
   private renderItems(body: UiSurface): string {
@@ -957,6 +970,11 @@ export class GmPanel {
     this.result = result.ok ? `无敌：${!character.invincible ? '开' : '关'}` : `切换失败：${result.reason}`;
     this.refreshCharacter();
   }
+  private onToggleInfiniteMana(character: GmCharacterState): void {
+    const result = this.perform(()=>this.gm.setInfiniteMana(character.id, !character.infiniteMana));
+    this.result = result.ok ? `无限蓝：${!character.infiniteMana ? '开' : '关'}` : `切换失败：${result.reason}`;
+    this.refreshCharacter();
+  }
   private onToggleOneHitKill(character: GmCharacterState): void {
     const result = this.perform(()=>this.gm.setOneHitKill(character.id, !character.oneHitKill));
     this.result = result.ok ? `一击必杀：${!character.oneHitKill ? '开' : '关'}` : `切换失败：${result.reason}`;
@@ -965,6 +983,12 @@ export class GmPanel {
   private onToggleNoCooldown(character: GmCharacterState): void {
     const result = this.perform(()=>this.gm.setNoCooldown(character.id, !character.noCooldown));
     this.result = result.ok ? `技能无 CD：${!character.noCooldown ? '开' : '关'}` : `切换失败：${result.reason}`;
+    this.refreshCharacter();
+  }
+  private onToggleTenSkillPoints(): void {
+    const next = !this.gm.isTenSkillPointsPerLevel();
+    const result = this.perform(()=>this.gm.setTenSkillPointsPerLevel(next));
+    this.result = result.ok ? (next ? '升级技能点已改为每级 10 个' : '升级技能点已恢复默认（每级 1 个）') : `切换失败：${result.reason}`;
     this.refreshCharacter();
   }
   private onGiveItem(entry: GmItemEntry | undefined): void {

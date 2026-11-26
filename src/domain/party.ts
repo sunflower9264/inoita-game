@@ -111,6 +111,7 @@ export class CompanionMember {
   private readonly changed:()=>void;
   /** 升级后通知名册推进修订号；直接调用 `addExperience` 的调试入口也会走到这里。 */
   private readonly onLevelUp?:()=>void;
+  private readonly bonusSkillPointsPerLevel?:()=>number;
   private currentLevel:number;
   private allocationBaseLevel=1;
   private allocation:PrimaryAttributes=primaryAttributesFrom({strength:0,dexterity:0,vitality:0,intelligence:0,mentality:0});
@@ -120,10 +121,10 @@ export class CompanionMember {
   private combatResourceLimits:{maxHealth:number;maxMana:number}|null=null;
   constructor(id:string,definition:CompanionDefinition,source:'story'|'mercenary',level:number,
     stats:CharacterStatsCatalog,items:ItemCatalog,bag:Bag,growth:PrimaryAttributes[],changed:()=>void,generated:GeneratedCompanion,
-    training:CompanionGenerationRules['training'],onLevelUp?:()=>void,battleCatalog?:BattleCatalog){
+    training:CompanionGenerationRules['training'],onLevelUp?:()=>void,battleCatalog?:BattleCatalog,bonusSkillPointsPerLevel?:()=>number){
     if(!stats.classes[definition.classId]||growth.length<stats.maxLevel)throw new Error('伙伴职业成长数据缺失');
     this.id=id;this.definition=definition;this.source=source;this.stats=stats;this.items=items;this.bag=bag;
-    this.growth=growth;this.changed=changed;this.onLevelUp=onLevelUp;this.currentLevel=Math.min(stats.maxLevel,Math.max(1,level));
+    this.growth=growth;this.changed=changed;this.onLevelUp=onLevelUp;this.bonusSkillPointsPerLevel=bonusSkillPointsPerLevel;this.currentLevel=Math.min(stats.maxLevel,Math.max(1,level));
     this.generated=structuredClone(generated);this.skills=new CompanionSkillProgression(generated.skillCaps,training,source==='mercenary'?{
       classId:definition.classId,catalog:battleCatalog,pointsPerLevel:stats.skillPointsPerLevel,changed,
       clearShortcuts:()=>bag.setShortcuts(id,emptyShortcutRow()),
@@ -194,7 +195,10 @@ export class CompanionMember {
     if(!next)return 0;
     this.currentLevel=next.level;this.currentExperience=next.experience;
     if(next.gained){
-      this.skills.updateLevel(next.level);this.onLevelUp?.();
+      this.skills.updateLevel(next.level);
+      const extra=this.bonusSkillPointsPerLevel?.()??0;
+      if(Number.isSafeInteger(extra)&&extra>0)this.skills.grantBonusPoints(next.gained*extra);
+      this.onLevelUp?.();
     }
     if(next.gained&&this.alive)this.recover();else this.changed();
     return next.gained;
@@ -231,6 +235,7 @@ export class PartyRoster {
   readonly bag:Bag;
   readonly catalog:CompanionCatalog;
   private readonly battleCatalog?:BattleCatalog;
+  private readonly bonusSkillPointsPerLevel?:()=>number;
   readonly heroAiFrequency=new Map<string,number>();
   private readonly stats:CharacterStatsCatalog;
   private readonly items:ItemCatalog;
@@ -255,9 +260,9 @@ export class PartyRoster {
    */
   get groupModifierVersion():number{return this.groupModifierVersionValue;}
   constructor(hero:BattleCharacter,stats:CharacterStatsCatalog,items:ItemCatalog,catalog:CompanionCatalog,changed:()=>void,onMemberRemoved?:(id:string)=>void,
-    onRecruited?:(sourceItem:string,memberId:string)=>void,atomic?:<T>(operation:()=>T)=>T,battleCatalog?:BattleCatalog){
+    onRecruited?:(sourceItem:string,memberId:string)=>void,atomic?:<T>(operation:()=>T)=>T,battleCatalog?:BattleCatalog,bonusSkillPointsPerLevel?:()=>number){
     this.hero=hero;this.bag=hero.bag;this.stats=stats;this.items=items;this.catalog=catalog;this.changed=changed;this.onMemberRemoved=onMemberRemoved;
-    this.onRecruited=onRecruited;this.atomic=atomic;this.battleCatalog=battleCatalog;
+    this.onRecruited=onRecruited;this.atomic=atomic;this.battleCatalog=battleCatalog;this.bonusSkillPointsPerLevel=bonusSkillPointsPerLevel;
   }
 
   hasSharedSkill(skill:string):boolean{return this.sharedUnlockedSkills.has(skill);}
@@ -343,7 +348,7 @@ export class PartyRoster {
   private create(definition:CompanionDefinition,source:'story'|'mercenary',id:string,generated:GeneratedCompanion):CompanionMember{
     if(!this.catalog.growth[definition.classId])throw new Error('伙伴成长数据缺失');
     const member=new CompanionMember(id,definition,source,generated.level,this.stats,this.items,this.bag,
-      this.catalog.growth[definition.classId],this.changed,generated,this.catalog.generation.training,()=>this.bumpGroupModifiers(),this.battleCatalog);
+      this.catalog.growth[definition.classId],this.changed,generated,this.catalog.generation.training,()=>this.bumpGroupModifiers(),this.battleCatalog,this.bonusSkillPointsPerLevel);
     this.applySharedSkills(member);
     const gear=this.items.startingEquipment[definition.classId]??{},
       retired=source==='story'?this.bag.takeRetiredEquipment(id):undefined;
@@ -502,7 +507,7 @@ export class PartyRoster {
     for(const entry of saved.members){
       const definition=this.catalog.definitions[entry.definitionId];if(!definition)throw new Error('检查点中的伙伴不存在');
       const member=members.get(entry.id)??new CompanionMember(entry.id,definition,entry.source,entry.level,this.stats,this.items,this.bag,
-        this.catalog.growth[definition.classId],this.changed,entry.generated,this.catalog.generation.training,()=>this.bumpGroupModifiers(),this.battleCatalog);
+        this.catalog.growth[definition.classId],this.changed,entry.generated,this.catalog.generation.training,()=>this.bumpGroupModifiers(),this.battleCatalog,this.bonusSkillPointsPerLevel);
       member.restoreState(entry);this.applySharedSkills(member);this.owned.set(entry.id,member);
     }
     this.rosterSlots=saved.rosterSlots;this.slots=saved.slots.map(value=>value??undefined);this.selected=saved.selected;this.serial=saved.serial;

@@ -282,6 +282,7 @@ export class BattleCharacter {
   private experience=0;
   private bonusSkillPoints=0;
   private spentSkillPoints=0;
+  private bonusSkillPointsPerLevel?:()=>number;
   private skillUseHandler?: (item:string,skill?:string,memberId?:string)=>string|undefined;
   private listeners=new Set<()=>void>();
   /** 面板缓存：数值、装备或等级没变时，`hero.player` 不该每次都重算全套属性。 */
@@ -348,6 +349,7 @@ export class BattleCharacter {
   get statPoints(){return (this.level-1)*this.catalog.statPointsPerLevel-Object.values(this.allocation).reduce((a,b)=>a+b,0);}
   get skillPoints(){return (this.level-1)*this.catalog.skillPointsPerLevel+this.bonusSkillPoints-this.spentSkillPoints;}
   setSkillUseHandler(handler:(item:string,skill?:string,memberId?:string)=>string|undefined):void {this.skillUseHandler=handler;}
+  setBonusSkillPointsPerLevel(read:()=>number):void {this.bonusSkillPointsPerLevel=read;}
   spendSkillPoints(amount:number):void {
     if(!Number.isSafeInteger(amount)||amount<=0||amount>this.skillPoints)throw new Error('技能点不足');
     this.spentSkillPoints+=amount;this.changed();
@@ -401,7 +403,11 @@ export class BattleCharacter {
     const next=experienceAfterReward(this.catalog,this.level,this.experience,amount);
     if(!next)return 0;
     this.currentLevel=next.level;this.experience=next.experience;
-    if(next.gained)this.refill();
+    if(next.gained){
+      const extra=this.bonusSkillPointsPerLevel?.()??0;
+      if(Number.isSafeInteger(extra)&&extra>0)this.bonusSkillPoints+=next.gained*extra;
+      this.refill();
+    }
     this.changed();return next.gained;
   }
   commitAllocation(delta:PrimaryAttributes):void {

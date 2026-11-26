@@ -2792,10 +2792,13 @@ test('the defeat load option opens the real load page and closing it returns to 
 test('the GM character page levels, heals and toggles the debug switches', async t => {
   const f = fixture(); t.after(f.cleanup);
   const flags = new Set<string>();
+  const manaFlags = new Set<string>();
   const killFlags = new Set<string>();
   const gm = createGmActions({ session: f.session, campaign, report: async () => true, combat: {
     setInvincible: (id, enabled) => { if (enabled) flags.add(id); else flags.delete(id); return { ok: true }; },
     isInvincible: id => flags.has(id),
+    setInfiniteMana: (id, enabled) => { if (enabled) manaFlags.add(id); else manaFlags.delete(id); return { ok: true }; },
+    isInfiniteMana: id => manaFlags.has(id),
     setOneHitKill: (id, enabled) => { if (enabled) killFlags.add(id); else killFlags.delete(id); return { ok: true }; },
     isOneHitKill: id => killFlags.has(id),
   } });
@@ -2813,15 +2816,18 @@ test('the GM character page levels, heals and toggles the debug switches', async
   assert.ok(visibleDomLabels(f).some(label => label.text.includes('等级 Lv.')),
     visibleDomLabels(f).map(label => label.text).join(' | '));
   assert.equal(f.scene.buttons('角色 player').length, 1);
-  for (const label of ['升一级', '回满 HP', '回满 MP', '全队回满', '无敌', '技能无 CD', '一击必杀', '技能全满']) {
+  for (const label of ['升一级', '回满 HP', '回满 MP', '全队回满', '无敌', '无限蓝', '技能无 CD', '一击必杀', '技能全满', '升级10技能点']) {
     assert.equal(f.scene.buttons(label).length, 1, label);
+    const button = f.scene.button(label);
+    assert.ok(button.x >= 0 && button.x + button.input!.hitArea.width <= 960, `按钮 ${label} 不越界`);
   }
 
-  const before = f.hero.level,levelButton=f.scene.button('升一级'),invincibleButton=f.scene.button('无敌');
+  const before = f.hero.level,levelButton=f.scene.button('升一级'),invincibleButton=f.scene.button('无敌'),manaButton=f.scene.button('无限蓝'),tenButton=f.scene.button('升级10技能点');
   f.scene.click(levelButton);
   assert.equal(f.hero.level, before + 1);
   assert.equal(f.scene.button('调试页 人物'),debugTabs[1]);
   assert.equal(f.scene.button('升一级'),levelButton);assert.equal(f.scene.button('无敌'),invincibleButton);
+  assert.equal(f.scene.button('无限蓝'),manaButton);assert.equal(f.scene.button('升级10技能点'),tenButton);
   assert.equal(gm.actions().at(-1)?.call, 'levelUp');
 
   f.scene.click(f.scene.button('技能全满'));
@@ -2834,13 +2840,39 @@ test('the GM character page levels, heals and toggles the debug switches', async
   f.scene.click(f.scene.button('回满 HP'));
   assert.equal(f.hero.player.health, f.hero.player.maxHealth);
 
-  f.scene.click(f.scene.button('无敌'));
+  const afterHealInvincible = f.scene.button('无敌');
+  const afterHealMana = f.scene.button('无限蓝');
+  const afterHealTen = f.scene.button('升级10技能点');
+  const afterHealLevel = f.scene.button('升一级');
+
+  f.scene.click(afterHealInvincible);
   assert.equal(gm.characters()[0]!.invincible, true);
-  assert.equal(f.scene.button('无敌').getData('selected'), true);
+  assert.equal(gm.characters()[0]!.infiniteMana, false);
+  assert.equal(f.scene.button('无敌'), afterHealInvincible);
+  assert.equal(afterHealInvincible.getData('selected'), true);
+  assert.equal(afterHealMana.getData('selected'), false);
+
+  f.scene.click(afterHealMana);
+  assert.equal(gm.characters()[0]!.infiniteMana, true);
+  assert.equal(f.scene.button('无限蓝'), afterHealMana);
+  assert.equal(afterHealMana.getData('selected'), true);
 
   f.scene.click(f.scene.button('一击必杀'));
   assert.equal(gm.characters()[0]!.oneHitKill, true);
   assert.equal(f.scene.button('一击必杀').getData('selected'), true);
+
+  const skillPointsBefore = f.hero.skillPoints;
+  f.scene.click(afterHealTen);
+  assert.equal(gm.isTenSkillPointsPerLevel(), true);
+  assert.equal(f.scene.button('升级10技能点'), afterHealTen);
+  assert.equal(afterHealTen.getData('selected'), true);
+  f.scene.click(afterHealLevel);
+  assert.equal(f.hero.skillPoints, skillPointsBefore + 10);
+  f.scene.click(afterHealTen);
+  assert.equal(gm.isTenSkillPointsPerLevel(), false);
+  assert.equal(afterHealTen.getData('selected'), false);
+  f.scene.click(afterHealLevel);
+  assert.equal(f.hero.skillPoints, skillPointsBefore + 10 + stats.skillPointsPerLevel);
 });
 
 test('the GM item page scrolls addable items, shows details and gives a chosen quantity', async t => {

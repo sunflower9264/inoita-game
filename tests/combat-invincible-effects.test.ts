@@ -8,15 +8,15 @@ interface Probe {
   calls:string[];
 }
 
-/** `damageImmune` 对应原版状态 14；`debugInvincible` 对应 GM 调试无敌。 */
-function probe(options:{damageImmune?:boolean;debugInvincible?:boolean}):{executor:CombatEffectExecutor;state:Probe} {
+/** `damageImmune` 对应原版状态 14；`debugInvincible` 对应 GM 调试无敌；`debugInfiniteMana` 对应 GM 调试无限蓝。 */
+function probe(options:{damageImmune?:boolean;debugInvincible?:boolean;debugInfiniteMana?:boolean}):{executor:CombatEffectExecutor;state:Probe} {
   const state:Probe={mana:{player:50,enemy:0},calls:[]};
   const side=(id:string)=>id==='player';
   const port={
     conditions:{
       canReceiveDamage:()=>!options.damageImmune,
       canLoseHealth:()=>!options.damageImmune&&!options.debugInvincible,
-      losesMana:()=>!options.debugInvincible
+      losesMana:()=>!options.debugInfiniteMana
     },
     random:()=>0,
     run:<T>(work:()=>T)=>work(),
@@ -43,11 +43,17 @@ const hit=(unit:unknown):SkillUnitHit=>({
 
 const drainUnit={effect:'drain',source:'magicAttack',ranks:[{}]};
 
-test('GM invincibility prevents a drain effect from consuming MP',()=>{
-  const {executor,state}=probe({debugInvincible:true});
+test('GM infinite mana prevents a drain effect from consuming MP',()=>{
+  const {executor,state}=probe({debugInfiniteMana:true});
   assert.equal(executor.execute(hit(drainUnit)),'success');
   assert.deepEqual(state.mana,{player:50,enemy:0});
   assert.deepEqual(state.calls,[]);
+});
+
+test('GM invincibility alone does not prevent a drain effect from consuming MP',()=>{
+  const {executor,state}=probe({debugInvincible:true});
+  assert.equal(executor.execute(hit(drainUnit)),'success');
+  assert.deepEqual(state.mana,{player:40,enemy:10});
 });
 
 test('a normal target still loses MP to a drain effect',()=>{

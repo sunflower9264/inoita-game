@@ -1903,6 +1903,12 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
     this.app.session.setInvincible(actorId,enabled);
     return {ok:true};
   }
+  /** GM 无限蓝开关：与无敌独立，写到会话级集合，换图重建战斗后仍然有效。 */
+  setInfiniteMana(actorId:string,enabled:boolean):{ok:boolean;reason?:string}{
+    if(!this.app.session.hero)return {ok:false,reason:'当前会话没有角色系统'};
+    this.app.session.setInfiniteMana(actorId,enabled);
+    return {ok:true};
+  }
   /** GM 一击必杀开关：同样写到会话级集合，换图重建战斗后仍然有效。 */
   setOneHitKill(actorId:string,enabled:boolean):{ok:boolean;reason?:string}{
     if(!this.app.session.hero)return {ok:false,reason:'当前会话没有角色系统'};

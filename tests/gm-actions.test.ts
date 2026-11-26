@@ -105,6 +105,7 @@ test('characters lists the hero and deployed companions in party order', () => {
   assert.equal(hero.health, session.hero!.player.health);
   assert.equal(hero.maxHealth, session.hero!.player.maxHealth);
   assert.equal(hero.invincible, false);
+  assert.equal(hero.infiniteMana, false);
   assert.equal(hero.noCooldown, false);
 
   const member = recruit(session);
@@ -155,6 +156,8 @@ test('a fallen character is revived through the combat port', () => {
   const combat: GmCombatPort = {
     setInvincible: () => ({ ok: true }),
     isInvincible: () => false,
+    setInfiniteMana: () => ({ ok: true }),
+    isInfiniteMana: () => false,
     setOneHitKill: () => ({ ok: true }),
     isOneHitKill: () => false,
     revive: id => {
@@ -327,15 +330,41 @@ test('setInvincible needs a combat port and shows on the character list', () => 
   const { gm } = harness(undefined, {
     setInvincible: (id, enabled) => { if (enabled) flags.add(id); else flags.delete(id); return { ok: true }; },
     isInvincible: id => flags.has(id),
+    setInfiniteMana: () => ({ ok: true }),
+    isInfiniteMana: () => false,
     setOneHitKill: () => ({ ok: true }),
     isOneHitKill: () => false,
   });
   assert.equal(gm.setInvincible('player', true).ok, true);
   assert.equal(gm.characters()[0]!.invincible, true);
+  assert.equal(gm.characters()[0]!.infiniteMana, false);
   assert.equal(gm.setInvincible('nope', true).ok, false);
 
   const headless = harness();
   const failed = headless.gm.setInvincible('player', true);
+  assert.equal(failed.ok, false);
+  assert.match(failed.reason ?? '', /战斗场景/);
+});
+
+test('setInfiniteMana needs a combat port, stays independent from invincibility, and shows on the character list', () => {
+  const flags = new Set<string>();
+  const { gm } = harness(undefined, {
+    setInvincible: () => ({ ok: true }),
+    isInvincible: () => false,
+    setInfiniteMana: (id, enabled) => { if (enabled) flags.add(id); else flags.delete(id); return { ok: true }; },
+    isInfiniteMana: id => flags.has(id),
+    setOneHitKill: () => ({ ok: true }),
+    isOneHitKill: () => false,
+  });
+  assert.equal(gm.setInfiniteMana('player', true).ok, true);
+  assert.equal(gm.characters()[0]!.infiniteMana, true);
+  assert.equal(gm.characters()[0]!.invincible, false);
+  assert.equal(gm.setInfiniteMana('player', false).ok, true);
+  assert.equal(gm.characters()[0]!.infiniteMana, false);
+  assert.equal(gm.setInfiniteMana('nope', true).ok, false);
+
+  const headless = harness();
+  const failed = headless.gm.setInfiniteMana('player', true);
   assert.equal(failed.ok, false);
   assert.match(failed.reason ?? '', /战斗场景/);
 });
@@ -345,6 +374,8 @@ test('setOneHitKill needs a combat port and shows on the character list', () => 
   const { gm } = harness(undefined, {
     setInvincible: () => ({ ok: true }),
     isInvincible: () => false,
+    setInfiniteMana: () => ({ ok: true }),
+    isInfiniteMana: () => false,
     setOneHitKill: (id, enabled) => { if (enabled) flags.add(id); else flags.delete(id); return { ok: true }; },
     isOneHitKill: id => flags.has(id),
   });
@@ -356,6 +387,51 @@ test('setOneHitKill needs a combat port and shows on the character list', () => 
   const failed = headless.gm.setOneHitKill('player', true);
   assert.equal(failed.ok, false);
   assert.match(failed.reason ?? '', /战斗场景/);
+});
+
+test('setTenSkillPointsPerLevel grants 10 skill points per level for hero and manual mercenaries and survives save/restore', () => {
+  const { session, gm } = harness();
+  const member = recruit(session);
+  assert.equal(gm.isTenSkillPointsPerLevel(), false);
+
+  const heroPointsBefore = session.hero!.skillPoints;
+  const mercPointsBefore = member.skills.points();
+  assert.equal(gm.setTenSkillPointsPerLevel(true).ok, true);
+  assert.equal(gm.isTenSkillPointsPerLevel(), true);
+
+  // 单级升级：主角和手动佣兵均获得 10 个技能点。
+  assert.equal(gm.levelUp('player').ok, true);
+  assert.equal(session.hero!.skillPoints, heroPointsBefore + 10);
+  assert.equal(gm.levelUp(member.id).ok, true);
+  assert.equal(member.skills.points(), mercPointsBefore + 10);
+
+  // 一次经验连升两级：获得 20 个技能点。
+  const twoLevelsExp = (session.hero!.player.nextLevelExperience - session.hero!.player.experience)
+    + (stats.experience[session.hero!.level] ?? 0);
+  const gained = session.hero!.addExperience(twoLevelsExp);
+  assert.equal(gained, 2);
+  assert.equal(session.hero!.skillPoints, heroPointsBefore + 30);
+
+  // 佣兵消耗多于默认每级 1 点的技能点后，关闭开关再存档与读档仍能通过校验。
+  const learnable = Object.keys(member.skills.caps).find(id => !member.skills.learningProblem(id));
+  assert.ok(learnable, '佣兵至少有一门可学技能');
+  while (!member.skills.learningProblem(learnable!)) member.skills.learn(learnable!);
+
+  assert.equal(gm.setTenSkillPointsPerLevel(false).ok, true);
+  assert.equal(gm.isTenSkillPointsPerLevel(), false);
+  const afterOffHero = session.hero!.skillPoints;
+  const afterOffMerc = member.skills.points();
+  assert.equal(gm.levelUp('player').ok, true);
+  assert.equal(session.hero!.skillPoints, afterOffHero + stats.skillPointsPerLevel);
+  assert.equal(gm.levelUp(member.id).ok, true);
+  assert.equal(member.skills.points(), afterOffMerc + stats.skillPointsPerLevel);
+
+  // 存档再恢复到新会话（默认不开启调试开关），校验通过且技能点保留。
+  const saved = session.captureState();
+  const restored = harness().session;
+  restored.restoreState(saved);
+  assert.equal(restored.hero!.skillPoints, session.hero!.skillPoints);
+  assert.equal(restored.party!.get(member.id)!.skills.points(), member.skills.points());
 });
 
 test('completeCurrentQuest, setNoclip, and setDoubleSpeed operate correctly through GM', () => {
