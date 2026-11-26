@@ -294,7 +294,7 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
   const effBytes = fs.readFileSync(new URL(proto.effectSheet.texture.file, repoRoot));
   const effWidth = effBytes.readUInt32BE(16);
   const effHeight = effBytes.readUInt32BE(20);
-  assert.equal(Object.keys(proto.effectSheet.frames).length, 464);
+  assert.equal(Object.keys(proto.effectSheet.frames).length, 488);
   for (const rect of Object.values(proto.effectSheet.frames)) {
     assert.ok(rect.x >= 0 && rect.y >= 0);
     assert.ok(rect.x + rect.width <= effWidth && rect.y + rect.height <= effHeight);
@@ -496,12 +496,13 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
       assert.ok(slamTl.effects.some(e => e.effect === 'state-stun' && e.onTarget));
 
       const sovTl = actionTimeline(mergedCatalog, mergedItems, mergedBattle, spearEquipment, 'skill-sovereign-pierce', facing, audio, proto.actionTimelines);
-      assert.ok(sovTl.effects.some(e => e.effect === 'spear-sovereign-dome' && e.variant === 'default' && e.startFrame === 0));
+      assert.ok(sovTl.effects.some(e => e.effect === 'spear-sovereign-dome-back' && e.variant === 'default' && e.placement === 'ground' && e.startFrame === 0));
+      assert.ok(sovTl.effects.some(e => e.effect === 'spear-sovereign-dome' && e.variant === 'default' && e.placement === 'above-characters' && e.startFrame === 0));
       assert.ok(sovTl.effects.some(e => e.effect === 'spear-sovereign-charge' && e.variant === 'default' && e.startFrame === 12));
       for (const beamDir of ['west', 'east', 'south', 'north'] as const) {
         assert.ok(
           sovTl.effects.some(e => e.effect === 'spear-sovereign-beam' && e.variant === beamDir && e.startFrame === 16),
-          `万圣龙王破在 ${facing} 朝向下必须在 F16 同时释放 ${beamDir} 方向苍龙冲击波`,
+          `万圣龙王破在 ${facing} 朝向下必须在 F16 同时释放 ${beamDir} 方向纯冲击波`,
         );
       }
       assert.equal(sovTl.markers.filter(m => m.kind === 'strike').length, 4, '万圣龙王破应含 3 段能量罩触碰脉冲伤害 + 1 段四向苍龙破防重创共 4 次命中标记');
