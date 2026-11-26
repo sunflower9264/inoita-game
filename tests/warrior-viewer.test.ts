@@ -362,12 +362,16 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
         }
       }
 
-      // Check two-handed middle-guard combat carry (idle/walk) and diagonal back-slung town movement (town-idle/town-walk) across all 4 directions and all frames
+      // Check single-handed ~46% golden-balance trail carry (idle/walk) and diagonal back-slung town movement (town-idle/town-walk) across all 4 directions and all frames
       for (const [key, expectedCount] of [['idle', 14], ['walk', 8]] as const) {
         const action = choices.find(choice => choice.key === key)!;
         const pose = mergedCatalog.poses[action.poseId];
         assert.equal(pose.frames.length, expectedCount);
-        const expectedPrefix = facing === 'west' || facing === 'east' ? 'spear-carry-side-' : 'spear-diag-';
+        const expectedPrefix = facing === 'south'
+          ? 'spear-carry-south-'
+          : facing === 'north'
+            ? 'spear-carry-north-'
+            : 'spear-carry-side-';
         let baseGripDx: number | undefined;
         let baseGripDy: number | undefined;
         for (let fi = 0; fi < pose.frames.length; fi++) {
@@ -379,27 +383,28 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
           const armIndices = frame
             .map((p, idx) => (p.part === 'coat-front' && p.piece >= 5 ? idx : -1))
             .filter(idx => idx >= 0);
-          assert.equal(armIndices.length, 2, `${action.poseId} F${fi} should have two 0-deg gripping arms`);
-          for (const ai of armIndices) {
-            assert.equal(frame[ai].angle ?? 0, 0, `${action.poseId} F${fi} arm should be unrotated`);
-          }
+          assert.equal(armIndices.length, 2, `${action.poseId} F${fi} should have one gripping arm and one free arm`);
+          let gripArmIdx: number;
           if (facing === 'west' || facing === 'east') {
-            assert.ok(armIndices[0] < spearIdx && spearIdx < armIndices[1], `${action.poseId} F${fi} spear should sit between far and near gripping arms`);
+            gripArmIdx = armIndices[1];
+            assert.ok(armIndices[0] < spearIdx && spearIdx < gripArmIdx, `${action.poseId} F${fi} spear should sit over far free arm and beneath near gripping arm`);
           } else if (facing === 'south') {
-            assert.ok(spearIdx < armIndices[0] && spearIdx < armIndices[1], `${action.poseId} F${fi} south spear should sit beneath both gripping arms`);
+            gripArmIdx = frame.findIndex(p => p.part === 'coat-front' && p.piece >= 5 && p.scaleX === -1);
+            assert.ok(gripArmIdx >= 0 && spearIdx < gripArmIdx, `${action.poseId} F${fi} south spear should sit beneath right gripping arm (scaleX=-1)`);
           } else {
+            gripArmIdx = frame.findIndex(p => p.part === 'coat-front' && p.piece >= 5 && p.scaleX === 1);
             const cloakIdx = frame.findIndex(p => p.part === 'cloak');
-            assert.ok(spearIdx < armIndices[0] && spearIdx < armIndices[1], `${action.poseId} F${fi} north spear should sit before behind-spear gripping arms`);
+            assert.ok(gripArmIdx >= 0 && spearIdx < gripArmIdx, `${action.poseId} F${fi} north spear should sit beneath right gripping arm (scaleX=1)`);
             assert.ok(cloakIdx < 0 || spearIdx < cloakIdx, `${action.poseId} F${fi} north spear should sit before cloak`);
           }
-          const dx = spear.x - frame[armIndices[0]].x;
-          const dy = spear.y - frame[armIndices[0]].y;
+          const dx = spear.x - frame[gripArmIdx].x;
+          const dy = spear.y - frame[gripArmIdx].y;
           if (baseGripDx === undefined) {
             baseGripDx = dx;
             baseGripDy = dy;
           } else {
-            assert.equal(dx, baseGripDx, `${action.poseId} F${fi} spear X should stay locked to gripping hands`);
-            assert.equal(dy, baseGripDy, `${action.poseId} F${fi} spear Y should stay locked to gripping hands`);
+            assert.equal(dx, baseGripDx, `${action.poseId} F${fi} spear X should stay locked to single gripping hand`);
+            assert.equal(dy, baseGripDy, `${action.poseId} F${fi} spear Y should stay locked to single gripping hand`);
           }
         }
       }
@@ -987,9 +992,10 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
         }
       }
     }
-    // 防回归：持枪待机与持枪行走（idle/walk）四向采用双手「中段戒备把（后手 ~26%..36% + 前手 ~47%..55% 重心）」：
-    // 四向全长统一 ~49..53px，前手握在 ~50% 物理平衡重心（手前仅留 ~6px 短木杆接红缨枪头，彻底杜绝 <35% 握得太靠后漏长杆或 >55% 握到红缨/枪尖），且双手紧贴枪杆（perp <= 2.5px）。
-    const measurePoseGrip = (poseId: string, fi: number) => {
+    // 防回归：持枪待机与持枪行走（idle/walk）四向采用单手「~45%..50% 黄金重心平提（Trail Carry）」：
+    // 1) 仅由单只握枪手紧贴枪杆（perp <= 2.0px），另一只空手自然垂落/摆臂且与枪杆保持安全净空（perp >= 3.0px，杜绝双手抱枪或枪杆横切空手穿模）；
+    // 2) 握枪单手必须落在 42%..53% 黄金重心区间（手前仅露 6~8px 精干木杆接红缨枪头，彻底杜绝 <35% 握太靠后漏长杆或 >55% 握到红缨/枪尖）。
+    const measureSingleHandCarry = (poseId: string, fi: number, facing: Facing) => {
       const pose = mergedCatalog.poses[poseId];
       const frame = pose.frames[fi];
       const sp = frame.find(p => p.part === 'spear')!;
@@ -1019,7 +1025,7 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
       const vx = tx - bx, vy = ty - by, vlen = Math.hypot(vx, vy), vlen2 = vx * vx + vy * vy;
       const pieces = framePieces(mergedCatalog, defaultSpearRecipe.variants, frame);
       const arms = pieces.filter(p => p.part.part === 'coat-front' && p.part.piece >= 5);
-      const hands = arms.map(({ part, sprite }) => {
+      const measured = arms.map(({ part, sprite }, idx) => {
         const tex = loadedTextures.get(sprite.texture)!;
         let sumX = 0, sumY = 0, cnt = 0;
         for (let sy = Math.max(0, sprite.height - 5); sy < sprite.height; sy++) {
@@ -1034,9 +1040,18 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
         const hx = sumX / cnt, hy = sumY / cnt;
         const pct = (((hx - bx) * vx + (hy - by) * vy) / vlen2) * 100;
         const perp = Math.abs((hx - bx) * (-vy) + (hy - by) * vx) / vlen;
-        return { pct, perp };
-      }).sort((a, b) => a.pct - b.pct);
-      return { span: vlen, hands };
+        const isGrip = facing === 'south'
+          ? part.scaleX === -1
+          : facing === 'north'
+            ? part.scaleX === 1
+            : idx === arms.length - 1;
+        return { pct, perp, isGrip };
+      });
+      return {
+        span: vlen,
+        grip: measured.find(m => m.isGrip)!,
+        free: measured.find(m => !m.isGrip)!,
+      };
     };
 
     for (const key of ['idle', 'walk'] as const) {
@@ -1044,20 +1059,18 @@ test('spear prototype integrates cleanly with existing wardrobe outfits across a
         const poseId = proto.stancePoses[`${key}-${facing}`];
         const pose = mergedCatalog.poses[poseId];
         for (let fi = 0; fi < pose.frames.length; fi++) {
-          const { span, hands } = measurePoseGrip(poseId, fi);
-          assert.ok(span >= 48 && span <= 53, `${key}-${facing} F${fi} 持枪总长应在 48..53px，实际 ${span.toFixed(1)}px`);
-          assert.equal(hands.length, 2, `${key}-${facing} F${fi} 应为双手握持`);
-          assert.ok(
-            hands[0].pct >= 24 && hands[0].pct <= 38,
-            `${key}-${facing} F${fi} 后手握位异常（pct=${hands[0].pct.toFixed(1)}%，应在 24%..38% 后把区）`,
-          );
-          assert.ok(
-            hands[1].pct >= 46 && hands[1].pct <= 55,
-            `${key}-${facing} F${fi} 前手未握在 ~50% 重心中段（pct=${hands[1].pct.toFixed(1)}%，应在 46%..55% 以免漏长杆或摸红缨）`,
-          );
-          for (const h of hands) {
-            assert.ok(h.perp <= 2.5, `${key}-${facing} F${fi} 手掌未紧贴枪杆（perp=${h.perp.toFixed(1)}px）`);
+          const { span, grip, free } = measureSingleHandCarry(poseId, fi, facing);
+          if (facing === 'south' || facing === 'north') {
+            assert.ok(span >= 37 && span <= 43, `${key}-${facing} F${fi} 南北向 3D 透视总长应在 37..43px，实际 ${span.toFixed(1)}px`);
+          } else {
+            assert.ok(span >= 48 && span <= 53, `${key}-${facing} F${fi} 东西向平提总长应在 48..53px，实际 ${span.toFixed(1)}px`);
           }
+          assert.ok(
+            grip.pct >= 42 && grip.pct <= 53,
+            `${key}-${facing} F${fi} 单手握位偏离黄金重心（pct=${grip.pct.toFixed(1)}%，应在 42%..53% 以避免漏长杆或摸红缨）`,
+          );
+          assert.ok(grip.perp <= 2.0, `${key}-${facing} F${fi} 握枪单手未贴合枪杆（perp=${grip.perp.toFixed(1)}px）`);
+          assert.ok(free.perp >= 3.0, `${key}-${facing} F${fi} 自由摆动空手与枪杆穿模或变成双手抱枪（free.perp=${free.perp.toFixed(1)}px）`);
         }
       }
     }

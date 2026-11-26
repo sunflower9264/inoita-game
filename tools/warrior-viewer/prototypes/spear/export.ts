@@ -404,15 +404,61 @@ function insertSpearIntoFrame(
     return [shiftedSpear, ...stripped];
   }
   if (insertMode === 'before-right-arm-north') {
-    // 北向单手持枪：插入在右侧握枪手臂（scaleX=1）与披风之前，无披风时右手实握木杆、有披风时手前长杆与枪头自右肩外侧向北探出
-    const armIdx = stripped.findIndex(part => part.part === 'coat-front' && (part.piece === 9 || part.piece === 5) && part.scaleX === 1);
-    const cloakIdx = stripped.findIndex(part => part.part === 'cloak');
+    // 北向单手持枪：左臂保持原版自然垂摆，右臂（scaleX=1）微曲执握 ~45% 黄金重心位，长枪插在右臂与披风之前（铁镦收在右脚外侧 x>=5 零漏枪把）
+    const upgraded = stripped.map(part => (
+      part.part === 'coat-front' && isCoatFrontArm(part) && part.scaleX === 1
+        ? { ...part, piece: 7, x: 3, y: part.y - 2, scaleX: 1, scaleY: 1, angle: 0 }
+        : part
+    ));
+    const armIdx = upgraded.findIndex(part => part.part === 'coat-front' && isCoatFrontArm(part) && part.scaleX === 1);
+    const cloakIdx = upgraded.findIndex(part => part.part === 'cloak');
     const candidates = [armIdx, cloakIdx].filter(i => i >= 0);
     if (candidates.length > 0) {
-      stripped.splice(Math.min(...candidates), 0, shiftedSpear);
-      return stripped;
+      upgraded.splice(Math.min(...candidates), 0, shiftedSpear);
+      return upgraded;
     }
-    return [shiftedSpear, ...stripped];
+    return [shiftedSpear, ...upgraded];
+  }
+  if (insertMode === 'single-hand-west') {
+    // 西/东向单手持枪：近侧握枪手自然垂在肩正下方实握 ~48% 黄金重心位（左右 1:1 平衡），远侧空手在躯干后方自然呼吸/摆臂且绝不与枪杆穿模
+    const bodyNoArms = stripped.filter(part => !(part.part === 'coat-front' && isCoatFrontArm(part)));
+    const torsoIdx = bodyNoArms.findIndex(part => part.part === 'coat-front');
+    const torso = bodyNoArms[torsoIdx];
+    const isWalk = torso ? torso.x < 0 : false;
+    const torsoDy = torso?.y ?? 0;
+    // 从 shiftedSpear.x 反推迈步水平微摆（idle baseX=5 -> 0，walk F0..F3=0 / F4..F7=-1）
+    const strideDx = isWalk ? (shiftedSpear.x - 5) : 0;
+    const farEmptyArm: CostumePart = {
+      part: 'coat-front',
+      piece: 10,
+      x: (isWalk ? (-4 - strideDx * 2) : -4),
+      y: (isWalk ? 3 : 2) + torsoDy,
+      scaleX: 1,
+      scaleY: 1,
+      angle: 0,
+      alpha: 1,
+    };
+    const nearGripArm: CostumePart = {
+      part: 'coat-front',
+      piece: 6,
+      x: -3 + strideDx,
+      y: (isWalk ? 1 : 0) + torsoDy,
+      scaleX: 1,
+      scaleY: 1,
+      angle: 0,
+      alpha: 1,
+    };
+    if (torsoIdx >= 0) {
+      return [
+        ...bodyNoArms.slice(0, torsoIdx),
+        farEmptyArm,
+        bodyNoArms[torsoIdx],
+        shiftedSpear,
+        nearGripArm,
+        ...bodyNoArms.slice(torsoIdx + 1),
+      ];
+    }
+    return [farEmptyArm, shiftedSpear, nearGripArm, ...bodyNoArms];
   }
   if (insertMode === 'before-near-arm-west') {
     let idx = -1;
@@ -452,6 +498,9 @@ function buildCyclePose(wardrobe: WardrobeCatalog, recipe: SpearPoseRecipe): Cos
     }
     if (recipe.insertMode === 'before-right-arm-north') {
       return frame.find(p => p.part === 'coat-front' && (p.piece === 9 || p.piece === 5) && p.scaleX === 1);
+    }
+    if (recipe.insertMode === 'single-hand-west') {
+      return findTorso(frame);
     }
     if (recipe.insertMode === 'before-near-arm-west') {
       for (let i = frame.length - 1; i >= 0; i--) {

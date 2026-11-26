@@ -519,50 +519,50 @@ export const SPEAR_SLICES: readonly PixelSliceSource[] = [
   },
   {
     id: 'spear-carry-south-0',
-    label: '单手持枪（南向 3D 透视三段比例 · 红缨帧 1）',
-    anchorX: 15,
-    anchorY: 14,
+    label: '单手持枪（南向 3D 俯视重心平提 · 红缨帧 1）',
+    anchorX: 12,
+    anchorY: 19,
     rows: buildAngledSpear({
-      width: 24, height: 45,
-      tipX: 4, tipY: 42, buttX: 19, buttY: 2,
-      bladeLen: 12, collarLen: 2.2, buttLen: 4.5,
-      sway: 0, upright: true, tasselBehindBlade: true, tasselScale: 0.88,
+      width: 24, height: 43,
+      tipX: 4, tipY: 39, buttX: 19, buttY: 2,
+      bladeLen: 12, collarLen: 2.0, buttLen: 4.2,
+      sway: 0, upright: true, tasselBehindBlade: true, tasselScale: 0.85,
     }),
   },
   {
     id: 'spear-carry-south-1',
-    label: '单手持枪（南向 3D 透视三段比例 · 红缨帧 2）',
-    anchorX: 15,
-    anchorY: 14,
+    label: '单手持枪（南向 3D 俯视重心平提 · 红缨帧 2）',
+    anchorX: 12,
+    anchorY: 19,
     rows: buildAngledSpear({
-      width: 24, height: 45,
-      tipX: 4, tipY: 42, buttX: 19, buttY: 2,
-      bladeLen: 12, collarLen: 2.2, buttLen: 4.5,
-      sway: 1, upright: true, tasselBehindBlade: true, tasselScale: 0.88,
+      width: 24, height: 43,
+      tipX: 4, tipY: 39, buttX: 19, buttY: 2,
+      bladeLen: 12, collarLen: 2.0, buttLen: 4.2,
+      sway: 1, upright: true, tasselBehindBlade: true, tasselScale: 0.85,
     }),
   },
   {
     id: 'spear-carry-north-0',
-    label: '单手持枪（北向 3D 透视三段比例 · 红缨帧 1）',
-    anchorX: 8,
-    anchorY: 33,
+    label: '单手持枪（北向 3D 俯视重心平提 · 红缨帧 1）',
+    anchorX: 12,
+    anchorY: 23,
     rows: buildAngledSpear({
-      width: 23, height: 47,
-      tipX: 19, tipY: 2, buttX: 6, buttY: 44,
-      bladeLen: 12, collarLen: 2.2, buttLen: 4.2,
-      sway: 0, upright: true, tasselScale: 0.85,
+      width: 24, height: 42,
+      tipX: 19, tipY: 2, buttX: 8, buttY: 39,
+      bladeLen: 12, collarLen: 2.0, buttLen: 4.0,
+      sway: 0, upright: true, tasselScale: 0.82,
     }),
   },
   {
     id: 'spear-carry-north-1',
-    label: '单手持枪（北向 3D 透视三段比例 · 红缨帧 2）',
-    anchorX: 8,
-    anchorY: 33,
+    label: '单手持枪（北向 3D 俯视重心平提 · 红缨帧 2）',
+    anchorX: 12,
+    anchorY: 23,
     rows: buildAngledSpear({
-      width: 23, height: 47,
-      tipX: 19, tipY: 2, buttX: 6, buttY: 44,
-      bladeLen: 12, collarLen: 2.2, buttLen: 4.2,
-      sway: 1, upright: true, tasselScale: 0.85,
+      width: 24, height: 42,
+      tipX: 19, tipY: 2, buttX: 8, buttY: 39,
+      bladeLen: 12, collarLen: 2.0, buttLen: 4.0,
+      sway: 1, upright: true, tasselScale: 0.82,
     }),
   },
   // 24..27：四向脱战斜背背后专用切片（南/北斜跨肩背 + 西/东贴背斜背，各 2 帧红缨微摆，统一 ~51.3px 枪长）
@@ -653,6 +653,7 @@ export type SpearInsertMode =
   | 'before-front-hand'
   | 'before-right-arm-south'
   | 'before-right-arm-north'
+  | 'single-hand-west'
   | 'before-near-arm-west'
   | 'before-cloak';
 
@@ -1060,47 +1061,49 @@ export interface SpearKeyframedPoseRecipe {
 const IDLE_BREATH_DY: readonly number[] = [0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0];
 
 export const SPEAR_CYCLE_RECIPES: readonly SpearPoseRecipe[] = [
-  // 一、双手「中段戒备把（后手 ~28% + 前手 ~50% 重心）」持枪待机（原版双手稳立骨架 pose-4067..4069，手前仅留 ~6px 精干木杆接红缨枪头，与全部双手技能起收帧零跳变衔接）
+  // 一、单手「~46% 黄金重心平提（Trail Carry）」持枪待机（单手垂臂实握正中偏后黄金平衡点，手前仅露 6~8px 短木杆接红缨枪头，另一只手自然放松呼吸）
   {
-    id: 'prototype-spear-idle-south', clip: 'idle-south', basePoseId: 'pose-4067-south-ticks-0',
-    mirrorX: false, insertMode: 'between-south-arms', armsPreset: 'south-ready', stepTorsoDy: IDLE_BREATH_DY,
-    pieceEven: 0, pieceOdd: 1, baseX: 0, baseY: -8, scaleX: 1, scaleY: 1, angle: 0,
+    id: 'prototype-spear-idle-south', clip: 'idle-south', basePoseId: 'pose-3986-south-ticks-0',
+    mirrorX: false, insertMode: 'before-right-arm-south',
+    pieceEven: 20, pieceOdd: 21, baseX: -8, baseY: -7, scaleX: 1, scaleY: 1, angle: 0,
   },
   {
-    id: 'prototype-spear-idle-west', clip: 'idle-west', basePoseId: 'pose-4068-west-ticks-0',
-    mirrorX: false, insertMode: 'between-west-arms', armsPreset: 'west-ready', stepTorsoDy: IDLE_BREATH_DY,
-    pieceEven: 18, pieceOdd: 19, baseX: 1, baseY: -7, scaleX: 1, scaleY: 1, angle: 0,
+    id: 'prototype-spear-idle-west', clip: 'idle-west', basePoseId: 'pose-3987-west-ticks-0',
+    mirrorX: false, insertMode: 'single-hand-west',
+    pieceEven: 18, pieceOdd: 19, baseX: 5, baseY: -6, scaleX: 1, scaleY: 1, angle: 0,
   },
   {
-    id: 'prototype-spear-idle-north', clip: 'idle-north', basePoseId: 'pose-4069-north-ticks-0',
-    mirrorX: false, insertMode: 'back', armsPreset: 'north-ready', headPose: { view: 'north', scaleX: 1, dx: -1, dy: 0 },
-    pieceEven: 0, pieceOdd: 1, baseX: 3, baseY: -16, scaleX: -1, scaleY: 1, angle: 0,
+    id: 'prototype-spear-idle-north', clip: 'idle-north', basePoseId: 'pose-3988-north-ticks-0',
+    mirrorX: false, insertMode: 'before-right-arm-north',
+    pieceEven: 22, pieceOdd: 23, baseX: 10, baseY: -12, scaleX: 1, scaleY: 1, angle: 0,
   },
   {
-    id: 'prototype-spear-idle-east', clip: 'idle-east', basePoseId: 'pose-4068-east-ticks-0',
-    mirrorX: true, insertMode: 'between-west-arms', armsPreset: 'west-ready', stepTorsoDy: IDLE_BREATH_DY,
-    pieceEven: 18, pieceOdd: 19, baseX: 1, baseY: -7, scaleX: 1, scaleY: 1, angle: 0,
+    id: 'prototype-spear-idle-east', clip: 'idle-east', basePoseId: 'pose-3987-east-ticks-0',
+    mirrorX: true, insertMode: 'single-hand-west',
+    pieceEven: 18, pieceOdd: 19, baseX: 5, baseY: -6, scaleX: 1, scaleY: 1, angle: 0,
   },
-  // 二、双手「中段戒备把（后手 ~28% + 前手 ~50% 重心）」持枪行走（原版双手迈步骨架 pose-4070..4072，随步伐自然微振、手杆零滑动）
+  // 二、单手「~46% 黄金重心平提（Trail Carry）」持枪行走（单手稳提重心位随步伐自然微动，另一只手完全解放前后摆臂）
   {
-    id: 'prototype-spear-walk-south', clip: 'walk-south', basePoseId: 'pose-4070-south-ticks-0',
-    mirrorX: false, insertMode: 'between-south-arms', armsPreset: 'south-ready', swayPeriod: 2,
-    pieceEven: 0, pieceOdd: 1, baseX: 0, baseY: -8, scaleX: 1, scaleY: 1, angle: 0,
-  },
-  {
-    id: 'prototype-spear-walk-west', clip: 'walk-west', basePoseId: 'pose-4071-west-ticks-0',
-    mirrorX: false, insertMode: 'between-west-arms', armsPreset: 'west-ready', swayPeriod: 2,
-    pieceEven: 18, pieceOdd: 19, baseX: 1, baseY: -7, scaleX: 1, scaleY: 1, angle: 0,
+    id: 'prototype-spear-walk-south', clip: 'walk-south', basePoseId: 'pose-3989-south-ticks-0',
+    mirrorX: false, insertMode: 'before-right-arm-south', swayPeriod: 2,
+    pieceEven: 20, pieceOdd: 21, baseX: -8, baseY: -7, scaleX: 1, scaleY: 1, angle: 0,
   },
   {
-    id: 'prototype-spear-walk-north', clip: 'walk-north', basePoseId: 'pose-4072-north-ticks-0',
-    mirrorX: false, insertMode: 'back', armsPreset: 'north-ready', headPose: { view: 'north', scaleX: 1, dx: -1, dy: 0 }, swayPeriod: 2,
-    pieceEven: 0, pieceOdd: 1, baseX: 3, baseY: -16, scaleX: -1, scaleY: 1, angle: 0,
+    id: 'prototype-spear-walk-west', clip: 'walk-west', basePoseId: 'pose-3990-west-ticks-0',
+    mirrorX: false, insertMode: 'single-hand-west', swayPeriod: 2,
+    stepDx: [0, 0, 0, 0, -1, -1, -1, -1],
+    pieceEven: 18, pieceOdd: 19, baseX: 5, baseY: -5, scaleX: 1, scaleY: 1, angle: 0,
   },
   {
-    id: 'prototype-spear-walk-east', clip: 'walk-east', basePoseId: 'pose-4071-east-ticks-0',
-    mirrorX: true, insertMode: 'between-west-arms', armsPreset: 'west-ready', swayPeriod: 2,
-    pieceEven: 18, pieceOdd: 19, baseX: 1, baseY: -7, scaleX: 1, scaleY: 1, angle: 0,
+    id: 'prototype-spear-walk-north', clip: 'walk-north', basePoseId: 'pose-3991-north-ticks-0',
+    mirrorX: false, insertMode: 'before-right-arm-north', swayPeriod: 2,
+    pieceEven: 22, pieceOdd: 23, baseX: 10, baseY: -12, scaleX: 1, scaleY: 1, angle: 0,
+  },
+  {
+    id: 'prototype-spear-walk-east', clip: 'walk-east', basePoseId: 'pose-3990-east-ticks-0',
+    mirrorX: true, insertMode: 'single-hand-west', swayPeriod: 2,
+    stepDx: [0, 0, 0, 0, -1, -1, -1, -1],
+    pieceEven: 18, pieceOdd: 19, baseX: 5, baseY: -5, scaleX: 1, scaleY: 1, angle: 0,
   },
   // 三、脱战斜背长枪待机（原版城镇待机骨架 pose-3980..3982）
   {
