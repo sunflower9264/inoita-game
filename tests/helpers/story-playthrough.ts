@@ -483,40 +483,24 @@ export function playthrough(saved?:SessionState){
       firedExit=undefined;
     }
   };
-  const approach=async(characterId:string,rearm=false)=>{
+  const walkNear=async(characterId:string)=>{
     const list=entities(),entity=list.find(entity=>entity.characterId===characterId);
     assert.ok(entity,`可见角色 ${characterId}（现在在 ${session.storyWorld.currentLocation?.map}，`+
       `本图可见实体 ${list.length} 个：${list.slice(0,10).map(item=>item.characterId??item.actor).join(',')}）`);
-    // 原版近身触发是「身边那个对象变成它」才算一次，所以站在原地的第二次靠近不会再播，
-    // 占用表也要等玩家走出相邻范围才释放。要重开就得真的走开再回来——rearm 替用例做这一步。
-    // 只放行挂在这个角色身上的近身事件：走过去的路上经过别的 NPC 不该把他们的戏也点了，
-    // 那会让后面的剧情状态提前（旧辅助器只对目标角色调一次导演）。
-    const bound=campaign.events.filter(event=>event.source==='near'&&event.near===entity.actor).map(event=>event.id);
-    if(rearm){
-      // 走开一步要让占用表真的释放：带碰撞的对象按真实碰撞盒的贴边间隙判定，
-      // 沿原方向退一步可能仍在范围内。沿原方向找一个确实在交互范围外的合法落脚点。
-      const collision=world.actors[entity.actor].collision,location=session.storyWorld.currentLocation!;
-      const shape=world.actors[campaign.start.actor],navigation=new NavigationWorld(maps.get(location.map)!);
-      for(const other of entities())navigation.register({position:()=>other,shape:()=>world.actors[other.actor],enabled:()=>true});
-      const dx=location.x-entity.x,dy=location.y-entity.y,length=Math.hypot(dx,dy)||1;
-      let away:Point|undefined;
-      for(const radius of [72,96,128,160]){
-        const point=navigation.nearest(shape,{x:Math.round(entity.x+dx/length*radius),y:Math.round(entity.y+dy/length*radius)});
-        if(!nearInteractive(point,entity,collision,!!entity.flip)){away=point;break;}
-      }
-      assert.ok(away,`走开以重新触发 ${characterId} 时找不到范围外的落点`);
-      session.movePlayer({...location,...away});
-      afterMovement('near',bound);await idle();
-    }
-    // 近身事件由场景在走到位的那一帧上报，这里不再直接通知导演。
-    // 目标带碰撞体积时按真实碰撞盒的贴边间隙兜底（路障只能贴着边缘站，24 px 走不进去）。
     const collision=world.actors[entity.actor].collision;
-    await walk(point=>nearInteractive(point,entity,collision,!!entity.flip),'角色 '+characterId,'near',bound,'all');
+    await walk(point=>nearInteractive(point,entity,collision,!!entity.flip),'角色 '+characterId,'none',undefined,'all');
     await idle();
     return entity;
   };
+  const approach=async(characterId:string,_rearm=false)=>{
+    const entity=await walkNear(characterId);
+    if(session.hasNearEvent(entity)){
+      await director.interact(entity,world.actors[entity.actor]);await idle();
+    }
+    return entity;
+  };
   const talk=async(characterId:string)=>{
-    const entity=await approach(characterId);
+    const entity=await walkNear(characterId);
     await director.interact(entity,world.actors[entity.actor]);await idle();
   };
   const defeat=async(enemyId:string)=>{

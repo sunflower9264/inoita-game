@@ -46,6 +46,7 @@ export class StoryDirector {
   private readonly world?: StoryWorldPort;
   readonly runtime: StoryRuntime;
   private manualBusy = false;
+  private manualPlayed = false;
   private deferManualTriggers = false;
   private manual = new AbortController();
   private skipping = false;
@@ -308,9 +309,15 @@ export class StoryDirector {
     try {
       const played = await result; await this.cleanup;
       if (played) {
-        await this.world?.settle?.();
-        // 收拢也是正式位置的一部分；事件检查点要记录收拢后的站位，死亡回滚才不会把人送回障碍后。
-        this.world?.checkpoint?.();
+        if (this.manualBusy) {
+          // 手动交互（interact 等）要到 run() 的 finally 才会释放舞台和 busy 锁；
+          // 留到解锁收起舞台后再执行友军收拢与检查点抓取，避免被 stageOccluded/busy 提前挡回。
+          this.manualPlayed = true;
+        } else {
+          await this.world?.settle?.();
+          // 收拢也是正式位置的一部分；事件检查点要记录收拢后的站位，死亡回滚才不会把人送回障碍后。
+          this.world?.checkpoint?.();
+        }
       }
       return played;
     }
@@ -650,16 +657,24 @@ export class StoryDirector {
   }
   async run(work: () => Promise<unknown>): Promise<boolean> {
     if (this.busy || this.disposed || this.deferManualTriggers) return false;
-    this.manual = new AbortController(); this.manualBusy = true; this.deferManualTriggers = true;
+    const manual = new AbortController();
+    this.manual = manual; this.manualBusy = true; this.manualPlayed = false; this.deferManualTriggers = true;
     this.resetPlayback(); this.setLocked(true);
     try {
-      try { await work(); this.manual.signal.throwIfAborted(); }
+      try { await work(); manual.signal.throwIfAborted(); }
       finally { this.manualBusy = false; this.release(); await this.cleanup; }
     } catch (error) {
-      if (this.manual.signal.aborted || error instanceof DOMException && error.name === 'AbortError') {
+      this.manualPlayed = false;
+      if (manual.signal.aborted || error instanceof DOMException && error.name === 'AbortError') {
         this.flushDeferredTriggers(); return false;
       }
       throw error;
+    }
+    const played = this.manualPlayed;
+    this.manualPlayed = false;
+    if (played && !manual.signal.aborted && !this.disposed) {
+      await this.world?.settle?.();
+      if (!manual.signal.aborted && !this.disposed) this.world?.checkpoint?.();
     }
     this.flushDeferredTriggers();
     return true;
@@ -686,10 +701,15 @@ export class StoryDirector {
   }
   interact(entity: EntityPlacement, actor: ActorDefinition): Promise<boolean> {
     return this.run(async () => {
+      const map = this.session.storyWorld.currentLocation?.map;
       // 上报「交互发生在哪个对象上」时用对象自己的角色键，事件侧就能按角色匹配：原版的
       // `current_object` 条件（EVTSYSTEM_nObjectType/nObjectID）正是这个意思。条件那一侧还没接
       // （复刻里这些交互对象尚未落地，见 findings 117），这里先把对象身份如实带上。
-      if (await this.notify('interaction', entity.actor, this.session.storyWorld.currentLocation?.map, entity.id)) return;
+      if (await this.notify('interaction', entity.actor, map, entity.id)) return;
+      // 原版按键交互先走 `EVTSYSTEM_DoCheckAllEvent(2)`（`near_npc_field`），命中后直接结束本轮交互，
+      // 不再落入普通任务槽对话或闲聊。
+      const near = this.session.nearEvent(entity, map);
+      if (near && this.allowsAutomaticEvent(near) && await this.approach(near, entity, map)) return;
       if (entity.objective) {
         if (!this.session.canInteract(entity.objective, entity.id)) await this.dialogue({ actor: entity.actor, speaker: actor.name, text: '现在没有需要在这里完成的任务。' });
         else if (entity.afterInteractScript) await this.script(entity.afterInteractScript);

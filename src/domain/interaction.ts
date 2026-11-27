@@ -45,7 +45,9 @@ export function resolveInteraction(target: InteractionTarget): InteractionAction
   return { kind: 'story' };
 }
 
-export type InteractionSessionReader = Pick<Session, 'npcQuestSlot' | 'canInteract' | 'status' | 'markerActor'>;
+export type InteractionSessionReader = Pick<Session, 'npcQuestSlot' | 'canInteract' | 'status' | 'markerActor'> & {
+  hasNearEvent?(entity: Pick<EntityPlacement, 'id' | 'actor' | 'characterId'>, mapId?: string): boolean;
+};
 
 export interface InteractionSceneCandidate {
   entity: Pick<EntityPlacement, 'id' | 'actor' | 'characterId' | 'spring' | 'hint' | 'objective' | 'flip'>;
@@ -82,12 +84,13 @@ export function interactionCandidateRank(
   actor: Pick<ActorDefinition, 'service' | 'chest' | 'description'>,
   session: InteractionSessionReader,
   hasShop = false,
+  mapId?: string,
 ): 0 | 1 | 2 | null {
   const slot = session.npcQuestSlot(entity.actor, entity.characterId);
   if (session.canInteract(entity.actor, entity.id, entity.characterId) || (slot && session.status(slot.id) === 'ready')) {
     return 0;
   }
-  if (session.markerActor(entity.actor, entity.characterId)) return 1;
+  if (session.markerActor(entity.actor, entity.characterId) || session.hasNearEvent?.(entity, mapId)) return 1;
   if (actor.service || actor.chest || entity.spring || actor.description || entity.hint || entity.objective || hasShop) {
     return 2;
   }
@@ -105,6 +108,7 @@ export function pickNearestInteractionTarget<C extends InteractionSceneCandidate
   options?: {
     hasShop?: (actorId: string) => boolean;
     isUnavailable?: (candidate: C) => boolean;
+    mapId?: string;
   },
 ): C | null {
   let nearest: C | null = null;
@@ -115,7 +119,7 @@ export function pickNearestInteractionTarget<C extends InteractionSceneCandidate
     if (options?.isUnavailable?.(candidate)) continue;
     const hasShop = options?.hasShop?.(candidate.entity.actor) ?? false;
     if (!withinInteractionRange(from, candidate.container, candidate.actor, !!candidate.entity.flip, hasShop)) continue;
-    const rank = interactionCandidateRank(candidate.entity, candidate.actor, session, hasShop);
+    const rank = interactionCandidateRank(candidate.entity, candidate.actor, session, hasShop, options?.mapId);
     if (rank === null) continue;
     const d = Math.abs(candidate.container.x - from.x) + Math.abs(candidate.container.y - from.y);
     if (d < bestDistance || (d === bestDistance && rank < bestRank)) {

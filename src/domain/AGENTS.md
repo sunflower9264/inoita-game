@@ -76,7 +76,8 @@
 - 装备按怪物实际等级或容器等级筛选最近 15 级，全队击杀只产一份普通装备。黄装与紫装保底由全队共享，合格精英计 1 点，Boss 计 2 点，有对应等级的候选时累计。掉落封印盒保存来源等级并按该等级选取内容；旧盒子沿用原表。详见 `docs/drops.md`。
 - 召唤物的分组、同主人顶替、寿命和退场规则在 `summon-lifecycle.ts`；场景保留 visual、物理体和名册实例，`WorldCombatState` 的序列化仍由 `combat-snapshot.ts` 负责。召唤物移除时清理会话里的血量/法力条目，检查点恢复重建同一批召唤物的路径保留这些条目。
 - **主人离场时召唤物一起退场。** `WorldEnemyRoster.refresh` 移除主人时同步移除它的召唤子树；`prepareCombatRestore` 对找不到主人的召唤直接按引用校验拒绝。
-- 世界交互目标距离（宝箱/古剑曼哈顿 24px、商店/旅店隔柜台 32px、其余贴身 8px）、候选档位（0 推进目标或可交付、1 任务标记、2 普通服务/商店/描述）与最近目标挑选统一写在 `interaction.ts`（`withinInteractionRange`、`interactionCandidateRank`、`pickNearestInteractionTarget`）；选中目标后按宝箱 → 泉水 → 任务槽 → 服务 NPC → 商店 → 普通剧情的顺序由 `resolveInteraction` 判定动作。场景只提供空间候选与已消费状态，朝向只用于交互前的转身表现，不参与能否交互的判定。
+- 世界交互目标距离（宝箱/古剑曼哈顿 24px、商店/旅店隔柜台 32px、其余贴身 8px）、候选档位（0 推进目标或可交付、1 任务标记或就绪近身剧情事件 `Session.hasNearEvent`、2 普通服务/商店/描述）与最近目标挑选统一写在 `interaction.ts`（`withinInteractionRange`、`interactionCandidateRank`、`pickNearestInteractionTarget`）；选中目标后按宝箱 → 泉水 → 任务槽/近身事件 → 服务 NPC → 商店 → 普通剧情的顺序由 `resolveInteraction` 判定动作。`StoryDirector.interact` 按原版 `GAMESTATE_PressKeyPlay` 顺序先检查 `interaction` 与 `Session.nearEvent`，命中即返回，不再落入普通任务槽对话或闲聊。场景只提供空间候选与已消费状态，朝向只用于交互前的转身表现，不参与能否交互的判定。
+- `SessionQuestCoordinator.currentQuest` 只返回正在追踪或第一条日志可见的进行中/待交付任务（`active` / `ready`），不把尚未接取的 `available` 任务当成当前任务。
 - **日志外任务只影响任务日志和面板，不影响场景标记。** `Session.markerActor` 和 `npcQuestSlot` 不按 `questBook.journalVisible()` 过滤；可接、进行中、待交付都要在头顶和小地图提示对应发布者或交付对象。进行中任务的 `talk` / `interact` 目标也算标记对象，目标没记满前显示 active 图标，记满后消失。日志外任务只是不写进任务日志的普通任务，不能因为日志里没有条目就让玩家找不到交付点或交互目标。
 - **领域层不直接发任务交互提示，也不再有 `QuestGoal.feedbackText` 或 `StoryUI.toast`。** `Session.interact` 只推进未记满的 `talk` / `interact` 目标并返回本次是否实际推进，目标记满后不再进入交互候选、不会重复计数；可见计数型任务的进度与完成屏幕提示统一由世界场景监听 `QuestBook.version` 后经 `questNotices` 走 `GameUI.showInstant` 发出（完整提示通道分工见 `src/ui/AGENTS.md`）。
 - 佣兵由 `party-follow.ts` 跟随操控者：空旷处直接去自己的职责站位（近战侧前、远程后方、治疗更后），站位必须从队长可达；站位点放不下时按槽位在队长身后错开（24/44px），仍不行才退回队长脚边；停下 600ms 后同样回站位。站位方向只在队长移动时更新，原地转身不换侧；队长朝伙伴走来时伙伴原地等待（归队状态除外），不迎上去也不重新找站位。掉队时直接朝队长本人走，直线不通再寻路。跟随的可行走判定与移动同口径（脚点地形 + 角色占位），不额外要求整盒。归队用距离与时间判断：超过 192px 持续 900ms，或超过 320px 持续 600ms，当前攻击收尾后跟队；回到 112px 内 600ms 后恢复协战。无进展 4 秒且至少两次恢复失败才请求拉回；搜索仍在进行、暂停或不能移动时不累计，搜索失败前的耗时计入累计无进展；搜索被队长走近或到位打断时一起清计时起点，搜索期间已经走动的部分不计入失败耗时。每次恢复的无进展时间与累计时间分开记录，旧路线在重试前清理，新路线有完整的行走机会；实际移动后一起清零。跟随决策间隔 120ms，单次寻路最多领取 48 节点，直路不申请寻路。`party-tactics.ts` 按已启用技能的实际受益者、敌人数和剩余法力选择行动；增益与召唤需要当地交战收益；进攻增益要等受益者进入普攻射程。持续治疗按治疗范围内的交战敌人和实际受伤的受益者判断。召唤命令从召唤物脚点按受命动作检查能否命中交战敌人。正式战斗执行器校验起手并扣蓝。
@@ -109,7 +110,7 @@
 - 选择事件按选择标识的写入次数判断：同一个选项再次被选中也算一次新的发生，不能只比较选择值；一次选择只执行一条选择事件，新的选择作为下一次发生排队。
 - 剧情、任务、事件 ID 在正式内容里只新增不改名。正式版不兼容任何旧存档：存档引用已删除的任务或事件时按无效处理，不写迁移或兼容代码。
 - 云存档的账号/密码/槽位校验和锁定时长只在 `cloud-save.ts` 写一份，服务端复用同一份规则；云端保存不改 `SAVE_FORMAT`。
-- 缓存失效用只读修订号：`PartyRoster.groupModifierVersion`、`CombatConditions.revision`、`Session.choiceWriteRevision`/`receiptRevision`/`enemyRevision`、`StoryWorld.encounterRevision`、`LegendaryWeapons.revision`。新增 mutation 入口时同步推进对应修订号；这些字段不写入存档。
+- 缓存失效用只读修订号：`PartyRoster.groupModifierVersion`、`CombatConditions.revision`、`Session.choiceWriteRevision`/`receiptRevision`/`enemyRevision`/`runtimeRevision`、`StoryWorld.encounterRevision`、`LegendaryWeapons.revision`。新增 mutation 入口时同步推进对应修订号；这些字段不写入存档。
 - **任务簿有两个版本号。** `QuestBook.version` 只在任务状态、目标进度或运行池变化时推进，任务日志、标记、交互候选、任务提示、刷怪资格等读取方按它复用；击杀、对话只记下新的事件序号时它不动。`QuestBook.stateVersion` 任何写入都推进（含事件序号），存档/检查点的任务簿快照复用必须用它，否则会漏存新序号。
 - 伤害数字的帧序列只由帧数和保持帧数决定，`digitSequence` 直接复用缓存数组；每次命中的反馈计划只算一遍，选择素材、闪光和数字共用同一份结果。
 - 自动存档的持久快照按子系统版本复用深拷贝（`captureStateWith(..., true)`）；读档/回滚时清空缓存。`captureState()` 的检查点路径保持每次新克隆。

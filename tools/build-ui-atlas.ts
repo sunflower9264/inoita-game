@@ -102,6 +102,7 @@ function planUiAtlas(): UiAtlasPlan {
     story.assets['minimap-ready'],
     story.assets['minimap-active'],
     story.assets['minimap-available'],
+    story.assets['minimap-talk'],
     // index.html 直接预载这两张图，必须保留原路径，否则启动时会出现两次 404。
     'assets/ui/title-menu/background.png',
     'assets/ui/title-menu/logo.png'

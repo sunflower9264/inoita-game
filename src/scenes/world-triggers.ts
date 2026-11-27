@@ -1,7 +1,6 @@
 import type { StoryContext } from '../application/ports.ts';
 import type { StoryWorldViewSnapshot } from '../application/world-snapshot.ts';
 import type { Campaign } from '../domain/campaign.ts';
-import { nearInteractive } from '../domain/chests.ts';
 import type { CollisionBox, MapExit, WorldMap } from '../domain/content.ts';
 import { ExitTrigger, overlapsFootRect } from '../domain/navigation.ts';
 import type { StoryEvent } from '../domain/story-graph.ts';
@@ -25,7 +24,7 @@ export interface WorldTriggerStepInput {
   readonly map: Pick<WorldMap, 'id'>;
   readonly campaign: Campaign;
   readonly session: StoryContext['session'];
-  readonly director: Pick<StoryContext['director'], 'allowsAutomaticEvent' | 'runtime' | 'enterRegion' | 'approach'>;
+  readonly director: Pick<StoryContext['director'], 'allowsAutomaticEvent' | 'runtime' | 'enterRegion'>;
   readonly characters: readonly TriggerCharacter[];
   readonly pos: { readonly x: number; readonly y: number };
   readonly moving: boolean;
@@ -134,7 +133,7 @@ export class WorldTriggerCoordinator {
     return false;
   }
 
-  stepAfterMovement(input: WorldTriggerStepInput): 'region' | 'near' | 'exit' | 'none' {
+  stepAfterMovement(input: WorldTriggerStepInput): 'region' | 'exit' | 'none' {
     const { map, campaign, session, director, characters, pos, moving, playStory, onExit } = input;
     const triggerIndex = this.triggerIndex ?? buildStoryTriggerIndex(campaign, map.id, characters);
     const availability = (event: StoryEvent) => {
@@ -154,27 +153,6 @@ export class WorldTriggerCoordinator {
       },
       status => status === 'idle',
     );
-    const occupiedCharacters = this.occupiedCharacters;
-    const occupiedNearEvents = this.occupiedNearEvents;
-    const touching = ({ character }: (typeof triggerIndex.nearCharacters)[number]) =>
-      character.container.visible &&
-      nearInteractive(pos, character.container, character.actor.collision, !!character.entity.flip);
-    for (const id of occupiedNearEvents) {
-      if (!triggerIndex.nearCharacters.some(group => group.events.some(event => event.id === id) && touching(group))) {
-        occupiedNearEvents.delete(id);
-      }
-    }
-    const near = claimStoryTrigger(triggerIndex.nearCharacters, occupiedCharacters, touching, ({ events }) => {
-      if (region) return null;
-      let replay: StoryEvent | null = null;
-      for (const event of events) {
-        if (occupiedNearEvents.has(event.id)) continue;
-        const status = availability(event);
-        if (status === 'idle') return event;
-        if (status === 'completed' && event.repeat) replay ??= event;
-      }
-      return replay;
-    });
     if (region) {
       playStory(async () => {
         const played = await director.enterRegion(region.event.id, region.event.map!);
@@ -182,18 +160,6 @@ export class WorldTriggerCoordinator {
         return played;
       });
       return 'region';
-    }
-    if (near) {
-      occupiedNearEvents.add(near.selection.id);
-      playStory(async () => {
-        const played = await director.approach(near.selection, near.event.character.entity, map.id);
-        if (!played) {
-          occupiedCharacters.delete(near.event.id);
-          occupiedNearEvents.delete(near.selection.id);
-        }
-        return played;
-      });
-      return 'near';
     }
     const exit = this.exitTrigger?.update(pos, moving, candidate => this.exitAvailable(map, candidate, session, campaign));
     if (exit && this.exitAvailable(map, exit, session, campaign)) {

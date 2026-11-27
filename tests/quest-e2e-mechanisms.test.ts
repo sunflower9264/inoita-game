@@ -680,28 +680,33 @@ test('正式地图触发竞争与进图事件：同点区域事件压制近身�
 
   const h = createQuestE2EHarness(triggerContent);
   try {
-    // 1. 同一站立点同时命中区域事件与近身事件时，第一拍严格选区域事件并压制近身事件，第二拍才轮到近身事件
+    // 1. 同一站立点同时覆盖区域事件与近身事件对象时，移动只触发区域事件；近身事件由主动按键交互触发
     const step1 = await h.stepWorldTriggersAt('camp', { x: 112, y: 80 });
     assert.deepEqual(step1, { kind: 'region', eventId: 'ev-camp-overlap-region', played: true });
     assert.equal(h.session.storyWorld.hasFlag('region-fired'), true);
-    assert.equal(h.session.storyWorld.hasFlag('near-fired'), false, '同点区域事件未结算完前必须压制近身事件');
+    assert.equal(h.session.storyWorld.hasFlag('near-fired'), false, '移动触发区域事件时不会自动触发近身事件');
 
     const step2 = await h.stepWorldTriggersAt('camp', { x: 112, y: 80 });
-    assert.deepEqual(step2, { kind: 'near', eventId: 'ev-camp-overlap-near', played: true });
-    assert.equal(h.session.storyWorld.hasFlag('near-fired'), true);
+    assert.equal(step2, null, '近身事件不靠走路隐式触发');
+    const forgerEntity = h.visibleEntities('camp').find(entity => entity.characterId === 'npc-forger')!;
+    assert.equal(await h.director.interact(forgerEntity, triggerContent.world.actors[forgerEntity.actor]!), true);
+    await h.settle();
+    assert.equal(h.session.storyWorld.hasFlag('near-fired'), true, '主动按键交互触发近身事件');
 
-    // 2. 在 camp 临时摆一个同编号 horn 机关，限定在 wilds 的近身事件绝不能在 camp 被误触发
+    // 2. 在 camp 临时摆一个同编号 horn 机关，限定在 wilds 的近身事件绝不能在 camp 被选中或交互触发
+    const campHorn = { id: 'camp-horn', map: 'camp', actor: 'horn', characterId: 'npc-horn', x: 24, y: 120, visible: true };
     h.session.applyStoryCommands([
       {
         type: 'world',
         command: {
           kind: 'place',
-          entity: { id: 'camp-horn', map: 'camp', actor: 'horn', characterId: 'npc-horn', x: 24, y: 120, visible: true },
+          entity: campHorn,
         },
       },
     ]);
-    const campHornStep = await h.stepWorldTriggersAt('camp', { x: 24, y: 136 });
-    assert.equal(campHornStep, null, '限定了 wilds 地图的近身事件严禁在 camp 同编号机关上串触发');
+    assert.equal(h.session.hasNearEvent(campHorn, 'camp'), false, '限定了 wilds 地图的近身事件严禁在 camp 同编号机关上就绪');
+    await h.director.interact(campHorn, triggerContent.world.actors.horn!);
+    await h.settle();
     assert.equal(h.session.storyWorld.hasFlag('wilds-horn-fired'), false);
 
     // 3. 普通跨图进入 wilds 时，无需手动点名事件即自动触发 map-entry 进图事件

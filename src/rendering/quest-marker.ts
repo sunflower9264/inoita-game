@@ -2,8 +2,8 @@ import type Phaser from 'phaser';
 import type { StoryInterface } from '../domain/story-interface.ts';
 import type { PendingAsset } from './scene-assets.ts';
 
-/** 头顶图标只用这三张小地图状态图；`locked` 和 `completed` 不挂标记。 */
-const MARKER_STATUSES = ['available', 'active', 'ready'] as const;
+/** 头顶图标使用原版任务状态图与近身事件对话气泡；`locked` 和 `completed` 不挂标记。 */
+const MARKER_STATUSES = ['available', 'active', 'ready', 'talk'] as const;
 
 /** 地图树冠的深度是 10000；任务图标必须画在它上面。 */
 export const QUEST_MARKER_DEPTH = 10001;

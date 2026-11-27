@@ -15,12 +15,12 @@ import { Bag, type BagState } from './bag.ts';
 import type { SkillConfigurationState } from './skill-configuration.ts';
 import type { ItemCatalog } from './items.ts';
 import type { DropCatalog, DropReward, QuestDropRequirement, ReservedDropState } from './drops.ts';
-import type { ActorDefinition, CampaignEnemyPlacement, ChestKind, EnemySpawn, QuestItemSpawn, QuestRewardReceipt, QuestStatus, TravelDestination, VisibilityRules, WorldMap } from './content.ts';
+import type { ActorDefinition, CampaignEnemyPlacement, ChestKind, EntityPlacement, EnemySpawn, QuestItemSpawn, QuestRewardReceipt, QuestStatus, TravelDestination, VisibilityRules, WorldMap } from './content.ts';
 import type { Campaign, CampaignQuest } from './campaign.ts';
 import { QuestBook, sideQuestIds, type QuestBookState, type QuestCommand, type QuestProgress, type QuestFact, type QuestSettlement } from './quest-book.ts';
 import { evaluateStoryCondition, type StoryCondition, type StoryConditionContext, type StoryWorldValue } from './story-condition.ts';
 import { StoryWorldState, type StoryWorldSnapshot } from './story-world.ts';
-import type { StoryCommand } from './story-graph.ts';
+import type { StoryCommand, StoryEvent } from './story-graph.ts';
 import { StoryRuntime, type StoryRuntimeSnapshot } from './story-runtime.ts';
 import { toPlaybackCheckpoint } from './playback-checkpoint.ts';
 import type { StoryPlayerState } from './story-interface.ts';
@@ -60,6 +60,23 @@ import {
   type EnemyDefeatResult,
   type MapBoundary,
 } from './session-settlement.ts';
+
+const nearEventsCache = new WeakMap<Campaign, ReadonlyMap<string, readonly StoryEvent[]>>();
+
+function nearEventsByActor(campaign: Campaign): ReadonlyMap<string, readonly StoryEvent[]> {
+  const cached = nearEventsCache.get(campaign);
+  if (cached) return cached;
+  const groups = new Map<string, StoryEvent[]>();
+  for (const event of campaign.events) {
+    if (event.source !== 'near' || !event.near) continue;
+    const list = groups.get(event.near);
+    if (list) list.push(event);
+    else groups.set(event.near, [event]);
+  }
+  for (const list of groups.values()) list.sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
+  nearEventsCache.set(campaign, groups);
+  return groups;
+}
 
 export { DEFAULT_ENEMY_RESPAWN_MS, OFFSCREEN_ENEMY_RESPAWN_MS };
 export type { EnemyDefeatInput, EnemyDefeatResult, MapBoundary, StoryCommitReceipt };
@@ -155,6 +172,7 @@ export class Session {
   private deferredDefeats?: string[];
   private gameTimeMs = 0;
   private restoreRevision = 0;
+  private runtimeRevisionValue = 0;
   private snapshotCache: Partial<Record<SnapshotSlot, { version: number; value: unknown }>> = {};
   private notificationBatchDepth = 0;
   private pendingNotification = false;
@@ -176,6 +194,7 @@ export class Session {
   get enemyRevision(): number { return this.enemyStore.revision; }
   get enemySpawnRevision(): number { return this.enemyStore.spawnRevision; }
   get restorationVersion(): number { return this.restoreRevision; }
+  get runtimeRevision(): number { return this.runtimeRevisionValue; }
   get visitorReleaseRevision(): number { return this.questCoordinator.visitorReleaseRevision; }
   get money(): number { return this.coins; }
   get player(): Readonly<StoryPlayerState> | undefined { return this.hero?.player ?? this.playerState; }
@@ -198,6 +217,7 @@ export class Session {
     const next = this.prepareRuntime(value);
     validateSessionStoryLinks(this.campaign, this.storyWorld.captureState(), next);
     this.runtimeSnapshot = next;
+    this.runtimeRevisionValue++;
   }
 
   constructor(
@@ -515,6 +535,7 @@ export class Session {
     this.choiceWrites.clear();
     this.choiceWriteRevisionValue++;
     this.runtimeSnapshot = restored.runtime;
+    this.runtimeRevisionValue++;
     this.questCoordinator.restoreReceipts(restored.receipts);
     this.enemyStore.restoreEntries(restored.enemies);
     this.questCoordinator.setTrackedQuestId(restored.trackedQuest);
@@ -858,6 +879,39 @@ export class Session {
   deliverablesFor(actor: string): CampaignQuest[] { this.refresh(); return this.questCoordinator.deliverablesFor(this.questBook, actor); }
   marker(actor: string, characterId?: string): QuestStatus | null { this.refresh(); return this.questCoordinator.marker(this.questBook, actor, characterId); }
   markerActor(actor: string, characterId?: string): boolean { return this.questCoordinator.markerActor(this.questBook, actor, characterId); }
+  /**
+   * 查询角色在当前地图上就绪的近身剧情事件（对齐原版 `EVTSYSTEM_GetTalkEvent`）：
+   * 首次触发优先于可重复回放；已激活运行中的事件不重复命中。
+   */
+  nearEvent(
+    entity: Pick<EntityPlacement, 'id' | 'actor' | 'characterId'>,
+    mapId = this.storyWorld.currentLocation?.map,
+  ): StoryEvent | undefined {
+    const candidates = nearEventsByActor(this.campaign).get(entity.actor);
+    if (!candidates?.length) return undefined;
+    this.refresh();
+    const runs = this.runtimeSnapshot.runs;
+    const completed = this.completedEventSet();
+    let replay: StoryEvent | undefined;
+    for (const event of candidates) {
+      if (event.map !== undefined && event.map !== mapId) continue;
+      if (event.entity !== undefined && event.entity !== entity.id) continue;
+      if (event.nearCharacterId !== undefined && event.nearCharacterId !== entity.characterId) continue;
+      if (runs.some(run => run.eventId === event.id && (run.status === 'running' || run.status === 'waiting'))) continue;
+      const done = completed.has(event.id);
+      if (done && !event.repeat) continue;
+      if (event.condition && !this.evaluateCondition(event.condition)) continue;
+      if (!done) return event;
+      replay ??= event;
+    }
+    return replay;
+  }
+  hasNearEvent(
+    entity: Pick<EntityPlacement, 'id' | 'actor' | 'characterId'>,
+    mapId = this.storyWorld.currentLocation?.map,
+  ): boolean {
+    return this.nearEvent(entity, mapId) !== undefined;
+  }
   currentQuest(): CampaignQuest | undefined { return this.questCoordinator.currentQuest(this.questBook); }
   trackQuest(id: string): boolean {
     if (!this.questCoordinator.trackQuest(this.questBook, id)) return false;
@@ -915,14 +969,19 @@ export class Session {
     }
     if (touched.has('lootPity')) this.lootPity.restoreState(baseline.lootPity!);
     if (touched.has('playerState')) this.playerState = baseline.playerState;
-    if (touched.has('runtimeSnapshot')) this.runtimeSnapshot = baseline.runtime!;
+    if (touched.has('runtimeSnapshot')) {
+      this.runtimeSnapshot = baseline.runtime!;
+      this.runtimeRevisionValue++;
+    }
     if (touched.has('shops')) this.shops.restoreState(baseline.shops!);
     if (touched.has('chests')) this.chests.restoreState(baseline.chests!);
   }
 
   adoptRuntime(snapshot: StoryRuntimeSnapshot): void {
+    const prev = this.runtimeSnapshot;
     const runtime = this.runtimeValidator ??= this.createRuntimeValidator();
     this.runtimeSnapshot = runtime.adoptTrusted(snapshot);
+    if (this.runtimeSnapshot !== prev) this.runtimeRevisionValue++;
   }
 
   private applyQuestCommand(command: QuestCommand): void {
@@ -945,8 +1004,23 @@ export class Session {
     options: { deferFinalize?: boolean } = {},
   ): StoryCommitReceipt {
     if (!commands.length) {
-      if (checkpoint) this.adoptRuntime(checkpoint);
-      return { finalize() {}, rollback() {} };
+      if (!checkpoint) return { finalize() {}, rollback() {} };
+      const prev = this.runtimeSnapshot;
+      let active = true;
+      this.adoptRuntime(checkpoint);
+      if (this.runtimeSnapshot.runs !== prev.runs || this.runtimeSnapshot.completedEvents !== prev.completedEvents) {
+        this.emit();
+      }
+      return {
+        finalize: () => { active = false; },
+        rollback: () => {
+          if (!active) return;
+          active = false;
+          this.runtimeSnapshot = prev;
+          this.runtimeRevisionValue++;
+          this.emit();
+        },
+      };
     }
     this.refresh();
     const touched = new Set<StorySubsystem>();

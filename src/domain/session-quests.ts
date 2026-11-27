@@ -393,8 +393,7 @@ export class SessionQuestCoordinator {
     if (this.trackedQuest && questBook.journalVisible(this.trackedQuest) && ['active', 'ready'].includes(this.status(questBook, this.trackedQuest))) {
       return this.definition(this.trackedQuest);
     }
-    return this.campaign.quests.find(quest => questBook.journalVisible(quest.id) && ['active', 'ready'].includes(this.status(questBook, quest.id)))
-      ?? this.campaign.quests.find(quest => questBook.journalVisible(quest.id) && this.status(questBook, quest.id) === 'available');
+    return this.campaign.quests.find(quest => questBook.journalVisible(quest.id) && ['active', 'ready'].includes(this.status(questBook, quest.id)));
   }
 
   trackQuest(questBook: QuestBook, id: string): boolean {

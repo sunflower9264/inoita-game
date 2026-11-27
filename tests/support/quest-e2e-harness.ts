@@ -1151,24 +1151,6 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
       },
       status => status === 'idle',
     );
-    const touching = ({ character }: (typeof triggerIndex.nearCharacters)[number]) =>
-      character.container.visible && nearInteractive(pos, character.container, character.actor.collision, !!character.entity.flip);
-    for (const id of [...occupiedNearEvents]) {
-      if (!triggerIndex.nearCharacters.some(group => group.events.some(ev => ev.id === id) && touching(group))) {
-        occupiedNearEvents.delete(id);
-      }
-    }
-    const near = claimStoryTrigger(triggerIndex.nearCharacters, occupiedCharacters, touching, ({ events }) => {
-      if (region) return null;
-      let replay: StoryEvent | null = null;
-      for (const ev of events) {
-        if (occupiedNearEvents.has(ev.id)) continue;
-        const status = availability(ev);
-        if (status === 'idle') return ev;
-        if (status === 'completed' && ev.repeat) replay ??= ev;
-      }
-      return replay;
-    });
     syncTriggerContacts();
 
     if (region) {
@@ -1179,18 +1161,6 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
       }
       await settle();
       return { kind: 'region', eventId: region.event.id, played };
-    }
-    if (near) {
-      occupiedNearEvents.add(near.selection.id);
-      syncTriggerContacts();
-      const played = await director.approach(near.selection, near.event.character.entity, mapId);
-      if (!played) {
-        occupiedCharacters.delete(near.event.id);
-        occupiedNearEvents.delete(near.selection.id);
-        syncTriggerContacts();
-      }
-      await settle();
-      return { kind: 'near', eventId: near.selection.id, played };
     }
     return null;
   };
@@ -1383,29 +1353,28 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
                 ),
             ) ??
             nearCells[0]!;
-          if (occupiedCharacters.has(curTarget.id) || occupiedNearEvents.has(event.id)) {
-            const awayCell = cells.find(pt => !nearInteractive(pt, curTarget, curActor.collision, !!curTarget.flip));
-            if (awayCell) releaseTriggerContactsAt(located.mapId, awayCell);
-          }
           const stepped = await stepWorldTriggersAt(located.mapId, cleanPos);
           await settleActiveEncounters();
-          if (stepped?.kind === 'near' && stepped.eventId === event.id) {
-            fired = stepped.played;
+          if (stepped) {
+            continue;
+          }
+          const eligibleNow =
+            director.allowsAutomaticEvent(event) &&
+            (!event.condition || session.evaluateCondition(event.condition)) &&
+            (event.repeat || director.runtime.eventStatus(event.id) === 'idle');
+          if (!eligibleNow) {
+            fired = false;
             break;
           }
-          if (!stepped) {
-            const eligibleNow =
-              director.allowsAutomaticEvent(event) &&
-              (!event.condition || session.evaluateCondition(event.condition)) &&
-              (event.repeat || director.runtime.eventStatus(event.id) === 'idle');
-            if (!eligibleNow) {
-              fired = false;
-              break;
-            }
-            assert.fail(
-              `正式地图触发索引在 ${located.mapId}@(${cleanPos.x},${cleanPos.y}) 未选中近身事件 ${event.id}（请检查 event.map=${event.map ?? '未限定'} 与目标实体匹配）`,
-            );
-          }
+          assert.equal(
+            session.nearEvent(curTarget, located.mapId)?.id,
+            event.id,
+            `近身事件 ${event.id} 在 ${located.mapId}@(${cleanPos.x},${cleanPos.y}) 应由 session.nearEvent 命中目标 ${curTarget.actor}(${curTarget.id})`,
+          );
+          fired = await director.interact(curTarget, curActor);
+          await settle();
+          await settleActiveEncounters();
+          if (fired) break;
         }
         break;
       }

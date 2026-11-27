@@ -72,7 +72,7 @@ test('GM complete current quest repairs a session already stuck by the old compl
     await h.idle();
     assert.equal(h.session.status('quest-262'), 'completed');
     assert.equal(h.session.status('quest-263'), 'active');
-    assert.equal(h.session.currentQuest()?.id, 'grafton-mission');
+    assert.equal(h.session.currentQuest(), undefined);
     const unrelatedStatus = h.session.status('grafton-mission');
 
     const result = gmFor(h).completeCurrentQuest();

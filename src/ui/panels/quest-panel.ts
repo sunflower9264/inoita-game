@@ -4,7 +4,7 @@ import { questJournal, questJournalText } from '../../domain/quest-journal.ts';
 import type { Session } from '../../domain/session.ts';
 import { QUEST_TEXT_COLORS, measureQuestText } from './quest-text.ts';
 import { TEXT_COLORS } from '../text-style.ts';
-import { UiSurface, type ScrollArea } from '../widgets.ts';
+import { GOLD, UiSurface, type ScrollArea } from '../widgets.ts';
 import type { MenuTextSpec, MenuTextWriter } from '../dom/menu-text.ts';
 import type { UiImage, UiNode } from '../dom/node.ts';
 
@@ -103,6 +103,15 @@ export class QuestPanel {
     view.border(assets, 572, 0, 374, 431);
     const list = this.list = this.scrollArea(view, 'quest-list', 35, 27, 514, 376);
     list.onScroll = () => { this.hideDetail(); this.refreshText(); };
+    if (!groups.length) {
+      this.textSpecs.push({
+        key: 'quest-empty',
+        text: '暂无进行中的任务',
+        x: 292,
+        y: 216,
+        style: { size: 22, color: GOLD, anchorX: 0.5, anchorY: 0.5 },
+      });
+    }
     groups.forEach((group, index) => {
       const main = group.definition.kind === 'main', selected = group.definition.id === this.selectedGroup;
       const row = view.button('', 0, index * 64, 514, 56, () => this.select(group.definition.id), {

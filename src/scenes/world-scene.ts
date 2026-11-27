@@ -139,7 +139,8 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
   /** 上一次交互扫描的输入；逐字段比较，静止帧不拼名单。 */
   private lastInteractionScan?: {
     x: number; y: number; revision: number; quest: number; story: number; chests: number;
-    legendary: number; restore: number; map: string; owner: string;
+    legendary: number; restore: number; runtime: number;
+    bag: number; money: number; level: number; map: string; owner: string;
   };
   /** 交互候选的空间索引；只收当前地图角色，查询后再逐项判定。 */
   private interactionIndex?: InteractionTargetIndex<Character>;
@@ -867,7 +868,13 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
   private minimapInteractable(character: Character): boolean {
     const actor = character.actor;
     const entity = character.entity;
-    return !!(actor.chest || actor.service || entity.spring || this.app.shops?.shops[entity.actor]);
+    return !!(
+      actor.chest ||
+      actor.service ||
+      entity.spring ||
+      this.app.shops?.shops[entity.actor] ||
+      this.app.session.hasNearEvent?.(entity, this.map?.id)
+    );
   }
   private showsInteractionMarker(
     character: Character,
@@ -938,7 +945,10 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
       session.storyWorld?.revision ?? 0,
       session.chests?.revision ?? 0,
       session.legendaryWeapons?.revision ?? 0,
-      session.runtimeState?.sequence ?? 0,
+      session.runtimeRevision ?? (session.runtimeState?.sequence ?? 0) + (session.runtimeState?.completedEvents?.length ?? 0),
+      session.bag?.revision ?? 0,
+      session.money ?? 0,
+      session.player?.level ?? 0,
       session.restorationVersion ?? 0,
     ].join('|');
   }
@@ -962,11 +972,24 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
       this.movement?.setEnabled(character, visible && !opened && !consumed);
       const status = session.marker(character.entity.actor, character.entity.characterId);
       const marked = session.markerActor(character.entity.actor, character.entity.characterId);
-      if (character.entity.id !== 'player' && !character.marker && status && marked) {
+      const nearTalk =
+        character.entity.id !== 'player' &&
+        visible &&
+        !opened &&
+        !consumed &&
+        !hasQuestIcon(status, marked) &&
+        !!session.hasNearEvent?.(character.entity, this.map?.id);
+      const markerFile =
+        marked && status
+          ? this.app.storyInterface.assets[`minimap-${status}`]
+          : nearTalk
+            ? this.app.storyInterface.assets['minimap-talk']
+            : undefined;
+      if (character.entity.id !== 'player' && !character.marker && markerFile) {
         this.createQuestMarker(character);
       }
       if (character.marker) {
-        character.marker.setFile(marked && status ? this.app.storyInterface.assets[`minimap-${status}`] : undefined);
+        character.marker.setFile(markerFile);
         this.syncQuestMarker(character);
       }
       if (character.entity.id !== 'player' && visible && hasQuestIcon(status, marked)) {
@@ -1063,7 +1086,12 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
     const spring = !!target.entity.spring;
     const service = target.actor.service;
     const shop = !chest && !spring && !service ? !!this.app.shops.shops[target.entity.actor] : false;
-    const questSlot = service ? this.takesQuestSlot(target.entity) : shop && !target.entity.objective ? this.takesQuestSlot(target.entity) : false;
+    const nearEvent = !!this.app.session.hasNearEvent?.(target.entity, this.map?.id);
+    const questSlot = service
+      ? (this.takesQuestSlot(target.entity) || nearEvent)
+      : shop && !target.entity.objective
+        ? (this.takesQuestSlot(target.entity) || nearEvent)
+        : false;
     const action = resolveInteraction({
       chest,
       spring,
@@ -1850,6 +1878,12 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
     const chests = session.chests?.revision ?? 0;
     const legendary = session.legendaryWeapons?.revision ?? 0;
     const restore = session.restorationVersion ?? 0;
+    const runtime =
+      session.runtimeRevision ??
+      (session.runtimeState?.sequence ?? 0) + (session.runtimeState?.completedEvents?.length ?? 0);
+    const bag = session.bag?.revision ?? 0;
+    const money = session.money ?? 0;
+    const level = session.player?.level ?? 0;
     const map = this.map?.id ?? '';
     const owner = this.combat?.controlledId ?? 'player';
     const scan =
@@ -1863,6 +1897,10 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
         chests: -1,
         legendary: -1,
         restore: -1,
+        runtime: -1,
+        bag: -1,
+        money: -1,
+        level: -1,
         map: '',
         owner: '',
       });
@@ -1875,6 +1913,10 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
       chests === scan.chests &&
       legendary === scan.legendary &&
       restore === scan.restore &&
+      runtime === scan.runtime &&
+      bag === scan.bag &&
+      money === scan.money &&
+      level === scan.level &&
       map === scan.map &&
       owner === scan.owner
     ) {
@@ -1888,6 +1930,10 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
     scan.chests = chests;
     scan.legendary = legendary;
     scan.restore = restore;
+    scan.runtime = runtime;
+    scan.bag = bag;
+    scan.money = money;
+    scan.level = level;
     scan.map = map;
     scan.owner = owner;
     let index = this.interactionIndex;
@@ -1898,6 +1944,7 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
       this.interactionIndexCharactersRevision = this.charactersRevision;
     }
     this.near = pickNearestInteractionTarget(controlled.container, index.near(x, y), session, {
+      mapId: map || undefined,
       hasShop: actorId => !!this.app.shops?.shops[actorId],
       isUnavailable: character =>
         this.chestOpened(character) ||
