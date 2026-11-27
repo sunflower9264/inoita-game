@@ -358,8 +358,10 @@ test('触发区占用记录与已完成任务经正式格式 1 存读档恢复�
     h.setTriggerContacts({ regions: [...occupiedRegions], characters: ['ent-seal'], nearEvents: ['ev-seal-prompt'] });
 
     await h.fireStoryEvent(miniContent.campaign.events.find(e => e.id === 'ev-accept-main')!);
+    assert.deepEqual(h.triggerContacts.regions, ['ev-accept-main'], '真实走入区域触发框后自动登记区域占用');
     await h.fulfillQuestGoals(miniContent.campaign.quests.find(q => q.id === 'q-main-hunt')!);
     await h.interactByIdentity('quartermaster', 'npc-qm');
+    h.setTriggerContacts({ regions: ['ev-accept-main'], characters: ['ent-seal'], nearEvents: ['ev-seal-prompt'] });
     const settledMoney = h.session.money;
 
     const { restored } = h.roundtripSaveLoad();
@@ -582,5 +584,128 @@ test('底座五项硬核对反作弊自证：隐身人物、动态路障封框�
     );
   } finally {
     hGeo.dispose();
+  }
+});
+
+test('正式地图触发竞争与进图事件：同点区域事件压制近身事件、跨图共用机关不串触发、进图事件自动派发', async () => {
+  const triggerContent = {
+    ...miniContent,
+    campaign: {
+      ...miniContent.campaign,
+      scripts: {
+        ...miniContent.campaign.scripts,
+        's-region-first': {
+          entry: 'n',
+          nodes: [
+            {
+              id: 'n',
+              presentation: [],
+              commands: [{ type: 'flag' as const, flag: 'region-fired', value: true }],
+              exit: { type: 'end' as const },
+            },
+          ],
+        },
+        's-near-second': {
+          entry: 'n',
+          nodes: [
+            {
+              id: 'n',
+              presentation: [],
+              commands: [{ type: 'flag' as const, flag: 'near-fired', value: true }],
+              exit: { type: 'end' as const },
+            },
+          ],
+        },
+        's-wilds-horn-near': {
+          entry: 'n',
+          nodes: [
+            {
+              id: 'n',
+              presentation: [],
+              commands: [{ type: 'flag' as const, flag: 'wilds-horn-fired', value: true }],
+              exit: { type: 'end' as const },
+            },
+          ],
+        },
+        's-wilds-entry': {
+          entry: 'n',
+          nodes: [
+            {
+              id: 'n',
+              presentation: [],
+              commands: [{ type: 'flag' as const, flag: 'wilds-entry-fired', value: true }],
+              exit: { type: 'end' as const },
+            },
+          ],
+        },
+      },
+      events: [
+        ...miniContent.campaign.events,
+        {
+          id: 'ev-camp-overlap-region',
+          source: 'region' as const,
+          map: 'camp',
+          region: { x: 104, y: 72, width: 16, height: 16 },
+          script: 's-region-first',
+        },
+        {
+          id: 'ev-camp-overlap-near',
+          source: 'near' as const,
+          map: 'camp',
+          near: 'forger',
+          nearCharacterId: 'npc-forger',
+          script: 's-near-second',
+        },
+        {
+          id: 'ev-wilds-horn-near',
+          source: 'near' as const,
+          map: 'wilds',
+          near: 'horn',
+          nearCharacterId: 'npc-horn',
+          script: 's-wilds-horn-near',
+        },
+        {
+          id: 'ev-wilds-entry',
+          source: 'map-entry' as const,
+          key: 'wilds',
+          map: 'wilds',
+          script: 's-wilds-entry',
+        },
+      ],
+    },
+  };
+
+  const h = createQuestE2EHarness(triggerContent);
+  try {
+    // 1. 同一站立点同时命中区域事件与近身事件时，第一拍严格选区域事件并压制近身事件，第二拍才轮到近身事件
+    const step1 = await h.stepWorldTriggersAt('camp', { x: 112, y: 80 });
+    assert.deepEqual(step1, { kind: 'region', eventId: 'ev-camp-overlap-region', played: true });
+    assert.equal(h.session.storyWorld.hasFlag('region-fired'), true);
+    assert.equal(h.session.storyWorld.hasFlag('near-fired'), false, '同点区域事件未结算完前必须压制近身事件');
+
+    const step2 = await h.stepWorldTriggersAt('camp', { x: 112, y: 80 });
+    assert.deepEqual(step2, { kind: 'near', eventId: 'ev-camp-overlap-near', played: true });
+    assert.equal(h.session.storyWorld.hasFlag('near-fired'), true);
+
+    // 2. 在 camp 临时摆一个同编号 horn 机关，限定在 wilds 的近身事件绝不能在 camp 被误触发
+    h.session.applyStoryCommands([
+      {
+        type: 'world',
+        command: {
+          kind: 'place',
+          entity: { id: 'camp-horn', map: 'camp', actor: 'horn', characterId: 'npc-horn', x: 24, y: 120, visible: true },
+        },
+      },
+    ]);
+    const campHornStep = await h.stepWorldTriggersAt('camp', { x: 24, y: 136 });
+    assert.equal(campHornStep, null, '限定了 wilds 地图的近身事件严禁在 camp 同编号机关上串触发');
+    assert.equal(h.session.storyWorld.hasFlag('wilds-horn-fired'), false);
+
+    // 3. 普通跨图进入 wilds 时，无需手动点名事件即自动触发 map-entry 进图事件
+    h.travelToMapEntrance('wilds');
+    await h.settle();
+    assert.equal(h.session.storyWorld.hasFlag('wilds-entry-fired'), true, '进入新地图时应自动派发 map-entry 进图事件');
+  } finally {
+    h.dispose();
   }
 });

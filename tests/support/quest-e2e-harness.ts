@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { captureSessionSave, prepareSavedGame } from '../../src/application/saved-game.ts';
 import type { SaveWorldResult, StoryWorldViewSnapshot } from '../../src/application/world-snapshot.ts';
 import type { CampaignQuest } from '../../src/domain/campaign.ts';
+import { nearInteractive } from '../../src/domain/chests.ts';
 import type {
   ActorDefinition,
   ChoiceOption,
@@ -12,6 +13,7 @@ import type {
 } from '../../src/domain/content.ts';
 import { groundLootFor } from '../../src/domain/ground-loot.ts';
 import { resolveInteraction } from '../../src/domain/interaction.ts';
+import { overlapsFootRect, type Point } from '../../src/domain/navigation.ts';
 import { QuestEnemyWatch } from '../../src/domain/quest-enemies.ts';
 import type { SaveGame } from '../../src/domain/save-game.ts';
 import type { Session } from '../../src/domain/session.ts';
@@ -21,6 +23,8 @@ import { storyConditionReferences, type StoryCondition } from '../../src/domain/
 import { StoryDirector, type StoryWorldPort } from '../../src/domain/story-director.ts';
 import type { StoryEvent } from '../../src/domain/story-graph.ts';
 import type { PerformanceAction } from '../../src/domain/story-performance.ts';
+import { buildStoryTriggerIndex } from '../../src/domain/story-trigger-index.ts';
+import { claimStoryTrigger } from '../../src/domain/story-trigger-occupancy.ts';
 import { storyExitId } from '../../src/domain/story-world.ts';
 import { applyStoryEnemyRemovals, encounterSpawnId, WorldEnemyRoster } from '../../src/domain/world-enemies.ts';
 import { applyQuestStartPlan, planQuestStart } from '../../src/debug/quest-jump.ts';
@@ -182,18 +186,41 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     onStageAction: options.onStageAction,
   });
 
+  let activeTriggerMap = session.storyWorld.currentLocation?.map ?? content.campaign.start.map;
+  const occupiedRegions = new Set<string>(triggerContacts.regions);
+  const occupiedCharacters = new Set<string>(triggerContacts.characters);
+  const occupiedNearEvents = new Set<string>(triggerContacts.nearEvents);
+  const syncTriggerContacts = () => {
+    triggerContacts = {
+      regions: [...occupiedRegions],
+      characters: [...occupiedCharacters],
+      nearEvents: [...occupiedNearEvents],
+    };
+  };
+  const resetMapTriggerContacts = (nextMapId: string) => {
+    if (activeTriggerMap !== nextMapId) {
+      activeTriggerMap = nextMapId;
+      occupiedRegions.clear();
+      occupiedCharacters.clear();
+      occupiedNearEvents.clear();
+      syncTriggerContacts();
+    }
+  };
+
   let worldBaseline: { location?: TravelDestination } = {};
   const worldPort: StoryWorldPort = {
     capture: () => ({ location: session.storyWorld.currentLocation ? { ...session.storyWorld.currentLocation } : undefined }),
     restore: async snapshot => {
       worldBaseline = (snapshot as typeof worldBaseline) ?? {};
       if (worldBaseline.location) {
+        resetMapTriggerContacts(worldBaseline.location.map);
         session.storyWorld.apply({ kind: 'travel', destination: worldBaseline.location });
       }
     },
     project: async () => {
       const loc = session.storyWorld.currentLocation;
       if (loc && content.maps.has(loc.map)) {
+        resetMapTriggerContacts(loc.map);
         const m = content.maps.get(loc.map)!;
         session.enterMap(m.id, m.questItemSpawns ?? [], m, m.enemySpawns);
       }
@@ -407,7 +434,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
 
   /**
    * 普通同岛换图：严格校验目标地图必须沿当前已开启的静态出口可达（严禁穿墙跨过锁死出口或偷跑跨岛），
-   * 并一律落到目标地图真实入口坐标，严禁瞬移到目标脸上掩盖动态路障。
+   * 并一律落到目标地图真实入口坐标，严禁瞬移到目标脸上掩盖动态路障；同时对齐正式 WorldScene 重置触发占用并派发进图事件。
    */
   const travelToMapEntrance = (mapId: string) => {
     const curMap = session.storyWorld.currentLocation?.map;
@@ -424,8 +451,12 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     const entrance = sources.mapEntrances.get(mapId)?.[0];
     const destX = entrance?.x ?? 64;
     const destY = entrance?.y ?? 64;
+    resetMapTriggerContacts(mapId);
     session.applyStoryCommands([{ type: 'travel', destination: { map: mapId, x: destX, y: destY, facing: 'south' } }]);
     session.enterMap(map.id, map.questItemSpawns ?? [], map, map.enemySpawns);
+    if (!director.busy) {
+      void director.enterMap(map.id);
+    }
   };
 
   /**
@@ -456,14 +487,19 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     const entrance = sources.mapEntrances.get(mapId)?.[0];
     const destX = entrance?.x ?? 64;
     const destY = entrance?.y ?? 64;
+    resetMapTriggerContacts(mapId);
     session.applyStoryCommands([{ type: 'travel', destination: { map: mapId, x: destX, y: destY, facing: 'south' } }]);
     session.enterMap(map.id, map.questItemSpawns ?? [], map, map.enemySpawns);
+    if (!director.busy) {
+      void director.enterMap(map.id);
+    }
   };
 
   /** GM 跳转落点：仅在初始化任务起点承接 plan.destination 时按精确落点就位。 */
   const placeAtDestination = (destination: TravelDestination) => {
     const map = content.maps.get(destination.map);
     assert.ok(map, `GM 跳转落点地图不存在：${destination.map}`);
+    resetMapTriggerContacts(destination.map);
     session.applyStoryCommands([
       {
         type: 'travel',
@@ -888,7 +924,118 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     return [];
   };
 
-  /** 按事件自身的真实触发源派发事件（严禁 director.trigger 绕行；region/near 强制通过动态路障静态可达核验）。 */
+  /**
+   * 对齐 WorldScene.afterMovement 的地图自动触发竞争：
+   * 构建本图 buildStoryTriggerIndex，按「区域优先于近身、idle 新剧情优先于可重复旧剧情」选出唯一触发项并更新占用集合。
+   */
+  const buildMapTriggerContext = (mapId: string) => {
+    const characters = visibleEntities(mapId).map(entity => ({
+      entity,
+      actor: content.world.actors[entity.actor]!,
+      container: { x: entity.x, y: entity.y, visible: true },
+    }));
+    const triggerIndex = buildStoryTriggerIndex(content.campaign, mapId, characters);
+    const availability = (ev: StoryEvent) => {
+      if (!director.allowsAutomaticEvent(ev) || (ev.condition && !session.evaluateCondition(ev.condition))) return undefined;
+      return director.runtime.eventStatus(ev.id);
+    };
+    return { triggerIndex, availability };
+  };
+
+  /** 仅同步玩家移动到某点后的触发器脱离状态（用于玩家真实退开触发框或人物身边后释放占用）。 */
+  const releaseTriggerContactsAt = (mapId: string, pos: Point) => {
+    resetMapTriggerContacts(mapId);
+    const { triggerIndex } = buildMapTriggerContext(mapId);
+    for (const ev of triggerIndex.regionEvents) {
+      if (!ev.region || !overlapsFootRect(pos, ev.region)) {
+        occupiedRegions.delete(ev.id);
+      }
+    }
+    const touching = ({ character }: (typeof triggerIndex.nearCharacters)[number]) =>
+      character.container.visible && nearInteractive(pos, character.container, character.actor.collision, !!character.entity.flip);
+    for (const group of triggerIndex.nearCharacters) {
+      if (!touching(group)) {
+        occupiedCharacters.delete(group.id);
+      }
+    }
+    for (const id of [...occupiedNearEvents]) {
+      if (!triggerIndex.nearCharacters.some(group => group.events.some(ev => ev.id === id) && touching(group))) {
+        occupiedNearEvents.delete(id);
+      }
+    }
+    syncTriggerContacts();
+  };
+
+  const stepWorldTriggersAt = async (
+    mapId: string,
+    pos: Point,
+  ): Promise<{ kind: 'region' | 'near'; eventId: string; played: boolean } | null> => {
+    resetMapTriggerContacts(mapId);
+    session.storyWorld.apply({
+      kind: 'travel',
+      destination: {
+        map: mapId,
+        x: pos.x,
+        y: pos.y,
+        facing: session.storyWorld.currentLocation?.facing ?? 'south',
+      },
+    });
+    const { triggerIndex, availability } = buildMapTriggerContext(mapId);
+    const region = claimStoryTrigger(
+      triggerIndex.regionEvents,
+      occupiedRegions,
+      ev => !!ev.region && overlapsFootRect(pos, ev.region),
+      ev => {
+        const status = availability(ev);
+        return status === 'idle' || (status === 'completed' && ev.repeat) ? status : false;
+      },
+      status => status === 'idle',
+    );
+    const touching = ({ character }: (typeof triggerIndex.nearCharacters)[number]) =>
+      character.container.visible && nearInteractive(pos, character.container, character.actor.collision, !!character.entity.flip);
+    for (const id of [...occupiedNearEvents]) {
+      if (!triggerIndex.nearCharacters.some(group => group.events.some(ev => ev.id === id) && touching(group))) {
+        occupiedNearEvents.delete(id);
+      }
+    }
+    const near = claimStoryTrigger(triggerIndex.nearCharacters, occupiedCharacters, touching, ({ events }) => {
+      if (region) return null;
+      let replay: StoryEvent | null = null;
+      for (const ev of events) {
+        if (occupiedNearEvents.has(ev.id)) continue;
+        const status = availability(ev);
+        if (status === 'idle') return ev;
+        if (status === 'completed' && ev.repeat) replay ??= ev;
+      }
+      return replay;
+    });
+    syncTriggerContacts();
+
+    if (region) {
+      const played = await director.enterRegion(region.event.id, region.event.map!);
+      if (!played) {
+        occupiedRegions.delete(region.event.id);
+        syncTriggerContacts();
+      }
+      await settle();
+      return { kind: 'region', eventId: region.event.id, played };
+    }
+    if (near) {
+      occupiedNearEvents.add(near.selection.id);
+      syncTriggerContacts();
+      const played = await director.approach(near.selection, near.event.character.entity, mapId);
+      if (!played) {
+        occupiedCharacters.delete(near.event.id);
+        occupiedNearEvents.delete(near.selection.id);
+        syncTriggerContacts();
+      }
+      await settle();
+      return { kind: 'near', eventId: near.selection.id, played };
+    }
+    return null;
+  };
+
+  /** 按事件自身的真实触发源与正式地图触发索引派发事件（严禁 director.trigger 或跳过触发竞争直接点名）。 */
   const fireStoryEvent = async (event: StoryEvent, visitedQuests = new Set<string>()): Promise<boolean> => {
     const spotMaps = placesToMaps(event.place);
     const candMaps = [...new Set([event.map, ...spotMaps].filter((m): m is string => !!m))];
@@ -916,25 +1063,87 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     switch (event.source) {
       case 'start':
         moveToEventMap(mapId);
+        await settle();
         fired = await director.start();
         break;
       case 'region': {
         assert.ok(event.map && event.region, `区域事件 ${event.id} 缺少 map 或 region`);
         moveToEventMap(event.map);
+        await settle();
+        if (!event.repeat && director.runtime.eventStatus(event.id) === 'completed') {
+          fired = true;
+          break;
+        }
         try {
           assertRegionReachable(event.map, event.region, `event:${event.id}`);
         } catch (regionErr) {
           const unlocked = await tryUnlockMapObstacles(event.map, { kind: 'region', region: event.region }, visitedQuests);
           if (!unlocked) throw regionErr;
           moveToEventMap(event.map);
+          await settle();
           assertRegionReachable(event.map, event.region, `event:${event.id}`);
         }
-        fired = await director.enterRegion(event.id, event.map);
+
+        for (let attempt = 0; attempt < 6; attempt++) {
+          if (session.storyWorld.currentLocation?.map !== event.map) {
+            moveToEventMap(event.map);
+            await settle();
+          }
+          if (!event.repeat && director.runtime.eventStatus(event.id) === 'completed') {
+            fired = true;
+            break;
+          }
+          const { cells } = reachableCellsWithDynamicObstacles(event.map);
+          const { triggerIndex, availability } = buildMapTriggerContext(event.map);
+          const inTargetCells = cells.filter(pt => overlapsFootRect(pt, event.region!));
+          assert.ok(inTargetCells.length > 0, `区域事件 ${event.id} 在地图 ${event.map} 无可达触发格`);
+          const cleanPos =
+            inTargetCells.find(
+              pt =>
+                !triggerIndex.regionEvents.some(
+                  other =>
+                    other.id !== event.id &&
+                    !!other.region &&
+                    overlapsFootRect(pt, other.region) &&
+                    availability(other) !== undefined,
+                ),
+            ) ?? inTargetCells[0]!;
+          if (occupiedRegions.has(event.id)) {
+            const outsideCell = cells.find(pt => !overlapsFootRect(pt, event.region!));
+            if (outsideCell) releaseTriggerContactsAt(event.map, outsideCell);
+          }
+          const stepped = await stepWorldTriggersAt(event.map, cleanPos);
+          await settleActiveEncounters();
+          if (stepped?.kind === 'region' && stepped.eventId === event.id) {
+            fired = stepped.played;
+            break;
+          }
+          if (!stepped) {
+            const eligibleNow =
+              director.allowsAutomaticEvent(event) &&
+              (!event.condition || session.evaluateCondition(event.condition)) &&
+              (event.repeat || director.runtime.eventStatus(event.id) === 'idle');
+            if (!eligibleNow) {
+              fired = false;
+              break;
+            }
+            assert.fail(`正式地图触发索引在 ${event.map}@(${cleanPos.x},${cleanPos.y}) 未选中区域事件 ${event.id}`);
+          }
+        }
         break;
       }
       case 'map-entry': {
+        const completedBefore = log.eventsCompleted.length;
         moveToEventMap(mapId);
-        fired = await director.enterMap(event.key ?? mapId);
+        await settle();
+        if (
+          log.eventsCompleted.slice(completedBefore).includes(event.id) ||
+          (!event.repeat && director.runtime.eventStatus(event.id) === 'completed')
+        ) {
+          fired = true;
+        } else {
+          fired = await director.enterMap(event.key ?? mapId);
+        }
         break;
       }
       case 'near': {
@@ -946,15 +1155,84 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
           ? locateEntity(event.entity, undefined, candMaps)
           : locateEntity(event.near!, event.nearCharacterId, candMaps);
         travelToMapEntrance(located.mapId);
+        await settle();
+        if (!event.repeat && director.runtime.eventStatus(event.id) === 'completed') {
+          fired = true;
+          break;
+        }
         try {
           assertEntityApproachable(located.mapId, located.entity, `near:${event.id}`);
         } catch (approachErr) {
           const unlocked = await tryUnlockMapObstacles(located.mapId, { kind: 'entity', entity: located.entity }, visitedQuests);
           if (!unlocked) throw approachErr;
           travelToMapEntrance(located.mapId);
+          await settle();
           assertEntityApproachable(located.mapId, located.entity, `near:${event.id}`);
         }
-        fired = await director.approach(event, located.entity, located.mapId);
+
+        for (let attempt = 0; attempt < 6; attempt++) {
+          if (session.storyWorld.currentLocation?.map !== located.mapId) {
+            travelToMapEntrance(located.mapId);
+            await settle();
+          }
+          if (!event.repeat && director.runtime.eventStatus(event.id) === 'completed') {
+            fired = true;
+            break;
+          }
+          const curTarget =
+            visibleEntities(located.mapId).find(e => e.id === located.entity.id) ??
+            (event.entity
+              ? locateEntity(event.entity, undefined, [located.mapId]).entity
+              : locateEntity(event.near!, event.nearCharacterId, [located.mapId]).entity);
+          const curActor = content.world.actors[curTarget.actor]!;
+          const { cells } = reachableCellsWithDynamicObstacles(located.mapId);
+          const { triggerIndex, availability } = buildMapTriggerContext(located.mapId);
+          const nearCells = cells.filter(pt => nearInteractive(pt, curTarget, curActor.collision, !!curTarget.flip));
+          assert.ok(nearCells.length > 0, `近身事件 ${event.id} 目标 ${curTarget.actor}(${curTarget.id}) 在 ${located.mapId} 无可达贴身格`);
+          const cleanPos =
+            nearCells.find(
+              pt =>
+                !triggerIndex.regionEvents.some(
+                  reg => !!reg.region && overlapsFootRect(pt, reg.region) && availability(reg) !== undefined,
+                ) &&
+                !triggerIndex.nearCharacters.some(
+                  grp =>
+                    grp.id !== curTarget.id &&
+                    nearInteractive(pt, grp.character.container, grp.character.actor.collision, !!grp.character.entity.flip) &&
+                    grp.events.some(ev => availability(ev) !== undefined),
+                ),
+            ) ??
+            nearCells.find(
+              pt =>
+                !triggerIndex.regionEvents.some(
+                  reg => !!reg.region && overlapsFootRect(pt, reg.region) && availability(reg) !== undefined,
+                ),
+            ) ??
+            nearCells[0]!;
+          if (occupiedCharacters.has(curTarget.id) || occupiedNearEvents.has(event.id)) {
+            const awayCell = cells.find(pt => !nearInteractive(pt, curTarget, curActor.collision, !!curTarget.flip));
+            if (awayCell) releaseTriggerContactsAt(located.mapId, awayCell);
+          }
+          const stepped = await stepWorldTriggersAt(located.mapId, cleanPos);
+          await settleActiveEncounters();
+          if (stepped?.kind === 'near' && stepped.eventId === event.id) {
+            fired = stepped.played;
+            break;
+          }
+          if (!stepped) {
+            const eligibleNow =
+              director.allowsAutomaticEvent(event) &&
+              (!event.condition || session.evaluateCondition(event.condition)) &&
+              (event.repeat || director.runtime.eventStatus(event.id) === 'idle');
+            if (!eligibleNow) {
+              fired = false;
+              break;
+            }
+            assert.fail(
+              `正式地图触发索引在 ${located.mapId}@(${cleanPos.x},${cleanPos.y}) 未选中近身事件 ${event.id}（请检查 event.map=${event.map ?? '未限定'} 与目标实体匹配）`,
+            );
+          }
+        }
         break;
       }
       case 'interaction': {
@@ -1790,8 +2068,16 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
       return triggerContacts;
     },
     setTriggerContacts(next: { regions: string[]; characters: string[]; nearEvents: string[] }) {
-      triggerContacts = structuredClone(next);
+      occupiedRegions.clear();
+      for (const id of next.regions) occupiedRegions.add(id);
+      occupiedCharacters.clear();
+      for (const id of next.characters) occupiedCharacters.add(id);
+      occupiedNearEvents.clear();
+      for (const id of next.nearEvents) occupiedNearEvents.add(id);
+      syncTriggerContacts();
     },
+    stepWorldTriggersAt,
+    releaseTriggerContactsAt,
     setTargetQuest(id?: string) {
       targetQuestId = id;
     },

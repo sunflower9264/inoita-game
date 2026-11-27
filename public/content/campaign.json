@@ -280608,28 +280608,13 @@
       "near": "switch-6d46d3c1",
       "nearCharacterId": "npc-241",
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "blackhoods-stronghold-2-4dc049d1",
-            "x": 88,
-            "y": 136,
-            "source": "native-placement"
-          },
-          {
-            "map": "goblin-s-lair-2-49c1710f",
-            "x": 104,
-            "y": 152,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-dungeon-1-2-c824bb14",
-            "x": 152,
-            "y": 648,
-            "source": "native-registration"
-          }
-        ]
-      }
+        "type": "fixed",
+        "map": "goblin-s-lair-2-49c1710f",
+        "x": 104,
+        "y": 152,
+        "source": "native-placement"
+      },
+      "map": "goblin-s-lair-2-49c1710f"
     },
     {
       "id": "event-38",
@@ -280648,28 +280633,13 @@
       "near": "switch-006515f8",
       "nearCharacterId": "npc-242",
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "blackhoods-stronghold-2-4dc049d1",
-            "x": 184,
-            "y": 152,
-            "source": "native-placement"
-          },
-          {
-            "map": "goblin-s-lair-2-49c1710f",
-            "x": 280,
-            "y": 344,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-dungeon-1-2-c824bb14",
-            "x": 584,
-            "y": 632,
-            "source": "native-registration"
-          }
-        ]
-      }
+        "type": "fixed",
+        "map": "goblin-s-lair-2-49c1710f",
+        "x": 280,
+        "y": 344,
+        "source": "native-placement"
+      },
+      "map": "goblin-s-lair-2-49c1710f"
     },
     {
       "id": "event-40",
@@ -281022,34 +280992,13 @@
       "near": "trigger-cb2455aa",
       "nearCharacterId": "npc-94",
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "abyss-engine-room-be5a127f",
-            "x": 168,
-            "y": 584,
-            "source": "native-placement"
-          },
-          {
-            "map": "engine-room-of-reality-a06620c7",
-            "x": 88,
-            "y": 136,
-            "source": "native-placement"
-          },
-          {
-            "map": "inside-arnen-castle02-9a1430d7",
-            "x": 104,
-            "y": 424,
-            "source": "native-registration"
-          },
-          {
-            "map": "sealed-dungeon-1-2-c824bb14",
-            "x": 408,
-            "y": 88,
-            "source": "native-registration"
-          }
-        ]
-      }
+        "type": "fixed",
+        "map": "inside-arnen-castle02-9a1430d7",
+        "x": 104,
+        "y": 424,
+        "source": "native-registration"
+      },
+      "map": "inside-arnen-castle02-9a1430d7"
     },
     {
       "id": "event-58",
@@ -283055,22 +283004,13 @@
       "nearCharacterId": "npc-239",
       "repeat": true,
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "ben-s-mansion-6cab4760",
-            "x": 136,
-            "y": 200,
-            "source": "native-placement"
-          },
-          {
-            "map": "south-pendrik-6312caf9",
-            "x": 376,
-            "y": 248,
-            "source": "authored-placement"
-          }
-        ]
-      }
+        "type": "fixed",
+        "map": "ben-s-mansion-6cab4760",
+        "x": 136,
+        "y": 200,
+        "source": "native-placement"
+      },
+      "map": "ben-s-mansion-6cab4760"
     },
     {
       "id": "event-147",
@@ -284002,28 +283942,13 @@
       "nearCharacterId": "npc-59",
       "repeat": true,
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "inside-arnen-castle01-8b6ce276",
-            "x": 200,
-            "y": 376,
-            "source": "native-registration"
-          },
-          {
-            "map": "inside-arnen-castle01-8b6ce276",
-            "x": 520,
-            "y": 424,
-            "source": "native-registration"
-          },
-          {
-            "map": "training-dungeon-one",
-            "x": 200,
-            "y": 408,
-            "source": "authored-placement"
-          }
-        ]
-      }
+        "type": "fixed",
+        "map": "training-dungeon-one",
+        "x": 200,
+        "y": 408,
+        "source": "authored-placement"
+      },
+      "map": "training-dungeon-one"
     },
     {
       "id": "event-187",
@@ -284081,34 +284006,13 @@
       "nearCharacterId": "npc-111",
       "repeat": true,
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "leap-gate-district-1da2f793",
-            "x": 264,
-            "y": 104,
-            "source": "native-placement"
-          },
-          {
-            "map": "leap-gate-district-a474941a",
-            "x": 264,
-            "y": 104,
-            "source": "native-placement"
-          },
-          {
-            "map": "old-sanctuary-54cffd62",
-            "x": 312,
-            "y": 120,
-            "source": "authored-placement"
-          },
-          {
-            "map": "training-dungeon-one",
-            "x": 120,
-            "y": 456,
-            "source": "native-placement"
-          }
-        ]
-      }
+        "type": "fixed",
+        "map": "leap-gate-district-1da2f793",
+        "x": 264,
+        "y": 104,
+        "source": "native-placement"
+      },
+      "map": "leap-gate-district-1da2f793"
     },
     {
       "id": "event-190",
@@ -285350,28 +285254,13 @@
       "near": "switch-6d46d3c1",
       "nearCharacterId": "npc-241",
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "blackhoods-stronghold-2-4dc049d1",
-            "x": 88,
-            "y": 136,
-            "source": "native-placement"
-          },
-          {
-            "map": "goblin-s-lair-2-49c1710f",
-            "x": 104,
-            "y": 152,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-dungeon-1-2-c824bb14",
-            "x": 152,
-            "y": 648,
-            "source": "native-registration"
-          }
-        ]
-      }
+        "type": "fixed",
+        "map": "blackhoods-stronghold-2-4dc049d1",
+        "x": 88,
+        "y": 136,
+        "source": "native-placement"
+      },
+      "map": "blackhoods-stronghold-2-4dc049d1"
     },
     {
       "id": "event-244",
@@ -285390,28 +285279,13 @@
       "near": "switch-006515f8",
       "nearCharacterId": "npc-242",
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "blackhoods-stronghold-2-4dc049d1",
-            "x": 184,
-            "y": 152,
-            "source": "native-placement"
-          },
-          {
-            "map": "goblin-s-lair-2-49c1710f",
-            "x": 280,
-            "y": 344,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-dungeon-1-2-c824bb14",
-            "x": 584,
-            "y": 632,
-            "source": "native-registration"
-          }
-        ]
-      }
+        "type": "fixed",
+        "map": "blackhoods-stronghold-2-4dc049d1",
+        "x": 184,
+        "y": 152,
+        "source": "native-placement"
+      },
+      "map": "blackhoods-stronghold-2-4dc049d1"
     },
     {
       "id": "event-245",
@@ -285458,118 +285332,13 @@
       "near": "barricade-a1eb664e",
       "nearCharacterId": "npc-120",
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "berkel-capital",
-            "x": 40,
-            "y": 696,
-            "source": "native-placement"
-          },
-          {
-            "map": "berkel-church-monastery-1-16c1f7e2",
-            "x": 72,
-            "y": 72,
-            "source": "native-placement"
-          },
-          {
-            "map": "blackhoods-hideout-86afa206",
-            "x": 440,
-            "y": 376,
-            "source": "native-placement"
-          },
-          {
-            "map": "drow-fortress-1-b648f447",
-            "x": 552,
-            "y": 104,
-            "source": "native-placement"
-          },
-          {
-            "map": "drow-fortress-3-ed91ddeb",
-            "x": 56,
-            "y": 120,
-            "source": "native-placement"
-          },
-          {
-            "map": "drow-s-soul-district-1-0a15bce1",
-            "x": 440,
-            "y": 88,
-            "source": "native-placement"
-          },
-          {
-            "map": "fort-of-screams-floor-3-c78c50b3",
-            "x": 184,
-            "y": 168,
-            "source": "native-placement"
-          },
-          {
-            "map": "goblin-s-lair-2-49c1710f",
-            "x": 280,
-            "y": 392,
-            "source": "native-placement"
-          },
-          {
-            "map": "goblin-s-lair-2-49c1710f",
-            "x": 312,
-            "y": 376,
-            "source": "native-placement"
-          },
-          {
-            "map": "goblin-s-lair-2-49c1710f",
-            "x": 344,
-            "y": 360,
-            "source": "native-placement"
-          },
-          {
-            "map": "mayor-s-house-basement-1-474a8755",
-            "x": 536,
-            "y": 104,
-            "source": "native-placement"
-          },
-          {
-            "map": "oogle-habitat-3-85b56ac1",
-            "x": 520,
-            "y": 488,
-            "source": "native-placement"
-          },
-          {
-            "map": "oogle-habitat-3-85b56ac1",
-            "x": 552,
-            "y": 472,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-dungeon-1-1-78024c9d",
-            "x": 728,
-            "y": 296,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-dungeon-1-2-c824bb14",
-            "x": 88,
-            "y": 520,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-dungeon-1-2-c824bb14",
-            "x": 120,
-            "y": 504,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-dungeon-1-2-c824bb14",
-            "x": 152,
-            "y": 488,
-            "source": "native-placement"
-          },
-          {
-            "map": "shadow-forest-east",
-            "x": 312,
-            "y": 152,
-            "source": "authored-placement"
-          }
-        ]
-      }
+        "type": "fixed",
+        "map": "blackhoods-hideout-86afa206",
+        "x": 440,
+        "y": 376,
+        "source": "native-placement"
+      },
+      "map": "blackhoods-hideout-86afa206"
     },
     {
       "id": "event-247",
@@ -285606,58 +285375,13 @@
       "near": "boulder-49479eb3",
       "nearCharacterId": "npc-436",
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "eternal-forest-1-2-2e9426f3",
-            "x": 792,
-            "y": 184,
-            "source": "native-placement"
-          },
-          {
-            "map": "eternal-forest-1-2-2e9426f3",
-            "x": 792,
-            "y": 200,
-            "source": "native-placement"
-          },
-          {
-            "map": "eternal-forest-1-2-2e9426f3",
-            "x": 792,
-            "y": 216,
-            "source": "native-placement"
-          },
-          {
-            "map": "oogle-habitat-3-85b56ac1",
-            "x": 280,
-            "y": 56,
-            "source": "native-placement"
-          },
-          {
-            "map": "snowfield-1-2c795118",
-            "x": 344,
-            "y": 24,
-            "source": "native-placement"
-          },
-          {
-            "map": "snowfield-1-2c795118",
-            "x": 360,
-            "y": 24,
-            "source": "native-placement"
-          },
-          {
-            "map": "snowfield-1-2c795118",
-            "x": 376,
-            "y": 24,
-            "source": "native-placement"
-          },
-          {
-            "map": "snowfield-1-2c795118",
-            "x": 392,
-            "y": 24,
-            "source": "native-placement"
-          }
-        ]
-      }
+        "type": "fixed",
+        "map": "oogle-habitat-3-85b56ac1",
+        "x": 280,
+        "y": 56,
+        "source": "native-placement"
+      },
+      "map": "oogle-habitat-3-85b56ac1"
     },
     {
       "id": "event-249",
@@ -285676,40 +285400,13 @@
       "near": "trigger-0d07cb12",
       "nearCharacterId": "npc-93",
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "abyss-engine-room-be5a127f",
-            "x": 168,
-            "y": 584,
-            "source": "native-registration"
-          },
-          {
-            "map": "inside-arnen-castle02-9a1430d7",
-            "x": 104,
-            "y": 424,
-            "source": "native-registration"
-          },
-          {
-            "map": "oogle-habitat-3-85b56ac1",
-            "x": 632,
-            "y": 136,
-            "source": "native-placement"
-          },
-          {
-            "map": "reminiscence-map-b3c7c620",
-            "x": 248,
-            "y": 152,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-dungeon-1-2-c824bb14",
-            "x": 408,
-            "y": 88,
-            "source": "native-placement"
-          }
-        ]
-      }
+        "type": "fixed",
+        "map": "oogle-habitat-3-85b56ac1",
+        "x": 632,
+        "y": 136,
+        "source": "native-placement"
+      },
+      "map": "oogle-habitat-3-85b56ac1"
     },
     {
       "id": "event-250",
@@ -285728,34 +285425,13 @@
       "near": "switch-e4c96085",
       "nearCharacterId": "npc-243",
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "blackhoods-stronghold-2-4dc049d1",
-            "x": 88,
-            "y": 136,
-            "source": "native-registration"
-          },
-          {
-            "map": "goblin-s-lair-2-49c1710f",
-            "x": 104,
-            "y": 152,
-            "source": "native-registration"
-          },
-          {
-            "map": "oogle-habitat-3-85b56ac1",
-            "x": 664,
-            "y": 488,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-dungeon-1-2-c824bb14",
-            "x": 152,
-            "y": 648,
-            "source": "native-placement"
-          }
-        ]
-      }
+        "type": "fixed",
+        "map": "oogle-habitat-3-85b56ac1",
+        "x": 664,
+        "y": 488,
+        "source": "native-placement"
+      },
+      "map": "oogle-habitat-3-85b56ac1"
     },
     {
       "id": "event-251",
@@ -285774,34 +285450,13 @@
       "near": "switch-4771fd96",
       "nearCharacterId": "npc-244",
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "blackhoods-stronghold-2-4dc049d1",
-            "x": 184,
-            "y": 152,
-            "source": "native-registration"
-          },
-          {
-            "map": "goblin-s-lair-2-49c1710f",
-            "x": 280,
-            "y": 344,
-            "source": "native-registration"
-          },
-          {
-            "map": "oogle-habitat-3-85b56ac1",
-            "x": 152,
-            "y": 552,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-dungeon-1-2-c824bb14",
-            "x": 584,
-            "y": 632,
-            "source": "native-placement"
-          }
-        ]
-      }
+        "type": "fixed",
+        "map": "oogle-habitat-3-85b56ac1",
+        "x": 152,
+        "y": 552,
+        "source": "native-placement"
+      },
+      "map": "oogle-habitat-3-85b56ac1"
     },
     {
       "id": "event-252",
@@ -285985,22 +285640,13 @@
       "nearCharacterId": "npc-56",
       "repeat": true,
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "eldorn-forest-3-6672bfd8",
-            "x": 392,
-            "y": 264,
-            "source": "authored-placement"
-          },
-          {
-            "map": "rinoen-safehouse-109e5fcb",
-            "x": 200,
-            "y": 120,
-            "source": "native-registration"
-          }
-        ]
-      }
+        "type": "fixed",
+        "map": "rinoen-safehouse-109e5fcb",
+        "x": 200,
+        "y": 120,
+        "source": "native-registration"
+      },
+      "map": "rinoen-safehouse-109e5fcb"
     },
     {
       "id": "event-260",
@@ -286139,196 +285785,13 @@
       "nearCharacterId": "npc-306",
       "repeat": true,
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "blackhoods-stronghold-2-4dc049d1",
-            "x": 536,
-            "y": 264,
-            "source": "native-placement"
-          },
-          {
-            "map": "fort-of-screams-floor-3-c78c50b3",
-            "x": 328,
-            "y": 408,
-            "source": "native-placement"
-          },
-          {
-            "map": "hall-of-abyss-f7a501f5",
-            "x": 312,
-            "y": 424,
-            "source": "native-placement"
-          },
-          {
-            "map": "hall-of-abyss-f7a501f5",
-            "x": 328,
-            "y": 424,
-            "source": "native-placement"
-          },
-          {
-            "map": "hall-of-abyss-f7a501f5",
-            "x": 360,
-            "y": 424,
-            "source": "native-placement"
-          },
-          {
-            "map": "hall-of-abyss-f7a501f5",
-            "x": 392,
-            "y": 424,
-            "source": "native-placement"
-          },
-          {
-            "map": "hall-of-afterlife-0780bd4c",
-            "x": 280,
-            "y": 680,
-            "source": "native-placement"
-          },
-          {
-            "map": "hall-of-afterlife-0780bd4c",
-            "x": 296,
-            "y": 408,
-            "source": "native-placement"
-          },
-          {
-            "map": "hall-of-afterlife-0780bd4c",
-            "x": 312,
-            "y": 680,
-            "source": "native-placement"
-          },
-          {
-            "map": "hall-of-afterlife-0780bd4c",
-            "x": 328,
-            "y": 408,
-            "source": "native-placement"
-          },
-          {
-            "map": "hall-of-afterlife-0780bd4c",
-            "x": 344,
-            "y": 680,
-            "source": "native-placement"
-          },
-          {
-            "map": "hall-of-afterlife-0780bd4c",
-            "x": 360,
-            "y": 408,
-            "source": "native-placement"
-          },
-          {
-            "map": "hall-of-afterlife-0780bd4c",
-            "x": 360,
-            "y": 680,
-            "source": "native-placement"
-          },
-          {
-            "map": "hall-of-afterlife-0780bd4c",
-            "x": 392,
-            "y": 408,
-            "source": "native-placement"
-          },
-          {
-            "map": "hall-of-reality-bf3cc6de",
-            "x": 280,
-            "y": 360,
-            "source": "native-placement"
-          },
-          {
-            "map": "hall-of-reality-bf3cc6de",
-            "x": 312,
-            "y": 360,
-            "source": "native-placement"
-          },
-          {
-            "map": "hall-of-reality-bf3cc6de",
-            "x": 344,
-            "y": 360,
-            "source": "native-placement"
-          },
-          {
-            "map": "hall-of-reality-bf3cc6de",
-            "x": 360,
-            "y": 360,
-            "source": "native-placement"
-          },
-          {
-            "map": "kiyan-s-final-memory-layer-1-3f5f502a",
-            "x": 184,
-            "y": 72,
-            "source": "native-placement"
-          },
-          {
-            "map": "kiyan-s-final-memory-layer-1-3f5f502a",
-            "x": 216,
-            "y": 72,
-            "source": "native-placement"
-          },
-          {
-            "map": "kiyan-s-final-memory-layer-2-ecc3d1ca",
-            "x": 88,
-            "y": 88,
-            "source": "native-placement"
-          },
-          {
-            "map": "kiyan-s-final-memory-layer-2-ecc3d1ca",
-            "x": 152,
-            "y": 88,
-            "source": "native-placement"
-          },
-          {
-            "map": "land-of-exile-4-dffe6d0c",
-            "x": 136,
-            "y": 56,
-            "source": "native-placement"
-          },
-          {
-            "map": "land-of-exile-4-dffe6d0c",
-            "x": 168,
-            "y": 56,
-            "source": "native-placement"
-          },
-          {
-            "map": "land-of-exile-4-dffe6d0c",
-            "x": 200,
-            "y": 56,
-            "source": "native-placement"
-          },
-          {
-            "map": "land-of-exile-7-78b5df46",
-            "x": 136,
-            "y": 56,
-            "source": "native-placement"
-          },
-          {
-            "map": "land-of-exile-7-78b5df46",
-            "x": 168,
-            "y": 56,
-            "source": "native-placement"
-          },
-          {
-            "map": "land-of-exile-7-78b5df46",
-            "x": 200,
-            "y": 56,
-            "source": "native-placement"
-          },
-          {
-            "map": "land-of-exile-8-49bd8b1f",
-            "x": 136,
-            "y": 56,
-            "source": "native-placement"
-          },
-          {
-            "map": "land-of-exile-8-49bd8b1f",
-            "x": 168,
-            "y": 56,
-            "source": "native-placement"
-          },
-          {
-            "map": "land-of-exile-8-49bd8b1f",
-            "x": 200,
-            "y": 56,
-            "source": "native-placement"
-          }
-        ]
-      }
+        "type": "fixed",
+        "map": "blackhoods-stronghold-2-4dc049d1",
+        "x": 536,
+        "y": 264,
+        "source": "native-placement"
+      },
+      "map": "blackhoods-stronghold-2-4dc049d1"
     },
     {
       "id": "event-267",
@@ -287545,22 +287008,13 @@
       "nearCharacterId": "npc-455",
       "repeat": true,
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "cure-room-f01a2e90",
-            "x": 184,
-            "y": 120,
-            "source": "authored-placement"
-          },
-          {
-            "map": "healer-s-house-d95340da",
-            "x": 152,
-            "y": 152,
-            "source": "native-registration"
-          }
-        ]
-      }
+        "type": "fixed",
+        "map": "cure-room-f01a2e90",
+        "x": 184,
+        "y": 120,
+        "source": "authored-placement"
+      },
+      "map": "cure-room-f01a2e90"
     },
     {
       "id": "event-320",
@@ -288210,118 +287664,13 @@
       "near": "barricade-a1eb664e",
       "nearCharacterId": "npc-120",
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "berkel-capital",
-            "x": 40,
-            "y": 696,
-            "source": "native-placement"
-          },
-          {
-            "map": "berkel-church-monastery-1-16c1f7e2",
-            "x": 72,
-            "y": 72,
-            "source": "native-placement"
-          },
-          {
-            "map": "blackhoods-hideout-86afa206",
-            "x": 440,
-            "y": 376,
-            "source": "native-placement"
-          },
-          {
-            "map": "drow-fortress-1-b648f447",
-            "x": 552,
-            "y": 104,
-            "source": "native-placement"
-          },
-          {
-            "map": "drow-fortress-3-ed91ddeb",
-            "x": 56,
-            "y": 120,
-            "source": "native-placement"
-          },
-          {
-            "map": "drow-s-soul-district-1-0a15bce1",
-            "x": 440,
-            "y": 88,
-            "source": "native-placement"
-          },
-          {
-            "map": "fort-of-screams-floor-3-c78c50b3",
-            "x": 184,
-            "y": 168,
-            "source": "native-placement"
-          },
-          {
-            "map": "goblin-s-lair-2-49c1710f",
-            "x": 280,
-            "y": 392,
-            "source": "native-placement"
-          },
-          {
-            "map": "goblin-s-lair-2-49c1710f",
-            "x": 312,
-            "y": 376,
-            "source": "native-placement"
-          },
-          {
-            "map": "goblin-s-lair-2-49c1710f",
-            "x": 344,
-            "y": 360,
-            "source": "native-placement"
-          },
-          {
-            "map": "mayor-s-house-basement-1-474a8755",
-            "x": 536,
-            "y": 104,
-            "source": "native-placement"
-          },
-          {
-            "map": "oogle-habitat-3-85b56ac1",
-            "x": 520,
-            "y": 488,
-            "source": "native-placement"
-          },
-          {
-            "map": "oogle-habitat-3-85b56ac1",
-            "x": 552,
-            "y": 472,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-dungeon-1-1-78024c9d",
-            "x": 728,
-            "y": 296,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-dungeon-1-2-c824bb14",
-            "x": 88,
-            "y": 520,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-dungeon-1-2-c824bb14",
-            "x": 120,
-            "y": 504,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-dungeon-1-2-c824bb14",
-            "x": 152,
-            "y": 488,
-            "source": "native-placement"
-          },
-          {
-            "map": "shadow-forest-east",
-            "x": 312,
-            "y": 152,
-            "source": "authored-placement"
-          }
-        ]
-      }
+        "type": "fixed",
+        "map": "sealed-dungeon-1-1-78024c9d",
+        "x": 728,
+        "y": 296,
+        "source": "native-placement"
+      },
+      "map": "sealed-dungeon-1-1-78024c9d"
     },
     {
       "id": "event-352",
@@ -289514,40 +288863,13 @@
       "near": "trigger-0d07cb12",
       "nearCharacterId": "npc-93",
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "abyss-engine-room-be5a127f",
-            "x": 168,
-            "y": 584,
-            "source": "native-registration"
-          },
-          {
-            "map": "inside-arnen-castle02-9a1430d7",
-            "x": 104,
-            "y": 424,
-            "source": "native-registration"
-          },
-          {
-            "map": "oogle-habitat-3-85b56ac1",
-            "x": 632,
-            "y": 136,
-            "source": "native-placement"
-          },
-          {
-            "map": "reminiscence-map-b3c7c620",
-            "x": 248,
-            "y": 152,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-dungeon-1-2-c824bb14",
-            "x": 408,
-            "y": 88,
-            "source": "native-placement"
-          }
-        ]
-      }
+        "type": "fixed",
+        "map": "sealed-dungeon-1-2-c824bb14",
+        "x": 408,
+        "y": 88,
+        "source": "native-placement"
+      },
+      "map": "sealed-dungeon-1-2-c824bb14"
     },
     {
       "id": "event-404",
@@ -289566,34 +288888,13 @@
       "near": "switch-e4c96085",
       "nearCharacterId": "npc-243",
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "blackhoods-stronghold-2-4dc049d1",
-            "x": 88,
-            "y": 136,
-            "source": "native-registration"
-          },
-          {
-            "map": "goblin-s-lair-2-49c1710f",
-            "x": 104,
-            "y": 152,
-            "source": "native-registration"
-          },
-          {
-            "map": "oogle-habitat-3-85b56ac1",
-            "x": 664,
-            "y": 488,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-dungeon-1-2-c824bb14",
-            "x": 152,
-            "y": 648,
-            "source": "native-placement"
-          }
-        ]
-      }
+        "type": "fixed",
+        "map": "sealed-dungeon-1-2-c824bb14",
+        "x": 152,
+        "y": 648,
+        "source": "native-placement"
+      },
+      "map": "sealed-dungeon-1-2-c824bb14"
     },
     {
       "id": "event-405",
@@ -289612,34 +288913,13 @@
       "near": "switch-4771fd96",
       "nearCharacterId": "npc-244",
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "blackhoods-stronghold-2-4dc049d1",
-            "x": 184,
-            "y": 152,
-            "source": "native-registration"
-          },
-          {
-            "map": "goblin-s-lair-2-49c1710f",
-            "x": 280,
-            "y": 344,
-            "source": "native-registration"
-          },
-          {
-            "map": "oogle-habitat-3-85b56ac1",
-            "x": 152,
-            "y": 552,
-            "source": "native-placement"
-          },
-          {
-            "map": "sealed-dungeon-1-2-c824bb14",
-            "x": 584,
-            "y": 632,
-            "source": "native-placement"
-          }
-        ]
-      }
+        "type": "fixed",
+        "map": "sealed-dungeon-1-2-c824bb14",
+        "x": 584,
+        "y": 632,
+        "source": "native-placement"
+      },
+      "map": "sealed-dungeon-1-2-c824bb14"
     },
     {
       "id": "event-406",
@@ -293233,34 +292513,13 @@
       "nearCharacterId": "npc-320",
       "repeat": true,
       "place": {
-        "type": "alternatives",
-        "spots": [
-          {
-            "map": "blackhoods-stronghold-2-4dc049d1",
-            "x": 568,
-            "y": 264,
-            "source": "native-placement"
-          },
-          {
-            "map": "fort-of-screams-floor-3-c78c50b3",
-            "x": 360,
-            "y": 408,
-            "source": "native-placement"
-          },
-          {
-            "map": "kiyan-s-final-memory-layer-2-ecc3d1ca",
-            "x": 120,
-            "y": 88,
-            "source": "native-placement"
-          },
-          {
-            "map": "noxious-sanctum-hall-94557645",
-            "x": 40,
-            "y": 56,
-            "source": "authored-placement"
-          }
-        ]
-      }
+        "type": "fixed",
+        "map": "kiyan-s-final-memory-layer-2-ecc3d1ca",
+        "x": 120,
+        "y": 88,
+        "source": "native-placement"
+      },
+      "map": "kiyan-s-final-memory-layer-2-ecc3d1ca"
     },
     {
       "id": "event-564",
@@ -307255,27 +306514,11 @@
           ]
         },
         "ready": {
-          "type": "alternatives",
-          "spots": [
-            {
-              "map": "blackhoods-stronghold-2-4dc049d1",
-              "x": 536,
-              "y": 456,
-              "source": "quest-ready-event"
-            },
-            {
-              "map": "goblin-s-lair-2-49c1710f",
-              "x": 616,
-              "y": 152,
-              "source": "quest-ready-event"
-            },
-            {
-              "map": "sealed-dungeon-1-2-c824bb14",
-              "x": 696,
-              "y": 280,
-              "source": "quest-ready-event"
-            }
-          ]
+          "type": "fixed",
+          "map": "goblin-s-lair-2-49c1710f",
+          "x": 616,
+          "y": 152,
+          "source": "quest-ready-event"
         }
       }
     },
@@ -308539,67 +307782,25 @@
       "completeText": "第1章选择地",
       "places": {
         "available": {
-          "type": "alternatives",
-          "spots": [
-            {
-              "map": "inside-arnen-castle01-8b6ce276",
-              "x": 600,
-              "y": 504,
-              "source": "quest-available-event"
-            },
-            {
-              "map": "training-dungeon-one",
-              "x": 600,
-              "y": 664,
-              "source": "quest-available-event"
-            }
-          ]
+          "type": "fixed",
+          "map": "training-dungeon-one",
+          "x": 600,
+          "y": 664,
+          "source": "quest-available-event"
         },
         "active": {
-          "type": "alternatives",
-          "spots": [
-            {
-              "map": "inside-arnen-castle01-8b6ce276",
-              "x": 200,
-              "y": 376,
-              "source": "native-registration"
-            },
-            {
-              "map": "inside-arnen-castle01-8b6ce276",
-              "x": 520,
-              "y": 424,
-              "source": "native-registration"
-            },
-            {
-              "map": "training-dungeon-one",
-              "x": 200,
-              "y": 408,
-              "source": "authored-placement"
-            }
-          ]
+          "type": "fixed",
+          "map": "training-dungeon-one",
+          "x": 200,
+          "y": 408,
+          "source": "authored-placement"
         },
         "ready": {
-          "type": "alternatives",
-          "spots": [
-            {
-              "map": "inside-arnen-castle01-8b6ce276",
-              "x": 200,
-              "y": 376,
-              "source": "quest-ready"
-            },
-            {
-              "map": "inside-arnen-castle01-8b6ce276",
-              "x": 520,
-              "y": 424,
-              "source": "quest-ready"
-            },
-            {
-              "map": "training-dungeon-one",
-              "x": 200,
-              "y": 408,
-              "source": "quest-ready"
-            }
-          ]
+          "type": "fixed",
+          "map": "training-dungeon-one",
+          "x": 200,
+          "y": 408,
+          "source": "quest-ready"
         }
       },
       "descriptionTargets": [
@@ -308643,91 +307844,25 @@
       "completeText": "第3章选择地",
       "places": {
         "available": {
-          "type": "alternatives",
-          "spots": [
-            {
-              "map": "leap-gate-district-1da2f793",
-              "x": 200,
-              "y": 472,
-              "source": "quest-available-event"
-            },
-            {
-              "map": "leap-gate-district-a474941a",
-              "x": 192,
-              "y": 248,
-              "source": "quest-available-event"
-            },
-            {
-              "map": "old-sanctuary-54cffd62",
-              "x": 88,
-              "y": 88,
-              "source": "quest-available-event"
-            },
-            {
-              "map": "training-dungeon-one",
-              "x": 600,
-              "y": 664,
-              "source": "quest-available-event"
-            }
-          ]
+          "type": "fixed",
+          "map": "leap-gate-district-1da2f793",
+          "x": 200,
+          "y": 472,
+          "source": "quest-available-event"
         },
         "active": {
-          "type": "alternatives",
-          "spots": [
-            {
-              "map": "leap-gate-district-1da2f793",
-              "x": 264,
-              "y": 104,
-              "source": "native-placement"
-            },
-            {
-              "map": "leap-gate-district-a474941a",
-              "x": 264,
-              "y": 104,
-              "source": "native-placement"
-            },
-            {
-              "map": "old-sanctuary-54cffd62",
-              "x": 312,
-              "y": 120,
-              "source": "authored-placement"
-            },
-            {
-              "map": "training-dungeon-one",
-              "x": 120,
-              "y": 456,
-              "source": "native-placement"
-            }
-          ]
+          "type": "fixed",
+          "map": "leap-gate-district-1da2f793",
+          "x": 264,
+          "y": 104,
+          "source": "native-placement"
         },
         "ready": {
-          "type": "alternatives",
-          "spots": [
-            {
-              "map": "leap-gate-district-1da2f793",
-              "x": 264,
-              "y": 104,
-              "source": "quest-ready"
-            },
-            {
-              "map": "leap-gate-district-a474941a",
-              "x": 264,
-              "y": 104,
-              "source": "quest-ready"
-            },
-            {
-              "map": "old-sanctuary-54cffd62",
-              "x": 312,
-              "y": 120,
-              "source": "quest-ready"
-            },
-            {
-              "map": "training-dungeon-one",
-              "x": 120,
-              "y": 456,
-              "source": "quest-ready"
-            }
-          ]
+          "type": "fixed",
+          "map": "leap-gate-district-1da2f793",
+          "x": 264,
+          "y": 104,
+          "source": "quest-ready"
         }
       },
       "descriptionTargets": [
@@ -314483,33 +313618,11 @@
       "completeText": "眼球怪近卫兵",
       "places": {
         "available": {
-          "type": "alternatives",
-          "spots": [
-            {
-              "map": "blackhoods-stronghold-2-4dc049d1",
-              "x": 536,
-              "y": 456,
-              "source": "quest-available-event"
-            },
-            {
-              "map": "goblin-s-lair-2-49c1710f",
-              "x": 616,
-              "y": 152,
-              "source": "quest-available-event"
-            },
-            {
-              "map": "oogle-habitat-3-85b56ac1",
-              "x": 264,
-              "y": 24,
-              "source": "quest-available-event"
-            },
-            {
-              "map": "sealed-dungeon-1-2-c824bb14",
-              "x": 696,
-              "y": 280,
-              "source": "quest-available-event"
-            }
-          ]
+          "type": "fixed",
+          "map": "oogle-habitat-3-85b56ac1",
+          "x": 264,
+          "y": 24,
+          "source": "quest-available-event"
         },
         "active": {
           "type": "fixed",
@@ -314685,55 +313798,25 @@
       "completeText": "准备好了吗？",
       "places": {
         "available": {
-          "type": "alternatives",
-          "spots": [
-            {
-              "map": "eldorn-forest-3-6672bfd8",
-              "x": 280,
-              "y": 24,
-              "source": "quest-available-event"
-            },
-            {
-              "map": "rinoen-safehouse-109e5fcb",
-              "x": 248,
-              "y": 168,
-              "source": "quest-available-event"
-            }
-          ]
+          "type": "fixed",
+          "map": "rinoen-safehouse-109e5fcb",
+          "x": 248,
+          "y": 168,
+          "source": "quest-available-event"
         },
         "active": {
-          "type": "alternatives",
-          "spots": [
-            {
-              "map": "eldorn-forest-3-6672bfd8",
-              "x": 392,
-              "y": 264,
-              "source": "authored-placement"
-            },
-            {
-              "map": "rinoen-safehouse-109e5fcb",
-              "x": 200,
-              "y": 120,
-              "source": "native-registration"
-            }
-          ]
+          "type": "fixed",
+          "map": "rinoen-safehouse-109e5fcb",
+          "x": 200,
+          "y": 120,
+          "source": "native-registration"
         },
         "ready": {
-          "type": "alternatives",
-          "spots": [
-            {
-              "map": "eldorn-forest-3-6672bfd8",
-              "x": 392,
-              "y": 264,
-              "source": "quest-ready"
-            },
-            {
-              "map": "rinoen-safehouse-109e5fcb",
-              "x": 200,
-              "y": 120,
-              "source": "quest-ready"
-            }
-          ]
+          "type": "fixed",
+          "map": "rinoen-safehouse-109e5fcb",
+          "x": 200,
+          "y": 120,
+          "source": "quest-ready"
         }
       },
       "descriptionTargets": [
@@ -321577,55 +320660,25 @@
       "completeText": "第10章选择地",
       "places": {
         "available": {
-          "type": "alternatives",
-          "spots": [
-            {
-              "map": "cure-room-f01a2e90",
-              "x": 248,
-              "y": 168,
-              "source": "quest-available-event"
-            },
-            {
-              "map": "healer-s-house-d95340da",
-              "x": 216,
-              "y": 104,
-              "source": "quest-available-event"
-            }
-          ]
+          "type": "fixed",
+          "map": "cure-room-f01a2e90",
+          "x": 184,
+          "y": 120,
+          "source": "quest-available-event"
         },
         "active": {
-          "type": "alternatives",
-          "spots": [
-            {
-              "map": "cure-room-f01a2e90",
-              "x": 184,
-              "y": 120,
-              "source": "authored-placement"
-            },
-            {
-              "map": "healer-s-house-d95340da",
-              "x": 152,
-              "y": 152,
-              "source": "native-registration"
-            }
-          ]
+          "type": "fixed",
+          "map": "cure-room-f01a2e90",
+          "x": 184,
+          "y": 120,
+          "source": "authored-placement"
         },
         "ready": {
-          "type": "alternatives",
-          "spots": [
-            {
-              "map": "cure-room-f01a2e90",
-              "x": 184,
-              "y": 120,
-              "source": "quest-ready"
-            },
-            {
-              "map": "healer-s-house-d95340da",
-              "x": 152,
-              "y": 152,
-              "source": "quest-ready"
-            }
-          ]
+          "type": "fixed",
+          "map": "cure-room-f01a2e90",
+          "x": 184,
+          "y": 120,
+          "source": "quest-ready"
         }
       },
       "descriptionTargets": [
@@ -339585,33 +338638,11 @@
       "completeText": "回来了啊。",
       "places": {
         "available": {
-          "type": "alternatives",
-          "spots": [
-            {
-              "map": "blackhoods-stronghold-2-4dc049d1",
-              "x": 536,
-              "y": 456,
-              "source": "quest-available-event"
-            },
-            {
-              "map": "fort-of-screams-floor-3-c78c50b3",
-              "x": 328,
-              "y": 584,
-              "source": "quest-available-event"
-            },
-            {
-              "map": "kiyan-s-final-memory-layer-2-ecc3d1ca",
-              "x": 72,
-              "y": 680,
-              "source": "quest-available-event"
-            },
-            {
-              "map": "noxious-sanctum-hall-94557645",
-              "x": 568,
-              "y": 328,
-              "source": "quest-available-event"
-            }
-          ]
+          "type": "fixed",
+          "map": "kiyan-s-final-memory-layer-2-ecc3d1ca",
+          "x": 72,
+          "y": 680,
+          "source": "quest-available-event"
         },
         "active": {
           "type": "alternatives",
@@ -339675,62 +338706,18 @@
       "completeText": "卓拉德",
       "places": {
         "available": {
-          "type": "alternatives",
-          "spots": [
-            {
-              "map": "blackhoods-stronghold-2-4dc049d1",
-              "x": 536,
-              "y": 456,
-              "source": "quest-available-event"
-            },
-            {
-              "map": "fort-of-screams-floor-3-c78c50b3",
-              "x": 328,
-              "y": 584,
-              "source": "quest-available-event"
-            },
-            {
-              "map": "kiyan-s-final-memory-layer-2-ecc3d1ca",
-              "x": 72,
-              "y": 680,
-              "source": "quest-available-event"
-            },
-            {
-              "map": "noxious-sanctum-hall-94557645",
-              "x": 568,
-              "y": 328,
-              "source": "quest-available-event"
-            }
-          ]
+          "type": "fixed",
+          "map": "kiyan-s-final-memory-layer-2-ecc3d1ca",
+          "x": 72,
+          "y": 680,
+          "source": "quest-available-event"
         },
         "active": {
-          "type": "alternatives",
-          "spots": [
-            {
-              "map": "blackhoods-stronghold-2-4dc049d1",
-              "x": 536,
-              "y": 456,
-              "source": "quest-active-event"
-            },
-            {
-              "map": "fort-of-screams-floor-3-c78c50b3",
-              "x": 328,
-              "y": 584,
-              "source": "quest-active-event"
-            },
-            {
-              "map": "kiyan-s-final-memory-layer-2-ecc3d1ca",
-              "x": 72,
-              "y": 680,
-              "source": "quest-active-event"
-            },
-            {
-              "map": "noxious-sanctum-hall-94557645",
-              "x": 568,
-              "y": 328,
-              "source": "quest-active-event"
-            }
-          ]
+          "type": "fixed",
+          "map": "kiyan-s-final-memory-layer-2-ecc3d1ca",
+          "x": 72,
+          "y": 680,
+          "source": "quest-active-event"
         },
         "ready": {
           "type": "fixed",
@@ -339771,62 +338758,18 @@
       "completeText": "费罗赛普妮",
       "places": {
         "available": {
-          "type": "alternatives",
-          "spots": [
-            {
-              "map": "blackhoods-stronghold-2-4dc049d1",
-              "x": 536,
-              "y": 456,
-              "source": "quest-available-event"
-            },
-            {
-              "map": "fort-of-screams-floor-3-c78c50b3",
-              "x": 328,
-              "y": 584,
-              "source": "quest-available-event"
-            },
-            {
-              "map": "kiyan-s-final-memory-layer-2-ecc3d1ca",
-              "x": 72,
-              "y": 680,
-              "source": "quest-available-event"
-            },
-            {
-              "map": "noxious-sanctum-hall-94557645",
-              "x": 568,
-              "y": 328,
-              "source": "quest-available-event"
-            }
-          ]
+          "type": "fixed",
+          "map": "kiyan-s-final-memory-layer-2-ecc3d1ca",
+          "x": 72,
+          "y": 680,
+          "source": "quest-available-event"
         },
         "active": {
-          "type": "alternatives",
-          "spots": [
-            {
-              "map": "blackhoods-stronghold-2-4dc049d1",
-              "x": 536,
-              "y": 456,
-              "source": "quest-active-event"
-            },
-            {
-              "map": "fort-of-screams-floor-3-c78c50b3",
-              "x": 328,
-              "y": 584,
-              "source": "quest-active-event"
-            },
-            {
-              "map": "kiyan-s-final-memory-layer-2-ecc3d1ca",
-              "x": 72,
-              "y": 680,
-              "source": "quest-active-event"
-            },
-            {
-              "map": "noxious-sanctum-hall-94557645",
-              "x": 568,
-              "y": 328,
-              "source": "quest-active-event"
-            }
-          ]
+          "type": "fixed",
+          "map": "kiyan-s-final-memory-layer-2-ecc3d1ca",
+          "x": 72,
+          "y": 680,
+          "source": "quest-active-event"
         },
         "ready": {
           "type": "fixed",
@@ -339867,62 +338810,18 @@
       "completeText": "黑暗神",
       "places": {
         "available": {
-          "type": "alternatives",
-          "spots": [
-            {
-              "map": "blackhoods-stronghold-2-4dc049d1",
-              "x": 536,
-              "y": 456,
-              "source": "quest-available-event"
-            },
-            {
-              "map": "fort-of-screams-floor-3-c78c50b3",
-              "x": 328,
-              "y": 584,
-              "source": "quest-available-event"
-            },
-            {
-              "map": "kiyan-s-final-memory-layer-2-ecc3d1ca",
-              "x": 72,
-              "y": 680,
-              "source": "quest-available-event"
-            },
-            {
-              "map": "noxious-sanctum-hall-94557645",
-              "x": 568,
-              "y": 328,
-              "source": "quest-available-event"
-            }
-          ]
+          "type": "fixed",
+          "map": "kiyan-s-final-memory-layer-2-ecc3d1ca",
+          "x": 72,
+          "y": 680,
+          "source": "quest-available-event"
         },
         "active": {
-          "type": "alternatives",
-          "spots": [
-            {
-              "map": "blackhoods-stronghold-2-4dc049d1",
-              "x": 536,
-              "y": 456,
-              "source": "quest-active-event"
-            },
-            {
-              "map": "fort-of-screams-floor-3-c78c50b3",
-              "x": 328,
-              "y": 584,
-              "source": "quest-active-event"
-            },
-            {
-              "map": "kiyan-s-final-memory-layer-2-ecc3d1ca",
-              "x": 72,
-              "y": 680,
-              "source": "quest-active-event"
-            },
-            {
-              "map": "noxious-sanctum-hall-94557645",
-              "x": 568,
-              "y": 328,
-              "source": "quest-active-event"
-            }
-          ]
+          "type": "fixed",
+          "map": "kiyan-s-final-memory-layer-2-ecc3d1ca",
+          "x": 72,
+          "y": 680,
+          "source": "quest-active-event"
         },
         "ready": {
           "type": "fixed",
@@ -343573,33 +342472,11 @@
           ]
         },
         "ready": {
-          "type": "alternatives",
-          "spots": [
-            {
-              "map": "blackhoods-stronghold-2-4dc049d1",
-              "x": 536,
-              "y": 456,
-              "source": "quest-ready-event"
-            },
-            {
-              "map": "fort-of-screams-floor-3-c78c50b3",
-              "x": 328,
-              "y": 584,
-              "source": "quest-ready-event"
-            },
-            {
-              "map": "kiyan-s-final-memory-layer-2-ecc3d1ca",
-              "x": 72,
-              "y": 680,
-              "source": "quest-ready-event"
-            },
-            {
-              "map": "noxious-sanctum-hall-94557645",
-              "x": 568,
-              "y": 328,
-              "source": "quest-ready-event"
-            }
-          ]
+          "type": "fixed",
+          "map": "kiyan-s-final-memory-layer-2-ecc3d1ca",
+          "x": 72,
+          "y": 680,
+          "source": "quest-ready-event"
         }
       }
     },
@@ -350766,11 +349643,31 @@
         "condition": {
           "type": "any",
           "conditions": [
-            { "type": "quest", "quest": "quest-57", "status": "active" },
-            { "type": "quest", "quest": "quest-58", "status": "active" },
-            { "type": "quest", "quest": "quest-59", "status": "active" },
-            { "type": "quest", "quest": "quest-60", "status": "active" },
-            { "type": "quest", "quest": "quest-63", "status": "active" }
+            {
+              "type": "quest",
+              "quest": "quest-57",
+              "status": "active"
+            },
+            {
+              "type": "quest",
+              "quest": "quest-58",
+              "status": "active"
+            },
+            {
+              "type": "quest",
+              "quest": "quest-59",
+              "status": "active"
+            },
+            {
+              "type": "quest",
+              "quest": "quest-60",
+              "status": "active"
+            },
+            {
+              "type": "quest",
+              "quest": "quest-63",
+              "status": "active"
+            }
           ]
         }
       }
@@ -350783,11 +349680,31 @@
         "condition": {
           "type": "any",
           "conditions": [
-            { "type": "quest", "quest": "quest-57", "status": "active" },
-            { "type": "quest", "quest": "quest-58", "status": "active" },
-            { "type": "quest", "quest": "quest-59", "status": "active" },
-            { "type": "quest", "quest": "quest-60", "status": "active" },
-            { "type": "quest", "quest": "quest-63", "status": "active" }
+            {
+              "type": "quest",
+              "quest": "quest-57",
+              "status": "active"
+            },
+            {
+              "type": "quest",
+              "quest": "quest-58",
+              "status": "active"
+            },
+            {
+              "type": "quest",
+              "quest": "quest-59",
+              "status": "active"
+            },
+            {
+              "type": "quest",
+              "quest": "quest-60",
+              "status": "active"
+            },
+            {
+              "type": "quest",
+              "quest": "quest-63",
+              "status": "active"
+            }
           ]
         }
       }
@@ -350800,11 +349717,31 @@
         "condition": {
           "type": "any",
           "conditions": [
-            { "type": "quest", "quest": "quest-57", "status": "active" },
-            { "type": "quest", "quest": "quest-58", "status": "active" },
-            { "type": "quest", "quest": "quest-59", "status": "active" },
-            { "type": "quest", "quest": "quest-60", "status": "active" },
-            { "type": "quest", "quest": "quest-63", "status": "active" }
+            {
+              "type": "quest",
+              "quest": "quest-57",
+              "status": "active"
+            },
+            {
+              "type": "quest",
+              "quest": "quest-58",
+              "status": "active"
+            },
+            {
+              "type": "quest",
+              "quest": "quest-59",
+              "status": "active"
+            },
+            {
+              "type": "quest",
+              "quest": "quest-60",
+              "status": "active"
+            },
+            {
+              "type": "quest",
+              "quest": "quest-63",
+              "status": "active"
+            }
           ]
         }
       }
@@ -350817,11 +349754,31 @@
         "condition": {
           "type": "any",
           "conditions": [
-            { "type": "quest", "quest": "quest-57", "status": "active" },
-            { "type": "quest", "quest": "quest-58", "status": "active" },
-            { "type": "quest", "quest": "quest-59", "status": "active" },
-            { "type": "quest", "quest": "quest-60", "status": "active" },
-            { "type": "quest", "quest": "quest-63", "status": "active" }
+            {
+              "type": "quest",
+              "quest": "quest-57",
+              "status": "active"
+            },
+            {
+              "type": "quest",
+              "quest": "quest-58",
+              "status": "active"
+            },
+            {
+              "type": "quest",
+              "quest": "quest-59",
+              "status": "active"
+            },
+            {
+              "type": "quest",
+              "quest": "quest-60",
+              "status": "active"
+            },
+            {
+              "type": "quest",
+              "quest": "quest-63",
+              "status": "active"
+            }
           ]
         }
       }

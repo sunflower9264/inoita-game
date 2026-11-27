@@ -122,10 +122,22 @@ export function validateStoryReferences(campaign:Campaign,world:WorldIndex,battl
       if(goal.kind==='talk')ensure(actors.has(goal.target)||entities.has(goal.target),'任务对话人物不存在 '+goal.target);
     }
   }
+  const persistentEntities=[
+    ...[...maps.values()].flatMap(map=>map.entities.map(entity=>({map:map.id,id:entity.id,actor:entity.actor,characterId:entity.characterId}))),
+    ...[...campaign.placements,...campaign.mapEntryPlacements??[]].map(entity=>({map:entity.map,id:entity.id,actor:entity.actor,characterId:entity.characterId})),
+    ...commands.flatMap(command=>command.type==='world'&&command.command.kind==='place'&&command.command.scope!=='visit'&&!command.command.mapFromStage
+      ?[{map:command.command.entity.map,id:command.command.entity.id,actor:command.command.entity.actor,characterId:command.command.entity.characterId}]:[]),
+  ];
   for(const event of campaign.events){
     if(event.nearCharacterId)ensure(characters.has(event.nearCharacterId),'近身人物身份不存在 '+event.nearCharacterId);
     condition(event.condition);if(event.entity)ensure(entities.has(event.entity),'事件实体不存在 '+event.entity);
     if(event.region&&event.map){const map=maps.get(event.map);ensure(map&&event.region.x<map.width&&event.region.y<map.height&&event.region.x+event.region.width>0&&event.region.y+event.region.height>0,'区域没有覆盖地图 '+event.id);}
+    if(event.source==='near'&&!event.map){
+      const nearMaps=new Set(persistentEntities.filter(entity=>entity.actor===event.near
+        &&(!event.nearCharacterId||entity.characterId===event.nearCharacterId)
+        &&(!event.entity||entity.id===event.entity)).map(entity=>entity.map));
+      ensure(nearMaps.size<=1,`多图共用目标的近身事件缺少地图限定 ${event.id}（${[...nearMaps].sort().join('/')}）`);
+    }
   }
   for(const rule of campaign.exitRules??[]){ensure(exits.get(rule.id)===rule.map,'出口不存在 '+rule.id);condition(rule.condition);}
   for(const script of Object.values(campaign.scripts))for(const node of script.nodes){

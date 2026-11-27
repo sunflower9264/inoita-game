@@ -90,3 +90,22 @@ test('trigger index groups the current map and preserves campaign order',()=>{
     ['near-free'], ['near-free','near-a'], ['near-free'],
   ]);
 });
+
+test('正式剧情中共用开关、铁门、木栅栏与次元之门的近身事件均已限定所属地图，不会跨图串入触发索引', () => {
+  const story: StoryGraph = JSON.parse(readFileSync(new URL('../public/content/campaign.json', import.meta.url), 'utf8'));
+  const checks = [
+    { actor: 'switch-6d46d3c1', charId: 'npc-241', map: 'goblin-s-lair-2-49c1710f', include: 'event-36', exclude: 'event-243' },
+    { actor: 'switch-6d46d3c1', charId: 'npc-241', map: 'blackhoods-stronghold-2-4dc049d1', include: 'event-243', exclude: 'event-36' },
+    { actor: 'barricade-a1eb664e', charId: 'npc-120', map: 'sealed-dungeon-1-1-78024c9d', include: 'event-351', exclude: 'event-246' },
+    { actor: 'barricade-a1eb664e', charId: 'npc-120', map: 'berkel-capital', include: undefined, exclude: 'event-351' },
+    { actor: 'leap-gate-253891b2', charId: 'npc-111', map: 'leap-gate-district-1da2f793', include: 'event-189', exclude: undefined },
+    { actor: 'leap-gate-253891b2', charId: 'npc-111', map: 'old-sanctuary-54cffd62', include: undefined, exclude: 'event-189' },
+    { actor: 'steel-door-430a2b1b', charId: 'npc-320', map: 'kiyan-s-final-memory-layer-2-ecc3d1ca', include: 'event-563', exclude: undefined },
+    { actor: 'steel-door-430a2b1b', charId: 'npc-320', map: 'fort-of-screams-floor-3-c78c50b3', include: undefined, exclude: 'event-563' },
+  ] as const;
+  for (const c of checks) {
+    const ids = buildStoryTriggerIndex(story, c.map, [character('e', c.actor, c.charId)]).nearCharacters.flatMap(g => g.events.map(ev => ev.id));
+    if (c.include) assert.ok(ids.includes(c.include), `${c.map} 应包含 ${c.include}`);
+    if (c.exclude) assert.equal(ids.includes(c.exclude), false, `${c.map} 不应串入其他地图的 ${c.exclude}`);
+  }
+});
