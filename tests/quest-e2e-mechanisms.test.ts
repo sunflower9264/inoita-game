@@ -709,3 +709,73 @@ test('正式地图触发竞争与进图事件：同点区域事件压制近身�
     h.dispose();
   }
 });
+
+test('正式世界交互选目标竞争与柜台距离：同坐标目标未满先选目标、记满自动切交付人，无资格摆设与超柜台距离严禁交互', async () => {
+  const propActor = {
+    ...miniContent.world.actors.sealstone!,
+    id: 'silent_prop',
+    name: '石柱',
+    description: '',
+  };
+  const campBase = miniContent.maps.get('camp')!;
+  const stackedContent = {
+    ...miniContent,
+    world: {
+      ...miniContent.world,
+      actors: {
+        ...miniContent.world.actors,
+        silent_prop: propActor,
+      },
+    },
+    maps: new Map([
+      ...miniContent.maps,
+      [
+        'camp',
+        {
+          ...campBase,
+          entities: [
+            ...campBase.entities,
+            // 将一个号角目标与队长（交付人）重叠摆在同一像素坐标，并额外摆一个无任何交互资格的石柱
+            { id: 'stacked-horn', actor: 'horn', characterId: 'npc-horn', objective: 'horn', x: 64, y: 64, flip: false },
+            { id: 'silent-pillar', actor: 'silent_prop', x: 24, y: 120, flip: false },
+          ],
+        },
+      ],
+    ]),
+  };
+  const h = createQuestE2EHarness(stackedContent);
+  try {
+    h.session.applyStoryCommands([{ type: 'flag', flag: 'unlock-optional', value: true }]);
+    await h.settle();
+
+    // 1. 无任何任务/服务/商店/描述/目标资格的纯摆设严禁被选中或点名交互
+    assert.equal(h.selectInteractionTargetAt('camp', { x: 24, y: 136 }), null);
+    const pillar = h.visibleEntities('camp').find(e => e.id === 'silent-pillar')!;
+    await assert.rejects(() => h.interactWithEntity(pillar, 'camp'), /无任何正式交互资格/);
+
+    // 2. 接取号角支线后，同坐标(64,64)上 stacked-horn 为 0 档（推进目标），captain 为 1 档（进行中标记）：
+    //    目标未满前站在(64,80)必须选中 stacked-horn，且严禁跨过它直接选中被遮蔽的 captain
+    h.queueChoices('yes');
+    await h.interactByIdentity('captain', 'npc-captain');
+    assert.equal(h.session.status('q-optional-offer'), 'active');
+
+    assert.equal(h.selectInteractionTargetAt('camp', { x: 64, y: 80 })?.entity.id, 'stacked-horn');
+    const captainEnt = h.visibleEntities('camp').find(e => e.characterId === 'npc-captain')!;
+    await assert.rejects(() => h.interactWithEntity(captainEnt, 'camp'), /被其他高优先级对象抢占/);
+
+    const stackedHornEnt = h.visibleEntities('camp').find(e => e.id === 'stacked-horn')!;
+    await h.interactWithEntity(stackedHornEnt, 'camp');
+    assert.equal(h.session.quests.get('q-optional-offer')?.goals.horn, 1);
+
+    // 去猎场吹响第 2 只号角记满目标后，q-optional-offer 变为 ready：同坐标(64,64)上 captain 升为 0 档（待交付），stacked-horn 退为 2 档
+    const wildsHorn = stackedContent.maps.get('wilds')!.entities.find(e => e.actor === 'horn')!;
+    await h.interactWithEntity(wildsHorn, 'wilds');
+    assert.equal(h.session.status('q-optional-offer'), 'ready');
+
+    assert.equal(h.selectInteractionTargetAt('camp', { x: 64, y: 80 })?.entity.id, 'ent-captain', '目标记满后同点自动切换选中交付人');
+    await h.interactWithEntity(captainEnt, 'camp');
+    assert.equal(h.session.status('q-optional-offer'), 'completed');
+  } finally {
+    h.dispose();
+  }
+});

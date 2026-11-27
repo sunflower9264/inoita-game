@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { nearInteractive } from '../../src/domain/chests.ts';
 import type { ActorDefinition, EntityPlacement, WorldMap } from '../../src/domain/content.ts';
+import { withinInteractionRange } from '../../src/domain/interaction.ts';
 import { authoredPlacements, baseMapEntities } from '../../src/domain/map-placement.ts';
 import { overlapsFootRect, type GameRectangle, type Point } from '../../src/domain/navigation.ts';
 import { mirroredCollision, NavigationWorld } from '../../src/domain/navigation-world.ts';
@@ -201,14 +201,13 @@ export function createQuestNavigation(
     return hit;
   };
 
-  /** 静态格子硬校验：目标在场实体周围至少存在一格主角可站立且处于交互/近身距离内、不被动态路障隔绝。 */
+  /** 静态格子硬校验：目标在场实体周围至少存在一格主角可站立且处于正式交互距离内（商店/旅店 32px，宝箱/古剑 24px，其余贴身 8px）、不被动态路障隔绝。 */
   const assertEntityApproachable = (mapId: string, entity: EntityPlacement, label: string): Point => {
     const actor = content.world.actors[entity.actor];
     assert.ok(actor, `角色定义缺失：${entity.actor}`);
     const isShop = content.shopActors?.has(entity.actor) ?? false;
-    const bodyReach = isShop ? 64 : undefined;
     const { cells, entities } = reachableCellsWithDynamicObstacles(mapId);
-    const hit = cells.find(pt => nearInteractive(pt, entity, actor.collision, !!entity.flip, bodyReach));
+    const hit = cells.find(pt => withinInteractionRange(pt, entity, actor, !!entity.flip, isShop));
     if (!hit) {
       const blockers = entities
         .filter(e => e.id !== entity.id && Math.hypot(e.x - entity.x, e.y - entity.y) < 64)
@@ -266,8 +265,8 @@ export function createQuestNavigation(
       }
       const actor = content.world.actors[target.entity.actor];
       if (!actor) return false;
-      const bodyReach = content.shopActors?.has(target.entity.actor) ? 64 : undefined;
-      return cells.some(pt => nearInteractive(pt, target.entity, actor.collision, !!target.entity.flip, bodyReach));
+      const isShop = content.shopActors?.has(target.entity.actor) ?? false;
+      return cells.some(pt => withinInteractionRange(pt, target.entity, actor, !!target.entity.flip, isShop));
     };
 
     const allCleared = reachableCellsWithDynamicObstacles(mapId, { ignoreEntityIds: allRemovableIds }).cells;

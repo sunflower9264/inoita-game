@@ -1,4 +1,6 @@
-import type { ActorDefinition } from './content.ts';
+import { BODY_ADJACENT_GAP, nearInteractable, nearInteractive, SHOP_COUNTER_GAP } from './chests.ts';
+import type { ActorDefinition, EntityPlacement } from './content.ts';
+import type { Session } from './session.ts';
 
 type InteractionService = NonNullable<ActorDefinition['service']>;
 
@@ -41,4 +43,86 @@ export function resolveInteraction(target: InteractionTarget): InteractionAction
   if (target.service === 'innkeeper') return { kind: 'innkeeper' };
   if (target.shop && !target.objective && !target.questSlot) return { kind: 'shop' };
   return { kind: 'story' };
+}
+
+export type InteractionSessionReader = Pick<Session, 'npcQuestSlot' | 'canInteract' | 'status' | 'markerActor'>;
+
+export interface InteractionSceneCandidate {
+  entity: Pick<EntityPlacement, 'id' | 'actor' | 'characterId' | 'spring' | 'hint' | 'objective' | 'flip'>;
+  actor: Pick<ActorDefinition, 'service' | 'chest' | 'description' | 'collision'>;
+  container: { x: number; y: number; visible: boolean };
+}
+
+/**
+ * 正式世界「够得着」的距离规则：
+ * 宝箱与传说古剑按原版身边曼哈顿 24 px；商店与旅店可隔柜台（32 px）；其余人物与机关仅贴身一格（8 px）。
+ */
+export function withinInteractionRange(
+  from: { x: number; y: number },
+  target: { x: number; y: number },
+  actor: Pick<ActorDefinition, 'chest' | 'service' | 'collision'>,
+  flip = false,
+  hasShop = false,
+): boolean {
+  const sword = actor.service === 'legendary-sword';
+  if (actor.chest || sword) return nearInteractable(from, target);
+  const gap = hasShop || actor.service === 'innkeeper' ? SHOP_COUNTER_GAP : BODY_ADJACENT_GAP;
+  return nearInteractive(from, target, actor.collision, flip, gap);
+}
+
+/**
+ * 交互候选优先级档位（距离相同时比较）：
+ * 0 = 当前交互会推进任务目标或交付已就绪任务；
+ * 1 = 头顶有任务标记（如可接取或进行中提示）；
+ * 2 = 商店、服务、宝箱、泉水、描述或提示等普通可交互对象；
+ * null = 当前不可选中交互。
+ */
+export function interactionCandidateRank(
+  entity: Pick<EntityPlacement, 'id' | 'actor' | 'characterId' | 'spring' | 'hint' | 'objective'>,
+  actor: Pick<ActorDefinition, 'service' | 'chest' | 'description'>,
+  session: InteractionSessionReader,
+  hasShop = false,
+): 0 | 1 | 2 | null {
+  const slot = session.npcQuestSlot(entity.actor, entity.characterId);
+  if (session.canInteract(entity.actor, entity.id, entity.characterId) || (slot && session.status(slot.id) === 'ready')) {
+    return 0;
+  }
+  if (session.markerActor(entity.actor, entity.characterId)) return 1;
+  if (actor.service || actor.chest || entity.spring || actor.description || entity.hint || entity.objective || hasShop) {
+    return 2;
+  }
+  return null;
+}
+
+/**
+ * 从候选对象中挑出正式游戏按交互键会选中的唯一目标：
+ * 先按曼哈顿距离挑最近，距离相同时按 0 < 1 < 2 档位比较，仍相同时保持在场顺序。
+ */
+export function pickNearestInteractionTarget<C extends InteractionSceneCandidate>(
+  from: { x: number; y: number },
+  candidates: Iterable<C>,
+  session: InteractionSessionReader,
+  options?: {
+    hasShop?: (actorId: string) => boolean;
+    isUnavailable?: (candidate: C) => boolean;
+  },
+): C | null {
+  let nearest: C | null = null;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  let bestRank = 3;
+  for (const candidate of candidates) {
+    if (!candidate.container.visible) continue;
+    if (options?.isUnavailable?.(candidate)) continue;
+    const hasShop = options?.hasShop?.(candidate.entity.actor) ?? false;
+    if (!withinInteractionRange(from, candidate.container, candidate.actor, !!candidate.entity.flip, hasShop)) continue;
+    const rank = interactionCandidateRank(candidate.entity, candidate.actor, session, hasShop);
+    if (rank === null) continue;
+    const d = Math.abs(candidate.container.x - from.x) + Math.abs(candidate.container.y - from.y);
+    if (d < bestDistance || (d === bestDistance && rank < bestRank)) {
+      bestDistance = d;
+      nearest = candidate;
+      bestRank = rank;
+    }
+  }
+  return nearest;
 }

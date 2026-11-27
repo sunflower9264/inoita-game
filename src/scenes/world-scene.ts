@@ -35,9 +35,9 @@ import { WorldCombat, type WorldCombatState } from './world-combat.ts';
 import { InteractionTargetIndex } from './interaction-index.ts';
 import { QuestEnemyWatch } from '../domain/quest-enemies.ts';
 import { cachedDropCatalog, type DropCatalog, type DropReward } from '../domain/drops.ts';
-import { resolveInteraction } from '../domain/interaction.ts';
+import { pickNearestInteractionTarget, resolveInteraction } from '../domain/interaction.ts';
 import { faceTarget } from '../domain/basic-attack.ts';
-import { BODY_ADJACENT_GAP, canReachChest, CHEST_OPEN_MS, nearInteractable, nearInteractive, SHOP_COUNTER_GAP } from '../domain/chests.ts';
+import { canReachChest, CHEST_OPEN_MS, nearInteractive } from '../domain/chests.ts';
 import { applySpringRecovery, grantSpringSkillPoint, parseSprings, rollSpringEffect, springBuffScope, type SpringCatalog, type SpringPartyResources } from '../domain/springs.ts';
 import { groundLootFor } from '../domain/ground-loot.ts';
 import { innRestQuote, payForInnRest } from '../domain/inns.ts';
@@ -2287,23 +2287,12 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
    * 一个对象能不能被选中交互：有功能（商店、宝箱、泉水、玩法服务），或者有话可说
    * （描述、闲话、摆放点声明的目标、任务发布者，以及某条进行中任务指着它）。
    * 返回值兼作同坐标优先级：0 = 进行中任务的目标或待交付，1 = 头顶有任务标记，
-   * 2 = 其它可交互对象。
+  /**
+   * 挑出「身边的可交互对象」：原版 `PLAYER_DoCheckNearNPC` 用曼哈顿距离 24 px，最近的一个胜出；
+   * 同距离时由领域层按 0（推进目标或待交付）< 1（任务标记）< 2（普通交互对象）比较档位。
    * 原版任务目标与交付人可能摆在同一点（quest-103/106 的 npc-76 与 npc-364），
    * 目标没记满前必须选得中目标，记满后才轮到交付人。
    */
-  private interactionCandidate(character: Character): 0 | 1 | 2 | null {
-    const actor=character.actor, entity=character.entity;
-    const slot=this.app.session.npcQuestSlot(entity.actor,entity.characterId);
-    // 0 表示这次交互会推进任务或交付；1 表示头顶有任务标记；2 表示普通可交互对象。
-    // 距离仍然优先，只有同距离时才比较这一档，避免同格的普通 NPC 抢走任务 NPC。
-    if(this.app.session.canInteract(entity.actor,entity.id,entity.characterId)
-      ||(slot&&this.app.session.status(slot.id)==='ready'))return 0;
-    if(this.app.session.markerActor(entity.actor,entity.characterId))return 1;
-    if(actor.service||actor.chest||entity.spring||actor.description||entity.hint||entity.objective
-      ||this.app.shops?.shops[entity.actor])return 2;
-    return null;
-  }
-  /** 挑出「身边的可交互对象」：原版 `PLAYER_DoCheckNearNPC` 用曼哈顿距离 24 px，最近的一个胜出。 */
   private updateInteractionTarget(): void {
     const controlled=this.combat?.controlledVisual??this.player;
     if (!controlled) { this.near = null;this.lastInteractionScan=undefined;return; }
@@ -2322,10 +2311,9 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
     if(x===scan.x&&y===scan.y&&revision===scan.revision&&quest===scan.quest&&story===scan.story
       &&chests===scan.chests&&legendary===scan.legendary&&restore===scan.restore
       &&map===scan.map&&owner===scan.owner)return;
-    scan.x=x;scan.y=y;scan.revision=revision;scan.quest=quest;scan.story=story;
-    scan.chests=chests;scan.legendary=legendary;scan.restore=restore;
+    scan.x=x;scan.y=y;scan.revision=revision;quest===scan.quest||(scan.quest=quest);
+    scan.story=story;scan.chests=chests;scan.legendary=legendary;scan.restore=restore;
     scan.map=map;scan.owner=owner;
-    let nearest: Character | null = null, distance = Number.POSITIVE_INFINITY, rank = 3;
     // 索引只负责把候选缩到玩家所在格；顺序沿用原 `characters`，距离、优先级和状态过滤都不变。
     // 这里直接维护索引，不依赖另一个场景方法，轻量测试宿主也能复用同一段选择逻辑。
     let index=this.interactionIndex;
@@ -2336,23 +2324,13 @@ private restoreScenePositions(snapshot:SceneSnapshot):void {
       this.interactionIndexRevision=revision;
       this.interactionIndexCharactersRevision=this.charactersRevision;
     }
-    for (const character of index.near(x, y)) {
-      if (!character.container.visible) continue;
-      if (this.chestOpened(character)) continue;
-      if (this.legendarySwordConsumed(character)) continue;
-      if (character.entity.spring && this.map && this.app.session.springs.isEmpty(this.map.id, character.entity.id)) continue;
-      // 宝箱和古剑按原版「身边 24 px」选目标；机关按真实碰撞盒贴边兜底。商店和
-      // 旅店能隔着柜台说话，普通剧情/NPC 只放宽到贴身一格，避免隔两三格选中净化石这类目标。
-      const shop = !!this.app.shops?.shops[character.entity.actor], inn = character.actor.service === 'innkeeper', sword = character.actor.service === 'legendary-sword';
-      if (!(character.actor.chest || sword
-        ? nearInteractable(controlled.container, character.container)
-        : nearInteractive(controlled.container, character.container, character.actor.collision, !!character.entity.flip, shop || inn ? SHOP_COUNTER_GAP : BODY_ADJACENT_GAP))) continue;
-      const candidate = this.interactionCandidate(character);
-      if (candidate === null) continue;
-      const d = Math.abs(character.container.x - controlled.container.x) + Math.abs(character.container.y - controlled.container.y);
-      if (d < distance || (d === distance && candidate < rank)) { distance = d; nearest = character; rank = candidate; }
-    }
-    this.near = nearest;
+    this.near = pickNearestInteractionTarget(controlled.container, index.near(x, y), session, {
+      hasShop: actorId => !!this.app.shops?.shops[actorId],
+      isUnavailable: character =>
+        this.chestOpened(character)
+        || this.legendarySwordConsumed(character)
+        || !!(character.entity.spring && this.map && session.springs.isEmpty(this.map.id, character.entity.id)),
+    });
   }
   override update(_time:number,delta:number): void {
     // 舞台已经铺满画面时，正式世界这帧不跑战斗、HUD、掉落和移动；

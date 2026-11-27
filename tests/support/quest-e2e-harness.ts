@@ -12,7 +12,12 @@ import type {
   TravelDestination,
 } from '../../src/domain/content.ts';
 import { groundLootFor } from '../../src/domain/ground-loot.ts';
-import { resolveInteraction } from '../../src/domain/interaction.ts';
+import {
+  interactionCandidateRank,
+  pickNearestInteractionTarget,
+  resolveInteraction,
+  withinInteractionRange,
+} from '../../src/domain/interaction.ts';
 import { overlapsFootRect, type Point } from '../../src/domain/navigation.ts';
 import { QuestEnemyWatch } from '../../src/domain/quest-enemies.ts';
 import type { SaveGame } from '../../src/domain/save-game.ts';
@@ -583,7 +588,24 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
 
   let onBeforeDirectorInteract: (() => void) | undefined;
 
-  /** 通过真实 resolveInteraction + StoryDirector.interact 执行一次角色/机关交互（附带静态可达核验）。 */
+  /** 对齐 WorldScene.updateInteractionTarget：在指定地图坐标从全部可见对象中挑选正式游戏唯一选中的交互目标。 */
+  const selectInteractionTargetAt = (mapId: string, pos: Point) => {
+    const candidates = visibleEntities(mapId).map(ent => ({
+      entity: ent,
+      actor: content.world.actors[ent.actor]!,
+      container: { x: ent.x, y: ent.y, visible: true },
+    }));
+    return pickNearestInteractionTarget(pos, candidates, session, {
+      hasShop: actorId => content.shopActors?.has(actorId) ?? false,
+      isUnavailable: candidate =>
+        (!!candidate.actor.chest &&
+          session.chests.isOpened(mapId, candidate.entity.id, session.storyWorld.isPlaced(candidate.entity.id))) ||
+        (candidate.actor.service === 'legendary-sword' && session.legendaryWeapons.isPulled(mapId, candidate.entity.id)) ||
+        !!(candidate.entity.spring && session.springs.isEmpty(mapId, candidate.entity.id)),
+    });
+  };
+
+  /** 通过真实 pickNearestInteractionTarget + resolveInteraction + StoryDirector.interact 执行一次角色/机关交互（附带静态可达与同点选人竞争核验）。 */
   const interactWithEntity = async (
     entity: EntityPlacement,
     mapId?: string,
@@ -591,6 +613,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
   ): Promise<string> => {
     const targetMap = mapId ?? currentMapObj().id;
     travelToMapEntrance(targetMap);
+    await settle();
     assert.ok(
       visibleEntities(targetMap).some(e => e.id === entity.id),
       `交互实体 ${entity.actor}(${entity.id}) 在地图 ${targetMap} 当前不可见`,
@@ -601,35 +624,68 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
       const unlocked = await tryUnlockMapObstacles(targetMap, { kind: 'entity', entity }, visitedQuests);
       if (!unlocked) throw approachErr;
       travelToMapEntrance(targetMap);
+      await settle();
       assert.ok(
         visibleEntities(targetMap).some(e => e.id === entity.id),
         `解锁障碍后交互实体 ${entity.actor}(${entity.id}) 在地图 ${targetMap} 不再可见`,
       );
       assertEntityApproachable(targetMap, entity, `interact:${entity.actor}(${entity.characterId ?? entity.id})`);
     }
-    const actor = content.world.actors[entity.actor];
-    assert.ok(actor, `角色定义缺失：${entity.actor}`);
-    const questInSlot = session.npcQuestSlot(entity.actor, entity.characterId);
+    const curEntity = visibleEntities(targetMap).find(e => e.id === entity.id) ?? entity;
+    const actor = content.world.actors[curEntity.actor];
+    assert.ok(actor, `角色定义缺失：${curEntity.actor}`);
+    const hasShop = content.shopActors?.has(curEntity.actor) ?? false;
+    const candidateRank = interactionCandidateRank(curEntity, actor, session, hasShop);
+    assert.notEqual(
+      candidateRank,
+      null,
+      `交互实体 ${curEntity.actor}(${curEntity.characterId ?? curEntity.id}) 在地图 ${targetMap} 当前无任何正式交互资格（interactionCandidateRank=null）`,
+    );
+    const { cells } = reachableCellsWithDynamicObstacles(targetMap);
+    const inRangeCells = cells.filter(pt => withinInteractionRange(pt, curEntity, actor, !!curEntity.flip, hasShop));
+    const standPos = inRangeCells.find(pt => selectInteractionTargetAt(targetMap, pt)?.entity.id === curEntity.id);
+    if (!standPos) {
+      const winners = [
+        ...new Set(
+          inRangeCells.map(pt => {
+            const w = selectInteractionTargetAt(targetMap, pt);
+            return w ? `${w.entity.actor}(${w.entity.characterId ?? w.entity.id})` : 'null';
+          }),
+        ),
+      ];
+      assert.fail(
+        `交互实体 ${curEntity.actor}(${curEntity.characterId ?? curEntity.id}) 在地图 ${targetMap} 的全部可达交互格均被其他高优先级对象抢占（实际选中=[${winners.join(', ')}]）`,
+      );
+    }
+    session.storyWorld.apply({
+      kind: 'travel',
+      destination: {
+        map: targetMap,
+        x: standPos.x,
+        y: standPos.y,
+        facing: session.storyWorld.currentLocation?.facing ?? 'south',
+      },
+    });
+    const questInSlot = session.npcQuestSlot(curEntity.actor, curEntity.characterId);
     const questSlot = !!questInSlot && ['available', 'ready'].includes(session.status(questInSlot.id));
-    const hasShop = content.shopActors?.has(entity.actor) ?? false;
     const action = resolveInteraction({
       chest: false,
       spring: false,
       service: actor.service,
-      objective: !!entity.objective && session.canInteract(entity.objective, entity.id),
+      objective: !!curEntity.objective && session.canInteract(curEntity.objective, curEntity.id),
       questSlot,
       shop: hasShop,
     });
     if (action.kind === 'shop') {
-      log.shopsOpened.push(entity.actor);
+      log.shopsOpened.push(curEntity.actor);
       return 'shop';
     }
     if (action.kind !== 'story') {
-      log.servicesOpened.push(`${action.kind}:${entity.actor}`);
+      log.servicesOpened.push(`${action.kind}:${curEntity.actor}`);
       return action.kind;
     }
     onBeforeDirectorInteract?.();
-    await director.interact(entity, actor);
+    await director.interact(curEntity, actor);
     await settle();
     return 'story';
   };
@@ -2078,6 +2134,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     },
     stepWorldTriggersAt,
     releaseTriggerContactsAt,
+    selectInteractionTargetAt,
     setTargetQuest(id?: string) {
       targetQuestId = id;
     },
