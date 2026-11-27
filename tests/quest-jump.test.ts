@@ -553,6 +553,20 @@ test('跳转到后章发布人/近身支线与赏金支线时投影前序主线�
     applyQuestStartPlan(h.session, planQuestStart(h.session.campaign, h.session, 'quest-281', 'available'));
     assert.equal(h.session.status('quest-248'), 'active');
     assert.equal(h.session.storyWorld.actorVisible('northern-winds-forest-9e4c10fe', 'boulder3-dc017f0f', 'npc-101'), true);
+
+    // 4. 后章任务自动关闭已过期的第1章日志外路障（quest-180），终章任务链后续环节重放首环激活时的专属刷怪开关，共战首领任务预先开启同伴任务
+    applyQuestStartPlan(h.session, planQuestStart(h.session.campaign, h.session, 'quest-171', 'available'));
+    assert.equal(h.session.status('quest-180'), 'completed');
+
+    applyQuestStartPlan(h.session, planQuestStart(h.session.campaign, h.session, 'quest-491', 'available'));
+    assert.equal(h.session.status('quest-180'), 'completed');
+    assert.equal(h.session.storyWorld.enemyAvailable('hanun-forest-3-3a1017a4', 'enemy-starved-wolf-1'), true);
+
+    applyQuestStartPlan(h.session, planQuestStart(h.session.campaign, h.session, 'quest-86', 'available'));
+    assert.equal(h.session.storyWorld.actorVisible('goblin-prison-1-cee53ab6', 'prison-gates-0d7bba14', 'npc-167'), false);
+
+    applyQuestStartPlan(h.session, planQuestStart(h.session.campaign, h.session, 'quest-22', 'available'));
+    assert.equal(h.session.status('grafton-mission'), 'active');
   } finally {
     h.director.dispose();
   }

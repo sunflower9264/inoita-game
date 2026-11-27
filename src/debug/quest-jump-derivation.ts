@@ -53,6 +53,7 @@ interface ChoiceWriter {
 interface ContentIndex {
   quests: Map<string, CampaignQuest>;
   mainQuestIds: Set<string>;
+  corridorQuestIds: Set<string>;
   earliestMainMapIndex: Map<string, number>;
   chapterBoundaryIndices: number[];
   events: Map<string, EventInfo>;
@@ -213,6 +214,15 @@ function buildIndex(campaign: Campaign): ContentIndex {
       for (const qid of group.questIds) mainQuestIds.add(qid);
     }
   }
+  const corridorQuestIds = new Set<string>(mainQuestIds);
+  for (const info of eventOrder) {
+    const advancesMain = info.commands.some(
+      c => c.type === 'quest' && 'quest' in c.command && mainQuestIds.has(c.command.quest),
+    );
+    if (advancesMain) {
+      for (const ref of positiveQuestRefs(info.event.condition)) corridorQuestIds.add(ref.quest);
+    }
+  }
   const earliestMainMapIndex = new Map<string, number>();
   const recordMainMap = (mapId: string | undefined, idx: number) => {
     if (!mapId) return;
@@ -248,7 +258,7 @@ function buildIndex(campaign: Campaign): ContentIndex {
   }
 
   return {
-    quests, mainQuestIds, earliestMainMapIndex, chapterBoundaryIndices, events, eventOrder, nodes, commandsByScript: commandCache,
+    quests, mainQuestIds, corridorQuestIds, earliestMainMapIndex, chapterBoundaryIndices, events, eventOrder, nodes, commandsByScript: commandCache,
     acceptors, completers, readyProducers, choiceWriters,
     startEvents: campaign.events.filter(event => event.source === 'start'),
     itemIds, companions, equipmentCleanup,
@@ -652,7 +662,7 @@ class Planner {
         if (neededFlags.some(flag => this.flagPins.get(flag) === false)) continue;
         for (const flag of neededFlags) {
           if (state.flags.get(flag) || acceptScriptFlags.has(flag)) continue;
-          const eligiblePlacers = this.index.eventOrder.filter(info => {
+          let eligiblePlacers = this.index.eventOrder.filter(info => {
             if (info.event.id === targetAcceptId || state.completedEvents.has(info.event.id)) return false;
             if (info.event.repeat || this.conditionConflicts(info.event.condition) || eventTouchesTargetQuest(info)) return false;
             if ((lastFlagFalseIndex.get(flag) ?? -1) > info.index) return false;
@@ -663,6 +673,20 @@ class Planner {
                 (cmd.type === 'world' && cmd.command.kind === 'flag' && cmd.command.id === flag && cmd.command.value),
             );
           });
+          // 若目标人物没有任何无条件摆放且自身 availableWhen 未显式声明前置链，回退取最早合法登场事件，避免跳转后发布人/交付人完全缺席
+          if (!eligiblePlacers.length && targetAcceptIndex < 0 && maxCompletedIndex < 0) {
+            const earliestFallback = this.index.eventOrder.find(info => {
+              if (info.event.id === targetAcceptId || state.completedEvents.has(info.event.id)) return false;
+              if (info.event.repeat || this.conditionConflicts(info.event.condition) || eventTouchesTargetQuest(info)) return false;
+              if ((lastFlagFalseIndex.get(flag) ?? -1) > info.index) return false;
+              return info.commands.some(
+                cmd =>
+                  (cmd.type === 'flag' && cmd.flag === flag && (cmd.value ?? true)) ||
+                  (cmd.type === 'world' && cmd.command.kind === 'flag' && cmd.command.id === flag && cmd.command.value),
+              );
+            });
+            if (earliestFallback) eligiblePlacers = [earliestFallback];
+          }
           if (!eligiblePlacers.length) continue;
           // 优先选择把该角色摆到当前 placement 所在地图的最新事件，否则取最新合法事件
           let placer = eligiblePlacers[eligiblePlacers.length - 1]!;
@@ -745,17 +769,17 @@ class Planner {
       ? targetAcceptIndex
       : maxCompletedIndex;
     const isJournalSideQuest = !this.index.mainQuestIds.has(this.questId) && this.target.journal !== false;
+    let maxTargetMapEra = -1;
+    for (const m of targetMaps) {
+      const arrival = this.index.earliestMainMapIndex.get(m);
+      if (arrival !== undefined && arrival > maxTargetMapEra) maxTargetMapEra = arrival;
+    }
     let sideChapterCutoff = explicitCutoff;
-    // 仅当日志内支线自身缺乏显式事件历史（explicitCutoff <= 0，如无前置条件的跨章赏金支线）时，按阶段地图推导其所属章节上限；
+    // 仅当日志内支线自身缺乏显式事件历史（explicitCutoff <= 0，如无前置条件的跨章赏金支线与第2章监狱支线）时，按阶段地图推导其所属章节上限；
     // 已有显式前置事件链的支线（如 quest-301 在 event-274 刚解锁、quest-304 在 event-338 已推进）严格沿用自身 explicitCutoff，不超前隐藏后续任务还需接触的机关。
     if (isJournalSideQuest && explicitCutoff <= 0) {
-      let rawEra = -1;
-      for (const m of targetMaps) {
-        const arrival = this.index.earliestMainMapIndex.get(m);
-        if (arrival !== undefined && arrival > rawEra) rawEra = arrival;
-      }
-      if (rawEra >= 45) {
-        const nextBoundary = this.index.chapterBoundaryIndices.find(idx => idx > rawEra);
+      if (maxTargetMapEra >= 15) {
+        const nextBoundary = this.index.chapterBoundaryIndices.find(idx => idx > maxTargetMapEra);
         sideChapterCutoff = nextBoundary ?? this.index.eventOrder.length;
       }
     }
@@ -782,12 +806,12 @@ class Planner {
         if (info.event.repeat || state.completedEvents.has(info.event.id)) continue;
         if (this.conditionConflicts(info.event.condition) || eventTouchesTargetQuest(info) || this.eventPresupposesTargetCompletion(info.event)) continue;
         const isUncond = isUnconditionalCondition(info.event.condition);
+        const effIdx = effectiveMainEraIndex(info);
         let eligible = false;
         if (info.index < explicitCutoff) {
           eligible = isUncond ? targetMaps.size > 0 : (info.index < maxCompletedIndex && withinChronology(info, false));
         }
         if (!eligible && isJournalSideQuest && sideChapterCutoff > 0) {
-          const effIdx = effectiveMainEraIndex(info);
           if (effIdx < sideChapterCutoff) {
             if (isUncond) {
               eligible = info.index < sideChapterCutoff;
@@ -796,7 +820,7 @@ class Planner {
               const evRefs = eventRefs(info.event.condition);
               const allMainRefs = qRefs.length > 0
                 && qRefs.every(r =>
-                  this.index.mainQuestIds.has(r.quest) &&
+                  (this.index.corridorQuestIds.has(r.quest) || this.index.quests.get(r.quest)?.journal === false) &&
                   (!state.opened.has(r.quest) || questRefSatisfied(r, true)))
                 && evRefs.every(r => r.status === 'completed' && (this.index.events.get(r.event)?.index ?? Infinity) < sideChapterCutoff);
               eligible = allMainRefs;
@@ -870,14 +894,67 @@ class Planner {
           }
         }
       }
-      for (const [enemyId, entry] of projectedEnemy) {
-        if (!entry.cmd) continue;
-        if (entry.map === null) {
-          if (existingEnemyMap.get(enemyId)) state.world.push(entry.cmd);
-        } else if (activeMaps.has(entry.map) && existingEnemyMap.get(enemyId) !== entry.map) {
-          state.world.push(entry.cmd);
+        for (const [enemyId, entry] of projectedEnemy) {
+          if (!entry.cmd) continue;
+          if (entry.map === null) {
+            if (existingEnemyMap.get(enemyId)) state.world.push(entry.cmd);
+          } else if (activeMaps.has(entry.map) && existingEnemyMap.get(enemyId) !== entry.map) {
+            state.world.push(entry.cmd);
+          }
         }
       }
+
+    // 5. 关闭已过期的纯剧情零目标日志外路障任务（如第1章路障 quest-180、罗尼恩路障 quest-473），避免其退回区域阻断后章通行
+    const roadblockCutoff = Math.max(passageCutoff, maxTargetMapEra);
+    if (roadblockCutoff > 0) {
+      const targetPositiveRefs = new Set([
+        ...positiveQuestRefs(this.target.availableWhen).map(r => r.quest),
+        ...positiveQuestRefs(this.targetAccept?.kind === 'event' ? this.targetAccept.event?.condition : undefined).map(r => r.quest),
+      ]);
+      for (const [qid, status] of state.status) {
+        if (status !== 'active' || qid === this.questId || targetPositiveRefs.has(qid)) continue;
+        const rq = this.index.quests.get(qid);
+        if (!rq || rq.journal !== false || rq.goals.length > 0 || rq.completion !== 'story') continue;
+        const comp = this.primaryCompleterFor(qid);
+        const compIdx = comp?.kind === 'event' && comp.event ? (this.index.events.get(comp.event.id)?.index ?? Infinity) : Infinity;
+        if (compIdx < roadblockCutoff) {
+          state.status.set(qid, 'completed');
+          state.delivered.add(qid);
+        }
+      }
+    }
+
+    // 6. 重放已完成前驱任务在「激活（active/accepted）」瞬间触发的刷怪开关事件（如终章支线链首环激活开启专属怪物的 event-605..607）
+    const lastAvailWriteIdx = new Map<string, number>();
+    for (const evId of state.completedEvents) {
+      const info = this.index.events.get(evId);
+      if (!info) continue;
+      for (const cmd of info.commands) {
+        if (cmd.type === 'world' && cmd.command.kind === 'enemy-availability') {
+          const k = `${cmd.command.map}\0${cmd.command.enemyId}`;
+          lastAvailWriteIdx.set(k, Math.max(lastAvailWriteIdx.get(k) ?? -1, info.index));
+        }
+      }
+    }
+    for (const info of this.index.eventOrder) {
+      if (info.event.source !== 'quest' || info.event.repeat || state.completedEvents.has(info.event.id)) continue;
+      if (info.event.id === targetAcceptId || this.conditionConflicts(info.event.condition) || eventTouchesTargetQuest(info)) continue;
+      const qRefs = positiveQuestRefs(info.event.condition);
+      if (qRefs.length === 0) continue;
+      const allCompletedAncestors = qRefs.every(
+        ref => (ref.status === 'active' || ref.status === 'accepted') && state.delivered.has(ref.quest),
+      );
+      if (!allCompletedAncestors || !eventRefsSatisfied(info)) continue;
+      let pushedAvail = false;
+      for (const cmd of info.commands) {
+        if (cmd.type !== 'world' || cmd.command.kind !== 'enemy-availability') continue;
+        const k = `${cmd.command.map}\0${cmd.command.enemyId}`;
+        if ((lastAvailWriteIdx.get(k) ?? -1) > info.index) continue;
+        state.world.push(cmd);
+        lastAvailWriteIdx.set(k, info.index);
+        pushedAvail = true;
+      }
+      if (pushedAvail) state.completedEvents.add(info.event.id);
     }
   }
 
@@ -1016,6 +1093,30 @@ class Planner {
     if (accept.kind === 'event') {
       this.resolveCondition(accept.event!.condition, undefined, accept.event!.id);
       this.analyzeScriptCommands(accept.event!.script, accept.event!.id);
+      // 若接取事件内置一次性剧情遭遇，且目标任务的完成事件同时要求另一同伴任务达成该遭遇中的讨伐目标（如 quest-22 与 grafton-mission 共战伯爵），预先开启同伴任务
+      const encEnemies = new Set<string>();
+      for (const node of reachableNodes(this.campaign.scripts, this.index.nodes, accept.event!.script)) {
+        if (node.exit.type === 'waitEncounter') {
+          for (const sp of node.exit.encounter.spawns) encEnemies.add(sp.enemyId);
+        }
+        for (const cmd of node.commands) {
+          if (cmd.type === 'encounter') {
+            for (const sp of cmd.encounter.spawns) encEnemies.add(sp.enemyId);
+          }
+        }
+      }
+      if (encEnemies.size > 0) {
+        for (const comp of this.index.completers.get(this.questId) ?? []) {
+          if (comp.kind !== 'event' || !comp.event) continue;
+          for (const ref of positiveQuestRefs(comp.event.condition)) {
+            if (ref.quest === this.questId || this.plannedStatus.has(ref.quest)) continue;
+            const peer = this.index.quests.get(ref.quest);
+            if (peer?.goals.some(g => g.kind === 'defeat' && encEnemies.has(g.target))) {
+              this.ensureAccepted(ref.quest, undefined, accept.event!.id);
+            }
+          }
+        }
+      }
     } else if (accept.script) {
       if (accept.after) this.ensureCompleted(accept.after, undefined, undefined);
       this.analyzeScriptCommands(accept.script, undefined);
