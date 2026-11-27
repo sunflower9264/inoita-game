@@ -1545,7 +1545,7 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
     this.collectMapGroundLoot();
   }
 
-  captureStoryScene(includeEnemyAppearance = true): SceneSnapshot {
+  captureStoryScene(includeActorAppearance = true): SceneSnapshot {
     if (!this.worldReady()) throw new Error('正式地图尚未就绪');
     const map = this.map!;
     const movement = this.movement!;
@@ -1571,7 +1571,7 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
         facing: facing ?? 'south',
         visible,
         flip: character.entity.flip,
-        appearance: storyDevMode() ? freezeSnapshot(character.actor) : character.actor,
+        ...(includeActorAppearance ? { appearance: storyDevMode() ? freezeSnapshot(character.actor) : character.actor } : {}),
         clip: character.clipName ?? undefined,
         alpha: character.container.alpha,
         animationProgress: animation.progress,
@@ -1581,7 +1581,7 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
     const visit = this.combat?.captureStoryVisit();
     return {
       map: map.id,
-      actors: [...actors, ...(this.combat?.captureStoryActors(includeEnemyAppearance) ?? [])],
+      actors: [...actors, ...(this.combat?.captureStoryActors(includeActorAppearance) ?? [])],
       ...(visit ? { visit: { generatedEntities: structuredClone(this.baseEntities), ...visit } } : {}),
     };
   }
@@ -1590,14 +1590,14 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
     this.triggers.restoreContacts(contacts);
   }
 
-  captureStoryWorld(includeEnemyAppearance = true): StoryWorldViewSnapshot {
+  captureStoryWorld(includeActorAppearance = true): StoryWorldViewSnapshot {
     if (!this.worldReady()) throw new Error('正式地图尚未就绪');
     return {
       location: { map: this.map!.id, ...this.movement!.position(this.player!), facing: this.facing },
       world: this.combat?.captureState(),
       generatedEntities: structuredClone(this.baseEntities),
       triggerContacts: this.triggers.captureContacts(),
-      scene: this.captureStoryScene(includeEnemyAppearance),
+      scene: this.captureStoryScene(includeActorAppearance),
       audio: this.app.audio?.captureStoryAudio(),
     };
   }

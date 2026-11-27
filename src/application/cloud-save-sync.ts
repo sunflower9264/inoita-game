@@ -159,6 +159,7 @@ export async function restoreCloudSaves<World>(ports: CloudSaveSyncPorts<World> 
       await ports.validate(reading.game,signal,entry.slot);
       signal.throwIfAborted();
       ports.saves.writeRaw(entry.slot, JSON.stringify(reading.game));
+      await ports.saves.flush?.(entry.slot);
       completed += 1;
     } catch (error) {
       if(signal.aborted)return {ok:false,total:entries.length,completed,failures,aborted:true};

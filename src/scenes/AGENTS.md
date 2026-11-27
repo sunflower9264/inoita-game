@@ -32,7 +32,6 @@ Phaser 场景层：驱动生命周期、转发输入，把 domain、rendering、
 - **正式世界就绪统一判断。** 跨场景入口在读取世界快照前用 `WorldScene.worldReady()`；正常开演前只在途进图用 `waitWorldReady()`，错误重试和剧情投影用 `recoverWorld()`（等待后仍不完整才重建）。会自己包装参数的重建入口要登记基础进图参数（`restartWorld` 用 `pendingRestart` 身份认领），直接 `scene.restart` 的入口由 `init` 正常登记为基础参数。存档还须等进图加载页收起，定时保存和切后台保存共用这一入口。
 - 剧情舞台恢复敌人时优先使用剧情外观；快照没有外观时按敌人 ID 从战斗目录恢复。
 - 跳过走位时，舞台用同一份演员外观定义读取碰撞范围；角色图片等需要显示时再准备。
-- 玩家存档的世界快照只保留敌人身份和现场状态；运行时剧情与回滚快照保留完整敌人外观。
 
 - 地狱火等散布特效的视野尺寸用镜头宽高除以各轴缩放，交给战斗层的单位是地图像素；画面精度变化只改变采样，不改变散布范围。
 
@@ -89,7 +88,7 @@ Phaser 场景层：驱动生命周期、转发输入，把 domain、rendering、
 - **快捷栏冷却和快捷页在同一逻辑帧只绘制一次。** WorldScene 的统一入口取一次冷却快照和快捷页数据，再更新触摸栏与键盘 HUD；换人、换页、背包变化等事件仍立即刷新。
 - **进图兜底检查点抓取成功即清除待抓。** 只有捕获失败才保留 `checkpointPending` 重试；剧情导演在剧情结束后仍抓一次检查点。等待战斗期间只在本图存在挂起遭遇（`hasWaitingEncounterOnMap`）时保留战前检查点，不跨图阻断其他地图的检查点更新。
 - **剧情接管的输入、显隐和暂停分别由 `canControl`、`director.busy`、`stageOccluded`、`partyActionsSuspended` 承担。**
-- `captureStoryScene` 与剧情舞台快照共享演员外观引用，只复制必要的外壳字段；开发/测试模式下外观是冻结的，原地修改会直接报错。
+- 运行时内存检查点（`captureStoryWorld(true)`）与剧情舞台快照共享演员外观引用；持久存档（`captureSaveWorld` -> `captureStoryWorld(false)`）省略主角、伙伴、怪物和地图实体的可重建 `appearance`，读档进图时由衣柜和 `world.actors` 重建。开发/测试模式下外观是冻结的，原地修改会直接报错。
 - 喝泉水的回血回蓝和技能点结算调用 `domain/springs.ts` 的 `applySpringRecovery`、`grantSpringSkillPoint`；正面状态按存活上阵队员逐个施加，负面或攻防混合状态只给当前操控者。
 - **任务完成、任务进度与场景内全部非阻塞提示统一走 `GameUI.showInstant`。** `WorldScene.noticeQuestChanges` 只在任务簿版本变化时经 `questNotices` 对比状态：有 `completion: 'all'` 的可见任务进入待交付时只提示 `任务完成：…`，这一轮不再发进度；没有完成提示时，才对目标数字增加的进行中任务提示 `任务进度：…`。对话/剧情任务已有任务窗，日志外任务不提示；不再为单个交互目标额外发送提示。场景里的泉水、旅店、拔剑、快捷道具/技能校验、任务道具拾取上限以及异步同步队友失败等非阻塞提示一律走 `showInstant`，禁止使用深色方框 `toast`（完整提示通道分工见 `src/ui/AGENTS.md`）。
 - 场景键从 `SCENE_KEYS`（`src/application/scene-keys.ts`）取，构造、查找、启动都用它，不写裸字符串。

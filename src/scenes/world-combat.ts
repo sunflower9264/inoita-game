@@ -806,7 +806,7 @@ export class WorldCombat {
     return state;
   }
 
-  captureStoryActors(includeEnemyAppearance = true): SceneActorState[] {
+  captureStoryActors(includeActorAppearance = true): SceneActorState[] {
     const allies: SceneActorState[] = this.allies.map(ally => {
       const animation = characterAnimationState(ally.visual);
       return {
@@ -818,7 +818,7 @@ export class WorldCombat {
         facing: ally.facing,
         visible: ally.member.alive,
         flip: ally.visual.entity.flip,
-        appearance: structuredClone(ally.visual.actor),
+        ...(includeActorAppearance ? { appearance: structuredClone(ally.visual.actor) } : {}),
         clip: ally.visual.clipName ?? undefined,
         alpha: ally.visual.container.alpha,
         animationProgress: animation.progress,
@@ -837,7 +837,7 @@ export class WorldCombat {
         facing: enemy.facing,
         visible: this.isActorAlive(enemy.key) && !this.pendingDefeats.has(enemy.key),
         flip: enemy.visual.entity.flip,
-        ...(includeEnemyAppearance ? { appearance: structuredClone(enemy.visual.actor) } : {}),
+        ...(includeActorAppearance ? { appearance: structuredClone(enemy.visual.actor) } : {}),
         clip: enemy.visual.clipName ?? undefined,
         alpha: enemy.visual.container.alpha,
         animationProgress: animation.progress,

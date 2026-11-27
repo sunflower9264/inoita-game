@@ -13,7 +13,7 @@
 - 端口/场景键/事件：`ports.ts`（能力接口，含 `AudioSceneContext`、`FormalUiSceneContext`）、`scene-keys.ts`（场景键）、`ui-events.ts`（界面事件名）、`input-router.ts`（全局键盘作用域与优先级）、`entry-loading.ts`（入口加载与继续进度）、`entry-plan.ts`（入口计划、公共素材分批与地图资产）、`menu-images.ts`（标题与菜单图片分组）。
 - 会话与入口协调：`content-bootstrap.ts`（`StoryContentBootstrap`，13 份核心目录并行拉取与校验、菜单核心/补充预载及公共素材后台预载）、`gm-session-bridge.ts`（`attachGmSessionBridge`、`detachGmSessionBridge`、`GmWorldScenePort`）。
 - 内容加载与校验：`content-loader.ts`（内容加载器与生产哨兵）、`content-validation.ts`（内容字段校验器）、`content-relations.ts`（引用关系校验）、`content-hash.ts`（规范化 JSON 与内容摘要）、`content-trust.ts`（构建期信任开关）、`story-performance-validation.ts`（剧情演出校验）、`story-reference-validation.ts`（剧情引用校验）。
-- 存档/自动保存：`saved-game.ts`（读档时校验格式、会话和地图现场）、`saved-game-loader.ts`（存档读取与取消）、`auto-save.ts`（自动保存节流与重试）、`session-auto-save.ts`（`SessionAutoSaveController`，代次守卫与截图异步回写隔离）、`quest-item-grants.ts`（任务物品净发放与溢出）、`world-snapshot.ts`（世界快照与存档捕获结果的数据类型）。
+- 存档/自动保存：`save-storage.ts`（`IndexedDbSaveStorage`，内存同步镜像 + IndexedDB 异步落盘、启动时一次性搬迁并清理 `localStorage` 旧档、事务失败回滚与受限环境降级）、`saved-game.ts`（读档时校验格式、会话和地图现场）、`saved-game-loader.ts`（存档读取与取消）、`auto-save.ts`（自动保存节流与重试）、`session-auto-save.ts`（`SessionAutoSaveController`，代次守卫与截图异步回写隔离）、`quest-item-grants.ts`（任务物品净发放与溢出）、`world-snapshot.ts`（世界快照与存档捕获结果的数据类型）。
 - 云存档：`cloud-save.ts`（HTTP 客户端、token 存储、续期、改密与结果化错误）、`cloud-save-sync.ts`（逐槽备份/恢复、覆盖确认与部分失败）、`endpoints.ts`（云存档/诊断服务地址解析，网页同源，宿主注入）。
 - 剧情素材：`story-asset-preparation.ts`（剧情目标的在途任务与完整素材使用权）。
 - 资源/版本：`assets.ts`（素材池与租约）、`asset-version.ts`（素材与内容版本号）。

@@ -93,11 +93,15 @@ export type SaveRawReading =
   | { kind:'obsolete'; reason:string }
   | { kind:'unreadable'; reason:string };
 
-/** 存档要用的那部分 localStorage；测试传内存实现。 */
+/** 存档持久化端口；浏览器走 IndexedDB 内存镜像适配器，测试传同步内存实现。 */
 export interface SaveStorage {
   getItem(key:string):string|null;
   setItem(key:string,value:string):void;
   removeItem(key:string):void;
+  /** 异步持久化层启动预热；纯同步存储无需实现。 */
+  ready?():Promise<void>;
+  /** 等待指定键（或全部挂起键）的异步写入/删除真正落盘；无在途异步操作时返回 undefined。 */
+  flush?(key?:string):Promise<void>|void;
 }
 
 /** 存档名字的最大长度（按字符计）。 */
@@ -149,6 +153,21 @@ export class SaveSlots<World = unknown> {
   constructor(storage?:SaveStorage, prefix='inotia4.story.v1') {
     this.storage=storage ?? (typeof localStorage==='undefined' ? noStorage : localStorage);
     this.prefix=prefix;
+  }
+  /** 等待底层存储完成预热与旧档迁移；纯同步存储立即完成。 */
+  ready():Promise<void> {
+    return this.storage.ready?.() ?? Promise.resolve();
+  }
+  /** 等待指定槽位（或全部在途操作）异步持久化真正落盘；落盘失败时清理对应摘要缓存再向上抛错。 */
+  flush(ref?:SaveSlotRef):Promise<void>|undefined {
+    const targetKey=ref===undefined?undefined:this.key(ref);
+    const pending=this.storage.flush?.(targetKey);
+    if(!pending)return undefined;
+    return pending.catch(error=>{
+      if(targetKey!==undefined)this.summaryCache.delete(targetKey);
+      else this.summaryCache.clear();
+      throw error;
+    });
   }
   private key(ref:SaveSlotRef):string {
     if(ref===AUTO_SAVE_SLOT)return `${this.prefix}.auto`;

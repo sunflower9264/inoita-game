@@ -231,7 +231,8 @@ test('live capture includes the physical scene with equipped party, props, enemy
   const savedScene:SceneSnapshot=saved.world.scene!;
   assert.equal(savedScene.actors.find(actor=>actor.id==='enemy:wolf-1')!.appearance,undefined);
   assert.equal(savedScene.actors.find(actor=>actor.id===`enemy:${summonKey}`)!.appearance,undefined);
-  assert.ok(savedScene.actors.find(actor=>actor.id===`member:${first.id}`)!.appearance);
+  assert.equal(savedScene.actors.find(actor=>actor.id===`member:${first.id}`)!.appearance,undefined);
+  assert.equal(savedScene.actors.find(actor=>actor.id==='player')!.appearance,undefined);
   assert.ok(snapshot.actors.find(actor=>actor.id==='enemy:wolf-1')!.appearance);
   validateSceneSnapshot(savedScene);
   assert.deepEqual(snapshot.visit?.breakableRolls,[['wolf-1','enemy-snake-1']]);

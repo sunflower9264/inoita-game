@@ -152,7 +152,10 @@ export class TitleMenuController {
     // 浏览器自身的退出（Esc、手势）不会走设置页的按钮，靠事件把开关状态同步回来。
     this.releaseFullscreen?.();
     this.releaseFullscreen=onFullscreenChange(()=>this.syncFullscreenSetting());
-    return this.titleAssets.preloadResident(titleMenuImages,controller.signal,()=>{}).then(()=>{
+    return Promise.all([
+      this.titleAssets.preloadResident(titleMenuImages,controller.signal,()=>{}),
+      this.app.saves.ready?.()??Promise.resolve(),
+    ]).then(()=>{
       if(controller.signal.aborted)return;
       this.backdrop=this.views?.createBackdrop?.(art('background'))??new UiImage(this.scene,undefined,art('background')).setOrigin(.5);
       // 遮罩同时拦掉底层输入；弹层在它上面，按钮仍然先命中。
@@ -715,23 +718,36 @@ export class TitleMenuController {
   }
   private requestDelete(ref:SaveSlotRef):void{
     if(ref===AUTO_SAVE_SLOT||this.app.saves.peek(ref).kind==='empty')return;
+    let deleting=false;
     this.confirmAction={
       message:'删除后无法恢复，确定删除这个存档？',
-      accept:()=>this.deleteSlot(ref),
-      cancel:()=>this.settleConfirm(false),
+      accept:()=>{if(deleting)return;deleting=true;this.deleteSlot(ref);},
+      cancel:()=>{if(deleting)return;this.settleConfirm(false);},
     };
     this.showConfirmation();
   }
   private deleteSlot(ref:SaveSlotRef):void{
-    let deleted=false;
-    try{this.app.saves.erase(ref);this.app.audio?.ui('select');deleted=true;}
-    catch(error){console.warn('删除存档失败',error);}
-    if(deleted&&this.slotBoard&&typeof ref==='number'){
-      const specs=this.slotBoard.update(ref,newestFirstSlots(slot=>this.app.saves.peek(slot)));
-      this.domSpecs=this.domSpecs.filter(spec=>!spec.key.startsWith('save-slot-')).concat(specs.map(spec=>this.saveBoardSpec(spec)));
-      this.settleConfirm(true);return;
-    }
-    this.settleConfirm(true,false);this.render();
+    const finishDelete=(deleted:boolean)=>{
+      if(this.disposed||!this.scene.sys.isActive())return;
+      if(deleted){
+        this.app.audio?.ui('select');
+        if(this.page==='slots'&&this.slotBoard&&typeof ref==='number'){
+          const specs=this.slotBoard.update(ref,newestFirstSlots(slot=>this.app.saves.peek(slot)));
+          this.domSpecs=this.domSpecs.filter(spec=>!spec.key.startsWith('save-slot-')).concat(specs.map(spec=>this.saveBoardSpec(spec)));
+          this.settleConfirm(true);return;
+        }
+      }
+      this.settleConfirm(deleted,false);
+      if(this.page==='slots')this.render();
+    };
+    try{this.app.saves.erase(ref);}
+    catch(error){console.warn('删除存档失败',error);finishDelete(false);return;}
+    const flushing=this.app.saves.flush?.(ref);
+    if(!flushing){finishDelete(true);return;}
+    void flushing.then(
+      ()=>finishDelete(true),
+      error=>{console.warn('删除存档失败',error);finishDelete(false);},
+    );
   }
   /** 改名：手机系统键盘输入，只收中文、英文、数字；确认后只改摘要里的名字。 */
   private updateSlotTitle(ref:SaveSlotRef):void{
@@ -742,10 +758,10 @@ export class TitleMenuController {
   }
   private renameSlot(ref:SaveSlotRef):void {
     this.slotRename.start(ref,this.app,{
-      current:()=>this.page==='slots'&&this.scene.sys.isActive(),
+      current:()=>!this.disposed&&this.page==='slots'&&this.scene.sys.isActive(),
       scale:()=>this.surface?.root.getWorldTransformMatrix().scaleX??1,
       opened:()=>{if(!this.app.promptText)this.layout();},
-      finished:(slot,submitted)=>{if(submitted)this.updateSlotTitle(slot);else this.layout();},
+      finished:(slot,submitted,failed)=>{if(submitted||failed)this.updateSlotTitle(slot);else this.layout();},
     });
   }
   private showConfirmation():void{

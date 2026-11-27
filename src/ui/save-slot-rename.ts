@@ -2,7 +2,7 @@ import {AUTO_SAVE_SLOT,type SaveSlotRef,type SaveSlots} from '../domain/save-gam
 import {TextPrompt} from './text-prompt.ts';
 
 interface RenameHost {
-  saves:Pick<SaveSlots,'peek'|'rename'>;
+  saves:Pick<SaveSlots,'peek'|'rename'> & Partial<Pick<SaveSlots,'flush'>>;
   promptText?:(initial:string)=>Promise<string|undefined>;
 }
 
@@ -18,7 +18,7 @@ export class SaveSlotRename {
   }
 
   start(slot:SaveSlotRef,host:RenameHost,view:{
-    scale:()=>number;current:()=>boolean;opened:()=>void;finished:(slot:number,submitted:boolean)=>void;
+    scale:()=>number;current:()=>boolean;opened:()=>void;finished:(slot:number,submitted:boolean,failed?:boolean)=>void;
   }):void {
     if(slot===AUTO_SAVE_SLOT)return;
     const reading=host.saves.peek(slot);
@@ -28,12 +28,33 @@ export class SaveSlotRename {
     this.request=request;
     const finish=(value?:string)=>{
       if(this.request!==request)return;
-      this.request=undefined;
-      if(!view.current())return;
+      if(!view.current()){this.request=undefined;return;}
+      let submitted=value!==undefined;
+      let failed=false;
       if(value!==undefined){
-        try{host.saves.rename(slot,value);}catch(error){console.warn('存档改名失败',error);}
+        try{
+          host.saves.rename(slot,value);
+          const flushing=host.saves.flush?.(slot);
+          if(flushing){
+            void flushing.then(
+              ()=>{
+                if(this.request!==request)return;
+                this.request=undefined;
+                if(view.current())view.finished(slot,true,false);
+              },
+              error=>{
+                console.warn('存档改名失败',error);
+                if(this.request!==request)return;
+                this.request=undefined;
+                if(view.current())view.finished(slot,false,true);
+              },
+            );
+            return;
+          }
+        }catch(error){console.warn('存档改名失败',error);submitted=false;failed=true;}
       }
-      view.finished(slot,value!==undefined);
+      this.request=undefined;
+      view.finished(slot,submitted,failed);
     };
     view.opened();
     if(this.request!==request)return;

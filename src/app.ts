@@ -20,6 +20,7 @@ import type { StoryClassCatalog } from './domain/story-class.ts';
 import type { ItemCatalog, EquipmentSlot, ItemResult } from './domain/items.ts';
 import { SessionCheckpoint } from './domain/session-checkpoint.ts';
 import { SaveSlots } from './domain/save-game.ts';
+import { createBrowserSaveStorage } from './application/save-storage.ts';
 import { CloudSaveClient } from './application/cloud-save.ts';
 import { cloudBaseUrl } from './application/endpoints.ts';
 import type { SaveWorldResult, StoryWorldViewSnapshot } from './application/world-snapshot.ts';
@@ -71,8 +72,8 @@ export class StoryApp {
   readonly keyBindings = defaultKeyBindings;
   readonly content = new ContentLoader();
   readonly checkpoint = new SessionCheckpoint<StoryWorldViewSnapshot>();
-  /** 三个存档槽的持久化。标题页与游戏内菜单读的是同一份，键在 `domain/save-game.ts`。 */
-  readonly saves = new SaveSlots<StoryWorldViewSnapshot>();
+  /** 自动槽与十个手动存档槽的本地持久化；浏览器经 IndexedDB 突破 localStorage 容量上限。 */
+  readonly saves = new SaveSlots<StoryWorldViewSnapshot>(createBrowserSaveStorage());
   /** 云存档客户端：构造只读本地 token，不联网；地址由 application/endpoints.ts 统一解析。 */
   readonly cloud = new CloudSaveClient({ baseUrl: cloudBaseUrl });
   /** GM（调试）开关本身：一直存在，标题页手势与 `?gm` 都作用在它上面。 */

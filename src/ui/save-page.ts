@@ -166,6 +166,7 @@ export class SavePage {
     this.loadRequest?.abort();this.loadRequest=undefined;
     this.saveSerial++;
     this.saving = false;
+    this.board = undefined;
     this.saveConfirm = undefined;
     this.loadConfirm = undefined;
     this.deleteConfirm = undefined;
@@ -246,21 +247,58 @@ export class SavePage {
   }
 
   private writeSlot(ref: number, record: SaveGame<StoryWorldViewSnapshot>): void {
-    let saved=false;
+    const session = this.host.session();
+    const finishWrite = (saved: boolean) => {
+      if (saved) {
+        if (this.host.session() === session) this.host.app.saveSlot = ref;
+        this.host.app.audio?.ui('select');
+        this.host.setItemNotice(SAVE_DONE);
+      } else {
+        this.host.setItemNotice(SAVE_FAILED);
+      }
+      if (this.board && this.host.updateSaveRows && this.host.updateNotice) {
+        this.host.updateSaveRows(this.board.update(ref, newestFirstSlots(slot => this.host.app.saves.peek(slot))));
+        this.host.updateNotice();
+      } else {
+        this.host.render();
+      }
+      // 只有真正落盘才算“跳转前已存档”；写失败时调用方保留待办，让玩家换槽重试。
+      if (saved && this.host.session() === session) this.host.afterManualSave?.(ref);
+    };
     try {
       this.host.app.saves.write(ref, record);
-      this.host.app.saveSlot = ref;
-      this.host.app.audio?.ui('select');
-      this.host.setItemNotice(SAVE_DONE);
-      saved=true;
     } catch (error) {
-      console.warn('存档写入失败', error); this.host.setItemNotice(SAVE_FAILED);
+      console.warn('存档写入失败', error);
+      finishWrite(false);
+      return;
     }
-    if(this.board&&this.host.updateSaveRows&&this.host.updateNotice){
-      this.host.updateSaveRows(this.board.update(ref,newestFirstSlots(slot=>this.host.app.saves.peek(slot))));this.host.updateNotice();
-    }else this.host.render();
-    // 只有真正落盘才算“跳转前已存档”；写失败时调用方保留待办，让玩家换槽重试。
-    if(saved)this.host.afterManualSave?.(ref);
+    const flushing = this.host.app.saves.flush?.(ref);
+    if (!flushing) {
+      finishWrite(true);
+      return;
+    }
+    this.saving = true;
+    this.host.updateConfirmation();
+    const serial = ++this.saveSerial;
+    void flushing.then(
+      () => {
+        if (serial !== this.saveSerial) {
+          if (this.host.session() === session) this.host.app.saveSlot = ref;
+          return;
+        }
+        this.saving = false;
+        finishWrite(true);
+      },
+      error => {
+        console.warn('存档写入失败', error);
+        if (serial !== this.saveSerial) {
+          if (!this.saving && this.board && this.host.session() === session) finishWrite(false);
+          return;
+        }
+        this.saving = false;
+        finishWrite(false);
+      },
+    );
   }
 
   /** 删除手动存档；删掉的正是当前槽时清空 `saveSlot`。 */
@@ -271,18 +309,55 @@ export class SavePage {
   }
 
   private deleteSlot(ref: SaveSlotRef): void {
-    let deleted=false;
+    const session = this.host.session();
+    const finishDelete = (deleted: boolean) => {
+      if (deleted) {
+        if (this.host.session() === session && this.host.app.saveSlot === ref) this.host.app.saveSlot = undefined;
+        this.host.app.audio?.ui('select');
+      } else {
+        this.host.setItemNotice(SAVE_FAILED);
+      }
+      this.deleteConfirm = undefined;
+      if (deleted && this.board && this.host.updateSaveRows && typeof ref === 'number') {
+        this.host.updateSaveRows(this.board.update(ref, newestFirstSlots(slot => this.host.app.saves.peek(slot))));
+        this.host.updateConfirmation();
+      } else {
+        this.host.render();
+      }
+    };
     try {
       this.host.app.saves.erase(ref);
-      if (this.host.app.saveSlot === ref) this.host.app.saveSlot = undefined;
-      this.host.app.audio?.ui('select');deleted=true;
     } catch (error) {
-      console.warn('删除存档失败', error); this.host.setItemNotice(SAVE_FAILED);
+      console.warn('删除存档失败', error);
+      finishDelete(false);
+      return;
+    }
+    const flushing = this.host.app.saves.flush?.(ref);
+    if (!flushing) {
+      finishDelete(true);
+      return;
     }
     this.deleteConfirm = undefined;
-    if(deleted&&this.board&&this.host.updateSaveRows&&typeof ref==='number'){
-      this.host.updateSaveRows(this.board.update(ref,newestFirstSlots(slot=>this.host.app.saves.peek(slot))));this.host.updateConfirmation();
-    }else this.host.render();
+    this.saving = true;
+    this.host.updateConfirmation();
+    const serial = ++this.saveSerial;
+    void flushing.then(
+      () => {
+        if (this.host.session() === session && this.host.app.saveSlot === ref) this.host.app.saveSlot = undefined;
+        if (serial !== this.saveSerial) return;
+        this.saving = false;
+        finishDelete(true);
+      },
+      error => {
+        console.warn('删除存档失败', error);
+        if (serial !== this.saveSerial) {
+          if (!this.saving && this.board && this.host.session() === session) finishDelete(false);
+          return;
+        }
+        this.saving = false;
+        finishDelete(false);
+      },
+    );
   }
 
   /** 改名：手机系统键盘输入，只收中文、英文、数字；确认后只改摘要里的名字。 */
@@ -291,11 +366,13 @@ export class SavePage {
     this.slotRename.start(ref,this.host.app,{
       current:()=>this.host.session()===session,scale:()=>this.host.uiScale?.()??1,
       opened:()=>this.host.sync(),
-      finished:(slot,submitted)=>{
-        if(submitted){
+      finished:(slot,submitted,failed)=>{
+        if(submitted||failed){
+          if(failed)this.host.setItemNotice(SAVE_FAILED);
           const title=saveRowTitle(slot,this.host.app.saves.peek(slot));
           if(this.board&&this.host.updateSaveTitle){
             this.board.updateTitle(slot,title);this.host.updateSaveTitle(`save-slot-${slot}-title`,title);
+            if(failed)this.host.updateNotice?.();
           }else this.host.render();
         }
         this.host.sync();

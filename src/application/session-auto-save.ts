@@ -25,7 +25,7 @@ export interface SessionAutoSaveApp {
   readonly world?: WorldIndex;
   readonly storyClasses?: StoryClassCatalog;
   readonly menuPanels?: Pick<MenuPanels, 'character'>;
-  readonly saves: Pick<SaveSlots<StoryWorldViewSnapshot>, 'write'>;
+  readonly saves: Pick<SaveSlots<StoryWorldViewSnapshot>, 'write'> & Partial<Pick<SaveSlots<StoryWorldViewSnapshot>, 'flush'>>;
   captureSaveWorld?: () => SaveWorldResult;
 }
 
@@ -116,7 +116,18 @@ export class SessionAutoSaveController {
           return;
         }
         if (screenshot) game.summary.screenshot = screenshot;
-        writeSlot('async', game, started);
+        try {
+          app.saves.write(AUTO_SAVE_SLOT, game);
+          await app.saves.flush?.(AUTO_SAVE_SLOT);
+          globalThis.storyDiagnostics?.record(
+            'save',
+            { slot: 'auto', mode: 'async', elapsedMs: Math.round((now() - started) * 10) / 10 },
+            false,
+          );
+        } catch (error) {
+          globalThis.storyDiagnostics?.record('save-error', { slot: 'auto', mode: 'async', error });
+          throw error;
+        }
       },
       now,
     });
