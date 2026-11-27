@@ -1,7 +1,24 @@
 import {buffEffectNames} from './buff-effects.ts';
-import {skillForGrowth,type SkillGrowthProfile} from './battle.ts';
-import type {BattleBuffEffect,BattleCatalog,LearnedReactionSkillId,SkillLoadout,SkillDefinition} from './battle.ts';
-import type {BattleBuffKey} from './battle-semantics.ts';
+import type {
+  LearnedReactionSkillId,
+  SkillGrowthProfile,
+  SkillLoadout,
+  SkillReaction,
+  SkillReactionBuff,
+} from './battle-buff-types.ts';
+
+export type { SkillReaction, SkillReactionBuff } from './battle-buff-types.ts';
+
+/** 已学反应查表所需的最小技能与目录结构；由 `SkillDefinition`/`BattleCatalog` 结构兼容，保持零环依赖。 */
+export interface LearnedSkillReactionEntry {
+  readonly id: string;
+  readonly reactionsByRank?: readonly (readonly SkillReaction[])[];
+  readonly companion?: { readonly reactionsByRank?: readonly (readonly SkillReaction[])[] };
+}
+export interface LearnedSkillReactionCatalog {
+  readonly classes: readonly { readonly id: string; readonly skills: readonly string[] }[];
+  readonly skills: Readonly<Record<string, LearnedSkillReactionEntry>>;
+}
 
 /** 概率阈值按千分制存放；掷 1..999 后严格小于阈值才命中。 */
 const CHANCE_ROLL_MAX=999;
@@ -9,47 +26,6 @@ const CHANCE_ROLL_MAX=999;
 const PER_THOUSAND=1000;
 /** 血之渴望只在概率阈值至少 200（千分制 20%）时参与判定。 */
 const BLOOD_THIRST_MIN_CHANCE=200;
-
-export interface SkillReactionBuff {
-  key:BattleBuffKey;
-  rankPriority:number;
-  effect:BattleBuffEffect;
-}
-
-export type SkillReaction =
-  | {kind:'soul-sword';chanceThreshold:number;buffFromLearnedSkill:'dark-strike';
-      physicalEffects:string[];magicEffects:string[]}
-  | {kind:'blood-sword';lifeDrainPerThousand:number}
-  | {kind:'shield-of-rage';buff:SkillReactionBuff}
-  | {kind:'flares-of-pain';chanceThreshold:number;buff:SkillReactionBuff}
-  | {kind:'wrath-of-darkness';chanceThreshold:number;buff:SkillReactionBuff}
-  | {kind:'dark-sense';buff:SkillReactionBuff}
-  | {kind:'armor-penetration';buff:SkillReactionBuff}
-  | {kind:'revenge-incarnate';buff:SkillReactionBuff}
-  | {kind:'blood-thirst';lifeEffect:'life-drain';manaEffect:'mana-recovery'}
-  | {kind:'flare';chanceThreshold:number;offhandChanceThreshold:number;stealthFromLearnedSkill:'whist';effect:string;unlearnedStealth:SkillReactionBuff}
-  | {kind:'clever-fellow';chanceThreshold:number}
-  | {kind:'owner-mana-restore';amount:number;effect:string}
-  /** 信念之盾：物理两挡之后给固定三槽各施加一层子增益。 */
-  | {kind:'shield-of-trust';buff:SkillReactionBuff}
-  /** 血之复仇：同阵营挨打后，三个活动队伍槽里学过的人各自给自己叠一层。 */
-  | {kind:'blood-revenge';buff:SkillReactionBuff}
-  /** 破灭之魔甲：只提供子增益本体，什么时候建它由魔甲的接受结果决定。 */
-  | {kind:'bard-of-destruction';buff:SkillReactionBuff}
-  /** 深呼吸：同样只提供子增益本体，由隐之觉醒的接受结果决定何时建它。 */
-  | {kind:'deep-breath';buff:SkillReactionBuff}
-  /** 狙击：同样只提供子增益本体，由埋伏的接受结果决定何时建它。 */
-  | {kind:'sniping';buff:SkillReactionBuff}
-  /** 凝神之咒：直接治疗被接受之后按概率给受术者一层。 */
-  | {kind:'ordination-prayer';chanceThreshold:number;buff:SkillReactionBuff}
-  /** 魔法之眼：技能命中成功后给受击者一层魔抗削减，不抽概率也不看伤害。 */
-  | {kind:'magic-insight';buff:SkillReactionBuff}
-  /** 扰乱：受击方按阈值抽一次，抽中让同阵营里更扛打的人去拉走攻击者。 */
-  | {kind:'disturbance';chanceThreshold:number}
-  /** 地狱之落雷：已学等级提供概率阈值，combat-follow-ups 执行私有追击。 */
-  | {kind:'lightning-of-hell';chanceThreshold:number}
-  /** 神之定义：已学等级提供概率阈值，combat-follow-ups 执行天界之雷。 */
-  | {kind:'god-of-justice';chanceThreshold:number};
 
 interface AttackReactionEvent {
   ownerId:string;
@@ -104,14 +80,17 @@ interface BloodThirstReactionPorts {
   apply:(command:SkillReactionCommand)=>void;
 }
 
-export function learnedSkillReactions(catalog:BattleCatalog,classId:string,loadout:SkillLoadout,growth:SkillGrowthProfile='hero'):SkillReaction[] {
+export function learnedSkillReactions(catalog:LearnedSkillReactionCatalog,classId:string,loadout:SkillLoadout,growth:SkillGrowthProfile='hero'):SkillReaction[] {
   return (catalog.classes.find(character=>character.id===classId)?.skills??[]).flatMap(id=>{
-    const level=loadout.levels[id],ranks=skillForGrowth(catalog.skills[id],growth).reactionsByRank;
-    return level&&ranks?ranks[Math.min(level,ranks.length)-1]??[]:[];
+    const level=loadout.levels[id],skill=catalog.skills[id];
+    if(!skill)return [];
+    const ranks=growth==='hero'?skill.reactionsByRank:skill.companion
+      ?skill.companion.reactionsByRank:(()=>{throw new Error(`技能缺少伙伴成长配置：${skill.id}`);})();
+    return level&&ranks?[...(ranks[Math.min(level,ranks.length)-1]??[])]:[];
   });
 }
 
-export function skillReactionEffects(skill:SkillDefinition):string[] {
+export function skillReactionEffects(skill:{readonly reactionsByRank?:readonly (readonly SkillReaction[])[]}):string[] {
   return [...new Set((skill.reactionsByRank??[]).flat().flatMap(reaction=>{
     if(reaction.kind==='soul-sword')return [...reaction.physicalEffects,...reaction.magicEffects];
     if(reaction.kind==='blood-sword')return ['life-drain'];

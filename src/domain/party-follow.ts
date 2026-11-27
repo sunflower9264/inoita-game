@@ -3,7 +3,7 @@ import type { Point } from './navigation.ts';
 import { canTraverse, createPathSearch } from './pathfinding.ts';
 import { followOffset, narrowFollowOffset, type CompanionStance } from './party-placement.ts';
 import type { Combatant } from './combat.ts';
-import type { PartyPort } from './party-ai.ts';
+import type { PartyPort } from './party-port.ts';
 
 const distance=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
 

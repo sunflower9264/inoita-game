@@ -1,6 +1,25 @@
 import { equipmentPower, rollEquipmentNumbers, type CharacterStatsCatalog } from './character-stats.ts';
 import { blockedNormalAcquisitionIds, type ItemCatalog, type ItemInstance } from './items.ts';
-import type { Session } from './session.ts';
+
+/** 商店交易与货架状态所需的最小会话端口；由 `Session` 结构兼容，保持零双向导入。 */
+export interface ShopSessionHost {
+  readonly shops: ShopVisits;
+  readonly campaign: { readonly start: { readonly map: string } };
+  readonly money: number;
+  readonly player?: { readonly level: number };
+  readonly party?: { groupModifiers(): Record<string, number | undefined> };
+  readonly bag: {
+    readonly catalog: ItemCatalog;
+    readonly entries: readonly ItemInstance[];
+    get(id: string): ItemInstance | undefined;
+    prepareDrop(item: string): ItemInstance;
+    receiveDrop(instance: ItemInstance): unknown;
+    take(id: string, quantity: number, notify?: boolean): unknown;
+  };
+  spendMoney(amount: number): void;
+  gainMoney(amount: number): void;
+  atomic<T>(operation: () => T, touched: readonly ('bag' | 'coins')[]): T;
+}
 
 type StockRule =
   | { kind: 'level-range'; minimumLevel: number; maximumLevel: number; category: 'weapons' | 'armor' }
@@ -80,12 +99,12 @@ export class Storefront {
   category?: string;
   private stock: ShopOffer[] = [];
   private readonly catalog: ShopCatalog;
-  private readonly session: Session;
+  private readonly session: ShopSessionHost;
   private readonly items: ItemCatalog;
   private readonly stats: CharacterStatsCatalog;
   private readonly random: () => number;
   private readonly blocked: ReadonlySet<string>;
-  constructor(catalog: ShopCatalog, items: ItemCatalog, stats: CharacterStatsCatalog, session: Session,
+  constructor(catalog: ShopCatalog, items: ItemCatalog, stats: CharacterStatsCatalog, session: ShopSessionHost,
     shopId: string, mapId: string, random: () => number = Math.random) {
     const shop = catalog.shops[shopId];
     if (!shop) throw new Error('商店不存在');

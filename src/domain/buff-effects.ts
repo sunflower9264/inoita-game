@@ -1,4 +1,4 @@
-import type {BattleBuffEffect} from './battle.ts';
+import type { BattleBuffEffect } from './battle-buff-types.ts';
 
 /** Collect assets from the buff and every child it can create during combat. */
 export function buffEffectNames(effect:BattleBuffEffect):string[] {

@@ -1,6 +1,6 @@
 import type { EntityPlacement, Facing, QuestGuidance, QuestGroupDefinition, StartPlacement, CampaignEnemyPlacement } from './content.ts';
 import type { QuestRules } from './quest-book.ts';
-import type { StoryGraph } from './story-graph.ts';
+import type { QuestPlaces, StoryGraph } from './story-graph.ts';
 import type { StoryCondition } from './story-condition.ts';
 
 /** 任务的接取方式：走到发布者面前自动接取，或等玩家确认。 */
@@ -20,7 +20,7 @@ export interface CampaignQuest extends QuestRules {
   delivery?:string;
   deliveryCharacterId?:string;
   /** 可接取／进行中／待交付各自的地点；由导出层按原版证据填，缺的阶段就是没证据。 */
-  places?:import('./story-graph.ts').QuestPlaces;
+  places?: QuestPlaces;
   targetChanges?:{goal:string;enemyId:string;actor:string;removeAfterInteraction:boolean;changedText:string;interactText:string}[];
   guidance:QuestGuidance;
   acceptance?:QuestAcceptance;

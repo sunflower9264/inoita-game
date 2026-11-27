@@ -3,7 +3,7 @@ import type { CombatUnit, EnemyPlayableSkill, SkillAction, SkillEffectCue } from
 import { areaShapeMaxReachPx, canTargetCombatant, chargeLanding, rearLanding, resolveCueTargets, type SkillMovementPort, type Combatant, type CombatController } from './combat.ts';
 import { attackRangeQueryRadius, awarenessRangeQueryRadius } from './combat-spatial-index.ts';
 import type { PartySkillUse } from './party.ts';
-import type { PartyPort } from './party-ai.ts';
+import type { PartyPort } from './party-port.ts';
 import { rectDistance } from './rect-distance.ts';
 import { needsTarget } from './skill-action.ts';
 import { MAX_SKILL_TARGETS } from './skill-unit-sequence.ts';

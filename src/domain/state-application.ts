@@ -1,6 +1,13 @@
 import {passesChanceThreshold} from './action-state.ts';
 import type {BattleStateKey} from './battle-semantics.ts';
-import type {StateDurationProfile} from './battle.ts';
+
+/** 各种目标持续规则下预先算好的状态最后有效逻辑步。 */
+export interface StateDurationProfile {
+  normal:{lastActiveFrame:number};
+  targetShortened?:{lastActiveFrame:number};
+  buffShortened?:{lastActiveFrame:number};
+  buffAndTargetShortened?:{lastActiveFrame:number};
+}
 
 type StateDurationScale=1|0.5;
 

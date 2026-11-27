@@ -1,20 +1,8 @@
-import type {BattleBuffEffect} from './battle.ts';
-import type {BattleBuffKey,BattleStatKey,BattleStateKey} from './battle-semantics.ts';
-import {ACTIVE_PARTY_SLOT_COUNT} from './party-slots.ts';
+import type { BuffReaction, BuffReactionBuff } from './battle-buff-types.ts';
+import type { BattleStatKey, BattleStateKey } from './battle-semantics.ts';
+import { ACTIVE_PARTY_SLOT_COUNT } from './party-slots.ts';
 
-export interface BuffReactionBuff {
-  key:BattleBuffKey;
-  rankPriority:number;
-  effect:BattleBuffEffect;
-}
-
-/** 当前生效的 Buff 可以创建独立子 Buff、恢复资源，或改变本次命中的仇恨分配。 */
-export type BuffReaction=
-  | {kind:'physical-avoidance'|'physical-success-party';buff:BuffReactionBuff}
-  | {kind:'mana-on-physical-success';amount:number;effect:string}
-  | {kind:'weapon-block-counter';buff:BuffReactionBuff}
-  | {kind:'weapon-block-stun';state:BattleStateKey;durationAttribute:BattleStatKey}
-  | {kind:'physical-success-threat'};
+export type { BuffReaction, BuffReactionBuff } from './battle-buff-types.ts';
 
 interface BuffReactionContact {
   ownerId:string;

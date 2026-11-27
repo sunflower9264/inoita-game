@@ -1,5 +1,5 @@
-import type { Facing, StoryPose, TravelDestination } from './content.ts';
-import type { StoryWorldCommand } from './story-world.ts';
+import type { ChoiceAction, DialogueAction, Facing, StoryPose, TravelDestination } from './content.ts';
+import type { StoryEntityState, StoryWorldCommand } from './story-world.ts';
 import { validateSceneSnapshot, type SceneSnapshot } from './scene-snapshot.ts';
 
 export interface StoryCurtain { opacity: number; color: number }
@@ -78,6 +78,10 @@ export type PerformanceAction =
   | { type: 'wait'; durationMs: number }
   | { type: 'parallel'; actions: PerformanceAction[] };
 
+/** 剧情脚本由一个接一个的动作组成。 */
+export type ScriptAction = DialogueAction | ChoiceAction | PerformanceAction
+  | { type: 'party-join'; companion: string } | { type: 'party-leave'; companion: string };
+
 /** 跳过仅结束表现等待；取消终止整段播放。 */
 export interface PerformancePlayback {
   signal: AbortSignal;
@@ -98,7 +102,7 @@ export interface StoryPresentationPort {
   parallel?(actions: PerformanceAction[], playback: PerformancePlayback): Promise<void>;
   finish(completed: boolean, signal?: AbortSignal): Promise<void>;
   getStageState?(): StoryStageSnapshot | undefined;
-  getWorldChanges?(): readonly import('./story-world.ts').StoryEntityState[];
+  getWorldChanges?(): readonly StoryEntityState[];
   committed?(): void;
   restoreStage?(stage: StoryStageSnapshot, signal: AbortSignal): Promise<void>;
   release?(): void | Promise<void>;

@@ -10,7 +10,8 @@ import { validateStoryPerformance } from '../src/application/story-performance-v
 import { cameraDuration, pendingEntranceAliases, type PerformancePlayback, type StoryPresentationPort } from '../src/domain/story-performance.ts';
 import { compileScript, storyScriptActions } from './support/story-fixtures.ts';
 import type { Campaign } from '../src/domain/campaign.ts';
-import type { ChoiceOption, ScriptAction } from '../src/domain/content.ts';
+import type { ChoiceOption } from '../src/domain/content.ts';
+import type { ScriptAction } from '../src/domain/story-performance.ts';
 
 const read = (file: string) => JSON.parse(fs.readFileSync(new URL(`../public/${file}`, import.meta.url), 'utf8'));
 const campaign = parseCampaign(read('content/campaign.json')), world = parseWorld(read('content/world.json'));

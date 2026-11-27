@@ -1,9 +1,19 @@
 import type { CharacterStatsCatalog, PrimaryAttributes, PrimaryStat } from './character-stats.ts';
 import { rollLegendaryWeapon } from './drops.ts';
 import type { DropCatalog } from './drops.ts';
-import { groundLootFor } from './ground-loot.ts';
+import { groundLootFor, type GroundLootSessionHost } from './ground-loot.ts';
+import type { EquipmentGradeSeed } from './item-stats.ts';
 import type { ItemInstance } from './items.ts';
-import type { Session } from './session.ts';
+
+/** 拔取传世武器所需的最小会话端口；由 `Session` 结构兼容，保持零双向导入。 */
+export interface LegendaryWeaponSessionHost extends GroundLootSessionHost {
+  readonly legendaryWeapons: LegendaryWeapons;
+  readonly hero?: { readonly panel: { readonly attributes: PrimaryAttributes } };
+  readonly bag: GroundLootSessionHost['bag'] & {
+    prepareDrop(item: string, options?: { grade?: EquipmentGradeSeed; sockets?: boolean }): ItemInstance;
+    receiveDrop(instance: ItemInstance): unknown;
+  };
+}
 
 export interface LegendaryWeaponsState { used:string[] }
 
@@ -40,7 +50,7 @@ export function legendaryStatGate(attributes:PrimaryAttributes,mapLevel:number,r
   return {stat,value,success:mapLevel>0&&value>=2*mapLevel};
 }
 
-export function pullLegendaryWeapon(session:Session,stats:CharacterStatsCatalog,catalog:DropCatalog,mapId:string,entityId:string,mapLevel:number,random:()=>number,position:{x:number;y:number},uniqueBonus=0):LegendaryPullResult {
+export function pullLegendaryWeapon(session:LegendaryWeaponSessionHost,stats:CharacterStatsCatalog,catalog:DropCatalog,mapId:string,entityId:string,mapLevel:number,random:()=>number,position:{x:number;y:number},uniqueBonus=0):LegendaryPullResult {
   // 原版先 CHAR_SetSituation(...,5) 再判定：失败也会消耗。
   session.legendaryWeapons.markPulled(mapId,entityId);
   const hero=session.hero;

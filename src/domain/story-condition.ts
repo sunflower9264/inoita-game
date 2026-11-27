@@ -1,18 +1,6 @@
-import type { QuestStatus } from './content.ts';
+import type { QuestStatus, StoryCondition, StoryEventConditionStatus, StoryWorldValue } from './content.ts';
 
-export type StoryWorldValue = string | number | boolean;
-type StoryEventConditionStatus = 'idle' | 'running' | 'waiting' | 'completed';
-
-/** Conditions express game meaning and are shared by quests, events and world objects. */
-export type StoryCondition =
-  | { type: 'always'; value: boolean }
-  | { type: 'all' | 'any'; conditions: StoryCondition[] }
-  | { type: 'not'; condition: StoryCondition }
-  | { type: 'quest'; quest: string; status: QuestStatus | 'accepted' | 'settled' }
-  | { type: 'event'; event: string; status: StoryEventConditionStatus }
-  | { type: 'choice'; choice: string; value: string }
-  | { type: 'flag'; flag: string; value?: boolean }
-  | { type: 'world'; key: string; value: StoryWorldValue };
+export type { StoryCondition, StoryEventConditionStatus, StoryWorldValue } from './content.ts';
 
 export interface StoryConditionContext {
   questStatus(id: string): QuestStatus;

@@ -1,3 +1,4 @@
+import type { EquipmentGradeSeed } from './item-stats.ts';
 import { equipmentLevel, type EquipmentChaos } from './chaos-equipment.ts';
 import { ItemApplicationError, ITEM_NOTICE_TEXT, type ItemNotice } from './item-application.ts';
 import { SHORTCUT_ENTRY_COUNT, dedupeSkillShortcuts, type ShortcutRow } from './shortcut-bar.ts';
@@ -12,7 +13,7 @@ const CHAOS_VALUE_PERCENT_MAX = 200;
 const CHAOS_LEVEL_OFFSET_LIMIT = 127;
 const copy = (entry: ItemInstance): ItemInstance => structuredClone(entry);
 export interface BagRules {
-  initialize(entry:ItemInstance,drop?:{grade?:import('./character-stats.ts').EquipmentGradeSeed;sockets?:boolean}):void;
+  initialize(entry:ItemInstance,drop?:{grade?:EquipmentGradeSeed;sockets?:boolean}):void;
   equipProblem(entry:ItemInstance):string|undefined;
   targetProblem(source:ItemInstance,target:ItemInstance):ItemNotice|undefined;
   applyUse(source:ItemInstance,target:ItemInstance|undefined,skill?:string,memberId?:string):string|void;
@@ -355,7 +356,7 @@ export class Bag {
     } else for(let index=0;index<quantity;index++)this.put(this.create(item,skill).id);
   }
   /** Resolve a ground item's modifiers when it drops; collecting it keeps this result. */
-  prepareDrop(item:string,drop?:{grade?:import('./character-stats.ts').EquipmentGradeSeed;sockets?:boolean;lootLevel?:number}):ItemInstance {
+  prepareDrop(item:string,drop?:{grade?:EquipmentGradeSeed;sockets?:boolean;lootLevel?:number}):ItemInstance {
     if(!this.catalog.items[item])throw new Error('物品定义不存在');
     const entry:ItemInstance={id:`ground-${++this.serial}`,item,quantity:1,enhancement:0,gems:[]};
     if(drop?.lootLevel!==undefined)entry.lootLevel=drop.lootLevel;

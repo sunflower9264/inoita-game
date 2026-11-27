@@ -1,6 +1,6 @@
 import type { EffectClip } from './content.ts';
 import type { StoryItem } from './story-interface.ts';
-import type { ItemNumbers } from './character-stats.ts';
+import type { ItemNumbers } from './item-stats.ts';
 import type { DescriptionTextPart } from './description-text.ts';
 
 export const EQUIPMENT_SLOTS = ['head', 'hands', 'back', 'body', 'feet', 'main-hand', 'off-hand', 'neck', 'ring', 'accessory'] as const;

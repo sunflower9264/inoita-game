@@ -170,10 +170,24 @@ export interface MapExit {
 }
 
 /** 在场条件：与任务、事件和出口共同使用语义条件。 */
+export type StoryWorldValue = string | number | boolean;
+export type StoryEventConditionStatus = 'idle' | 'running' | 'waiting' | 'completed';
+
+/** 表达游戏语义的在场与触发条件，由任务、事件与世界物件共享。 */
+export type StoryCondition =
+  | { type: 'always'; value: boolean }
+  | { type: 'all' | 'any'; conditions: StoryCondition[] }
+  | { type: 'not'; condition: StoryCondition }
+  | { type: 'quest'; quest: string; status: QuestStatus | 'accepted' | 'settled' }
+  | { type: 'event'; event: string; status: StoryEventConditionStatus }
+  | { type: 'choice'; choice: string; value: string }
+  | { type: 'flag'; flag: string; value?: boolean }
+  | { type: 'world'; key: string; value: StoryWorldValue };
+
 export interface VisibilityRules {
   /** 永久世界实例标识。 */
   id: string;
-  condition?:import('./story-condition.ts').StoryCondition;
+  condition?: StoryCondition;
 }
 
 /** 地图或剧情放下的一个人物。剧情放置的会覆盖地图上同名的静态人物。 */
@@ -312,10 +326,6 @@ export interface ChoiceAction {
   description?: string;
   options: ChoiceOption[];
 }
-
-/** 剧情脚本由一个接一个的动作组成。 */
-export type ScriptAction = DialogueAction | ChoiceAction | import('./story-performance.ts').PerformanceAction
-  | { type: 'party-join'; companion: string } | { type: 'party-leave'; companion: string };
 
 export type QuestStatus = 'locked' | 'available' | 'active' | 'ready' | 'completed';
 

@@ -1,4 +1,8 @@
-import type { Bag } from './bag.ts';
+/** 快捷栏所需的背包读写端口；由 `Bag` 结构满足，保持零向后依赖。 */
+export interface ShortcutBagHost {
+  ensureShortcuts(owner: string, defaults: ShortcutRow): ShortcutRow;
+  setShortcuts(owner: string, row: ShortcutRow): void;
+}
 
 /**
  * 原版快捷栏每组六格、共两组，`PLAYER_PutShortcut @0x1be43c` 按 `page*6 + slot` 寻址，
@@ -47,11 +51,11 @@ export function defaultShortcutRow(learnedActive: readonly string[], startingIte
  * 所以后来学会的技能不会自己跳上快捷栏（原版学习技能也不动快捷栏），得在这一屏里登记。
  */
 export class ShortcutBar {
-  private readonly bag: Bag;
+  private readonly bag: ShortcutBagHost;
   private readonly owner: string;
   private readonly defaults: ShortcutRow;
-  private constructor(bag: Bag, owner: string, defaults: ShortcutRow) { this.bag = bag; this.owner = owner; this.defaults = defaults; }
-  static for(bag: Bag, owner: string, learnedActive: readonly string[], startingItem?: string): ShortcutBar {
+  private constructor(bag: ShortcutBagHost, owner: string, defaults: ShortcutRow) { this.bag = bag; this.owner = owner; this.defaults = defaults; }
+  static for(bag: ShortcutBagHost, owner: string, learnedActive: readonly string[], startingItem?: string): ShortcutBar {
     return new ShortcutBar(bag, owner, defaultShortcutRow(learnedActive, startingItem));
   }
   private check(page: number): void {

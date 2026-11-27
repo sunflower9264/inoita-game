@@ -1,5 +1,4 @@
 import type { DropReward } from './drops.ts';
-import type { Session } from './session.ts';
 
 /** 每张地图保留的普通地面掉落上限；超出时先清最早生成的。 */
 const MAX_GROUND_DROPS_PER_MAP = 64;
@@ -180,8 +179,18 @@ export class GroundLootStore {
   }
 }
 
-const stores=new WeakMap<Session,GroundLootStore>();
-export function groundLootFor(session:Session):GroundLootStore {
+/**
+ * 地面掉落缓存挂载所需的会话边界；由 canonical `Session` 实例通过结构兼容满足。
+ * 注意：`groundLootFor` 以传入对象引用作为 `WeakMap` 键，调用方必须始终传入同一个
+ * `Session` 本体，切勿传入临时适配器或包装对象。
+ */
+export interface GroundLootSessionHost {
+  readonly bag: { readonly catalog: { readonly items: Readonly<Record<string, { readonly category?: string }>> } };
+}
+
+const stores = new WeakMap<GroundLootSessionHost, GroundLootStore>();
+/** 按 `Session` 对象身份获取或延迟创建该会话共享的地面掉落存储。 */
+export function groundLootFor(session: GroundLootSessionHost): GroundLootStore {
   let store=stores.get(session);
   if(!store){
     store=new GroundLootStore(drop=>drop.reward.kind==='item'&&session.bag.catalog.items[drop.reward.item]?.category==='quest');

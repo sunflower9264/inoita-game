@@ -1,11 +1,31 @@
-import type { PrimaryAttributes } from './character-stats.ts';
+import type { PrimaryAttributes } from './item-stats.ts';
 import type { EnemyAttributes } from './enemy-stats.ts';
-import type { StateApplicationRules } from './state-application.ts';
+import type { StateApplicationRules, StateDurationProfile } from './state-application.ts';
 import type { ActorDefinition, ClipName, EffectClip, Facing } from './content.ts';
 import type { BattleBuffKey, BattleStateKey, BattleStatKey } from './battle-semantics.ts';
-import type { SkillReaction } from './skill-reactions.ts';
-import type { BuffReaction } from './buff-reactions.ts';
+import type { CombatOperation } from './combat-operation.ts';
+import type { DescriptionTextPart } from './description-text.ts';
+import {
+  ACCEPTED_LEARNED_BUFF_SKILLS,
+  LEARNED_REACTION_SKILLS,
+  memberSkillGrowth,
+  type BattleBuffEffect,
+  type LearnedReactionSkillId,
+  type SkillGrowthProfile,
+  type SkillLoadout,
+  type SkillReaction,
+} from './battle-buff-types.ts';
 import type { CombatFeedbackDefinition, HitEffectStyle } from './combat-feedback.ts';
+
+export { ACCEPTED_LEARNED_BUFF_SKILLS, LEARNED_REACTION_SKILLS, memberSkillGrowth };
+export type {
+  BattleBuffEffect,
+  CombatOperation,
+  LearnedReactionSkillId,
+  SkillGrowthProfile,
+  SkillLoadout,
+  StateDurationProfile,
+};
 
 /**
  * 方向性范围几何（以施法者当前朝向为正前方，或以施法者为中心的四向十字）：
@@ -214,20 +234,6 @@ export interface SkillAfterimages {
   distancesPx: number[];
 }
 
-/** 每种运算只携带实际使用的参数。 */
-export type CombatOperation =
-  | {kind:'keep'}
-  | {kind:'set'|'add'|'subtract';amount:number}
-  | {kind:'multiply';factor:number}
-  | {kind:'divide';divisor:number}
-  | {kind:'multiply-thousandth'|'increase-thousandth'|'decrease-thousandth';ratePerThousand:number};
-/** 各种目标持续规则下预先算好的状态最后有效逻辑步。 */
-export interface StateDurationProfile {
-  normal:{lastActiveFrame:number};
-  targetShortened?:{lastActiveFrame:number};
-  buffShortened?:{lastActiveFrame:number};
-  buffAndTargetShortened?:{lastActiveFrame:number};
-}
 /** 召唤物按主人等级派生的属性；未列出的属性沿用召唤物自身的数据。 */
 export interface SummonOwnerDerivation {
   /** 攻击 = trunc((每级×主人等级＋基础) × 本等级倍率/1000)。 */
@@ -238,54 +244,6 @@ export interface SummonOwnerDerivation {
   magicResistance:number;
 }
 
-/**
- * 由已学等级提供子增益的那几个被动；与 `domain/skill-reactions` 的名单一一对应。
- * 写成 `as const` 数组是为了让类型与 `content-validation` 的校验共用同一份，不会各改各的。
- */
-export const LEARNED_REACTION_SKILLS = ['bard-of-destruction','deep-breath','sniping','blood-revenge'] as const;
-export type LearnedReactionSkillId = typeof LEARNED_REACTION_SKILLS[number];
-/**
- * 其中会被增益的 `onAccepted` 引用的三个。血之复仇不在这条路上——它走自伤单元的
- * `alsoAppliesLearnedBuff`，所以两张名单本来就不该一样大。
- */
-export const ACCEPTED_LEARNED_BUFF_SKILLS =
-  ['bard-of-destruction','deep-breath','sniping'] as const satisfies readonly LearnedReactionSkillId[];
-type AcceptedLearnedBuffSkillId = typeof ACCEPTED_LEARNED_BUFF_SKILLS[number];
-
-export interface BattleBuffEffect {
-  durationMs:number;tickMs:number;appearanceColors?:{red:number;green:number;blue:number}[];
-  /** 按 60ms 战斗逻辑步计龄；首步为零，超过最后有效步时移除。 */
-  simulationFrames?:{lastActiveFrame:number;pulseIntervalFrames?:number;/** 存活检查与计龄之后触发周期效果。 */pulseAfterAgeIncrement?:boolean};
-  applicationEffect?:string;
-  /** 挂载初始化入口先保存生命上限，按运算结果与该快照的差额恢复生命。 */
-  onApply?:({kind:'restore-health-from-max-health';operation:CombatOperation}
-    /** 立即给当前 MP 加这份定值；弱拒绝时不会执行。 */
-    |{kind:'add-mana';value:number})[];
-  /** 本条增益被接受之后才执行的动作；被拒绝时（例如更低等级）什么都不做。 */
-  onAccepted?:{kind:'apply-learned-buff';skill:AcceptedLearnedBuffSkillId;target:'source'|'target'}[];
-  loopEffects?:{effect:string;firstFrameAge:number}[];
-  reactions?:BuffReaction[];
-  maxStacks?:number;
-  modifiers:{attribute:BattleStatKey;operation:CombatOperation}[];
-  invalidatesAttributes?:BattleStatKey[];
-  /** 每过若干逻辑帧把同一次运算再叠一份；原版用于逐段恢复这类斜坡。 */
-  attributeRamps?:{attribute:BattleStatKey;operation:CombatOperation;intervalFrames:number}[];
-  /** 寿命上限按施法者的这一属性放大：上限帧 ×(1000+属性值)/1000 后截断（亲和精灵对自然之精灵）。 */
-  durationRateFromOwner?:{attribute:BattleStatKey;baseFrames:number};
-  /** 施放时把施法者这一属性按原版 15/10 换算成帧后加进寿命上限（深呼吸对隐之觉醒）。 */
-  durationFramesFromOwner?:{attribute:BattleStatKey};
-  states:BattleStateKey[];
-  stateDurationProfiles?:Partial<Record<BattleStateKey,StateDurationProfile>>;
-  periodic:(
-    | {kind:'fixed-damage';amount:number}
-    | {kind:'magic-curse';ratePerThousand:number;/** 每脉冲给恢复到的角色播的表现（AddLife 自带的吸血效果）。 */healEffect?:string}
-    | {kind:'normal-damage';operation:CombatOperation}
-    | {kind:'attack-damage';source:'physical'|'magic';operation:CombatOperation}
-    | {kind:'healing';attribute:BattleStatKey;operation:CombatOperation}
-    | {kind:'attribute-damage';attribute:BattleStatKey;operation:CombatOperation}
-    | {kind:'visual';effect:string}
-  )[];
-}
 export type NumericCombatUnit = {
   effect:'physical'|'magic'|'heal'|'drain'|'self-damage';
   source:'physicalAttack'|'magicAttack'|'maxHealth'|'bestNormalDamage'|'none';
@@ -353,13 +311,6 @@ export interface SkillAction {
   eventFrames?: Record<string, number[]>;
 }
 
-export type SkillGrowthProfile = 'hero' | 'companion';
-
-/** 队伍成员的成长身份保持不变，切换操控只改变输入归属。 */
-export function memberSkillGrowth(memberId:string):SkillGrowthProfile {
-  return memberId==='player'?'hero':'companion';
-}
-
 export interface SkillDetail {
   label: string;
   value: string;
@@ -367,7 +318,7 @@ export interface SkillDetail {
   effectIndex?: number;
   valueSpacing?: boolean;
   zeroValue?: string;
-  valueParts?: import('./description-text.ts').DescriptionTextPart[];
+  valueParts?: DescriptionTextPart[];
 }
 
 /** 构建期把技能详情编译成“模板 + 每级数值”后的运行时行。 */
@@ -415,7 +366,7 @@ export interface SkillDefinition extends SkillGrowthDefinition {
   kind: 'active' | 'passive';
   icon: string;
   description: string;
-  descriptionParts?: import('./description-text.ts').DescriptionTextPart[];
+  descriptionParts?: DescriptionTextPart[];
   normalMaxLevel: number;
   companion?: SkillGrowthDefinition;
 }
@@ -518,11 +469,6 @@ export function enemySkills(enemy: Pick<EnemyDefinition, 'skills'>): EnemyPlayab
  * `frameDurationMs` 提供。
  */
 export const LOGIC_FRAME_MS = 60;
-
-/** 技能等级表。快捷栏不在这里：它每组六格、技能与物品共用，见 `shortcut-bar.ts`。 */
-export interface SkillLoadout {
-  levels: Record<string, number>;
-}
 
 /** 地图敌人的实例标识、种类、脚底坐标与当前资源。 */
 export interface PlacedEnemy { key: string; enemyId: string; x: number; y: number; health?:number; mana?:number; level?:number; elite?:boolean;

@@ -1,4 +1,5 @@
-import type { ChoiceAction, ScriptAction } from '../../src/domain/content.ts';
+import type { ChoiceAction } from '../../src/domain/content.ts';
+import type { ScriptAction } from '../../src/domain/story-performance.ts';
 import type { StoryCommand, StoryNode, StoryNodeRef, StoryScript } from '../../src/domain/story-graph.ts';
 import { storyExitTargets } from '../../src/domain/story-graph.ts';
 import { textRuns } from '../../src/domain/text-markup.ts';

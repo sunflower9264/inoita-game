@@ -1,9 +1,52 @@
 import type { PlacedEnemy, EnemyDefinition } from './battle.ts';
 import { EnemyRoster } from './enemy-roster.ts';
-import type { CampaignEnemyPlacement, EnemySpawn, WorldMap } from './content.ts';
-import type { Session } from './session.ts';
-import type { StoryEncounter } from './story-world.ts';
+import type { CampaignEnemyPlacement, EnemySpawn, QuestItemSpawn, QuestStatus, WorldMap } from './content.ts';
+import { encounterSpawnId, type StoryEncounter } from './story-world.ts';
 import { BREAKABLE_ENEMY_IDS } from './drops.ts';
+
+export { encounterSpawnId } from './story-world.ts';
+
+/** 地图敌人名册所需的最小会话端口；由 `Session` 结构兼容，保持零双向导入。 */
+export interface WorldEnemySessionPort {
+  enterMap(map: string, questItemSpawns?: readonly QuestItemSpawn[], boundary?: WorldMap, mapSpawns?: readonly EnemySpawn[]): void;
+  readonly party?: { readonly activeSize: number };
+  readonly hero?: { readonly level: number };
+  readonly storyWorld: {
+    readonly revision: number;
+    readonly encounterRevision: number;
+    readonly activeEncounters: readonly StoryEncounter[];
+    visible(id: string): boolean;
+    enemyAvailable(map: string, enemyId: string): boolean;
+    enemySpawns(map: string): EnemySpawn[];
+  };
+  readonly questBook: {
+    readonly version: number;
+    readonly runningQuestIds: readonly string[];
+    status(id: string): QuestStatus;
+  };
+  readonly chests: {
+    readonly revision: number;
+    readonly spawns: readonly EnemySpawn[];
+  };
+  readonly enemySpawnRevision: number;
+  readonly nowMs: number;
+  status(id: string): QuestStatus;
+  enemyVitals(id: string): Readonly<{ health?: number; mana?: number; deadUntil?: number | 'permanent'; offscreenRespawnAt?: number; capture?: unknown }>;
+  setEnemyVitals(id: string, health: number, mana: number): void;
+  canRespawnEnemy(spawn: EnemySpawn | CampaignEnemyPlacement, offscreen?: boolean): boolean;
+  clearEnemyDefeat(id: string, offscreen?: boolean): boolean;
+}
+
+/** 剧情批量清怪所需的最小会话端口；由 `Session` 结构兼容。 */
+export interface StoryEnemyRemovalSessionPort {
+  readonly storyWorld: {
+    readonly activeEncounters: readonly StoryEncounter[];
+    readonly pendingEnemyRemovals: readonly { enemyId: string; map?: string; all: boolean }[];
+    consumeEnemyRemovals(consumed?: (command: { enemyId: string; map?: string; all: boolean }) => boolean): void;
+  };
+  recordStoryDefeat(enemyId: string): void;
+  removeStoryEnemy(id: string): void;
+}
 
 type WorldSpawn = EnemySpawn | CampaignEnemyPlacement;
 
@@ -81,7 +124,7 @@ export interface EnemyRespawnView {x:number;y:number;width:number;height:number}
 export const ENEMY_RESPAWN_VIEW_MARGIN_PX=48;
 /** One map's enemy roster. Stable spawn IDs and combat resources live in Session. */
 export class WorldEnemyRoster extends EnemyRoster {
-  readonly session:Session;
+  readonly session:WorldEnemySessionPort;
   private readonly mapId:string;
   private readonly rawMapSpawns:readonly WorldSpawn[];
   private readonly bandSpawns:readonly WorldSpawn[];
@@ -127,7 +170,7 @@ export class WorldEnemyRoster extends EnemyRoster {
     return value;
   }
   private readonly sources = new Map<string,WorldSpawn>();
-  constructor(session:Session,map:WorldMap,questSpawns:readonly CampaignEnemyPlacement[],heroLevel:number,
+  constructor(session:WorldEnemySessionPort,map:WorldMap,questSpawns:readonly CampaignEnemyPlacement[],heroLevel:number,
     questEnemies?:QuestEnemyProvider,random:()=>number=()=>1){
     super();
     this.session=session;
@@ -434,14 +477,11 @@ capturePreparedState():{roster:ReturnType<EnemyRoster['captureState']>;breakable
   }
 }
 
-/** Each encounter occurrence owns separate combat resources, even on the same map. */
-export function encounterSpawnId(encounter:string,spawn:string):string{return `${encounter}:${spawn}`;}
-
 /** 同一格同一敌人的判定键：用来让遭遇点和地图常驻怪不各生成一只。 */
 function occupiedKey(enemyId:string,x:number,y:number):string{return `${enemyId}|${x}|${y}`;}
 
 /** 剧情移除以当前实例为准；它不产生经验和掉落。进行中遭遇被移走时，任务目标按战斗结束结算。 */
-export function applyStoryEnemyRemovals(session:Session,map:string,enemies:readonly Pick<PlacedEnemy,'key'|'enemyId'>[],remove:(key:string)=>void):void {
+export function applyStoryEnemyRemovals(session:StoryEnemyRemovalSessionPort,map:string,enemies:readonly Pick<PlacedEnemy,'key'|'enemyId'>[],remove:(key:string)=>void):void {
   const removed=new Set<string>();
   // 进行中的剧情遭遇被移走时，这场战斗本身已经结束，按击败记录任务目标；
   // 普通地图敌人的清场不计击杀，避免把剧情清场当成玩家亲手击败。

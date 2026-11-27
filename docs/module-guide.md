@@ -101,9 +101,9 @@ StoryDirector.project → WorldScene 把结果投影回正式地图
 
 ## Session：游戏事实的总账本
 
-主要文件：`src/domain/session.ts`
+主要文件：`src/domain/session.ts`、`src/domain/session-enemies.ts`、`src/domain/session-quests.ts`、`src/domain/session-state-validation.ts`、`src/domain/session-story-commands.ts`、`src/domain/session-settlement.ts`
 
-`Session` 持有：
+`Session` 作为统一外观与事务协调者，与上述五个零循环协作模块分工持有：
 
 - 主角和队伍；
 - 背包、装备、技能配置；

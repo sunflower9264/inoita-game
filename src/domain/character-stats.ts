@@ -1,31 +1,19 @@
-import { equipmentLevel, type EquipmentChaos } from './chaos-equipment.ts';
+import { equipmentLevel } from './chaos-equipment.ts';
 import type { ItemNotice } from './item-application.ts';
 import {equipmentModifierTotals} from './equipment-modifiers.ts';
 import { boundedHealth } from './status-hud.ts';
 import { Bag, type BagRules } from './bag.ts';
 import type { Equipment, EquipmentSlot, ItemCatalog, ItemInstance } from './items.ts';
+import {
+  DEFAULT_EQUIPMENT_GRADE, PRIMARY_STATS, primaryAttributesFrom,
+  type EnhancementRule, type EquipmentGradeSeed, type ItemNumbers, type Modifier, type ModifierRange, type PrimaryAttributes, type PrimaryStat,
+} from './item-stats.ts';
 import { calculateEffectiveDefense,physicalResistanceFor,calculateMagicResistance,eligibleShieldBlock,type PhysicalFighter } from './physical-hit.ts';
 import { applyAttributeModifiers, type AttributeModifier } from './combat-operation.ts';
 import { chaosThreshold, doubleThreshold, enhancementOdds, ENHANCEMENT_ROLL_MAX } from './enhancement.ts';
 
-export const PRIMARY_STATS = ['strength','dexterity','vitality','intelligence','mentality'] as const;
-/** 装备没有写默认品级时使用的档位。 */
-export const DEFAULT_EQUIPMENT_GRADE = 2;
-export type PrimaryStat = typeof PRIMARY_STATS[number];
-export type PrimaryAttributes = Record<PrimaryStat,number>;
-
-/** 把按 PRIMARY_STATS 逐项算出的结果收回成固定字段的属性对象。 */
-export function primaryAttributesFrom(source: Readonly<Record<string,number>>): PrimaryAttributes {
-  return { strength:source.strength, dexterity:source.dexterity, vitality:source.vitality,
-    intelligence:source.intelligence, mentality:source.mentality };
-}
-export interface Modifier { stat: string; value: number }
-export interface ModifierRange { stat: string; min: number; max: number }
-/** `bonusChance` 是「再升一级」判定阈值的加成，只有特级卷轴有（原版 `+0x12c`）。 */
-export interface EnhancementRule { step: number; threshold: number; extra: number; bonusChance?: number }
-export interface EquipmentGradeSeed {
-  grade: number; gradeName: string; attack: number; defense: number; optionCount: number; socketLimit: number;
-}
+export { DEFAULT_EQUIPMENT_GRADE, PRIMARY_STATS, primaryAttributesFrom };
+export type { EnhancementRule, EquipmentGradeSeed, ItemNumbers, Modifier, ModifierRange, PrimaryAttributes, PrimaryStat };
 interface EquipmentGradeVariant {
   attack: number; defense: number; name: string; rarity: number; optionCount: number; socketLimit: number;
 }
@@ -59,12 +47,6 @@ export function experienceAfterReward(catalog:Pick<CharacterStatsCatalog,'maxLev
     experience-=required;level++;
   }
   return {level,experience:level===catalog.maxLevel?0:experience,gained:level-originalLevel};
-}
-export interface ItemNumbers {
-  baseAttack?: number; baseDefense?: number; gradeName?: string; grade?: number;
-  modifiers: Modifier[]; gemModifiers: Modifier[]; magicPercent: number;
-  sockets: number; enhancementUses: number; enhancementRule?: EnhancementRule;enhancementScroll?:string;
-  chaos?: EquipmentChaos;
 }
 export interface CharacterPanel {
   attributes: PrimaryAttributes; maxHealth: number; maxMana: number;

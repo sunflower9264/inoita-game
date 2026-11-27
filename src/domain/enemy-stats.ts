@@ -1,5 +1,11 @@
 import {physicalResistanceFor} from './physical-hit.ts';
-import type { EnemyDefinition } from './battle.ts';
+
+/** 怪物面板计算所需的最小定义结构；由 `EnemyDefinition` 结构兼容，保持零环依赖。 */
+export interface EnemyStatsSource {
+  readonly level:number|null;
+  readonly maxHealth:number;
+  readonly attributes:EnemyAttributes;
+}
 
 export const MAX_ENEMY_LEVEL = 107;
 /** 主角等级上限，与原版成长表一致。 */
@@ -52,7 +58,7 @@ export function enemyPartySize(value:number):number {
   return value;
 }
 /** 读取原版基础值后依次应用精英、队伍和显示公式；不修改内容定义。 */
-export function calculateEnemy(definition:EnemyDefinition,options:EnemyStatsOptions={}):Readonly<EnemyStats> {
+export function calculateEnemy(definition:EnemyStatsSource,options:EnemyStatsOptions={}):Readonly<EnemyStats> {
   const level=enemyLevel(options.level??definition.level??options.sceneLevel??1);
   const partySize=enemyPartySize(options.partySize??1),elite=options.elite??false;
   const playerLevel=options.playerLevel??1;

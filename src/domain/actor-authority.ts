@@ -1,6 +1,11 @@
-import type { EntityPlacement, PlacementAuthority } from './content.ts';
-import type { SceneActorState } from './scene-snapshot.ts';
-import type { StoryEntityState } from './story-world.ts';
+import type { PlacementAuthority } from './content.ts';
+
+/** 判断投放来源所需的最小结构；由世界实体、静态摆放与场景演员共用。 */
+export interface PlacementAuthoritySource {
+  readonly id: string;
+  readonly authority?: PlacementAuthority;
+  readonly worldEntityId?: string;
+}
 
 /**
  * 一个可见对象是谁放下的，而不是它叫什么。
@@ -12,12 +17,9 @@ import type { StoryEntityState } from './story-world.ts';
  *
  * 旧内容没有写这个字段；读取时按 ID 解码一次，之后都读字段。
  */
-
-type AuthoritySource = Pick<EntityPlacement, 'id' | 'authority'>;
-
-export function placementAuthority(value: AuthoritySource | StoryEntityState | SceneActorState): PlacementAuthority {
+export function placementAuthority(value: PlacementAuthoritySource): PlacementAuthority {
   if (value.authority) return value.authority;
-  const id = 'worldEntityId' in value && value.worldEntityId ? value.worldEntityId : value.id;
+  const id = value.worldEntityId || value.id;
   if (id.startsWith('quest-npc-located-')) return 'registered';
   if (id.startsWith('quest-npc-')) return 'npc';
   if (id.startsWith('story-') || id.startsWith('quest-target:')) return 'story';

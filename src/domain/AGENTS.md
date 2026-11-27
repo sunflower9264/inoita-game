@@ -24,8 +24,9 @@
 
 ## 文件
 
-- 内容类型：`content.ts`（世界、地图、剧情动作、任务与奖励类型）。
-- 会话/剧情：`session.ts`、`story-director.ts`、`story-runtime.ts`、`story-graph.ts`、`story-condition.ts`、`story-scene.ts`、`story-script.ts`、`campaign.ts`、`scene-plan.ts`，以及同前缀的 `story-*.ts`、`scene-*.ts`；开发/测试模式开关与快照冻结在 `dev-mode.ts`，存档检查点的写时复制在 `playback-checkpoint.ts`。
+- 内容与共享基础契约：`content.ts`（零导入叶子节点：世界、地图、对白/选项动作、`StoryCondition`、任务与奖励类型；完整脚本联合体 `ScriptAction` 位于 `story-performance.ts`）、`item-stats.ts`（属性常量、`EquipmentGradeSeed`、`ItemNumbers` 等无环基础数值类型）、`battle-buff-types.ts`（增益/反应共享类型与 `LEARNED_REACTION_SKILLS`）、`party-port.ts`（队友 AI 共享端口）。
+- 会话与协作模块：`session.ts`（对外会话入口、通知批处理与 `atomic` 事务协调），拆出 `session-enemies.ts`（`SessionEnemyStore` 血蓝/复活/捕捉状态与修订号分离）、`session-quests.ts`（`SessionQuestCoordinator` 任务投影缓存/收据/交付人释放）、`session-state-validation.ts`（读档/检查点校验）、`session-story-commands.ts`（剧情子系统回滚矩阵与角色/离队命令执行）与 `session-settlement.ts`（击杀奖励、开箱、地面掉落与越界落位修正）。
+- 剧情：`story-director.ts`、`story-runtime.ts`、`story-graph.ts`、`story-condition.ts`、`story-scene.ts`、`story-script.ts`、`campaign.ts`、`scene-plan.ts`，以及同前缀的 `story-*.ts`、`scene-*.ts`、`actor-census.ts`、`actor-authority.ts`；开发/测试模式开关与快照冻结在 `dev-mode.ts`，存档检查点的写时复制在 `playback-checkpoint.ts`。
 - 挑战刷怪：`pressure-enemies.ts` 按主角等级筛选普通战斗怪并随机选择，同时定义挑战调试的怪物数量上限与固定血量边界及归一化函数；`EnemyRoster.setEnemyMaxHealthOverride` 负责覆写/还原单个敌人的最大血量并刷新活怪当前血量。
 - 战斗：`combat-*.ts`、`combatant.ts`、`combat-targeting.ts`、`combat-actor-stats.ts`、`combat-settlement.ts`、`battle.ts`、`action-*.ts`、`attack-*.ts`、`buff-*.ts`、`skill-*.ts`、`enemy-*.ts`；其中 `CombatActorStats` 负责纯属性聚合与缓存，`CombatSettlementEngine` 负责受击/反应/召唤等纯战斗结算，`combatMovementSpeed`（`combat-tempo.ts`）与 `equipmentAttackFor`（`wardrobe.ts`）提供纯移动速度与武器攻击计算；击杀奖励结算在 `combat-rewards.ts`。
 - 队伍人数变化时按单位实际生命上限保持血量比例，主人派生的召唤物生命上限沿用召唤属性。
@@ -69,7 +70,7 @@
 - 舞台快照中的 `mapEffect` 记录地图褪色开关，旧快照没有该字段时沿用当前效果。
 - 演出走位用实际地图检查地形。沿用玩家当前地图时，目标受阻就从可达区域里选离目标最近、能容下角色的位置；出场点也受阻时按目标附近的地形选点。
 - 跳过剧情只影响表现：`StoryDirector.prepare` 跳过时仍调用 `world.prepare`，为当前图和下一张确定地图发起预取，但跳过只结束等待，加载在后台继续，不阻塞剧情推进；同图舞台可补齐后续人物与战斗素材。立绘和音效同样发起预取但不阻塞推进；`choice` 和 `quest-popup` 之前先收起旧对白框、开全屏黑底（`presentation.setBackdrop`），调用 `presentation.flushStage` 按逻辑快照画出对应画面，补画完成后撤黑底、露出剧情画面再弹窗。任务、物品、标记、传送和检查点仍按原顺序提交。正式地图就绪和死亡掉落结算始终先完成，正在等待素材时按下跳过也会立即停止这次等待。
-- 本目录保持零 Phaser 依赖，也不 import `application`、`ui`、`rendering`、`scenes`、`debug`。
+- 本目录保持零 Phaser 依赖，也不 import `application`、`ui`、`rendering`、`scenes`、`debug`；目录内部所有文件（含内联 `import('...')` 与副作用 `import`）保持严格的零循环有向无环图（0 SCC），禁止被 `session.ts`、`battle.ts`、`bag.ts`、`character-stats.ts`、`party-ai.ts` 或 `scene-snapshot.ts` 依赖的模块再反向引入它们（应改为定义结构化的最小 `*Port`/`*Host` 接口或使用叶子契约文件）。
 - 新规则写成纯函数或状态迁移，由 `application` 负责适配 Phaser、浏览器和磁盘。
 - 击杀奖励结算（经验、普通/景物/付费道具/任务掉落、套装首杀与装备/黄装/紫装保底记录）在 `combat-rewards.ts` 算完；`Session.settleEnemyDefeat` 保持先推进击杀任务、再读取任务掉落需求的顺序，统一提交死亡记录、保底、地面奖励、宝箱衍生怪和经验；场景只提供落点计算并播放提交后的表现。死亡单在结算前先从待办表移除；结算或表现失败时由 `fail` 回调记录诊断并移除旧表现。结算失败已回滚，恢复有来源的敌人血量，让名册重新生成，保留再次取得任务物品和战果的机会；只出错于表现时保留已完成的结算。结算结果的通知由 `present` 在成功路径发布；通知回调失败记录错误并继续其他监听者。随机源由调用方传入，固定随机源即可在纯 Node 下复现。没有地图生成点的挑战模式临时怪通过 `pressureMode` 仍结算掉落，但不写地图击杀记录。
 - 装备按怪物实际等级或容器等级筛选最近 15 级，全队击杀只产一份普通装备。黄装与紫装保底由全队共享，合格精英计 1 点，Boss 计 2 点，有对应等级的候选时累计。掉落封印盒保存来源等级并按该等级选取内容；旧盒子沿用原表。详见 `docs/drops.md`。

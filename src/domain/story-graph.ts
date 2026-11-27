@@ -1,5 +1,6 @@
-import type { ScriptAction } from './content.ts';
-import type { StoryStage } from './story-performance.ts';
+import type { Facing } from './content.ts';
+import type { EquipmentSlot } from './items.ts';
+import type { ScriptAction, StoryStage } from './story-performance.ts';
 import type { StoryCondition } from './story-condition.ts';
 import type { QuestCommand } from './quest-book.ts';
 import type { StoryWorldCommand, StoryEncounter } from './story-world.ts';
@@ -23,10 +24,10 @@ export type StoryCommand =
   | { type: 'party-join' | 'party-leave'; companion: string }
   | { type: 'health' | 'mana'; member: string; value: number | 'full' }
   | { type: 'party-control'; member: string }
-  | { type: 'equip'; member: string; item: string; slot: import('./items.ts').EquipmentSlot; create?:boolean; ifPresent?:boolean }
+  | { type: 'equip'; member: string; item: string; slot: EquipmentSlot; create?:boolean; ifPresent?:boolean }
   | {type:'unequip-destroy';member:string;item:string;ifPresent?:boolean}
   | { type: 'world'; command: StoryWorldCommand }
-  | { type: 'travel'; destination: { map: string; x: number; y: number; facing: import('./content.ts').Facing } }
+  | { type: 'travel'; destination: { map: string; x: number; y: number; facing: Facing } }
   | { type: 'encounter'; encounter: StoryEncounter };
 type StoryNodeExit =
   | { type: 'next'; target: StoryNodeRef }

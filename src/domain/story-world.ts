@@ -72,6 +72,11 @@ export function storyExitId(map:string,exit:MapExit):string {
   return exit.id??`${map}:${exit.destination}:${exit.x}:${exit.y}:${exit.width}:${exit.height}`;
 }
 
+/** Each encounter occurrence owns separate combat resources, even on the same map. */
+export function encounterSpawnId(encounter: string, spawn: string): string {
+  return `${encounter}:${spawn}`;
+}
+
 /** Persistent story objects; temporary cinematic actors remain in the presentation scene. */
 export class StoryWorldState {
   private entities=new Map<string,StoryEntityState>();
