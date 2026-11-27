@@ -1,18 +1,10 @@
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import {registerHooks} from 'node:module';
 import test from 'node:test';
-import type {BattleCatalog} from '../src/domain/battle.ts';
+import type {CombatThreatSystem} from '../src/domain/combat-threat-system.ts';
 import {resolveSkillReactions,type SkillReaction} from '../src/domain/skill-reactions.ts';
+import {createCombatTestHarness,createTestEnemy,createTestMember,loadBattleCatalog} from './support/combat-test-harness.ts';
 
-const phaser=registerHooks({resolve(specifier,context,next){
-  return specifier==='phaser'?{url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true}:next(specifier,context);
-}});
-const {WorldCombat}=await import('../src/scenes/world-combat.ts');
-phaser.deregister();
-const method=(name:string)=>Reflect.get(WorldCombat.prototype,name);
-
-const catalog=JSON.parse(readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')) as BattleCatalog;
+const catalog=loadBattleCatalog();
 const skill=catalog.skills['clever-fellow'];
 const thresholds=[30,50,80,120,130,140,150,160];
 const noBuff={random:()=>0,learnedBuff:()=>undefined};
@@ -39,20 +31,26 @@ test('the owner reaction runs after the summon taunt and uses the owners learned
   t.mock.method(Math,'random',()=>0);
   const order:string[]=[];
   let version=0,draft:()=>{levels:Record<string,number>}=()=>({levels:{'clever-fellow':1}});
-  const skills={get version(){return version;},draft:()=>draft()};
-  const host=Object.setPrototypeOf({
-    arena:[{key:'beast',summonedBy:'player',summonTauntChance:1000}],
-    threat:{taunt:(source:string,target:string)=>order.push(`taunt:${source}->${target}`)},
-    enemyTarget:()=>'ally',
-    memberOf:(id:string)=>id==='player'?{classId:'ranger'}:undefined,
-    resetActorCooldowns:(id:string)=>order.push(`cooldowns:${id}`),
-    app:{battleCatalog:catalog,session:{skills}},
-  },WorldCombat.prototype);
-  method('summonOwnerReactions').call(host,{casterId:'beast',targetId:'enemy'},{kind:'hit',damage:5},'physical');
+  const skills={get version(){return version;},resetVersion:0,draft:()=>draft()};
+  const player=createTestMember({id:'player',classId:'ranger'});
+  const beast=createTestEnemy({key:'beast',definition:catalog.enemies[0],summonedBy:'player',summonTauntChance:1000});
+  const harness=createCombatTestHarness({
+    battleCatalog:catalog,
+    members:new Map([['player',player]]),
+    enemies:new Map([['beast',beast]]),
+    sessionSkills:()=>skills as never,
+    withThreat:false,
+    settlementOverrides:{
+      threat:{taunt:(source:string,target:string)=>order.push(`taunt:${source}->${target}`)} as unknown as CombatThreatSystem,
+      enemyTarget:()=>'ally',
+      resetActorCooldowns:(id:string)=>order.push(`cooldowns:${id}`),
+    },
+  });
+  harness.settlement.summonOwnerReactions({casterId:'beast',targetId:'enemy'},{kind:'hit',damage:5},'physical');
   assert.deepEqual(order,['taunt:beast->enemy','cooldowns:player']);
 
   order.length=0;
   draft=()=>({levels:{}});version++;
-  method('summonOwnerReactions').call(host,{casterId:'beast',targetId:'enemy'},{kind:'hit',damage:5},'physical');
+  harness.settlement.summonOwnerReactions({casterId:'beast',targetId:'enemy'},{kind:'hit',damage:5},'physical');
   assert.deepEqual(order,['taunt:beast->enemy'],'没学就不清冷却');
 });

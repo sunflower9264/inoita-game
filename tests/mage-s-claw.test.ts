@@ -1,20 +1,19 @@
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import {registerHooks} from 'node:module';
 import test from 'node:test';
-import type {PhysicalHit} from '../src/domain/physical-hit.ts';
-import type {BattleCatalog} from '../src/domain/battle.ts';
+import type {CombatUnit} from '../src/domain/battle.ts';
+import type {CombatThreatSystem} from '../src/domain/combat-threat-system.ts';
+import type {PhysicalFighter} from '../src/domain/physical-hit.ts';
 import {CombatConditions} from '../src/domain/combat-conditions.ts';
 import {resolveSkillReactions,type SkillReaction} from '../src/domain/skill-reactions.ts';
+import {
+  createCombatTestHarness,
+  createTestEnemy,
+  createTestMember,
+  loadBattleCatalog,
+  ZERO_PRIMARY_ATTRIBUTES,
+} from './support/combat-test-harness.ts';
 
-const phaser=registerHooks({resolve(specifier,context,next){
-  return specifier==='phaser'?{url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true}:next(specifier,context);
-}});
-const {WorldCombat}=await import('../src/scenes/world-combat.ts');
-phaser.deregister();
-const method=(name:string)=>Reflect.get(WorldCombat.prototype,name);
-
-const catalog=JSON.parse(readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')) as BattleCatalog;
+const catalog=loadBattleCatalog();
 const skill=catalog.skills['mage-s-claw'];
 const amounts=[1,2,3,4,4,5,5,5];
 const noBuff={random:()=>0,learnedBuff:()=>undefined};
@@ -45,28 +44,39 @@ test('physical and magic summon successes restore a fixed amount, blocked and mi
 
 test('a summon that lands a magic skill hit reaches the same owner reaction',()=>{
   const order:string[]=[];
-  const fighter={level:10,physicalAttack:100,magicAttack:100,baseDefense:0,defense:0,defenseRate:0,
-    maxHealth:1000,maxMana:100,hitBase:100,hitBonus:1000,evasionBase:0,evasionBonus:0,criticalRate:0,
+  const fighter:PhysicalFighter={level:10,physicalAttack:100,magicAttack:100,defense:0,defenseRate:0,
+    maxHealth:1000,hitBase:100,hitBonus:1000,evasionBase:0,evasionBonus:0,criticalRate:0,
     criticalResistance:0,criticalDamage:0,criticalDamageResistance:0,weaponBlock:0,shieldBlock:0,physicalResistance:0,magicResistance:0};
-  const unit={effect:'magic',source:'magicAttack',attributeWeights:{strength:0,dexterity:0,vitality:0,intelligence:0,mentality:0},
+  const unit:CombatUnit={effect:'magic',source:'magicAttack',attributeWeights:ZERO_PRIMARY_ATTRIBUTES,
     ranks:[{fixedAddition:0,operation:{kind:'keep'}}]};
-  const host=Object.setPrototypeOf({
-    hero:{level:10},conditions:new CombatConditions(),pendingDefeats:new Set(),allies:[],
-    roster:{isPresent:()=>true},
-    arena:[{key:'pawn',summonedBy:'warlock',definition:{},visual:{}}],
-    memberOf:(id:string)=>['warlock','player'].includes(id)
-      ?{classId:'warlock',skills:{draft:()=>({levels:{'mage-s-claw':8}})}}:undefined,
-    partyFighter:()=>fighter,enemyFighter:()=>fighter,actorAttributes:()=>fighter,actorAttribute:()=>100,
-    combatant:()=>({position:{x:0,y:0}}),app:{battleCatalog:catalog,session:{skills:{draft:()=>({levels:{}})}}},
-    // 主人链现在归成功链管：这里按生产接线调用同一个方法。
-    resolveHitReactions:(event:unknown,hit:PhysicalHit,damageKind:'physical'|'magic')=>
-      method('summonOwnerReactions').call(host,event,hit,damageKind),
-    settleHit:()=>{},dropMana:()=>{},showHit:()=>{},
-    restoreMana:(id:string,amount:number)=>order.push(`mana:${id}+${amount}`),
-    presenterFor:()=>({showEffects:()=>order.push('effect')}),
-  },WorldCombat.prototype);
-  const outcome=method('skillUnit').call(host,{casterId:'pawn',targetId:'player',cueIndex:0,
-    skill:{id:'monster-hell-scream',level:1,action:{combatUnits:[unit]}}});
+  const hero=createTestMember({id:'player',classId:'warlock',level:10,skillLevels:{'mage-s-claw':8}});
+  const warlock=createTestMember({id:'warlock',classId:'warlock',level:10,skillLevels:{'mage-s-claw':8}});
+  const members=new Map([['warlock',warlock],['player',hero]]);
+  const enemies=new Map([['pawn',createTestEnemy({key:'pawn',definition:catalog.enemies[0],summonedBy:'warlock'})]]);
+  const harness=createCombatTestHarness({
+    battleCatalog:catalog,conditions:new CombatConditions(),hero,members,enemies,
+    activeParty:()=>['warlock','player'],
+    combatant:id=>({id,team:'party',position:{x:0,y:0},bounds:{x:-4,y:-4,width:8,height:8}}),
+    withThreat:false,
+    settlementOverrides:{
+      isEnemyPresent:()=>true,
+      onShowEffects:()=>order.push('effect'),
+      onShowHit:undefined,
+      onDropMana:undefined,
+    },
+  });
+  harness.stats.partyFighter=()=>fighter;
+  harness.stats.enemyFighter=()=>fighter;
+  harness.stats.actorAttributes=()=>({physicalAttack:100,magicAttack:100,maxHealth:1000,physicalDamageRate:0,magicDamageRate:0,
+    stealthDamageRate:0,primaryAttributes:ZERO_PRIMARY_ATTRIBUTES});
+  harness.stats.actorAttribute=()=>100;
+  // 主人链现在归成功链管：这里按生产接线调用同一个方法。
+  harness.settlement.resolveHitReactions=(event,hit,damageKind)=>
+    harness.settlement.summonOwnerReactions(event,hit,damageKind);
+  harness.settlement.settleHit=()=>{};
+  harness.settlement.restoreMana=(id,amount)=>order.push(`mana:${id}+${amount}`);
+  const outcome=harness.settlement.skillUnit({casterId:'pawn',targetId:'player',cueIndex:0,
+    skill:{id:'monster-hell-scream',level:1,action:{cooldownFrames:0,approachDistanceUnits:1,searchRadiusPx:0,transition:null,events:[],combatUnits:[unit]}}});
   assert.equal(outcome,'success');
   assert.deepEqual(order,['mana:warlock+5','effect']);
 });
@@ -78,52 +88,63 @@ test('the owner gets the mana before the taunt, and each summon answers to its o
   const data=structuredClone(catalog);
   data.classes.find(character=>character.id==='ranger')!.skills.push('mage-s-claw');
   const order:string[]=[];
-  const member=(id:string,levels:Record<string,number>)=>({classId:id,skills:{draft:()=>({levels})}});
-  const host=Object.setPrototypeOf({
-    arena:[{key:'pawn',summonedBy:'warlock',summonTauntChance:1000},
-           {key:'beast',summonedBy:'ranger',summonTauntChance:0}],
-    threat:{taunt:(source:string)=>order.push(`taunt:${source}`)},
-    enemyTarget:()=>'ally',
-    memberOf:(id:string)=>id==='warlock'?member('warlock',{'mage-s-claw':8}):
-      id==='ranger'?member('ranger',{'mage-s-claw':1,'clever-fellow':1}):undefined,
-    restoreMana:(id:string,amount:number)=>order.push(`mana:${id}+${amount}`),
-    presenterFor:()=>({showEffects:()=>order.push('effect')}),
-    resetActorCooldowns:(id:string)=>order.push(`cooldowns:${id}`),
-    app:{battleCatalog:data,session:{skills:{draft:()=>({levels:{}})}}},
-  },WorldCombat.prototype);
-  method('summonOwnerReactions').call(host,{casterId:'pawn',targetId:'enemy'},{kind:'hit',damage:9},'magic');
+  const warlock=createTestMember({id:'warlock',classId:'warlock',skillLevels:{'mage-s-claw':8}});
+  const ranger=createTestMember({id:'ranger',classId:'ranger',skillLevels:{'mage-s-claw':1,'clever-fellow':1}});
+  const members=new Map([['warlock',warlock],['ranger',ranger]]);
+  const enemies=new Map([
+    ['pawn',createTestEnemy({key:'pawn',definition:catalog.enemies[0],summonedBy:'warlock',summonTauntChance:1000})],
+    ['beast',createTestEnemy({key:'beast',definition:catalog.enemies[0],summonedBy:'ranger',summonTauntChance:0})],
+  ]);
+  const harness=createCombatTestHarness({
+    battleCatalog:data,members,enemies,
+    withThreat:false,
+    settlementOverrides:{
+      threat:{taunt:(source:string)=>order.push(`taunt:${source}`)} as unknown as CombatThreatSystem,
+      enemyTarget:()=>'ally',
+      resetActorCooldowns:id=>order.push(`cooldowns:${id}`),
+      onShowEffects:()=>order.push('effect'),
+    },
+  });
+  harness.settlement.restoreMana=(id,amount)=>order.push(`mana:${id}+${amount}`);
+  harness.settlement.summonOwnerReactions({casterId:'pawn',targetId:'enemy'},{kind:'hit',damage:9},'magic');
   // 黑魔导没学完美配合，所以只到回魔、表现、嘲讽三步。
   assert.deepEqual(order,['mana:warlock+5','effect','taunt:pawn']);
   order.length=0;
   // 暗影猎手的召唤物：回魔按自己的一级（+1），完美配合按自己的已学等级清自己的冷却。
-  method('summonOwnerReactions').call(host,{casterId:'beast',targetId:'enemy'},{kind:'hit',damage:9},'physical');
+  harness.settlement.summonOwnerReactions({casterId:'beast',targetId:'enemy'},{kind:'hit',damage:9},'physical');
   assert.deepEqual(order,['mana:ranger+1','effect','cooldowns:ranger']);
 });
 
 test('召唤物命中的嘲讽阈值按主人当前等级重读，不冻结创建时的快照',t=>{
   const order:string[]=[];
   const levels:Record<string,number>={'beast-companion':8};
-  const member={classId:'ranger',skills:{draft:()=>({levels:{...levels}})}};
-  const host=Object.setPrototypeOf({
+  const ranger=createTestMember({id:'ranger',classId:'ranger'});
+  ranger.skills={version:1,resetVersion:0,draft:()=>({levels:{...levels}})};
+  const enemies=new Map([
     // 创建时快照是 0（一级之外没记），主人现在是八级，原表阈值 170。
-    arena:[{key:'beast',summonedBy:'ranger',summonTauntChance:0,summonedBySkill:'beast-companion'}],
-    threat:{taunt:(source:string)=>order.push(`taunt:${source}`)},
-    enemyTarget:()=>'ally',
-    memberOf:(id:string)=>id==='ranger'?member:undefined,
-    restoreMana:()=>{},presenterFor:()=>undefined,resetActorCooldowns:()=>{},
-    app:{battleCatalog:catalog,session:{skills:{draft:()=>({levels:{}})}}},
-  },WorldCombat.prototype);
+    ['beast',createTestEnemy({key:'beast',definition:catalog.enemies[0],summonedBy:'ranger',summonTauntChance:0,summonedBySkill:'beast-companion'})],
+  ]);
+  const harness=createCombatTestHarness({
+    battleCatalog:catalog,members:new Map([['ranger',ranger]]),enemies,
+    withThreat:false,
+    settlementOverrides:{
+      threat:{taunt:(source:string)=>order.push(`taunt:${source}`)} as unknown as CombatThreatSystem,
+      enemyTarget:()=>'ally',
+      resetActorCooldowns:()=>{},
+    },
+  });
+  harness.settlement.restoreMana=()=>{};
   const roll=(point:number)=>t.mock.method(Math,'random',()=>(point-0.5)/999);
   roll(99);
-  method('summonOwnerReactions').call(host,{casterId:'beast',targetId:'enemy'},{kind:'hit',damage:9},'physical');
+  harness.settlement.summonOwnerReactions({casterId:'beast',targetId:'enemy'},{kind:'hit',damage:9},'physical');
   assert.deepEqual(order,['taunt:beast'],'99 低于八级阈值 170，应当嘲讽');
   order.length=0;
   levels['beast-companion']=1;
   roll(99);
-  method('summonOwnerReactions').call(host,{casterId:'beast',targetId:'enemy'},{kind:'hit',damage:9},'physical');
-  assert.deepEqual(order,[],'降回一级后阈值 40，99 不再触发');
+  harness.settlement.summonOwnerReactions({casterId:'beast',targetId:'enemy'},{kind:'hit',damage:9},'physical');
+  assert.equal(order.length,0,'降回一级后阈值 40，99 不再触发');
   delete levels['beast-companion'];
   roll(1);
-  method('summonOwnerReactions').call(host,{casterId:'beast',targetId:'enemy'},{kind:'hit',damage:9},'physical');
-  assert.deepEqual(order,[],'主人忘掉技能后不再嘲讽');
+  harness.settlement.summonOwnerReactions({casterId:'beast',targetId:'enemy'},{kind:'hit',damage:9},'physical');
+  assert.equal(order.length,0,'主人忘掉技能后不再嘲讽');
 });

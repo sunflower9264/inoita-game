@@ -1,13 +1,9 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {registerHooks} from 'node:module';
 import test from 'node:test';
+import {combatMovementSpeed} from '../src/domain/combat-tempo.ts';
 import type {WorldMap} from '../src/domain/content.ts';
 import {NavigationWorld} from '../src/domain/navigation-world.ts';
-const hook=registerHooks({resolve(specifier,context,next){return specifier==='phaser'
-  ?{url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true}:next(specifier,context);}});
-const {WorldCombat}=await import('../src/scenes/world-combat.ts');
-hook.deregister();
 
 const read=(file:string)=>JSON.parse(readFileSync(new URL(`../public/content/${file}`,import.meta.url),'utf8'));
 const map=(water?:number[]):WorldMap=>({id:'water-test',name:'water-test',width:48,height:32,tileSize:16,columns:3,rows:2,
@@ -33,24 +29,9 @@ test('beach exports the original water cells and they remain walkable',()=>{
 });
 
 test('water halves the final combat speed and flying enemies keep their own speed',()=>{
-  const movementSpeed=Reflect.get(WorldCombat.prototype,'movementSpeed') as (this:unknown,id:string,base:number)=>number;
-  const visual={};
-  const host=Object.setPrototypeOf({
-    controlledId:'player',activeParty:['player'],
-    app:{gmSpeedMultiplier:1},
-    conditions:{attribute:()=>1000},
-    visualOf:(id:string)=>id==='enemy-bat'?{}:visual,
-    arena:[{key:'enemy-bat',definition:{waterImmune:true}}],
-    movement:{navigation:{isWater:()=>true},position:()=>({x:8,y:8})}
-  },WorldCombat.prototype);
-  const speed=(id:string,base:number)=>movementSpeed.call(host,id,base);
-  assert.equal(speed('player',100),50);
-  assert.equal(speed('enemy-bat',100),100);
-  host.movement.navigation.isWater=()=>false;
-  assert.equal(speed('player',100),100);
-  host.movement.navigation.isWater=()=>true;
-  host.app.gmSpeedMultiplier=2;
-  assert.equal(speed('player',100),100);
-  host.conditions.attribute=()=>500;
-  assert.equal(speed('player',100),50);
+  assert.equal(combatMovementSpeed(100,1000,{gmSpeedMultiplier:1,onWater:true}),50);
+  assert.equal(combatMovementSpeed(100,1000,{gmSpeedMultiplier:1,onWater:true,waterImmune:true}),100);
+  assert.equal(combatMovementSpeed(100,1000,{gmSpeedMultiplier:1,onWater:false}),100);
+  assert.equal(combatMovementSpeed(100,1000,{gmSpeedMultiplier:2,onWater:true}),100);
+  assert.equal(combatMovementSpeed(100,500,{gmSpeedMultiplier:2,onWater:true}),50);
 });

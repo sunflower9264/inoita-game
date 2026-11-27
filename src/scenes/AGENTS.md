@@ -5,7 +5,8 @@ Phaser 场景层：驱动生命周期、转发输入，把 domain、rendering、
 ## 文件
 
 - `world-scene.ts`：主世界，负责地图加载、角色移动、镜头与地图内交互。
-- `world-combat.ts`：世界内战斗的装配与更新，把战斗规则接到场景表现；`world-combat-host.ts` 定义战斗需要的世界协作能力。
+- `world-combat.ts`：世界内战斗的场景装配与帧更新入口，组合领域层的 `CombatConditions`、`CombatActorStats`、`CombatSettlementEngine`、`CombatThreatSystem`、场景资源管理器 `CombatSkillAssetManager` 以及渲染层的 `CombatStatusVisuals`；`world-combat-host.ts` 定义战斗需要的世界协作能力。
+- `combat-skill-assets.ts`：`CombatSkillAssetManager` 负责按技能配置加载与重试场景战斗贴图资源，避免 `WorldCombat` 直接持有资源加载细节。
 - `interaction-index.ts`：交互目标的 32 像素格子索引，供 `WorldScene` 查询候选。
 - `story-stage-scene.ts`：剧情舞台，承接对白、选项和演出期间的输入锁定。
 - `menu-scene.ts`：标题界面生命周期与常驻素材；页面、存档槽、云存档和更新日志由 `ui/title-menu-controller.ts` 管理。

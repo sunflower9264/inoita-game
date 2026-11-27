@@ -162,7 +162,7 @@ export class CombatPresenter {
     this.placedEffect(visual.effect,variant,actor.position,visual.placement,character);
     this.scene.events.emit('skill-effect',{name:visual.effect,variant,recipientId:actor.id,placement:visual.placement});
   }
-  showEffects(id:string,effects:SkillVisualEffect[]):void{
+  showEffects(id:string,effects:readonly SkillVisualEffect[]):void{
     const actor=this.candidates().find(candidate=>candidate.id===id);
     if(actor)for(const visual of effects)this.visualEffect(visual,visual.variant??'default',actor);
   }

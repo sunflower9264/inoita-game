@@ -1,21 +1,13 @@
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import {registerHooks} from 'node:module';
 import test from 'node:test';
-import type {BattleCatalog} from '../src/domain/battle.ts';
-import type {Session} from '../src/domain/session.ts';
 import {CombatConditions} from '../src/domain/combat-conditions.ts';
 import {CombatClock} from '../src/domain/combat-clock.ts';
 import {CombatResourceRecovery} from '../src/domain/combat-resources.ts';
 import type {PhysicalHit} from '../src/domain/physical-hit.ts';
 import type {SkillReactionEvent} from '../src/domain/skill-reactions.ts';
+import {createCombatTestHarness,createTestMember,loadBattleCatalog} from './support/combat-test-harness.ts';
 
-const phaser=registerHooks({resolve(specifier,context,next){
-  return specifier==='phaser'?{url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true}:next(specifier,context);
-}});
-const {WorldCombat}=await import('../src/scenes/world-combat.ts');phaser.deregister();
-const catalog=JSON.parse(readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')) as BattleCatalog;
-const method=(name:string)=>Reflect.get(WorldCombat.prototype,name);
+const catalog=loadBattleCatalog();
 function shield(rank=1){
   const unit=catalog.skills['demon-s-shield'].action!.combatUnits!.find(value=>value.effect==='buff');
   assert.equal(unit?.effect,'buff');
@@ -24,40 +16,33 @@ function shield(rank=1){
 }
 function fixture(){
   const conditions=new CombatConditions(),clock=new CombatResourceRecovery(),frames=new CombatClock();
-  const makeMember=(health:number)=>{
-    const player={level:1,health,maxHealth:1000,mana:0,maxMana:100};
-    return {level:1,player,panel:{maxHealth:1000,maxMana:100},
-      bag:{revision:0,equipmentFor:()=>({}),get:()=>undefined},
-      setHealth:(value:number)=>{player.health=Math.max(0,Math.min(player.maxHealth,value));},
-      setMana:(value:number)=>{player.mana=Math.max(0,Math.min(player.maxMana,value));},
-      setCombatResourceCapacity(key:'maxHealth'|'maxMana',value:number){this.player[key]=value;},
-      setCombatResourceLimits:(health:number,mana:number)=>{player.maxHealth=health;player.maxMana=mana;}};
-  };
-  const defender=makeMember(1000),dead=makeMember(0),members=new Map([['defender',defender],['dead',dead]]);
+  const defender=createTestMember({id:'defender',level:1,health:1000,maxHealth:1000,mana:0,maxMana:100});
+  const dead=createTestMember({id:'dead',level:1,health:0,maxHealth:1000,mana:0,maxMana:100});
+  const members=new Map([['defender',defender],['dead',dead]]);
   const phases:string[]=[],effects:string[]=[];
   let equipmentManaRecovery=0;
-  const host=Object.setPrototypeOf({conditions,hero:defender,app:{battleCatalog:catalog,session:{
-    // 资源脉冲会读持续回复（再生药水）的剩余时间；没有它就当作没有生效中的持续回复。
-    recovery:{activeRegeneration:undefined} as unknown as Session['recovery'],
-    recoveryPulseDue:true,advanceRecoveryClock:()=>{},
-    recoverCombatResources:(actors:Parameters<CombatResourceRecovery['advanceToFrame']>[1])=>clock.advanceToFrame(frames.currentFrame,actors)}},activeParty:[...members.keys()],
-    arena:[],pendingDefeats:new Set(),fallen:new Set(),closed:false,defeated:false,
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
-    aiSkillCostCache:new Map(),
-    memberOf:(id:string)=>members.get(id),partyPassives:()=>[],partyFighter:()=>({}),
-    equipmentRecovery:()=>({manaRecoveryPerPulse:equipmentManaRecovery,manaCostReductionRate:0,lifeDrainPerThousand:0}),
-    interruptDisabled:()=>{},
-    showBuffApplication:(_source:string,_target:string,effect:string)=>effects.push(effect),
-    react:(event:SkillReactionEvent)=>{phases.push(`${event.kind}:${conditions.hasBuff('defender','mana-recovery')}`);},
-    attackProc:()=>{},
-  },WorldCombat.prototype);
-  const call=(name:string,...args:unknown[])=>method(name).call(host,...args);
-  const cast=(rank=1)=>call('skillUnit',{casterId:'defender',targetId:'defender',cueIndex:0,
-    skill:{id:'demon-s-shield',level:rank,action:catalog.skills['demon-s-shield'].action}});
+  const harness=createCombatTestHarness({
+    battleCatalog:catalog,conditions,hero:defender,members,
+    activeParty:()=>[...members.keys()],
+    withThreat:false,
+    settlementOverrides:{
+      // 资源脉冲会读持续回复（再生药水）的剩余时间；没有它就当作没有生效中的持续回复。
+      activeRegeneration:()=>undefined,
+      recoveryPulseDue:()=>true,
+      advanceRecoveryClock:()=>{},
+      recoverCombatResources:actors=>clock.advanceToFrame(frames.currentFrame,actors),
+      onBuffApplication:(_source,_target,effect)=>effects.push(effect),
+    },
+  });
+  harness.stats.equipmentRecovery=()=>({manaRecoveryPerPulse:equipmentManaRecovery,manaCostReductionRate:0,lifeDrainPerThousand:0});
+  harness.settlement.react=(event:SkillReactionEvent)=>{phases.push(`${event.kind}:${conditions.hasBuff('defender','mana-recovery')}`);};
+  harness.settlement.attackProc=()=>{};
+  const cast=(rank=1)=>harness.settlement.skillUnit({casterId:'defender',targetId:'defender',cueIndex:0,
+    skill:{id:'demon-s-shield',level:rank,action:catalog.skills['demon-s-shield'].action!}});
   const contact=(outcome:PhysicalHit['kind']='miss',damageKind:'physical'|'magic'='physical',damage=0)=>
-    call('resolveHitReactions',{casterId:'attacker',targetId:'defender'},{kind:outcome,damage},damageKind,'basic-attack',defender);
-  return {host,conditions,clock,defender,dead,phases,effects,cast,contact,call,
-    advance:(delta:number)=>frames.advance(delta,()=>call('recoverResources')),
+    harness.settlement.resolveHitReactions({casterId:'attacker',targetId:'defender'},{kind:outcome,damage},damageKind,'basic-attack');
+  return {harness,conditions,clock,defender,dead,phases,effects,cast,contact,
+    advance:(delta:number)=>frames.advance(delta,()=>harness.settlement.recoverResources()),
     equipment:(amount:number)=>{equipmentManaRecovery=amount;}};
 }
 
@@ -89,11 +74,11 @@ test('the actual hit host grants recovery before success reactions only for thre
     assert.equal(run.conditions.hasBuff('defender','mana-recovery'),applies,`${damageKind}:${outcome}`);
     if(applies){
       assert.equal(run.conditions.snapshot('defender').find(value=>value.id==='mana-recovery')?.sourceId,'defender');
-      assert.equal(run.call('actorAttribute','defender','manaRecoveryPerPulse'),17);
+      assert.equal(run.harness.stats.actorAttribute('defender','manaRecoveryPerPulse'),17);
       assert.ok(run.phases.every(phase=>phase.endsWith(':true')));
     }
     assert.equal(run.conditions.hasBuff('attacker','mana-recovery'),false);
-    assert.equal(run.defender.player.mana,0);assert.deepEqual(run.effects,[]);
+    assert.equal(run.defender.player.mana,0);assert.equal(run.effects.length,0);
   }
   const absent=fixture();absent.contact();
   assert.equal(absent.conditions.hasBuff('defender','mana-recovery'),false);
@@ -118,7 +103,7 @@ test('equal avoidance refreshes one child layer while a lower parent cannot repl
   const current=()=>run.conditions.snapshot('defender').find(value=>value.id==='mana-recovery')!;
   const before=current();
   run.conditions.removeBuff('defender','demon-s-shield');run.cast(1);run.contact();
-  assert.deepEqual(current(),before);assert.equal(run.call('actorAttribute','defender','manaRecoveryPerPulse'),48);
+  assert.deepEqual(current(),before);assert.equal(run.harness.stats.actorAttribute('defender','manaRecoveryPerPulse'),48);
   run.cast(8);assert.deepEqual(current(),before);
   run.contact('weapon-block');assert.equal(current().stackCount,1);
   assert.ok(current().remainingMs>before.remainingMs);assert.equal(current().sourceId,'defender');

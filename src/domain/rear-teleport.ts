@@ -1,5 +1,5 @@
 import type { Facing } from './content.ts';
-import type { Combatant } from './combat.ts';
+import type { Combatant } from './combatant.ts';
 import type { GameRectangle, Point } from './navigation.ts';
 
 const GRID_SIZE = 8;

@@ -1,18 +1,10 @@
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import {registerHooks} from 'node:module';
 import test from 'node:test';
-import type {BattleBuffEffect,BattleCatalog} from '../src/domain/battle.ts';
+import type {BattleBuffEffect} from '../src/domain/battle.ts';
 import {CombatConditions} from '../src/domain/combat-conditions.ts';
+import {createCombatTestHarness,loadBattleCatalog} from './support/combat-test-harness.ts';
 
-const phaser=registerHooks({resolve(specifier,context,next){
-  return specifier==='phaser'?{url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true}:next(specifier,context);
-}});
-const {WorldCombat}=await import('../src/scenes/world-combat.ts');
-phaser.deregister();
-const method=(name:string)=>Reflect.get(WorldCombat.prototype,name);
-
-const catalog=JSON.parse(readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')) as BattleCatalog;
+const catalog=loadBattleCatalog();
 const skill=catalog.skills['ambush'];
 const unit=skill.action!.combatUnits![0] as {effect:'buff';buff:'ambush';ranks:{strength:number;effect:BattleBuffEffect}[]};
 const recovery=catalog.statusAttackBuffs!['ambush-recovery']!;
@@ -49,14 +41,12 @@ test('the recovery buff starts stopped and adds a quarter of the base step every
 
 test('a real direction input cancels both crouch buffs and starts the recovery',()=>{
   const conditions=new CombatConditions();
-  const host={conditions,controlledId:'hero',arena:[],memberOf:()=>undefined,
-    app:{battleCatalog:catalog},applyActorBuff:method('applyActorBuff'),applyAcceptedEffects:()=>{},
-    applyStateConsequences:()=>{},syncCombatResourceLimits:()=>{}};
-  method('cancelAmbushOnDirection').call(host);
+  const harness=createCombatTestHarness({battleCatalog:catalog,conditions,controlledId:()=>'hero'});
+  harness.settlement.cancelAmbushOnDirection();
   assert.deepEqual(conditions.snapshot('hero'),[]);
   conditions.applyBuff('hero','ambush',2004,unit.ranks[1]!.effect,'hero');
   conditions.applyBuff('hero','sniping',5004,{durationMs:10860,tickMs:0,states:[],modifiers:[],periodic:[]},'hero');
-  method('cancelAmbushOnDirection').call(host);
+  harness.settlement.cancelAmbushOnDirection();
   assert.equal(conditions.hasBuff('hero','ambush'),false);
   assert.equal(conditions.hasBuff('hero','sniping'),false);
   assert.equal(conditions.hasBuff('hero','ambush-recovery'),true);

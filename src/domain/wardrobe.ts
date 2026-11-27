@@ -1,6 +1,8 @@
-import type { ClipName, Facing } from './content.ts';
+import type { ActorDefinition, ClipName, Facing } from './content.ts';
 import type { EquipmentSlot, ItemCatalog } from './items.ts';
-import type { BasicAttackDefinition, SkillAction } from './battle.ts';
+import type { BasicAttackDefinition, ResolvedBasicAttack, SkillAction } from './battle.ts';
+import { resolveBasicAttack } from './basic-attack.ts';
+import type { Bag } from './bag.ts';
 import { skillClips } from './skill-action.ts';
 
 export interface CostumePiece {
@@ -99,4 +101,28 @@ export function costumeRecipe(catalog: WardrobeCatalog, items: ItemCatalog, equi
     :skills?.poses;
   return {variants,poses:classId?{...poses,...filteredClassPoses,...filteredStancePoses}:poses,
     actions:skills?.actions??{},attack:catalog.attacks[`${main}:${off}`],dualWieldAttack:catalog.dualWieldAttacks?.[`${main}:${off}`],frenzyAttack:catalog.frenzyAttacks?.[`${main}:${off}`],frenzyWaitFrames:catalog.frenzyWaitFrames?.[`${main}:${off}`]};
+}
+
+/** 按成员身上当前装备装配普攻；装备通过背包读取，不依赖场景层。 */
+export function equipmentAttackFor(
+  wardrobe: WardrobeCatalog,
+  items: ItemCatalog,
+  bag: Pick<Bag, 'equipmentItems' | 'equipmentFor'>,
+  actor: ActorDefinition,
+  memberId = 'player',
+  step = 0,
+): ResolvedBasicAttack {
+  const { attack } = costumeRecipe(wardrobe, items, bag.equipmentItems(bag.equipmentFor(memberId)));
+  return resolveBasicAttack(
+    { basicAttacks: { equipped: attack } },
+    {
+      actor,
+      basicAttack: {
+        profileId: 'equipped',
+        clips: { north: 'attack-north' as const, south: 'attack-south' as const, east: 'attack-east' as const, west: 'attack-west' as const } satisfies Record<Facing, string>,
+      },
+    },
+    undefined,
+    step,
+  );
 }

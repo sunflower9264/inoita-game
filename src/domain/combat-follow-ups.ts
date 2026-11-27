@@ -1,6 +1,6 @@
 import {skillForMember,memberSkillGrowth,type BattleCatalog,type SkillLoadout,type SkillAction,type SkillTransition} from './battle.ts';
 import {learnedSkillReactions} from './skill-reactions.ts';
-import type {Combatant} from './combat.ts';
+import type {Combatant} from './combatant.ts';
 import type {CombatRuntime} from './combat-runtime.ts';
 import type {Point} from './navigation.ts';
 

@@ -1,16 +1,12 @@
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
 import test from 'node:test';
-import type {BattleCatalog} from '../src/domain/battle.ts';
+import type {CombatThreatSystem} from '../src/domain/combat-threat-system.ts';
+import type {Combatant} from '../src/domain/combatant.ts';
 import {disturbanceCandidate,type DisturbanceActor} from '../src/domain/disturbance.ts';
 import {rectDistance} from '../src/domain/rect-distance.ts';
-import {registerHooks} from 'node:module';
-const phaser=registerHooks({resolve(specifier,context,next){return specifier==='phaser'
-  ?{url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true}:next(specifier,context);}});
-const {WorldCombat}=await import('../src/scenes/world-combat.ts');phaser.deregister();
-const method=(name:string)=>Reflect.get(WorldCombat.prototype,name);
+import {createCombatTestHarness,createTestMember,loadBattleCatalog} from './support/combat-test-harness.ts';
 
-const catalog=JSON.parse(readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')) as BattleCatalog;
+const catalog=loadBattleCatalog();
 const thresholds=[140,200,260,320,350,380,410,440];
 
 test('eight ranks carry the defending side threshold and no passive modifier',()=>{
@@ -66,31 +62,31 @@ test('the defender own summon wins immediately, anyone else summon does not',()=
 
 /** 场景侧读取：候选与守卫都用当前防御×防御率，不再只看面板基础防御。 */
 test('世界侧按当前防御与防御率选候选，装备与增益都算进去',()=>{
-  const catalog=JSON.parse(readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')) as BattleCatalog;
-  const thresholds=catalog.skills['disturbance'].reactionsByRank!.map(rank=>{
+  const nextThresholds=catalog.skills['disturbance'].reactionsByRank!.map(rank=>{
     const reaction=rank[0]!;
     return reaction.kind==='disturbance'?reaction.chanceThreshold:0;
   });
-  const draft=()=>({levels:{disturbance:8}});
-  const defenses:{[id:string]:{defense:number;rate:number}}={guard:{defense:100,rate:0},plate:{defense:60,rate:900},ally:{defense:100,rate:0}};
-  const member={classId:'ranger',panel:{baseDefense:100},skills:{draft}};
-  const actor=(id:string,x:number,team='party')=>({id,team,position:{x,y:0},bounds:{x:-4,y:-4,width:8,height:8}});
-  const roster=[actor('guard',0),actor('plate',40),actor('ally',48),actor('enemy',200,'hostile')];
+  const defenses:Record<string,{defense:number;rate:number}>={guard:{defense:100,rate:0},plate:{defense:60,rate:900},ally:{defense:100,rate:0}};
+  const makeMember=(id:string)=>createTestMember({id,classId:'ranger',panel:{baseDefense:100},skillLevels:{disturbance:8}});
+  const members=new Map([['guard',makeMember('guard')],['plate',makeMember('plate')],['ally',makeMember('ally')]]);
+  const memberActor=(id:string,x:number,team:'party'|'hostile'='party'):Combatant=>({id,team,position:{x,y:0},bounds:{x:-4,y:-4,width:8,height:8}});
+  const roster=[memberActor('guard',0),memberActor('plate',40),memberActor('ally',48),memberActor('enemy',200,'hostile')];
   const taunts:{candidate:string;attacker:string}[]=[];
-  const host=Object.setPrototypeOf({
-    app:{battleCatalog:catalog,session:{skills:{draft}}},
-    memberOf:(id:string)=>id==='enemy'?undefined:member,
-    combatant:(id:string)=>roster.find(entry=>entry.id===id),
+  const harness=createCombatTestHarness({
+    battleCatalog:catalog,members,
+    combatant:id=>roster.find(entry=>entry.id===id),
     combatants:()=>roster,
-    arena:[],
-    actorAttribute:(id:string,key:string)=>key==='defense'?(defenses[id]?.defense??0):key==='defenseRate'?(defenses[id]?.rate??0):0,
-    threat:{taunt:(candidate:string,attacker:string)=>taunts.push({candidate,attacker})},
-    currentTargetOf:()=>undefined,
-  },WorldCombat.prototype);
+    withThreat:false,
+    settlementOverrides:{
+      threat:{taunt:(candidate:string,attacker:string)=>taunts.push({candidate,attacker})} as unknown as CombatThreatSystem,
+      currentTargetOf:()=>undefined,
+    },
+  });
+  harness.stats.actorAttribute=(id,key)=>key==='defense'?(defenses[id]?.defense??0):key==='defenseRate'?(defenses[id]?.rate??0):0;
   const original=Math.random;Math.random=()=>0.5/999;
   try{
-    method('disturbanceReaction').call(host,'enemy','guard');
+    harness.settlement.disturbanceReaction('enemy','guard');
   }finally{Math.random=original;}
-  assert.equal(thresholds.length,8);
+  assert.equal(nextThresholds.length,8);
   assert.deepEqual(taunts,[{candidate:'plate',attacker:'enemy'}],'护甲 60×1.9 高于守卫的 100，护甲被选中');
 });

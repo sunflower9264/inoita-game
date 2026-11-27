@@ -26,17 +26,18 @@ import { passiveModifiers } from '../src/domain/passive-skills.ts';
 import { learnedSkillReactions, resolveSkillReactions } from '../src/domain/skill-reactions.ts';
 import { newStorySession, visibleStoryClasses } from '../src/domain/story-class.ts';
 import { costumeRecipe } from '../src/domain/wardrobe.ts';
-import { registerHooks } from 'node:module';
+import {
+  createCombatTestHarness,
+  createTestMember,
+} from './support/combat-test-harness.ts';
+import {
+  createFakeContainer,
+  createFakePhaserScene,
+  installPhaserStubHooks,
+} from './support/world-combat-fixture.ts';
 
-const phaserHook = registerHooks({
-  resolve(specifier, context, next) {
-    return specifier === 'phaser'
-      ? { url: 'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}', shortCircuit: true }
-      : next(specifier, context);
-  },
-});
+const phaserHook = installPhaserStubHooks();
 const { CombatPresenter } = await import('../src/rendering/combat-presenter.ts');
-const { WorldCombat } = await import('../src/scenes/world-combat.ts');
 phaserHook.deregister();
 
 const read = (file: string) => JSON.parse(fs.readFileSync(new URL('../public/content/' + file, import.meta.url), 'utf8'));
@@ -485,13 +486,27 @@ test('CombatActionDispatcher and CombatPresenter honor explicit visual effect va
 
   // 3. CombatPresenter.showEffects & showUnitFeedback
   const presenterCalls: { name: string; variant: string }[] = [];
-  const fakePresenter = Object.setPrototypeOf({
-    candidates: () => [caster, target],
-    visualEffect: (visual: { effect: string }, variant: string) => { presenterCalls.push({ name: visual.effect, variant }); },
-  }, CombatPresenter.prototype) as InstanceType<typeof CombatPresenter>;
+  const phaserScene = createFakePhaserScene();
+  phaserScene.events.on('skill-effect', (event: { name: string; variant: string }) => {
+    presenterCalls.push({ name: event.name, variant: event.variant });
+  });
+  const lancerActor = battle.classes.find(c => c.id === 'lancer')!.actor;
+  const fakeVisual = (x: number, y: number) =>
+    ({
+      entity: { id: 'actor', actor: lancerActor.id, x, y, flip: false },
+      actor: lancerActor,
+      layers: [],
+      container: createFakeContainer(x, y),
+    }) as never;
+  const presenter = new CombatPresenter(
+    phaserScene,
+    battle,
+    id => (id === 'player' ? fakeVisual(100, 100) : id === 'enemy' ? fakeVisual(140, 100) : undefined),
+    () => [caster, target],
+  );
 
-  fakePresenter.showEffects('player', [{ effect: 'spear-sovereign-beam', recipient: 'caster', placement: 'ground', variant: 'north' }]);
-  fakePresenter.showUnitFeedback(
+  presenter.showEffects('player', [{ effect: 'spear-sovereign-beam', recipient: 'caster', placement: 'ground', variant: 'north' }]);
+  presenter.showUnitFeedback(
     { casterId: 'player', targetId: 'enemy', cueIndex: 0, skill: { id: 'test', level: 1, action: syntheticAction } },
     'success',
     { target: 'area', targetRangePx: 80, effects: [{ effect: 'spear-sovereign-beam', recipient: 'target', placement: 'above-characters', variant: 'west' }] },
@@ -502,28 +517,30 @@ test('CombatActionDispatcher and CombatPresenter honor explicit visual effect va
   ]);
 });
 
-test('WorldCombat.learnedReactionBuff resolves armor-penetration from learned class passive reactions when prepared', () => {
-  const fakeBuff = {
-    key: 'armor-break' as const,
-    rankPriority: 1900,
-    effect: { durationMs: 3660, tickMs: 0, states: [], maxStacks: 1, modifiers: [], periodic: [] },
-  };
-  let prepared: Map<string, Set<string>> | undefined = new Map([['player', new Set(['piercing-momentum'])]]);
-  const host = Object.setPrototypeOf({
-    get preparedSkillIds() { return prepared; },
-    memberOf: () => ({ id: 'player', classId: 'lancer' }),
-    reactionSkills: () => ({
-      loadout: { levels: { 'piercing-momentum': 1 } },
-      reactions: prepared?.get('player')?.has('piercing-momentum') ? [{ kind: 'armor-penetration', buff: fakeBuff }] : [],
-    }),
-    app: { battleCatalog: battle },
-  }, WorldCombat.prototype);
-  const read = Reflect.get(WorldCombat.prototype, 'learnedReactionBuff') as (this: unknown, id: string, skillId: string) => unknown;
-  assert.deepEqual(read.call(host, 'player', 'armor-penetration'), fakeBuff);
+test('CombatActorStats.learnedReactionBuff resolves armor-penetration from learned class passive reactions when prepared', () => {
+  let prepared: Map<string, Set<string>> = new Map([['player', new Set(['piercing-momentum'])]]);
+  const member = createTestMember({
+    id: 'player',
+    classId: 'lancer',
+    skillLevels: { 'piercing-momentum': 1 },
+  });
+  const harness = createCombatTestHarness({
+    battleCatalog: battle,
+    hero: member,
+    members: new Map([['player', member]]),
+    sessionSkills: () => member.skills as never,
+    preparedSkills: id => prepared.get(id),
+    requiresPreparedSkills: true,
+  });
+  const rank1 = battle.skills['piercing-momentum']!.reactionsByRank![0]![0]!;
+  assert.equal(rank1.kind, 'armor-penetration');
+  if (rank1.kind === 'armor-penetration') {
+    assert.deepEqual(harness.stats.learnedReactionBuff('player', 'armor-penetration'), rank1.buff);
+  }
 
   // 素材尚未就绪时（reactionSkills 过滤后不含该反应），不得提前触发。
   prepared = new Map([['player', new Set()]]);
-  assert.equal(read.call(host, 'player', 'armor-penetration'), undefined);
+  assert.equal(harness.stats.learnedReactionBuff('player', 'armor-penetration'), undefined);
 });
 
 test('dragon-pierce armor shred reduces real enemy physicalResistance and displays 6.0s duration', () => {
@@ -555,20 +572,26 @@ test('piercing-momentum declares 8-rank armor-penetration reactions and triggers
   const armorPen = reactions.find(r => r.kind === 'armor-penetration');
   assert.ok(armorPen && armorPen.kind === 'armor-penetration');
 
-  const host = Object.setPrototypeOf({
-    preparedSkillIds: new Map([['player', new Set(['piercing-momentum'])]]),
-    memberOf: () => ({ id: 'player', classId: 'lancer' }),
-    reactionSkills: () => ({ loadout, reactions }),
-    app: { battleCatalog: battle },
-  }, WorldCombat.prototype);
-  const read = Reflect.get(WorldCombat.prototype, 'learnedReactionBuff') as (this: unknown, id: string, skillId: string) => unknown;
+  const member = createTestMember({
+    id: 'player',
+    classId: 'lancer',
+    skillLevels: loadout.levels,
+  });
+  const harness = createCombatTestHarness({
+    battleCatalog: battle,
+    hero: member,
+    members: new Map([['player', member]]),
+    sessionSkills: () => member.skills as never,
+    preparedSkills: new Map([['player', new Set(['piercing-momentum'])]]),
+    requiresPreparedSkills: true,
+  });
 
   const commands = resolveSkillReactions(
     reactions,
     { kind: 'physical-attack-effects', ownerId: 'player', opponentId: 'enemy', damageKind: 'physical', outcome: 'hit', armorBreakChance: 120 },
     {
       random: () => 0.01,
-      learnedBuff: (id, sid) => read.call(host, id, sid) as never,
+      learnedBuff: (id, sid) => harness.stats.learnedReactionBuff(id, sid),
     },
   );
   assert.equal(commands.length, 1);

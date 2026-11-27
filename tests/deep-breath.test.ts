@@ -1,17 +1,10 @@
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import {registerHooks} from 'node:module';
 import test from 'node:test';
-import type {BattleBuffEffect,BattleCatalog} from '../src/domain/battle.ts';
+import type {BattleBuffEffect} from '../src/domain/battle.ts';
 import {CombatConditions} from '../src/domain/combat-conditions.ts';
+import {createCombatTestHarness,createTestMember,loadBattleCatalog} from './support/combat-test-harness.ts';
 
-const phaser=registerHooks({resolve(specifier,context,next){
-  return specifier==='phaser'?{url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true}:next(specifier,context);
-}});
-const {WorldCombat}=await import('../src/scenes/world-combat.ts');phaser.deregister();
-const method=(name:string)=>Reflect.get(WorldCombat.prototype,name);
-
-const catalog=JSON.parse(readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')) as BattleCatalog;
+const catalog=loadBattleCatalog();
 const bodhi=[catalog.skills['energy-bodhi'].action!.combatUnits!.find(unit=>unit.effect==='buff')!] as const;
 if(bodhi[0].effect!=='buff')throw new Error('missing energy bodhi buff');
 const childOf=(rank:number)=>catalog.skills['deep-breath'].reactionsByRank![rank-1]![0] as
@@ -48,23 +41,25 @@ test('the bodhi declares both accepted actions and keeps its own base cap',()=>{
 
 function fixture(bodhiRank=1,deepRank=8,increment:number|null=null){
   const conditions=new CombatConditions(),log:string[]=[];
-  const member={classId:'assassin',player:{health:100,maxHealth:100,mana:0,maxMana:0},
-    skills:{draft:()=>({levels:{...(deepRank?{'deep-breath':deepRank}:{})}})}};
-  const host=Object.setPrototypeOf({app:{battleCatalog:catalog,session:{skills:member.skills}},
-    conditions,arena:[],activeParty:['player'],fallen:new Set(),pendingDefeats:new Set(),
-    memberOf:(id:string)=>id==='player'?member:undefined,applyStateConsequences:()=>{},
-    syncCombatResourceLimits:()=>{},showBuffApplication:()=>{},
-    // 压力取自属性；本用例直接用参数给出，避免依赖面板换算。
-    actorAttribute:(_id:string,key:string)=>key==='deepBreathDurationBonus'?(increment??increments[deepRank-1]??0):0,
-    applyAcceptedEffects:(function(this:unknown,...args:unknown[]){
-      const [,,effect]=args as [string,string,BattleBuffEffect];
-      if(effect.onAccepted?.length)log.push('accepted');
-      return method('applyAcceptedEffects').apply(this,args);
-    } as unknown as (...args:unknown[])=>void)},
-    WorldCombat.prototype);
+  const member=createTestMember({
+    id:'player',classId:'assassin',maxHealth:100,maxMana:0,
+    skillLevels:deepRank?{'deep-breath':deepRank}:{},
+  });
+  const harness=createCombatTestHarness({
+    battleCatalog:catalog,conditions,hero:member,members:new Map([['player',member]]),
+    activeParty:()=>['player'],
+    settlementOverrides:{onStateConsequences:undefined,onBuffApplication:undefined},
+  });
+  // 压力取自属性；本用例直接用参数给出，避免依赖面板换算。
+  harness.stats.actorAttribute=(_id,key)=>key==='deepBreathDurationBonus'?(increment??increments[deepRank-1]??0):0;
+  const baseAccepted=harness.settlement.applyAcceptedEffects.bind(harness.settlement);
+  harness.settlement.applyAcceptedEffects=(sourceId,targetId,effect)=>{
+    if(effect.onAccepted?.length)log.push('accepted');
+    baseAccepted(sourceId,targetId,effect);
+  };
   const apply=(targetId:string,effect:BattleBuffEffect=bodhi[0].ranks[bodhiRank-1]!.effect,
     strength=bodhi[0].ranks[bodhiRank-1]!.strength)=>
-    method('applyActorBuff').call(host,targetId,'energy-bodhi',strength,effect,'player');
+    harness.settlement.applyActorBuff(targetId,'energy-bodhi',strength,effect,'player');
   const cap=(id:string,key:'energy-bodhi'|'deep-breath')=>conditions.buffLifetimeFrames(id,key);
   return {conditions,log,apply,cap,setIncrement:(value:number)=>{increment=value;}};
 }

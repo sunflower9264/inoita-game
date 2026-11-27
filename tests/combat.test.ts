@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {registerHooks} from 'node:module';
 import {CombatController,resolveCueTargets} from '../src/domain/combat.ts';
 import type {ActionPlayback,CombatPort,Combatant,AttackContact} from '../src/domain/combat.ts';
 import {parseBattle,parseCampaign,parseWorld} from '../src/application/content-validation.ts';
+import {BattleCharacter} from '../src/domain/character-stats.ts';
 import {Session} from '../src/domain/session.ts';
 import {AssetPool} from '../src/application/assets.ts';
 import {ControlState} from '../src/application/control-state.ts';
@@ -12,14 +12,29 @@ import {resolveBasicAttack,basicAttackStrikesAtFrame} from '../src/domain/basic-
 import {actionCues} from '../src/domain/skill-action.ts';
 import {CombatConditions} from '../src/domain/combat-conditions.ts';
 import {CombatCooldownStore} from '../src/domain/combat-cooldowns.ts';
-import {SummonLifecycle} from '../src/domain/summon-lifecycle.ts';
-const catalog=parseBattle(JSON.parse(fs.readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')));
+import type {BattleCatalog} from '../src/domain/battle.ts';
+import type {ActorDefinition} from '../src/domain/content.ts';
+import {loadCharacterStatsCatalog,loadCompanionCatalog,loadItemCatalog} from './support/combat-test-harness.ts';
+import {createFakePhaserScene,createTestWorldCombat} from './support/world-combat-fixture.ts';
+import {CHARACTER_ATLAS_ALIASES} from '../tools/character-atlas-aliases.ts';
+
+function normalizeActorClips(actor:ActorDefinition):void{
+  for(const clip of Object.values(actor.clips)){
+    for(const layer of clip?.layers??[]){
+      if(layer.file)layer.file=CHARACTER_ATLAS_ALIASES[layer.file]??layer.file;
+    }
+  }
+}
+
+function normalizeBattleCatalog(raw:BattleCatalog):BattleCatalog{
+  const copy=structuredClone(raw);
+  for(const cls of copy.classes)normalizeActorClips(cls.actor);
+  for(const enemy of copy.enemies)normalizeActorClips(enemy.actor);
+  return copy;
+}
+
+const catalog=normalizeBattleCatalog(parseBattle(JSON.parse(fs.readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8'))));
 const campaign=parseCampaign(JSON.parse(fs.readFileSync(new URL('../public/content/campaign.json',import.meta.url),'utf8')));
-const phaser=registerHooks({resolve(specifier,context,next){
-  return specifier==='phaser'?{url:'data:text/javascript,export default {BlendModes:{NORMAL:0,ADD:1,MULTIPLY:2,SCREEN:3},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true}:next(specifier,context);
-}});
-const {WorldCombat}=await import('../src/scenes/world-combat.ts');
-phaser.deregister();
 const caster:Combatant={id:'player',team:'party',position:{x:350,y:192},bounds:{x:-8,y:-8,width:16,height:16}};
 const enemy:Combatant={...caster,id:'enemy',team:'hostile',position:{x:384,y:192}};
 function setup(){
@@ -548,58 +563,120 @@ test('an unreachable charge rejects without consuming mana, cooldown or playback
   assert.equal(run.plays.length,0);assert.equal(run.combat.snapshot().state,'idle');
 });
 
-function mapEnemy(key:string,summonedBy?:string){
-  return {key,summonedBy,definition:{},visual:{container:{destroy:()=>{}}},body:{},facing:'south' as const,
-    presenter:{clear:()=>{}},controller:{dispose:()=>{},targetRemoved:()=>{}}};
+async function createSummonCombatFixture(){
+  const items=loadItemCatalog(),statsCatalog=loadCharacterStatsCatalog(),companions=loadCompanionCatalog();
+  const hero=new BattleCharacter('warlock',statsCatalog,items);
+  const session=new Session(campaign,undefined,undefined,items,hero,catalog,statsCatalog,companions);
+  session.skills.maxAll();
+  session.skills.bar().assign(0,0,{kind:'skill',id:'hell-s-pawn'});
+  session.bag.add('mercenary-emblem-black-knight');
+  const ally=session.party!.recruit(session.bag.entries.find(entry=>entry.item==='mercenary-emblem-black-knight')!.id,()=>0).member;
+  session.party!.deployFirstAvailable(ally.id);
+  const actor=catalog.classes.find(entry=>entry.id===ally.classId)!.actor;
+  const map={
+    id:'summon-state-map',name:'summon-state-map',width:320,height:320,tileSize:16,columns:20,rows:20,
+    blocked:Array<boolean>(400).fill(false),ground:'',canopy:'',features:[],entities:[],exits:[],
+    enemySpawns:[{id:'wolf',enemyId:'enemy-wolf-1',x:220,y:220,respawn:false as const}],
+  };
+  const phaserScene=createFakePhaserScene({
+    cameras:{main:{width:640,height:360,zoomX:1,zoomY:1,worldView:undefined,followOffset:{x:0,y:0},setFollowOffset(){}}},
+    tweens:{add:()=>({stop(){},pause(){},resume(){}}),getTweensOf:()=>[],killTweensOf:()=>{}},
+  });
+  const world=await createTestWorldCombat({
+    hero,session,map,phaserScene,battleCatalog:catalog,
+    appOverrides:{world:{actors:{[ally.definition.actor]:actor,[actor.id]:actor}} as never},
+  });
+  await world.combat.start();
+  return {world,session,ally};
 }
-function summonHost(session:Session,arena:ReturnType<typeof mapEnemy>[],groups:[string,string[]][]){
-  const summons=new SummonLifecycle();
-  for(const [owner,keys] of groups){
-    summons.beginSummon(owner);
-    for(const key of keys)summons.register(owner,key);
-  }
-  return Object.setPrototypeOf({
-    pendingDefeats:{has:()=>false,complete:()=>{}},
-    arena,app:{session},conditions:{remove:()=>{}},movement:{remove:()=>{}},roster:{removeEnemy:()=>{}},
-    summons,partyControllers:new Map(),
-    scene:{refreshCombatTarget:()=>{}},
-  },WorldCombat.prototype);
-}
-const combatMethod=(name:string)=>Reflect.get(WorldCombat.prototype,name) as (this:object,...args:unknown[])=>unknown;
 
-test('removing or replacing a summon discards its own session enemy state',()=>{
-  const session=new Session(campaign);
-  const first=mapEnemy('enemy-1','player'),second=mapEnemy('enemy-2','player'),other=mapEnemy('enemy-3','ally');
-  const host=summonHost(session,[first,second,other],[['player',['enemy-1','enemy-2']],['ally',['enemy-3']]]);
+function summonAiState(ownerId:string){
+  return {
+    kind:'friendly-summon' as const,
+    state:{ownerId,role:'hell-soldier' as const,state:'idle' as const,returning:false,clock:0,accumulator:0,
+      nextDecisionAt:0,nextSearchAt:0,nextRecallAt:0,nextFollowSearchAt:0,targetSince:0,path:[],followActive:false,
+      failedTargets:[],checkedTargets:[],fallbackTargets:[],farElapsed:0,stuckElapsed:0,followUnreachable:false,followSlot:0},
+  };
+}
+
+test('removing or replacing a summon discards its own session enemy state',async()=>{
+  const {world,session,ally}=await createSummonCombatFixture();
+  const base=world.combat.captureState();
+  await world.combat.restoreState({
+    ...base,
+    roster:{
+      enemies:[
+        {key:'enemy-1',enemyId:'enemy-hell-s-pawn-1',x:96,y:64,summonedBy:'player',summonedBySkill:'hell-s-pawn'},
+        {key:'enemy-2',enemyId:'enemy-hell-s-pawn-1',x:112,y:64,summonedBy:'player',summonedBySkill:'hell-s-pawn'},
+        {key:'enemy-3',enemyId:'enemy-hell-s-pawn-1',x:128,y:64,summonedBy:ally.id,summonedBySkill:'hell-s-pawn'},
+      ],
+      sequence:3,partySize:2,
+    },
+    enemies:[
+      {id:'enemy-1',facing:'south',ai:summonAiState('player'),summonRemainingMs:10000},
+      {id:'enemy-2',facing:'south',ai:summonAiState('player'),summonRemainingMs:10000},
+      {id:'enemy-3',facing:'south',ai:summonAiState(ally.id),summonRemainingMs:10000},
+    ],
+    summonGroups:[['player',['enemy-1','enemy-2']],[ally.id,['enemy-3']]],
+  });
   session.setEnemyVitals('enemy-1',40,7);session.setEnemyVitals('enemy-2',20,1);session.setEnemyVitals('enemy-3',10,0);
-  const factory=Reflect.get(WorldCombat.prototype,'summonFactory').call(host) as {begin:(owner:string)=>void};
-  factory.begin('player');
+  world.combat.attack('hell-s-pawn');
+  for(let step=0;step<7;step++)world.combat.update(60,true);
   assert.deepEqual(session.enemyVitals('enemy-1'),{});
   assert.deepEqual(session.enemyVitals('enemy-2'),{});
   assert.equal(session.enemyVitals('enemy-3').health,10,'其他主人的召唤还在场，状态保留');
-  assert.deepEqual(host.arena.map((enemy:ReturnType<typeof mapEnemy>)=>enemy.key),['enemy-3']);
+  const remaining=world.combat.captureState().enemies.map(enemy=>enemy.id);
+  assert.ok(remaining.includes('enemy-3'));
+  assert.ok(!remaining.includes('enemy-1')&&!remaining.includes('enemy-2'));
+  world.combat.destroy();
 });
 
-test('summon removal clears only its own state while a normal enemy death stays recorded',()=>{
-  const session=new Session(campaign);
-  const summon=mapEnemy('enemy-1','player'),normal=mapEnemy('wolf');
-  const host=summonHost(session,[summon,normal],[]);
+test('summon removal clears only its own state while a normal enemy death stays recorded',async()=>{
+  const {world,session}=await createSummonCombatFixture();
+  const base=world.combat.captureState();
+  await world.combat.restoreState({
+    ...base,
+    roster:{
+      enemies:[
+        ...base.roster.enemies,
+        {key:'enemy-1',enemyId:'enemy-hell-s-pawn-1',x:96,y:64,summonedBy:'player',summonedBySkill:'hell-s-pawn'},
+      ],
+      sequence:base.roster.sequence+1,partySize:2,
+    },
+    enemies:[
+      ...base.enemies,
+      {id:'enemy-1',facing:'south',ai:summonAiState('player'),summonRemainingMs:10000},
+    ],
+    summonGroups:[['player',['enemy-1']]],
+  });
   session.setEnemyVitals('enemy-1',40,7);
-  session.enemyDefeated({id:'wolf',enemyId:'wolf',x:0,y:0,respawn:false});
+  session.enemyDefeated(world.roster.source('wolf')!);
   assert.equal(session.enemyVitals('enemy-1').health,40);
   assert.equal(session.enemyVitals('wolf').deadUntil,'permanent');
-  combatMethod('removeEnemy').call(host,'enemy-1');
+  world.combat.removeEnemy('enemy-1');
   assert.deepEqual(session.enemyVitals('enemy-1'),{});
-  combatMethod('removeEnemy').call(host,'wolf');
+  world.combat.removeEnemy('wolf');
   assert.equal(session.enemyVitals('wolf').deadUntil,'permanent','普通敌人的永久死亡状态必须保留');
+  world.combat.destroy();
 });
 
-test('checkpoint restore keeps summon state for the instance it is about to rebuild',()=>{
-  const session=new Session(campaign);
-  const host=summonHost(session,[mapEnemy('enemy-1','player')],[]);
+test('checkpoint restore keeps summon state for the instance it is about to rebuild',async()=>{
+  const {world,session}=await createSummonCombatFixture();
+  const base=world.combat.captureState();
+  const snapshot={
+    ...base,
+    roster:{
+      enemies:[{key:'enemy-1',enemyId:'enemy-hell-s-pawn-1',x:96,y:64,summonedBy:'player',summonedBySkill:'hell-s-pawn'}],
+      sequence:1,partySize:2,
+    },
+    enemies:[{id:'enemy-1',facing:'south' as const,ai:summonAiState('player'),summonRemainingMs:10000}],
+    summonGroups:[['player',['enemy-1']]] as [string,string[]][],
+  };
+  await world.combat.restoreState(snapshot);
   session.setEnemyVitals('enemy-1',40,7);
-  combatMethod('clearEnemies').call(host,true,true);
+  await world.combat.restoreState(snapshot);
   assert.equal(session.enemyVitals('enemy-1').health,40);
+  world.combat.destroy();
 });
 
 test('basic attack distance reads the resolved controller profile and updates with equipment',()=>{

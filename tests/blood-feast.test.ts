@@ -1,17 +1,9 @@
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import {registerHooks} from 'node:module';
 import test from 'node:test';
-import type {BattleCatalog} from '../src/domain/battle.ts';
 import type {CombatActorAttributes} from '../src/domain/combat-damage-source.ts';
+import {createCombatTestHarness,createTestMember,loadBattleCatalog} from './support/combat-test-harness.ts';
 
-const hooks=registerHooks({resolve(specifier,context,next){return specifier==='phaser'?
-  {url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true}:next(specifier,context);}});
-const {WorldCombat}=await import('../src/scenes/world-combat.ts');
-hooks.deregister();
-const periodic=Reflect.get(WorldCombat.prototype,'periodicTick');
-
-const catalog=JSON.parse(readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')) as BattleCatalog;
+const catalog=loadBattleCatalog();
 const passive=catalog.skills['blood-feast'].passiveUnits![0] as {attribute:string;ranks:{kind:string;amount:number}[]};
 const curseUnit=catalog.skills['blood-curse'].action!.combatUnits!.find(unit=>unit.effect==='buff')!;
 if(curseUnit.effect!=='buff')throw new Error('missing blood curse buff');
@@ -33,16 +25,18 @@ test('eight ranks carry the life feast rate and the curse pulse names its own he
 
 function fixture(feastRate:number,attributes:CombatActorAttributes=sourceAttributes(100)){
   const commands:unknown[][]=[];
-  const host={pendingDefeats:new Set(),arena:[],hero:{},activeParty:['source','ally','third','extra'],
-    actorAttributes:(id:string)=>id==='source'?attributes:undefined,
-    actorAttribute:(_id:string,key:string):number=>key==='lifeFeastRate'?feastRate:key==='healingPowerRate'?1000:0,
-    memberOf:()=>({classId:'warlock',player:{health:500}}),
-    activePartySlots:()=>['source','ally','third'],
-    restoreHealth:(id:string,amount:number)=>commands.push(['heal',id,amount]),
-    settleHit:(_event:unknown,hit:{damage:number})=>commands.push(['damage',hit.damage]),
-    presenterFor:()=>({showEffects:(target:string,[effect]:{effect:string}[])=>commands.push(['visual',target,effect.effect])}),
-    presenter:{showEffects:(target:string,[effect]:{effect:string}[])=>commands.push(['visual',target,effect.effect])}};
-  const run=(ratePerThousand:number,stackCount=1)=>periodic.call(host,{sourceId:'source',targetId:'target',
+  const members=new Map(['source','ally','third','extra'].map(id=>[id,createTestMember({id,classId:'warlock',health:500,maxHealth:1000})]));
+  const harness=createCombatTestHarness({
+    battleCatalog:catalog,members,activeParty:()=>['source','ally','third','extra'],withThreat:false,
+    settlementOverrides:{
+      onShowEffects:(_actorId,target,[effect])=>commands.push(['visual',target,effect.effect]),
+    },
+  });
+  harness.stats.actorAttributes=(id:string)=>id==='source'?attributes:undefined;
+  harness.stats.actorAttribute=(_id:string,key:string):number=>key==='lifeFeastRate'?feastRate:key==='healingPowerRate'?1000:0;
+  harness.settlement.restoreHealth=(id:string,amount:number)=>commands.push(['heal',id,amount]);
+  harness.settlement.settleHit=(_event,hit)=>commands.push(['damage',hit.damage]);
+  const run=(ratePerThousand:number,stackCount=1)=>harness.settlement.periodicTick({sourceId:'source',targetId:'target',
     buffId:'blood-curse',stackCount,effect:{kind:'magic-curse',ratePerThousand,healEffect:'life-drain'}});
   return {commands,run};
 }

@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { registerHooks } from 'node:module';
-import { PendingEnemyDefeats } from '../src/domain/combat-outcomes.ts';
 import type { BattleCatalog } from '../src/domain/battle.ts';
+import { BattleCharacter } from '../src/domain/character-stats.ts';
+import { CombatActorStats } from '../src/domain/combat-actor-stats.ts';
+import type { ActorDefinition, WorldMap } from '../src/domain/content.ts';
 import { EnemyRoster } from '../src/domain/enemy-roster.ts';
 import {
   PRESSURE_DEFAULT_MAX_ENEMIES,
@@ -13,51 +14,114 @@ import {
   normalizePressureMaxEnemies,
   pressureEnemy,
 } from '../src/domain/pressure-enemies.ts';
+import { Session } from '../src/domain/session.ts';
+import { CHARACTER_ATLAS_ALIASES } from '../tools/character-atlas-aliases.ts';
+import {
+  loadCampaignCatalog,
+  loadCharacterStatsCatalog,
+  loadCompanionCatalog,
+  loadItemCatalog,
+} from './support/combat-test-harness.ts';
+import { createFakePhaserScene, createTestWorldCombat, installPhaserStubHooks } from './support/world-combat-fixture.ts';
 
-const hook = registerHooks({
-  resolve(specifier, context, next) {
-    return specifier === 'phaser'
-      ? { url: 'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}', shortCircuit: true }
-      : next(specifier, context);
-  }
-});
-const { WorldCombat } = await import('../src/scenes/world-combat.ts');
+const hook = installPhaserStubHooks();
 const { WorldScene } = await import('../src/scenes/world-scene.ts');
 hook.deregister();
 
-const battle = JSON.parse(readFileSync(new URL('../public/content/battle.json', import.meta.url), 'utf8')) as BattleCatalog;
+function normalizeActorClips(actor: ActorDefinition): void {
+  for (const clip of Object.values(actor.clips)) {
+    for (const layer of clip?.layers ?? []) {
+      if (layer.file) layer.file = CHARACTER_ATLAS_ALIASES[layer.file] ?? layer.file;
+    }
+  }
+}
 
-function combatHost(overrides: Record<string, unknown> = {}) {
-  return Object.setPrototypeOf({
-    closed: false, defeated: false, movement: {}, arena: [], pendingDefeats: new PendingEnemyDefeats(),
-    app: { battleCatalog: battle, session: { party: { activeIds: [] } } },
-    ...overrides
-  }, WorldCombat.prototype) as {
-    closed: boolean; defeated: boolean; arena: unknown[]; app: unknown;
-    spawnPressureEnemy(enemyId?: string): boolean;
-    reviveFallenForPressure(): void;
+function normalizeBattleCatalog(raw: BattleCatalog): BattleCatalog {
+  const copy = structuredClone(raw);
+  for (const cls of copy.classes) normalizeActorClips(cls.actor);
+  for (const enemy of copy.enemies) normalizeActorClips(enemy.actor);
+  return copy;
+}
+
+const battle = normalizeBattleCatalog(JSON.parse(readFileSync(new URL('../public/content/battle.json', import.meta.url), 'utf8')) as BattleCatalog);
+
+function fullPhaserScene() {
+  const scene = createFakePhaserScene({
+    cameras: { main: { width: 640, height: 360, zoomX: 1, zoomY: 1, worldView: undefined, followOffset: { x: 0, y: 0 }, setFollowOffset() {} } },
+    tweens: { add: () => ({ stop() {}, pause() {}, resume() {} }), getTweensOf: () => [], killTweensOf: () => {} },
+  });
+  const origSprite = scene.add.sprite.bind(scene.add) as unknown as (...args: unknown[]) => { scene: unknown; anims: Record<string, unknown> };
+  scene.add.sprite = ((...args: unknown[]) => {
+    const sprite = origSprite(...args);
+    sprite.scene = scene;
+    sprite.anims = { ...sprite.anims, create: () => ({ destroy() {} }), remove: () => {} };
+    return sprite as never;
+  }) as never;
+  return scene;
+}
+
+function openMap(id: string, tiles = 64): WorldMap {
+  return {
+    id, name: id, width: tiles * 16, height: tiles * 16, tileSize: 16, columns: tiles, rows: tiles,
+    blocked: Array<boolean>(tiles * tiles).fill(false), ground: '', canopy: '', features: [], entities: [], exits: [],
+    enemySpawns: [],
   };
 }
 
-test('压测刷怪达到上限后不再生成', () => {
-  const host = combatHost({ arena: Array.from({ length: 40 }, (_, index) => ({ key: `enemy-${index}` })) });
-  assert.equal(host.spawnPressureEnemy(), false);
+test('压测刷怪达到上限后不再生成', async () => {
+  const world = await createTestWorldCombat({
+    map: openMap('pressure-cap-map', 64),
+    battleCatalog: battle,
+    phaserScene: fullPhaserScene(),
+    appOverrides: { pressureMode: true },
+  });
+  await world.combat.start();
+  for (let index = 0; index < PRESSURE_DEFAULT_MAX_ENEMIES; index++) {
+    const point = { x: 80 + (index % 8) * 96, y: 80 + Math.floor(index / 8) * 96 };
+    assert.equal(world.combat.spawnPressureEnemy('enemy-red-snake-1', point), true);
+  }
+  assert.equal(world.combat.spawnPressureEnemy(), false);
+  world.combat.destroy();
 });
 
-test('压测阵亡只补满倒下的成员，全灭入口不进入阵亡状态', () => {
+test('压测阵亡只补满倒下的成员，全灭入口不进入阵亡状态', async () => {
+  const items = loadItemCatalog(), statsCatalog = loadCharacterStatsCatalog();
+  const campaign = loadCampaignCatalog(), companions = loadCompanionCatalog();
+  const hero = new BattleCharacter('dark-knight', statsCatalog, items);
+  const session = new Session(campaign, undefined, undefined, items, hero, battle, statsCatalog, companions);
+  session.bag.add('mercenary-emblem-black-knight');
+  const ally = session.party!.recruit(session.bag.entries.find(e => e.item === 'mercenary-emblem-black-knight')!.id, () => 0).member;
+  session.party!.deployFirstAvailable(ally.id);
+  const actor = battle.classes.find(entry => entry.id === ally.classId)!.actor;
   const revived: string[] = [];
-  const host = combatHost({
-    app: { pressureMode: true, battleCatalog: battle, session: { party: { activeIds: ['player', 'ally'] } } },
-    memberOf: (id: string) => ({ player: { health: id === 'player' ? 0 : 100 } }),
-    scene: { reviveMember: (id: string) => { revived.push(id); return { ok: true }; } }
+  let defeatHandled = 0;
+  const world = await createTestWorldCombat({
+    hero, session, map: openMap('pressure-revive-map', 20), battleCatalog: battle, phaserScene: fullPhaserScene(),
+    appOverrides: {
+      pressureMode: true,
+      world: { actors: { [ally.definition.actor]: actor, [actor.id]: actor } } as never,
+    },
+    sceneOverrides: {
+      reviveMember: (id: string) => {
+        revived.push(id);
+        if (id === 'player') hero.setHealth(hero.player.maxHealth);
+        else ally.setHealth(ally.player.maxHealth);
+        return { ok: true };
+      },
+      handleCombatDefeat: () => { defeatHandled++; },
+    },
   });
-  host.reviveFallenForPressure();
+  await world.combat.start();
+  hero.setHealth(0);
+  world.combat.reviveFallenForPressure();
   assert.deepEqual(revived, ['player']);
 
-  const playerDefeated = Reflect.get(WorldCombat.prototype, 'playerDefeated') as (this: unknown) => void;
-  playerDefeated.call(host);
-  assert.equal(host.defeated, false, '压测全灭不进入 defeated');
-  assert.deepEqual(revived, ['player', 'player'], '全灭入口会再次尝试补满倒下成员');
+  hero.setHealth(0);
+  ally.setHealth(0);
+  world.combat.update(16, false);
+  assert.equal(defeatHandled, 0, '压测全灭不进入 defeated');
+  assert.deepEqual(revived, ['player', 'player', ally.id], '全灭入口会再次尝试补满倒下成员');
+  world.combat.destroy();
 });
 
 test('压测模式拒绝手动存档和检查点', () => {
@@ -178,78 +242,77 @@ test('EnemyRoster 覆写与清除最大血量会更新活怪上限、允许高�
   assert.ok(restored.maxHealth >= defaultMax);
 });
 
-test('挑战调试修改怪物数量与血量：新刷怪遵循自定义参数，调低数量立刻裁减且跳过召唤物与待死亡怪', () => {
+test('挑战调试修改怪物数量与血量：新刷怪遵循自定义参数，调低数量立刻裁减且跳过召唤物与待死亡怪', async t => {
+  t.mock.method(Math, 'random', () => 0.5);
   const definition = battle.enemies.find(enemy => enemy.id === 'enemy-red-snake-1')!;
-  const roster = new EnemyRoster();
-  const placed1 = roster.placeEnemy(definition.id, 10, 10);
-  const placed2 = roster.placeEnemy(definition.id, 20, 10);
-  const placed3 = roster.placeEnemy(definition.id, 30, 10);
-  const summon = roster.placeEnemy(definition.id, 40, 10);
-  const dying = roster.placeEnemy(definition.id, 50, 10);
-  const pendingDefeats = new PendingEnemyDefeats();
-  pendingDefeats.add(dying.key, () => {});
-
-  const removed: string[] = [];
-  const capacityUpdated: string[] = [];
+  const items = loadItemCatalog(), statsCatalog = loadCharacterStatsCatalog(), campaign = loadCampaignCatalog();
+  const hero = new BattleCharacter('warlock', statsCatalog, items);
+  const session = new Session(campaign, undefined, undefined, items, hero, battle);
+  session.skills.maxAll();
+  session.skills.bar().assign(0, 0, { kind: 'skill', id: 'hell-s-pawn' });
+  const pressureSettings: { maxEnemies: number; enemyMaxHealth?: number } = { maxEnemies: 5, enemyMaxHealth: undefined };
   let targetRefreshes = 0;
-  const arena = [
-    { key: placed1.key, definition },
-    { key: placed2.key, definition },
-    { key: placed3.key, definition },
-    { key: summon.key, definition, summonedBy: 'player' },
-    { key: dying.key, definition },
-  ];
-  const pressureSettings: { maxEnemies: number; enemyMaxHealth?: number } = { maxEnemies: 2, enemyMaxHealth: undefined };
-  const host = Object.setPrototypeOf({
-    closed: false, defeated: false, movement: {
-      position: () => ({ x: 100, y: 100 }),
-      navigation: { canPlaceBody: () => true },
-    },
-    controlledVisual: {},
-    roster,
-    arena,
-    pendingDefeats,
-    app: { pressureMode: true, pressureSettings, battleCatalog: battle, session: { party: { activeIds: [] } } },
-    scene: { refreshCombatTarget: () => { targetRefreshes++; } },
-    removeEnemy(key: string) {
-      removed.push(key);
-      const index = arena.findIndex(entry => entry.key === key);
-      if (index >= 0) arena.splice(index, 1);
-      roster.removeEnemy(key);
-    },
-    resourceCapacityInputs(key: string) { capacityUpdated.push(key); },
-    buildEnemy(placed: { key: string }, def: typeof definition) { return { key: placed.key, definition: def }; },
-  }, WorldCombat.prototype) as unknown as {
-    canSpawnPressureEnemy(): boolean;
-    spawnPressureEnemy(enemyId?: string, initialPoint?: { x: number; y: number }): boolean;
-    pressureEnemyCount(): number;
-    applyPressureSettings(options?: { applyHealth?: boolean }): void;
-  };
+  const world = await createTestWorldCombat({
+    hero, session, map: openMap('pressure-settings-map', 32), battleCatalog: battle, phaserScene: fullPhaserScene(),
+    appOverrides: { pressureMode: true, pressureSettings },
+    sceneOverrides: { refreshCombatTarget: () => { targetRefreshes++; } },
+  });
+  await world.combat.start();
 
-  assert.equal(host.pressureEnemyCount(), 3, '只统计活着的非召唤普通怪');
-  host.applyPressureSettings();
-  assert.deepEqual(removed, [placed3.key], '调低上限后立刻裁减超出部分且不碰召唤物和待死亡怪');
-  assert.equal(host.pressureEnemyCount(), 2);
-  assert.equal(host.canSpawnPressureEnemy(), false, '达到自定义上限 2 时不可继续刷怪');
+  // 先召出友方召唤物，再刷 4 只普通怪并把第 4 只打进待死亡队列。
+  world.combat.attack('hell-s-pawn');
+  for (let step = 0; step < 7; step++) world.combat.update(60, true);
+  const summonKey = world.roster.enemies.find(entry => entry.summonedBy === 'player')!.key;
+  assert.equal(world.combat.spawnPressureEnemy(definition.id, { x: 180, y: 120 }), true);
+  assert.equal(world.combat.spawnPressureEnemy(definition.id, { x: 240, y: 120 }), true);
+  assert.equal(world.combat.spawnPressureEnemy(definition.id, { x: 300, y: 120 }), true);
+  assert.equal(world.combat.spawnPressureEnemy(definition.id, { x: 104, y: 64 }), true);
+  const [placed1, placed2, placed3, dying] = world.roster.enemies.filter(entry => entry.key !== summonKey);
+  world.roster.setEnemyHealth(dying.key, 1, definition);
+  world.combat.selectEnemy(dying.key);
+  world.combat.attack();
+  for (let step = 0; step < 20 && world.roster.enemySnapshot(dying.key, definition, hero.level)!.health > 0; step++) {
+    world.combat.update(60, true);
+  }
+  assert.equal(world.roster.enemySnapshot(dying.key, definition, hero.level)!.health, 0);
+
+  const capacityUpdated: string[] = [];
+  const origInputs = CombatActorStats.prototype.resourceCapacityInputs;
+  t.mock.method(CombatActorStats.prototype, 'resourceCapacityInputs', function (this: CombatActorStats, id: string) {
+    capacityUpdated.push(id);
+    return origInputs.call(this, id);
+  });
+
+  pressureSettings.maxEnemies = 2;
+  assert.equal(world.combat.pressureEnemyCount(), 3, '只统计活着的非召唤普通怪');
+  world.combat.applyPressureSettings();
+  assert.equal(world.roster.isPresent(placed3.key), false, '调低上限后立刻裁减超出部分且不碰召唤物和待死亡怪');
+  assert.equal(world.roster.isPresent(summonKey), true);
+  assert.equal(world.combat.pressureEnemyCount(), 2);
+  assert.equal(world.combat.canSpawnPressureEnemy(), false, '达到自定义上限 2 时不可继续刷怪');
 
   pressureSettings.enemyMaxHealth = 50_000;
-  host.applyPressureSettings({ applyHealth: true });
-  assert.equal(roster.enemySnapshot(placed1.key, definition)!.maxHealth, 50_000);
-  assert.equal(roster.enemySnapshot(placed2.key, definition)!.health, 50_000);
-  assert.notEqual(roster.enemySnapshot(summon.key, definition)!.maxHealth, 50_000, '友方召唤物不应用怪物血量覆盖');
-  assert.notEqual(roster.enemySnapshot(dying.key, definition)!.maxHealth, 50_000, '待死亡结算怪不应用血量覆盖');
+  targetRefreshes = 0;
+  capacityUpdated.length = 0;
+  world.combat.applyPressureSettings({ applyHealth: true });
+  assert.equal(world.roster.enemySnapshot(placed1.key, definition)!.maxHealth, 50_000);
+  assert.equal(world.roster.enemySnapshot(placed2.key, definition)!.health, 50_000);
+  const summonDef = battle.enemies.find(entry => entry.id === 'enemy-hell-s-pawn-1')!;
+  assert.notEqual(world.roster.enemySnapshot(summonKey, summonDef)!.maxHealth, 50_000, '友方召唤物不应用怪物血量覆盖');
+  assert.notEqual(world.roster.enemySnapshot(dying.key, definition)!.maxHealth, 50_000, '待死亡结算怪不应用血量覆盖');
   assert.deepEqual(capacityUpdated, [placed1.key, placed2.key]);
   assert.equal(targetRefreshes, 1);
 
   pressureSettings.maxEnemies = 3;
-  assert.equal(host.canSpawnPressureEnemy(), true, '提高上限后允许继续刷怪');
-  assert.equal(host.spawnPressureEnemy(definition.id, { x: 60, y: 60 }), true);
-  assert.equal(host.pressureEnemyCount(), 3);
-  const newest = arena.at(-1)!;
-  assert.equal(roster.enemySnapshot(newest.key, definition)!.maxHealth, 50_000, '新刷出的怪立即继承固定血量覆盖');
+  assert.equal(world.combat.canSpawnPressureEnemy(), true, '提高上限后允许继续刷怪');
+  assert.equal(world.combat.spawnPressureEnemy(definition.id, { x: 220, y: 220 }), true);
+  assert.equal(world.combat.pressureEnemyCount(), 3);
+  const newest = world.roster.enemies.at(-1)!;
+  assert.equal(world.roster.enemySnapshot(newest.key, definition)!.maxHealth, 50_000, '新刷出的怪立即继承固定血量覆盖');
 
   pressureSettings.maxEnemies = 0;
-  host.applyPressureSettings();
-  assert.equal(host.pressureEnemyCount(), 0, '设为 0 时清空场上所有普通怪');
-  assert.equal(host.spawnPressureEnemy(definition.id), false);
+  world.combat.applyPressureSettings();
+  assert.equal(world.combat.pressureEnemyCount(), 0, '设为 0 时清空场上所有普通怪');
+  assert.equal(world.combat.spawnPressureEnemy(definition.id), false);
+  world.combat.destroy();
 });

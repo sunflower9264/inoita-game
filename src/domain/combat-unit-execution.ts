@@ -1,23 +1,24 @@
-import {resolveCueTargets,type CombatPort,type SkillUnitStart,type SkillUnitHit} from './combat.ts';
-import type {SkillEffectCue} from './battle.ts';
-import type {Point} from './navigation.ts';
-import {attackSplashTargets,selectAttackSplashCenter} from './attack-splash.ts';
-import {PIXELS_PER_DISTANCE_UNIT} from './basic-attack.ts';
-import {MAX_SKILL_TARGETS,resolveSkillUnitSequence,type ResolvedSkillUnit} from './skill-unit-sequence.ts';
-import type {PreparedActionDamage} from './action-damage.ts';
+import { type SkillExecutionHost, type SkillUnitHit, type SkillUnitStart } from './combatant.ts';
+import { resolveCueTargets } from './combat-targeting.ts';
+import type { SkillEffectCue } from './battle.ts';
+import type { Point } from './navigation.ts';
+import { attackSplashTargets, selectAttackSplashCenter } from './attack-splash.ts';
+import { PIXELS_PER_DISTANCE_UNIT } from './basic-attack.ts';
+import { MAX_SKILL_TARGETS, resolveSkillUnitSequence, type ResolvedSkillUnit } from './skill-unit-sequence.ts';
+import type { PreparedActionDamage } from './action-damage.ts';
 
-import type {Facing} from './content.ts';
+import type { Facing } from './content.ts';
 
 interface SkillExecution extends SkillUnitStart {
-  cues:readonly SkillEffectCue[];
-  origin?:Point;
-  selectedTargetId?:string;
-  facing?:Facing;
+  cues: readonly SkillEffectCue[];
+  origin?: Point;
+  selectedTargetId?: string;
+  facing?: Facing;
 }
-interface SkillExecutionPort extends Pick<CombatPort,'actor'|'candidates'|'partySlots'|'rangeBonusUnits'|'healScore'|'healCandidates'|'prepareUnit'|'unit'|'unitFeedback'|'runUnitSequence'> {
-  currentTargetId?():string|undefined;
-  selectTarget?(id:string):void;
-  resolved?(hit:SkillUnitHit):void;
+interface SkillExecutionPort extends SkillExecutionHost {
+  currentTargetId?(): string | undefined;
+  selectTarget?(id: string): void;
+  resolved?(hit: SkillUnitHit): void;
 }
 
 /** 主动释放与追加释放使用同一份目标、预备数值和失败历史。 */

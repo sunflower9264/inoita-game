@@ -1,18 +1,17 @@
 import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
 import {readFileSync} from 'node:fs';
-import {registerHooks} from 'node:module';
 import test from 'node:test';
 import type Phaser from 'phaser';
 import type {BattleCatalog} from '../src/domain/battle.ts';
 import type {CharacterVisual} from '../src/rendering/characters.ts';
 import {parseBattle} from '../src/application/content-validation.ts';
+import {createCombatTestHarness,createTestMember} from './support/combat-test-harness.ts';
+import {createFakePhaserScene,createTestWorldCombat,installPhaserStubHooks} from './support/world-combat-fixture.ts';
 
-const phaser=registerHooks({resolve(specifier,context,next){
-  return specifier==='phaser'?{url:'data:text/javascript,export default {BlendModes:{NORMAL:0,MULTIPLY:1,SCREEN:2,ADD:3}}',shortCircuit:true}:next(specifier,context);
-}});
+const phaser=installPhaserStubHooks();
 const {CombatPresenter}=await import('../src/rendering/combat-presenter.ts');
-const {WorldCombat}=await import('../src/scenes/world-combat.ts');phaser.deregister();
+phaser.deregister();
 const {CombatConditions}=await import('../src/domain/combat-conditions.ts');
 const catalog=JSON.parse(readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')) as BattleCatalog;
 
@@ -76,24 +75,43 @@ test('buff application assets must be present for every active skill rank',()=>{
 
 test('buff units play application effects for new and accepted refreshes, but not rejected weaker ranks',t=>{
   t.mock.method(Math,'random',()=>0);
-  const conditions=new CombatConditions(),played:string[]=[];
-  const host=Object.setPrototypeOf({conditions,arena:[],pendingDefeats:new Set(),hero:{level:1},
-    memberOf:()=>({player:{health:100}}),partyFighter:()=>({}),syncCombatResourceLimits:()=>{},applyStateConsequences:()=>{},
-    presenterFor:()=>({showBuffApplication:(id:string,effect:string)=>played.push(`${id}:${effect}`)})},WorldCombat.prototype);
+  const conditions=new CombatConditions();
+  const caster=createTestMember({id:'caster'});
+  const recipient=createTestMember({id:'recipient',maxHealth:100});
+  const harness=createCombatTestHarness({
+    battleCatalog:catalog,
+    conditions,
+    members:new Map([['caster',caster],['recipient',recipient]]),
+    activeParty:()=>['caster','recipient'],
+  });
   const skill=catalog.skills['molten-armor'];
-  const cast=(level:number)=>Reflect.get(WorldCombat.prototype,'skillUnit').call(host,{
-    casterId:'caster',targetId:'recipient',cueIndex:0,skill:{...skill,level}});
+  const cast=(level:number)=>harness.settlement.skillUnit({
+    casterId:'caster',targetId:'recipient',cueIndex:0,skill:{...skill,action:skill.action!,level}});
   cast(5);cast(4);cast(5);cast(8);
-  assert.deepEqual(played,Array(3).fill('recipient:molten-armor-aura'));
+  assert.deepEqual(harness.log.buffApplications,Array(3).fill({sourceId:'caster',targetId:'recipient',effect:'molten-armor-aura'}));
   assert.equal(conditions.snapshot('recipient')[0].sourceId,'caster');
   assert.equal(conditions.snapshot('recipient')[0].stackCount,1);
 });
 
-test('the buff host uses fixed placement at zero HP and while defeat is confirmed',()=>{
-  let health=20;const pendingDefeats=new Set<string>(),follows:boolean[]=[];
-  const host=Object.setPrototypeOf({arena:[],pendingDefeats,memberOf:()=>({player:{health}}),
-    presenterFor:()=>({showBuffApplication:(_id:string,_effect:string,follow:boolean)=>follows.push(follow)})},WorldCombat.prototype);
-  const play=()=>Reflect.get(WorldCombat.prototype,'showBuffApplication').call(host,'caster','target','molten-armor-aura');
-  play();health=0;play();health=20;pendingDefeats.add('target');play();
+test('the buff host uses fixed placement at zero HP and while defeat is confirmed',async t=>{
+  t.mock.method(Math,'random',()=>0);
+  const phaserScene=createFakePhaserScene({
+    cameras:{main:{width:640,height:360,zoomX:1,zoomY:1,worldView:undefined,followOffset:{x:0,y:0},setFollowOffset(){}}},
+    tweens:{add:()=>({stop(){},pause(){},resume(){}}),getTweensOf:()=>[],killTweensOf:()=>{}},
+  });
+  const world=await createTestWorldCombat({phaserScene});
+  await world.combat.start();
+  const follows:boolean[]=[];
+  const originalShow=CombatPresenter.prototype.showBuffApplication;
+  t.mock.method(CombatPresenter.prototype,'showBuffApplication',function(this:InstanceType<typeof CombatPresenter>,id:string,name:string,followTarget=true){
+    follows.push(followTarget);
+    return originalShow.call(this,id,name,followTarget);
+  });
+  world.combat.applySpringBuff('story-trap','single');
+  world.hero.setHealth(0);
+  world.combat.applySpringBuff('spring-potion-sickness','single');
+  world.hero.setHealth(20);
+  world.combat.applySpringBuff('spring-potion-weakened','single');
   assert.deepEqual(follows,[true,false,false]);
+  world.combat.destroy();
 });

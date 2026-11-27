@@ -1,23 +1,16 @@
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import {registerHooks} from 'node:module';
 import test from 'node:test';
-import {calculateCharacter,fighterBaseFromPanel,type CharacterPanel,type CharacterStatsCatalog} from '../src/domain/character-stats.ts';
+import {calculateCharacter,fighterBaseFromPanel,type BattleCharacter,type CharacterPanel} from '../src/domain/character-stats.ts';
 import {CombatConditions} from '../src/domain/combat-conditions.ts';
 import {calculateEffectiveDefense,type PhysicalFighter} from '../src/domain/physical-hit.ts';
 import type {BattleBuffEffect} from '../src/domain/battle.ts';
-import type {ItemCatalog,ItemInstance} from '../src/domain/items.ts';
+import type {EnemySnapshot} from '../src/domain/enemy-stats.ts';
+import type {ItemInstance} from '../src/domain/items.ts';
 import type {PassiveModifier} from '../src/domain/passive-skills.ts';
 import {characterCombatValues} from '../src/ui/character-values.ts';
+import {createSimpleStatsPort,createTestMember,loadBattleCatalog,loadCharacterStatsCatalog,loadItemCatalog,type BattleStatKey} from './support/combat-test-harness.ts';
 
-const phaser=registerHooks({resolve(specifier,context,next){
-  return specifier==='phaser'?{url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true}:next(specifier,context);
-}});
-const {WorldCombat}=await import('../src/scenes/world-combat.ts');
-phaser.deregister();
-const method=(name:string)=>Reflect.get(WorldCombat.prototype,name);
-const read=<T>(name:string)=>JSON.parse(readFileSync(new URL(`../public/content/${name}.json`,import.meta.url),'utf8')) as T;
-const stats=read<CharacterStatsCatalog>('character-stats'),items=read<ItemCatalog>('items');
+const stats=loadCharacterStatsCatalog(),items=loadItemCatalog(),battle=loadBattleCatalog();
 const armor=Object.keys(stats.equipment).find(id=>stats.equipment[id].defense>0)!;
 const zero={strength:0,dexterity:0,vitality:0,intelligence:0,mentality:0};
 
@@ -34,16 +27,23 @@ function buff(conditions:CombatConditions,id:string,modifiers:BattleBuffEffect['
 }
 
 function host(memberPanel:CharacterPanel,conditions=new CombatConditions(),passives:PassiveModifier[]=[]){
-  const member={level:10,player:{health:100},panel:memberPanel};
+  const member=createTestMember({id:'player',level:10,health:100,panel:memberPanel});
   const enemy:PhysicalFighter={level:15,physicalAttack:37,defense:80,defenseRate:250,
     hitBase:10,hitBonus:0,evasionBase:0,evasionBonus:0,criticalRate:0,criticalResistance:0,
     criticalDamage:1000,criticalDamageResistance:0,weaponBlock:0,shieldBlock:0,physicalResistance:0};
-  const context={conditions,memberOf:(id:string)=>id==='player'?member:undefined,
-    hero:{level:99,get panel():never{throw new Error('Enemy defense must not read the hero panel');}},
-    arena:[{key:'enemy',definition:{}}],roster:{enemySnapshot:()=>enemy},partyPassives:()=>passives};
-  return {conditions,enemy,context,
+  const hero={level:99,get panel():never{throw new Error('Enemy defense must not read the hero panel');}} as unknown as BattleCharacter;
+  const enemyDef=battle.enemies[0];
+  const actorStats=createSimpleStatsPort({
+    conditions,hero,
+    memberOf:(id:string)=>id==='player'?member as never:undefined,
+    enemyOf:(id:string)=>id==='enemy'?{key:'enemy',definition:enemyDef}:undefined,
+    enemySnapshot:()=>enemy as unknown as EnemySnapshot,
+    isEnemyPresent:(id:string)=>id==='enemy',
+  });
+  actorStats.partyPassives=()=>passives;
+  return {conditions,enemy,actorStats,
     fighter:()=>conditions.fighter('player',fighterBaseFromPanel(memberPanel,10),passives,{offhandShield:memberPanel.offhandShield}),
-    attribute:(id:string,key:string)=>method('actorAttribute').call(context,id,key) as number};
+    attribute:(id:string,key:string)=>actorStats.actorAttribute(id,key as BattleStatKey)};
 }
 
 test('equipment and buff defense rates add before one multiplication while the panel keeps its display value',()=>{

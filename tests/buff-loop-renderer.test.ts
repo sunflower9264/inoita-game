@@ -13,7 +13,7 @@ const hook=registerHooks({resolve(specifier,context,next){return specifier==='ph
   ?{url:'data:text/javascript,export default {BlendModes:{NORMAL:0,MULTIPLY:1,SCREEN:2,ADD:3}}',shortCircuit:true}
   :next(specifier,context);}});
 const {BuffLoopRenderer}=await import('../src/rendering/buff-loop-renderer.ts');
-const {WorldCombat}=await import('../src/scenes/world-combat.ts');hook.deregister();
+const {CombatStatusVisuals}=await import('../src/rendering/combat-status-visuals.ts');hook.deregister();
 const catalog=JSON.parse(readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')) as BattleCatalog;
 const unit=catalog.skills['dark-strike'].action!.combatUnits!.find(unit=>unit.effect==='buff')!;
 assert.equal(unit.effect,'buff');if(unit.effect!=='buff')throw new Error('Dark Strike buff missing');
@@ -166,10 +166,13 @@ test('accepted refresh removes old visuals at age zero, while owner removal and 
 
 test('world rendering uses current condition ages, keeps paused frames and removes formal defeat visuals',()=>{
   const f=fixture();let health=10,awaitingDefeat=false;
-  const host=Object.setPrototypeOf({activeParty:['actor'],arena:[],pendingDefeats:new Set(),buffLoops:f.renderer,conditions:f.conditions,
-    memberOf:()=>({player:{health}}),visualOf:()=>f.target,
-    hitResolution:{isAwaitingDefeat:()=>awaitingDefeat}},WorldCombat.prototype);
-  const sync=()=>Reflect.get(WorldCombat.prototype,'syncBuffLoops').call(host);
+  const statusVisuals=new CombatStatusVisuals(f.scene,catalog);
+  const sync=()=>statusVisuals.syncBuffLoops(
+    f.conditions.activeAppearances(),
+    ()=>f.target,
+    id=>f.conditions.buffLoopFrames(id),
+    ()=>health>0||awaitingDefeat,
+  );
   sync();assert.equal(f.nodes.length,0);f.conditions.update(60);sync();assert.equal(f.nodes.length,2);
   const frames=f.conditions.buffLoopFrames('actor');
   sync();assert.equal(f.nodes[0].list[0].anims.currentFrame.index,2);assert.equal(f.conditions.buffLoopFrames('actor'),frames,'暂停期间复用循环帧描述');

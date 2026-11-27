@@ -1,38 +1,35 @@
 import {executeSkillUnits} from './combat-unit-execution.ts';
-import type { BasicAttackSelection, BasicAttackWait, ResolvedBasicAttack, SkillAction, SkillEffectCue, SkillEvent } from './battle.ts';
-import type { ClipName, CollisionBox, Facing } from './content.ts';
+import type { BasicAttackSelection, BasicAttackWait, ResolvedBasicAttack, SkillAction, SkillEvent } from './battle.ts';
+import type { ClipName, Facing } from './content.ts';
 import type { GameRectangle, Point } from './navigation.ts';
-import { BASIC_COMBO_WINDOW_FRAMES, attackDistance, faceTarget, targetDistance, targetScore,type BasicAttackHand } from './basic-attack.ts';
-import { attackSplashTargets,selectAttackSplashCenter } from './attack-splash.ts';
+import { BASIC_COMBO_WINDOW_FRAMES, attackDistance, faceTarget, targetScore,type BasicAttackHand } from './basic-attack.ts';
 import { needsTarget, settleSkillRepeat, skillPlaybackEvents, type SkillRepeatState } from './skill-action.ts';
 import { planCharge } from './target-charge.ts';
 import { planRearTeleport } from './rear-teleport.ts';
 import { basicSelectionFrames, FULL_ATTACK_SPEED_RATE } from './combat-tempo.ts';
 import type { ChargePlan } from './target-charge.ts';
-import type { BattleStateKey } from './battle-semantics.ts';
 import { combatStateCapabilities } from './combat-state.ts';
-import type { ResolvedSkillUnit, SkillUnitOutcome } from './skill-unit-sequence.ts';
-import type { PreparedActionDamage } from './action-damage.ts';
-import { partyBuffTargets,type PartyBuffSlot } from './party-buff-targets.ts';
-import { selectHealTarget,type HealSlot } from './heal-target.ts';
+import type { ResolvedSkillUnit } from './skill-unit-sequence.ts';
 import type { ActorCooldownPort,Cooldown } from './combat-cooldowns.ts';
+import {
+  canTargetCombatant,
+  type AttackContact,
+  type BasicAreaContact,
+  type Combatant,
+  type SkillExecutionHost,
+} from './combatant.ts';
+import { resolveCueTargets } from './combat-targeting.ts';
 export type { Cooldown } from './combat-cooldowns.ts';
 export type { BasicAttackSelection } from './battle.ts';
-
-export interface Combatant { id: string; team: string; position: Point; bounds: CollisionBox; facing?: Facing; states?:readonly BattleStateKey[] }
-
-/** 隐身只影响敌对选取，盟友和自身仍可获得治疗及增益。 */
-export function canTargetCombatant(source:Combatant,target:Combatant):boolean {
-  return combatStateCapabilities(target.states??[],source.team!==target.team).canTarget;
-}
-export interface AttackContact {
-  casterId:string;targetId:string;skillId?:string;
-  hand?:BasicAttackHand;
-  basicAttack?:ResolvedBasicAttack;
-}
-export interface BasicAreaContact {casterId:string;basicAttack:ResolvedBasicAttack;facing?:Facing}
-export interface SkillUnitStart { casterId:string; skill:NonNullable<ActionPlayback['skill']>; cueIndex:number }
-export interface SkillUnitHit extends SkillUnitStart { targetId:string; preparedDamage?:PreparedActionDamage }
+export {
+  canTargetCombatant,
+  type AttackContact,
+  type BasicAreaContact,
+  type Combatant,
+  type SkillUnitHit,
+  type SkillUnitStart,
+} from './combatant.ts';
+export { areaShapeMaxReachPx, resolveCueTargets } from './combat-targeting.ts';
 /** One direct event or one emitted transition owns this arrival object. */
 export interface SkillUnitsArrival {
   event: Extract<SkillEvent, {kind:'units'}>;
@@ -66,21 +63,12 @@ export interface ActionPlayback {
   getAttackSpeedRate?:()=>number;
 }
 /** 游戏规则只依赖实体查询、移动和动作表现；场景提供具体实现。 */
-export interface CombatPort {
+export interface CombatPort extends SkillExecutionHost {
   cooldowns:ActorCooldownPort;
   isPaused?():boolean;
   canSelectSkill?(skill:NonNullable<ActionPlayback['skill']>):boolean;
-  actor(id: string): Combatant | undefined;
-  candidates(): Combatant[];
   /** 即时生命值仍为正；伤害链尚未清理的零生命角色也返回 false。 */
   isAlive?(id:string):boolean;
-  partySlots?():readonly (PartyBuffSlot<Combatant>|undefined)[];
-  /** 该角色当前的原版距离单位射程加成（狙击）；不提供表示没有加成。 */
-  rangeBonusUnits?(id:string):number;
-  /** 治疗选人的原版评分，越低越优先；省略表示该角色不参与治疗候选。 */
-  healScore?(id:string):number|undefined;
-  /** 原版角色池候选（三队伍槽与同阵营召唤物），按原版枚举顺序给出；省略时只用三队伍槽。 */
-  healCandidates?():readonly HealSlot<Combatant>[];
   facing(): Facing;
   moveToward(position: Point): void;
   approachTarget?(target:Combatant,range:number):boolean|void;
@@ -103,10 +91,6 @@ export interface CombatPort {
   frame(action: ActionPlayback, index: number, contact: (targetId: string,hand?:BasicAttackHand) => void, unitsReady:SkillUnitsReady,areaContact?:()=>void): void;
   contact?(event: AttackContact): void;
   areaContact?(event:BasicAreaContact):void;
-  unit?(event:SkillUnitHit):SkillUnitOutcome;
-  prepareUnit?(event:SkillUnitStart):PreparedActionDamage|undefined;
-  runUnitSequence?(work:()=>void):void;
-  unitFeedback?(event:SkillUnitHit,outcome:SkillUnitOutcome,cue:SkillEffectCue):void;
   manaCost?(skill:NonNullable<ActionPlayback['skill']>):number|undefined;
   canSpendMana?(cost: number): boolean;
   spendMana?(cost: number): boolean;
@@ -133,154 +117,6 @@ export function lungeLanding(start:Point,facing:Facing,distance:number,port:Skil
     const point={x:start.x+dx*step,y:start.y+dy*step};
     if(port.canPlaceBody?.(point)&&(port.canRelocateReach?.(point)??true))return point;
   }
-}
-
-function resolveTargetArea(caster:Combatant,current:Combatant|undefined,candidates:Combatant[],rangeUnits:number,
-  fallbackCenter:Point=caster.position):{
-  targets:Combatant[];selectedTargetId?:string;
-} {
-  // A current target remains usable even when it is outside the candidate query.
-  const selection=selectAttackSplashCenter(caster,current?[current]:candidates,rangeUnits,{currentTargetId:current?.id});
-  const center=selection.targetId?selection.center:fallbackCenter;
-  return {targets:attackSplashTargets(caster,center,candidates,rangeUnits),selectedTargetId:selection.targetId};
-}
-
-export function areaShapeMaxReachPx(shape: import('./battle.ts').AreaShape | undefined, fallbackPx: number): number {
-  if (!shape) return fallbackPx;
-  if (shape.kind === 'line') return Math.max(fallbackPx, shape.lengthPx);
-  if (shape.kind === 'sector') return Math.max(fallbackPx, shape.radiusPx);
-  if (shape.kind === 'cross') return Math.max(fallbackPx, shape.lengthPx, shape.verticalLengthPx ?? shape.lengthPx);
-  return Math.max(fallbackPx, shape.forwardOffsetPx + shape.radiusPx);
-}
-
-function facingVector(facing: Facing = 'south'): Point {
-  if (facing === 'east') return { x: 1, y: 0 };
-  if (facing === 'west') return { x: -1, y: 0 };
-  if (facing === 'north') return { x: 0, y: -1 };
-  return { x: 0, y: 1 };
-}
-
-function resolveShapedAreaTargets(
-  shape: import('./battle.ts').AreaShape,
-  caster: Combatant,
-  selected: Combatant | undefined,
-  pool: readonly Combatant[],
-  bonusPx: number,
-): { actor: Combatant; distance: number }[] {
-  const center = caster.position;
-  const cardinal = facingVector(caster.facing);
-  // 若已锁定正前方象限内的敌方主目标，允许穿刺轴/落点微调对准该目标，避免四向离散朝向下斜角贴边漏判；无目标时严格沿正方向。
-  let axis = cardinal;
-  if (selected && selected.team !== caster.team && (shape.kind === 'line' || shape.kind === 'front-circle')) {
-    const sx = selected.position.x - center.x;
-    const sy = selected.position.y - center.y;
-    const sDist = Math.hypot(sx, sy);
-    const sForward = sx * cardinal.x + sy * cardinal.y;
-    const maxAim = (shape.kind === 'line' ? shape.lengthPx : shape.forwardOffsetPx + shape.radiusPx) + bonusPx;
-    if (sDist > 1 && sDist <= maxAim && sForward >= 0) {
-      axis = { x: sx / sDist, y: sy / sDist };
-    }
-  }
-  const hits: { actor: Combatant; distance: number }[] = [];
-  if (shape.kind === 'line') {
-    const length = shape.lengthPx + bonusPx;
-    const backSlack = shape.backSlackPx ?? 6;
-    for (const actor of pool) {
-      const dx = actor.position.x - center.x;
-      const dy = actor.position.y - center.y;
-      const forward = dx * axis.x + dy * axis.y;
-      const perp = Math.abs(dx * axis.y - dy * axis.x);
-      if (forward >= -backSlack && forward <= length && perp <= shape.halfWidthPx) {
-        hits.push({ actor, distance: Math.max(0, forward) + perp * 0.25 });
-      }
-    }
-    return hits;
-  }
-  if (shape.kind === 'sector') {
-    const radius = shape.radiusPx + bonusPx;
-    const backSlack = shape.backSlackPx ?? 6;
-    const halfRad = (Math.min(360, Math.max(1, shape.angleDeg)) * 0.5 * Math.PI) / 180;
-    for (const actor of pool) {
-      const dx = actor.position.x - center.x;
-      const dy = actor.position.y - center.y;
-      const dist = Math.hypot(dx, dy);
-      if (dist > radius) continue;
-      const forward = dx * cardinal.x + dy * cardinal.y;
-      const perp = Math.abs(dx * cardinal.y - dy * cardinal.x);
-      const inCone = dist <= backSlack
-        || Math.atan2(perp, forward) <= halfRad + 1e-6
-        || (shape.angleDeg >= 180 && forward >= -backSlack);
-      if (inCone) hits.push({ actor, distance: dist });
-    }
-    return hits;
-  }
-  if (shape.kind === 'cross') {
-    const horizLen = shape.lengthPx + bonusPx;
-    const vertLen = (shape.verticalLengthPx ?? shape.lengthPx) + bonusPx;
-    for (const actor of pool) {
-      const dx = actor.position.x - center.x;
-      const dy = actor.position.y - center.y;
-      const ax = Math.abs(dx);
-      const ay = Math.abs(dy);
-      if ((ax <= horizLen && ay <= shape.halfWidthPx) || (ay <= vertLen && ax <= shape.halfWidthPx)) {
-        hits.push({ actor, distance: Math.hypot(dx, dy) });
-      }
-    }
-    return hits;
-  }
-  const impactX = center.x + axis.x * shape.forwardOffsetPx;
-  const impactY = center.y + axis.y * shape.forwardOffsetPx;
-  const radius = shape.radiusPx + bonusPx;
-  for (const actor of pool) {
-    const dist = Math.hypot(actor.position.x - impactX, actor.position.y - impactY);
-    if (dist <= radius) hits.push({ actor, distance: dist });
-  }
-  return hits;
-}
-
-export function resolveCueTargets(cue: Pick<SkillEffectCue, 'target' | 'targetRangePx' | 'targetRangeMetric' | 'areaShape' | 'maxTargets'>, caster: Combatant, selected: Combatant | undefined, candidates: Combatant[],
-  partySlots:readonly (PartyBuffSlot<Combatant>|undefined)[]=[],rangeBonusUnits=0,
-  healScore?:(actorId:string)=>number|undefined,healCandidates?:readonly HealSlot<Combatant>[]): Combatant[] {
-  // 射程加成按原版距离单位给，一个单位 8 像素；只放宽搜索范围，不改变已选定的目标。
-  const bonusPx = rangeBonusUnits > 0 ? rangeBonusUnits * 8 : 0;
-  if(bonusPx>0)cue={...cue,targetRangePx:cue.targetRangePx+bonusPx};
-  if (cue.target === 'self') return [caster];
-  if (cue.target === 'none') return [];
-  if (cue.target === 'party') return partyBuffTargets(caster,partySlots,Math.floor(cue.targetRangePx/8));
-  // 三队伍槽但排除施法者自己：圣徒之牺牲只能保护别的队友。
-  if (cue.target === 'party-ally') return partyBuffTargets(caster,partySlots,Math.floor(cue.targetRangePx/8))
-    .filter(actor=>actor.id!==caster.id);
-  // 治疗只落一个人：按原版评分取最低，取不到就落回施法者自己。
-  if (cue.target === 'ally-heal') {
-    const pool=healCandidates??partySlots.map(slot=>{
-      const score=slot&&healScore?healScore(slot.actor.id):undefined;
-      return slot&&score!==undefined?{...slot,score}:undefined;
-    });
-    return [selectHealTarget(caster,pool,Math.floor(cue.targetRangePx/8))];
-  }
-  if (cue.target === 'target-area') {
-    const splashed = resolveTargetArea(caster,selected,candidates,Math.floor(cue.targetRangePx/8)).targets;
-    return cue.maxTargets !== undefined ? splashed.slice(0, cue.maxTargets) : splashed;
-  }
-  if(selected&&!canTargetCombatant(caster,selected))selected=undefined;
-  const center=caster.position;
-  if (cue.target === 'current' || cue.target === 'enemy') return selected ? [selected] : [];
-  const allies = cue.target === 'ally';
-  const eligible = candidates.filter(actor => (allies ? actor.team === caster.team : actor.team !== caster.team) && canTargetCombatant(caster,actor));
-  if (cue.areaShape && !allies) {
-    const shaped = resolveShapedAreaTargets(cue.areaShape, caster, selected, eligible, bonusPx)
-      .sort((a, b) => a.distance - b.distance);
-    const list = shaped.map(item => item.actor);
-    return cue.maxTargets !== undefined ? list.slice(0, cue.maxTargets) : list;
-  }
-  const withinRange = (actor: Combatant) => cue.targetRangeMetric==='octagonal-grid'
-    ? Math.floor(targetDistance(center,actor.position)/8)<=Math.floor(cue.targetRangePx/8)
-    : Math.hypot(center.x - actor.position.x, center.y - actor.position.y) <= cue.targetRangePx;
-  const matched = eligible.filter(withinRange);
-  if (cue.maxTargets === undefined) return matched;
-  return [...matched]
-    .sort((a, b) => Math.hypot(a.position.x - center.x, a.position.y - center.y) - Math.hypot(b.position.x - center.x, b.position.y - center.y))
-    .slice(0, cue.maxTargets);
 }
 
 export class CombatController {

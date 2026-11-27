@@ -1,20 +1,19 @@
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import {registerHooks} from 'node:module';
 import test from 'node:test';
-import type {BattleBuffEffect,BattleCatalog} from '../src/domain/battle.ts';
+import type {BattleBuffEffect,SkillVisualEffect} from '../src/domain/battle.ts';
 import {CombatConditions} from '../src/domain/combat-conditions.ts';
 import {CombatHitResolution} from '../src/domain/combat-hit-resolution.ts';
 import type {AttackContact} from '../src/domain/combat.ts';
 import {resolveSkillReactions} from '../src/domain/skill-reactions.ts';
 import type {PhysicalHit} from '../src/domain/physical-hit.ts';
+import {
+  createCombatTestHarness,
+  createTestMember,
+  loadBattleCatalog,
+  ZERO_PRIMARY_ATTRIBUTES,
+} from './support/combat-test-harness.ts';
 
-const hook=registerHooks({resolve(specifier,context,next){return specifier==='phaser'
-  ?{url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true}
-  :next(specifier,context);}});
-const {WorldCombat}=await import('../src/scenes/world-combat.ts');hook.deregister();
-const catalog=JSON.parse(readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')) as BattleCatalog;
-const method=(name:string)=>Reflect.get(WorldCombat.prototype,name);
+const catalog=loadBattleCatalog();
 const generalChances=[21,28,35,41,45,48,51,55],offhandChances=[65,85,105,125,135,145,155,165];
 
 test('flare exports both threshold ladders and an unlearned stealth fallback that is not Whist rank one',()=>{
@@ -38,35 +37,37 @@ test('flare exports both threshold ladders and an unlearned stealth fallback tha
   assert.deepEqual(stealth.effect.states,['stealthed']);
 });
 
-const primary={strength:0,dexterity:0,vitality:0,intelligence:0,mentality:0};
 const base={level:10,physicalAttack:100,magicAttack:0,baseDefense:0,defense:0,defenseRate:0,
   maxHealth:1000,maxMana:100,hitBase:100,hitBonus:0,evasionBase:0,evasionBonus:0,
   criticalRate:0,criticalResistance:0,criticalDamage:0,criticalDamageResistance:0,weaponBlock:0,shieldBlock:0,
-  physicalResistance:0,physicalResistanceBonus:0,magicResistance:0,baseMagicResistance:0,attributes:primary};
+  physicalResistance:0,physicalResistanceBonus:0,magicResistance:0,baseMagicResistance:0,attributes:ZERO_PRIMARY_ATTRIBUTES};
 
 function fixture(flareRank:number,whistRank:number){
-  const member=()=>({classId:'assassin',level:10,panel:{...structuredClone(base)},
-    player:{health:1000,maxHealth:1000,mana:50,maxMana:100},
-    skills:{draft:()=>({levels:{flare:flareRank,whist:whistRank}})},
-    bag:{equipmentFor:()=>({}),get:()=>undefined,equipmentItems:()=>({})}});
-  const members=new Map([['player',member()],['ally',member()]]);
+  const makeMember=(id:string)=>createTestMember({
+    id,classId:'assassin',level:10,health:1000,maxHealth:1000,mana:50,maxMana:100,
+    panel:structuredClone(base),
+    skillLevels:{flare:flareRank,whist:whistRank},
+  });
+  const members=new Map([['player',makeMember('player')],['ally',makeMember('ally')]]);
   const conditions=new CombatConditions();
   const applied:{targetId:string;key:string;sourceId:string;priority:number;effect:BattleBuffEffect}[]=[];
-  const effects:{targetId:string;effects:unknown[]}[]=[];
-  const host=Object.setPrototypeOf({hero:members.get('player'),conditions,hitResolution:new CombatHitResolution(),
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
-    pendingDefeats:new Set<string>(),fallen:new Set<string>(),allies:[],arena:[],
-    app:{battleCatalog:catalog,items:{items:{}},session:{skills:{draft:()=>({levels:{flare:flareRank,whist:whistRank}})},
-      party:{activeIds:['player','ally'],controlledId:'player',groupModifiers:()=>({})}}},
-    scene:{events:{emit:()=>{}}},memberOf:(id:string)=>members.get(id),visualOf:()=>undefined,threat:undefined,
-    presenterFor:()=>({showEffects:(id:string,value:unknown[])=>{effects.push({targetId:id,effects:value});}}),
-    applyActorBuff:(targetId:string,key:string,priority:number,effect:BattleBuffEffect,sourceId:string)=>{
-      applied.push({targetId,key,sourceId,priority,effect});},
-  },WorldCombat.prototype);
-  const call=(name:string,...args:unknown[])=>method(name).call(host,...args);
+  const effects:{targetId:string;effects:readonly SkillVisualEffect[]}[]=[];
+  const harness=createCombatTestHarness({
+    battleCatalog:catalog,conditions,hitResolution:new CombatHitResolution(),
+    hero:members.get('player'),members,
+    activeParty:()=>['player','ally'],
+    withThreat:false,
+    settlementOverrides:{
+      onShowEffects:(_actorId,id,value)=>{effects.push({targetId:id,effects:value});},
+    },
+  });
+  harness.settlement.applyActorBuff=(targetId,key,priority,effect,sourceId)=>{
+    applied.push({targetId,key,sourceId,priority,effect});
+    return true;
+  };
   const contact:AttackContact={casterId:'player',targetId:'ally'} as AttackContact;
   const strike=(kind:PhysicalHit['kind'],damageKind:'physical'|'magic'='physical',hand?:'main-hand'|'offhand')=>
-    call('resolveHitReactions',{...contact,hand},{kind,damage:0} as PhysicalHit,damageKind,'probe',host.hero);
+    harness.settlement.resolveHitReactions({...contact,hand},{kind,damage:0} as PhysicalHit,damageKind,'probe');
   return {applied,effects,strike,rates:(effect:BattleBuffEffect)=>effect.modifiers.flatMap(m=>
     m.attribute==='stealthDamageRate'&&'operation' in m&&m.operation.kind==='add'?[m.operation.amount]:[])};
 }
@@ -107,8 +108,8 @@ test('misses and magic neither draw nor apply',t=>{
   f.strike('miss','physical','main-hand');
   f.strike('hit','magic','main-hand');
   assert.equal(draws,0);
-  assert.deepEqual(f.applied,[]);
-  assert.deepEqual(f.effects,[]);
+  assert.equal(f.applied.length,0);
+  assert.equal(f.effects.length,0);
 });
 
 test('a zero threshold still draws, because the native roll is unconditional',t=>{

@@ -1,50 +1,81 @@
-import {dispatchFrame,playCombat} from './support/combat-driver.ts';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
-import { FakeSprite } from './support/fake-sprite.ts';
-import { readFileSync } from 'node:fs';
-import { registerHooks } from 'node:module';
 import test from 'node:test';
 import type Phaser from 'phaser';
-import { skillForGrowth, type BattleCatalog, type SkillGrowthProfile } from '../src/domain/battle.ts';
-import { CombatController, type ActionPlayback, type Combatant, type CombatPort } from '../src/domain/combat.ts';
+import { skillForGrowth, type SkillGrowthProfile } from '../src/domain/battle.ts';
+import { BattleCharacter } from '../src/domain/character-stats.ts';
 import { CombatCooldownStore } from '../src/domain/combat-cooldowns.ts';
 import { CombatHitResolution } from '../src/domain/combat-hit-resolution.ts';
-import type { CharacterVisual } from '../src/rendering/characters.ts';
+import { CombatController, type ActionPlayback, type Combatant, type CombatPort } from '../src/domain/combat.ts';
+import { Session } from '../src/domain/session.ts';
 import { characterFrameList } from '../src/rendering/character-atlas.ts';
+import type { CharacterVisual } from '../src/rendering/characters.ts';
+import { dispatchFrame, playCombat } from './support/combat-driver.ts';
+import {
+  loadBattleCatalog,
+  loadCampaignCatalog,
+  loadCharacterStatsCatalog,
+  loadCompanionCatalog,
+  loadItemCatalog,
+} from './support/combat-test-harness.ts';
+import { createTestWorldCombat, installPhaserStubHooks } from './support/world-combat-fixture.ts';
+import { FakeSprite } from './support/fake-sprite.ts';
 
-const hooks = registerHooks({ resolve(specifier, context, next) {
-  return specifier === 'phaser' ? { url: 'data:text/javascript,export default {BlendModes:{NORMAL:0},Scene:class{},Physics:{Arcade:{Body:class{}}}}', shortCircuit: true } : next(specifier, context);
-} });
+const phaserHook = installPhaserStubHooks();
 const { CombatPresenter } = await import('../src/rendering/combat-presenter.ts');
-const { WorldCombat } = await import('../src/scenes/world-combat.ts');
-hooks.deregister();
-const catalog = JSON.parse(readFileSync(new URL('../public/content/battle.json', import.meta.url), 'utf8')) as BattleCatalog;
+phaserHook.deregister();
+
+const catalog = loadBattleCatalog();
 const warlock = catalog.classes.find(character => character.id === 'warlock')!;
 /** 动作序列里的逻辑帧号 → 当前图集帧名。 */
 const attackClip = warlock.actor.clips['skill-touch-of-agony-east']!;
 const logicalFrame = (index: number) => characterFrameList(attackClip.layers[0]!.file, attackClip.frames)[index]!.frame;
 type Frame = { index: number; frame: number };
 
-test('生产生命查询区分伤害链中尚未移除的零生命角色，主角佣兵敌人均读取即时 HP', () => {
-  const resolution = new CombatHitResolution();
-  const states = new Map(['player', 'ally', 'enemy'].map(id => [id, { health: 10 }]));
-  const host = {
-    memberOf: (id: string) => id === 'enemy' || !states.has(id) ? undefined : { player: states.get(id) },
-    arena: [{ key: 'enemy', definition: {} }], hero: { level: 1 }, hitResolution: resolution,
-    roster: { isPresent: () => true, enemySnapshot: (id: string) => states.get(id) },
+test('生产生命查询区分伤害链中尚未移除的零生命角色，主角佣兵敌人均读取即时 HP', async () => {
+  const items = loadItemCatalog();
+  const statsCatalog = loadCharacterStatsCatalog();
+  const campaign = loadCampaignCatalog();
+  const companions = loadCompanionCatalog();
+  const hero = new BattleCharacter('dark-knight', statsCatalog, items);
+  const session = new Session(campaign, undefined, undefined, items, hero, catalog, statsCatalog, companions);
+  session.bag.add('mercenary-emblem-black-knight');
+  const ally = session.party!.recruit(session.bag.entries.find(entry => entry.item === 'mercenary-emblem-black-knight')!.id, () => 0).member;
+  session.party!.deployFirstAvailable(ally.id);
+  const actorDef = catalog.classes.find(c => c.id === 'dark-knight')!.actor;
+  const world = await createTestWorldCombat({
+    hero,
+    session,
+    appOverrides: {
+      world: { actors: { [ally.definition.actor]: actorDef, [actorDef.id]: actorDef } } as never,
+    },
+  });
+  const enemyDef = catalog.enemies.find(entry => entry.id === 'enemy-shin-1')!;
+  const enemy = world.roster.placeEnemy(enemyDef.id, 96, 64);
+  await world.combat.start();
+  hero.setHealth(10);
+  ally.setHealth(10);
+  world.roster.setEnemyHealth(enemy.key, 10, enemyDef);
+
+  const resolution = Reflect.get(world.combat, 'hitResolution') as CombatHitResolution;
+  const alive = (id: string) => (Reflect.get(world.combat, 'isActorAlive') as (actorId: string) => boolean).call(world.combat, id);
+  const setZero = (id: string) => {
+    if (id === 'player') hero.setHealth(0);
+    else if (id === ally.id) ally.setHealth(0);
+    else world.roster.setEnemyHealth(id, 0, enemyDef);
   };
-  const alive = (id: string) => Reflect.get(WorldCombat.prototype, 'isActorAlive').call(host, id);
-  for (const id of states.keys()) {
+
+  for (const id of ['player', ally.id, enemy.key]) {
     assert.equal(alive(id), true);
     resolution.run(() => {
-      states.get(id)!.health = 0;
+      setZero(id);
       resolution.deferDefeat(id, () => {});
       assert.equal(resolution.isAwaitingDefeat(id), true);
       assert.equal(alive(id), false);
     });
   }
   assert.equal(alive('missing'), false);
+  world.combat.destroy();
 });
 
 class Sprite extends FakeSprite {
@@ -52,7 +83,7 @@ class Sprite extends FakeSprite {
     currentAnim: { frames: [] as Frame[] }, currentFrame: { index: 1, frame: 0 },
     create: (definition: { frames: { frame: number }[] }) => {
       this.anims.currentAnim = { frames: definition.frames.map((frame, index) => ({ ...frame, index: index + 1 })) };
-      return {...this.anims.currentAnim,destroy(){}};
+      return { ...this.anims.currentAnim, destroy() {} };
     },
     setCurrentFrame: (frame: Frame) => {
       this.anims.currentFrame = frame;
@@ -77,13 +108,21 @@ function fixture(level = 8, growth: SkillGrowthProfile = 'hero', killOnHit?: num
   const actors = new Map([caster, target].map(actor => [actor.id, actor]));
   const resolution = new CombatHitResolution();
   let targetHealth = 100;
-  const character = { actor: warlock.actor, entity: { id: 'caster', actor: warlock.actor.id }, layers: [], clipName: null,
-    container: { active: true, x: 0, y: 0, addAt: () => {} } } as unknown as CharacterVisual;
+  const character = {
+    actor: warlock.actor, entity: { id: 'caster', actor: warlock.actor.id }, layers: [], clipName: null,
+    container: { active: true, x: 0, y: 0, addAt: () => {} },
+  } as unknown as CharacterVisual;
   const timers: { delay: number; callback: () => void; removed: boolean; remove: () => void }[] = [];
-  const scene = { events: new EventEmitter(), add: { sprite: () => new Sprite() },
-    time: { delayedCall: (delay: number, callback: () => void) => {
-      const timer = { delay, callback, removed: false, remove() { this.removed = true; } }; timers.push(timer); return timer;
-    } } } as unknown as Phaser.Scene;
+  const scene = {
+    events: new EventEmitter(), add: { sprite: () => new Sprite() },
+    time: {
+      delayedCall: (delay: number, callback: () => void) => {
+        const timer = { delay, callback, removed: false, remove() { this.removed = true; } };
+        timers.push(timer);
+        return timer;
+      },
+    },
+  } as unknown as Phaser.Scene;
   const presenter = new CombatPresenter(scene, catalog, () => character, () => [...actors.values()]);
   let elapsed = 0, hits = 0, completed = 0, mana = 100, cancelOnHit = false;
   let playback!: ActionPlayback;
@@ -98,9 +137,9 @@ function fixture(level = 8, growth: SkillGrowthProfile = 'hero', killOnHit?: num
     canSpendMana: cost => mana >= cost, spendMana: cost => { mana -= cost; return true; },
     play: (current, onFrame, onComplete) => {
       playback = current;
-      return playCombat(presenter,current,onFrame,() => { completed++; onComplete(); });
+      return playCombat(presenter, current, onFrame, () => { completed++; onComplete(); });
     },
-    frame: (current, index, contact, ready) => resolution.run(() => dispatchFrame(presenter,current,index,contact,ready,() => {},(_definition, work) => {
+    frame: (current, index, contact, ready) => resolution.run(() => dispatchFrame(presenter, current, index, contact, ready, () => {}, (_definition, work) => {
       dispatches.push(elapsed); resolution.run(work);
     })),
     runUnitSequence: work => resolution.run(work),
@@ -121,7 +160,8 @@ function fixture(level = 8, growth: SkillGrowthProfile = 'hero', killOnHit?: num
   const combat = new CombatController(caster.id, null, port);
   assert.equal(combat.request({ id: skill.id, action, level, manaCost: 40 }, target.id), 'started');
   const sprite = character.layers[0] as unknown as Sprite;
-  return { combat, playback, effects, dispatches, timers, sprite,
+  return {
+    combat, playback, effects, dispatches, timers, sprite,
     advance: (frames: number) => { for (let index = 0; index < frames; index++) { elapsed++; sprite.step(); } },
     removeTarget: () => { actors.delete(target.id); combat.update(); },
     cancelOnNextHit: () => { cancelOnHit = true; },

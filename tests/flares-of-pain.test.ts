@@ -1,18 +1,11 @@
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import {registerHooks} from 'node:module';
 import test from 'node:test';
-import type {BattleCatalog} from '../src/domain/battle.ts';
 import {CombatConditions} from '../src/domain/combat-conditions.ts';
-import type {BattleStatKey} from '../src/domain/battle-semantics.ts';
+import type {CombatActorAttributes} from '../src/domain/combat-damage-source.ts';
 import {resolveSkillReactions} from '../src/domain/skill-reactions.ts';
+import {createCombatTestHarness,createTestMember,loadBattleCatalog} from './support/combat-test-harness.ts';
 
-const phaser=registerHooks({resolve(specifier,context,next){
-  return specifier==='phaser'?{url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true}:next(specifier,context);
-}});
-const {WorldCombat}=await import('../src/scenes/world-combat.ts');phaser.deregister();
-const catalog=JSON.parse(readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')) as BattleCatalog;
-const method=(name:string)=>Reflect.get(WorldCombat.prototype,name);
+const catalog=loadBattleCatalog();
 function reaction(rank:number){
   const value=catalog.skills['flares-of-pain'].reactionsByRank?.[rank-1]?.[0];
   assert.equal(value?.kind,'flares-of-pain');
@@ -42,18 +35,19 @@ test('flares pulse six times from the next shared frame and read the source dama
   t.mock.method(Math,'random',()=>assert.fail('periodic damage must not roll a hit or another proc'));
   const conditions=new CombatConditions(),amounts:number[]=[],sources:string[]=[];
   let sourceDamage=100;
-  const host=Object.setPrototypeOf({conditions,pendingDefeats:new Set(),arena:[],hero:{},
-    memberOf:()=>undefined,actorAttributes:()=>({}),
-    actorAttribute:(id:string,key:BattleStatKey)=>{if(key==='bestNormalDamage'){sources.push(id);return sourceDamage;}return 1000;},
-    settleHit:(event:{casterId:string;targetId:string},hit:{damage:number},_hero:unknown,_enemy:unknown,presentation:{periodic:boolean})=>{
-      assert.deepEqual(event,{casterId:'owner',targetId:'victim'});assert.equal(presentation.periodic,true);amounts.push(hit.damage);
-    },restoreHealth:()=>assert.fail('burning must not heal')},WorldCombat.prototype);
+  const harness=createCombatTestHarness({battleCatalog:catalog,conditions,withThreat:false});
+  harness.stats.actorAttributes=()=>({}) as CombatActorAttributes;
+  harness.stats.actorAttribute=(id,key)=>{if(key==='bestNormalDamage'){sources.push(id);return sourceDamage;}return 1000;};
+  harness.settlement.settleHit=(event,hit,_enemy,presentation)=>{
+    assert.deepEqual(event,{casterId:'owner',targetId:'victim'});assert.equal(presentation?.periodic,true);amounts.push(hit.damage);
+  };
+  harness.settlement.restoreHealth=()=>assert.fail('burning must not heal');
   // 空的状态表会让 update 提前返回、不推进共享帧余量；放一条长寿增益让时钟保持推进。
   conditions.applyBuff('clock','attack-stun',1,{durationMs:60000,tickMs:0,states:[],modifiers:[],periodic:[]});
   conditions.update(50);
   const buff=reaction(1).buff;
   conditions.applyBuff('victim',buff.key,buff.rankPriority,buff.effect,'owner');
-  const advance=(ms:number)=>conditions.update(ms,tick=>method('periodicTick').call(host,tick));
+  const advance=(ms:number)=>conditions.update(ms,tick=>harness.settlement.periodicTick(tick));
   advance(9);assert.equal(amounts.length,0);
   advance(1);assert.deepEqual(amounts,[14]);sourceDamage=200;
   advance(9000);assert.deepEqual(amounts,[14,28,28,28,28,28]);
@@ -75,19 +69,24 @@ test('accepted flares refresh source and first pulse while a weaker application 
 
 test('both armored combatants ignite each other through the actual physical hit phases even with zero reflection damage',t=>{
   t.mock.method(Math,'random',()=>0);
-  const conditions=new CombatConditions(),members=new Map(['attacker','defender'].map(id=>[id,{
-    classId:'dark-knight',skills:{draft:()=>({levels:{'flares-of-pain':8}})},
-    bag:{revision:0,equipmentFor:()=>({}),get:()=>undefined}}]));
+  const conditions=new CombatConditions();
+  const members=new Map(['attacker','defender'].map(id=>[id,createTestMember({
+    id,classId:'dark-knight',skillLevels:{'flares-of-pain':8},
+  })]));
   const armor=catalog.skills['molten-armor'].action!.combatUnits!.find(value=>value.effect==='buff')!;
   assert.equal(armor.effect,'buff');if(armor.effect!=='buff')return;
   for(const id of members.keys())conditions.applyBuff(id,armor.buff,armor.ranks[0].strength,armor.ranks[0].effect,id);
-  const host=Object.setPrototypeOf({app:{battleCatalog:catalog},arena:[],conditions,
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
-    aiSkillCostCache:new Map(),
-    memberOf:(id:string)=>members.get(id),equipmentRecovery:()=>({lifeDrainPerThousand:0}),
-    actorAttribute:(id:string,key:BattleStatKey)=>conditions.attribute(id,key,0),
-    combatant:()=>undefined,attackProc:()=>{},syncCombatResourceLimits:()=>{},interruptDisabled:()=>{}},WorldCombat.prototype);
-  method('resolveHitReactions').call(host,{casterId:'attacker',targetId:'defender'},{kind:'shield-block',damage:0},'physical','basic-attack',{});
+  const harness=createCombatTestHarness({
+    battleCatalog:catalog,conditions,members,
+    activeParty:()=>[...members.keys()],
+    combatants:()=>[],
+    combatant:()=>undefined,
+    withThreat:false,
+    settlementOverrides:{onStateConsequences:undefined,onBuffApplication:undefined},
+  });
+  harness.stats.actorAttribute=(id,key)=>conditions.attribute(id,key,0);
+  harness.settlement.attackProc=()=>{};
+  harness.settlement.resolveHitReactions({casterId:'attacker',targetId:'defender'},{kind:'shield-block',damage:0},'physical','basic-attack');
   for(const [target,source] of [['attacker','defender'],['defender','attacker']]){
     assert.equal(conditions.snapshot(target).find(value=>value.id==='flares-of-pain')?.sourceId,source);
   }

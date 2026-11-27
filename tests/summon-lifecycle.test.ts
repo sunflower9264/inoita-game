@@ -1,18 +1,21 @@
 import assert from 'node:assert/strict';
-import { registerHooks } from 'node:module';
 import test from 'node:test';
+import type { BattleCatalog } from '../src/domain/battle.ts';
+import { BattleCharacter } from '../src/domain/character-stats.ts';
+import type { ActorDefinition, AnimationClip, WorldMap } from '../src/domain/content.ts';
+import { Session } from '../src/domain/session.ts';
 import {
   SummonLifecycle, advanceSummonLifetime, releasesSummonVitals, summonDurationMs,
   summonLifetimeExpired, summonedChildren,
 } from '../src/domain/summon-lifecycle.ts';
-
-const hook = registerHooks({ resolve(specifier, context, next) {
-  return specifier === 'phaser'
-    ? { shortCircuit: true, url: 'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}' }
-    : next(specifier, context);
-}});
-const { WorldCombat } = await import('../src/scenes/world-combat.ts');
-hook.deregister();
+import {
+  loadBattleCatalog,
+  loadCampaignCatalog,
+  loadCharacterStatsCatalog,
+  loadCompanionCatalog,
+  loadItemCatalog,
+} from './support/combat-test-harness.ts';
+import { createFakePhaserScene, createTestWorldCombat } from './support/world-combat-fixture.ts';
 
 test('summon groups follow ownership, replacement and removal', () => {
   const life = new SummonLifecycle();
@@ -70,49 +73,117 @@ test('removing a summon also lists the summons it owns', () => {
   assert.deepEqual(summonedChildren(arena, 'player'), ['owner', 'other']);
 });
 
-function combatHost() {
-  const forgotten: string[] = [];
-  const cooldowns: string[] = [];
-  const session = {
-    forgetEnemyVitals: (key: string) => { forgotten.push(key); },
-    cooldowns: { removeActor: (key: string) => { cooldowns.push(key); } },
-  };
-  const host = Object.setPrototypeOf({
-    app: { session },
-    arena: [] as { key: string }[],
-    threat: { removeActor() {}, clear() {} },
-    combatRuntime: { removeActor() {} },
-    movement: { remove() {} },
-  }, WorldCombat.prototype) as unknown as {
-    arena: unknown[];
-    destroyEnemy(enemy: unknown, preserveCooldown?: boolean, keepSummonState?: boolean): void;
-    clearEnemies(preserveCooldown?: boolean, keepSummonStates?: boolean): void;
-  };
-  const enemy = (key: string, summonedBy?: string) => ({
-    key, summonedBy, definition: { id: 'enemy-test' },
-    visual: { container: { destroy() {} } }, presenter: { clear() {} },
-  });
-  return { host, forgotten, cooldowns, enemy };
+function stripActorFiles(actor: ActorDefinition): ActorDefinition {
+  const clips: ActorDefinition['clips'] = {};
+  for (const [name, clip] of Object.entries(actor.clips) as [keyof ActorDefinition['clips'], AnimationClip | undefined][]) {
+    if (!clip) continue;
+    clips[name] = { ...clip, layers: clip.layers.map(layer => ({ ...layer, file: '' })) };
+  }
+  return { ...actor, clips };
 }
 
-test('destroying or clearing a summon forgets its session vitals', () => {
-  const run = combatHost();
-  const summon = run.enemy('summon-1', 'player'), ordinary = run.enemy('enemy-1');
-  run.host.destroyEnemy(summon);
-  run.host.destroyEnemy(ordinary);
-  assert.deepEqual(run.forgotten, ['summon-1'], '只有召唤物清理会话状态');
-  assert.deepEqual(run.cooldowns, ['summon-1', 'enemy-1']);
+function completePhaserScene() {
+  const base = createFakePhaserScene();
+  const baseAdd = base.add as unknown as { sprite: (...args: unknown[]) => Record<string, unknown> };
+  const baseTweens = base.tweens as unknown as Record<string, unknown>;
+  return createFakePhaserScene({
+    tweens: { ...baseTweens, killTweensOf: () => {}, getTweensOf: () => [] },
+    add: {
+      ...baseAdd,
+      sprite: (...args: unknown[]) => {
+        const sprite = baseAdd.sprite(...args);
+        const anims = sprite.anims as Record<string, unknown>;
+        Object.assign(anims, {
+          isPlaying: false,
+          getProgress: () => 0,
+          create: (config: unknown) => { anims.currentAnim = config; return config; },
+        });
+        return Object.assign(sprite, {
+          setTexture() { return sprite; },
+          play() { anims.isPlaying = true; return sprite; },
+        });
+      },
+    },
+  });
+}
+
+function localBattleCatalog(base = loadBattleCatalog()): BattleCatalog {
+  return {
+    ...base,
+    classes: base.classes.map(entry => ({ ...entry, actor: stripActorFiles(entry.actor) })),
+    enemies: base.enemies.map(entry => ({ ...entry, actor: stripActorFiles(entry.actor) })),
+  };
+}
+
+async function summonWorld(withOrdinary = false) {
+  const battleCatalog = localBattleCatalog();
+  const items = loadItemCatalog();
+  const statsCatalog = loadCharacterStatsCatalog();
+  const campaign = loadCampaignCatalog();
+  const companions = loadCompanionCatalog();
+  const hero = new BattleCharacter('warlock', statsCatalog, items);
+  const session = new Session(campaign, undefined, undefined, items, hero, battleCatalog, statsCatalog, companions);
+  session.skills.maxAll();
+  session.skills.bar().assign(0, 1, { kind: 'skill', id: 'hell-s-pawn' });
+  const map: WorldMap = {
+    id: 'summon-test',
+    name: 'summon-test',
+    width: 320,
+    height: 320,
+    tileSize: 16,
+    columns: 20,
+    rows: 20,
+    blocked: Array<boolean>(400).fill(false),
+    ground: '',
+    canopy: '',
+    features: [],
+    entities: [],
+    exits: [],
+    enemySpawns: withOrdinary
+      ? [{ id: 'ordinary', enemyId: 'enemy-snake-1', x: 256, y: 256 }]
+      : [],
+  };
+  const world = await createTestWorldCombat({ phaserScene: completePhaserScene(), hero, session, map, battleCatalog, items, characterStats: statsCatalog });
+  await world.combat.start();
+  world.combat.attack('hell-s-pawn');
+  for (let i = 0; i < 30; i++) {
+    world.combat.update(60, true);
+    if (world.combat.captureState().roster.enemies.some(enemy => enemy.summonedBy === 'player')) break;
+  }
+  const summon = world.combat.captureState().roster.enemies.find(enemy => enemy.summonedBy === 'player');
+  assert.ok(summon, '应成功召唤出友方召唤物');
+  return { world, summonKey: summon.key };
+}
+
+test('destroying or clearing a summon forgets its session vitals', async t => {
+  const { world, summonKey } = await summonWorld(true);
+  const forgotten: string[] = [];
+  const cooldowns: string[] = [];
+  t.mock.method(world.session, 'forgetEnemyVitals', (key: string) => { forgotten.push(key); });
+  t.mock.method(world.session.cooldowns, 'removeActor', (key: string) => { cooldowns.push(key); });
+
+  world.combat.removeEnemy(summonKey);
+  world.combat.removeEnemy('ordinary');
+
+  assert.deepEqual(forgotten, [summonKey], '只有召唤物清理会话状态');
+  assert.deepEqual(cooldowns, [summonKey, 'ordinary']);
+  world.combat.destroy();
 });
 
-test('checkpoint restore clears visuals while keeping the summon states it will rebuild', () => {
-  const run = combatHost();
-  run.host.arena = [run.enemy('summon-1', 'player'), run.enemy('summon-2', 'player')];
-  run.host.clearEnemies(true, true);
-  assert.deepEqual(run.forgotten, [], '检查点恢复保留即将重建的召唤物状态');
-  assert.deepEqual(run.cooldowns, [], '恢复路径保留冷却');
-  assert.equal(run.host.arena.length, 0, '场上实例仍然清空');
+test('checkpoint restore clears visuals while keeping the summon states it will rebuild', async t => {
+  const { world, summonKey } = await summonWorld(false);
+  const snapshot = world.combat.captureState();
+  const forgotten: string[] = [];
+  const cooldowns: string[] = [];
+  t.mock.method(world.session, 'forgetEnemyVitals', (key: string) => { forgotten.push(key); });
+  t.mock.method(world.session.cooldowns, 'removeActor', (key: string) => { cooldowns.push(key); });
 
-  run.host.arena = [run.enemy('summon-3', 'player')];
-  run.host.clearEnemies();
-  assert.deepEqual(run.forgotten, ['summon-3'], '正常销毁会清理召唤物状态');
+  await world.combat.restoreState(snapshot);
+  assert.deepEqual(forgotten, [], '检查点恢复保留即将重建的召唤物状态');
+  assert.deepEqual(cooldowns, [], '恢复路径保留冷却');
+  assert.equal(world.combat.captureState().enemies.some(enemy => enemy.id === summonKey), true, '重建后的召唤物仍在场上');
+
+  world.combat.finishMapVisit();
+  assert.deepEqual(forgotten, [summonKey], '正常销毁会清理召唤物状态');
+  world.combat.destroy();
 });

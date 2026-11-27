@@ -8,6 +8,10 @@ import type { ItemCatalog } from '../src/domain/items.ts';
 import { groundLootFor } from '../src/domain/ground-loot.ts';
 import { Session } from '../src/domain/session.ts';
 
+import { loadBattleCatalog } from './support/combat-test-harness.ts';
+import type { CompanionCatalog } from '../src/domain/party.ts';
+import { createTestWorldCombat } from './support/world-combat-fixture.ts';
+
 class Rectangle {
   x:number;y:number;width:number;height:number;
   constructor(x:number,y:number,width:number,height:number) {this.x=x;this.y=y;this.width=width;this.height=height;}
@@ -18,17 +22,17 @@ Object.defineProperty(globalThis,boundary,{value:{Rectangle},configurable:true})
 const phaser=registerHooks({resolve(specifier,context,next){
   return specifier==='phaser'?{shortCircuit:true,url:`data:text/javascript,${encodeURIComponent(`
     const {Rectangle}=globalThis[Symbol.for('inotia.world-story-loot-test.phaser')];
-    export default {Geom:{Rectangle},BlendModes:{NORMAL:0,ADD:1,SCREEN:2,MULTIPLY:3},Scene:class{},Physics:{Arcade:{Body:class{}}}};
+    export default {Geom:{Rectangle},BlendModes:{NORMAL:0,ADD:1,SCREEN:2,MULTIPLY:3},TintModes:{FILL:0,OVERLAY:1},Core:{Events:{POST_RENDER:'postrender'}},Scenes:{Events:{SHUTDOWN:'shutdown',PRE_UPDATE:'preupdate',POST_UPDATE:'postupdate',PRE_RENDER:'prerender'}},Scene:class{},Physics:{Arcade:{Body:class{}}}};
   `)}`}:next(specifier,context);
 }});
 const { WorldScene }=await import('../src/scenes/world-scene.ts');
-const { WorldCombat }=await import('../src/scenes/world-combat.ts');
 phaser.deregister();
 
 const read=<T>(file:string):T=>JSON.parse(readFileSync(new URL(`../public/${file}`,import.meta.url),'utf8')) as T;
 const world=read<{maps:{id:string;file:string}[]}>('content/world.json');
 const campaign=read<Campaign>('content/campaign.json'),items=read<ItemCatalog>('content/items.json');
 const stats=read<CharacterStatsCatalog>('content/character-stats.json');
+const companions=read<CompanionCatalog>('content/companions.json');
 
 function fixture(){
   const session=new Session(campaign,undefined,undefined,items,new BattleCharacter('dark-knight',stats,items));
@@ -111,15 +115,23 @@ test('a mana gem stays on the ground instead of rejecting story preparation when
   assert.equal(run.session.money,12,'其他掉落照常入账');
 });
 
-test('mana collection falls back to a living member and leaves the gem when the whole party is down',()=>{
+test('mana collection falls back to a living member and leaves the gem when the whole party is down',async()=>{
   const pickup=items.items['mana-gem'].pickup!;
-  const member=(id:string,health:number,mana:number)=>({id,player:{health,mana,maxMana:100},setMana(this:{player:{mana:number}},value:number){this.player.mana=value;}});
-  const party=new Map([['player',member('player',0,0)],['ally',member('ally',10,0)]]);
-  const host={controlledId:'player',activeParty:['player','ally'],memberOf:(id:string)=>party.get(id),
-    visualOf:()=>undefined,outcomes:{recover(){}},app:{audio:{ui(){}}}};
-  const collect=Reflect.get(WorldCombat.prototype,'collectMana') as (this:unknown,pickup:unknown)=>boolean;
-  assert.equal(collect.call(host,pickup),true);
-  assert.equal(party.get('ally')!.player.mana,20);
-  party.get('player')!.player.health=0;party.get('ally')!.player.health=0;
-  assert.equal(collect.call(host,pickup),false,'全灭时不抛异常，让掉落留在原地');
+  const battleCatalog=loadBattleCatalog();
+  const hero=new BattleCharacter('dark-knight',stats,items);
+  const session=new Session(campaign,undefined,undefined,items,hero,battleCatalog,stats,companions);
+  session.bag.add('mercenary-emblem-black-knight');
+  const ally=session.party!.recruit(session.bag.entries.find(entry=>entry.item==='mercenary-emblem-black-knight')!.id,()=>0).member;
+  session.party!.deployFirstAvailable(ally.id);
+  const testWorld=await createTestWorldCombat({hero,session,battleCatalog,items,characterStats:stats});
+  await testWorld.combat.start();
+  hero.setHealth(0);
+  ally.setHealth(10);
+  ally.setMana(0);
+  assert.equal(testWorld.combat.collectMana(pickup),true);
+  assert.equal(ally.player.mana,Math.floor(ally.player.maxMana*pickup.percentOfCollectorMaxMana/100));
+  hero.setHealth(0);
+  ally.setHealth(0);
+  assert.equal(testWorld.combat.collectMana(pickup),false,'全灭时不抛异常，让掉落留在原地');
+  testWorld.combat.destroy();
 });

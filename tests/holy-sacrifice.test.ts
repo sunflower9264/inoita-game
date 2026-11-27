@@ -1,22 +1,21 @@
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import {registerHooks} from 'node:module';
 import test from 'node:test';
-import type {BattleCatalog,BattleBuffEffect} from '../src/domain/battle.ts';
+import type {BattleBuffEffect} from '../src/domain/battle.ts';
 import type {Combatant} from '../src/domain/combat.ts';
 import {resolveCueTargets} from '../src/domain/combat.ts';
 import {CombatConditions} from '../src/domain/combat-conditions.ts';
 import {CombatHitResolution} from '../src/domain/combat-hit-resolution.ts';
 import type {PhysicalHit} from '../src/domain/physical-hit.ts';
 import {partyBuffTargets} from '../src/domain/party-buff-targets.ts';
+import {
+  createCombatTestHarness,
+  createTestMember,
+  defaultTestPanel,
+  loadBattleCatalog,
+  type TestMemberFixture,
+} from './support/combat-test-harness.ts';
 
-const phaser=registerHooks({resolve(specifier,context,next){
-  return specifier==='phaser'?{url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true}:next(specifier,context);
-}});
-const {WorldCombat}=await import('../src/scenes/world-combat.ts');phaser.deregister();
-const method=(name:string)=>Reflect.get(WorldCombat.prototype,name);
-const catalog=JSON.parse(readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')) as BattleCatalog;
-
+const catalog=loadBattleCatalog();
 const rates=[275,325,358,375,391,408,425,441];
 const buffUnit=catalog.skills['holy-sacrifice'].action!.combatUnits![0] as
   {effect:'buff';buff:string;ranks:{strength:number;effect:{durationMs:number;tickMs:number;maxStacks:number;
@@ -63,45 +62,50 @@ test('party-ally keeps the three-slot search but never returns the caster',()=>{
 
 /** 面板只给出一项物防，其余按默认值；保护者的有效防御由此算得。 */
 function panel(baseDefense:number,defenseRate:number){
-  return {level:10,physicalAttack:0,magicAttack:0,baseDefense,defenseRate,maxHealth:1000,maxMana:100,hitBase:0,hitBonus:0,
-    evasionBase:0,evasionBonus:0,criticalRate:0,criticalResistance:0,criticalDamage:0,criticalDamageResistance:0,
-    weaponBlock:0,shieldBlock:0,physicalResistance:0,baseMagicResistance:0,offhandShield:false,
-    attributes:{strength:0,dexterity:0,vitality:0,intelligence:0,mentality:0},healthRecoveryPerPulse:0,manaRecoveryPerPulse:0};
+  return defaultTestPanel({
+    physicalAttack:0,magicAttack:0,baseDefense,defenseRate,maxHealth:1000,maxMana:100,
+    hitBase:0,hitBonus:0,evasionBase:0,evasionBonus:0,criticalRate:0,criticalResistance:0,
+    criticalDamage:0,criticalDamageResistance:0,weaponBlock:0,shieldBlock:0,physicalResistance:0,
+    baseMagicResistance:0,offhandShield:false,
+  });
 }
 
 function fixture({rate=275,protector=true,health=1000}={}){
   const conditions=new CombatConditions();
   const hits:{targetId:string;damage:number}[]=[];
-  const members=new Map<string,Record<string,unknown>>();
+  const members=new Map<string,TestMemberFixture>();
+  const pendingDefeats=new Set<string>();
   const addMember=(id:string,defense:number,defenseRate:number)=>{
-    const member={level:10,classId:'priest',player:{health,mana:0},panel:panel(defense,defenseRate),
-      setHealth:(value:number)=>{member.player.health=value;},setMana:()=>{},setCombatResourceCapacity:()=>{},setCombatResourceLimits:()=>{},clearCombatResourceLimits:()=>{},
-      bag:{equipmentFor:()=>({}),get:()=>undefined}};
+    const member=createTestMember({
+      id,level:10,classId:'priest',health,maxHealth:1000,mana:0,maxMana:100,
+      panel:panel(defense,defenseRate),
+    });
     members.set(id,member);
     return member;
   };
   const target=addMember('target',0,0),guard=addMember('guard',100,0);
-  const host=Object.setPrototypeOf({
-    conditions,arena:[],hero:{level:10},fallen:new Set<string>(),pendingDefeats:new Set<string>(),
-    hitResolution:new CombatHitResolution(),
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
-    aiSkillCostCache:new Map(),
-    memberOf:(id:string)=>members.get(id),partyPassives:()=>[],
-    actorAttribute:(id:string,key:string)=>id==='target'&&key==='damageTransferPerThousand'?rate:0,
-    settleHit:(event:{targetId:string},hit:{damage:number})=>{
-      if(conditions.canReceiveDamage(event.targetId))hits.push({targetId:event.targetId,damage:hit.damage});
+  const harness=createCombatTestHarness({
+    battleCatalog:catalog,conditions,hitResolution:new CombatHitResolution(),
+    hero:target,members,
+    activeParty:()=>['target','guard'],
+    withThreat:false,
+    settlementOverrides:{
+      isPendingDefeat:id=>pendingDefeats.has(id),
     },
-    movement:{position:()=>({x:0,y:0})},
-  },WorldCombat.prototype);
+  });
+  harness.stats.actorAttribute=(id,key)=>id==='target'&&key==='damageTransferPerThousand'?rate:0;
+  harness.settlement.settleHit=(event,hit)=>{
+    if(conditions.canReceiveDamage(event.targetId))hits.push({targetId:event.targetId,damage:hit.damage});
+  };
   if(protector)conditions.applyBuff('target','holy-sacrifice',0,
-    buffUnit.ranks[0]!.effect as never,'guard');
+    buffUnit.ranks[0]!.effect as unknown as BattleBuffEffect,'guard');
   const hit:PhysicalHit={kind:'hit',damage:100};
-  const run=(damageKind:'physical'|'magic'= 'physical',damage=hit.damage,{casterId='attacker',targetId='target'}={})=>{
+  const run=(damageKind:'physical'|'magic'='physical',damage=hit.damage,{casterId='attacker',targetId='target'}={})=>{
     hit.damage=damage;
-    method('holySacrificeTransfer').call(host,{casterId,targetId},hit,damageKind);
+    harness.settlement.holySacrificeTransfer({casterId,targetId},hit,damageKind);
     return hit.damage;
   };
-  return {conditions,host,members,guard,target,hits,run,hit};
+  return {conditions,harness,pendingDefeats,members,guard,target,hits,run,hit};
 }
 
 test('physical transfer keeps the remainder on the victim and applies the protector defense',()=>{
@@ -115,22 +119,22 @@ test('a damage-immune protector swallows the transfer while the victim still kee
   const f=fixture();
   f.conditions.applyState('guard','damage-immune',1000);
   assert.equal(f.run('physical'),73);
-  assert.deepEqual(f.hits,[]);
+  assert.equal(f.hits.length,0);
 });
 
 test('physical needs a product of at least one thousand and a strictly smaller transfer',()=>{
   const small=fixture();
   assert.equal(small.run('physical',1),1,'1 点伤害乘 275 不足 1000，整次不转移');
-  assert.deepEqual(small.hits,[]);
+  assert.equal(small.hits.length,0);
   const whole=fixture({rate:1000});
   assert.equal(whole.run('physical',100),100,'转移量等于主伤害时余量为 0，整次不转移');
-  assert.deepEqual(whole.hits,[]);
+  assert.equal(whole.hits.length,0);
 });
 
 test('magic allows a zero transfer and reads the magic resistance instead of the physical one',()=>{
   const zero=fixture();
   assert.equal(zero.run('magic',1),1,'0 点转移不改主伤');
-  assert.deepEqual(zero.hits,[]);
+  assert.equal(zero.hits.length,0);
   const f=fixture();
   f.members.get('guard')!.panel={...panel(100,0),baseMagicResistance:500};
   assert.equal(f.run('magic'),73);
@@ -142,19 +146,20 @@ test('magic allows a zero transfer and reads the magic resistance instead of the
 });
 
 test('no protector, a departed protector, or no buff leaves the main damage alone',()=>{
-  for(const build of [()=>fixture({protector:false}),()=>{const f=fixture();f.host.fallen.add('guard');return f;},
-    ()=>{const f=fixture();f.host.pendingDefeats.add('guard');return f;}]){
+  for(const build of [()=>fixture({protector:false}),()=>{const f=fixture();f.harness.fallen.add('guard');return f;},
+    ()=>{const f=fixture();f.pendingDefeats.add('guard');return f;}]){
     const f=build();
     assert.equal(f.run('physical'),100);
-    assert.deepEqual(f.hits,[]);
+    assert.equal(f.hits.length,0);
   }
 });
 
 test('a protector at zero health still absorbs while it is awaiting defeat',()=>{
   const f=fixture();
-  f.members.get('guard')!.player={health:0,mana:0};
-  f.host.hitResolution.run(()=>{
-    f.host.hitResolution.deferDefeat('guard',()=>{});
+  f.members.get('guard')!.player.health=0;
+  f.members.get('guard')!.player.mana=0;
+  f.harness.hitResolution.run(()=>{
+    f.harness.hitResolution.deferDefeat('guard',()=>{});
     assert.equal(f.run('physical'),73);
   });
   assert.deepEqual(f.hits,[{targetId:'guard',damage:19}]);
@@ -163,8 +168,8 @@ test('a protector at zero health still absorbs while it is awaiting defeat',()=>
 test('the transfer never re-enters the success chain of the protector',()=>{
   const f=fixture();
   const reactions:string[]=[];
-  f.host.react=(event:{kind:string;ownerId:string})=>reactions.push(`${event.kind}:${event.ownerId}`);
-  f.host.settleHit=(event:{targetId:string})=>reactions.push(`settle:${event.targetId}`);
+  f.harness.settlement.react=event=>reactions.push(`${event.kind}:${event.ownerId}`);
+  f.harness.settlement.settleHit=event=>reactions.push(`settle:${event.targetId}`);
   assert.equal(f.run('physical'),73);
   assert.deepEqual(reactions,['settle:guard']);
 });
@@ -172,7 +177,7 @@ test('the transfer never re-enters the success chain of the protector',()=>{
 
 function pulseFixture(){
   const conditions=new CombatConditions(),pulses:{step:number;effect:string}[]=[];
-  const effect=buffUnit.ranks[0]!.effect as BattleBuffEffect;
+  const effect=buffUnit.ranks[0]!.effect as unknown as BattleBuffEffect;
   const apply=()=>conditions.applyBuff('ally','holy-sacrifice',1,effect,'guard');
   apply();
   const advance=(steps:number,step:number)=>conditions.update(steps*60,tick=>{
@@ -184,19 +189,19 @@ function pulseFixture(){
 test('Holy Sacrifice pulses after each tenth age increment, exactly fifteen pairs before expiry',()=>{
   const run=pulseFixture();
   for(let step=1;step<=9;step++)run.advance(1,step);
-  assert.deepEqual(run.pulses,[]);
+  assert.equal(run.pulses.length,0);
   for(let step=10;step<=151;step++)run.advance(1,step);
   assert.deepEqual(run.pulses,Array.from({length:15},(_,i)=>(i+1)*10)
     .flatMap(step=>['starburst-gold','sacrifice-swoosh'].map(effect=>({step,effect}))));
   assert.equal(run.conditions.snapshot('ally').length,1,'寿命含年龄 150 这一处理步');
   run.advance(1,152);
-  assert.deepEqual(run.conditions.snapshot('ally'),[]);
+  assert.equal(run.conditions.snapshot('ally').length,0);
   assert.equal(run.pulses.length,30,'到期步不再生成效果');
 });
 
 test('catch-up ticks and refreshing Holy Sacrifice preserve its delayed first pulse',()=>{
   const bulk=pulseFixture();bulk.advance(152,152);
-  assert.equal(bulk.pulses.length,30);assert.deepEqual(bulk.conditions.snapshot('ally'),[]);
+  assert.equal(bulk.pulses.length,30);assert.equal(bulk.conditions.snapshot('ally').length,0);
   const run=pulseFixture();run.advance(9,9);assert.equal(run.apply(),true);
   run.advance(9,18);assert.equal(run.pulses.length,0,'刷新后重新等待十步');
   run.advance(1,19);assert.deepEqual(run.pulses.map(pulse=>pulse.effect),['starburst-gold','sacrifice-swoosh']);
@@ -206,7 +211,7 @@ test('ordinary periodic buffs retain their age-zero first pulse',()=>{
   const conditions=new CombatConditions(),steps:number[]=[];
   const {pulseAfterAgeIncrement:_,...timing}=buffUnit.ranks[0]!.effect.simulationFrames;
   const effect={...buffUnit.ranks[0]!.effect,simulationFrames:timing,
-    periodic:[{kind:'fixed-damage',amount:1}]} as BattleBuffEffect;
+    periodic:[{kind:'fixed-damage',amount:1}]} as unknown as BattleBuffEffect;
   conditions.applyBuff('ally','holy-sacrifice',1,effect,'guard');
   for(let step=1;step<=152;step++)conditions.update(60,()=>steps.push(step));
   assert.deepEqual(steps,Array.from({length:16},(_,i)=>1+i*10));

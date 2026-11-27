@@ -1,17 +1,17 @@
 import {dispatchFrame} from './support/combat-driver.ts';
 import {CombatCooldownStore} from '../src/domain/combat-cooldowns.ts';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import {registerHooks} from 'node:module';
 import test from 'node:test';
-import type {BattleCatalog,NumericCombatUnit} from '../src/domain/battle.ts';
+import type {NumericCombatUnit} from '../src/domain/battle.ts';
 import {actionDamage} from '../src/domain/action-damage.ts';
 import {CombatConditions} from '../src/domain/combat-conditions.ts';
 import {CombatController,resolveCueTargets,type Combatant,type CombatPort,type SkillUnitHit} from '../src/domain/combat.ts';
 import type {PhysicalFighter,PhysicalHit} from '../src/domain/physical-hit.ts';
 import type {CombatActorAttributes} from '../src/domain/combat-damage-source.ts';
+import type {CombatThreatSystem} from '../src/domain/combat-threat-system.ts';
+import {createCombatTestHarness,createTestEnemy,createTestMember,loadBattleCatalog} from './support/combat-test-harness.ts';
 
-const catalog=JSON.parse(readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')) as BattleCatalog;
+const catalog=loadBattleCatalog();
 const skill=catalog.skills['curse-of-screams'],action=skill.action!,units=action.combatUnits!;
 const damage=units[0],buff=units[1];
 if(damage.effect!=='physical'||buff.effect!=='buff')throw new Error('Curse of Screams units missing');
@@ -21,30 +21,38 @@ const primary={strength:0,dexterity:0,vitality:0,intelligence:0,mentality:0};
 const base:PhysicalFighter={level:10,physicalAttack:201,magicAttack:303,maxHealth:10000,hitBase:100,hitBonus:0,
   evasionBase:0,evasionBonus:0,criticalRate:0,criticalResistance:0,criticalDamage:0,criticalDamageResistance:0,
   weaponBlock:0,shieldBlock:0,physicalResistance:0,magicResistance:0};
-const actor=(id:string,x=16,y=0,team='enemy'):Combatant=>({id,team,position:{x,y},bounds:{x:-4,y:-4,width:8,height:8}});
-const hook=registerHooks({resolve(specifier,context,next){return specifier==='phaser'
-  ?{url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true}
-  :next(specifier,context);}});
-const {WorldCombat}=await import('../src/scenes/world-combat.ts');
-const {CombatPresenter}=await import('../src/rendering/combat-presenter.ts');hook.deregister();
+const actor=(id:string,x=16,y=0,team:Combatant['team']='hostile'):Combatant=>({id,team,position:{x,y},bounds:{x:-4,y:-4,width:8,height:8}});
 
 function fixture(targets:Combatant[]=[]){
   const caster=actor('caster',0,0,'party'),actors=new Map([caster,...targets].map(actor=>[actor.id,actor]));
   const stats=new Map(targets.map(actor=>[actor.id,{...base}]));
   const conditions=new CombatConditions(),hits:{event:SkillUnitHit;hit:PhysicalHit}[]=[],taunts:string[]=[],effects:string[]=[],attempts:SkillUnitHit[]=[];
-  const member={level:10,panel:{...base,attributes:primary},player:{health:10000,maxHealth:10000,mana:100,maxMana:100}};
-  const host=Object.setPrototypeOf({hero:member,conditions,pendingDefeats:new Set(),
-    arena:targets.map(actor=>({key:actor.id,definition:{}})),threat:{taunt:(_source:string,target:string)=>taunts.push(target)},
-    memberOf:(id:string)=>id==='caster'?member:undefined,partyPassives:()=>[],
-    partyFighter:()=>conditions.fighter('caster',member.panel),enemyFighter:(id:string)=>conditions.fighter(id,stats.get(id)!),
-    roster:{isPresent:()=>true,enemySnapshot:(id:string)=>stats.get(id)},combatant:(id:string)=>actors.get(id),
-    resolveHitReactions:()=>{},settleHit:(event:SkillUnitHit,hit:PhysicalHit)=>hits.push({event,hit}),dropMana:()=>{},
-    applyStateConsequences:()=>{},syncCombatResourceLimits:()=>{},
-  },WorldCombat.prototype);
-  const presenter=Object.setPrototypeOf({pose:()=>{},visualEffect:(cue:{effect:string})=>effects.push(cue.effect),
-    visual:(id:string)=>actors.has(id)?{container:{active:true,...actors.get(id)!.position}}:undefined},CombatPresenter.prototype);
+  const member=createTestMember({id:'caster',level:10,health:10000,maxHealth:10000,mana:100,maxMana:100,panel:{...base,attributes:primary}});
+  const enemyDef=catalog.enemies.find(enemy=>enemy.acceptsBuffs!==false)!;
+  const enemies=new Map(targets.map(target=>[target.id,createTestEnemy({key:target.id,definition:enemyDef,health:10000,maxHealth:10000,level:10})]));
+  const harness=createCombatTestHarness({
+    battleCatalog:catalog,conditions,hero:member,members:new Map([['caster',member]]),enemies,
+    activeParty:()=>['caster'],
+    combatant:id=>actors.get(id),combatants:()=>[...actors.values()],
+    withThreat:false,
+    statsOverrides:{
+      enemySnapshot:id=>{
+        const s=stats.get(id);
+        return s?{...s,magicAttack:s.magicAttack??0,magicResistance:s.magicResistance??0,id:'enemy',name:'enemy',sceneLevel:false,elite:false,partySize:1,health:10000,maxHealth:s.maxHealth??10000,mana:0,maxMana:100,
+          defense:0,defenseRate:1000,physicalResistanceBonus:s.physicalResistance,hitRate:100,evasionRate:0,baseExperience:0,experience:0}:undefined;
+      },
+    },
+    settlementOverrides:{
+      threat:{taunt:(_source:string,target:string)=>taunts.push(target)} as unknown as CombatThreatSystem,
+      onDropMana:()=>{},
+    },
+  });
+  harness.settlement.resolveHitReactions=()=>{};
+  harness.settlement.settleHit=(event,hit)=>hits.push({event:event as SkillUnitHit,hit});
+  const presenter={pose:()=>{},visualEffect:(cue:{effect:string})=>effects.push(cue.effect),
+    visual:(id:string)=>actors.has(id)?{container:{active:true,...actors.get(id)!.position}}:undefined};
   let frame=(_index:number)=>{},spent=0,moves=0;
-  const unit=(hit:SkillUnitHit)=>Reflect.get(WorldCombat.prototype,'skillUnit').call(host,hit);
+  const unit=(hit:SkillUnitHit)=>harness.settlement.skillUnit(hit);
   const port:CombatPort={cooldowns:new CombatCooldownStore(()=>0).forActor('caster'),actor:id=>actors.get(id),candidates:()=>[...actors.values()],facing:()=> 'west',
     moveToward:()=>{moves++;},stop:()=>{},canStand:()=>true,relocate:()=>{},clearEffects:()=>{},
     canSpendMana:()=>true,spendMana:cost=>{spent+=cost;return true;},
@@ -52,10 +60,10 @@ function fixture(targets:Combatant[]=[]){
     frame:(playback,index,contact,ready)=>dispatchFrame(presenter,playback,index,contact,ready),
     unit:hit=>{attempts.push(hit);return unit(hit);}};
   const combat=new CombatController('caster',null,port);
-  return {host,member,stats,conditions,hits,taunts,effects,attempts,actors,unit,combat,
+  return {harness,member,stats,conditions,hits,taunts,effects,attempts,actors,unit,combat,
     start:()=>combat.requestManualSkill({id:skill.id,action,level:1,manaCost:40}),
     fire:()=>frame(event.frame),counts:()=>({spent,moves}),
-    attributes:(id:string)=>Reflect.get(WorldCombat.prototype,'actorAttributes').call(host,id) as CombatActorAttributes};
+    attributes:(id:string)=>harness.stats.actorAttributes(id) as CombatActorAttributes};
 }
 
 test('all eight curse ranks preserve weighted damage and reduce the two raw attack attributes',()=>{

@@ -7,7 +7,7 @@
 - 角色/移动：`characters.ts`、`arcade-movement.ts`、`movement-world.ts`、`movement-interpolation.ts`、`character-visibility.ts`、`name-banner.ts`、`control-skin.ts`、`depths.ts`。
 - 地图/资源：`map-layers.ts`、`map-assets.ts`、`prop-atlas.ts`、`scene-assets.ts`、`character-atlas.ts`、`story-map-view.ts`、`story-minimap.ts`。
 - 资源所有权：`appearance-ownership.ts`、`texture-lifecycle.ts`。
-- 战斗表现：`combat-presenter.ts`、`combat-effects.ts`、`combat-feedback.ts`、`combat-outcomes.ts`、`combat-assets.ts`、`combat-asset-descriptors.ts`、`resident-combat-assets.ts`、`combat-visual-coverage.ts`、`buff-loop-renderer.ts`、`state-markers.ts`、`status-color.ts`、`status-hud.ts`、`overhead-status.ts`、`target-focus.ts`、`target-focus-assets.ts`、`target-focus-pulse.ts`。
+- 战斗表现：`combat-presenter.ts`、`combat-effects.ts`、`combat-feedback.ts`、`combat-outcomes.ts`、`combat-assets.ts`、`combat-asset-descriptors.ts`、`resident-combat-assets.ts`、`combat-status-visuals.ts`、`combat-visual-coverage.ts`、`buff-loop-renderer.ts`、`state-markers.ts`、`status-color.ts`、`status-hud.ts`、`overhead-status.ts`、`target-focus.ts`、`target-focus-assets.ts`、`target-focus-pulse.ts`（`combat-status-visuals.ts` 的 `CombatStatusVisuals` 承担目标焦点脉冲、敌人点击矩形 `enemyTapRect`、头顶状态条目、Buff 持续特效与状态标记的帧同步）。
 - 剧情/HUD/其他：`story-presenter.ts`、`hud.ts`、`action-controls.ts`、`ground-loot.ts`、`pickup-messages.ts`、`quest-marker.ts`、`wardrobe.ts`、`outfit-pool.ts`、`composition-budget.ts`、`wardrobe-cache.ts`、`effects.ts`、`effect-animations.ts`、`effect-colors.ts`、`blend-modes.ts`、`webgl-recovery.ts`。
 
 ## 规则

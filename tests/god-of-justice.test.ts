@@ -1,16 +1,16 @@
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import {registerHooks} from 'node:module';
 import test from 'node:test';
-import type {BattleCatalog} from '../src/domain/battle.ts';
+import {combatFollowUp} from '../src/domain/combat-follow-ups.ts';
+import {CombatRuntime} from '../src/domain/combat-runtime.ts';
+import type {Combatant} from '../src/domain/combatant.ts';
+import {
+  createCombatTestHarness,
+  createTestMember,
+  loadBattleCatalog,
+  ZERO_PRIMARY_ATTRIBUTES,
+} from './support/combat-test-harness.ts';
 
-const phaser=registerHooks({resolve(specifier,context,next){
-  return specifier==='phaser'?{url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true}:next(specifier,context);
-}});
-const {WorldCombat}=await import('../src/scenes/world-combat.ts');phaser.deregister();
-const method=(name:string)=>Reflect.get(WorldCombat.prototype,name);
-
-const catalog=JSON.parse(readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')) as BattleCatalog;
+const catalog=loadBattleCatalog();
 const thresholds=[170,230,270,290,310,330,350,370];
 
 test('eight ranks carry the trigger chance and no fallback action is exported',()=>{
@@ -24,39 +24,55 @@ test('eight ranks carry the trigger chance and no fallback action is exported',(
 
 /** 只装配判定要用到的部分：已学等级、施法者与敌人、被替换的单元执行和定时器。 */
 function fixture(level=1,{celestial}:{celestial?:number}={}){
-  const levels:{[id:string]:number}={ 'god-of-justice':level };
+  const levels:Record<string,number>={'god-of-justice':level};
   if(celestial!==undefined)levels['celestial-lightning']=celestial;
-  const draft=()=>({levels:{...levels}});
-  const member={classId:'priest',panel:{attributes:{strength:0,dexterity:0,vitality:0,intelligence:0,mentality:0}},skills:{draft}};
+  const member=createTestMember({
+    id:'player',classId:'priest',skillLevels:levels,
+    panel:{attributes:{...ZERO_PRIMARY_ATTRIBUTES}},
+  });
   const casts:{cueIndex:number;targetId:string;id:string;level:number}[]=[];
   const castRows=()=>casts.map(cast=>[cast.cueIndex,cast.targetId,cast.id,cast.level] as const);
   const strikes:{casterId:string;count:number}[]=[];
   const timers:{ms:number;callback:()=>void}[]=[];
-  const actor=(id:string,x:number)=>({id,team:id==='player'?'party':'hostile',position:{x,y:0},bounds:{x:-4,y:-4,width:8,height:8}});
-  const roster=[actor('player',0),actor('enemy',64)];
-  const host=Object.setPrototypeOf({
-    app:{battleCatalog:catalog,session:{skills:{draft}}},
-    memberOf:(id:string)=>id==='player'?member:undefined,
-    combatant:(id:string)=>roster.find(entry=>entry.id===id),
+  const actor=(id:string,x:number):Combatant=>({id,team:id==='player'?'party':'hostile',position:{x,y:0},bounds:{x:-4,y:-4,width:8,height:8}});
+  let roster=[actor('player',0),actor('enemy',64)];
+  const runtime=new CombatRuntime(()=>0);
+  runtime.schedule=(_owner,frames,callback)=>{timers.push({ms:frames*60,callback});return ()=>{};};
+  const harness=createCombatTestHarness({
+    battleCatalog:catalog,hero:member,members:new Map([['player',member]]),
+    activeParty:()=>['player'],
+    combatant:id=>roster.find(entry=>entry.id===id),
     combatants:()=>roster,
-    partyBuffSlots:()=>[],
-    actorAttribute:()=>0,
-    healScoreFor:()=>undefined,
-    healCandidates:()=>[],
-    presenterFor:()=>({playCasterStrikes:(casterId:string,strikes0:{offsets:unknown[]})=>
-      strikes.push({casterId,count:strikes0.offsets.length}),showUnitFeedback:()=>{}}),
-    skillUnit:(event:{cueIndex:number;targetId:string;skill:{id:string;level:number}})=>{
-      casts.push({cueIndex:event.cueIndex,targetId:event.targetId,id:event.skill.id,level:event.skill.level});
-      return 'success';
+    withThreat:false,
+    settlementOverrides:{
+      followUp:(kind,casterId,targetId)=>{
+        combatFollowUp(kind,casterId,targetId,{
+          catalog,
+          runtime,
+          loadout:id=>{
+            const current=harness.stats.reactionSkills(id);
+            return current?{classId:current.classId,skills:current.loadout}:undefined;
+          },
+          random:()=>Math.random(),
+          active:()=>true,
+          actor:id=>roster.find(entry=>entry.id===id),
+          casterStrikes:(casterId,strikes0)=>strikes.push({casterId,count:strikes0.offsets.length}),
+          flight:{actor:id=>roster.find(entry=>entry.id===id),emit:()=>{},effect:()=>{}},
+          execute:(owner,target,skillId,skillLevel,action,origin)=>
+            harness.settlement.runSkillUnitSequence({casterId:owner,skillId,level:skillLevel,action,origin,selectedTargetId:target}),
+        });
+      },
     },
-    dispatcherFor:()=>({casterStrikes:(casterId:string,strikes0:{offsets:unknown[]})=>strikes.push({casterId,count:strikes0.offsets.length})}),
-    runtime:{schedule:(_owner:string,frames:number,callback:()=>void)=>{timers.push({ms:frames*60,callback});return ()=>{};}},
-    scene:{time:{delayedCall:(ms:number,callback:()=>void)=>{timers.push({ms,callback});return {remove(){}};}}},
-    closed:false,defeated:false,
-  },WorldCombat.prototype);
-  const fire=(casterId='player')=>method('godOfJusticeReaction').call(host,casterId,'enemy');
+  });
+  harness.stats.actorAttribute=()=>0;
+  harness.settlement.skillUnit=event=>{
+    casts.push({cueIndex:event.cueIndex,targetId:event.targetId,id:event.skill.id,level:event.skill.level??1});
+    return 'success';
+  };
+  const fire=(casterId='player')=>harness.settlement.godOfJusticeReaction(casterId,'enemy');
   const runTimers=()=>{const pending=[...timers];timers.length=0;for(const timer of pending)timer.callback();};
-  return {host,fire,casts,castRows,strikes,timers,runTimers};
+  const removeEnemy=()=>{roster=roster.filter(entry=>entry.id!=='enemy');};
+  return {harness,fire,casts,castRows,strikes,timers,runTimers,removeEnemy};
 }
 
 /** 让判定抽到第 n 点（1…999）：原版掷整数 1…999，严格小于阈值才触发。 */
@@ -68,7 +84,7 @@ test('the threshold gates the roll for every rank',()=>{
     for(const [index,threshold] of thresholds.entries()){
       const run=fixture(index+1,{celestial:1});
       Math.random=roll(threshold);
-      run.fire();assert.deepEqual(run.strikes,[],`${index+1} 级阈值 ${threshold}：抽到它本身不触发`);
+      run.fire();assert.equal(run.strikes.length,0,`${index+1} 级阈值 ${threshold}：抽到它本身不触发`);
       Math.random=roll(threshold-1);
       run.fire();assert.equal(run.strikes.length,1,`${index+1} 级差一点就触发`);
     }
@@ -107,8 +123,7 @@ test('a departed target keeps the caster units on the caster only',()=>{
   const original=Math.random;
   try{
     const run=fixture(1,{celestial:1});
-    run.host.combatant=(id:string)=>id==='player'?{id:'player',team:'party',position:{x:0,y:0},bounds:{x:-4,y:-4,width:8,height:8}}:undefined;
-    run.host.combatants=()=>[run.host.combatant('player')!];
+    run.removeEnemy();
     Math.random=roll(1);
     run.fire();
     run.runTimers();
@@ -118,17 +133,21 @@ test('a departed target keeps the caster units on the caster only',()=>{
 
 test('only a critical from Divine Strike or Hammer of Wrath reaches the roll',()=>{
   const seen:string[]=[];
-  const host={godOfJusticeReaction:(caster:string,target:string)=>seen.push(`${caster}:${target}`),
-    physicalSuccessEquipmentProcs:()=>{},
-    lightningOfHellReaction:()=>{},holySacrificeTransfer:()=>{},reactToBuff:()=>{},react:()=>{},partySide:()=>false,
-    summonOwnerReactions:()=>{},disturbanceReaction:()=>{},actorAttribute:()=>0,equipmentRecovery:()=>({lifeDrainPerThousand:0}),attackProc:()=>{},
-    fallen:new Set<string>(),pendingDefeats:new Set<string>(),arena:[],
-    conditions:{activeBuffReactions:()=>[],removeState:()=>{},snapshot:()=>[]}};
+  const harness=createCombatTestHarness({battleCatalog:catalog,withThreat:false});
+  harness.settlement.godOfJusticeReaction=(caster,target)=>seen.push(`${caster}:${target}`);
+  harness.settlement.physicalSuccessEquipmentProcs=()=>{};
+  harness.settlement.lightningOfHellReaction=()=>{};
+  harness.settlement.holySacrificeTransfer=()=>{};
+  harness.settlement.reactToBuff=()=>{};
+  harness.settlement.react=()=>{};
+  harness.settlement.summonOwnerReactions=()=>{};
+  harness.settlement.disturbanceReaction=()=>{};
+  harness.settlement.attackProc=()=>{};
   const cases=[['divine-strike','critical',1],['hammer-of-wrath','critical',1],['divine-strike','hit',0],
     ['firestorm','critical',0],['basic-attack','critical',0]] as const;
   for(const [actionId,kind,expected] of cases){
     seen.length=0;
-    method('resolveHitReactions').call(host,{casterId:'priest',targetId:'enemy'},{kind,damage:10},'physical',actionId,{});
+    harness.settlement.resolveHitReactions({casterId:'priest',targetId:'enemy'},{kind,damage:10},'physical',actionId);
     assert.equal(seen.length,expected,`${actionId}/${kind}`);
   }
 });

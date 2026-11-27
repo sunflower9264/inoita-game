@@ -1,25 +1,17 @@
 import {dispatchFrame} from './support/combat-driver.ts';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import {registerHooks} from 'node:module';
 import test from 'node:test';
-import type {ActionDispatchDefinition,BattleCatalog,NumericCombatUnit,ResolvedBasicAttack,SkillAction,SkillEvent} from '../src/domain/battle.ts';
+import type {ActionDispatchDefinition,NumericCombatUnit,ResolvedBasicAttack,SkillAction,SkillEvent} from '../src/domain/battle.ts';
 import {resolveBasicAttack} from '../src/domain/basic-attack.ts';
-import type {ActionPlayback,CombatController,CombatPort,SkillUnitHit} from '../src/domain/combat.ts';
+import {CombatController,type ActionPlayback,type CombatPort,type Combatant,type SkillUnitHit} from '../src/domain/combat.ts';
 import {CombatConditions} from '../src/domain/combat-conditions.ts';
 import {CombatCooldownStore} from '../src/domain/combat-cooldowns.ts';
 import {CombatHitResolution} from '../src/domain/combat-hit-resolution.ts';
-import {PendingEnemyDefeats} from '../src/domain/combat-outcomes.ts';
 import type {Point} from '../src/domain/navigation.ts';
 import type {PhysicalFighter} from '../src/domain/physical-hit.ts';
+import {createCombatTestHarness,createTestEnemy,createTestMember,loadBattleCatalog,type TestMemberFixture} from './support/combat-test-harness.ts';
 
-const hook=registerHooks({resolve(specifier,context,next){return specifier==='phaser'
-  ?{url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true}
-  :next(specifier,context);}});
-const {WorldCombat}=await import('../src/scenes/world-combat.ts');
-const {CombatPresenter}=await import('../src/rendering/combat-presenter.ts');hook.deregister();
-const method=(name:string)=>Reflect.get(WorldCombat.prototype,name);
-const catalog=JSON.parse(readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')) as BattleCatalog;
+const catalog=loadBattleCatalog();
 const primary={strength:0,dexterity:0,vitality:0,intelligence:0,mentality:0};
 const damage:NumericCombatUnit&{effect:'physical'}={effect:'physical',source:'physicalAttack',attributeWeights:primary,
   ranks:[{fixedAddition:0,operation:{kind:'keep'}}]};
@@ -45,14 +37,13 @@ function fixture(action=skillAction(),basic?:ResolvedBasicAttack){
     layers:[{alpha:1,setAlpha(value:number){this.alpha=value;return this;}}]});
   const visuals=new Map([['player',visual(0)],['enemy',visual(16)],['other',visual(24)]]);
   let learnedRank=0;
-  const configuration={draft:()=>({levels:{'dark-sense':learnedRank},shortcuts:[]})};
-  const member={level:1,classId:'assassin',skills:configuration,panel:{...base,maxMana:100,attributes:{...primary}},player:{health:30,maxHealth:10000,mana:100,maxMana:100},
-    bag:{equipmentFor:()=>({}),equipmentItems:()=>({}),get:()=>undefined},
-    setCombatResourceCapacity(key:'maxHealth'|'maxMana',value:number){this.player[key]=value;},
-    setHealth(value:number){this.player.health=Math.max(0,Math.min(this.player.maxHealth,value));},
-    setCombatResourceLimits(health:number,mana:number){this.player.maxHealth=health;this.player.maxMana=mana;},
-    spendMana:()=>true};
-  const enemyHealth=new Map([['enemy',10000],['other',10000]]);
+  const configuration={get version(){return learnedRank;},resetVersion:0,draft:()=>({levels:{'dark-sense':learnedRank}})};
+  const member=createTestMember({id:'player',classId:'assassin',level:1,health:30,maxHealth:10000,mana:100,maxMana:100,
+    panel:{...base,maxHealth:10000,maxMana:100,attributes:{...primary}}});
+  member.skills=configuration;
+  const members=new Map<string,TestMemberFixture>([['player',member]]);
+  const enemies=new Map(['enemy','other'].map(key=>[key,createTestEnemy({key,definition:catalog.enemies[0],health:10000,maxHealth:10000})]));
+  let controlledId='player';
   const buffApplications:{id:string;sourceId?:string;strength:number;health:number}[]=[];
   const applyBuff=conditions.applyBuff.bind(conditions);
   conditions.applyBuff=(...args)=>{
@@ -69,40 +60,46 @@ function fixture(action=skillAction(),basic?:ResolvedBasicAttack){
   let react=()=>{},afterUnit:((hit:SkillUnitHit)=>void)=()=>{};
   const removeState=conditions.removeState.bind(conditions);
   conditions.removeState=(id,state)=>{if(state==='stealthed')order.push('remove-stealth');return removeState(id,state);};
-  const host=Object.setPrototypeOf({
-    playAction:(presenter:{play:(...args:unknown[])=>()=>void},...args:unknown[])=>presenter.play(...args),
-    presentActionFrame:(presenter:object,...args:Parameters<typeof dispatchFrame> extends [object,...infer Rest]?Rest:never)=>dispatchFrame(presenter,...args),
-    hero:member,conditions,hitResolution:resolution,fallen,pendingDefeats:new PendingEnemyDefeats(),
-    partyControllers:new Map(),partySkills:new Map(),soundedSkills:new WeakSet(),allies:[],
-    arena:['enemy','other'].map(key=>({key,definition:catalog.enemies[0],visual:visuals.get(key)})),
-    app:{battleCatalog:catalog,items:{dualWieldClasses:[]},session:{cooldowns:new CombatCooldownStore(()=>0),skills:configuration,party:{controlledId:'player'},isOneHitKill:()=>false},audio:{effect:(name:string)=>order.push(`sound:${name}`),
-      playerSkill:()=>order.push('automatic-sound')}},
-    scene:{facing:'east',refreshCombatTarget:()=>{},refreshCombatHud:()=>{},
-      events:{emit:(name:string)=>{if(name.startsWith('basic-attack-'))order.push(name);}}},
-    feedback:{startShake:()=>order.push('shake')},
-    memberOf:(id:string)=>id==='player'?member:undefined,
-    visualOf:(id:string)=>visuals.get(id),
-    movement:{position:(value:ReturnType<typeof visual>)=>({x:value.container.x,y:value.container.y}),
-      actor:()=>({shape:()=>({collision:box})}),stop:()=>{},canStand:()=>true,place:()=>{}},
-    partyPassives:()=>[],partyFighter:()=>conditions.fighter('player',member.panel),
-    enemyFighter:(id:string)=>conditions.fighter(id,base),equipmentAttack:()=>basic,
-    canSelectSkill:()=>true,skillManaCost:()=>0,
-    roster:{isPresent:()=>true,enemySnapshot:(id:string)=>({...base,health:enemyHealth.get(id),mana:0,maxMana:0}),
-      hasZeroHealth:(id:string)=>enemyHealth.get(id)===0,
-      setEnemyHealth:(id:string,value:number)=>enemyHealth.set(id,value)},
-    resolveHitReactions:()=>react(),showHit:(event:{targetId:string})=>order.push(`damage:${event.targetId}`),dropMana:()=>{},
-    memberDefeated:(id:string)=>{
-      assert.equal(resolution.isAwaitingDefeat(id),false);
-      order.push(`defeat:${id}`);fallen.add(id);conditions.remove(id);
-      host.app.session.party.controlledId='survivor';
-    },
-  },WorldCombat.prototype);
-  host.combatants=()=>[...visuals.keys()].flatMap(id=>{const actor=host.combatant(id);return actor?[actor]:[];});
-  host.runActionDispatch=(play:ActionPlayback,definition:ActionDispatchDefinition,work:()=>void)=>{
-    dispatches.push(definition);return method('runActionDispatch').call(host,play,definition,work);
+  const combatant=(id:string):Combatant|undefined=>{
+    if(fallen.has(id))return undefined;
+    const m=members.get(id);
+    if(m&&!m.alive&&!resolution.isAwaitingDefeat(id))return undefined;
+    const e=enemies.get(id);
+    if(e&&(!e.present||e.pendingDefeat))return undefined;
+    const v=visuals.get(id);
+    if(!v?.container.active)return undefined;
+    return {id,team:m?'party':'hostile',position:{x:v.container.x,y:v.container.y},bounds:box,states:conditions.activeStates(id),facing:'east'};
   };
-  const presenter=Object.setPrototypeOf({
-    scene:host.scene,pose:()=>{},visual:(id:string)=>visuals.get(id),candidates:()=>host.combatants(),
+  const combatants=():Combatant[]=>[...visuals.keys()].flatMap(id=>{const actor=combatant(id);return actor?[actor]:[];});
+  const harness=createCombatTestHarness({
+    battleCatalog:catalog,conditions,hitResolution:resolution,hero:member,members,enemies,
+    activeParty:()=>[...members.keys()],controlledId:()=>controlledId,
+    combatant,combatants,
+    memberActorDefinition:()=>catalog.classes[0].actor,
+    statsOverrides:{skillConfiguration:(_id,m)=>(m as unknown as TestMemberFixture).skills as never},
+    settlementOverrides:{
+      isFallen:id=>fallen.has(id),
+      isOneHitKill:()=>false,
+      onActionShake:()=>order.push('shake'),
+      onActionSound:(casterId,sound)=>{if(members.has(casterId))order.push(`sound:${sound}`);},
+      onShowHit:event=>order.push(`damage:${event.targetId}`),
+      onDropMana:()=>{},
+      onMemberDefeated:id=>{
+        assert.equal(resolution.isAwaitingDefeat(id),false);
+        order.push(`defeat:${id}`);fallen.add(id);conditions.remove(id);
+        controlledId='survivor';
+      },
+    },
+  });
+  if(basic)harness.stats.equipmentAttack=()=>basic;
+  harness.settlement.resolveHitReactions=()=>{react();};
+  const baseDispatch=harness.settlement.runActionDispatch.bind(harness.settlement);
+  const runActionDispatch=(play:{caster:Combatant;skill?:ActionPlayback['skill']},definition:ActionDispatchDefinition,work:()=>void,after?:()=>void)=>{
+    dispatches.push(definition);return baseDispatch(play,definition,work,after);
+  };
+  const presenter={
+    scene:{events:{emit:(name:string)=>{if(name.startsWith('basic-attack-'))order.push(name);}}},
+    pose:()=>{},visual:(id:string)=>visuals.get(id),candidates:combatants,
     visualEffect:(effect:{effect:string})=>order.push(`effect:${effect.effect}`),placedEffect:()=>{},
     play:(play:ActionPlayback,onFrame:(index:number)=>void,onComplete:()=>void)=>{
       playback=play;frame=onFrame;complete=onComplete;return ()=>{};
@@ -115,19 +112,30 @@ function fixture(action=skillAction(),basic?:ResolvedBasicAttack){
       order.push('launch');arrivals.push(arrive);
     },
     summon:()=>order.push('summon'),
-  },CombatPresenter.prototype);
-  const {controller,port}=method('createPartyController').call(host,'player',visuals.get('player'),presenter,basic??null) as {controller:CombatController;port:CombatPort};
-  const unit=port.unit!,contact=port.contact!;
-  port.unit=hit=>{attempts.push(hit);order.push(`unit:${hit.cueIndex}:${hit.targetId}`);const result=unit(hit);afterUnit(hit);return result;};
-  port.contact=hit=>{if(!hit.skillId)contacts.push(hit.targetId);contact(hit);};
-  return {host,conditions,resolution,order,fallen,member,enemyHealth,visuals,arrivals,attempts,contacts,dispatches,controller,
+  };
+  const port:CombatPort={
+    cooldowns:new CombatCooldownStore(()=>0).forActor('player'),
+    actor:combatant,candidates:combatants,facing:()=> 'east',
+    moveToward:()=>{},stop:()=>{},canStand:()=>true,relocate:()=>{},clearEffects:()=>{},
+    canSelectSkill:()=>true,manaCost:()=>0,canSpendMana:()=>true,spendMana:()=>true,
+    play:(play,onFrame,onComplete)=>presenter.play(play,onFrame,onComplete),
+    frame:(play,index,contactCb,unitsReady,areaContact)=>dispatchFrame(presenter,play,index,contactCb,unitsReady,undefined,
+      (definition,work,after)=>runActionDispatch(play,definition,work,after),areaContact),
+    prepareUnit:event=>harness.settlement.prepareSkillUnit(event),
+    unit:hit=>{attempts.push(hit);order.push(`unit:${hit.cueIndex}:${hit.targetId}`);const result=harness.settlement.skillUnit(hit);afterUnit(hit);return result;},
+    runUnitSequence:work=>resolution.run(work),
+    contact:hit=>{if(!hit.skillId)contacts.push(hit.targetId);harness.settlement.attackContact(hit);},
+  };
+  const controller=new CombatController('player',basic??null,port);
+  return {harness,conditions,resolution,order,fallen,member,members,enemyHealth:enemies,visuals,arrivals,attempts,contacts,dispatches,controller,
+    controlledId:()=>controlledId,runActionDispatch,
     learn:(rank:number)=>{learnedRank=rank;},buffApplications,
     frame:(index:number)=>frame(index),complete:()=>complete(),playback:()=>playback!,
     start:()=>controller.request(basic?undefined:skill,'enemy'),
     stealth:()=>conditions.applyState('player','stealthed',10000,'player'),
     unhide:()=>removeState('player','stealthed'),
     react:(callback:()=>void)=>{react=callback;},afterUnit:(callback:typeof afterUnit)=>{afterUnit=callback;},
-    reflect:()=>method('settleHit').call(host,{casterId:'enemy',targetId:'player'},{kind:'hit',damage:30},member),
+    reflect:()=>harness.settlement.settleHit({casterId:'enemy',targetId:'player'},{kind:'hit',damage:30}),
   };
 }
 
@@ -158,7 +166,7 @@ test('failed and empty Direct targets still finish units and caster effects befo
     run.frame(2);
     const tail=['unit:1:player','effect:dispatch-tail','shake','remove-stealth','sound:dispatch-sound'];
     assert.deepEqual(run.order.slice(-tail.length),tail);
-    assert.equal(run.enemyHealth.get('enemy'),10000);
+    assert.equal(run.enemyHealth.get('enemy')!.health,10000);
     run.frame(2);assert.equal(run.dispatches.length,1);
   }
 });
@@ -190,13 +198,13 @@ test('a lethal nested hit defers the real source death until the dispatch tail a
     assert.equal(run.resolution.isAwaitingDefeat('player'),true);
   });
   assert.equal(run.start(),'started');run.frame(2);
-  assert.equal(run.enemyHealth.get('enemy'),9900);
+  assert.equal(run.enemyHealth.get('enemy')!.health,9900);
   assert.deepEqual(run.order.slice(-7),['unit:1:player','effect:dispatch-tail','shake',
     'remove-stealth','dark-sense:player','sound:dispatch-sound','defeat:player']);
   assert.deepEqual(run.buffApplications,[{id:'player',sourceId:'player',strength:1009,health:0}]);
   assert.equal(run.conditions.hasBuff('player','dark-sense'),false);
   assert.equal(run.fallen.has('player'),true);assert.equal(run.member.player.health,0);
-  assert.equal(run.host.app.session.party.controlledId,'survivor');
+  assert.equal(run.controlledId(),'survivor');
 });
 
 test('basic direct contact happens inside Presenter dispatch and still works without dispatch metadata',t=>{
@@ -207,7 +215,7 @@ test('basic direct contact happens inside Presenter dispatch and still works wit
     if(hasDispatch)basic.dispatch=dispatch();else delete basic.dispatch;
     const run=fixture(skillAction(),basic);run.stealth();assert.equal(run.start(),'started');
     run.frame(basic.strikeFrame);
-    assert.deepEqual(run.contacts,['enemy']);assert.equal(run.enemyHealth.get('enemy'),9900);
+    assert.deepEqual(run.contacts,['enemy']);assert.equal(run.enemyHealth.get('enemy')!.health,9900);
     assert.equal(run.conditions.hasState('player','stealthed'),!hasDispatch);
     if(hasDispatch)assert.deepEqual(run.order.slice(-5),
       ['damage:enemy','effect:dispatch-tail','shake','remove-stealth','sound:dispatch-sound']);
@@ -240,12 +248,13 @@ test('Dark Sense reads its current learned rank after the action and remains abs
 
 test('a companion uses its own Dark Sense rank and a monster never borrows the controlled hero passive',()=>{
   const run=fixture();run.learn(8);
-  const companion={...run.member,skills:{draft:()=>({levels:{'dark-sense':3},shortcuts:[]})}};
-  run.host.memberOf=(id:string)=>id==='player'?run.member:id==='companion'?companion:undefined;
+  const companion=createTestMember({id:'companion',classId:'assassin',level:1,health:30,maxHealth:10000,mana:100,maxMana:100,
+    panel:{...base,maxHealth:10000,maxMana:100,attributes:{...primary}},skillLevels:{'dark-sense':3}});
+  run.members.set('companion',companion);
   for(const ownerId of ['companion','enemy']){
     run.conditions.applyState(ownerId,'stealthed',10000,ownerId);
-    const caster={id:ownerId,team:ownerId==='enemy'?'enemy':'party',position:{x:0,y:0},bounds:{x:0,y:0,width:8,height:8}};
-    method('runActionDispatch').call(run.host,{caster,facing:'east'},dispatch(),()=>{});
+    const caster:Combatant={id:ownerId,team:ownerId==='enemy'?'hostile':'party',position:{x:0,y:0},bounds:{x:0,y:0,width:8,height:8}};
+    run.runActionDispatch({caster},dispatch(),()=>{});
     assert.equal(run.conditions.hasState(ownerId,'stealthed'),false);
   }
   assert.deepEqual(run.buffApplications,[{id:'companion',sourceId:'companion',strength:1006,health:30}]);

@@ -1,5 +1,5 @@
 import {attackDistance,PIXELS_PER_DISTANCE_UNIT,targetDistance,targetScore} from './basic-attack.ts';
-import type {Combatant} from './combat.ts';
+import type {Combatant} from './combatant.ts';
 import type {Point} from './navigation.ts';
 import {MAX_SKILL_TARGETS} from './skill-unit-sequence.ts';
 

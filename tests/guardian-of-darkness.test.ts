@@ -1,28 +1,26 @@
 import {dispatchFrame} from './support/combat-driver.ts';
 import {CombatCooldownStore} from '../src/domain/combat-cooldowns.ts';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import {registerHooks} from 'node:module';
 import test from 'node:test';
-import type {BattleCatalog} from '../src/domain/battle.ts';
+import type {SkillEffectCue} from '../src/domain/battle.ts';
 import {CombatController,type Combatant,type CombatPort,type SkillUnitHit} from '../src/domain/combat.ts';
 import {CombatConditions} from '../src/domain/combat-conditions.ts';
 import {CombatHitResolution} from '../src/domain/combat-hit-resolution.ts';
 import {passiveModifiers,type PassiveModifier} from '../src/domain/passive-skills.ts';
 import {calculateEffectiveDefense,type PhysicalFighter} from '../src/domain/physical-hit.ts';
-import type {PartyBuffSlot} from '../src/domain/party-buff-targets.ts';
+import type {SkillUnitOutcome} from '../src/domain/skill-unit-sequence.ts';
+import {
+  createCombatTestHarness,
+  createTestEnemy,
+  createTestMember,
+  loadBattleCatalog,
+} from './support/combat-test-harness.ts';
 
-const hook=registerHooks({resolve(specifier,context,next){return specifier==='phaser'
-  ?{url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true}
-  :next(specifier,context);}});
-const {WorldCombat}=await import('../src/scenes/world-combat.ts');
-const {CombatPresenter}=await import('../src/rendering/combat-presenter.ts');hook.deregister();
-const catalog=JSON.parse(readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')) as BattleCatalog;
+const catalog=loadBattleCatalog();
 const action=catalog.skills['guardian-of-darkness'].action!;
 const unit=action.combatUnits![0];
 assert.equal(unit.effect,'buff');if(unit.effect!=='buff')throw new Error('Guardian must apply a buff');
 const ranks=unit.ranks;
-const method=(name:string)=>Reflect.get(WorldCombat.prototype,name);
 
 function fixture(){
   const conditions=new CombatConditions(),hitResolution=new CombatHitResolution();
@@ -30,40 +28,69 @@ function fixture(){
   const panel={baseDefense:100,defenseRate:500,physicalAttack:100,magicAttack:0,maxHealth:100,
     hitBase:100,hitBonus:0,evasionBase:0,evasionBonus:0,criticalRate:0,criticalResistance:0,
     criticalDamage:0,criticalDamageResistance:0,weaponBlock:0,shieldBlock:0,physicalResistance:0,magicResistance:0};
-  const members=new Map(['player','caster','third'].map(id=>[id,{level:10,player:{health:100},panel,
-    bag:{revision:0,equipmentFor:()=>({}),get:()=>undefined},clearCombatResourceLimits:()=>{}}]));
+  const activeIds=['player','caster','third'];
+  const members=new Map(activeIds.map(id=>[id,createTestMember({
+    id,level:10,health:100,maxHealth:100,panel,
+  })]));
   const visuals=new Map(['player','caster','third','summon'].map(id=>[id,{
     container:{active:true,x:0,y:0,setVisible:()=>{}},actor:{collision,clips:{}},layers:[],
   }]));
-  const party={activeIds:['player','caster','third'],get:(id:string)=>members.get(id)};
+  const enemies=new Map([['summon',createTestEnemy({
+    key:'summon',definition:{...catalog.enemies[0],id:'summon'},summonedBy:'player',
+  })]]);
   const order:string[]=[],attempts:SkillUnitHit[]=[];let passives:PassiveModifier[]=[];
-  const host=Object.setPrototypeOf({app:{session:{party,combatTick:0}},hero:members.get('player'),conditions,hitResolution,
-    roster:{presenceRevision:0,isPresent:()=>true},
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
-    aiSkillCostCache:new Map(),
-    scene:{facing:'east',tweens:{add:()=>({})}},pendingDefeats:new Set(),fallen:new Set(),
-    partyControllers:new Map(),deathTweens:new Map(),
-    allies:[{id:'caster',facing:'east',ai:{disable:()=>{}}},{id:'third',facing:'east',ai:{disable:()=>{}}}],
-    arena:[{key:'summon',definition:{id:'summon'},summonedBy:'player',facing:'east'}],
-    visualOf:(id:string)=>visuals.get(id),partyPassives:()=>passives,
-    movement:{position:(visual:{container:{x:number;y:number}})=>({x:visual.container.x,y:visual.container.y}),
-      actor:()=>({shape:()=>({collision})}),stop:()=>{},setEnabled:()=>{}},
-    syncCombatResourceLimits:()=>{},applyStateConsequences:()=>{},
-    showBuffApplication:()=>assert.fail('Guardian has no per-recipient application visual'),
-  },WorldCombat.prototype);
-  const actor=(id:string)=>method('combatant').call(host,id) as Combatant|undefined;
-  const candidates=()=>method('combatants').call(host) as Combatant[];
-  const slots=()=>method('partyBuffSlots').call(host) as readonly (PartyBuffSlot<Combatant>|undefined)[];
-  const presenter=Object.setPrototypeOf({pose:()=>{},candidates,visual:(id:string)=>visuals.get(id),
+  const actor=(id:string):Combatant|undefined=>{
+    if(enemies.get(id)?.pendingDefeat||(members.has(id)&&!activeIds.includes(id)))return undefined;
+    const visual=visuals.get(id);
+    if(!visual?.container.active||!visual.actor.collision)return undefined;
+    const member=members.get(id);
+    if(member&&!member.player.health&&!hitResolution.isAwaitingDefeat(id))return undefined;
+    const enemy=enemies.get(id);
+    return {
+      id,
+      team:member||(enemy?.summonedBy&&members.has(enemy.summonedBy))?'party':'hostile',
+      position:{x:visual.container.x,y:visual.container.y},
+      bounds:visual.actor.collision,
+      states:conditions.activeStates(id),
+      facing:'east',
+    };
+  };
+  const candidates=():Combatant[]=>[...activeIds,...enemies.keys()]
+    .flatMap(id=>{const entry=actor(id);return entry?[entry]:[];});
+  const harness=createCombatTestHarness({
+    battleCatalog:catalog,conditions,hitResolution,hero:members.get('player'),members,enemies,
+    activeParty:()=>activeIds,
+    combatant:actor,
+    combatants:candidates,
+    withThreat:false,
+    settlementOverrides:{
+      hasDisplay:id=>!!visuals.get(id)?.container.active,
+      onStateConsequences:undefined,
+      onBuffApplication:()=>assert.fail('Guardian has no per-recipient application visual'),
+    },
+  });
+  harness.stats.partyPassives=()=>passives;
+  const slots=()=>harness.settlement.partyBuffSlots();
+  const presenter={
+    pose:()=>{},candidates,visual:(id:string)=>visuals.get(id),
     visualEffect:(effect:{effect:string},_variant:string,target:Combatant)=>order.push(`fx:${effect.effect}:${target.id}`),
-  },CombatPresenter.prototype) as InstanceType<typeof CombatPresenter>;
+    showUnitFeedback(hit:SkillUnitHit,outcome:SkillUnitOutcome,cue:SkillEffectCue){
+      if(outcome==='skipped'||outcome==='failure'&&cue.unitFeedbackPolicy!=='always')return;
+      const list=candidates();
+      for(const visual of cue.effects){
+        const id=visual.recipient==='caster'?hit.casterId:hit.targetId;
+        const target=list.find(candidate=>candidate.id===id);
+        if(target)this.visualEffect(visual,visual.variant??'default',target);
+      }
+    },
+  };
   const begin=(level=1,casterId='caster')=>{
     let frame:(index:number)=>void=()=>{};
     const port:CombatPort={cooldowns:new CombatCooldownStore(()=>0).forActor(casterId),actor,candidates,partySlots:slots,facing:()=> 'east',moveToward:()=>{},stop:()=>{},
       canStand:()=>true,relocate:()=>{},clearEffects:()=>{},
       play:(_action,onFrame)=>{frame=onFrame;return ()=>{};},
       frame:(current,index,contact,ready)=>dispatchFrame(presenter,current,index,contact,ready),
-      unit:hit=>{attempts.push(hit);order.push(`buff:${hit.targetId}`);return method('skillUnit').call(host,hit);},
+      unit:hit=>{attempts.push(hit);order.push(`buff:${hit.targetId}`);return harness.settlement.skillUnit(hit);},
       runUnitSequence:work=>hitResolution.run(work),
       unitFeedback:(hit,outcome,cue)=>presenter.showUnitFeedback(hit,outcome,cue),
       contact:()=>assert.fail('Party buffs cannot create an enemy contact'),
@@ -72,9 +99,9 @@ function fixture(){
     assert.equal(controller.request({id:'guardian-of-darkness',action,level}),'started');
     return {frame:(index:number)=>frame(index),controller};
   };
-  return {host,members,visuals,party,conditions,hitResolution,order,attempts,actor,candidates,slots,begin,
+  return {harness,members,visuals,conditions,hitResolution,order,attempts,actor,candidates,slots,begin,
     cast:(level=1,casterId='caster')=>begin(level,casterId).frame(7),
-    fighter:(id='player')=>method('partyFighter').call(host,id) as PhysicalFighter,
+    fighter:(id='player')=>harness.stats.partyFighter(id) as PhysicalFighter,
     setPassives:(value:PassiveModifier[])=>passives=value};
 }
 
@@ -112,16 +139,20 @@ test('guardian includes an active zero HP member until the direct chain finalize
   const f=fixture();f.members.get('third')!.player.health=0;
   f.hitResolution.run(()=>{
     f.hitResolution.deferDefeat('third',()=>{
-      if(f.members.get('third')!.player.health===0)method('memberDefeated').call(f.host,'third');
+      if(f.members.get('third')!.player.health===0){
+        f.harness.fallen.add('third');
+        f.conditions.remove('third');
+        f.members.get('third')!.clearCombatResourceLimits();
+      }
     });
     assert.ok(f.actor('third'));
     f.cast();
     assert.deepEqual(f.attempts.map(hit=>hit.targetId),['player','caster','third']);
     assert.equal(f.conditions.hasBuff('third','guardian-of-darkness'),true);
     assert.equal(f.members.get('third')!.player.health,0);
-    assert.equal(f.host.fallen.has('third'),false);
+    assert.equal(f.harness.fallen.has('third'),false);
   });
-  assert.equal(f.host.fallen.has('third'),true);
+  assert.equal(f.harness.fallen.has('third'),true);
   assert.equal(f.conditions.hasBuff('third','guardian-of-darkness'),false);
   assert.equal(f.members.get('third')!.player.health,0);
   assert.equal(f.actor('third'),undefined);
@@ -159,7 +190,7 @@ test('guardian modifies raw defense after improved defense and before total defe
   f.cast(1);const fighter=f.fighter();
   assert.equal(fighter.defense,174);assert.equal(fighter.defenseRate,500);
   assert.equal(calculateEffectiveDefense(fighter.defense!,fighter.defenseRate!),261);
-  assert.equal(method('actorAttribute').call(f.host,'player','defense'),174);
+  assert.equal(f.harness.stats.actorAttribute('player','defense'),174);
 });
 
 test('guardian caster visuals keep their timing and still play when every weaker buff is rejected',()=>{

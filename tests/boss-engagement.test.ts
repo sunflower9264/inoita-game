@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {registerHooks} from 'node:module';
 import test from 'node:test';
 import {EnemyController,type EnemyPort} from '../src/domain/enemy-ai.ts';
 import {enemyAwarenessRangeUnits} from '../src/domain/enemy-engagement.ts';
@@ -17,13 +16,10 @@ import {enemySkills,type BattleCatalog} from '../src/domain/battle.ts';
 import {NavigationWorld} from '../src/domain/navigation-world.ts';
 import type {Facing,WorldMap} from '../src/domain/content.ts';
 import type {Point} from '../src/domain/navigation.ts';
+import {createCombatTestHarness,createTestEnemy} from './support/combat-test-harness.ts';
 
 const read=(name:string)=>JSON.parse(readFileSync(new URL(`../public/content/${name}.json`,import.meta.url),'utf8'));
 const catalog=read('battle') as BattleCatalog;
-const phaser=registerHooks({resolve(specifier,context,next){
-  return specifier==='phaser'?{url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true}:next(specifier,context);
-}});
-const {WorldCombat}=await import('../src/scenes/world-combat.ts');phaser.deregister();
 const cases=[
   {enemyId:'enemy-starving-boss-wolf-1',map:'training-dungeon-two',entry:{x:40,y:448}},
   {enemyId:'enemy-boss-skeleton-1',map:'shadow-training-dungeon-2-a6b8293b',entry:{x:592,y:312}},
@@ -229,13 +225,16 @@ test('stationary save restoration reacquires a distant party member without reta
 });
 
 test('the actual world threat adapter uses the same map-wide range as Boss discovery',()=>{
-  const run=fixture(),enemy={key:'boss',definition:run.definition};
-  const visual={container:{active:true},actor:{collision:run.boss.bounds}};
-  const host={hero:{level:5},arena:[enemy],memberOf:()=>undefined,
-    visualOf:()=>visual,combatant:()=>run.boss,actorAttribute:()=>5,
-    conditions:{activeStates:()=>[]},roster:{enemySnapshot:()=>({level:run.boss.level})},
-    movement:{navigation:run.navigation,position:()=>run.boss.position,actor:()=>({shape:()=>({collision:run.boss.bounds})})}};
-  const threatActor=()=>Reflect.get(WorldCombat.prototype,'threatActor').call(host,'boss') as CombatThreatActor;
+  const run=fixture();
+  const enemy=createTestEnemy({key:'boss',definition:run.definition,level:run.boss.level});
+  const harness=createCombatTestHarness({
+    battleCatalog:catalog,
+    enemies:new Map([['boss',enemy]]),
+    combatant:id=>id==='boss'?run.boss:undefined,
+    settlementOverrides:{navigationBounds:()=>run.navigation.bounds},
+  });
+  harness.conditions.setTemporaryAttribute('boss','sightBonusUnits',5);
+  const threatActor=()=>harness.settlement.threatActor('boss')!;
   assert.equal(threatActor().sightRangeUnits,enemyAwarenessRangeUnits(run.definition.behavior,run.navigation.bounds,5));
   assert.ok(threatActor().sightRangeUnits>targetDistance(run.boss.position,run.player.position)/8);
   delete run.definition.behavior.engagement;

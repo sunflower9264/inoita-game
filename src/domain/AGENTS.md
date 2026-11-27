@@ -27,7 +27,7 @@
 - 内容类型：`content.ts`（世界、地图、剧情动作、任务与奖励类型）。
 - 会话/剧情：`session.ts`、`story-director.ts`、`story-runtime.ts`、`story-graph.ts`、`story-condition.ts`、`story-scene.ts`、`story-script.ts`、`campaign.ts`、`scene-plan.ts`，以及同前缀的 `story-*.ts`、`scene-*.ts`；开发/测试模式开关与快照冻结在 `dev-mode.ts`，存档检查点的写时复制在 `playback-checkpoint.ts`。
 - 挑战刷怪：`pressure-enemies.ts` 按主角等级筛选普通战斗怪并随机选择，同时定义挑战调试的怪物数量上限与固定血量边界及归一化函数；`EnemyRoster.setEnemyMaxHealthOverride` 负责覆写/还原单个敌人的最大血量并刷新活怪当前血量。
-- 战斗：`combat-*.ts`、`battle.ts`、`action-*.ts`、`attack-*.ts`、`buff-*.ts`、`skill-*.ts`、`enemy-*.ts`；击杀奖励结算在 `combat-rewards.ts`。
+- 战斗：`combat-*.ts`、`combatant.ts`、`combat-targeting.ts`、`combat-actor-stats.ts`、`combat-settlement.ts`、`battle.ts`、`action-*.ts`、`attack-*.ts`、`buff-*.ts`、`skill-*.ts`、`enemy-*.ts`；其中 `CombatActorStats` 负责纯属性聚合与缓存，`CombatSettlementEngine` 负责受击/反应/召唤等纯战斗结算，`combatMovementSpeed`（`combat-tempo.ts`）与 `equipmentAttackFor`（`wardrobe.ts`）提供纯移动速度与武器攻击计算；击杀奖励结算在 `combat-rewards.ts`。
 - 队伍人数变化时按单位实际生命上限保持血量比例，主人派生的召唤物生命上限沿用召唤属性。
 - 敌人的一次性技能在动作开始播放时计为已使用，追近目标期间保留使用机会。
 - 佣兵按冲锋或绕后的实际可达落点评估技能覆盖，与战斗执行共用落点计算。近身冲锋在命中前回到起点，按返回位置评分。冲锋备用落点逐像素检查身体、地形连通和沿途内容阻挡，停在最后一个可达点。

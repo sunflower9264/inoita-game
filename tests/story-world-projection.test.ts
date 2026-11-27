@@ -1,12 +1,58 @@
 import assert from 'node:assert/strict';
 import {registerHooks} from 'node:module';
 import test from 'node:test';
+import type {BattleCatalog} from '../src/domain/battle.ts';
+import {BattleCharacter} from '../src/domain/character-stats.ts';
+import {CombatController} from '../src/domain/combat.ts';
+import type {ActorDefinition, AnimationClip, WorldMap} from '../src/domain/content.ts';
+import {Session} from '../src/domain/session.ts';
 import {stageSnapshot} from './helpers/story-stage.ts';
 import type {SceneOptions} from '../src/scenes/world-scene.ts';
+import {
+  loadBattleCatalog,
+  loadCampaignCatalog,
+  loadCharacterStatsCatalog,
+  loadCompanionCatalog,
+  loadItemCatalog,
+} from './support/combat-test-harness.ts';
+import {createFakePhaserScene, createTestWorldCombat, PHASER_STUB_SOURCE} from './support/world-combat-fixture.ts';
 
-const hook=registerHooks({resolve(specifier,context,next){return specifier==='phaser'?{url:'data:text/javascript,export default {Scene:class{},Physics:{Arcade:{Body:class{}}},BlendModes:{NORMAL:0,ADD:1,MULTIPLY:2,SCREEN:3}}',shortCircuit:true}:next(specifier,context);}});
+function stripActorFiles(actor:ActorDefinition):ActorDefinition{
+  const clips:ActorDefinition['clips']={};
+  for(const [name,clip] of Object.entries(actor.clips) as [keyof ActorDefinition['clips'],AnimationClip|undefined][]){
+    if(!clip)continue;
+    clips[name]={...clip,layers:clip.layers.map(layer=>({...layer,file:''}))};
+  }
+  return {...actor,clips};
+}
+function localBattleCatalog(base=loadBattleCatalog()):BattleCatalog{
+  return {
+    ...base,
+    classes:base.classes.map(entry=>({...entry,actor:stripActorFiles(entry.actor)})),
+    enemies:base.enemies.map(entry=>({...entry,actor:stripActorFiles(entry.actor)})),
+  };
+}
+function completePhaserScene(){
+  const base=createFakePhaserScene();
+  const baseAdd=base.add as unknown as {sprite:(...args:unknown[])=>Record<string,unknown>};
+  const baseTweens=base.tweens as unknown as Record<string,unknown>;
+  const scene=createFakePhaserScene({
+    tweens:{...baseTweens,killTweensOf:()=>{},getTweensOf:()=>[]},
+    add:{
+      ...baseAdd,
+      sprite:(...args:unknown[])=>{
+        const sprite=baseAdd.sprite(...args);
+        const anims=sprite.anims as Record<string,unknown>;
+        Object.assign(anims,{isPlaying:false,getProgress:()=>0,create:(config:unknown)=>{const anim={...(config as object),destroy:()=>{}};anims.currentAnim=anim;return anim;}});
+        return Object.assign(sprite,{scene,texture:sprite.texture??{key:''},setTexture(){return sprite;},play(){anims.isPlaying=true;return sprite;}});
+      },
+    },
+  });
+  return scene;
+}
+
+const hook=registerHooks({resolve(specifier,context,next){return specifier==='phaser'?{url:`data:text/javascript,${encodeURIComponent(PHASER_STUB_SOURCE)}`,shortCircuit:true}:next(specifier,context);}});
 const {WorldScene}=await import('../src/scenes/world-scene.ts');
-const {WorldCombat}=await import('../src/scenes/world-combat.ts');
 hook.deregister();
 
 function fixture(){
@@ -78,25 +124,112 @@ test('cancellation before a queued formal restart starts rejects loading and pre
   f.scene.options=queued;f.scene.create();assert.equal(f.stops(),1);
 });
 
-test('story takeover settles confirmed deaths after stopping actions and invalidates their later callbacks',async()=>{
+test('story takeover settles confirmed deaths after stopping actions and invalidates their later callbacks',async t=>{
+  const battleCatalog=localBattleCatalog();
+  const items=loadItemCatalog();
+  const statsCatalog=loadCharacterStatsCatalog();
+  const campaign=loadCampaignCatalog();
+  const hero=new BattleCharacter('dark-knight',statsCatalog,items);
+  const session=new Session(campaign,undefined,undefined,items,hero,battleCatalog,statsCatalog);
+  session.skills.maxAll();
+  const map:WorldMap={
+    id:'normalize-map',name:'normalize-map',width:320,height:320,tileSize:16,columns:20,rows:20,
+    blocked:Array<boolean>(400).fill(false),ground:'',canopy:'',features:[],entities:[],exits:[],
+    enemySpawns:[
+      {id:'kill-me',enemyId:'enemy-snake-1',x:80,y:64},
+      {id:'attacker',enemyId:'enemy-snake-1',x:96,y:64},
+    ],
+  };
+  const world=await createTestWorldCombat({phaserScene:completePhaserScene(),map,hero,session,battleCatalog,items,characterStats:statsCatalog});
+  await world.combat.start();
+  t.mock.method(Math,'random',()=>0.99);
+  world.session.setOneHitKill('player',true);
+  world.combat.selectEnemy('kill-me');
+  world.combat.attack();
+  for(let i=0;i<20;i++){
+    world.combat.update(60,true);
+    if(world.combat.diagnostics().enemies?.some(enemy=>enemy.id==='kill-me'&&enemy.pendingDefeat))break;
+  }
+  assert.equal(world.combat.diagnostics().enemies?.some(enemy=>enemy.id==='kill-me'&&enemy.pendingDefeat),true);
+  assert.equal(world.session.enemyVitals('kill-me').deadUntil,undefined,'结算前死亡记录尚未落盘');
+
+  world.combat.selectEnemy('attacker');
+  world.combat.attack('dark-strike');
+  world.combat.update(60,true);
+
   const calls:string[]=[];
-  const combat=Object.setPrototypeOf({suspendPartyActions(){calls.push('party');},arena:[{visual:{},controller:{combatController:{cancel(){calls.push('enemy');}},targetRemoved(){}}}],
-    movement:{stop(){calls.push('movement');}},app:{session:{party:{controlledId:'player'}}},
-    pendingAllies:new Set(),pendingDefeats:{flush(){calls.push('settle');}}},WorldCombat.prototype) as unknown as InstanceType<typeof WorldCombat>;
-  await combat.normalizeForStory(new AbortController().signal);assert.deepEqual(calls,['party','enemy','movement','settle']);
+  const origSuspend=world.combat.suspendPartyActions.bind(world.combat);
+  t.mock.method(world.combat,'suspendPartyActions',()=>{calls.push('party');return origSuspend();});
+  const origCancel=CombatController.prototype.cancel;
+  t.mock.method(CombatController.prototype,'cancel',function(this:CombatController,...args:Parameters<CombatController['cancel']>){
+    const casterId=(this as unknown as {casterId?:string}).casterId;
+    if(casterId&&casterId!=='player'){
+      calls.push('enemy');
+    }
+    return origCancel.apply(this,args);
+  });
+  const movement=world.scene.movement!;
+  const origStop=movement.stop.bind(movement);
+  t.mock.method(movement,'stop',(visual:Parameters<typeof movement.stop>[0])=>{
+    if(visual.entity.id==='attacker')calls.push('movement');
+    return origStop(visual);
+  });
+  const origSettle=world.session.settleEnemyDefeat.bind(world.session);
+  t.mock.method(world.session,'settleEnemyDefeat',(request:Parameters<typeof world.session.settleEnemyDefeat>[0])=>{
+    if(request.key==='kill-me')calls.push('settle');
+    return origSettle(request);
+  });
+
+  await world.combat.normalizeForStory(new AbortController().signal);
+  assert.deepEqual([...new Set(calls)],['party','enemy','movement','settle']);
+  assert.ok(calls.lastIndexOf('movement')<calls.indexOf('settle'),'停止行动发生在死亡结算之前');
+  assert.notEqual(world.session.enemyVitals('kill-me').deadUntil,undefined,'confirmed death is settled');
+  assert.equal(world.combat.attackState,'idle');
+  world.combat.destroy();
 });
 
-test('story takeover waits for in-flight companion preparation and its signal can cancel the barrier',async()=>{
+test('story takeover waits for in-flight companion preparation and its signal can cancel the barrier',async t=>{
+  const battleCatalog=localBattleCatalog();
+  const items=loadItemCatalog();
+  const statsCatalog=loadCharacterStatsCatalog();
+  const campaign=loadCampaignCatalog();
+  const companions=loadCompanionCatalog();
+  const dkActor=battleCatalog.classes.find(entry=>entry.id==='dark-knight')!.actor;
   for(const abort of [false,true]){
-    const pending=new Set(['companion']),waiters=new Set<()=>void>();let suspends=0;
-    const combat=Object.setPrototypeOf({runtime:{reset:()=>{}},pendingAllies:pending,allyWaiters:waiters,closed:false,arena:[],
-      suspendPartyActions(){suspends++;},pendingDefeats:{flush(){}}},WorldCombat.prototype) as unknown as InstanceType<typeof WorldCombat>;
+    const hero=new BattleCharacter('dark-knight',statsCatalog,items);
+    const session=new Session(campaign,undefined,undefined,items,hero,battleCatalog,statsCatalog,companions);
+    session.bag.add('mercenary-emblem-black-knight');
+    const ally=session.party!.recruit(session.bag.entries.find(entry=>entry.item==='mercenary-emblem-black-knight')!.id,()=>0).member;
+    const finishers:(()=>void)[]=[];
+    const finishAll=()=>{for(const resolve of finishers.splice(0))resolve();};
+    const world=await createTestWorldCombat({
+      phaserScene:completePhaserScene(),
+      hero,session,battleCatalog,items,characterStats:statsCatalog,
+      sceneOverrides:{preparePartyMember:()=>new Promise<void>(resolve=>{finishers.push(resolve);})},
+      appOverrides:{world:{actors:{[ally.definition.actor]:dkActor,[dkActor.id]:dkActor}} as never},
+    });
+    await world.combat.start();
+    session.party!.deployFirstAvailable(ally.id);
+    world.combat.update(16,true);
+    while(!finishers.length)await new Promise(resolve=>setImmediate(resolve));
+
+    const suspends=t.mock.method(world.combat,'suspendPartyActions');
     const controller=new AbortController();let finished=false;
-    const work=combat.normalizeForStory(controller.signal).then(()=>{finished=true;});
-    await Promise.resolve();assert.equal(finished,false);assert.equal(waiters.size,1);
-    if(abort){controller.abort(new DOMException('cancelled','AbortError'));await assert.rejects(work,{name:'AbortError'});assert.equal(suspends,1);}
-    else{pending.clear();for(const notify of [...waiters])notify();await work;assert.equal(suspends,2);}
-    assert.equal(waiters.size,0);
+    const work=world.combat.normalizeForStory(controller.signal).then(()=>{finished=true;});
+    await Promise.resolve();assert.equal(finished,false);assert.equal(suspends.mock.callCount(),1);
+    if(abort){
+      controller.abort(new DOMException('cancelled','AbortError'));
+      await assert.rejects(work,{name:'AbortError'});
+      assert.equal(suspends.mock.callCount(),1);
+      finishAll();
+      await new Promise(resolve=>setImmediate(resolve));
+    }else{
+      finishAll();
+      await work;
+      assert.equal(finished,true);
+      assert.equal(suspends.mock.callCount(),2);
+    }
+    world.combat.destroy();
   }
 });
 

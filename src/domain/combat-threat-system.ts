@@ -1,5 +1,5 @@
 import {ATTACK_DISTANCE_BASE_UNITS,attackDistance} from './basic-attack.ts';
-import type {Combatant} from './combat.ts';
+import type {Combatant} from './combatant.ts';
 import {combatStateCapabilities} from './combat-state.ts';
 import {ThreatLedger,calculateDamageThreat,calculateHealingThreat,calculateStateThreat} from './combat-threat.ts';
 import type {ThreatLedgerState} from './combat-threat.ts';

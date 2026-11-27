@@ -1,18 +1,19 @@
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import {registerHooks} from 'node:module';
 import test from 'node:test';
 import {actionDamage} from '../src/domain/action-damage.ts';
 import {actionDamageSource} from '../src/domain/combat-damage-source.ts';
-import type {BattleCatalog,NumericCombatUnit,SkillAction} from '../src/domain/battle.ts';
+import {combatFollowUp} from '../src/domain/combat-follow-ups.ts';
+import {CombatRuntime} from '../src/domain/combat-runtime.ts';
+import type {Combatant,SkillUnitHit} from '../src/domain/combatant.ts';
+import type {NumericCombatUnit,SkillAction} from '../src/domain/battle.ts';
+import {
+  createCombatTestHarness,
+  createTestMember,
+  loadBattleCatalog,
+  ZERO_PRIMARY_ATTRIBUTES,
+} from './support/combat-test-harness.ts';
 
-const phaser=registerHooks({resolve(specifier,context,next){
-  return specifier==='phaser'?{url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true}:next(specifier,context);
-}});
-const {WorldCombat}=await import('../src/scenes/world-combat.ts');phaser.deregister();
-const method=(name:string)=>Reflect.get(WorldCombat.prototype,name);
-
-const catalog=JSON.parse(readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')) as BattleCatalog;
+const catalog=loadBattleCatalog();
 const thresholds=[80,110,130,140,150,160,170,180];
 const followUp=catalog.skills['lightning-of-hell'].followUpAction!;
 const strike=followUp.combatUnits![0] as NumericCombatUnit;
@@ -44,27 +45,48 @@ test('the strike applies the private multiplier to magic attack plus truncated i
 });
 
 /** 只装配落雷判定要用到的部分：已学等级、私有动作与一次命中结算。 */
-function fixture(level=1,{strikes=[] as unknown[]}={}){
-  const member={classId:'warlock',panel:{attributes:{strength:0,dexterity:0,vitality:0,intelligence:0,mentality:0}},
-    skills:{draft:()=>({levels:{'lightning-of-hell':level}})}};
+function fixture(level=1,{strikes=[] as SkillUnitHit[]}={}){
+  const member=createTestMember({
+    id:'player',classId:'warlock',skillLevels:{'lightning-of-hell':level},
+    panel:{attributes:{...ZERO_PRIMARY_ATTRIBUTES}},
+  });
   // 过渡本身另有用例；这里让它立即回调，结算路径仍走真实的 cue 选择与失败表。
-  const roster:{[id:string]:unknown}={player:{id:'player',team:'party',position:{x:0,y:0},bounds:{x:-4,y:-4,width:8,height:8}},
-    enemy:{id:'enemy',team:'hostile',position:{x:64,y:0},bounds:{x:-4,y:-4,width:8,height:8}}};
-  const host=Object.setPrototypeOf({
-    app:{battleCatalog:catalog,session:{skills:{draft:()=>({levels:{'lightning-of-hell':level}})}}},
-    memberOf:(id:string)=>id==='player'?member:undefined,
-    memberForPlayer:member,
-    skillUnit:(event:unknown)=>{strikes.push(event);},
-    pendingDefeats:new Set<string>(),closed:false,defeated:false,arena:[],
-    combatant:(id:string)=>roster[id],combatants:()=>Object.values(roster),
-    actorAttribute:()=>0,healScoreFor:()=>undefined,healCandidates:()=>[],
-    runtime:{transition:(_owner:string,_definition:unknown,_target:unknown,_position:unknown,_port:unknown,arrive:()=>void)=>arrive()},
-    presenterFor:()=>({playFollowUpTransition:(_c:string,_t:unknown,_id:string,contact:()=>void)=>contact(),
-      showUnitFeedback:()=>{}}),
-  },WorldCombat.prototype);
-  host.app.session.skills.draft=()=>({levels:{'lightning-of-hell':level}});
-  const fire=(casterId='player')=>method('lightningOfHellReaction').call(host,casterId,'enemy');
-  return {host,fire,strikes,member};
+  const roster:Record<string,Combatant>={
+    player:{id:'player',team:'party',position:{x:0,y:0},bounds:{x:-4,y:-4,width:8,height:8}},
+    enemy:{id:'enemy',team:'hostile',position:{x:64,y:0},bounds:{x:-4,y:-4,width:8,height:8}},
+  };
+  const runtime=new CombatRuntime(()=>0);
+  runtime.transition=(_owner,_definition,_target,position,_port,arrive)=>arrive(position);
+  const harness=createCombatTestHarness({
+    battleCatalog:catalog,hero:member,members:new Map([['player',member]]),
+    activeParty:()=>['player'],
+    combatant:id=>roster[id],
+    combatants:()=>Object.values(roster),
+    withThreat:false,
+    settlementOverrides:{
+      followUp:(kind,casterId,targetId)=>{
+        combatFollowUp(kind,casterId,targetId,{
+          catalog,
+          runtime,
+          loadout:id=>{
+            const current=harness.stats.reactionSkills(id);
+            return current?{classId:current.classId,skills:current.loadout}:undefined;
+          },
+          random:()=>Math.random(),
+          active:()=>true,
+          actor:id=>roster[id],
+          casterStrikes:()=>{},
+          flight:{actor:id=>roster[id],emit:()=>{},effect:()=>{}},
+          execute:(owner,target,skillId,skillLevel,action,origin)=>
+            harness.settlement.runSkillUnitSequence({casterId:owner,skillId,level:skillLevel,action,origin,selectedTargetId:target}),
+        });
+      },
+    },
+  });
+  harness.stats.actorAttribute=()=>0;
+  harness.settlement.skillUnit=event=>{strikes.push(event);return 'success';};
+  const fire=(casterId='player')=>harness.settlement.lightningOfHellReaction(casterId,'enemy');
+  return {harness,fire,strikes,member};
 }
 
 /** 让判定抽到第 n 点（1…999）：原版掷整数 1…999，严格小于阈值才触发。 */
@@ -111,22 +133,25 @@ test('a caster outside the party never rolls',()=>{
   const run=fixture();
   const original=Math.random;Math.random=()=>0;
   try{
-    method('lightningOfHellReaction').call(run.host,'outsider','enemy');
+    run.harness.settlement.lightningOfHellReaction('outsider','enemy');
     assert.equal(run.strikes.length,0);
   }finally{Math.random=original;}
 });
 
 test('only a magic critical reaches the roll inside the success chain',()=>{
   const seen:string[]=[];
-  const host={lightningOfHellReaction:(caster:string,target:string)=>seen.push(`${caster}:${target}`),
-    physicalSuccessEquipmentProcs:()=>{},
-    holySacrificeTransfer:()=>{},reactToBuff:()=>{},react:()=>{},partySide:()=>false,summonOwnerReactions:()=>{},disturbanceReaction:()=>{},
-    actorAttribute:()=>0,equipmentRecovery:()=>({lifeDrainPerThousand:0}),attackProc:()=>{},
-    fallen:new Set<string>(),pendingDefeats:new Set<string>(),arena:[],
-    conditions:{activeBuffReactions:()=>[],removeState:()=>{},snapshot:()=>[]}};
+  const harness=createCombatTestHarness({battleCatalog:catalog,withThreat:false});
+  harness.settlement.lightningOfHellReaction=(caster,target)=>seen.push(`${caster}:${target}`);
+  harness.settlement.physicalSuccessEquipmentProcs=()=>{};
+  harness.settlement.holySacrificeTransfer=()=>{};
+  harness.settlement.reactToBuff=()=>{};
+  harness.settlement.react=()=>{};
+  harness.settlement.summonOwnerReactions=()=>{};
+  harness.settlement.disturbanceReaction=()=>{};
+  harness.settlement.attackProc=()=>{};
   for(const [kind,damageKind,expected] of [['critical','magic',1],['hit','magic',0],['critical','physical',0]] as const){
     seen.length=0;
-    method('resolveHitReactions').call(host,{casterId:'hero',targetId:'enemy'},{kind,damage:10},damageKind,'probe',{});
+    harness.settlement.resolveHitReactions({casterId:'hero',targetId:'enemy'},{kind,damage:10},damageKind,'probe');
     assert.equal(seen.length,expected,`${damageKind}/${kind}`);
     if(expected)assert.deepEqual(seen,['hero:enemy']);
   }
@@ -134,25 +159,50 @@ test('only a magic critical reaches the roll inside the success chain',()=>{
 
 test('落雷先播私有过渡，切换帧到达后才结算，且不替换主动作',()=>{
   const order:string[]=[];
-  const roster:{[id:string]:unknown}={player:{id:'player',team:'party',position:{x:0,y:0},bounds:{x:-4,y:-4,width:8,height:8}},
-    enemy:{id:'enemy',team:'hostile',position:{x:64,y:0},bounds:{x:-4,y:-4,width:8,height:8}}};
-  const member={classId:'warlock',panel:{attributes:{strength:0,dexterity:0,vitality:0,intelligence:0,mentality:0}},
-    skills:{draft:()=>({levels:{'lightning-of-hell':8}})}};
-  const host=Object.setPrototypeOf({
-    app:{battleCatalog:catalog,session:{skills:{draft:()=>({levels:{'lightning-of-hell':8}})}}},
-    memberOf:(id:string)=>id==='player'?member:undefined,
-    pendingDefeats:new Set<string>(),closed:false,defeated:false,arena:[],
-    combatant:(id:string)=>roster[id],combatants:()=>Object.values(roster),
-    actorAttribute:()=>0,healScoreFor:()=>undefined,healCandidates:()=>[],
-    runtime:{transition:(_owner:string,transition:{effect:string;switchFrame:number},_target:unknown,_position:unknown,_port:unknown,arrive:()=>void)=>{order.push(`transition:${transition.effect}@${transition.switchFrame}`);arrive();}},
-    presenterFor:()=>({
-      playFollowUpTransition:(_c:string,transition:{effect:string;switchFrame:number},_id:string,contact:()=>void)=>{
-        order.push(`transition:${transition.effect}@${transition.switchFrame}`);contact();},
-      showUnitFeedback:()=>order.push('feedback')}),
-    skillUnit:(event:{skill:{id:string}})=>order.push(`unit:${event.skill.id}`),
-  },WorldCombat.prototype);
+  const roster:Record<string,Combatant>={
+    player:{id:'player',team:'party',position:{x:0,y:0},bounds:{x:-4,y:-4,width:8,height:8}},
+    enemy:{id:'enemy',team:'hostile',position:{x:64,y:0},bounds:{x:-4,y:-4,width:8,height:8}},
+  };
+  const member=createTestMember({
+    id:'player',classId:'warlock',skillLevels:{'lightning-of-hell':8},
+    panel:{attributes:{...ZERO_PRIMARY_ATTRIBUTES}},
+  });
+  const runtime=new CombatRuntime(()=>0);
+  runtime.transition=(_owner,transition,_target,position,_port,arrive)=>{
+    order.push(`transition:${transition.effect}@${transition.switchFrame}`);
+    arrive(position);
+  };
+  const harness=createCombatTestHarness({
+    battleCatalog:catalog,hero:member,members:new Map([['player',member]]),
+    activeParty:()=>['player'],
+    combatant:id=>roster[id],
+    combatants:()=>Object.values(roster),
+    withThreat:false,
+    settlementOverrides:{
+      onUnitFeedback:()=>order.push('feedback'),
+      followUp:(kind,casterId,targetId)=>{
+        combatFollowUp(kind,casterId,targetId,{
+          catalog,
+          runtime,
+          loadout:id=>{
+            const current=harness.stats.reactionSkills(id);
+            return current?{classId:current.classId,skills:current.loadout}:undefined;
+          },
+          random:()=>Math.random(),
+          active:()=>true,
+          actor:id=>roster[id],
+          casterStrikes:()=>{},
+          flight:{actor:id=>roster[id],emit:()=>{},effect:()=>{}},
+          execute:(owner,target,skillId,skillLevel,action,origin)=>
+            harness.settlement.runSkillUnitSequence({casterId:owner,skillId,level:skillLevel,action,origin,selectedTargetId:target}),
+        });
+      },
+    },
+  });
+  harness.stats.actorAttribute=()=>0;
+  harness.settlement.skillUnit=event=>{order.push(`unit:${event.skill.id}`);return 'success';};
   const original=Math.random;Math.random=()=>0.5/999;
-  try{method('lightningOfHellReaction').call(host,'player','enemy');}finally{Math.random=original;}
+  try{harness.settlement.lightningOfHellReaction('player','enemy');}finally{Math.random=original;}
   assert.deepEqual(order,['transition:hell-lightning@1','unit:lightning-of-hell','feedback'],
     '先过渡、再按 cue 结算一次；私有动作不经过控制器，也就不扣蓝、不重设冷却');
 });

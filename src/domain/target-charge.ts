@@ -1,5 +1,5 @@
 import type { SkillCharge } from './battle.ts';
-import type { Combatant } from './combat.ts';
+import type { Combatant } from './combatant.ts';
 import type { Point } from './navigation.ts';
 import { attackDistance } from './basic-attack.ts';
 

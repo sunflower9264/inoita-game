@@ -1,20 +1,13 @@
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import {registerHooks} from 'node:module';
 import test from 'node:test';
-import type {BattleBuffEffect,BattleCatalog} from '../src/domain/battle.ts';
+import type {BattleBuffEffect} from '../src/domain/battle.ts';
 import {CombatConditions} from '../src/domain/combat-conditions.ts';
 import {CombatHitResolution} from '../src/domain/combat-hit-resolution.ts';
 import type {AttackContact} from '../src/domain/combat.ts';
 import type {PhysicalHit} from '../src/domain/physical-hit.ts';
+import {createCombatTestHarness,createTestMember,loadBattleCatalog} from './support/combat-test-harness.ts';
 
-const hook=registerHooks({resolve(specifier,context,next){return specifier==='phaser'
-  ?{url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true}
-  :next(specifier,context);}});
-const {WorldCombat}=await import('../src/scenes/world-combat.ts');hook.deregister();
-const catalog=JSON.parse(readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')) as BattleCatalog;
-const method=(name:string)=>Reflect.get(WorldCombat.prototype,name);
-
+const catalog=loadBattleCatalog();
 type CounterUnit={ranks:{effect:BattleBuffEffect}[]};
 const unit=catalog.skills['blade-deflection'].action!.combatUnits![0] as unknown as CounterUnit;
 
@@ -44,25 +37,20 @@ const base={level:10,physicalAttack:100,magicAttack:0,baseDefense:0,defense:0,de
   physicalResistance:0,physicalResistanceBonus:0,magicResistance:0,baseMagicResistance:0,attributes:primary};
 
 function fixture(){
-  const member=()=>({classId:'assassin',level:10,panel:{...structuredClone(base)},
-    player:{health:1000,maxHealth:1000,mana:50,maxMana:100},
-    skills:{draft:()=>({levels:{}})},bag:{equipmentFor:()=>({}),get:()=>undefined,equipmentItems:()=>({})}});
-  const members=new Map([['player',member()],['ally',member()]]);
+  const member=(id:string)=>createTestMember({id,classId:'assassin',level:10,health:1000,maxHealth:1000,mana:50,maxMana:100,panel:{...structuredClone(base)}});
+  const members=new Map([['player',member('player')],['ally',member('ally')]]);
   const conditions=new CombatConditions(),applied:{targetId:string;key:string;sourceId:string}[]=[];
-  const host=Object.setPrototypeOf({hero:members.get('player'),conditions,hitResolution:new CombatHitResolution(),
-    pendingDefeats:new Set<string>(),fallen:new Set<string>(),allies:[],arena:[],
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
-    aiSkillCostCache:new Map(),
-    app:{battleCatalog:catalog,items:{items:{}},session:{skills:{draft:()=>({levels:{}})},
-      party:{activeIds:['player','ally'],controlledId:'player',groupModifiers:()=>({})}}},
-    scene:{events:{emit:()=>{}}},memberOf:(id:string)=>members.get(id),visualOf:()=>undefined,threat:undefined,
-    applyActorBuff:(targetId:string,key:string,_priority:number,_effect:BattleBuffEffect,sourceId:string)=>{
-      applied.push({targetId,key,sourceId});},
-  },WorldCombat.prototype);
-  const call=(name:string,...args:unknown[])=>method(name).call(host,...args);
+  const harness=createCombatTestHarness({
+    battleCatalog:catalog,conditions,hitResolution:new CombatHitResolution(),
+    hero:members.get('player'),members,activeParty:()=>['player','ally'],withThreat:false,
+  });
+  harness.settlement.applyActorBuff=(targetId,key,_priority,_effect,sourceId)=>{
+    applied.push({targetId,key,sourceId});
+    return true;
+  };
   const contact:AttackContact={casterId:'player',targetId:'ally'} as AttackContact;
   const strike=(kind:PhysicalHit['kind'],damageKind:'physical'|'magic'='physical')=>
-    call('resolveHitReactions',contact,{kind,damage:0} as PhysicalHit,damageKind,'probe',host.hero);
+    harness.settlement.resolveHitReactions(contact,{kind,damage:0} as PhysicalHit,damageKind,'probe');
   const guard=()=>conditions.applyBuff('ally','blade-deflection',1,unit.ranks[0].effect,'ally');
   return {applied,strike,guard,clear:()=>conditions.removeBuff('ally','blade-deflection')};
 }
@@ -77,7 +65,7 @@ test('misses, shield blocks, ordinary hits and magic never counter',()=>{
   const f=fixture();f.guard();
   for(const [kind,damageKind] of [['miss','physical'],['shield-block','physical'],['hit','physical'],['critical','physical'],['weapon-block','magic']] as const){
     f.applied.length=0;f.strike(kind,damageKind);
-    assert.deepEqual(f.applied,[],`${damageKind} ${kind} must not counter`);
+    assert.equal(f.applied.length,0,`${damageKind} ${kind} must not counter`);
   }
 });
 
@@ -85,5 +73,5 @@ test('the counter belongs to the active blade deflection buff',()=>{
   const f=fixture();f.guard();f.strike('weapon-block');
   assert.equal(f.applied.length,1);
   f.clear();f.applied.length=0;f.strike('weapon-block');
-  assert.deepEqual(f.applied,[],'without the buff there is no counter debuff');
+  assert.equal(f.applied.length,0,'without the buff there is no counter debuff');
 });

@@ -1,21 +1,15 @@
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import {registerHooks} from 'node:module';
 import test from 'node:test';
-import type {BattleCatalog} from '../src/domain/battle.ts';
 import {CombatConditions} from '../src/domain/combat-conditions.ts';
 import {resolveSkillUnitSequence} from '../src/domain/skill-unit-sequence.ts';
 import type {PhysicalFighter,PhysicalHit} from '../src/domain/physical-hit.ts';
+import {createCombatTestHarness,createTestEnemy,createTestMember,loadBattleCatalog,ZERO_PRIMARY_ATTRIBUTES} from './support/combat-test-harness.ts';
 
-const catalog=JSON.parse(readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')) as BattleCatalog;
+const catalog=loadBattleCatalog();
 const skill=catalog.skills['dark-strike'],units=skill.action!.combatUnits!;
 const buff=units.find(unit=>unit.effect==='buff')!;
 assert.equal(buff.effect,'buff');if(buff.effect!=='buff')throw new Error('Dark Strike buff missing');
 const ranks=buff.ranks;
-const hook=registerHooks({resolve(specifier,context,next){return specifier==='phaser'
-  ?{url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true}
-  :next(specifier,context);}});
-const {WorldCombat}=await import('../src/scenes/world-combat.ts');hook.deregister();
 
 test('all dark strike ranks use one layer, the native buff age and ordered independent loop effects',()=>{
   const expected=[210,230,260,300,310,320,330,340];
@@ -49,22 +43,23 @@ function fixture(){
   const fighter:PhysicalFighter={level:1,physicalAttack:100,hitBase:100,hitBonus:1000,evasionBase:0,evasionBonus:0,
     criticalRate:0,criticalResistance:0,criticalDamage:0,criticalDamageResistance:0,weaponBlock:0,shieldBlock:0,physicalResistance:0};
   const target={...fighter},conditions=new CombatConditions(),hits:PhysicalHit[]=[];
-  const member={level:1,panel:{attributes:{strength:0,dexterity:0,vitality:0,intelligence:0,mentality:0}},player:{health:100,maxHealth:100,mana:100,maxMana:100}};
-  const host=Object.setPrototypeOf({hero:member,conditions,arena:[{key:'enemy',definition:{}}],pendingDefeats:new Set(),fallen:new Set(),
-    roster:{isPresent:()=>true},
-    memberOf:(id:string)=>id==='actor'?member:undefined,partyFighter:()=>fighter,enemyFighter:()=>target,
-    // 背后渗透这一次读取不在这些朴素宿主的能力范围内：明确当作没学。
-    actorAttribute:(function(this:unknown,...args:unknown[]){
-      const [,key]=args as [string,string];
-      return key==='rearPenetrationRate'?0:Reflect.get(WorldCombat.prototype,'actorAttribute').apply(this,args);
-    } as unknown as (id:string,key:string)=>number),
-    actorAttributes:()=>({physicalAttack:100,magicAttack:0,maxHealth:100,physicalDamageRate:0,magicDamageRate:0,
-      stealthDamageRate:0,primaryAttributes:{strength:0,dexterity:0,vitality:0,intelligence:0,mentality:0}}),
-    combatant:()=>({position:{x:0,y:0}}),resolveHitReactions:()=>{},settleHit:(_event:unknown,hit:PhysicalHit)=>hits.push(hit),
-    dropMana:()=>{},applyStateConsequences:()=>{},syncCombatResourceLimits:()=>{},
-  },WorldCombat.prototype);
-  const unit=(cueIndex:number,targetId:string,usesSkillDamageBuff=true)=>Reflect.get(WorldCombat.prototype,'skillUnit').call(host,
-    {casterId:'actor',targetId,cueIndex,skill:{...skill,level:1,action:{...skill.action,usesSkillDamageBuff}}});
+  const member=createTestMember({id:'actor',level:1,health:100,maxHealth:100,mana:100,maxMana:100,
+    panel:{attributes:ZERO_PRIMARY_ATTRIBUTES,maxHealth:100,maxMana:100}});
+  const enemies=new Map([['enemy',createTestEnemy({key:'enemy',definition:catalog.enemies[0],health:1000,maxHealth:1000})]]);
+  const harness=createCombatTestHarness({
+    battleCatalog:catalog,conditions,hero:member,members:new Map([['actor',member]]),enemies,
+    activeParty:()=>['actor'],
+    withThreat:false,
+    settlementOverrides:{onDropMana:()=>{}},
+  });
+  harness.stats.partyFighter=()=>fighter;
+  harness.stats.enemyFighter=()=>target;
+  harness.stats.actorAttributes=()=>({physicalAttack:100,magicAttack:0,maxHealth:100,physicalDamageRate:0,magicDamageRate:0,
+    stealthDamageRate:0,primaryAttributes:ZERO_PRIMARY_ATTRIBUTES});
+  harness.settlement.resolveHitReactions=()=>{};
+  harness.settlement.settleHit=(_event,hit)=>hits.push(hit);
+  const unit=(cueIndex:number,targetId:string,usesSkillDamageBuff=true)=>harness.settlement.skillUnit(
+    {casterId:'actor',targetId,cueIndex,skill:{...skill,level:1,action:{...skill.action!,usesSkillDamageBuff}}});
   return {fighter,target,conditions,hits,unit};
 }
 

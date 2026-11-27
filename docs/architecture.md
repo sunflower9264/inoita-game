@@ -11,9 +11,9 @@
 | 要改什么 | 状态与规则入口 | 装配、表现和内容 | 优先查看的测试 |
 |---|---|---|---|
 | 启动、标题、职业、读档 | `application/control-state.ts`、`application/saved-game*.ts` | `main.ts`、`app.ts`、`application/ports.ts`、`scenes/menu-scene.ts`、`scenes/story-class-scene.ts` | `title-save-entry`、`saved-game-loader`、`story-class` |
-| 动作起手、接近、取消 | `domain/combat.ts`、`combat-runtime.ts`、`combat-action-dispatcher.ts` | `scenes/world-combat.ts`、`rendering/combat-presenter.ts`、`content/battle.json` | `combat`、`combat-runtime`、`combat-kernel` |
-| 技能效果与命中反应 | `combat-unit-execution.ts`、`combat-effect-executor.ts`、`combat-hit-resolution.ts`、`combat-reaction-pipeline.ts`、`combat-follow-ups.ts` | `world-combat.ts` 的状态与画面接口、`battle.json` | `skill-unit-runtime`、`skill-reaction-runtime`、对应技能测试 |
-| 冷却、状态、持续效果与恢复 | `session.ts`、`combat-clock.ts`、`combat-cooldowns.ts`、`combat-conditions.ts`、`combat-periodic.ts`、`combat-resources.ts` | `world-combat.ts`、`status-hud.json` | `combat-clock-runtime`、`combat-cooldowns`、`combat-state-runtime`、`combat-resources-runtime` |
+| 动作起手、接近、取消 | `domain/combat.ts`、`combatant.ts`、`combat-targeting.ts`、`combat-runtime.ts`、`combat-action-dispatcher.ts` | `scenes/world-combat.ts`、`rendering/combat-presenter.ts`、`content/battle.json` | `combat`、`combat-runtime`、`combat-kernel` |
+| 技能效果与命中反应 | `combat-settlement.ts`、`combat-unit-execution.ts`、`combat-effect-executor.ts`、`combat-hit-resolution.ts`、`combat-reaction-pipeline.ts`、`combat-follow-ups.ts` | `world-combat.ts` 的状态与画面接口、`battle.json` | `skill-unit-runtime`、`skill-reaction-runtime`、对应技能测试 |
+| 冷却、状态、属性、持续效果与恢复 | `session.ts`、`combat-actor-stats.ts`、`combat-clock.ts`、`combat-cooldowns.ts`、`combat-conditions.ts`、`combat-periodic.ts`、`combat-resources.ts` | `world-combat.ts`、`scenes/combat-skill-assets.ts`、`rendering/combat-status-visuals.ts`、`status-hud.json` | `combat-clock-runtime`、`combat-cooldowns`、`combat-state-runtime`、`combat-resources-runtime` |
 | 怪物与伙伴 AI（自动行为） | `enemy-ai.ts`、`party-ai.ts`、`party-placement.ts`、`combat-threat*.ts`、`world-enemies.ts` | `world-combat.ts`、`content/maps/`、`companions.json` | `enemy-ai`、`party-ai`、`world-enemies`、`world-threat` |
 | 移动、碰撞、出口、落位 | `navigation-world.ts`、`pathfinding.ts`、`path-budget.ts`、`walk-route.ts`、`navigation.ts` | `rendering/movement-world.ts`、`arcade-movement.ts`、`movement-interpolation.ts`、`scenes/world-scene.ts` | `movement`、`movement-world`、`navigation-placement`、`map-placement`、`story-exit-gates` |
 | 任务、剧情与永久世界 | `campaign.ts`、`quest-book.ts`、`story-runtime.ts`、`story-world.ts`、`story-director.ts` | `campaign.json`、`rendering/story-presenter.ts`、`scenes/story-stage-scene.ts` | `session-quest-core`、`story-runtime`、`story-director-core`、`story-stage-isolation` |
@@ -93,7 +93,7 @@
 
 `CombatController` 管理选敌、接近、起手和动作状态。手动主动技能通过 `requestManualSkill` 可以接管普攻；冷却、资源或使用条件不满足时继续旧普攻，满足条件却缺必需目标时结束普攻。主动技能之间不排队。主动技能动作期间（approaching/attacking）场景通过 `WorldCombat.castingSkill` 忽略摇杆与新的技能输入；动作按钮共用按压门控，一个动作按钮按住期间其它动作按钮的按下被忽略。`CombatRuntime` 管理动作帧、弹道抵达与延迟任务；`CombatActionDispatcher` 根据时间轴输出特效、命中与召唤请求。
 
-`combat-unit-execution.ts` 是普通技能和私有追击共同的目标选择、准备、效果及反馈入口。`CombatEffectExecutor` 处理具名效果；`combat-hit-resolution.ts` 协调命中及同帧死亡；`combat-reaction-pipeline.ts` 保留反应顺序；`combat-follow-ups.ts` 负责神之定义、地狱之落雷等私有追击的概率和延迟。`WorldCombat` 连接会话、AI、物理、场景资源和画面能力。
+`combatant.ts`、`combat-targeting.ts` 与 `combat-unit-execution.ts` 构成无环的战斗参与者基础类型、目标选择及普通技能/私有追击执行入口；`CombatActorStats`（`combat-actor-stats.ts`）聚合与缓存属性，`CombatSettlementEngine`（`combat-settlement.ts`）承担受击、反应与召唤等纯战斗结算。`CombatEffectExecutor` 处理具名效果；`combat-hit-resolution.ts` 协调命中及同帧死亡；`combat-reaction-pipeline.ts` 保留反应顺序；`combat-follow-ups.ts` 负责神之定义、地狱之落雷等私有追击的概率和延迟。场景层 `WorldCombat` 组合领域引擎、`CombatSkillAssetManager`（`scenes/combat-skill-assets.ts`）与 `CombatStatusVisuals`（`rendering/combat-status-visuals.ts`），连接会话、AI、物理、场景资源和画面能力。
 
 `CombatUnit` 按 `effect` 区分类型，每类只带自己的字段。五维权重按力量、敏捷、体力、智力、精力具名，先合计贡献再除十截断。`CombatOperation` 分别携带加减值、乘数、除数或千分比。每级 `ranks` 从已学等级减一索引。概率按整数区间与严格小于判断，状态时长以毫秒表示并在内容中取整；具体字段见 `domain/battle.ts` 与共同校验器。
 

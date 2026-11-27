@@ -1,18 +1,16 @@
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import {registerHooks} from 'node:module';
 import test from 'node:test';
-import type {BattleCatalog} from '../src/domain/battle.ts';
 import {CombatConditions} from '../src/domain/combat-conditions.ts';
+import type {CombatThreatSystem} from '../src/domain/combat-threat-system.ts';
 import {resolveSkillReactions,type SkillReaction} from '../src/domain/skill-reactions.ts';
+import {
+  createCombatTestHarness,
+  createTestEnemy,
+  createTestMember,
+  loadBattleCatalog,
+} from './support/combat-test-harness.ts';
 
-const phaser=registerHooks({resolve(specifier,context,next){
-  return specifier==='phaser'?{url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true}:next(specifier,context);
-}});
-const {WorldCombat}=await import('../src/scenes/world-combat.ts');phaser.deregister();
-const method=(name:string)=>Reflect.get(WorldCombat.prototype,name);
-
-const catalog=JSON.parse(readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')) as BattleCatalog;
+const catalog=loadBattleCatalog();
 const ranks=catalog.skills['magic-insight'].reactionsByRank!;
 const cuts=[50,70,90,120,130,140,150,160];
 const reaction=(index:number)=>ranks[index]![0] as Extract<SkillReaction,{kind:'magic-insight'}>;
@@ -45,21 +43,31 @@ test('a skill success lays a layer on the target for both physical and non-block
 
 function fixture(){
   const conditions=new CombatConditions(),seen:string[]=[];
-  const host=Object.setPrototypeOf({app:{battleCatalog:catalog,session:{skills:{draft:()=>({levels:{'magic-insight':8}})}}},
-    conditions,arena:[{key:'enemy',definition:{}}],activeParty:['player'],fallen:new Set(),pendingDefeats:new Set(),
-    memberOf:(id:string)=>id==='player'?{classId:'priest',skills:{draft:()=>({levels:{'magic-insight':8}})}}:undefined,
-    partyPassives:()=>[],actorAttribute:()=>0,attackProc:()=>{},equipmentRecovery:()=>({lifeDrainPerThousand:0}),
-    physicalSuccessEquipmentProcs:()=>{},instantRecoveryOnMiss:()=>{},
-    syncCombatResourceLimits:()=>{},applyStateConsequences:()=>{},showBuffApplication:()=>{},
-    threat:{state:()=>{},heal:()=>{}},
-    react:(function(this:unknown,...args:unknown[]){
-      const [event]=args as [{kind:string}];
-      seen.push(event.kind);
-      return method('react').apply(this,args);
-    } as unknown as (event:unknown)=>void)},
-    WorldCombat.prototype);
+  const player=createTestMember({id:'player',classId:'priest',skillLevels:{'magic-insight':8}});
+  const enemies=new Map([['enemy',createTestEnemy({key:'enemy',definition:{...catalog.enemies[0],acceptsBuffs:true,stateRules:undefined}})]]);
+  const harness=createCombatTestHarness({
+    battleCatalog:catalog,conditions,hero:player,members:new Map([['player',player]]),enemies,
+    activeParty:()=>['player'],
+    combatant:()=>undefined,
+    combatants:()=>[],
+    withThreat:false,
+    settlementOverrides:{
+      threat:{state:()=>{},heal:()=>{}} as unknown as CombatThreatSystem,
+      onStateConsequences:undefined,
+      onBuffApplication:undefined,
+    },
+  });
+  harness.stats.actorAttribute=()=>0;
+  harness.settlement.attackProc=()=>{};
+  harness.settlement.physicalSuccessEquipmentProcs=()=>{};
+  harness.settlement.instantRecoveryOnMiss=()=>{};
+  const baseReact=harness.settlement.react.bind(harness.settlement);
+  harness.settlement.react=event=>{
+    seen.push(event.kind);
+    return baseReact(event);
+  };
   const hit=(damageKind:'physical'|'magic',kind:'hit'|'shield-block',actionId='firestorm')=>
-    method('resolveHitReactions').call(host,{casterId:'player',targetId:'enemy'},{kind,damage:0},damageKind,actionId,{});
+    harness.settlement.resolveHitReactions({casterId:'player',targetId:'enemy'},{kind,damage:0},damageKind,actionId);
   return {conditions,seen,hit};
 }
 

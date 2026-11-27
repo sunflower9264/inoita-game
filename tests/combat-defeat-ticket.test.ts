@@ -1,21 +1,77 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { registerHooks } from 'node:module';
-import { EnemyRoster } from '../src/domain/enemy-roster.ts';
-import { PendingEnemyDefeats } from '../src/domain/combat-outcomes.ts';
+import type { BattleCatalog, EnemyDefinition } from '../src/domain/battle.ts';
+import { BattleCharacter } from '../src/domain/character-stats.ts';
 import { CombatHitResolution } from '../src/domain/combat-hit-resolution.ts';
+import { CombatRuntime } from '../src/domain/combat-runtime.ts';
+import { CombatSettlementEngine } from '../src/domain/combat-settlement.ts';
+import type { ActorDefinition, WorldMap } from '../src/domain/content.ts';
+import { EnemyRoster } from '../src/domain/enemy-roster.ts';
+import { Session } from '../src/domain/session.ts';
+import { WorldEnemyRoster } from '../src/domain/world-enemies.ts';
+import { CHARACTER_ATLAS_ALIASES } from '../tools/character-atlas-aliases.ts';
+import {
+  createCombatTestHarness,
+  createTestEnemy,
+  createTestMember,
+  loadBattleCatalog,
+  loadCampaignCatalog,
+  loadCharacterStatsCatalog,
+  loadItemCatalog,
+} from './support/combat-test-harness.ts';
+import {
+  createFakeContainer,
+  createFakePhaserScene,
+  createTestWorldCombat,
+  installPhaserStubHooks,
+} from './support/world-combat-fixture.ts';
 
-const hook=registerHooks({resolve(specifier,context,next){return specifier==='phaser'
-  ?{url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}},Scenes:{Events:{SHUTDOWN:\'shutdown\'}}}',shortCircuit:true}
-  :next(specifier,context);}});
-const {WorldCombat}=await import('../src/scenes/world-combat.ts');
+const hook=installPhaserStubHooks();
+const {CombatOutcomes}=await import('../src/rendering/combat-outcomes.ts');
 const {WorldScene}=await import('../src/scenes/world-scene.ts');
 hook.deregister();
 
-const invoke=(host:object,name:string,...args:unknown[])=>Reflect.get(WorldCombat.prototype,name).call(host,...args);
-const battle=JSON.parse(fs.readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8'));
-const wolf=battle.enemies.find((enemy:{id:string})=>enemy.id==='enemy-wolf-1');
+function normalizeActorClips(actor:ActorDefinition):void{
+  for(const clip of Object.values(actor.clips)){
+    for(const layer of clip?.layers??[]){
+      if(layer.file)layer.file=CHARACTER_ATLAS_ALIASES[layer.file]??layer.file;
+    }
+  }
+}
+
+function normalizeBattleCatalog(raw:BattleCatalog):BattleCatalog{
+  const copy=structuredClone(raw);
+  for(const cls of copy.classes)normalizeActorClips(cls.actor);
+  for(const enemy of copy.enemies)normalizeActorClips(enemy.actor);
+  return copy;
+}
+
+const battle=normalizeBattleCatalog(JSON.parse(fs.readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')) as BattleCatalog);
+const wolf=battle.enemies.find((enemy)=>enemy.id==='enemy-wolf-1') as EnemyDefinition;
+
+function fullPhaserScene(){
+  const scene=createFakePhaserScene({
+    cameras:{main:{width:640,height:360,zoomX:1,zoomY:1,worldView:undefined,followOffset:{x:0,y:0},setFollowOffset(){}}},
+    tweens:{add:()=>({stop(){},pause(){},resume(){}}),getTweensOf:()=>[],killTweensOf:()=>{}},
+  });
+  const origSprite=scene.add.sprite.bind(scene.add) as unknown as (...args:unknown[])=>{scene:unknown;anims:Record<string,unknown>};
+  scene.add.sprite=((...args:unknown[])=>{
+    const sprite=origSprite(...args);
+    sprite.scene=scene;
+    sprite.anims={...sprite.anims,create:()=>({destroy(){}}),remove:()=>{}};
+    return sprite as never;
+  }) as never;
+  return scene;
+}
+
+function ticketMap(id:string,spawns:WorldMap['enemySpawns']):WorldMap{
+  return {
+    id,name:id,width:320,height:320,tileSize:16,columns:20,rows:20,
+    blocked:Array<boolean>(400).fill(false),ground:'',canopy:'',features:[],entities:[],exits:[],
+    enemySpawns:spawns,
+  };
+}
 
 test('roster reports a zero only after an explicit zero write',()=>{
   const roster=new EnemyRoster();
@@ -27,92 +83,162 @@ test('roster reports a zero only after an explicit zero write',()=>{
   assert.equal(roster.hasZeroHealth(placed.key),false);
 });
 
-test('restore and spawn boundaries open a ticket only for zero-health enemies',()=>{
-  const zero={key:'zero',definition:{id:'enemy-wolf-1'},visual:{container:{x:0,y:0}}};
-  const live={key:'live',definition:{id:'enemy-wolf-1'},visual:{container:{x:0,y:0}}};
-  const calls:[string,string][]=[];
-  const host=Object.setPrototypeOf({
-    roster:{enemies:[{key:'zero',health:0},{key:'live'}],
-      enemy(key:string){return this.enemies.find((entry:{key:string})=>entry.key===key);}},
-    arena:[zero,live],closed:false,
-    beginEnemyDefeat:(enemy:{key:string},cause:string)=>{calls.push([enemy.key,cause]);return true;}
-  },WorldCombat.prototype);
-  invoke(host,'reconcileZeroHealthEnemies','restored');
-  assert.deepEqual(calls,[['zero','restored']]);
-  calls.length=0;
-  invoke(host,'reconcileZeroHealthEnemies','spawned',['live','zero']);
-  assert.deepEqual(calls,[['zero','spawned']]);
+test('restore and spawn boundaries open a ticket only for zero-health enemies',async t=>{
+  const map=ticketMap('ticket-boundary-map',[
+    {id:'zero',enemyId:'enemy-wolf-1',x:180,y:180,respawn:false},
+    {id:'live',enemyId:'enemy-wolf-1',x:220,y:220,respawn:false},
+  ]);
+  const world=await createTestWorldCombat({map,battleCatalog:battle,phaserScene:fullPhaserScene()});
+  await world.combat.start();
+  const settled:string[]=[];
+  const origSettle=world.session.settleEnemyDefeat.bind(world.session);
+  t.mock.method(world.session,'settleEnemyDefeat',(req:Parameters<Session['settleEnemyDefeat']>[0])=>{
+    settled.push(req.key);
+    return origSettle(req);
+  });
+  const snapshot=world.combat.captureState();
+  snapshot.roster.enemies.find(entry=>entry.key==='zero')!.health=0;
+  await world.combat.restoreState(snapshot);
+  assert.deepEqual(settled,['zero']);
+  assert.equal(world.roster.isPresent('live'),true);
+  assert.equal(world.roster.isPresent('zero'),false);
+  world.combat.destroy();
+
+  const items=loadItemCatalog(),statsCatalog=loadCharacterStatsCatalog(),campaign=loadCampaignCatalog(),battleCatalog=normalizeBattleCatalog(loadBattleCatalog());
+  const hero2=new BattleCharacter('dark-knight',statsCatalog,items);
+  const session2=new Session(campaign,undefined,undefined,items,hero2,battleCatalog);
+  session2.applyStoryCommands([{type:'world',command:{kind:'hide',id:'zero'}}]);
+  const world2=await createTestWorldCombat({hero:hero2,session:session2,map,battleCatalog,phaserScene:fullPhaserScene()});
+  await world2.combat.start();
+  const settled2:string[]=[];
+  const origSettle2=session2.settleEnemyDefeat.bind(session2);
+  t.mock.method(session2,'settleEnemyDefeat',(req:Parameters<Session['settleEnemyDefeat']>[0])=>{
+    settled2.push(req.key);
+    return origSettle2(req);
+  });
+  session2.setEnemyVitals('zero',0,0);
+  session2.applyStoryCommands([{type:'world',command:{kind:'show',id:'zero'}}]);
+  world2.combat.syncChestEnemies();
+  assert.deepEqual(settled2,['zero']);
+  assert.equal(world2.roster.isPresent('live'),true);
+  assert.equal(world2.roster.isPresent('zero'),false);
+  world2.combat.destroy();
 });
 
-test('zero-health and awaiting-defeat enemies stay out of the combatant list',()=>{
-  const collision={x:0,y:0,width:8,height:8};
-  const visual={container:{active:true},actor:{collision}};
-  const enemy={key:'zero',definition:{id:'enemy-wolf-1'},visual};
-  const host=(zero:boolean,awaiting:boolean)=>Object.setPrototypeOf({
-    pendingDefeats:{has:()=>false},memberOf:()=>undefined,activeParty:[],allies:[],
-    app:{session:{combatTick:0}},
-    visualOf:(id:string)=>id==='zero'?visual:undefined,
-    roster:{hasZeroHealth:()=>zero,isPresent:()=>true},arena:[enemy],
-    hitResolution:{isAwaitingDefeat:()=>awaiting},
-    conditions:{revision:0,activeStates:()=>[]},
-    movement:{position:()=>({x:0,y:0}),actor:()=>({shape:()=>({collision})})},
-    scene:{facing:'south'}
-  },WorldCombat.prototype);
-  assert.deepEqual(invoke(host(true,false),'combatants'),[],'0 血敌人不能进入候选名单');
-  assert.deepEqual(invoke(host(false,true),'combatants'),[],'同串命中里等待死亡结算的敌人也不能进入候选名单');
-  assert.equal((invoke(host(false,false),'combatants') as unknown[]).length,1,'正常敌人照常返回');
-  assert.ok(invoke(host(true,false),'combatant','zero'),'单点查询不按血量过滤，保留反伤与友方救援语义');
+test('zero-health and awaiting-defeat enemies stay out of the combatant list',async t=>{
+  t.mock.method(Math,'random',()=>0.5);
+  const map=ticketMap('combatant-filter-map',[{id:'zero',enemyId:'enemy-wolf-1',x:72,y:64}]);
+  const world=await createTestWorldCombat({map,battleCatalog:battle,phaserScene:fullPhaserScene()});
+  await world.combat.start();
+  assert.equal(world.combat.hasHostileTarget(),true,'正常敌人照常返回');
+
+  const awaitingMock=t.mock.method(CombatHitResolution.prototype,'isAwaitingDefeat',(id:string)=>id==='zero');
+  world.combat.update(60,true);
+  assert.equal(world.combat.hasHostileTarget(),false,'同串命中里等待死亡结算的敌人也不能进入候选名单');
+  awaitingMock.mock.restore();
+
+  world.roster.setEnemyHealth('zero',0,wolf);
+  assert.equal(world.combat.hasHostileTarget(),false,'0 血敌人不能进入候选名单');
+
+  world.roster.setEnemyHealth('zero',1,wolf);
+  const threatActors:Array<{id:string;active:boolean}|undefined>=[];
+  const origThreatActor=CombatSettlementEngine.prototype.threatActor;
+  t.mock.method(CombatSettlementEngine.prototype,'threatActor',function(this:CombatSettlementEngine,id:string){
+    const result=origThreatActor.call(this,id);
+    if(id==='zero'&&world.roster.hasZeroHealth('zero'))threatActors.push(result?{id:result.id,active:result.active}:undefined);
+    return result;
+  });
+  world.combat.selectEnemy('zero');
+  world.combat.attack();
+  for(let step=0;step<20&&!threatActors.length;step++)world.combat.update(60,true);
+  assert.ok(threatActors.some(entry=>entry?.id==='zero'&&entry.active),'单点查询不按血量过滤，保留反伤与友方救援语义');
+  world.combat.destroy();
 });
 
 test('a lethal hit opens one defeat ticket through the shared entry',()=>{
-  const target={key:'wolf',definition:{id:'enemy-wolf-1'},visual:{container:{x:3,y:4}}};
-  const state={health:10,maxHealth:10,level:3,elite:false};
-  const calls:unknown[]=[];
-  const host=Object.setPrototypeOf({
-    closed:false,pendingDefeats:new PendingEnemyDefeats(),
-    conditions:{canLoseHealth:()=>true,removeState(){}},
-    app:{session:{storyWorld:{visible:()=>true},isOneHitKill:()=>false,enemyVitals:()=>({})},director:undefined},
-    memberOf:()=>undefined,
-    roster:{isPresent:()=>true,enemySnapshot:()=>({...state}),setEnemyHealth:()=>{state.health=0;}},
-    hitResolution:new CombatHitResolution(),
-    beginEnemyDefeat:(enemy:{key:string},cause:string,before:unknown,caster:string)=>{
-      calls.push([enemy.key,cause,before,caster]);return true;
-    },
-    showHit(){},diagnosticHits:0,diagnosticTotalHits:0,diagnosticDamageDealt:0,diagnosticTotalDamageDealt:0,
-    combatantsCache:{tick:0,revision:0,value:[]},
-    dealtDamage:new Set(),threat:undefined
-  },WorldCombat.prototype);
-  const hero={level:3};
-  host.hitResolution.run(()=>invoke(host,'settleHit',{casterId:'player',targetId:'wolf'},{kind:'hit',damage:10},hero,target));
-  assert.equal(calls.length,1,'致死命中只开一张死亡单');
-  assert.equal(host.combatantsCache,undefined,'致死命中立刻让候选名单缓存失效');
-  assert.deepEqual(calls[0],['wolf','hit',{health:10,maxHealth:10,level:3,elite:false},'player']);
-  host.hitResolution.run(()=>invoke(host,'settleHit',{casterId:'player',targetId:'wolf'},{kind:'hit',damage:10},hero,target));
-  assert.equal(calls.length,1,'已经 0 血的敌人不会重复开单');
+  const hero=createTestMember({level:3});
+  const target=createTestEnemy({key:'wolf',definition:wolf,health:10,maxHealth:10,level:3,elite:false});
+  let invalidated=0;
+  const harness=createCombatTestHarness({
+    hero,
+    members:new Map([['player',hero]]),
+    enemies:new Map([['wolf',target]]),
+    settlementOverrides:{onInvalidateCombatants:()=>{invalidated++;}},
+  });
+  harness.hitResolution.run(()=>harness.settlement.settleHit({casterId:'player',targetId:'wolf'},{kind:'hit',damage:10},target));
+  assert.equal(harness.log.zeroHealthEnemies.length,1,'致死命中只开一张死亡单');
+  assert.equal(invalidated,1,'致死命中立刻让候选名单缓存失效');
+  assert.equal(harness.log.zeroHealthEnemies[0]!.key,'wolf');
+  assert.equal(harness.log.zeroHealthEnemies[0]!.casterId,'player');
+  assert.equal(harness.log.zeroHealthEnemies[0]!.before.health,10);
+  assert.equal(harness.log.zeroHealthEnemies[0]!.before.maxHealth,10);
+  assert.equal(harness.log.zeroHealthEnemies[0]!.before.level,3);
+  assert.equal(harness.log.zeroHealthEnemies[0]!.before.elite,false);
+  harness.hitResolution.run(()=>harness.settlement.settleHit({casterId:'player',targetId:'wolf'},{kind:'hit',damage:10},target));
+  assert.equal(harness.log.zeroHealthEnemies.length,1,'已经 0 血的敌人不会重复开单');
 });
 
-test('save settlement flushes the queue before capturing',()=>{
-  let flushes=0;
-  const host=Object.setPrototypeOf({pendingDefeats:{flush(){flushes++;}},partyDefeatWork:new Map(),
-    roster:{enemies:[]},arena:[],closed:false},WorldCombat.prototype);
-  host.settleForSave();
-  assert.equal(flushes,1);
+test('save settlement flushes the queue before capturing',async t=>{
+  t.mock.method(Math,'random',()=>0.5);
+  const map=ticketMap('save-flush-map',[{id:'wolf',enemyId:'enemy-wolf-1',x:72,y:64}]);
+  const world=await createTestWorldCombat({map,battleCatalog:battle,phaserScene:fullPhaserScene()});
+  await world.combat.start();
+  world.roster.setEnemyHealth('wolf',1,wolf);
+  world.combat.selectEnemy('wolf');
+  world.combat.attack();
+  for(let step=0;step<20&&world.roster.enemySnapshot('wolf',wolf,world.hero.level)!.health>0;step++)world.combat.update(60,true);
+  assert.equal(world.roster.enemySnapshot('wolf',wolf,world.hero.level)!.health,0);
+  assert.equal(world.session.enemyVitals('wolf').deadUntil,undefined);
+  world.combat.settleForSave();
+  assert.notEqual(world.session.enemyVitals('wolf').deadUntil,undefined);
+  world.combat.destroy();
 });
 
-test('rollback discards pending defeats without settling them',()=>{
-  const settled:string[]=[],cancelled:string[]=[],runtimeCancelled:string[]=[];
-  const host=Object.setPrototypeOf({
-    pendingDefeats:{keys:()=>['wolf','bat'],clear(){settled.push('cleared');}},
-    outcomes:{cancelDeath:(key:string)=>cancelled.push(key)},
-    runtime:{cancel:(key:string)=>runtimeCancelled.push(key)},
-    partyDefeatWork:new Map([['player',()=>settled.push('party')]]),
-    combatantsCache:{}
-  },WorldCombat.prototype);
-  invoke(host,'discardPendingDefeats');
-  assert.deepEqual(cancelled,['wolf','bat'],'取消消散表现');
-  assert.deepEqual(runtimeCancelled,['defeat:wolf','defeat:bat'],'取消排定的结算');
-  assert.deepEqual(settled,['cleared'],'不执行死亡结算');
-  assert.equal(host.combatantsCache,undefined);
+test('rollback discards pending defeats without settling them',async t=>{
+  t.mock.method(Math,'random',()=>0.5);
+  const map=ticketMap('rollback-discard-map',[{id:'wolf',enemyId:'enemy-wolf-1',x:72,y:64}]);
+  let defeats=0;
+  const world=await createTestWorldCombat({
+    map,battleCatalog:battle,phaserScene:fullPhaserScene(),
+    sceneOverrides:{handleCombatDefeat:()=>{defeats++;}},
+  });
+  await world.combat.start();
+  let settled=0;
+  const origSettle=world.session.settleEnemyDefeat.bind(world.session);
+  t.mock.method(world.session,'settleEnemyDefeat',(req:Parameters<Session['settleEnemyDefeat']>[0])=>{
+    settled++;
+    return origSettle(req);
+  });
+  const cancelled:string[]=[],runtimeCancelled:string[]=[];
+  const origCancelDeath=CombatOutcomes.prototype.cancelDeath;
+  t.mock.method(CombatOutcomes.prototype,'cancelDeath',function(this:InstanceType<typeof CombatOutcomes>,key:string){
+    cancelled.push(key);
+    return origCancelDeath.call(this,key);
+  });
+  const origRuntimeCancel=CombatRuntime.prototype.cancel;
+  t.mock.method(CombatRuntime.prototype,'cancel',function(this:CombatRuntime,owner:string){
+    runtimeCancelled.push(owner);
+    return origRuntimeCancel.call(this,owner);
+  });
+
+  world.roster.setEnemyHealth('wolf',1,wolf);
+  world.combat.selectEnemy('wolf');
+  world.combat.attack();
+  for(let step=0;step<20&&world.roster.enemySnapshot('wolf',wolf,world.hero.level)!.health>0;step++)world.combat.update(60,true);
+  assert.equal(settled,0);
+  world.hero.setHealth(0);
+  cancelled.length=0;runtimeCancelled.length=0;
+
+  world.combat.discardPendingDefeats();
+  assert.deepEqual(cancelled,['wolf'],'取消消散表现');
+  assert.deepEqual(runtimeCancelled,['defeat:wolf'],'取消排定的结算');
+  assert.equal(world.combat.hasHostileTarget(),false);
+  world.hero.setHealth(world.hero.player.maxHealth);
+  world.combat.update(5000,true);
+  assert.equal(world.session.enemyVitals('wolf').deadUntil,undefined);
+  assert.equal(settled,0,'不执行死亡结算');
+  assert.equal(defeats,0,'不执行队伍倒下收尾');
+  world.combat.destroy();
 });
 
 test('checkpoints settle pending defeats before capturing session and world',()=>{
@@ -152,44 +278,51 @@ test('world restore cancels old defeat work before projecting a different map',a
   assert.deepEqual(calls,['discard','restore']);
 });
 
-test('combat destruction releases pending defeats without applying rewards',()=>{
-  let rewards=0,cleared=0;
-  const pending=new PendingEnemyDefeats();pending.add('wolf',()=>{rewards++;});
-  const empty={clear(){},destroy(){}};
-  const host:any=Object.setPrototypeOf({closed:false,generation:0,
-    allyWaiters:new Set(),deathTweens:new Map(),fallen:new Set(),pendingDefeats:pending,
-    outcomes:empty,feedback:empty,hero:{clearCombatResourceLimits(){}},allies:[],
-    stateMarkers:empty,partyControllers:new Map(),partySkills:new Map(),lastSkillResets:new Map(),
-    passivesCache:new Map(),skillTableCache:new Map(),equipmentEffectsCache:new Map(),
-    combatEffects:empty,buffLoops:empty,clearEnemies(){cleared++;},conditions:empty,summons:empty,
-    extraSkillLeases:new Map(),preparedSkillIds:new Set(),allySkillSignatures:new Map(),
-    allySkillGates:new Map(),skillAssetFailures:new Map()
-  },WorldCombat.prototype);
-  host.destroy();host.destroy();
+test('combat destruction releases pending defeats without applying rewards',async t=>{
+  t.mock.method(Math,'random',()=>0.5);
+  let rewards=0,destroyed=0;
+  const map=ticketMap('destroy-pending-map',[{id:'wolf',enemyId:'enemy-wolf-1',x:72,y:64}]);
+  const world=await createTestWorldCombat({map,battleCatalog:battle,phaserScene:fullPhaserScene()});
+  await world.combat.start();
+  const origSettle=world.session.settleEnemyDefeat.bind(world.session);
+  t.mock.method(world.session,'settleEnemyDefeat',(req:Parameters<Session['settleEnemyDefeat']>[0])=>{
+    rewards++;
+    return origSettle(req);
+  });
+  const origDestroy=CombatOutcomes.prototype.destroy;
+  t.mock.method(CombatOutcomes.prototype,'destroy',function(this:InstanceType<typeof CombatOutcomes>){
+    destroyed++;
+    return origDestroy.call(this);
+  });
+  world.roster.setEnemyHealth('wolf',1,wolf);
+  world.combat.selectEnemy('wolf');
+  world.combat.attack();
+  for(let step=0;step<20&&world.roster.enemySnapshot('wolf',wolf,world.hero.level)!.health>0;step++)world.combat.update(60,true);
+  assert.equal(rewards,0);
+  world.combat.destroy();world.combat.destroy();
+  world.combat.settleForSave();
   assert.equal(rewards,0,'释放旧世界不能推进任务或发奖励');
-  assert.equal(pending.has('wolf'),false);
-  assert.equal(cleared,1,'重复销毁只释放一次');
+  assert.equal(destroyed,1,'重复销毁只释放一次');
 });
 
 
-test('disposing an old enemy visual preserves restored session vitals and cooldowns',()=>{
-  const writes:string[]=[],released:string[]=[];
-  const host=Object.setPrototypeOf({closed:true,app:{pressureMode:false,session:{
-    forgetEnemyVitals(){writes.push('vitals');},cooldowns:{removeActor(){writes.push('cooldown');}}}},
-    arena:[],movement:{remove(){released.push('movement');}}
-  },WorldCombat.prototype);
-  invoke(host,'destroyEnemy',{key:'summon:1',summonedBy:'player',controller:{dispose(){}},
-    presenter:{clear(){}},visual:{container:{destroy(){released.push('visual');}}}});
-  assert.deepEqual(writes,[]);
-  assert.deepEqual(released,['movement','visual']);
+test('disposing an old enemy visual preserves restored session vitals and cooldowns',async()=>{
+  const map=ticketMap('dispose-preserve-map',[{id:'wolf',enemyId:'enemy-wolf-1',x:180,y:180}]);
+  const world=await createTestWorldCombat({map,battleCatalog:battle,phaserScene:fullPhaserScene()});
+  await world.combat.start();
+  world.session.setEnemyVitals('wolf',40,7);
+  world.session.cooldowns.forActor('wolf').start('probe',20);
+  world.combat.destroy();
+  assert.deepEqual(world.session.enemyVitals('wolf'),{health:40,mana:7});
+  assert.equal(world.session.cooldowns.forActor('wolf').isReady('probe'),false);
 });
 
 test('a failed death settlement keeps the one-time encounter winnable after saving and restoring', async t => {
   const { headlessContent, playthrough } = await import('./helpers/story-playthrough.ts');
-  const { WorldEnemyRoster } = await import('../src/domain/world-enemies.ts');
   const map = headlessContent.maps.get('werewolf-lair-43f5b4c5')!;
   const h = playthrough();
   let restored: ReturnType<typeof playthrough> | undefined;
+  let world: Awaited<ReturnType<typeof createTestWorldCombat>> | undefined;
   try {
     assert.equal(h.session.accept('quest-46'), true);
     h.session.applyStoryCommands([{type:'travel',destination:{map:map.id,x:300,y:152,facing:'east'}}]);
@@ -198,23 +331,28 @@ test('a failed death settlement keeps the one-time encounter winnable after savi
     const spawn = roster.spawns.find(spawn => spawn.enemyId === 'enemy-head-werewolf-1')!;
     const definition = headlessContent.battle.enemies.find(enemy => enemy.id === spawn.enemyId)!;
     assert.equal(spawn.respawn, false);
-    const snapshot = roster.enemySnapshot(spawn.id, definition, h.session.hero!.level)!;
-    roster.setEnemyHealth(spawn.id, 0, definition);
+    const storyBattle = normalizeBattleCatalog(headlessContent.battle);
+    const heroActor = storyBattle.classes.find(c => c.id === h.session.hero!.classId)!.actor;
+    world = await createTestWorldCombat({
+      hero: h.session.hero!,
+      session: h.session,
+      map,
+      roster,
+      battleCatalog: storyBattle,
+      phaserScene: fullPhaserScene(),
+      playerVisual: {
+        entity: { id: 'player', actor: heroActor.id, x: 300, y: 152, flip: false },
+        actor: heroActor,
+        layers: [],
+        container: createFakeContainer(300, 152),
+      } as never,
+    });
+    await world.combat.start();
     t.mock.method(h.session, 'settleEnemyDefeat', () => { throw new Error('settlement failed'); });
+    roster.setEnemyHealth(spawn.id, 0, definition);
+    world.combat.settleForSnapshot();
 
-    const pendingDefeats = new PendingEnemyDefeats();
-    const host = {
-      app: { session: h.session }, hero: h.session.hero, scene: { map, refreshCombatTarget() {} },
-      roster, arena: [], pendingDefeats, memberOf: () => undefined,
-      runtime: { cancel() {} }, outcomes: { cancelDeath() {} },
-      conditions: { remove() {} }, movement: { stop() {}, setEnabled() {} }, partyControllers: [],
-      removeEnemy: (key: string) => roster.removeEnemy(key),
-    };
-    const target = { key: spawn.id, definition, presenter: { clear() {} },
-      visual: { container: { x: spawn.x, y: spawn.y, disableInteractive() {} } } };
-    assert.equal(invoke(host, 'beginEnemyDefeat', target, 'restored', snapshot), true);
-
-    assert.equal(pendingDefeats.has(spawn.id), false);
+    assert.equal(roster.isPresent(spawn.id), false);
     assert.equal(roster.completedEncounters().length, 0);
     assert.equal(h.session.enemyVitals(spawn.id).deadUntil, undefined);
     restored = playthrough(JSON.parse(JSON.stringify(h.session.captureState())));
@@ -224,6 +362,7 @@ test('a failed death settlement keeps the one-time encounter winnable after savi
     assert.equal(restored.session.status('quest-47'), 'ready');
     assert.equal(restored.session.captureState().receipts.filter(receipt => receipt.quest === 'quest-46').length, 1);
   } finally {
+    world?.combat.destroy();
     restored?.director.dispose();
     h.director.dispose();
   }

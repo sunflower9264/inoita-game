@@ -3,7 +3,8 @@ import {EventEmitter} from 'node:events';
 import {readFileSync} from 'node:fs';
 import {registerHooks} from 'node:module';
 import test from 'node:test';
-import type {ActorDefinition, Facing} from '../src/domain/content.ts';
+import type { BattleCatalog } from '../src/domain/battle.ts';
+import type {ActorDefinition, AnimationClip, WorldMap} from '../src/domain/content.ts';
 import {validateSceneSnapshot, type SceneSnapshot} from '../src/domain/scene-snapshot.ts';
 import type {StoryStageSnapshot} from '../src/domain/story-performance.ts';
 import {prepareSceneVisit,generateMapEntities} from '../src/domain/scene-visit.ts';
@@ -15,15 +16,57 @@ import {parseDrops} from '../src/domain/drops.ts';
 import {parseSprings} from '../src/domain/springs.ts';
 import {WorldEnemyRoster} from '../src/domain/world-enemies.ts';
 import {claimStoryTrigger} from '../src/domain/story-trigger-occupancy.ts';
+import {
+  loadBattleCatalog,
+  loadCampaignCatalog,
+  loadCharacterStatsCatalog,
+  loadCompanionCatalog,
+  loadItemCatalog,
+} from './support/combat-test-harness.ts';
+import {createFakePhaserScene, createTestWorldCombat, PHASER_STUB_SOURCE} from './support/world-combat-fixture.ts';
 
 const hook=registerHooks({resolve(specifier,context,next){return specifier==='phaser'
-  ?{url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}},Scenes:{Events:{SHUTDOWN:\'shutdown\'}}}',shortCircuit:true}
+  ?{url:`data:text/javascript,${encodeURIComponent(PHASER_STUB_SOURCE)}`,shortCircuit:true}
   :next(specifier,context);}});
 const {WorldScene}=await import('../src/scenes/world-scene.ts');
-const {WorldCombat}=await import('../src/scenes/world-combat.ts');
 const {StoryPresenter}=await import('../src/rendering/story-presenter.ts');
 hook.deregister();
 
+function stripActorFiles(actor:ActorDefinition):ActorDefinition {
+  const clips:ActorDefinition['clips']={};
+  for(const [name,clip] of Object.entries(actor.clips) as [keyof ActorDefinition['clips'], AnimationClip|undefined][]){
+    if(!clip)continue;
+    clips[name]={...clip,layers:clip.layers.map(layer=>({...layer,file:''}))};
+  }
+  return {...actor,clips};
+}
+function completePhaserScene(extraSprite?:(sprite:Record<string,unknown>)=>void){
+  const base=createFakePhaserScene();
+  const baseAdd=base.add as unknown as {sprite:(...args:unknown[])=>Record<string,unknown>};
+  const baseTweens=base.tweens as unknown as Record<string,unknown>;
+  const scene=createFakePhaserScene({
+    tweens:{...baseTweens,killTweensOf:()=>{},getTweensOf:()=>[]},
+    add:{
+      ...baseAdd,
+      sprite:(...args:unknown[])=>{
+        const sprite=baseAdd.sprite(...args);
+        const anims=sprite.anims as Record<string,unknown>;
+        Object.assign(anims,{isPlaying:false,getProgress:()=>0,create:(config:unknown)=>{const anim={...(config as object),destroy:()=>{}};anims.currentAnim=anim;return anim;}});
+        Object.assign(sprite,{scene,texture:sprite.texture??{key:''},setTexture(){return sprite;},play(){anims.isPlaying=true;return sprite;}});
+        extraSprite?.(sprite);
+        return sprite;
+      },
+    },
+  });
+  return scene;
+}
+function localBattleCatalog(base=loadBattleCatalog()):BattleCatalog {
+  return {
+    ...base,
+    classes:base.classes.map(entry=>({...entry,actor:stripActorFiles(entry.actor)})),
+    enemies:base.enemies.map(entry=>({...entry,actor:stripActorFiles(entry.actor)})),
+  };
+}
 function appearance(id:string,texture=id):ActorDefinition {
   return {id,name:id,description:'',portrait:null,clips:{'idle-south':{
     frameWidth:16,frameHeight:16,frames:1,originX:.5,originY:1,frameRate:1,mirrorX:false,
@@ -56,28 +99,117 @@ test('在拉宾斯身边读档保留已触发的邀请，走开后才可再触�
   assert.equal(approach(true)?.event,robbins);
 });
 
-test('live capture includes the physical scene with equipped party, props, enemy instances and summons while world is covered',()=>{
+test('live capture includes the physical scene with equipped party, props, enemy instances and summons while world is covered',async()=>{
+  const battleCatalog=localBattleCatalog();
+  const items=loadItemCatalog();
+  const statsCatalog=loadCharacterStatsCatalog();
+  const campaign=loadCampaignCatalog();
+  const companions=loadCompanionCatalog();
+  const hero=new BattleCharacter('warlock',statsCatalog,items);
+  const session=new Session(campaign,undefined,undefined,items,hero,battleCatalog,statsCatalog,companions);
+  session.skills.maxAll();
+  session.skills.bar().assign(0,1,{kind:'skill',id:'hell-s-pawn'});
+  session.bag.add('mercenary-emblem-black-knight',2);
+  const recruit=()=>session.party!.recruit(session.bag.entries.find(entry=>entry.item==='mercenary-emblem-black-knight')!.id,()=>0).member;
+  const first=recruit();
+  const second=recruit();
+  session.party!.deployFirstAvailable(first.id);
+  session.party!.deployFirstAvailable(second.id);
+  second.setHealth(0);
+
+  const dkActor=battleCatalog.classes.find(entry=>entry.id==='dark-knight')!.actor;
+  const shieldClip={
+    ...appearance('companion','equipped-shield').clips['idle-south']!,
+    layers:[{key:'equipped-shield',file:'',blend:'normal' as const}],
+  };
+  const companionActor:ActorDefinition={
+    id:'companion',
+    name:'companion',
+    description:'',
+    portrait:null,
+    collision:{x:-8,y:-8,width:16,height:16},
+    clips:{
+      ...dkActor.clips,
+      'idle-south':shieldClip,
+      'idle-east':structuredClone(shieldClip),
+      'idle-north':structuredClone(shieldClip),
+      'idle-west':structuredClone(shieldClip),
+    },
+  };
+  const map:WorldMap={
+    id:'camp',
+    name:'camp',
+    width:320,
+    height:320,
+    tileSize:16,
+    columns:20,
+    rows:20,
+    blocked:Array<boolean>(400).fill(false),
+    ground:'',
+    canopy:'',
+    features:[],
+    entities:[],
+    exits:[],
+    breakableSpawn:'jar',
+    enemySpawns:[
+      {id:'wolf-1',enemyId:'enemy-snake-1',x:208,y:208,breakableEligible:true},
+      {id:'wolf-2',enemyId:'enemy-snake-1',x:256,y:208},
+    ],
+  };
+  const roster=new WorldEnemyRoster(session,map,[],hero.level,undefined,()=>0.99);
+  const phaserScene=completePhaserScene(sprite=>{
+    Object.assign(sprite.anims as object,{currentAnim:{},getProgress:()=>1,isPlaying:false});
+    Object.assign(sprite,{play(){return sprite;}});
+  });
+  const world=await createTestWorldCombat({
+    phaserScene,
+    map,
+    hero,
+    session,
+    roster,
+    battleCatalog,
+    items,
+    characterStats:statsCatalog,
+    sceneOverrides:{
+      equipmentAppearance:id=>id===first.id?companionActor:undefined,
+    },
+    appOverrides:{
+      world:{actors:{[first.definition.actor]:dkActor,[second.definition.actor]:dkActor}} as never,
+    },
+  });
+  await world.combat.start();
+  world.combat.attack('hell-s-pawn');
+  for(let i=0;i<30;i++){
+    world.combat.update(60,true);
+    if(world.combat.captureState().roster.enemies.some(entry=>entry.summonedBy==='player'))break;
+  }
+  const summonKey=world.combat.captureState().roster.enemies.find(entry=>entry.summonedBy==='player')!.key;
+  session.storyWorld.apply({kind:'encounter',encounter:{id:'dead',map:'camp',status:'active',spawns:[{id:'1',enemyId:'enemy-snake-1',x:80,y:64}]}});
+  world.combat.syncChestEnemies();
+  session.setOneHitKill('player',true);
+  world.combat.selectEnemy('dead:1');
+  world.combat.attack();
+  for(let i=0;i<20;i++){
+    world.combat.update(60,true);
+    if(world.combat.diagnostics().enemies?.some(entry=>entry.id==='dead:1'&&entry.pendingDefeat))break;
+  }
+  world.combat.adoptStoryPositions([
+    {id:`member:${first.id}`,actor:companionActor.id,memberId:first.id,x:60,y:70,facing:'east',visible:true},
+    {id:'enemy:wolf-1',actor:'enemy-snake-1',enemyKey:'wolf-1',x:160,y:80,facing:'west',visible:true},
+    {id:'enemy:wolf-2',actor:'enemy-snake-1',enemyKey:'wolf-2',x:208,y:80,facing:'west',visible:true},
+    {id:`enemy:${summonKey}`,actor:'enemy-hell-s-pawn-1',enemyKey:summonKey,x:240,y:80,facing:'west',visible:true},
+  ]);
+
   const player=visual('player',appearance('hero','equipped-sword'),12,18);
   const gate=visual('gate-1',appearance('gate'),20,30);
   const chest=visual('chest-1',{...appearance('chest'),chest:'wooden' as ActorDefinition['chest']},30,40);
   const spring=visual('spring-1',appearance('spring-empty'),40,50);spring.entity.actor='spring-high';
   const hidden=visual('hidden-1',appearance('npc'),50,60);
-  const companion=visual('companion-1',appearance('companion','equipped-shield'),60,70);
   player.layers.push({anims:{currentAnim:{},getProgress:()=>.25,isPlaying:true}});
-  companion.layers.push({anims:{currentAnim:{},getProgress:()=>1,isPlaying:false}});
   // 单帧动画在 Phaser 里的进度是 NaN（1/(帧数-1)），快照必须收敛成 undefined 才能通过校验。
   gate.layers.push({anims:{currentAnim:{},getProgress:()=>NaN,isPlaying:true}});
-  const fallen=visual('companion-2',appearance('companion'),61,71);
-  const enemy=(key:string,x:number,summonedBy?:string)=>({key,definition:{id:'wolf',actor:appearance('wolf')},
-    visual:visual(key,appearance('wolf'),x,80),facing:'west' as Facing,summonedBy});
   const movement={position:(value:{physics:{x:number;y:number}})=>({...value.physics})};
-  const combat=Object.assign(Object.create(WorldCombat.prototype),{scene:{movement},
-    allies:[{id:'companion-1',member:{definition:{actor:'companion'},alive:true},visual:companion,facing:'east'},
-      {id:'companion-2',member:{definition:{actor:'companion'},alive:false},visual:fallen,facing:'south'}],
-    arena:[enemy('wolf-1',70),enemy('wolf-2',80),enemy('summon-1',90,'player'),enemy('dead-1',100)],
-    isActorAlive:(id:string)=>id!=='dead-1',pendingDefeats:new Set<string>(),captureState:()=>undefined,settleForSave:()=>{},
-    captureStoryVisit:()=>({roster:{enemies:[],sequence:0,partySize:1},breakableRolls:[['wolf-1','wolf']]})});
-  const host=Object.assign(Object.create(WorldScene.prototype),{map:{id:'camp'},player,movement,combat,facing:'north',
+  const host=Object.assign(Object.create(WorldScene.prototype),{map:{id:'camp'},player,movement,combat:world.combat,facing:'north',
     characters:[gate,chest,spring,hidden],baseEntities:[],chestOpened:(value:unknown)=>value===chest,
     app:{ui:{},session:{hasLivingMember:true,storyWorld:{actorVisible:(_map:string,actor:string)=>actor!=='npc'},visible:()=>true}}});
   host.restoreTriggerContacts(undefined);
@@ -90,36 +222,37 @@ test('live capture includes the physical scene with equipped party, props, enemy
   if(!saved.ok)throw new Error('无法捕获存档');
   const savedScene:SceneSnapshot=saved.world.scene!;
   assert.equal(savedScene.actors.find(actor=>actor.id==='enemy:wolf-1')!.appearance,undefined);
-  assert.equal(savedScene.actors.find(actor=>actor.id==='enemy:summon-1')!.appearance,undefined);
-  assert.ok(savedScene.actors.find(actor=>actor.id==='member:companion-1')!.appearance);
+  assert.equal(savedScene.actors.find(actor=>actor.id===`enemy:${summonKey}`)!.appearance,undefined);
+  assert.ok(savedScene.actors.find(actor=>actor.id===`member:${first.id}`)!.appearance);
   assert.ok(snapshot.actors.find(actor=>actor.id==='enemy:wolf-1')!.appearance);
   validateSceneSnapshot(savedScene);
-  assert.deepEqual(snapshot.visit?.breakableRolls,[['wolf-1','wolf']]);
+  assert.deepEqual(snapshot.visit?.breakableRolls,[['wolf-1','enemy-snake-1']]);
   validateSceneSnapshot(snapshot);
   assert.deepEqual(snapshot.actors.map(actor=>actor.id),[
     'player','entity:gate-1','entity:chest-1','entity:spring-1','entity:hidden-1',
-    'member:companion-1','member:companion-2','enemy:wolf-1','enemy:wolf-2','enemy:summon-1','enemy:dead-1'
+    `member:${first.id}`,`member:${second.id}`,'enemy:wolf-1','enemy:wolf-2',`enemy:${summonKey}`,'enemy:dead:1'
   ]);
   assert.deepEqual(snapshot.actors.filter(actor=>actor.visible).map(actor=>actor.id),[
-    'player','entity:gate-1','entity:spring-1','member:companion-1','enemy:wolf-1','enemy:wolf-2','enemy:summon-1'
+    'player','entity:gate-1','entity:spring-1',`member:${first.id}`,'enemy:wolf-1','enemy:wolf-2',`enemy:${summonKey}`
   ]);
   const captured=(id:string)=>snapshot.actors.find(actor=>actor.id===id)!;
   assert.deepEqual([captured('player').x,captured('player').y,captured('player').facing],[12,18,'north']);
   assert.equal(captured('player').appearance?.clips['idle-south']?.layers[0]?.key,'equipped-sword');
-  assert.equal(captured('member:companion-1').appearance?.clips['idle-south']?.layers[0]?.key,'equipped-shield');
-  assert.equal(captured('member:companion-1').followsPlayer,true);
-  assert.equal(captured('member:companion-2').followsPlayer,true,'阵亡队员也登记为跟随者，显隐仍按自己的存活状态');
+  assert.equal(captured(`member:${first.id}`).appearance?.clips['idle-south']?.layers[0]?.key,'equipped-shield');
+  assert.equal(captured(`member:${first.id}`).followsPlayer,true);
+  assert.equal(captured(`member:${second.id}`).followsPlayer,true,'阵亡队员也登记为跟随者，显隐仍按自己的存活状态');
   assert.deepEqual([captured('player').animationProgress,captured('player').animationPlaying],[.25,true]);
-  assert.deepEqual([captured('member:companion-1').animationProgress,captured('member:companion-1').animationPlaying],[1,false]);
+  assert.deepEqual([captured(`member:${first.id}`).animationProgress,captured(`member:${first.id}`).animationPlaying],[1,false]);
   assert.equal(captured('entity:gate-1').animationProgress,undefined,'单帧动画的 NaN 进度不能写进快照');
   assert.equal(captured('entity:gate-1').animationPlaying,true);
   assert.equal(captured('entity:spring-1').actor,'spring-high');
   assert.equal(captured('entity:spring-1').appearance?.id,'spring-empty');
   assert.equal(captured('enemy:wolf-1').enemyId,captured('enemy:wolf-2').enemyId);
-  assert.equal(captured('enemy:summon-1').summonedBy,'player');
-  companion.actor.clips['idle-south']!.layers[0]!.key='changed-later';
-  assert.equal(captured('member:companion-1').appearance?.clips['idle-south']?.layers[0]?.key,'equipped-shield');
+  assert.equal(captured(`enemy:${summonKey}`).summonedBy,'player');
+  companionActor.clips['idle-south']!.layers[0]!.key='changed-later';
+  assert.equal(captured(`member:${first.id}`).appearance?.clips['idle-south']?.layers[0]?.key,'equipped-shield');
   assert.deepEqual(JSON.parse(JSON.stringify(snapshot)).actors.length,snapshot.actors.length);
+  world.combat.destroy();
 });
 
 test('a pulled legendary sword is hidden from the live story scene snapshot',()=>{
@@ -261,36 +394,77 @@ test('rollback restores physical prop positions and drained appearance while ret
   assert.equal(player.actor.clips['idle-south']!.layers[0]!.key,'current-outfit');
 });
 
-test('combat position handoff only updates living instances still present in the formal world',()=>{
-  const active=visual('ally',appearance('ally'),1,2),dead=visual('dead',appearance('ally'),3,4);
-  const monster=visual('monster',appearance('wolf'),5,6);active.actor.clips={};dead.actor.clips={};monster.actor.clips={};
+test('combat position handoff only updates living instances still present in the formal world',async t=>{
+  const battleCatalog=localBattleCatalog();
+  const items=loadItemCatalog();
+  const statsCatalog=loadCharacterStatsCatalog();
+  const campaign=loadCampaignCatalog();
+  const companions=loadCompanionCatalog();
+  const hero=new BattleCharacter('dark-knight',statsCatalog,items);
+  const session=new Session(campaign,undefined,undefined,items,hero,battleCatalog,statsCatalog,companions);
+  session.bag.add('mercenary-emblem-black-knight',2);
+  const recruit=()=>session.party!.recruit(session.bag.entries.find(entry=>entry.item==='mercenary-emblem-black-knight')!.id,()=>0).member;
+  const ally=recruit(),dead=recruit();
+  session.party!.deployFirstAvailable(ally.id);
+  session.party!.deployFirstAvailable(dead.id);
+  dead.setHealth(0);
+  const dkActor=battleCatalog.classes.find(entry=>entry.id==='dark-knight')!.actor;
+  const map:WorldMap={
+    id:'adopt-map',name:'adopt-map',width:320,height:320,tileSize:16,columns:20,rows:20,
+    blocked:Array<boolean>(400).fill(false),ground:'',canopy:'',features:[],entities:[],exits:[],
+    enemySpawns:[{id:'monster',enemyId:'enemy-snake-1',x:160,y:160}],
+  };
+  const world=await createTestWorldCombat({
+    phaserScene:completePhaserScene(),
+    map,hero,session,battleCatalog,items,characterStats:statsCatalog,
+    appOverrides:{world:{actors:{[ally.definition.actor]:dkActor,[dead.definition.actor]:dkActor}} as never},
+  });
+  await world.combat.start();
   const placements:unknown[]=[];
-  const scene={movement:{placeAll:(value:unknown[])=>placements.push(...value)},player:{}};
-  const combat=Object.assign(Object.create(WorldCombat.prototype),{scene,
-    allies:[{id:'ally',member:{alive:true},visual:active,facing:'south'},{id:'dead',member:{alive:false},visual:dead,facing:'south'}],
-    arena:[{key:'monster',visual:monster,facing:'south'}],isActorAlive:()=>true,pendingDefeats:new Set<string>()});
-  combat.adoptStoryPositions([
-    {id:'member:ally',actor:'ally',memberId:'ally',x:20,y:30,facing:'east',visible:true},
-    {id:'member:dead',actor:'ally',memberId:'dead',x:40,y:50,facing:'east',visible:true},
-    {id:'enemy:monster',actor:'wolf',enemyKey:'monster',x:60,y:70,facing:'west',visible:false,removed:true},
-    {id:'enemy:missing',actor:'wolf',enemyKey:'missing',x:80,y:90,facing:'west',visible:true}
+  const origPlaceAll=world.scene.movement!.placeAll.bind(world.scene.movement!);
+  t.mock.method(world.scene.movement!,'placeAll',(values:unknown[],...rest:unknown[])=>{
+    placements.push(...values);
+    return origPlaceAll(values as never,...(rest as []));
+  });
+  world.combat.adoptStoryPositions([
+    {id:`member:${ally.id}`,actor:dkActor.id,memberId:ally.id,x:20,y:30,facing:'east',visible:true},
+    {id:`member:${dead.id}`,actor:dkActor.id,memberId:dead.id,x:40,y:50,facing:'east',visible:true},
+    {id:'enemy:monster',actor:'enemy-snake-1',enemyKey:'monster',x:60,y:70,facing:'west',visible:false,removed:true},
+    {id:'enemy:missing',actor:'enemy-snake-1',enemyKey:'missing',x:80,y:90,facing:'west',visible:true}
   ]);
   assert.equal(placements.length,1);
-  assert.deepEqual(placements[0],{visual:active,position:{x:20,y:30},enabled:true});
-  assert.equal(combat.allies[0].facing,'east');
+  assert.deepEqual((placements[0] as {position:unknown;enabled:boolean}).position,{x:20,y:30});
+  assert.equal((placements[0] as {enabled:boolean}).enabled,true);
+  assert.equal(world.combat.captureStoryActors().find(actor=>actor.memberId===ally.id)?.facing,'east');
+  assert.equal(world.combat.captureStoryActors().find(actor=>actor.memberId===dead.id)?.facing,'south');
+  world.combat.destroy();
 });
 
-test('a live visit snapshot keeps the actual enemy foot position alongside its original random replacement',()=>{
-  const enemy=visual('wolf-1',appearance('jar'),44,55);
-  const generated={roster:{enemies:[{key:'wolf-1',enemyId:'jar',x:1,y:2}],sequence:0,partySize:1},breakableRolls:[['wolf-1','jar']]};
-  const combat=Object.assign(Object.create(WorldCombat.prototype),{
-    scene:{movement:{position:(visual:typeof enemy)=>({...visual.physics})}},
-    visualOf:()=>enemy,roster:{capturePreparedState:()=>structuredClone(generated)}
-  });
-  const captured=combat.captureStoryVisit();
-  assert.deepEqual(captured.roster.enemies[0],{key:'wolf-1',enemyId:'jar',x:44,y:55});
-  assert.deepEqual(captured.breakableRolls,[['wolf-1','jar']]);
-  assert.deepEqual(generated.roster.enemies[0],{key:'wolf-1',enemyId:'jar',x:1,y:2});
+test('a live visit snapshot keeps the actual enemy foot position alongside its original random replacement',async()=>{
+  const battleCatalog=localBattleCatalog();
+  const items=loadItemCatalog();
+  const statsCatalog=loadCharacterStatsCatalog();
+  const campaign=loadCampaignCatalog();
+  const hero=new BattleCharacter('dark-knight',statsCatalog,items);
+  const session=new Session(campaign,undefined,undefined,items,hero,battleCatalog,statsCatalog);
+  const map:WorldMap={
+    id:'visit-map',name:'visit-map',width:320,height:320,tileSize:16,columns:20,rows:20,
+    blocked:Array<boolean>(400).fill(false),ground:'',canopy:'',features:[],entities:[],exits:[],
+    breakableSpawn:'jar',
+    enemySpawns:[{id:'wolf-1',enemyId:'enemy-snake-1',x:32,y:32,breakableEligible:true}],
+  };
+  const roster=new WorldEnemyRoster(session,map,[],hero.level,undefined,()=>0);
+  const world=await createTestWorldCombat({phaserScene:completePhaserScene(),map,hero,session,roster,battleCatalog,items,characterStats:statsCatalog});
+  await world.combat.start();
+  world.combat.adoptStoryPositions([{id:'enemy:wolf-1',actor:'enemy-jar-1',enemyKey:'wolf-1',x:96,y:112,facing:'south',visible:true}]);
+  const generated=world.roster.capturePreparedState();
+  const captured=world.combat.captureStoryVisit();
+  const capturedEnemy=captured.roster.enemies[0]!;
+  const generatedEnemy=generated.roster.enemies[0]!;
+  assert.deepEqual({key:capturedEnemy.key,enemyId:capturedEnemy.enemyId,x:capturedEnemy.x,y:capturedEnemy.y},{key:'wolf-1',enemyId:'enemy-jar-1',x:96,y:112});
+  assert.deepEqual(captured.breakableRolls,[['wolf-1','enemy-jar-1']]);
+  assert.deepEqual({key:generatedEnemy.key,enemyId:generatedEnemy.enemyId,x:generatedEnemy.x,y:generatedEnemy.y},{key:'wolf-1',enemyId:'enemy-jar-1',x:32,y:32});
+  world.combat.destroy();
 });
 
 test('story presenter prepares a foreign map through the real visit builder', async () => {

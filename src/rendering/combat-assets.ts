@@ -1,9 +1,9 @@
 import { resolveBasicAttack } from '../domain/basic-attack.ts';
 import { enemySkills, type BattleCatalog, type BattleClass, type EnemyDefinition, type ResolvedBasicAttack, type SkillAction } from '../domain/battle.ts';
 import type { BattleCharacter } from '../domain/character-stats.ts';
-import type { ActorDefinition, ClipName, Facing } from '../domain/content.ts';
+import type { ActorDefinition, ClipName } from '../domain/content.ts';
 import type { EquipmentSlot, ItemCatalog } from '../domain/items.ts';
-import { costumeRecipe, type WardrobeCatalog } from '../domain/wardrobe.ts';
+import { costumeRecipe, equipmentAttackFor as domainEquipmentAttackFor, type WardrobeCatalog } from '../domain/wardrobe.ts';
 import { skillClips, skillEffectNames, skillSummonNames } from '../domain/skill-action.ts';
 import {
   basicAttackEffects, characterAssets, characterSceneClips, classEffects, combatFeedbackAssets, combatOutcomeAssets,
@@ -68,11 +68,7 @@ export function classSummonEnemyIds(catalog: BattleCatalog, classId: string, lea
 
 /** 装配后的普攻；装备只通过 hero.bag 读取，不依赖场景。 */
 export function equipmentAttackFor(wardrobe: WardrobeCatalog, items: ItemCatalog, hero: BattleCharacter, actor: ActorDefinition, memberId = 'player', step = 0): ResolvedBasicAttack {
-  const { attack } = costumeRecipe(wardrobe, items, hero.bag.equipmentItems(hero.bag.equipmentFor(memberId)));
-  return resolveBasicAttack({ basicAttacks: { equipped: attack } }, {
-    actor,
-    basicAttack: { profileId: 'equipped', clips: { north: 'attack-north' as const, south: 'attack-south' as const, east: 'attack-east' as const, west: 'attack-west' as const } satisfies Record<Facing, string> }
-  }, undefined, step);
+  return domainEquipmentAttackFor(wardrobe, items, hero.bag, actor, memberId, step);
 }
 
 interface PlayerCombatAssetInput {

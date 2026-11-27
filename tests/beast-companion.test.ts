@@ -1,18 +1,11 @@
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import {registerHooks} from 'node:module';
 import test from 'node:test';
-import type {BattleCatalog,SummonOwnerDerivation} from '../src/domain/battle.ts';
+import type {SummonOwnerDerivation} from '../src/domain/battle.ts';
+import type {CombatThreatSystem} from '../src/domain/combat-threat-system.ts';
 import {summonLifetimeFrames,summonOwnerStats} from '../src/domain/summon-stats.ts';
+import {createCombatTestHarness,createTestEnemy,loadBattleCatalog} from './support/combat-test-harness.ts';
 
-const phaser=registerHooks({resolve(specifier,context,next){
-  return specifier==='phaser'?{url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true}:next(specifier,context);
-}});
-const {WorldCombat}=await import('../src/scenes/world-combat.ts');
-phaser.deregister();
-const method=(name:string)=>Reflect.get(WorldCombat.prototype,name);
-
-const catalog=JSON.parse(readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')) as BattleCatalog;
+const catalog=loadBattleCatalog();
 const unit=catalog.skills['beast-companion'].action!.combatUnits![0] as {
   effect:'summon';creature:string;ownerDerived:SummonOwnerDerivation;
   lifetimeFromOwner:{attribute:string;perPoint:number;base:number};
@@ -51,20 +44,25 @@ test('a beast that hits a target which is not attacking it rolls its owner taunt
   t.mock.method(Math,'random',()=>0.01);
   const calls:string[]=[];
   let targetOfEnemy='player';
-  const host=Object.setPrototypeOf({arena:[{key:'beast',summonedBy:'player',summonTauntChance:40}],
-    threat:{taunt:(source:string,target:string)=>calls.push(`${source}->${target}`)},
-    enemyTarget:()=>targetOfEnemy},WorldCombat.prototype);
+  const beast=createTestEnemy({key:'beast',definition:catalog.enemies[0],summonedBy:'player',summonTauntChance:40});
+  const harness=createCombatTestHarness({
+    battleCatalog:catalog,enemies:new Map([['beast',beast]]),withThreat:false,
+    settlementOverrides:{
+      threat:{taunt:(source:string,target:string)=>calls.push(`${source}->${target}`)} as unknown as CombatThreatSystem,
+      enemyTarget:()=>targetOfEnemy,
+    },
+  });
   const event={casterId:'beast',targetId:'enemy'};
-  method('summonOwnerReactions').call(host,event,{kind:'hit',damage:5},'physical');
+  harness.settlement.summonOwnerReactions(event,{kind:'hit',damage:5},'physical');
   assert.deepEqual(calls,['beast->enemy']);
   calls.length=0;
   targetOfEnemy='beast';
-  method('summonOwnerReactions').call(host,event,{kind:'hit',damage:5},'physical');
-  assert.deepEqual(calls,[],'目标已经在打它就不抽');
+  harness.settlement.summonOwnerReactions(event,{kind:'hit',damage:5},'physical');
+  assert.equal(calls.length,0,'目标已经在打它就不抽');
   targetOfEnemy='player';
-  method('summonOwnerReactions').call(host,event,{kind:'miss',damage:0},'physical');
-  assert.deepEqual(calls,[],'落空不抽');
-  host.arena[0]!.summonTauntChance=0;
-  method('summonOwnerReactions').call(host,event,{kind:'hit',damage:5},'physical');
-  assert.deepEqual(calls,[],'机会为 0 不抽');
+  harness.settlement.summonOwnerReactions(event,{kind:'miss',damage:0},'physical');
+  assert.equal(calls.length,0,'落空不抽');
+  beast.summonTauntChance=0;
+  harness.settlement.summonOwnerReactions(event,{kind:'hit',damage:5},'physical');
+  assert.equal(calls.length,0,'机会为 0 不抽');
 });

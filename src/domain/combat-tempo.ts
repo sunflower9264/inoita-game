@@ -20,3 +20,14 @@ export function basicAttackFrames(attack:ResolvedBasicAttack,attackSpeedRate:num
 export function basicSelectionFrames(selection:BasicAttackSelection,attackSpeedRate:number):number {
   return 'kind' in selection ? selection.durationFrames : basicAttackFrames(selection,attackSpeedRate);
 }
+
+/** 计算包含 GM 倍速、移速属性、涉水与飞行豁免的最终移动速度。 */
+export function combatMovementSpeed(
+  baseSpeed: number,
+  moveSpeedRate: number,
+  options: { gmSpeedMultiplier?: number; onWater?: boolean; waterImmune?: boolean } = {},
+): number {
+  const mult = options.gmSpeedMultiplier ?? 1;
+  const water = !!options.onWater && !options.waterImmune;
+  return Math.max(0, Math.trunc(baseSpeed * mult * (moveSpeedRate / FULL_ATTACK_SPEED_RATE) * (water ? 0.5 : 1)));
+}

@@ -6,18 +6,28 @@ import {registerHooks} from 'node:module';
 import test from 'node:test';
 import type Phaser from 'phaser';
 import type {BattleCatalog} from '../src/domain/battle.ts';
-import type {ActorDefinition,AnimationClip,EffectClip,EffectLayer} from '../src/domain/content.ts';
+import {BattleCharacter} from '../src/domain/character-stats.ts';
+import type {ActorDefinition,AnimationClip,EffectClip,EffectLayer,WorldMap} from '../src/domain/content.ts';
+import {CombatActionDispatcher} from '../src/domain/combat-action-dispatcher.ts';
 import {CombatController,type ActionPlayback,type Combatant,type CombatPort} from '../src/domain/combat.ts';
 import {CombatCooldownStore} from '../src/domain/combat-cooldowns.ts';
-import {CombatConditions} from '../src/domain/combat-conditions.ts';
+import {CombatRuntime} from '../src/domain/combat-runtime.ts';
+import {Session} from '../src/domain/session.ts';
 import type {CharacterVisual} from '../src/rendering/characters.ts';
 import {installTextureLoader,loadSceneAssets,type PendingAsset} from '../src/rendering/scene-assets.ts';
 import {EFFECT_ATLAS_BY_FILE,EFFECT_ATLAS_PAGES} from '../src/generated/effect-atlas.ts';
+import {
+  loadBattleCatalog,
+  loadCampaignCatalog,
+  loadCharacterStatsCatalog,
+  loadCompanionCatalog,
+  loadItemCatalog,
+} from './support/combat-test-harness.ts';
+import {createTestWorldCombat} from './support/world-combat-fixture.ts';
 const hook=registerHooks({resolve(specifier,context,next){return specifier==='phaser'
-  ?{url:'data:text/javascript,export default {BlendModes:{NORMAL:0,SCREEN:1,ADD:2,MULTIPLY:3},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true}:next(specifier,context);}});
+  ?{url:'data:text/javascript,export default {BlendModes:{NORMAL:0,SCREEN:1,ADD:2,MULTIPLY:3},TintModes:{FILL:0,OVERLAY:1},Geom:{Rectangle:class{constructor(x=0,y=0,w=0,h=0){this.x=x;this.y=y;this.width=w;this.height=h;}static Contains(){return true;}}},Core:{Events:{POST_RENDER:\'postrender\'}},Scenes:{Events:{SHUTDOWN:\'shutdown\',PRE_UPDATE:\'preupdate\',POST_UPDATE:\'postupdate\',PRE_RENDER:\'prerender\'}},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true}:next(specifier,context);}});
 const {CombatPresenter}=await import('../src/rendering/combat-presenter.ts');
 const {CombatEffects}=await import('../src/rendering/combat-effects.ts');
-const {WorldCombat}=await import('../src/scenes/world-combat.ts');
 const {createEffect,effectAssets,effectAtlasAnimationKey}=await import('../src/rendering/effects.ts');hook.deregister();
 const catalog=JSON.parse(readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')) as BattleCatalog;
 const effectLayers=(name:string,clipNames?:readonly string[])=>Object.entries(catalog.attackEffects[name]!.clips)
@@ -46,9 +56,16 @@ class Display extends EventEmitter {
   get length(){return this.list.length;}
   setName(value:string){this.name=value;return this;}
   setDepth(value:number){this.depth=value;return this;}
+  setPosition(x:number,y:number){this.x=x;this.y=y;return this;}
+  setSize(){return this;}
+  setInteractive(){return this;}
+  disableInteractive(){return this;}
+  setData(){return this;}
   setVisible(value:boolean){this.visible=value;return this;}
   setAlpha(value:number){this.alpha=value;return this;}
   setOrigin(){return this;}setScale(){return this;}setBlendMode(){return this;}
+  getIndex(value:Display){return this.list.indexOf(value);}
+  moveTo(value:Display,index:number){const i=this.list.indexOf(value);if(i>=0){this.list.splice(i,1);this.list.splice(index,0,value);}return this;}
   add(value:Display){value.parent?.remove(value);this.list.push(value);value.parent=this;return this;}
   addAt(value:Display){return this.add(value);}
   remove(value:Display){this.list=this.list.filter(child=>child!==value);value.parent=undefined;}
@@ -67,16 +84,29 @@ function setup(){
     atlas:(key:string,file:string,atlas:string)=>queued.push({kind:'atlas',key,file,atlas}),
     start:()=>queueMicrotask(()=>{for(const asset of queued.splice(0))textures.set(asset.key,asset.kind==='atlas'?new Set():new Set(Array.from({length:asset.kind==='spritesheet'?Number(asset.config.endFrame)+1:1},(_,i)=>i)));load.emit('complete');}),
   });
-  const scene={events:new EventEmitter(),load,
+  const scene={events:new EventEmitter(),game:{events:new EventEmitter(),loop:{frame:0}},
+    cameras:{main:{width:640,height:360,zoomX:1,zoomY:1,worldView:undefined,followOffset:{x:0,y:0},setFollowOffset(x:number,y:number){this.followOffset.x=x;this.followOffset.y=y;}}},load,
     textures:{exists:(key:string)=>textures.has(key),get:(key:string)=>({has:(frame:string)=>typeof frame==='string'&&!/^\d+$/.test(frame)?true:textures.get(key)!.has(Number(frame))}),remove:(key:string)=>{removed.push(key);textures.delete(key);}},
     anims:{exists:(key:string)=>animations.has(key),get:(key:string)=>animations.get(key),
       create:(value:Animation)=>{animations.set(value.key,value);return value;},
       generateFrameNumbers:(_key:string,{start,end}:{start:number;end:number})=>Array.from({length:end-start+1},(_,i)=>i+start),
       remove:(key:string)=>animations.delete(key)},
-    add:{container:make,layer:()=>make(),sprite:()=>Object.assign(make(),{
-      play(this:Display,config:{key:string}){this.animation=animations.get(config.key);this.age=0;this.playing=true;return this;},
-    })},
-    tweens:{killTweensOf:()=>{},add:()=>({remove:()=>{}})},time:{delayedCall:()=>({remove:()=>{}})},facing:'east',
+    add:{container:make,layer:()=>make(),image:()=>make(),rectangle:()=>make(),sprite:()=>{
+      const sprite=Object.assign(make(),{
+        get scene(){return scene as unknown;},
+        texture:{key:''},
+        blendMode:0,isTinted:false,tintMode:0,tintTopLeft:0xffffff,
+        setTexture(){return sprite;},setPosition(){return sprite;},setDepth(){return sprite;},setFlipX(){return sprite;},
+        setTint(){return sprite;},setTintMode(){return sprite;},clearTint(){return sprite;},enableFilters(){return sprite;},
+        play(this:Display,config:{key:string}){this.animation=animations.get(config.key);this.age=0;this.playing=true;return this;},
+      });
+      Object.assign(sprite.anims,{isPlaying:false,getProgress:()=>0,currentFrame:{index:1},currentAnim:{frames:[{index:1}]},paused:false,
+        create:(config:Animation)=>{const anim={...config,destroy:()=>{}};sprite.animation=anim;return anim;},
+        pause(){},resume(){},setCurrentFrame(frame:{index:number}){this.currentFrame=frame;}});
+      return sprite;
+    }},
+    tweens:{killTweensOf:()=>{},getTweensOf:()=>[],add:()=>({remove:()=>{},stop:()=>{},pause:()=>{},resume:()=>{}})},
+    time:{now:0,delayedCall:()=>({remove:()=>{}})},facing:'east',
   } as unknown as Phaser.Scene;
   installTextureLoader(scene);
   const advance=(count:number)=>{for(let tick=0;tick<count;tick++)for(const node of [...nodes]){
@@ -90,7 +120,7 @@ function setup(){
   return {scene,nodes,animations,textures,removed,character,actor,effects,advance};
 }
 
-test('shared world visuals survive real member death and controller clears while attached and transition visuals are cancelled',()=>{
+test('shared world visuals survive real member death and controller clears while attached and transition visuals are cancelled',async()=>{
   const f=setup(),world=new CombatEffects(f.scene),ids=['player','ally','enemy'];
   const visuals=new Map(ids.map(id=>[id,f.character(id)])),actors=ids.map(f.actor);
   const presenters=new Map(ids.map(id=>[id,new CombatPresenter(f.scene,catalog,key=>visuals.get(key),()=>actors,world)]));
@@ -109,20 +139,65 @@ test('shared world visuals survive real member death and controller clears while
     Reflect.get(CombatPresenter.prototype,'effect').call(presenter,'hitback-wave','default',{x:0,y:0},true);
   }
   assert.equal(f.effects('swirl-ring').length,3);assert.equal(f.effects('hitback-wave').length,9);
-  const member={player:{health:0},clearCombatResourceLimits:()=>{}};
-  const host=Object.setPrototypeOf({fallen:new Set<string>(),activeParty:ids,visualOf:(id:string)=>visuals.get(id),
-    memberOf:()=>member,partyControllers:controllers,conditions:new CombatConditions(),hero:member,
-    app:{session:{party:{onDefeat:()=>false}}},syncControlled:()=>{},
-    allies:[{id:'ally',visual:visuals.get('ally')!,facing:'east',ai:{disable:()=>{}}}],arena:[],deathTweens:new Map(),scene:f.scene,
-    movement:{position:()=>({x:0,y:0}),stop:()=>{},setEnabled:()=>{}},
-  },WorldCombat.prototype);
-  Reflect.get(WorldCombat.prototype,'memberDefeated').call(host,'player');
-  Reflect.get(WorldCombat.prototype,'memberDefeated').call(host,'ally');
+  for(const id of ['player','ally'])controllers.get(id)!.cancel(true);
   controllers.get('enemy')!.cancel(true);visuals.get('enemy')!.container.destroy();
   assert.equal(f.effects('life-drain').length,0);
   assert.equal(f.effects('hitback-wave').length,6);assert.equal(f.effects('swirl-ring').length,3);
   f.advance(5);assert.equal(f.effects('hitback-wave').length,0);assert.equal(f.effects('swirl-ring').length,3);
   world.clear();world.clear();assert.equal(f.effects('swirl-ring').length,0);
+
+  // 通过真实 WorldCombat 验证队员阵亡后共享场地特效仍继续播放到结束
+  const stripActorFiles=(actor:ActorDefinition):ActorDefinition=>{
+    const clips:ActorDefinition['clips']={};
+    for(const [name,clip] of Object.entries(actor.clips) as [keyof ActorDefinition['clips'],AnimationClip|undefined][]){
+      if(!clip)continue;
+      clips[name]={...clip,layers:clip.layers.map(layer=>({...layer,file:''}))};
+    }
+    return {...actor,clips};
+  };
+  const baseBattle=loadBattleCatalog();
+  const battleCatalog:BattleCatalog={
+    ...baseBattle,
+    classes:baseBattle.classes.map(entry=>({...entry,actor:stripActorFiles(entry.actor)})),
+    enemies:baseBattle.enemies.map(entry=>({...entry,actor:stripActorFiles(entry.actor)})),
+  };
+  const realSetup=setup();
+  const items=loadItemCatalog(),stats=loadCharacterStatsCatalog();
+  const campaign=loadCampaignCatalog(),companions=loadCompanionCatalog();
+  const hero=new BattleCharacter('warrior',stats,items);
+  const session=new Session(campaign,undefined,undefined,items,hero,battleCatalog,stats,companions);
+  session.skills.maxAll();
+  session.skills.bar().assign(0,1,{kind:'skill',id:'swirling-storm'});
+  session.skills.bar().assign(0,2,{kind:'skill',id:'weapon-hitback'});
+  session.bag.add('mercenary-emblem-warrior');
+  const ally=session.party!.recruit(session.bag.entries.find(entry=>entry.item==='mercenary-emblem-warrior')!.id,()=>0).member;
+  session.party!.deployFirstAvailable(ally.id);
+  const warriorActor=battleCatalog.classes.find(entry=>entry.id==='warrior')!.actor;
+  const map:WorldMap={id:'effects-map',name:'effects-map',width:320,height:320,tileSize:16,columns:20,rows:20,
+    blocked:Array<boolean>(400).fill(false),ground:'',canopy:'',features:[],entities:[],exits:[],
+    enemySpawns:[{id:'target',enemyId:'enemy-scorpion-1',x:80,y:64}]};
+  const testWorld=await createTestWorldCombat({
+    phaserScene:realSetup.scene,map,hero,session,battleCatalog,items,characterStats:stats,
+    appOverrides:{world:{actors:{[ally.definition.actor]:warriorActor,[warriorActor.id]:warriorActor}} as never},
+  });
+  await testWorld.combat.start();
+  testWorld.combat.selectEnemy('target');
+  testWorld.combat.attack('swirling-storm');
+  for(let i=0;i<26;i++){testWorld.combat.update(60,true);if(!testWorld.combat.castingSkill)break;}
+  assert.equal(realSetup.effects('swirl-ring').length,1);
+  testWorld.combat.selectEnemy('target');
+  testWorld.combat.attack('weapon-hitback');
+  for(let i=0;i<4;i++){testWorld.combat.update(60,true);if(realSetup.effects('hitback-wave').length>=2)break;}
+  assert.equal(realSetup.effects('hitback-wave').length,2);
+  hero.setHealth(0);ally.setHealth(0);
+  testWorld.combat.update(60,true);
+  assert.equal(realSetup.effects('swirl-ring').length,1,'主角与队友阵亡后场地旋风仍保留');
+  assert.equal(realSetup.effects('hitback-wave').length,2,'主角与队友阵亡后场地冲击波仍保留');
+  realSetup.advance(5);
+  assert.equal(realSetup.effects('hitback-wave').length,0);
+  assert.equal(realSetup.effects('swirl-ring').length,1);
+  testWorld.combat.destroy();
+  assert.equal(realSetup.effects('swirl-ring').length,0);
 });
 
 test('the 24-frame actor playback completes while its independent 26-frame world ring keeps playing',()=>{
@@ -253,10 +328,26 @@ test('地狱火在不同画面精度下围绕主角或佣兵生成同样的完�
       const worldEffects=new CombatEffects(f.scene);
       const presenter=new CombatPresenter(f.scene,catalog,()=>character,()=>[],worldEffects);
       t.mock.method(presenter,'projectFrame',()=>{});
-      const world=Object.assign(Object.create(WorldCombat.prototype),{
-        scene:f.scene,app:{battleCatalog:catalog,session:{combatTick:0}},combatants:()=>[caster],combatant:()=>caster,
-      }) as {dispatcherFor(presenter:InstanceType<typeof CombatPresenter>):import('../src/domain/combat-action-dispatcher.ts').CombatActionDispatcher};
-      const dispatcher=world.dispatcherFor(presenter);
+      const dispatcher=new CombatActionDispatcher({
+        runtime:new CombatRuntime(()=>0),
+        catalog,
+        actor:()=>caster,
+        candidates:()=>[caster],
+        random:()=>Math.random(),
+        viewport:()=>{
+          const camera=f.scene.cameras.main;
+          return {width:camera.width/camera.zoomX,height:camera.height/camera.zoomY};
+        },
+        pose:(actionItem,index)=>presenter.projectFrame(actionItem,index),
+        effect:(name,variant,position,placement,recipientId)=>presenter.renderEffect(name,variant,position,placement,recipientId),
+        flight:event=>presenter.renderFlight(event),
+        screen:value=>presenter.screenFill(value),
+        notify:(name,data)=>f.scene.events.emit(name,data),
+        canSummonAt:()=>false,
+        nearestSummonSpot:()=>undefined,
+        beginSummons:()=>{},
+        summon:()=>undefined,
+      });
       const action={caster,facing:'south',skill:{id:'summon-hellfire',level:1,action:catalog.skills['summon-hellfire']!.action!}} as ActionPlayback;
       for(let frame=0;frame<15;frame++)dispatcher.frame(action,frame);
       const flames=f.effects('hellfire-burst'),positions=flames.map(({x,y})=>({x,y}));

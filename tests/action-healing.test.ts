@@ -1,15 +1,13 @@
 import assert from 'node:assert/strict';
-import {registerHooks} from 'node:module';
 import test from 'node:test';
 import {actionHealing} from '../src/domain/action-healing.ts';
 import {actionDamage} from '../src/domain/action-damage.ts';
 import {actionDamageSource} from '../src/domain/combat-damage-source.ts';
-import type {NumericCombatUnit} from '../src/domain/battle.ts';
-import {CombatHitResolution} from '../src/domain/combat-hit-resolution.ts';
-const hooks=registerHooks({resolve(specifier,context,next){return specifier==='phaser'
-  ?{url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true}
-  :next(specifier,context);}});
-const {WorldCombat}=await import('../src/scenes/world-combat.ts');hooks.deregister();
+import type {NumericCombatUnit,SkillAction} from '../src/domain/battle.ts';
+import {CombatConditions} from '../src/domain/combat-conditions.ts';
+import {createCombatTestHarness,createSimpleStatsPort,createTestEnemy,createTestMember,loadBattleCatalog,type TestMemberFixture} from './support/combat-test-harness.ts';
+
+const catalog=loadBattleCatalog();
 const attributes={physicalAttack:100,magicAttack:50,maxHealth:1000,physicalDamageRate:0,magicDamageRate:0,
   stealthDamageRate:0,primaryAttributes:{strength:3,dexterity:0,vitality:0,intelligence:4,mentality:0}};
 const unit:NumericCombatUnit={effect:'heal',source:'physicalAttack',attributeWeights:{strength:7,dexterity:0,vitality:0,intelligence:6,mentality:0},
@@ -31,26 +29,30 @@ test('healing sums weighted stats before truncation and ignores the auxiliary fi
 
 function fixture(rate=333){
   const reads:string[]=[],writes:number[]=[];
-  const member=(health:number)=>({level:1,panel:{attributes:attributes.primaryAttributes},player:{health,maxHealth:1000},setHealth(value:number){
-    writes.push(value);this.player.health=Math.max(0,Math.min(1000,value));}});
-  const source=member(50),target=member(100),enemy={key:'enemy',definition:{}};
-  const enemyState={health:100,maxHealth:1000};
-  const host={hero:source,arena:[enemy],pendingDefeats:new Set(),fallen:new Set(),hitResolution:new CombatHitResolution(),
-    memberOf:(id:string)=>id==='source'?source:id==='target'?target:undefined,
-    partyFighter:()=>({}),actorAttributes:()=>attributes,
-    prepareSkillUnit:Reflect.get(WorldCombat.prototype,'prepareSkillUnit'),
-    isActorPresent:Reflect.get(WorldCombat.prototype,'isActorPresent'),
-    unitValueSourceId:Reflect.get(WorldCombat.prototype,'unitValueSourceId'),
-    actorAttribute:(id:string,key:string)=>{
-      if(key==='physicalAttack')return attributes.physicalAttack;
-      reads.push(`${id}:${key}`);return id==='source'?rate:9000;
-    },
-    conditions:{canReceiveDamage:()=>true},readResourceCapacity:()=>1000,restoreHealth:Reflect.get(WorldCombat.prototype,'restoreHealth'),react:()=>{},
-    roster:{isPresent:()=>true,enemySnapshot:()=>enemyState,setEnemyHealth:(_id:string,value:number)=>{writes.push(value);enemyState.health=Math.min(1000,value);}},
+  const member=(id:string,health:number)=>{
+    const m=createTestMember({id,level:1,health,maxHealth:1000,panel:{attributes:attributes.primaryAttributes,maxHealth:1000}});
+    const setHealth=m.setHealth.bind(m);
+    m.setHealth=(value:number)=>{writes.push(value);setHealth(value);};
+    return m;
   };
-  const heal=(targetId='target')=>Reflect.get(WorldCombat.prototype,'skillUnit').call(host,
-    {casterId:'source',targetId,cueIndex:0,skill:{id:'healing-test',action:{combatUnits:[unit]}}});
-  return {host,source,target,enemyState,reads,writes,heal};
+  const source=member('source',50),target=member('target',100);
+  const enemy=createTestEnemy({key:'enemy',definition:catalog.enemies[0],health:100,maxHealth:1000});
+  const members=new Map<string,TestMemberFixture>([['source',source],['target',target]]);
+  const enemies=new Map([['enemy',enemy]]);
+  const harness=createCombatTestHarness({
+    battleCatalog:catalog,hero:source,members,enemies,activeParty:()=>['source','target'],withThreat:false,
+    settlementOverrides:{
+      setEnemyHealth:(_id,health)=>{writes.push(health);enemy.health=Math.max(0,Math.min(enemy.maxHealth,Math.trunc(health)));},
+    },
+  });
+  harness.stats.actorAttribute=(id:string,key:string)=>{
+    if(key==='physicalAttack')return attributes.physicalAttack;
+    reads.push(`${id}:${key}`);return id==='source'?rate:9000;
+  };
+  harness.stats.actorAttributes=()=>attributes;
+  const heal=(targetId='target')=>harness.settlement.skillUnit(
+    {casterId:'source',targetId,cueIndex:0,skill:{id:'healing-test',action:{combatUnits:[unit]} as unknown as SkillAction}});
+  return {harness,source,target,enemyState:enemy,reads,writes,heal};
 }
 
 test('ordinary healing uses the caster rate for party and enemy recipients, including a full target',()=>{
@@ -67,26 +69,27 @@ test('ordinary healing uses the caster rate for party and enemy recipients, incl
 test('ordinary healing rejects zero HP recipients but an active zero HP caster can heal a living ally',()=>{
   for(const targetId of ['target','enemy']){
     const f=fixture();if(targetId==='target')f.target.player.health=0;else f.enemyState.health=0;
-    f.host.hitResolution.run(()=>{
-      f.host.hitResolution.deferDefeat(targetId,()=>{});
+    f.harness.hitResolution.run(()=>{
+      f.harness.hitResolution.deferDefeat(targetId,()=>{});
       assert.equal(f.heal(targetId),'success');
     });
-    assert.deepEqual(f.writes,[]);assert.deepEqual(f.reads,[]);
+    assert.equal(f.writes.length,0);assert.equal(f.reads.length,0);
   }
   const f=fixture();f.source.player.health=0;
-  f.host.hitResolution.run(()=>{
-    f.host.hitResolution.deferDefeat('source',()=>{});
+  f.harness.hitResolution.run(()=>{
+    f.harness.hitResolution.deferDefeat('source',()=>{});
     assert.equal(f.heal(),'success');assert.equal(f.target.player.health,151);
   });
   assert.equal(f.source.player.health,0);
 });
 
-test('shared actor reads clamp healing power below zero after modifiers for both consumers',()=>{
+test('shared actor reads clamp healing power below zero after modifiers for both consumers',t=>{
   let adjustment=-1500;
-  const host={memberOf:()=>({level:1,panel:{}}),arena:[],partyPassives:()=>[],
-    conditions:{cachedAttribute:()=>undefined,attribute:(_id:string,key:string,base:number)=>{
-      assert.equal(key,'healingPowerRate');assert.equal(base,1000);return base+adjustment;
-    }}};
-  const read=()=>Reflect.get(WorldCombat.prototype,'actorAttribute').call(host,'source','healingPowerRate');
+  const conditions=new CombatConditions();
+  t.mock.method(conditions,'attribute',(_id:string,key:string,base:number)=>{
+    assert.equal(key,'healingPowerRate');assert.equal(base,1000);return base+adjustment;
+  });
+  const stats=createSimpleStatsPort({conditions,memberOf:()=>createTestMember({id:'source'}) as never});
+  const read=()=>stats.actorAttribute('source','healingPowerRate');
   assert.equal(read(),0);adjustment=100;assert.equal(read(),1100);
 });

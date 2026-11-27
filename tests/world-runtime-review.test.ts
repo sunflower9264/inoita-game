@@ -1,27 +1,64 @@
-import {CombatRuntime} from '../src/domain/combat-runtime.ts';
-import {CombatCooldownStore} from '../src/domain/combat-cooldowns.ts';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { registerHooks } from 'node:module';
 import test from 'node:test';
 import type { StoryContext } from '../src/application/ports.ts';
 import type { BattleCatalog } from '../src/domain/battle.ts';
-import { CombatController, type Combatant } from '../src/domain/combat.ts';
-import { PartyController, type PartyPort } from '../src/domain/party-ai.ts';
-import { resolveBasicAttack } from '../src/domain/basic-attack.ts';
-import { targetsEnemies } from '../src/domain/skill-action.ts';
+import { BattleCharacter } from '../src/domain/character-stats.ts';
+import { CombatController } from '../src/domain/combat.ts';
 import { CombatConditions } from '../src/domain/combat-conditions.ts';
-import type { Point } from '../src/domain/navigation.ts';
+import type { ActorDefinition, AnimationClip, WorldMap } from '../src/domain/content.ts';
+import { Session } from '../src/domain/session.ts';
+import { targetsEnemies } from '../src/domain/skill-action.ts';
+import {
+  createCombatTestHarness,
+  createTestEnemy,
+  createTestMember,
+  loadCampaignCatalog,
+  loadCharacterStatsCatalog,
+  loadCompanionCatalog,
+  loadItemCatalog,
+} from './support/combat-test-harness.ts';
+import { createFakePhaserScene, createTestWorldCombat, installPhaserStubHooks } from './support/world-combat-fixture.ts';
+
+function completePhaserScene(){
+  const base=createFakePhaserScene();
+  const baseAdd=base.add as unknown as {sprite:(...args:unknown[])=>Record<string,unknown>};
+  const baseTweens=base.tweens as unknown as Record<string,unknown>;
+  const scene=createFakePhaserScene({
+    tweens:{...baseTweens,killTweensOf:()=>{},getTweensOf:()=>[]},
+    add:{
+      ...baseAdd,
+      sprite:(...args:unknown[])=>{
+        const sprite=baseAdd.sprite(...args);
+        const anims=sprite.anims as Record<string,unknown>;
+        Object.assign(anims,{isPlaying:false,getProgress:()=>0,create:(config:unknown)=>{const anim={...(config as object),destroy:()=>{}};anims.currentAnim=anim;return anim;}});
+        return Object.assign(sprite,{scene,texture:sprite.texture??{key:''},setTexture(){return sprite;},play(){anims.isPlaying=true;return sprite;}});
+      },
+    },
+  });
+  return scene;
+}
 
 // These tests execute the scene adapters' coordination logic without a browser renderer.
-const phaser = registerHooks({resolve(specifier, context, next) {
-  return specifier === 'phaser' ? {url:'data:text/javascript,export default {BlendModes:{NORMAL:0,ADD:1,MULTIPLY:2,SCREEN:3},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true} : next(specifier,context);
-}});
-const { WorldCombat } = await import('../src/scenes/world-combat.ts');
+const phaser = installPhaserStubHooks();
+const { CombatPresenter } = await import('../src/rendering/combat-presenter.ts');
 const { StoryPresenter } = await import('../src/rendering/story-presenter.ts');
 const { WorldScene } = await import('../src/scenes/world-scene.ts');
 phaser.deregister();
-const battle=JSON.parse(readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')) as BattleCatalog;
+const rawBattle=JSON.parse(readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')) as BattleCatalog;
+const stripActorFiles=(actor:ActorDefinition):ActorDefinition=>{
+  const clips:ActorDefinition['clips']={};
+  for(const [name,clip] of Object.entries(actor.clips) as [keyof ActorDefinition['clips'],AnimationClip|undefined][]){
+    if(!clip)continue;
+    clips[name]={...clip,layers:clip.layers.map(layer=>({...layer,file:''}))};
+  }
+  return {...actor,clips};
+};
+const battle:BattleCatalog={
+  ...rawBattle,
+  classes:rawBattle.classes.map(entry=>({...entry,actor:stripActorFiles(entry.actor)})),
+  enemies:rawBattle.enemies.map(entry=>({...entry,actor:stripActorFiles(entry.actor)})),
+};
 
 test('world entry captures a fallback checkpoint once unless that capture fails',()=>{
   const host:any=Object.assign(Object.create(WorldScene.prototype),{checkpointPending:false,captureCheckpoint:()=>true});
@@ -32,121 +69,221 @@ test('world entry captures a fallback checkpoint once unless that capture fails'
   assert.equal(host.checkpointPending,true,'立即兜底失败保留重试标记');
 });
 
-test('redeploying a removed ally while paused requests a fresh party sync',()=>{
-  const ids=['player','ally'],controllers=new Map([['ally',{cancel(){}}]]);
-  const host:any=Object.assign(Object.create(WorldCombat.prototype),{
-    app:{session:{party:{activeIds:ids,activeRevision:1,get:()=>undefined},skills:{resetVersion:0}}},
-    syncedPartyRevision:1,partySyncPending:false,
-    partyControllers:controllers,lastSkillResets:new Map(),combatRuntime:{removeActor(){}},conditions:{remove(){}},
-    threat:{removeActor(){}},allySkillSignatures:new Map(),forgetMemberCaches(){},
-    summons:{removeOwner:()=>[]},visualOf:()=>undefined,scheduleSkillAssetRefresh(){}
+test('redeploying a removed ally while paused requests a fresh party sync',async()=>{
+  const items=loadItemCatalog(),stats=loadCharacterStatsCatalog(),campaign=loadCampaignCatalog(),companions=loadCompanionCatalog();
+  const hero=new BattleCharacter('dark-knight',stats,items);
+  const session=new Session(campaign,undefined,undefined,items,hero,battle,stats,companions);
+  session.bag.add('mercenary-emblem-black-knight');
+  const ally=session.party!.recruit(session.bag.entries.find(entry=>entry.item==='mercenary-emblem-black-knight')!.id,()=>0).member;
+  session.party!.deployFirstAvailable(ally.id);
+  const dkActor=battle.classes.find(entry=>entry.id==='dark-knight')!.actor;
+  const world=await createTestWorldCombat({
+    phaserScene:completePhaserScene(),
+    hero,session,battleCatalog:battle,items,characterStats:stats,
+    appOverrides:{world:{actors:{[ally.definition.actor]:dkActor,[dkActor.id]:dkActor}} as never},
   });
-  ids.pop();host.onPartyChanged();ids.push('ally');host.onPartyChanged();
-  assert.equal(controllers.has('ally'),false);
-  assert.equal(host.partySyncPending,true,'暂停期间队员离队也要重新同步');
+  await world.combat.start();
+  world.combat.update(16,false);
+  assert.equal(world.combat.paused,true);
+
+  session.party!.reserve(ally.id);
+  session.party!.deployFirstAvailable(ally.id);
+  assert.equal(world.combat.captureState().party.some(member=>member.id===ally.id),false,'暂停期间离队会立刻撤销旧控制器');
+
+  world.combat.update(16,true);
+  await new Promise(resolve=>setTimeout(resolve,10));
+  assert.equal(world.combat.captureState().party.some(member=>member.id===ally.id),true,'恢复推进后重新同步上阵成员');
+  world.combat.destroy();
 });
 
-test('party revision changes trigger ally sync while failure retries stay pending',()=>{
-  const party={activeIds:['player','ally'],activeRevision:3,get:()=>undefined};
-  const host:any=Object.assign(Object.create(WorldCombat.prototype),{
-    app:{session:{party}},syncedPartyRevision:3,partySyncPending:false,partySyncInFlight:0,nextPartySyncAt:0
+test('party revision changes trigger ally sync while failure retries stay pending',async()=>{
+  const items=loadItemCatalog(),stats=loadCharacterStatsCatalog(),campaign=loadCampaignCatalog(),companions=loadCompanionCatalog();
+  const hero=new BattleCharacter('dark-knight',stats,items);
+  const session=new Session(campaign,undefined,undefined,items,hero,battle,stats,companions);
+  session.bag.add('mercenary-emblem-black-knight',2);
+  const recruit=()=>session.party!.recruit(session.bag.entries.find(entry=>entry.item==='mercenary-emblem-black-knight')!.id,()=>0).member;
+  const first=recruit(),second=recruit();
+  session.party!.deployFirstAvailable(first.id);
+  const dkActor=battle.classes.find(entry=>entry.id==='dark-knight')!.actor;
+  let prepareCalls=0,shouldFail=false;
+  const world=await createTestWorldCombat({
+    phaserScene:completePhaserScene(),
+    hero,session,battleCatalog:battle,items,characterStats:stats,
+    sceneOverrides:{preparePartyMember:async id=>{if(id!==second.id)return;prepareCalls++;if(shouldFail)throw new Error('sync failed');}},
+    appOverrides:{ui:{showInstant(){},toast(){}} as never,world:{actors:{[first.definition.actor]:dkActor,[second.definition.actor]:dkActor,[dkActor.id]:dkActor}} as never},
   });
-  assert.equal(host.shouldSyncParty(0),false,'版本未变时不重新同步');
-  party.activeRevision=4;
-  assert.equal(host.shouldSyncParty(0),true,'上阵顺序变化触发同步');
-  host.syncedPartyRevision=4;
-  assert.equal(host.shouldSyncParty(0),false);
-  host.partySyncPending=true;host.nextPartySyncAt=100;
-  assert.equal(host.shouldSyncParty(50),false,'失败后的重试窗口内不重复同步');
-  assert.equal(host.shouldSyncParty(100),true,'窗口结束后保留重试');
-  host.partySyncPending=false;host.syncedPartyRevision=3;
-  assert.equal(host.shouldSyncParty(100),true,'同步后队伍又变化时再次触发');
+  await world.combat.start();
+  prepareCalls=0;
+
+  world.combat.update(16,true);
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(prepareCalls,0,'版本未变时不重新同步');
+
+  shouldFail=true;
+  (world.phaserScene.time as {now:number}).now=0;
+  session.party!.deployFirstAvailable(second.id);
+  world.combat.update(16,true);
+  await new Promise(resolve=>setTimeout(resolve,10));
+  const afterRevision=prepareCalls;
+  assert.ok(afterRevision>=1,'上阵顺序变化触发同步');
+  assert.equal(world.combat.captureState().party.some(member=>member.id===second.id),false);
+
+  (world.phaserScene.time as {now:number}).now=500;
+  world.combat.update(16,true);
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(prepareCalls,afterRevision,'失败后的重试窗口内不重复同步');
+
+  shouldFail=false;
+  (world.phaserScene.time as {now:number}).now=1000;
+  world.combat.update(16,true);
+  await new Promise(resolve=>setTimeout(resolve,10));
+  assert.ok(prepareCalls>afterRevision,'窗口结束后保留重试');
+  const afterRecovery=prepareCalls;
+  assert.equal(world.combat.captureState().party.some(member=>member.id===second.id),true);
+
+  world.combat.update(16,true);
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(prepareCalls,afterRecovery,'同步完成后版本未变不再重复触发');
+
+  session.party!.reserve(second.id);
+  session.party!.deployFirstAvailable(second.id);
+  world.combat.update(16,true);
+  await new Promise(resolve=>setTimeout(resolve,10));
+  assert.ok(prepareCalls>afterRecovery,'同步后队伍又变化时再次触发');
+  world.combat.destroy();
 });
 
-test('combat candidates reflect stealth applied during the same frame',()=>{
-  const conditions=new CombatConditions();
-  const host:any=Object.assign(Object.create(WorldCombat.prototype),{
-    app:{session:{combatTick:1,party:{activeIds:['player']}}},conditions,arena:[],
-    roster:{presenceRevision:0,isPresent:()=>true},
-    combatant:(id:string)=>({id,team:'party',position:{x:0,y:0},bounds:{x:0,y:0,width:8,height:8},states:conditions.activeStates(id)})
-  });
-  assert.deepEqual(host.combatants()[0].states,[]);
-  conditions.applyStateFrames('player','stealthed',10);
-  assert.deepEqual(host.combatants()[0].states,['stealthed']);
+test('combat candidates reflect stealth applied during the same frame',async()=>{
+  const items=loadItemCatalog(),stats=loadCharacterStatsCatalog(),campaign=loadCampaignCatalog();
+  const hero=new BattleCharacter('assassin',stats,items);
+  const session=new Session(campaign,undefined,undefined,items,hero,battle,stats);
+  session.skills.maxAll();
+  session.skills.bar().assign(0,1,{kind:'skill',id:'whist'});
+  const map:WorldMap={id:'stealth-map',name:'stealth-map',width:320,height:320,tileSize:16,columns:20,rows:20,
+    blocked:Array<boolean>(400).fill(false),ground:'',canopy:'',features:[],entities:[],exits:[],
+    enemySpawns:[{id:'slot',enemyId:'enemy-snake-1',x:80,y:64}]};
+  const world=await createTestWorldCombat({phaserScene:completePhaserScene(),map,hero,session,battleCatalog:battle,items,characterStats:stats});
+  await world.combat.start();
+  for(let i=0;i<5;i++)world.combat.update(60,true);
+  assert.notEqual(world.combat.diagnostics().enemies?.[0]?.state,'idle');
+
+  world.combat.attack('whist');
+  for(let i=0;i<6;i++){
+    world.combat.update(60,true);
+    if(world.combat.stealthed('player'))break;
+  }
+  assert.equal(world.combat.stealthed('player'),true);
+  assert.equal(world.combat.diagnostics().enemies?.[0]?.state,'idle','同帧施加潜行后敌人立即在候选中丢失目标');
+  world.combat.destroy();
+
+  const harness=createCombatTestHarness({battleCatalog:battle,items,characterStats:stats,hero,members:new Map([['player',hero]]),activeParty:()=>['player']});
+  assert.deepEqual(harness.settlement.partyBuffSlots()[0]?.actor.states,[]);
+  harness.conditions.applyStateFrames('player','stealthed',10);
+  assert.deepEqual(harness.settlement.partyBuffSlots()[0]?.actor.states,['stealthed']);
 });
 
-test('removing an enemy invalidates the same-frame combatant snapshot',()=>{
-  let removed=false;
-  const enemy={key:'enemy'};
-  const host:any=Object.assign(Object.create(WorldCombat.prototype),{
-    app:{session:{combatTick:1,party:{activeIds:[]}}},
-    conditions:{revision:0,remove(){removed=true;}},
-    roster:{presenceRevision:0,isPresent:()=>!removed},
-    arena:[enemy],pendingDefeats:new Set(),partyControllers:new Map(),
-    summonAwareness:{forget(){}},summons:{remove(){}},scene:{refreshCombatTarget(){}},
-    destroyEnemy(){},
-    combatant:(id:string)=>!removed&&id==='enemy'?{id,team:'hostile',position:{x:0,y:0},bounds:{x:0,y:0,width:8,height:8},states:[]}:undefined
-  });
-  assert.deepEqual(host.combatants().map((actor:any)=>actor.id),['enemy']);
-  assert.equal(host.removeEnemyVisual('enemy'),true);
-  assert.deepEqual(host.combatants(),[]);
+test('removing an enemy invalidates the same-frame combatant snapshot',async()=>{
+  const items=loadItemCatalog(),stats=loadCharacterStatsCatalog(),campaign=loadCampaignCatalog();
+  const hero=new BattleCharacter('dark-knight',stats,items);
+  const session=new Session(campaign,undefined,undefined,items,hero,battle,stats);
+  const map:WorldMap={id:'remove-map',name:'remove-map',width:320,height:320,tileSize:16,columns:20,rows:20,
+    blocked:Array<boolean>(400).fill(false),ground:'',canopy:'',features:[],entities:[],exits:[],
+    enemySpawns:[{id:'slot',enemyId:'enemy-snake-1',x:80,y:64}]};
+  const world=await createTestWorldCombat({map,hero,session,battleCatalog:battle,items,characterStats:stats});
+  await world.combat.start();
+  assert.equal(world.combat.hasHostileTarget(),true);
+  world.combat.removeEnemy('slot');
+  assert.equal(world.combat.hasHostileTarget(),false);
+  assert.deepEqual(world.combat.captureState().enemies,[]);
+  world.combat.destroy();
 });
 
-test('a restored enemy returns to its spawn rather than its saved combat position',()=>{
-  const host:any=Object.assign(Object.create(WorldCombat.prototype),{
-    roster:{source:(id:string)=>id==='map-enemy'?{x:16,y:32}:undefined},
-    scene:{movement:{navigation:{nearestBody:(_shape:unknown,point:Point)=>({...point}),nearest:()=>assert.fail()}}}
-  });
-  const saved={key:'map-enemy',x:112,y:32};
-  assert.deepEqual(host.enemyHome(saved,{x:112,y:32},{collision:{x:0,y:0,width:8,height:8}}),{x:16,y:32});
-  assert.deepEqual(host.enemyHome({...saved,key:'summon'},{x:112,y:32},{collision:{x:0,y:0,width:8,height:8}}),{x:112,y:32});
+test('a restored enemy returns to its spawn rather than its saved combat position',async()=>{
+  const items=loadItemCatalog(),stats=loadCharacterStatsCatalog(),campaign=loadCampaignCatalog();
+  const hero=new BattleCharacter('assassin',stats,items);
+  const session=new Session(campaign,undefined,undefined,items,hero,battle,stats);
+  session.skills.maxAll();
+  session.skills.bar().assign(0,1,{kind:'skill',id:'whist'});
+  const map:WorldMap={id:'home-map',name:'home-map',width:320,height:320,tileSize:16,columns:20,rows:20,
+    blocked:Array<boolean>(400).fill(false),ground:'',canopy:'',features:[],entities:[],exits:[],
+    enemySpawns:[{id:'map-enemy',enemyId:'enemy-snake-1',x:32,y:32}]};
+  const world=await createTestWorldCombat({phaserScene:completePhaserScene(),map,hero,session,battleCatalog:battle,items,characterStats:stats});
+  await world.combat.start();
+  const saved=world.combat.captureState();
+  saved.party[0]!.position={x:208,y:32};
+  saved.roster.sequence=2;
+  saved.roster.enemies=[
+    {key:'map-enemy',enemyId:'enemy-snake-1',x:240,y:32,health:10,mana:0},
+    {key:'summon',enemyId:'enemy-snake-1',x:224,y:64,health:10,mana:0},
+  ];
+  const idleAi={kind:'enemy' as const,state:{state:'idle' as const,pendingReturn:false,accumulator:0,clock:0,nextPathAt:0,path:[],lastProgressAt:0,idleElapsed:0}};
+  saved.enemies=[{id:'map-enemy',facing:'south',ai:structuredClone(idleAi)},{id:'summon',facing:'south',ai:structuredClone(idleAi)}];
+  await world.combat.restoreState(saved);
+
+  for(let i=0;i<5;i++)world.combat.update(60,true);
+  world.combat.attack('whist');
+  for(let i=0;i<6;i++)world.combat.update(60,true);
+
+  const after=world.combat.captureState().enemies;
+  const mapEnemy=after.find(enemy=>enemy.id==='map-enemy')?.ai;
+  const summon=after.find(enemy=>enemy.id==='summon')?.ai;
+  assert.equal(mapEnemy?.kind,'enemy');
+  assert.equal(mapEnemy.state.state,'returning');
+  assert.deepEqual({x:mapEnemy.state.destination?.x,y:mapEnemy.state.destination?.y},{x:32,y:32},'地图怪回到出生点而非读档时的战斗坐标');
+  assert.equal(summon?.kind,'enemy');
+  assert.equal(summon.state.state,'idle','无名册来源的敌人以读档坐标为归宿');
+  world.combat.destroy();
 });
 
-test('combat entry creates enemies once when loading a checkpoint',async()=>{
-  const wardrobe=JSON.parse(readFileSync(new URL('../public/content/wardrobe.json',import.meta.url),'utf8'));
+test('combat entry creates enemies once when loading a checkpoint',async t=>{
+  const items=loadItemCatalog(),stats=loadCharacterStatsCatalog(),campaign=loadCampaignCatalog(),companions=loadCompanionCatalog();
+  const dkActor=battle.classes.find(entry=>entry.id==='dark-knight')!.actor;
+  const map:WorldMap={id:'checkpoint-map',name:'checkpoint-map',width:320,height:320,tileSize:16,columns:20,rows:20,
+    blocked:Array<boolean>(400).fill(false),ground:'',canopy:'',features:[],entities:[],exits:[],
+    enemySpawns:[{id:'one',enemyId:'enemy-snake-1',x:160,y:80},{id:'two',enemyId:'enemy-snake-1',x:208,y:80}]};
   for(const restore of [false,true]){
-    const created:string[]=[];
-    const ring={setOrigin(){return this;},setVisible(){return this;},destroy(){}};
-    const scene:any={player:{actor:{}},combatEnemyIds:()=>[],entities:[],refreshCombatTarget(){},
-      textures:{exists:()=>true,get:()=>({has:()=>true}),on(){},remove(){}},anims:{exists:()=>false},
-      events:{once(){},off(){}},add:{image:()=>ring}};
-    scene.phaserScene=scene;
-    const host:any=Object.assign(Object.create(WorldCombat.prototype),{
-      scene,app:{battleCatalog:battle,wardrobe,world:{actors:{}},session:{skills:{resetVersion:0},subscribe:()=>()=>{},party:{activeSize:3,activeIds:['player','ally','ally2'],activeRevision:5,get:()=>undefined}}},lastSkillResets:new Map(),
-      roster:{spawns:[],enemies:[{key:'one'},{key:'two'}],enemy(key:string){return this.enemies.find((enemy:any)=>enemy.key===key);}},drops:{chests:{}},
-      hero:{player:{health:1},subscribe:()=>()=>{}},generation:0,closed:false,
-      equipmentAttack:()=>({}),prepareCombatSounds(){},outcomes:{warm(){}},feedback:{warm(){}},
-      refreshSkillAssets:async()=>{},playerSkillSignatureNow:()=>'',playerSkillGateNow:()=>'',
-      extraSkillLeases:new Map([['player',{}]]),combatEffects:{},createPartyController:()=>({controller:{},port:{}}),
-      partySkills:new Map(),partySkillsFor:()=>[],syncAllies:async()=>{},spawnEnemy:(enemy:any)=>created.push(enemy.key)
+    const hero=new BattleCharacter('dark-knight',stats,items);
+    const session=new Session(campaign,undefined,undefined,items,hero,battle,stats,companions);
+    session.bag.add('mercenary-emblem-black-knight',2);
+    const recruit=()=>session.party!.recruit(session.bag.entries.find(entry=>entry.item==='mercenary-emblem-black-knight')!.id,()=>0).member;
+    const ally1=recruit(),ally2=recruit();
+    session.party!.deployFirstAvailable(ally1.id);
+    session.party!.deployFirstAvailable(ally2.id);
+    let prepareCalls=0;
+    const world=await createTestWorldCombat({
+      phaserScene:completePhaserScene(),
+      map,hero,session,battleCatalog:battle,items,characterStats:stats,
+      sceneOverrides:{preparePartyMember:async()=>{prepareCalls++;}},
+      appOverrides:{world:{actors:{[ally1.definition.actor]:dkActor,[ally2.definition.actor]:dkActor,[dkActor.id]:dkActor}} as never},
     });
-    await host.start({restore});
+    const created:string[]=[];
+    const movement=world.scene.movement!;
+    const origRegister=movement.register.bind(movement);
+    t.mock.method(movement,'register',(...args:Parameters<typeof movement.register>)=>{
+      const visual=args[0];
+      if(!['player',ally1.id,ally2.id].includes(visual.entity.id))created.push(visual.entity.id);
+      return origRegister(...args);
+    });
+    await world.combat.start({restore});
     assert.deepEqual(created,restore?[]:['one','two']);
     if(restore){
-      const partySizes:number[]=[];
       const id=battle.enemies[0]!.id;
       const saved={roster:{sequence:2,partySize:1,enemies:[
-        {key:'one',enemyId:id,x:9,y:11,health:0},
-        {key:'two',enemyId:id,x:14,y:18,summonedBy:'one'}]},
+        {key:'one',enemyId:id,x:96,y:112,health:1},
+        {key:'two',enemyId:id,x:144,y:112,summonedBy:'one',health:1}]},
         conditions:{buffs:[],states:[],temporary:[]},threat:{entries:[]},party:[],
-        enemies:[{id:'one',facing:'south'},{id:'two',facing:'north'}],summonGroups:[['one',['two']]]};
-      const placed:unknown[]=[],groups:unknown[]=[];
-      Object.assign(host,{
-        prepareRestoredSkills:async()=>{},enemyAssets:()=>[],combatRuntime:{reset(){}},
-        pendingDefeats:{clear(){},keys(){return [];}},summonAwareness:undefined,combatEffects:{clear(){}},buffLoops:{clear(){}},
-        presenterFor:()=>undefined,deathTweens:new Map(),fallen:new Set(),clearEnemies(){},
-        roster:{enemies:[],enemy(key:string){return this.enemies.find((enemy:any)=>enemy.key===key);},
-          restoreState(state:any){this.enemies=state.enemies;},setPartySize(size:number){partySizes.push(size);}},
-        conditions:{restoreState(){}},syncControlled(){},visualOf:()=>undefined,arena:[],
-        spawnEnemy:(enemy:any)=>placed.push(enemy),threat:{restoreState(){}},
-        summons:{restore:(value:unknown)=>groups.push(value)}
-      });
-      await host.restoreState(saved);
-      assert.deepEqual(partySizes,[3],'读档后按当前上阵人数校正名册');
-      assert.equal(host.syncedPartyRevision,5,'读档后按当前队伍版本标记已同步');
-      assert.deepEqual(placed,saved.roster.enemies,'恢复保存的敌人位置、血量和召唤关系');
-      assert.deepEqual(groups,[saved.summonGroups]);
+        enemies:[{id:'one',facing:'south' as const},{id:'two',facing:'north' as const}],summonGroups:[['one',['two']]] as [string,string[]][]};
+      await world.combat.restoreState(saved);
+      prepareCalls=0;
+      const restored=world.combat.captureState();
+      assert.equal(restored.roster.partySize,3,'读档后按当前上阵人数校正名册');
+      world.combat.update(16,true);
+      await new Promise(resolve=>setImmediate(resolve));
+      assert.equal(prepareCalls,0,'读档后按当前队伍版本标记已同步');
+      assert.deepEqual(restored.roster.enemies,saved.roster.enemies,'恢复保存的敌人位置、血量和召唤关系');
+      assert.deepEqual(restored.summonGroups,saved.summonGroups);
     }
+    world.combat.destroy();
   }
 });
 
@@ -163,125 +300,191 @@ test('same-map rollback restores combat without rebuilding the scene',async()=>{
   assert.deepEqual(calls,['discard','project','combat','positions','controlled']);
 });
 
-test('manual hostile skills continue into basic attack only on completion and for the same controlled member',()=>{
+test('manual hostile skills continue into basic attack only on completion and for the same controlled member',async()=>{
   for(const id of ['dark-strike','dark-attack','blood-curse','celestial-lightning'])assert.equal(targetsEnemies(battle.skills[id].action!),true,id);
   for(const id of ['demon-s-shield','guardian-of-darkness','hell-s-pawn','prayer-of-recovery'])assert.equal(targetsEnemies(battle.skills[id].action!),false,id);
-  const calls:string[]=[],requests:any[]=[],callbacks:(()=>void)[]=[];
-  const hero={classId:'dark-knight',bag:{equipmentFor:()=>({}),equipmentItems:()=>({})}};
-  const host:any=Object.assign(Object.create(WorldCombat.prototype),{
-    scene:{canCombatControl:true,offensiveSkillCompleted:(id:string)=>calls.push(id)},closed:false,defeated:false,
-    app:{battleCatalog:battle,session:{combatTick:0,party:{controlledId:'player'},skills:{isEquipped:()=>true,draft:()=>({levels:{'dark-strike':1,'demon-s-shield':1}})}},
-      wardrobe:{defaults:{},equipment:{},stances:{'unarmed:empty':{}},skillStances:{},skills:{},attacks:{}},items:{items:{}}},
-    hero,memberOf:()=>hero,combat:{activeAction:()=>undefined},conditions:{canUseSkillShortcuts:()=>true,cannotAct:()=>false},
-    skillManaCost:()=>0,manualOffensiveSkills:new WeakMap(),controlRevision:1,
-    summonAwareness:{action(){}},visualOf:()=>({actor:{clips:{}},layers:[],container:{active:false}}),
-    combatRuntime:{request:(request:any)=>{requests.push(request);return {kind:'started'};},
-      play:(_action:any,_timing:any,_frame:any,complete:()=>void)=>{callbacks.push(complete);return()=>{};}}
+  const items=loadItemCatalog(),stats=loadCharacterStatsCatalog(),campaign=loadCampaignCatalog(),companions=loadCompanionCatalog();
+  const hero=new BattleCharacter('dark-knight',stats,items);
+  const session=new Session(campaign,undefined,undefined,items,hero,battle,stats,companions);
+  session.skills.maxAll();
+  session.skills.bar().assign(0,1,{kind:'skill',id:'demon-s-shield'});
+  session.bag.add('mercenary-emblem-black-knight');
+  const ally=session.party!.recruit(session.bag.entries.find(entry=>entry.item==='mercenary-emblem-black-knight')!.id,()=>0).member;
+  session.party!.deployFirstAvailable(ally.id);
+  const dkActor=battle.classes.find(entry=>entry.id==='dark-knight')!.actor;
+  const map:WorldMap={id:'offensive-map',name:'offensive-map',width:320,height:320,tileSize:16,columns:20,rows:20,
+    blocked:Array<boolean>(400).fill(false),ground:'',canopy:'',features:[],entities:[],exits:[],
+    enemySpawns:[{id:'slot',enemyId:'enemy-scorpion-1',x:80,y:64}]};
+  const calls:string[]=[];
+  const world=await createTestWorldCombat({
+    phaserScene:completePhaserScene(),
+    map,hero,session,battleCatalog:battle,items,characterStats:stats,
+    sceneOverrides:{offensiveSkillCompleted:id=>calls.push(id)},
+    appOverrides:{world:{actors:{[ally.definition.actor]:dkActor,[dkActor.id]:dkActor}} as never},
   });
-  const presenter={play:()=>()=>{}},caster={id:'player',team:'party',position:{x:0,y:0},bounds:{x:0,y:0,width:8,height:8}};
-  const start=(id:string)=>{host.attack(id);const skill=requests.at(-1).skill;host.playAction(presenter,{caster,skill,facing:'south',basicAttack:null},()=>{},()=>calls.push('finished'));};
-  start('dark-strike');assert.equal(calls.length,0,'未结束不触发普攻');callbacks.shift()!();
-  assert.deepEqual(calls,['finished','player']);
-  calls.length=0;start('demon-s-shield');callbacks.shift()!();assert.deepEqual(calls,['finished'],'辅助技能不触发普攻');
-  calls.length=0;start('dark-strike');host.controlRevision++;callbacks.shift()!();
-  assert.deepEqual(calls,['finished'],'切人后即使切回原角色也不自动接普攻');
-  calls.length=0;start('dark-strike');host.app.session.party.controlledId='ally';callbacks.shift()!();
-  assert.deepEqual(calls,['finished'],'技能完成时由其他成员操控则不接普攻');
-  calls.length=0;host.app.session.party.controlledId='player';
-  const skill=requests.at(-1).skill,runtime=new CombatRuntime(()=>0);
-  host.combatRuntime=runtime;
-  const cancel=host.playAction(presenter,{caster,skill,facing:'south',basicAttack:null},()=>{},()=>calls.push('finished'));
-  cancel();runtime.step(1);assert.deepEqual(calls,[],'取消动作不会触发结束后的普攻');
-});
-
-function partyAction(id:string,cooldowns:CombatCooldownStore) {
-  const caster:Combatant={id,team:'party',position:{x:32,y:32},bounds:{x:-4,y:-4,width:8,height:8}};
-  const enemy:Combatant={...caster,id:'enemy',team:'hostile',position:{x:40,y:32}};
-  let stops=0,clears=0,hits=0,cancelled=0;
-  let oldFrame:((frame:number)=>void)|undefined;
-  const port:PartyPort={cooldowns:cooldowns.forActor(id),actor:key=>[caster,enemy].find(actor=>actor.id===key),candidates:()=>[caster,enemy],facing:()=> 'east',
-    moveToward(){},stop(){stops++;},canStand:()=>true,relocate(){},clearEffects(){clears++;},
-    play:(_action,frame)=>{oldFrame=frame;return()=>{cancelled++;};},frame(){},contact(){hits++;},
-    leader:()=>caster,focusTarget:()=>undefined,inCombat:()=>true,navigationBounds:()=>({x:0,y:0,width:256,height:256}),
-    followPath(){},skills:()=>[],skillUses:()=>[],vitals:()=>({health:10,maxHealth:10}),attacking:()=>false,attackRange:()=>4};
-  const controller=new CombatController(id,resolveBasicAttack(battle,battle.classes[0]),port);
-  const ai=new PartyController(id,port,controller);
-  port.cooldowns.start('dark-strike',15);
-  controller.requestTarget('enemy');
-  assert.equal(controller.snapshot().state,'attacking');
-  return {controller,ai,port,fireOldFrame:()=>oldFrame?.(100),stats:()=>({stops,clears,hits,cancelled})};
-}
-
-function pauseFixture() {
-  const time={frame:0},cooldowns=new CombatCooldownStore(()=>time.frame);
-  const hero=partyAction('player',cooldowns),ally=partyAction('companion-1',cooldowns);
-  const player={container:{active:true}},visual={container:{active:true}};
-  const stopped:unknown[]=[],temporary:string[]=[];
-  const state={
-    scene:{player,movement:{stop:(value:unknown)=>stopped.push(value)}},
-    app:{session:{party:{activeIds:['player','companion-1'],controlledId:'companion-1',get:()=>undefined}}},
-    partyActionsSuspended:false,lastSkillResets:new Map(),partyControllers:new Map([['player',hero.controller],['companion-1',ally.controller]]),
-    heroAi:hero.ai,allies:[{id:'companion-1',visual,ai:ally.ai}],arena:[],
-    conditions:{clearTemporary:(id:string)=>temporary.push(id)}
+  await world.combat.start();
+  const stepUntilIdle=()=>{
+    for(let i=0;i<60;i++){
+      world.combat.update(60,true);
+      if(!world.combat.castingSkill)break;
+    }
   };
-  const runtime=Object.setPrototypeOf(state,WorldCombat.prototype) as unknown as InstanceType<typeof WorldCombat>;
-  return {runtime,state,hero,ally,stopped,temporary,player,visual,advanceFrames:(frames:number)=>{time.frame+=frames;}};
+  const start=(id:string)=>{
+    world.session.cooldowns.resetActor('player');
+    hero.setMana(hero.player.maxMana);
+    if(targetsEnemies(battle.skills[id].action!))world.combat.selectEnemy('slot');
+    world.combat.attack(id);
+    world.combat.update(60,true);
+  };
+
+  start('dark-strike');
+  assert.deepEqual(calls,[],'未结束不触发普攻');
+  stepUntilIdle();
+  assert.deepEqual(calls,['player']);
+
+  calls.length=0;start('demon-s-shield');stepUntilIdle();
+  assert.deepEqual(calls,[],'辅助技能不触发普攻');
+
+  calls.length=0;start('dark-strike');
+  world.combat.switchControl(ally.id);world.combat.switchControl('player');
+  stepUntilIdle();
+  assert.deepEqual(calls,[],'切人后即使切回原角色也不自动接普攻');
+
+  calls.length=0;start('dark-strike');
+  world.combat.switchControl(ally.id);
+  stepUntilIdle();
+  assert.deepEqual(calls,[],'技能完成时由其他成员操控则不接普攻');
+  world.combat.switchControl('player');
+
+  calls.length=0;start('dark-strike');
+  world.combat.followControlled();
+  for(let i=0;i<30;i++)world.combat.update(60,true);
+  assert.deepEqual(calls,[],'取消动作不会触发结束后的普攻');
+  world.combat.destroy();
+});
+
+async function pauseWorld(t:test.TestContext) {
+  const items=loadItemCatalog(),stats=loadCharacterStatsCatalog(),campaign=loadCampaignCatalog(),companions=loadCompanionCatalog();
+  const hero=new BattleCharacter('dark-knight',stats,items);
+  const session=new Session(campaign,undefined,undefined,items,hero,battle,stats,companions);
+  session.skills.maxAll();
+  session.bag.add('mercenary-emblem-black-knight');
+  const ally=session.party!.recruit(session.bag.entries.find(entry=>entry.item==='mercenary-emblem-black-knight')!.id,()=>0).member;
+  session.party!.deployFirstAvailable(ally.id);
+  ally.skills.maxAll(battle,ally.classId);
+  const dkActor=battle.classes.find(entry=>entry.id==='dark-knight')!.actor;
+  const map:WorldMap={id:'pause-map',name:'pause-map',width:320,height:320,tileSize:16,columns:20,rows:20,
+    blocked:Array<boolean>(400).fill(false),ground:'',canopy:'',features:[],entities:[],exits:[],
+    enemySpawns:[{id:'slot',enemyId:'enemy-scorpion-1',x:80,y:64}]};
+  const paused:boolean[]=[],stopped:string[]=[],temporary:string[]=[],cancelled:string[]=[];
+  const origSetPaused=CombatPresenter.prototype.setPaused;
+  t.mock.method(CombatPresenter.prototype,'setPaused',function(this:InstanceType<typeof CombatPresenter>,value:boolean){
+    paused.push(value);
+    return origSetPaused.call(this,value);
+  });
+  const origCancel=CombatController.prototype.cancel;
+  t.mock.method(CombatController.prototype,'cancel',function(this:CombatController,...args:Parameters<CombatController['cancel']>){
+    cancelled.push((this as unknown as {casterId:string}).casterId);
+    return origCancel.apply(this,args);
+  });
+  const origClearTemp=CombatConditions.prototype.clearTemporary;
+  t.mock.method(CombatConditions.prototype,'clearTemporary',function(this:CombatConditions,id:string){
+    temporary.push(id);
+    return origClearTemp.call(this,id);
+  });
+  const world=await createTestWorldCombat({
+    phaserScene:completePhaserScene(),
+    map,hero,session,battleCatalog:battle,items,characterStats:stats,
+    appOverrides:{world:{actors:{[ally.definition.actor]:dkActor,[dkActor.id]:dkActor}} as never},
+  });
+  const movement=world.scene.movement!;
+  const origStop=movement.stop.bind(movement);
+  t.mock.method(movement,'stop',(visual:Parameters<typeof movement.stop>[0])=>{
+    stopped.push(visual.entity.id);
+    return origStop(visual);
+  });
+  await world.combat.start();
+  const beginBoth=()=>{
+    world.session.cooldowns.resetActor('player');
+    world.session.cooldowns.resetActor(ally.id);
+    hero.setMana(hero.player.maxMana);
+    ally.setMana(ally.player.maxMana);
+    world.combat.selectEnemy('slot');
+    world.combat.attack('dark-strike');
+    for(let i=0;i<3;i++)world.combat.update(60,true);
+  };
+  return {world,ally,paused,stopped,temporary,cancelled,beginBoth};
 }
 
-test('a menu pause preserves party actions and cooldowns until control resumes',()=>{
-  const f=pauseFixture(),paused: boolean[]=[];
-  const visuals=new Map([['player',{layers:[],container:{active:true}}],['companion-1',{layers:[],container:{active:true}}]]);
-  Object.assign(f.state,{visualOf:(id:string)=>visuals.get(id),presenterFor:()=>({setPaused:(value:boolean)=>paused.push(value)}),
-    combatEffects:{setPaused:()=>{}}});
-  Object.assign(f.state.scene.movement,{setPaused:()=>{}});
-  f.hero.port.isPaused=()=>f.runtime.paused;f.ally.port.isPaused=()=>f.runtime.paused;
-  f.runtime.setPaused(true);f.hero.fireOldFrame();f.ally.fireOldFrame();
-  assert.equal(f.runtime.paused,true);
-  for(const member of [f.hero,f.ally]){
-    assert.equal(member.controller.snapshot().state,'attacking');assert.equal(member.stats().cancelled,0);
-    assert.equal(member.controller.snapshot().cooldowns['dark-strike'].remainingMs,900);
-  }
-  f.runtime.setPaused(false);assert.equal(f.runtime.paused,false);assert.deepEqual(paused,[true,true,false,false]);
+test('a menu pause preserves party actions and cooldowns until control resumes',async t=>{
+  const f=await pauseWorld(t);
+  f.beginBoth();
+  const initialRemaining=f.world.combat.cooldowns['dark-strike']!.remainingMs;
+  assert.ok(initialRemaining>0);
+  f.paused.length=0;f.cancelled.length=0;
+  f.world.combat.setPaused(true);
+  assert.equal(f.world.combat.paused,true);
+  f.world.combat.update(60,false);
+  assert.equal(f.world.combat.attackState,'attacking');
+  assert.equal(f.cancelled.length,0);
+  assert.equal(f.world.combat.cooldowns['dark-strike']!.remainingMs,initialRemaining);
+  f.world.combat.setPaused(false);
+  assert.equal(f.world.combat.paused,false);
+  assert.equal(f.paused.includes(true),true);
+  assert.equal(f.paused.includes(false),true);
+  f.world.combat.destroy();
 });
 
-test('resetting skills during a menu cancels the hero delayed work while preserving paid cooldowns',()=>{
-  const f=pauseFixture();let revision=0,hits=0;
-  Object.assign(f.state.app.session,{skills:{get resetVersion(){return revision;}}});
-  Reflect.set(f.state,'lastSkillResets',new Map([['player',{configuration:(f.state.app.session as any).skills,revision:0}]]));
-  Reflect.get(f.state,'runtime').schedule('player',1,()=>hits++);
-  revision++;Reflect.get(WorldCombat.prototype,'onPartyChanged').call(f.runtime);
-  f.advanceFrames(1);Reflect.get(f.state,'runtime').step(1);
-  assert.equal(hits,0);assert.equal(f.hero.stats().cancelled,1);assert.equal(f.ally.stats().cancelled,0);
-  assert.equal(f.hero.controller.snapshot().cooldowns['dark-strike'].remainingMs,840);
+test('resetting skills during a menu cancels the hero delayed work while preserving paid cooldowns',async t=>{
+  const f=await pauseWorld(t);
+  f.beginBoth();
+  const remaining=f.world.combat.cooldowns['dark-strike']!.remainingMs;
+  f.world.combat.setPaused(true);
+  f.cancelled.length=0;
+  f.world.session.skills.reset();
+  assert.equal(f.cancelled.includes('player'),true);
+  assert.equal(f.cancelled.includes(f.ally.id),false);
+  assert.equal(f.world.combat.attackState,'idle');
+  assert.equal(f.world.combat.cooldowns['dark-strike']!.remainingMs,remaining);
+  const allyPartyState=f.world.combat.captureState().party.find(member=>member.id===f.ally.id);
+  assert.notEqual(allyPartyState?.combat.state,'idle');
+  f.world.combat.destroy();
 });
 
-test('cinematic takeover cancels every party action and old callbacks once, keeping cooldowns',()=>{
-  const f=pauseFixture();
-  f.runtime.suspendPartyActions();
-  const once={hero:f.hero.stats(),ally:f.ally.stats()};
-  f.runtime.suspendPartyActions();
-  f.hero.fireOldFrame();f.ally.fireOldFrame();
-  assert.deepEqual({hero:f.hero.stats(),ally:f.ally.stats()},once);
-  assert.equal(once.hero.cancelled,1);assert.equal(once.ally.cancelled,1);
-  assert.equal(once.hero.hits,0);assert.equal(once.ally.hits,0);
-  assert.deepEqual(f.stopped,[f.player,f.visual]);
-  assert.deepEqual(f.temporary,['player','companion-1']);
-  for(const member of [f.hero,f.ally])assert.equal(member.controller.snapshot().cooldowns['dark-strike'].remainingMs,900);
-  f.ally.controller.update();assert.equal(f.ally.controller.snapshot().cooldowns['dark-strike'].remainingMs,900);
-  f.advanceFrames(4);
-  for(const member of [f.hero,f.ally])assert.equal(member.controller.snapshot().cooldowns['dark-strike'].remainingMs,660);
+test('cinematic takeover cancels every party action and old callbacks once, keeping cooldowns',async t=>{
+  const f=await pauseWorld(t);
+  f.beginBoth();
+  const remaining=f.world.combat.cooldowns['dark-strike']!.remainingMs;
+  f.stopped.length=0;f.temporary.length=0;f.cancelled.length=0;
+  f.world.combat.suspendPartyActions();
+  const once={stopped:[...f.stopped],temporary:[...f.temporary],cancelled:[...f.cancelled]};
+  f.world.combat.suspendPartyActions();
+  assert.deepEqual({stopped:f.stopped,temporary:f.temporary,cancelled:f.cancelled},once);
+  assert.equal(once.cancelled.includes('player'),true);
+  assert.equal(once.cancelled.includes(f.ally.id),true);
+  assert.equal(once.stopped.includes('player'),true);
+  assert.equal(once.stopped.includes(f.ally.id),true);
+  assert.equal(once.temporary.includes('player'),true);
+  assert.equal(once.temporary.includes(f.ally.id),true);
+  assert.equal(f.world.combat.attackState,'idle');
+  assert.equal(f.world.combat.cooldowns['dark-strike']!.remainingMs,remaining);
+  f.world.combat.update(60,true);
+  assert.ok(f.world.combat.cooldowns['dark-strike']!.remainingMs<remaining);
+  f.world.combat.destroy();
 });
 
-test('a second dialogue input lock does not cancel or stop combat again',()=>{
-  const f=pauseFixture();
-  f.runtime.suspendPartyActions();
-  assert.equal(f.hero.stats().cancelled,1);
-  assert.equal(f.ally.stats().cancelled,1);
-  f.stopped.length=0;
-  f.runtime.suspendPartyActions();
-  f.hero.fireOldFrame();f.ally.fireOldFrame();
+test('a second dialogue input lock does not cancel or stop combat again',async t=>{
+  const f=await pauseWorld(t);
+  f.beginBoth();
+  f.cancelled.length=0;f.stopped.length=0;
+  f.world.combat.suspendPartyActions();
+  assert.equal(f.cancelled.includes('player'),true);
+  assert.equal(f.cancelled.includes(f.ally.id),true);
+  f.stopped.length=0;f.cancelled.length=0;
+  f.world.combat.suspendPartyActions();
   assert.deepEqual(f.stopped,[]);
-  assert.equal(f.hero.stats().hits,0);assert.equal(f.ally.stats().hits,0);
+  assert.deepEqual(f.cancelled,[]);
+  f.world.combat.destroy();
 });
 
 test('finishing cinematic presentation leaves formal player and companion camera unchanged',async()=>{
@@ -312,58 +515,77 @@ test('a controlled companion already inside an exit must leave it before the per
 
 test('a companion warlock commands only its own soldier, and an untargeted summon fires in place',()=>{
   const casterId='companion-warlock',calls:{summon:string;target:string|undefined;level:number}[]=[];
-  const makeSummon=(key:string,summonedBy:string,x:number)=>({key,summonedBy,visual:{container:{x,y:0}},
-    definition:{id:'enemy-hell-s-pawn-1',commandAction:{id:'soldier-command'}},
-    controller:{command:(_command:unknown,target:string|undefined,level:number)=>calls.push({summon:key,target,level})}});
-  const own=makeSummon('own',casterId,0),heroSummon=makeSummon('hero-summon','player',1),other=makeSummon('other','companion-ranger',2);
-  const hostile={key:'hostile',visual:{container:{x:40,y:0}},definition:{id:'wolf'}};
-  const member={panel:{attributes:{strength:3,dexterity:4,vitality:5,intelligence:6,mentality:7}}};
-  const context={defeated:false,closed:false,pendingDefeats:{has:()=>false},hero:{level:40},arena:[own,heroSummon,other,hostile],
-    memberOf:(id:string)=>id===casterId?member:undefined,partyFighter:()=>({physicalAttack:1}),
-    movement:{position:(visual:typeof own.visual)=>visual.container},
-    combatant:(id:string)=>({id,team:id==='hostile'?'hostile':'party'}),
-    // 召唤物没有当前目标：命令不带目标，原地按自身范围施放，不改成最近的敌人。
-    enemyTarget:()=>undefined};
+  const pawnDef=battle.enemies.find(enemy=>enemy.id==='enemy-hell-s-pawn-1')!;
+  const wolfDef=battle.enemies.find(enemy=>enemy.id==='enemy-snake-1')!;
+  const member=createTestMember({id:casterId,classId:'warlock',level:40,panel:{attributes:{strength:3,dexterity:4,vitality:5,intelligence:6,mentality:7}}});
+  const enemies=new Map([
+    ['own',createTestEnemy({key:'own',definition:pawnDef,summonedBy:casterId})],
+    ['hero-summon',createTestEnemy({key:'hero-summon',definition:pawnDef,summonedBy:'player'})],
+    ['other',createTestEnemy({key:'other',definition:pawnDef,summonedBy:'companion-ranger'})],
+    ['hostile',createTestEnemy({key:'hostile',definition:wolfDef})],
+  ]);
+  const harness=createCombatTestHarness({
+    battleCatalog:battle,
+    members:new Map([[casterId,member]]),
+    enemies,
+    activeParty:()=>[casterId],
+    settlementOverrides:{
+      commandSummon:(summonKey,_command,targetKey,level)=>calls.push({summon:summonKey,target:targetKey,level}),
+    },
+  });
   const action=battle.skills['monster-s-scream'].action!;
   const cueIndex=action.combatUnits!.findIndex(unit=>unit.effect==='action');
-  Reflect.get(WorldCombat.prototype,'skillUnit').call(Object.setPrototypeOf(context,WorldCombat.prototype),{casterId,targetId:casterId,cueIndex,skill:{id:'monster-s-scream',action,level:3}});
+  harness.settlement.skillUnit({casterId,targetId:casterId,cueIndex,skill:{id:'monster-s-scream',action,level:3}});
   assert.deepEqual(calls,[{summon:'own',target:undefined,level:3}]);
 });
 
 test('the scream fails, and spends nothing, when the caster owns no summon',()=>{
   const casterId='companion-warlock',calls:unknown[]=[];
-  const hostile={key:'hostile',visual:{container:{x:40,y:0}},definition:{id:'wolf'}};
-  const context={defeated:false,closed:false,pendingDefeats:{has:()=>false},hero:{level:40},
-    arena:[hostile],memberOf:(id:string)=>id===casterId?{panel:{attributes:{strength:0,dexterity:0,vitality:0,intelligence:9,mentality:0}}}:undefined,
-    combatant:(id:string)=>({id,team:id==='hostile'?'hostile':'party'}),enemyTarget:()=>undefined,
-    partyFighter:()=>({physicalAttack:1}),movement:{position:()=>({x:0,y:0})}};
+  const wolfDef=battle.enemies.find(enemy=>enemy.id==='enemy-snake-1')!;
+  const member=createTestMember({id:casterId,classId:'warlock',level:40,panel:{attributes:{strength:0,dexterity:0,vitality:0,intelligence:9,mentality:0}}});
+  const harness=createCombatTestHarness({
+    battleCatalog:battle,
+    members:new Map([[casterId,member]]),
+    enemies:new Map([['hostile',createTestEnemy({key:'hostile',definition:wolfDef})]]),
+    activeParty:()=>[casterId],
+    settlementOverrides:{
+      commandSummon:(summonKey,_command,targetKey,level)=>calls.push({summonKey,targetKey,level}),
+    },
+  });
   const action=battle.skills['monster-s-scream'].action!;
   const cueIndex=action.combatUnits!.findIndex(unit=>unit.effect==='action');
-  const outcome=Reflect.get(WorldCombat.prototype,'skillUnit').call(Object.setPrototypeOf(context,WorldCombat.prototype),
-    {casterId,targetId:casterId,cueIndex,skill:{id:'monster-s-scream',action,level:1}});
+  const outcome=harness.settlement.skillUnit({casterId,targetId:casterId,cueIndex,skill:{id:'monster-s-scream',action,level:1}});
   assert.equal(outcome,'failure','没有召唤就不算成功，也就不会耗资源');
   assert.deepEqual(calls,[]);
 });
 
 test('every active summon of the caster is commanded, and it follows the summon current target',()=>{
-  const casterId='companion-warlock',calls:{summon:string;target:string}[]=[];
-  const makeSummon=(key:string,x:number)=>({key,summonedBy:casterId,visual:{container:{x,y:0}},
-    definition:{id:'enemy-hell-s-pawn-1',commandAction:{id:'soldier-command'}},
-    controller:{command:(_command:unknown,target:string)=>calls.push({summon:key,target})}});
-  const far=makeSummon('far',900),near=makeSummon('near',10);
-  const hostile={key:'hostile',visual:{container:{x:12,y:0}},definition:{id:'wolf'}};
-  const otherHostile={key:'other',visual:{container:{x:950,y:0}},definition:{id:'wolf'}};
-  const context={defeated:false,closed:false,pendingDefeats:{has:()=>false},hero:{level:40},
-    arena:[far,near,hostile,otherHostile],
-    memberOf:(id:string)=>id===casterId?{panel:{attributes:{strength:0,dexterity:0,vitality:0,intelligence:9,mentality:0}}}:undefined,
-    combatant:(id:string)=>({id,team:id==='hostile'||id==='other'?'hostile':'party'}),
-    // 远处那个召唤的当前目标是另一个敌人，就沿它打，不改成最近的。
-    enemyTarget:(id:string)=>id==='far'?'other':id==='near'?'hostile':undefined,
-    partyFighter:()=>({physicalAttack:1}),movement:{position:(visual:{container:{x:number}})=>visual.container}};
+  const casterId='companion-warlock',calls:{summon:string;target:string|undefined}[]=[];
+  const pawnDef=battle.enemies.find(enemy=>enemy.id==='enemy-hell-s-pawn-1')!;
+  const wolfDef=battle.enemies.find(enemy=>enemy.id==='enemy-snake-1')!;
+  const member=createTestMember({id:casterId,classId:'warlock',level:40,panel:{attributes:{strength:0,dexterity:0,vitality:0,intelligence:9,mentality:0}}});
+  const enemies=new Map([
+    ['far',createTestEnemy({key:'far',definition:pawnDef,summonedBy:casterId,targetId:'other'})],
+    ['near',createTestEnemy({key:'near',definition:pawnDef,summonedBy:casterId,targetId:'hostile'})],
+    ['hostile',createTestEnemy({key:'hostile',definition:wolfDef})],
+    ['other',createTestEnemy({key:'other',definition:wolfDef})],
+  ]);
+  const positions:Record<string,{x:number;y:number}>={
+    [casterId]:{x:0,y:0},far:{x:900,y:0},near:{x:10,y:0},hostile:{x:12,y:0},other:{x:950,y:0},
+  };
+  const harness=createCombatTestHarness({
+    battleCatalog:battle,
+    members:new Map([[casterId,member]]),
+    enemies,
+    activeParty:()=>[casterId],
+    combatant:id=>({id,team:id==='hostile'||id==='other'?'hostile':'party',position:positions[id]??{x:0,y:0},bounds:{x:-4,y:-4,width:8,height:8}}),
+    settlementOverrides:{
+      commandSummon:(summonKey,_command,targetKey)=>calls.push({summon:summonKey,target:targetKey}),
+    },
+  });
   const action=battle.skills['monster-s-scream'].action!;
   const cueIndex=action.combatUnits!.findIndex(unit=>unit.effect==='action');
-  const outcome=Reflect.get(WorldCombat.prototype,'skillUnit').call(Object.setPrototypeOf(context,WorldCombat.prototype),
-    {casterId,targetId:casterId,cueIndex,skill:{id:'monster-s-scream',action,level:1}});
+  const outcome=harness.settlement.skillUnit({casterId,targetId:casterId,cueIndex,skill:{id:'monster-s-scream',action,level:1}});
   assert.equal(outcome,'success');
   assert.deepEqual(calls,[{summon:'far',target:'other'},{summon:'near',target:'hostile'}]);
 });
@@ -403,21 +625,57 @@ test('drinking replaces the spring visuals with the waterless well',()=>{
   assert.deepEqual(drawn,['well-7abb1f76-idle-south-normal'],'图层按新外观重建，而不是沿用旧贴图');
 });
 
-test('party death finishes on logical time even when no Tween completion arrives',()=>{
-  let frame=0,defeats=0,stopped=0,visible=true;
-  const kernel=new CombatRuntime(()=>frame),visual={layers:[],actor:{clips:{}},container:{active:true,setVisible:(value:boolean)=>{visible=value;}}};
-  const member={player:{health:0},clearCombatResourceLimits:()=>{}};
-  const host=Object.setPrototypeOf({runtime:kernel,closed:false,defeated:false,fallen:new Set(),deathTweens:new Map(),partyControllers:new Map(),
-    activeParty:['player'],controlledVisual:visual,visualOf:()=>visual,memberOf:()=>member,hero:member,heroAi:{disable:()=>{}},allies:[],arena:[],
-    conditions:{remove:()=>{}},movement:{position:()=>({x:0,y:0}),stop:()=>{},setEnabled:()=>{}},outcomes:{setPaused:()=>{}},stopEnemies:()=>{},
-    app:{session:{party:{onDefeat:()=>true}}},scene:{facing:'south',handleCombatDefeat:()=>defeats++,tweens:{add:(options:object)=>{
-      assert.equal('onComplete' in options,false);return {stop:()=>stopped++};
-    }}},
-  },WorldCombat.prototype);
-  Reflect.get(WorldCombat.prototype,'memberDefeated').call(host,'player');
-  kernel.setPaused('menu',true);kernel.step(1);assert.equal(defeats,0);kernel.setPaused('menu',false);
-  for(;frame<9;)kernel.step(++frame);assert.equal(defeats,0);kernel.step(++frame);
-  assert.equal(defeats,1);assert.equal(visible,false);assert.equal(stopped,1);assert.equal(kernel.idle,true);
+test('party death finishes on logical time even when no Tween completion arrives',async()=>{
+  const items=loadItemCatalog(),stats=loadCharacterStatsCatalog(),campaign=loadCampaignCatalog(),companions=loadCompanionCatalog();
+  let defeats=0,stopped=0;
+  const makePhaser=()=>({
+    ...({} as object),
+    tweens:{add:(options:object)=>{assert.equal('onComplete' in options,false);return {stop:()=>{stopped++;},pause(){},resume(){}};}} as never,
+  });
+  const soloHero=new BattleCharacter('dark-knight',stats,items);
+  const soloSession=new Session(campaign,undefined,undefined,items,soloHero,battle,stats,companions);
+  const soloWorld=await createTestWorldCombat({
+    hero:soloHero,session:soloSession,battleCatalog:battle,items,characterStats:stats,
+    phaserScene:Object.assign((await import('./support/world-combat-fixture.ts')).createFakePhaserScene(),makePhaser()),
+    sceneOverrides:{handleCombatDefeat:()=>{defeats++;}},
+  });
+  await soloWorld.combat.start();
+  soloHero.setHealth(0);
+  assert.equal(defeats,0);
+  for(let i=0;i<9;i++)soloWorld.combat.update(60,true);
+  assert.equal(defeats,0);
+  assert.equal(soloWorld.playerVisual.container.visible,true);
+  soloWorld.combat.update(60,true);
+  assert.equal(defeats,1);
+  assert.equal(soloWorld.playerVisual.container.visible,false);
+  assert.equal(stopped,1);
+  soloWorld.combat.destroy();
+
+  // 有存活队友时暂停推进，已倒下主角的 10 帧退场计时不会走动
+  stopped=0;
+  const hero=new BattleCharacter('dark-knight',stats,items);
+  const session=new Session(campaign,undefined,undefined,items,hero,battle,stats,companions);
+  session.bag.add('mercenary-emblem-black-knight');
+  const ally=session.party!.recruit(session.bag.entries.find(entry=>entry.item==='mercenary-emblem-black-knight')!.id,()=>0).member;
+  session.party!.deployFirstAvailable(ally.id);
+  const dkActor=battle.classes.find(entry=>entry.id==='dark-knight')!.actor;
+  const partyWorld=await createTestWorldCombat({
+    hero,session,battleCatalog:battle,items,characterStats:stats,
+    phaserScene:Object.assign((await import('./support/world-combat-fixture.ts')).createFakePhaserScene(),makePhaser()),
+    appOverrides:{world:{actors:{[ally.definition.actor]:dkActor,[dkActor.id]:dkActor}} as never},
+  });
+  await partyWorld.combat.start();
+  hero.setHealth(0);
+  partyWorld.combat.update(60,false);
+  partyWorld.combat.update(60,false);
+  assert.equal(partyWorld.playerVisual.container.visible,true);
+  assert.equal(stopped,0);
+  for(let i=0;i<9;i++)partyWorld.combat.update(60,true);
+  assert.equal(partyWorld.playerVisual.container.visible,true);
+  partyWorld.combat.update(60,true);
+  assert.equal(partyWorld.playerVisual.container.visible,false);
+  assert.equal(stopped,1);
+  partyWorld.combat.destroy();
 });
 
 test('exit prefetch switches direction and retries a failed target after a delay', async () => {

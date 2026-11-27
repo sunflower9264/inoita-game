@@ -1,18 +1,10 @@
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import {registerHooks} from 'node:module';
 import test from 'node:test';
-import type {BattleBuffEffect,BattleCatalog} from '../src/domain/battle.ts';
+import type {BattleBuffEffect} from '../src/domain/battle.ts';
 import {CombatConditions} from '../src/domain/combat-conditions.ts';
+import {createCombatTestHarness,createTestMember,loadBattleCatalog} from './support/combat-test-harness.ts';
 
-const phaser=registerHooks({resolve(specifier,context,next){
-  return specifier==='phaser'?{url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true}:next(specifier,context);
-}});
-const {WorldCombat}=await import('../src/scenes/world-combat.ts');
-phaser.deregister();
-const method=(name:string)=>Reflect.get(WorldCombat.prototype,name);
-
-const catalog=JSON.parse(readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')) as BattleCatalog;
+const catalog=loadBattleCatalog();
 const skill=catalog.skills['celestial-armor'];
 const unit=skill.action!.combatUnits![0] as {effect:'buff';buff:'celestial-armor';ranks:{strength:number;effect:BattleBuffEffect}[]};
 const cue=skill.action!.events!.find(event=>event.kind==='units')!.cues![0];
@@ -33,14 +25,13 @@ test('eight ranks carry the immunity state under the inclusive frame cap and kee
 
 test('the armour blocks hostile damage without touching targeting, movement or friendly healing',()=>{
   const conditions=new CombatConditions();
-  const member={player:{health:100},setHealth(value:number){this.player.health=value;}};
-  const host={conditions,pendingDefeats:new Set(),fallen:new Set(),arena:[],hero:{level:10},
-    memberOf:()=>member,readResourceCapacity:()=>500};
+  const member=createTestMember({id:'ally',level:10,health:100,maxHealth:500});
+  const harness=createCombatTestHarness({battleCatalog:catalog,conditions,members:new Map([['ally',member]])});
   conditions.applyBuff('ally','celestial-armor',3003,unit.ranks[0]!.effect,'caster');
   assert.equal(conditions.canReceiveDamage('ally'),false);
   assert.equal(conditions.canTarget('ally'),true);assert.equal(conditions.canMove('ally'),true);assert.equal(conditions.canAct('ally'),true);
   // 直接加血（AddLife 一路）不看免伤标记，友方治疗照常生效。
-  method('restoreHealth').call(host,'ally',40);
+  harness.settlement.restoreHealth('ally',40);
   assert.equal(member.player.health,140);
 });
 
