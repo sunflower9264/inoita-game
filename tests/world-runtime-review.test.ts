@@ -19,6 +19,7 @@ import {
   loadItemCatalog,
 } from './support/combat-test-harness.ts';
 import { createFakePhaserScene, createTestWorldCombat, installPhaserStubHooks } from './support/world-combat-fixture.ts';
+import { buildTestWorldScene, loadWorldSceneClass } from './support/world-scene-fixture.ts';
 
 function completePhaserScene(){
   const base=createFakePhaserScene();
@@ -43,8 +44,8 @@ function completePhaserScene(){
 const phaser = installPhaserStubHooks();
 const { CombatPresenter } = await import('../src/rendering/combat-presenter.ts');
 const { StoryPresenter } = await import('../src/rendering/story-presenter.ts');
-const { WorldScene } = await import('../src/scenes/world-scene.ts');
 phaser.deregister();
+const WorldScene = await loadWorldSceneClass();
 const rawBattle=JSON.parse(readFileSync(new URL('../public/content/battle.json',import.meta.url),'utf8')) as BattleCatalog;
 const stripActorFiles=(actor:ActorDefinition):ActorDefinition=>{
   const clips:ActorDefinition['clips']={};
@@ -61,10 +62,13 @@ const battle:BattleCatalog={
 };
 
 test('world entry captures a fallback checkpoint once unless that capture fails',()=>{
-  const host:any=Object.assign(Object.create(WorldScene.prototype),{checkpointPending:false,captureCheckpoint:()=>true});
+  let capture=true;
+  const host=buildTestWorldScene(WorldScene,{
+    sceneOverrides:{checkpointPending:false,captureCheckpoint:()=>capture},
+  });
   host.captureEntryCheckpoint();
   assert.equal(host.checkpointPending,false,'立即兜底成功后不再排第二次完整快照');
-  host.captureCheckpoint=()=>false;
+  capture=false;
   host.captureEntryCheckpoint();
   assert.equal(host.checkpointPending,true,'立即兜底失败保留重试标记');
 });
@@ -289,12 +293,15 @@ test('combat entry creates enemies once when loading a checkpoint',async t=>{
 
 test('same-map rollback restores combat without rebuilding the scene',async()=>{
   const calls:string[]=[];
-  const host:any=Object.assign(Object.create(WorldScene.prototype),{
-    map:{id:'home'},loadingWorld:false,encounterResults:new Map(),app:{},
-    projectStoryWorld:async()=>{calls.push('project');},
+  const host=buildTestWorldScene(WorldScene,{
+    map:{id:'home'},loadingWorld:false,app:{},
     combat:{discardPendingDefeats(){calls.push('discard');},restoreState:async()=>{calls.push('combat');}},
-    restoreScenePositions:()=>{calls.push('positions');},syncControlledCharacter:()=>{calls.push('controlled');},
-    restartStoryWorld:()=>{throw new Error('same-map rollback must not restart');}
+    sceneOverrides:{
+      projectStoryWorld:async()=>{calls.push('project');},
+      restoreScenePositions:()=>{calls.push('positions');},
+      syncControlledCharacter:()=>{calls.push('controlled');},
+      restartStoryWorld:()=>{throw new Error('same-map rollback must not restart');},
+    },
   });
   await host.restoreStoryWorld({location:{map:'home'},generatedEntities:[],world:{},scene:{}},new AbortController().signal);
   assert.deepEqual(calls,['discard','project','combat','positions','controlled']);
@@ -504,9 +511,12 @@ test('finishing cinematic presentation leaves formal player and companion camera
 test('a controlled companion already inside an exit must leave it before the performance can trigger travel again',()=>{
   const exit={x:64,y:0,width:32,height:64,destination:'next-map',spawn:{x:8,y:8},facing:'east' as const};
   const companion={container:{active:true,x:80,y:32}};
-  const state={app:{gmNoclip:false},player:{container:{active:true,x:32,y:32}},combat:{controlledVisual:companion},map:{exits:[exit]},
-    movement:{position:()=>({x:80,y:32})},cameras:{main:{startFollow(){}}},refreshLoadout(){},refreshCombatTarget(){},syncHud(){}};
-  const scene=Object.setPrototypeOf(state,WorldScene.prototype) as unknown as InstanceType<typeof WorldScene>;
+  const scene=buildTestWorldScene(WorldScene,{
+    app:{gmNoclip:false},player:{container:{active:true,x:32,y:32}},
+    combat:{controlledVisual:companion},map:{exits:[exit]},
+    movement:{position:()=>({x:80,y:32})},
+    sceneOverrides:{cameras:{main:{startFollow(){}}},refreshLoadout(){},refreshCombatTarget(){},syncHud(){}},
+  });
   scene.syncControlledCharacter(true);
   assert.equal(scene.exitTrigger!.update({x:82,y:32},true),null);
   assert.equal(scene.exitTrigger!.update({x:40,y:32},true),null);
@@ -594,15 +604,18 @@ test('a spring that has already been drunk is no longer an interaction target',(
   const spring={container:{visible:true,x:8,y:0},actor:{},entity:{id:'well-1',actor:'clear-springs-f6f095b4',x:8,y:0,spring:true}};
   // 任务查询自己负责刷新投影；场景层不再每帧强制刷新整份任务状态。
   let refreshed=0;
-  const state=(empty:boolean)=>({player:{container:{visible:true,x:0,y:0}},characters:[spring],combat:{controlledVisual:undefined},map:{id:'forest'},
-    app:{session:{refresh:()=>{refreshed++;},springs:{isEmpty:()=>empty},chests:{isOpened:()=>false},
+  const host=(empty:boolean)=>buildTestWorldScene(WorldScene,{
+    player:{container:{visible:true,x:0,y:0}},characters:[spring],combat:{controlledVisual:undefined},map:{id:'forest'},
+    app:{session:{refresh:()=>{refreshed++;},springs:{isEmpty:()=>empty},chests:{revision:0,isOpened:()=>false},
+      legendaryWeapons:{revision:0,isPulled:()=>false},storyWorld:{revision:0,isPlaced:()=>false},questBook:{version:0},
       // 交互判定会先看任务槽、任务目标标记和可交互声明；泉水用例只关心泉水本身。
-      npcQuestSlot:()=>undefined,canInteract:()=>false,status:()=>'locked',markerActor:()=>undefined},
-    campaign:{quests:[]}}});
-  const scene=Object.setPrototypeOf(state(true),WorldScene.prototype) as unknown as {near:unknown;updateInteractionTarget():void};
+      npcQuestSlot:()=>undefined,canInteract:()=>false,status:()=>'locked' as const,markerActor:()=>undefined},
+    campaign:{quests:[]}},
+  });
+  const scene=host(true);
   scene.updateInteractionTarget();
   assert.equal(scene.near,null,'喝空的泉水不再靠近可交互');
-  const full=Object.setPrototypeOf(state(false),WorldScene.prototype) as unknown as {near:unknown;updateInteractionTarget():void};
+  const full=host(false);
   full.updateInteractionTarget();
   assert.equal(full.near,spring,'满水的泉水照常可选');
   assert.equal(refreshed,0,'交互判定不再每帧强制刷新任务投影');
@@ -614,13 +627,16 @@ test('drinking replaces the spring visuals with the waterless well',()=>{
     'well-7abb1f76':{clips:{'idle-south':clip('well-7abb1f76-idle-south-normal')}}}};
   const drawn:string[]=[];
   const sprite=(key:string)=>({key,alpha:1,setOrigin(){return this;},setBlendMode(){return this;},setTexture(){return this;},setVisible(){return this;},setScale(){return this;},setAlpha(){return this;},destroy(){},play(){},anims:{}});
-  // drainSpring 把场景本身当作 Phaser scene 用，所以贴图工厂与动画表挂在 state 上。
   const character={entity:{id:'well-1',actor:'clear-springs-f6f095b4',x:0,y:0},actor:world.actors['clear-springs-f6f095b4'],container:{addAt(){}},layers:[],clipName:'idle-south' as const};
-  const state={springCatalog:{empty:'well-7abb1f76'},app:{world},
-    anims:{exists:()=>true,create(){},generateFrameNumbers:()=>[]},
-    add:{sprite:(_x:number,_y:number,key:string)=>{drawn.push(key);return sprite(key);}}};
-  const runtime=Object.setPrototypeOf(state,WorldScene.prototype) as unknown as {drainSpring(character:unknown):void};
-  runtime.drainSpring(character);
+  const runtime=buildTestWorldScene(WorldScene,{
+    springCatalog:{empty:'well-7abb1f76'},app:{world},
+    movement:{refreshShape(){}},
+    sceneOverrides:{
+      anims:{exists:()=>true,create(){},generateFrameNumbers:()=>[]},
+      add:{sprite:(_x:number,_y:number,key:string)=>{drawn.push(key);return sprite(key);}},
+    },
+  });
+  runtime.drainSpring(character as never);
   assert.equal(character.actor,world.actors['well-7abb1f76'],'换成没有液体的水井外观');
   assert.deepEqual(drawn,['well-7abb1f76-idle-south-normal'],'图层按新外观重建，而不是沿用旧贴图');
 });
@@ -683,33 +699,38 @@ test('exit prefetch switches direction and retries a failed target after a delay
   let resolveFirst!: (value: unknown) => void;
   let failB = true;
   const first = new Promise(resolve => { resolveFirst = resolve; });
-  const host:any = Object.assign(Object.create(WorldScene.prototype), {
+  const now = { value: 0 };
+  const host = buildTestWorldScene(WorldScene, {
     map:{id:'current',exits:[
       {destination:'a',x:100,y:0,width:2,height:2},
       {destination:'b',x:-100,y:0,width:2,height:2}
     ]},
-    request:new AbortController(),loadingWorld:false,destroyed:false,time:{now:0},
-    cameras:{main:{worldView:{contains:()=>true}}},exitAvailable:()=>true,
-    textures:{exists:()=>true,get:()=>({has:()=>true}),on:()=>{},remove:()=>{}},
-    anims:{exists:()=>false,remove:()=>{}},events:{off:()=>{},once:()=>{}},
+    loadingWorld:false,destroyed:false,
     app:{world:{maps:[{id:'a',file:'a'},{id:'b',file:'b'}]},
       content:{map:(file:string)=>{requests.push(file);if(file==='a')return first;
         if(failB){failB=false;return Promise.reject(new Error('offline'));}
         return Promise.resolve({id:'b',ground:'b-ground',canopy:'b-canopy'});}},
-      retainMapPrefetch:()=>retained.push('b')}
+      retainMapPrefetch:()=>retained.push('b')},
+    sceneOverrides:{
+      time:{get now(){return now.value;}},
+      cameras:{main:{worldView:{contains:()=>true}}},
+      exitAvailable:()=>true,
+      textures:{exists:()=>true,get:()=>({has:()=>true}),on:()=>{},remove:()=>{}},
+      anims:{exists:()=>false,remove:()=>{}},events:{off:()=>{},once:()=>{}},
+    },
   });
   host.prefetchVisibleExit({x:0,y:0},{x:-1,y:0});
   host.prefetchVisibleExit({x:0,y:0},{x:1,y:0});
   assert.deepEqual(requests,['a','b'],'新方向立即开始预取，不等待旧目标');
   resolveFirst({id:'a',ground:'a-ground',canopy:'a-canopy'});
-  await host.prefetchTask;
+  await host.prefetch.prefetchTask;
   assert.deepEqual(requests,['a','b']);
-  assert.equal(host.prefetchTarget,undefined);
+  assert.equal(host.prefetch.prefetchTarget,undefined);
   host.prefetchVisibleExit({x:0,y:0},{x:1,y:0});
   assert.deepEqual(requests,['a','b']);
-  host.time.now=1000;
+  now.value=1000;
   host.prefetchVisibleExit({x:0,y:0},{x:1,y:0});
-  await host.prefetchTask;
+  await host.prefetch.prefetchTask;
   assert.deepEqual(requests,['a','b','b']);
   assert.deepEqual(retained,['b']);
 });

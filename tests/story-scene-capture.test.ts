@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
 import {readFileSync} from 'node:fs';
-import {registerHooks} from 'node:module';
 import test from 'node:test';
 import type { BattleCatalog } from '../src/domain/battle.ts';
 import type {ActorDefinition, AnimationClip, WorldMap} from '../src/domain/content.ts';
@@ -23,14 +22,13 @@ import {
   loadCompanionCatalog,
   loadItemCatalog,
 } from './support/combat-test-harness.ts';
-import {createFakePhaserScene, createTestWorldCombat, PHASER_STUB_SOURCE} from './support/world-combat-fixture.ts';
+import {createFakePhaserScene, createTestWorldCombat, installPhaserStubHooks} from './support/world-combat-fixture.ts';
+import {buildTestWorldScene, loadWorldSceneClass} from './support/world-scene-fixture.ts';
 
-const hook=registerHooks({resolve(specifier,context,next){return specifier==='phaser'
-  ?{url:`data:text/javascript,${encodeURIComponent(PHASER_STUB_SOURCE)}`,shortCircuit:true}
-  :next(specifier,context);}});
-const {WorldScene}=await import('../src/scenes/world-scene.ts');
+const hook=installPhaserStubHooks();
 const {StoryPresenter}=await import('../src/rendering/story-presenter.ts');
 hook.deregister();
+const WorldScene=await loadWorldSceneClass();
 
 function stripActorFiles(actor:ActorDefinition):ActorDefinition {
   const clips:ActorDefinition['clips']={};
@@ -80,26 +78,30 @@ function visual(id:string,actor:ActorDefinition,x:number,y:number){
 }
 
 test('在拉宾斯身边读档保留已触发的邀请，走开后才可再触发', async () => {
-  const host=Object.assign(Object.create(WorldScene.prototype),{
-    map:{id:'berkel-capital'},player:{},movement:{position:()=>({x:424,y:216})},facing:'south',
-    app:{ui:{},session:{hasLivingMember:true}},baseEntities:[],encounterResults:new Set(),
-    captureStoryScene:()=>undefined,projectStoryWorld:async()=>{},syncControlledCharacter(){},
+  const host=buildTestWorldScene(WorldScene,{
+    map:{id:'berkel-capital'},player:{container:{}},movement:{position:()=>({x:424,y:216})},facing:'south',
+    app:{ui:{},session:{hasLivingMember:true}},
+    sceneOverrides:{captureStoryScene:()=>undefined,projectStoryWorld:async()=>{},syncControlledCharacter(){}},
   });
   const robbins={id:'quest-npc-npc-362'};
   const contacts={regions:['square'],characters:[robbins.id],nearEvents:['event-595']};
   host.restoreTriggerContacts(contacts);
-  const saved=JSON.parse(JSON.stringify(host.captureSaveWorld().world));
+  const capture=host.captureSaveWorld();
+  assert.equal(capture.ok,true);
+  if(!capture.ok)throw new Error('捕获失败');
+  const saved=JSON.parse(JSON.stringify(capture.world));
   host.restoreTriggerContacts(undefined);
   await host.restoreStoryWorld(saved,new AbortController().signal);
-  assert.deepEqual([...host.occupiedTriggers],contacts.regions);
-  assert.deepEqual([...host.occupiedNearEvents],contacts.nearEvents);
-  const approach=(touching:boolean)=>claimStoryTrigger([robbins],host.occupiedCharacters,()=>touching,()=>true);
+  assert.deepEqual([...host.triggers.occupiedTriggers],contacts.regions);
+  assert.deepEqual([...host.triggers.occupiedNearEvents],contacts.nearEvents);
+  const approach=(touching:boolean)=>claimStoryTrigger([robbins],host.triggers.occupiedCharacters,()=>touching,()=>true);
   assert.equal(approach(true),null);
   assert.equal(approach(false),null);
   assert.equal(approach(true)?.event,robbins);
 });
 
-test('live capture includes the physical scene with equipped party, props, enemy instances and summons while world is covered',async()=>{
+test('live capture includes the physical scene with equipped party, props, enemy instances and summons while world is covered',async t=>{
+  t.mock.method(Math,'random',()=>0.99);
   const battleCatalog=localBattleCatalog();
   const items=loadItemCatalog();
   const statsCatalog=loadCharacterStatsCatalog();
@@ -209,15 +211,21 @@ test('live capture includes the physical scene with equipped party, props, enemy
   // 单帧动画在 Phaser 里的进度是 NaN（1/(帧数-1)），快照必须收敛成 undefined 才能通过校验。
   gate.layers.push({anims:{currentAnim:{},getProgress:()=>NaN,isPlaying:true}});
   const movement={position:(value:{physics:{x:number;y:number}})=>({...value.physics})};
-  const host=Object.assign(Object.create(WorldScene.prototype),{map:{id:'camp'},player,movement,combat:world.combat,facing:'north',
-    characters:[gate,chest,spring,hidden],baseEntities:[],chestOpened:(value:unknown)=>value===chest,
-    app:{ui:{},session:{hasLivingMember:true,storyWorld:{actorVisible:(_map:string,actor:string)=>actor!=='npc'},visible:()=>true}}});
+  const host=buildTestWorldScene(WorldScene,{
+    map:{id:'camp'},player,movement,combat:world.combat,facing:'north',
+    characters:[gate,chest,spring,hidden],
+    app:{ui:{},session:{hasLivingMember:true,
+      storyWorld:{actorVisible:(_map:string,actor:string)=>actor!=='npc',isPlaced:()=>false},
+      chests:{isOpened:(_map:string,id:string)=>id==='chest-1'},
+      legendaryWeapons:{isPulled:()=>false},
+      visible:()=>true}},
+  });
   host.restoreTriggerContacts(undefined);
   const snapshot:SceneSnapshot=host.captureStoryScene();
   assert.deepEqual(host.captureStoryWorld().scene,snapshot,'rollback captures the same complete physical scene');
-  host.app.ui.loadingState={label:'正在准备进图剧情'};
+  host.app.ui.loadingState={label:'正在准备进图剧情',progress:0};
   assert.deepEqual(host.captureSaveWorld(),{ok:false,reason:'loading'},'进图事件登记前不能写进普通或后台自动存档');
-  delete host.app.ui.loadingState;
+  delete (host.app.ui as {loadingState?:unknown}).loadingState;
   const saved=host.captureSaveWorld();assert.equal(saved.ok,true);
   if(!saved.ok)throw new Error('无法捕获存档');
   const savedScene:SceneSnapshot=saved.world.scene!;
@@ -259,10 +267,12 @@ test('a pulled legendary sword is hidden from the live story scene snapshot',()=
   const player=visual('player',appearance('hero'),12,18);
   const sword=visual('sword-1',{...appearance('legendary-sword'),service:'legendary-sword' as const},30,40);
   const movement={position:(value:{physics:{x:number;y:number}})=>({...value.physics})};
-  const host=Object.assign(Object.create(WorldScene.prototype),{map:{id:'camp'},player,movement,
-    characters:[sword],baseEntities:[],chestOpened:()=>false,
-    app:{session:{storyWorld:{actorVisible:()=>true},visible:()=>true,
-      legendaryWeapons:{isPulled:(mapId:string,entityId:string)=>mapId==='camp'&&entityId==='sword-1'}}}});
+  const host=buildTestWorldScene(WorldScene,{
+    map:{id:'camp'},player,movement,characters:[sword],
+    app:{session:{storyWorld:{actorVisible:()=>true,isPlaced:()=>false},visible:()=>true,
+      chests:{isOpened:()=>false},
+      legendaryWeapons:{isPulled:(mapId:string,entityId:string)=>mapId==='camp'&&entityId==='sword-1'}}},
+  });
   const snapshot:SceneSnapshot=host.captureStoryScene();
   const captured=snapshot.actors.find(actor=>actor.id==='entity:sword-1');
   assert.ok(captured,'古剑仍在快照里，只是不可见');
@@ -363,13 +373,18 @@ test('prepared party members are marked as followers of the player',()=>{
 test('formal cross-map handoff adopts the matching prepared visit only',async()=>{
   const scene:SceneSnapshot={map:'destination',actors:[],visit:{generatedEntities:[],roster:{enemies:[],sequence:0,partySize:1},breakableRolls:[]}};
   let received:unknown;
-  const host=Object.assign(Object.create(WorldScene.prototype),{
-    map:{id:'origin'},app:{session:{storyWorld:{currentLocation:{map:'destination',x:1,y:2,facing:'south'}}},ui:{setWorldRebuildCover(){}}},
-    scene:{isActive:()=>true},prefetchStoryEntry:async()=>{},restartStoryWorld:async(_location:unknown,_signal:AbortSignal,options:{preparedScene?:SceneSnapshot})=>{received=options.preparedScene;}
+  const host=buildTestWorldScene(WorldScene,{
+    map:{id:'origin'},
+    app:{session:{storyWorld:{currentLocation:{map:'destination',x:1,y:2,facing:'south'}}},ui:{setWorldRebuildCover(){}}},
+    sceneOverrides:{
+      scene:{isActive:()=>true},
+      prefetchStoryEntry:async()=>{},
+      restartStoryWorld:async(_location:unknown,_signal:AbortSignal,options:{preparedScene?:SceneSnapshot})=>{received=options.preparedScene;},
+    },
   });
-  await host.projectStoryWorld({scene},new AbortController().signal);
+  await host.projectStoryWorld({scene} as never,new AbortController().signal);
   assert.equal(received,scene);
-  await host.projectStoryWorld({scene:{...scene,map:'unrelated'}},new AbortController().signal);
+  await host.projectStoryWorld({scene:{...scene,map:'unrelated'}} as never,new AbortController().signal);
   assert.equal(received,undefined);
 });
 
@@ -378,12 +393,15 @@ test('rollback restores physical prop positions and drained appearance while ret
   const spring=visual('spring',appearance('spring-full'),0,0);
   Object.assign(spring.container,{setAlpha(this:typeof spring.container,value:number){this.alpha=value;return this;},setVisible(this:typeof spring.container,value:boolean){this.visible=value;return this;}});
   let restoredCombat=false;
-  const host=Object.assign(Object.create(WorldScene.prototype),{map:{id:'camp'},player,characters:[spring],loadingWorld:false,
-    encounterResults:new Set<string>(),
+  const host=buildTestWorldScene(WorldScene,{
+    map:{id:'camp'},player,characters:[spring],loadingWorld:false,
     movement:{refreshShape(){},placeAll:(placements:{visual:typeof spring;position:{x:number;y:number}}[])=>{
       for(const placement of placements)Object.assign(placement.visual.physics,placement.position);
-    }},combat:{discardPendingDefeats(){},async restoreState(){restoredCombat=true;}},app:{},
-    async projectStoryWorld(){},setClip(){},syncControlledCharacter(){}});
+    }},
+    combat:{discardPendingDefeats(){},async restoreState(){restoredCombat=true;}},
+    app:{},
+    sceneOverrides:{async projectStoryWorld(){},setClip(){},syncControlledCharacter(){}},
+  });
   await host.restoreStoryWorld({location:{map:'camp',x:10,y:20,facing:'south'},world:{},generatedEntities:[],scene:{map:'camp',actors:[
     {id:'player',actor:'hero',memberId:'player',x:10,y:20,facing:'south',visible:true,appearance:appearance('hero','expired-outfit')},
     {id:'entity:spring',actor:'spring-full',worldEntityId:'spring',x:42,y:56,facing:'west',visible:true,appearance:appearance('spring-empty')}

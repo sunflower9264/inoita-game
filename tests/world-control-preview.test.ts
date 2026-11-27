@@ -1,15 +1,11 @@
 import assert from 'node:assert/strict';
-import {registerHooks} from 'node:module';
 import test from 'node:test';
 import type {ShortcutSlot} from '../src/ui/hud/action-controls.ts';
 import {controlSettings} from '../src/application/control-settings.ts';
+import {WorldHud} from '../src/ui/world-hud.ts';
+import {buildTestWorldScene, loadWorldSceneClass} from './support/world-scene-fixture.ts';
 
-const phaser=registerHooks({resolve(specifier,context,next){
-  return specifier==='phaser'?{url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true}:next(specifier,context);
-}});
-const {WorldScene}=await import('../src/scenes/world-scene.ts');
-const {WorldHud}=await import('../src/ui/world-hud.ts');
-phaser.deregister();
+const WorldScene=await loadWorldSceneClass();
 
 function fixture(){
   const visibility:Record<string,boolean>={},calls:string[]=[],preview:ShortcutSlot[]=[
@@ -17,27 +13,26 @@ function fixture(){
     {entry:null,quantity:0,enabled:false}
   ];
   const visible=(name:string)=>({setVisible:(value:boolean)=>{visibility[name]=value;}});
-  const state={sys:{isActive:()=>true},loadingWorld:false,near:null,chestFades:new Map(),
-    app:{locked:true,suspended:false,ui:{ready:true,controlLayoutEditing:true},session:{combatTick:0}},
-    worldHud:Object.assign(new WorldHud({sys:{isActive:()=>true},events:{on(){},off(){}},game:{loop:{frame:0}}} as never),{
-      active:()=>true,
-      stick:{...visible('stick'),reset:()=>calls.push('stick-reset')},
-      controls:{...visible('controls'),setAttack:()=>{},snapshot:()=>preview,resetInput:()=>calls.push('controls-reset')},
-      skillHud:visible('skillHud'),
-      mapView:visible('minimap'),statusHud:{...visible('status'),update:()=>{},setTarget:()=>{}},
-      nameBanner:{sync:(value:boolean)=>{visibility.banner=value;}}
-    }) as never,
-    overheadStatus:visible('overhead'),
-    refreshCombatTarget:()=>{},
+  const sys={isActive:()=>true};
+  const app={locked:true,suspended:false,ui:{ready:true,controlLayoutEditing:true},session:{combatTick:0},director:undefined as {busy:boolean}|undefined};
+  const worldHud=Object.assign(new WorldHud({sys:{isActive:()=>true},events:{on(){},off(){}},game:{loop:{frame:0}}} as never),{
+    active:()=>true,
+    stick:{...visible('stick'),reset:()=>calls.push('stick-reset')},
+    controls:{...visible('controls'),setAttack:()=>{},snapshot:()=>preview,resetInput:()=>calls.push('controls-reset')},
+    skillHud:visible('skillHud'),
+    mapView:visible('minimap'),statusHud:{...visible('status'),update:()=>{},setTarget:()=>{}},
+    nameBanner:{sync:(value:boolean)=>{visibility.banner=value;}}
+  });
+  const scene=buildTestWorldScene(WorldScene,{
+    app,
+    worldHud:worldHud as never,
+    player:{},
+    movement:{stop:()=>calls.push('stop')},
     combat:{hasHostileTarget:()=>false,setPaused:(value:boolean)=>calls.push(`paused:${value}`),
       update:(_delta:number,enabled:boolean)=>calls.push(`combat:${enabled}`)},
-    player:{},movement:{stop:()=>calls.push('stop')}
-  };
-  const scene=Object.setPrototypeOf(state,WorldScene.prototype) as unknown as {
-    syncHud():void;resetInput():void;update(time:number,delta:number):void;
-    readonly canControl:boolean;readonly canCombatControl:boolean;getControlLayoutPreview():readonly ShortcutSlot[];
-  };
-  return {scene,state,visibility,calls,preview};
+    sceneOverrides:{sys,overheadStatus:visible('overhead'),refreshCombatTarget:()=>{}},
+  });
+  return {scene,state:{app,sys,worldHud,get loadingWorld(){return scene.loadingWorld;},set loadingWorld(v:boolean){scene.loadingWorld=v;}},visibility,calls,preview};
 }
 
 test('control layout editing keeps background HUD visible without enabling gameplay or actual controls',()=>{

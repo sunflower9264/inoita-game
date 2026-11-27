@@ -1,15 +1,8 @@
 import assert from 'node:assert/strict';
-import { registerHooks } from 'node:module';
 import test from 'node:test';
+import { buildTestWorldScene, loadWorldSceneClass } from './support/world-scene-fixture.ts';
 
-const hook = registerHooks({resolve(specifier, context, next) {
-  return specifier === 'phaser'
-    ? {url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true}
-    : next(specifier, context);
-}});
-const { WorldScene } = await import('../src/scenes/world-scene.ts');
-hook.deregister();
-const invoke = (host: object, name: string, ...args: unknown[]) => Reflect.get(WorldScene.prototype, name).call(host, ...args);
+const WorldScene = await loadWorldSceneClass();
 
 interface Point { id: string; x: number; y: number }
 interface Marker {
@@ -50,28 +43,34 @@ test('minimap interaction markers follow the original NPC ring and skip opened o
     character('story-npc', {description: '只讲剧情，不是交互点'}),
   ];
   const session = {
-    questBook: {version: 0}, storyWorld: {revision: 0, actorVisible: (_map: string, actor: string) => !hidden.has(actor)},
-    chests: {revision: 0}, legendaryWeapons: {revision: 0}, runtimeState: {sequence: 0}, restorationVersion: 0,
+    questBook: {version: 0}, storyWorld: {revision: 0, actorVisible: (_map: string, actor: string) => !hidden.has(actor), isPlaced: () => false},
+    chests: {revision: 0, isOpened: (_map: string, id: string) => opened.has(id)},
+    legendaryWeapons: {revision: 0, isPulled: (_map: string, id: string) => pulled.has(id)},
+    runtimeState: {sequence: 0}, restorationVersion: 0,
     marker: (actor: string) => actor === 'quest-shop' ? 'available' : null,
     markerActor: (actor: string) => actor === 'quest-shop',
     visible: () => true,
     springs: {isEmpty: (_map: string, id: string) => emptySprings.has(id)},
   };
-  const host = Object.assign(Object.create(WorldScene.prototype), {
-    app: {session, storyInterface: {assets: {}}, shops: {shops: {shop: {}, 'quest-shop': {}}}},
-    characters, map: {id: 'map'}, player: {container: {x: 0, y: 0}}, chestFades: new Map(),
+  const scene = buildTestWorldScene(WorldScene, {
+    app: {session, storyInterface: {assets: {}}, shops: {shops: {shop: {}, 'quest-shop': {}}}} as never,
+    characters,
+    map: {id: 'map'},
+    player: {container: {x: 0, y: 0}},
     worldHud: {minimap: {
       updatePlayer() {},
       updateTasks(tasks: unknown[]) { taskLists.push(tasks); },
       updateInteractions(list: Point[]) { interactionLists.push(list); },
     }},
-    refreshLoadout() {}, noticeQuestChanges() {}, syncQuestMarker() {},
-    chestOpened: (target: typeof characters[number]) => opened.has(target.entity.id),
-    legendarySwordConsumed: (target: typeof characters[number]) => pulled.has(target.entity.id),
     movement: {setEnabled() {}},
+    sceneOverrides: {
+      refreshLoadout() {},
+      noticeQuestChanges() {},
+      syncQuestMarker() {},
+    },
   });
 
-  invoke(host, 'refreshState');
+  scene.refreshState();
   assert.deepEqual(interactionLists.at(-1)!.map(point => point.id).sort(),
     ['chest', 'fusion', 'inn', 'shop', 'spring', 'sword'],
     '宝箱、泉水、商店、旅店、融合器和未拔出的古剑都画交互圆环');
@@ -79,10 +78,10 @@ test('minimap interaction markers follow the original NPC ring and skip opened o
     '同一角色有任务图标时只画任务标记，不再叠交互圆环');
 
   opened.add('chest');
-  invoke(host, 'refreshMinimapInteractions');
+  scene.refreshMinimapInteractions();
   assert.ok(!interactionLists.at(-1)!.some(point => point.id === 'chest'), '宝箱开启后圆环立即移除');
 
   emptySprings.add('spring');
-  invoke(host, 'refreshMinimapInteractions');
+  scene.refreshMinimapInteractions();
   assert.ok(!interactionLists.at(-1)!.some(point => point.id === 'spring'), '泉水喝空后圆环立即移除');
 });

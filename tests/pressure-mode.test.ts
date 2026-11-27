@@ -22,11 +22,10 @@ import {
   loadCompanionCatalog,
   loadItemCatalog,
 } from './support/combat-test-harness.ts';
-import { createFakePhaserScene, createTestWorldCombat, installPhaserStubHooks } from './support/world-combat-fixture.ts';
+import { createFakePhaserScene, createTestWorldCombat } from './support/world-combat-fixture.ts';
+import { buildTestWorldScene, loadWorldSceneClass } from './support/world-scene-fixture.ts';
 
-const hook = installPhaserStubHooks();
-const { WorldScene } = await import('../src/scenes/world-scene.ts');
-hook.deregister();
+const WorldScene = await loadWorldSceneClass();
 
 function normalizeActorClips(actor: ActorDefinition): void {
   for (const clip of Object.values(actor.clips)) {
@@ -125,13 +124,9 @@ test('压测阵亡只补满倒下的成员，全灭入口不进入阵亡状态',
 });
 
 test('压测模式拒绝手动存档和检查点', () => {
-  const host = Object.setPrototypeOf({ app: { pressureMode: true }, session: {} }, WorldScene.prototype) as {
-    app: { pressureMode: boolean };
-  };
-  const captureSaveWorld = WorldScene.prototype.captureSaveWorld as (this: unknown) => unknown;
-  assert.deepEqual(captureSaveWorld.call(host), { ok: false, reason: 'pressure' });
-  const captureCheckpoint = Reflect.get(WorldScene.prototype, 'captureCheckpoint') as (this: unknown) => boolean;
-  assert.equal(captureCheckpoint.call(host), false);
+  const host = buildTestWorldScene(WorldScene, { app: { pressureMode: true, session: {} } });
+  assert.deepEqual(host.captureSaveWorld(), { ok: false, reason: 'pressure' });
+  assert.equal(host.captureCheckpoint(), false);
 });
 
 
@@ -151,13 +146,18 @@ test('挑战模式先按出生点刷怪，补怪达到上限时不加载素材',
   const created: {id:string;point?:{x:number;y:number}}[]=[];
   let callback=()=>{};
   let allowed=true;
-  const host=Object.setPrototypeOf({
-    app:{pressureMode:true,battleCatalog:battle,session:{hero:{level:1}}},
-    request:new AbortController(),destroyed:false,pressureStartPoints:[{x:10,y:20},{x:30,y:40}],
-    combat:{canSpawnPressureEnemy:()=>allowed,preparePressureEnemy:async()=>true,
-      spawnPressureEnemy:(id:string,point?:{x:number;y:number})=>created.push({id,point})},
-    time:{addEvent:(options:{callback:()=>void})=>{callback=options.callback;return {};}}
-  },WorldScene.prototype) as InstanceType<typeof WorldScene>;
+  const host = buildTestWorldScene(WorldScene, {
+    app: { pressureMode: true, battleCatalog: battle, session: { hero: { level: 1 } } },
+    combat: {
+      canSpawnPressureEnemy: () => allowed,
+      preparePressureEnemy: async () => true,
+      spawnPressureEnemy: (id: string, point?: { x: number; y: number }) => created.push({ id, point }),
+    },
+    sceneOverrides: {
+      pressureStartPoints: [{ x: 10, y: 20 }, { x: 30, y: 40 }],
+      time: { addEvent: (options: { callback: () => void }) => { callback = options.callback; return {}; } },
+    },
+  });
   await host.startPressureSpawner();
   assert.deepEqual(created.map(entry=>entry.point),[{x:10,y:20},{x:30,y:40}]);
   allowed=false;callback();
@@ -171,19 +171,19 @@ test('挑战模式异步加载刷怪期间若世界已暂停，加载完成后�
   let paused = false;
   let releaseLoad!: (ok: boolean) => void;
   let callback = () => {};
-  const host = Object.setPrototypeOf({
+  const host = buildTestWorldScene(WorldScene, {
     app: { pressureMode: true, battleCatalog: battle, session: { hero: { level: 1 } } },
-    request: new AbortController(),
-    destroyed: false,
-    pressureStartPoints: [],
-    scene: { isPaused: () => paused },
     combat: {
       canSpawnPressureEnemy: () => true,
       preparePressureEnemy: () => new Promise<boolean>(resolve => { releaseLoad = resolve; }),
       spawnPressureEnemy: (id: string) => { created.push(id); return true; },
     },
-    time: { addEvent: (options: { callback: () => void }) => { callback = options.callback; return {}; } },
-  }, WorldScene.prototype) as InstanceType<typeof WorldScene>;
+    sceneOverrides: {
+      pressureStartPoints: [],
+      scene: { isPaused: () => paused },
+      time: { addEvent: (options: { callback: () => void }) => { callback = options.callback; return {}; } },
+    },
+  });
 
   await host.startPressureSpawner();
   callback();

@@ -1,30 +1,14 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { registerHooks } from 'node:module';
 import test from 'node:test';
 import { QuestItemGenerators } from '../src/domain/quest-item-spawns.ts';
 import { GroundLootStore, groundLootFor } from '../src/domain/ground-loot.ts';
 import { Session } from '../src/domain/session.ts';
+import { WorldLootCoordinator } from '../src/scenes/world-loot.ts';
 import type { QuestItemSpawn } from '../src/domain/content.ts';
 import type { Campaign, CampaignQuest } from '../src/domain/campaign.ts';
 import type { DropReward } from '../src/domain/drops.ts';
 import type { ItemCatalog } from '../src/domain/items.ts';
-
-class Rectangle {
-  x:number;y:number;width:number;height:number;
-  constructor(x:number,y:number,width:number,height:number) {this.x=x;this.y=y;this.width=width;this.height=height;}
-  static Contains(area:Rectangle,x:number,y:number):boolean {return x>=area.x&&y>=area.y&&x<=area.x+area.width&&y<=area.y+area.height;}
-}
-const phaserBoundary=Symbol.for('inotia.quest-item-generation-test.phaser');
-Object.defineProperty(globalThis,phaserBoundary,{value:{Rectangle},configurable:true});
-const phaser=registerHooks({resolve(specifier,context,next){
-  return specifier==='phaser'?{shortCircuit:true,url:`data:text/javascript,${encodeURIComponent(`
-    const {Rectangle}=globalThis[Symbol.for('inotia.quest-item-generation-test.phaser')];
-    export default {Geom:{Rectangle},BlendModes:{NORMAL:0,ADD:1,SCREEN:2,MULTIPLY:3},Scene:class{},Physics:{Arcade:{Body:class{}}}};
-  `)}`}:next(specifier,context);
-}});
-const { WorldScene }=await import('../src/scenes/world-scene.ts');
-phaser.deregister();
 
 const point:QuestItemSpawn={id:'copper-point',quest:'collection',item:'copper',x:56,y:120,respawnFrames:312};
 const canProduce=(definition:QuestItemSpawn)=>definition.quest==='collection';
@@ -40,9 +24,13 @@ const pickupScene=(content:Campaign,items:ItemCatalog,held:number,questIds:reado
   for(const id of questIds)run.accept(id);
   if(held)run.bag.add('lumps-of-copper',held);run.emit();
   let message='';
-  const scene=Object.setPrototypeOf({app:{session:run,items,ui:{showInstant:(text:string)=>{message=text;}}}},WorldScene.prototype);
-  const receive=(scene as unknown as {receiveGroundReward(reward:DropReward):boolean}).receiveGroundReward;
-  return {run,receive:(reward:DropReward={kind:'item',item:'lumps-of-copper',quantity:1})=>receive.call(scene,reward),message:()=>message};
+  const loot=new WorldLootCoordinator({
+    app:{session:run,items,ui:{showInstant:(text:string)=>{message=text;}} as never},
+    destroyed:false,loadingWorld:false,map:undefined,dropCatalog:undefined,
+    navigation:undefined,combat:undefined,player:undefined,
+    syncView(){},enqueuePickup(){},
+  });
+  return {run,receive:(reward:DropReward={kind:'item',item:'lumps-of-copper',quantity:1})=>loot.receiveReward(reward),message:()=>message};
 };
 
 test('only active tasks produce one physical item at each native point',()=>{

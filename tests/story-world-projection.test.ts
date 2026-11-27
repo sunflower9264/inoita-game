@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import {registerHooks} from 'node:module';
 import test from 'node:test';
 import type {BattleCatalog} from '../src/domain/battle.ts';
 import {BattleCharacter} from '../src/domain/character-stats.ts';
@@ -15,7 +14,8 @@ import {
   loadCompanionCatalog,
   loadItemCatalog,
 } from './support/combat-test-harness.ts';
-import {createFakePhaserScene, createTestWorldCombat, PHASER_STUB_SOURCE} from './support/world-combat-fixture.ts';
+import {createFakePhaserScene, createTestWorldCombat} from './support/world-combat-fixture.ts';
+import {buildTestWorldScene, loadWorldSceneClass} from './support/world-scene-fixture.ts';
 
 function stripActorFiles(actor:ActorDefinition):ActorDefinition{
   const clips:ActorDefinition['clips']={};
@@ -51,9 +51,7 @@ function completePhaserScene(){
   return scene;
 }
 
-const hook=registerHooks({resolve(specifier,context,next){return specifier==='phaser'?{url:`data:text/javascript,${encodeURIComponent(PHASER_STUB_SOURCE)}`,shortCircuit:true}:next(specifier,context);}});
-const {WorldScene}=await import('../src/scenes/world-scene.ts');
-hook.deregister();
+const WorldScene=await loadWorldSceneClass();
 
 function fixture(){
   let location:undefined|{map:string;x:number;y:number;facing:'south'};
@@ -62,14 +60,31 @@ function fixture(){
   const player={container:{active:true,x:10,y:20},entity:{id:'player'}};
   const positions:unknown[]=[],adopted:unknown[][]=[];let restarts=0,stops=0,regroups=0;
   const movement={placeAll:(values:{position:{x:number;y:number}}[])=>{positions.push(values);for(const value of values){player.container.x=value.position.x;player.container.y=value.position.y;}}};
-  const state={map:{id:'home',name:'Home'},player,baseEntities:[],characters:[] as unknown[],entities:[],storyEntityAssets:[],projectedActorIds:new Set(),occupiedCharacters:new Set<string>(),encounterResults:new Set<string>(),loadingWorld:false,destroyed:false,readyAbort:new AbortController(),
+  const scene=buildTestWorldScene(WorldScene,{
+    map:{id:'home',name:'Home'},player,characters:[],loadingWorld:false,destroyed:false,
     app:{director:{},campaign:{placements:[]},session:{storyWorld:{get currentLocation(){return location;},projectEntities:()=>projected,actorAppearance:(actor:string)=>actor,entity:()=>undefined},visible:()=>true},world:{actors:{} as Record<string,unknown>},ui:{setWorldRebuildCover:(covered:boolean)=>{coverCalls.push(covered);}}},
     movement,
     combat:{regroupPartyAroundHero(){regroups++;},async projectStoryEnemies(){},async restoreState(){},adoptStoryPositions(actors:unknown[]){adopted.push(actors);},finishMapVisit(){},discardPendingDefeats(){}},
-    loadAssets:async(...args:unknown[])=>{assetLoads.push(args);return {release(){}};},refreshState(){},syncHud(){},setClip(){},syncControlledCharacter(){},
-    scene:{isActive(){return stageActive;},get(){return {worldCovered};},restart(options:SceneOptions){restarts++;lastRestart=options;options.onReady?.();},stop(){stops++;}}
+    sceneOverrides:{
+      loadAssets:async(...args:unknown[])=>{assetLoads.push(args);return {release(){}};},refreshState(){},syncHud(){},setClip(){},syncControlledCharacter(){},
+      scene:{isActive(){return stageActive;},get(){return {worldCovered};},restart(options:SceneOptions){restarts++;lastRestart=options;options.onReady?.();},stop(){stops++;}},
+    },
+  });
+  const state=scene as unknown as {
+    player:{container:{active:boolean;x:number;y:number};entity:{id:string}};
+    app:{director:object;campaign:{placements:unknown[]};session:{storyWorld:{readonly currentLocation:typeof location;projectEntities:()=>unknown[];actorAppearance:(actor:string)=>string;entity:()=>undefined};visible:()=>boolean};world:{actors:Record<string,unknown>};ui:{setWorldRebuildCover:(covered:boolean)=>void}};
+    movement:unknown;
+    combat:{regroupPartyAroundHero():void;projectStoryEnemies():Promise<void>;restoreState():Promise<void>;adoptStoryPositions(actors:unknown[]):void;finishMapVisit():void;discardPendingDefeats():void;settleFriendlyUnitsAroundHero():void};
+    characters:unknown[];
+    baseEntities:unknown[];
+    destroyed:boolean;
+    loadingWorld:boolean;
+    triggers:typeof scene.triggers;
+    springCatalog?:unknown;
+    createActor?:(entity:unknown)=>unknown;
+    drainSpring?:(character:{actor:{id:string}})=>void;
+    scene:{isActive():boolean;get():{worldCovered:boolean};restart(options:SceneOptions):void;stop():void};
   };
-  const scene=Object.setPrototypeOf(state,WorldScene.prototype) as unknown as InstanceType<typeof WorldScene>;
   return {scene,state,movement,positions,adopted,location:(value:typeof location)=>{location=value;},stageActive:(value:boolean)=>{stageActive=value;},covered:(value:boolean)=>{worldCovered=value;},coverCalls:()=>coverCalls,projected:(value:unknown[])=>{projected=value;},restarts:()=>restarts,stops:()=>stops,regroups:()=>regroups,lastRestart:()=>lastRestart,assetLoads};
 }
 
@@ -269,47 +284,53 @@ test('a same-map projection keeps a drunk spring as the waterless well',async()=
 test('defeat checkpoint restores complete world state and closes its panel before resuming the stable story cursor',async()=>{
   const calls:string[]=[];let restore:undefined|(()=>Promise<void>);
   const world={location:{map:'home',x:10,y:20,facing:'south'},generatedEntities:[],audio:{music:'story-theme',ambience:null}};
-  const state={map:{id:'home'},destroyed:false,resetInput(){calls.push('input');},
-    async restoreStoryWorld(value:unknown){assert.equal(value,world);calls.push('world');},
+  const scene=buildTestWorldScene(WorldScene,{
+    map:{id:'home'},destroyed:false,
     app:{storySignal:new AbortController().signal,checkpoint:{peek:()=>({session:{},world})},
       session:{bag:{entries:[]},restoreState(){calls.push('session');}},
       director:{runtime:{snapshot:()=>({runs:[]})},cancel(){calls.push('cancel');},async retry(){calls.push('retry');return false;}},
-      ui:{showDefeat(actions:{restore():Promise<void>}){restore=actions.restore;},closeDefeat(){calls.push('close');}}}
-  };
-  const scene=Object.setPrototypeOf(state,WorldScene.prototype) as unknown as InstanceType<typeof WorldScene>;
+      ui:{showDefeat(actions:{restore():Promise<void>}){restore=actions.restore;},closeDefeat(){calls.push('close');}}},
+    sceneOverrides:{
+      resetInput(){calls.push('input');},
+      async restoreStoryWorld(value:unknown){assert.equal(value,world);calls.push('world');},
+    },
+  });
   scene.handleCombatDefeat();assert.ok(restore);await restore();
   assert.deepEqual(calls,['input','cancel','session','world','close','retry']);
 });
 
 test('restoring a save or checkpoint clears the scene outcome guard',async()=>{
   const f=fixture();f.location({map:'home',x:10,y:20,facing:'south'});
-  f.state.encounterResults.add('enc-1');
+  f.state.triggers.encounterResults.add('enc-1');
   await f.scene.restoreStoryWorld({location:{map:'home',x:10,y:20,facing:'south'},generatedEntities:[]},new AbortController().signal);
-  assert.equal(f.state.encounterResults.size,0,'回滚后同一场遭遇可以重新结算');
+  assert.equal(f.state.triggers.encounterResults.size,0,'回滚后同一场遭遇可以重新结算');
 });
 
 test('a party wipe opens the defeat panel without settling the waiting encounter as lost',async()=>{
   const outcomes:string[]=[];
   let shown=0;
   const encounter={id:'enc-1',map:'home',status:'active' as const,spawns:[]};
-  const state={map:{id:'home'},destroyed:false,encounterResults:new Set<string>(),
+  const scene=buildTestWorldScene(WorldScene,{
+    map:{id:'home'},destroyed:false,
     app:{session:{storyWorld:{encounter:()=>encounter},party:{livingIds:[]},bag:{entries:[]}},
       director:{runtime:{snapshot:()=>({runs:[{status:'waiting',waiting:{outcomes:{lost:true},encounter:'enc-1'}}]})},
         async encounterResult(_encounter:string,outcome:string){outcomes.push(outcome);return true;}},
-      ui:{showDefeat(){shown++;},closeDefeat(){},toast(){}}}};
-  const scene=Object.setPrototypeOf(state,WorldScene.prototype) as unknown as InstanceType<typeof WorldScene>;
+      ui:{showDefeat(){shown++;},closeDefeat(){},toast(){}}},
+  });
   scene.handleCombatDefeat();
   await new Promise(resolve=>setImmediate(resolve));
   assert.equal(shown,1,'全队阵亡要立刻给玩家阵亡界面');
   assert.deepEqual(outcomes,[],'阵亡本身不结算剧情遭遇');
   assert.equal(encounter.status,'active','复活或读档后这场遭遇仍可继续');
-  assert.equal(state.encounterResults.size,0,'阵亡不占用胜利结算的去重记录');
+  assert.equal(scene.triggers.encounterResults.size,0,'阵亡不占用胜利结算的去重记录');
 });
 
 test('a story checkpoint keeps the existing snapshot while a story encounter is waiting',()=>{
   let captures=0;
-  const scene=Object.setPrototypeOf({app:{session:{hasWaitingStoryRun:true,hasLivingMember:true},
-    checkpoint:{available:true,capture(){captures++;return true;}}}},WorldScene.prototype) as unknown as InstanceType<typeof WorldScene>;
+  const scene=buildTestWorldScene(WorldScene,{
+    app:{session:{hasWaitingStoryRun:true,hasLivingMember:true},
+      checkpoint:{available:true,capture(){captures++;return true;}}},
+  });
   scene.checkpointStoryWorld();
   assert.equal(captures,0,'等待战斗时不覆盖已有的安全检查点');
 });
@@ -317,28 +338,34 @@ test('a story checkpoint keeps the existing snapshot while a story encounter is 
 test('a story checkpoint records a fallback when a story encounter is waiting and none exists',()=>{
   let captures=0;
   const player={},position={x:10,y:20};
-  const scene=Object.setPrototypeOf({
+  const scene=buildTestWorldScene(WorldScene,{
     map:{id:'home',name:'Home'},player,movement:{position:()=>position},combat:{settleForSnapshot(){}},
-    captureStoryWorld:()=>({location:{map:'home',x:position.x,y:position.y,facing:'south'},generatedEntities:[]}),
     app:{session:{hasWaitingStoryRun:true,hasLivingMember:true},
       checkpoint:{available:false,capture(){captures++;return true;}}},
-  },WorldScene.prototype) as unknown as InstanceType<typeof WorldScene>;
+    sceneOverrides:{
+      captureStoryWorld:()=>({location:{map:'home',x:position.x,y:position.y,facing:'south'},generatedEntities:[]}),
+    },
+  });
   scene.checkpointStoryWorld();
   assert.equal(captures,1,'没有检查点时，读档落入等待战斗也要记下兜底检查点');
 });
 
 test('saving refuses a party whose active members are all down',()=>{
-  const scene=Object.setPrototypeOf({app:{session:{hasLivingMember:false},ui:{}},map:{id:'home'},player:{},movement:{}},WorldScene.prototype) as unknown as InstanceType<typeof WorldScene>;
+  const scene=buildTestWorldScene(WorldScene,{
+    app:{session:{hasLivingMember:false},ui:{}},map:{id:'home'},player:{},movement:{},
+  });
   assert.deepEqual(scene.captureSaveWorld(),{ok:false,reason:'no-survivors'});
 });
 
 test('a defeat restore refuses a checkpoint whose party has no living member',async()=>{
   let restore:undefined|(()=>Promise<void>);
-  const scene=Object.setPrototypeOf({map:{id:'home'},destroyed:false,resetInput(){},async restoreStoryWorld(){},
+  const scene=buildTestWorldScene(WorldScene,{
+    map:{id:'home'},destroyed:false,
     app:{storySignal:new AbortController().signal,
       checkpoint:{peek:()=>({session:{hero:{health:0},party:{members:[],slots:['companion-1']}},world:{location:{map:'home'}}})},
-      ui:{showDefeat(actions:{restore():Promise<void>}){restore=actions.restore;},closeDefeat(){}}}},
-  WorldScene.prototype) as unknown as InstanceType<typeof WorldScene>;
+      ui:{showDefeat(actions:{restore():Promise<void>}){restore=actions.restore;},closeDefeat(){}}},
+    sceneOverrides:{resetInput(){},async restoreStoryWorld(){}},
+  });
   scene.handleCombatDefeat();assert.ok(restore);
   await assert.rejects(restore!(),/没有可战斗的队员/);
 });
@@ -450,7 +477,7 @@ test('readiness waits for an in-flight open before rebuilding',async()=>{
   f.scene.options={map:'home',x:10,y:20,facing:'south'};
   delete (f.state as unknown as Record<string,unknown>).movement;
   let release!:()=>void,restarts=0;
-  (f.state as unknown as {openTask?:Promise<void>}).openTask=new Promise<void>(resolve=>{release=resolve;});
+  f.scene.readiness.openTask=new Promise<void>(resolve=>{release=resolve;});
   f.state.scene.restart=(options:SceneOptions)=>{restarts++;options.onReady?.();};
   const ready=f.scene.recoverWorld();
   await new Promise(resolve=>setImmediate(resolve));
@@ -492,8 +519,8 @@ test('a rebuild is not cancelled by the shutdown it triggers',async()=>{
   delete (f.state as unknown as Record<string,unknown>).movement;
   f.state.scene.restart=(options:SceneOptions)=>{
     // 真实 Phaser 的 restart 会先 shutdown 旧场景，shutdown 会 abort 这一代的取消源。
-    f.state.readyAbort.abort(new Error('正式地图已经关闭'));
-    f.state.loadingWorld=false;f.state.movement=f.movement;
+    f.scene.readiness.readyAbort.abort(new Error('正式地图已经关闭'));
+    f.state.loadingWorld=false;f.state.movement=f.movement as never;
     options.onReady?.();
   };
   await f.scene.recoverWorld();
@@ -504,7 +531,7 @@ test('waitWorldReady surfaces the in-flight open error and recoverWorld then reb
   f.scene.options={map:'home',x:10,y:20,facing:'south'};
   delete (f.state as unknown as Record<string,unknown>).movement;
   let rejectOpen!: (error: Error)=>void;
-  (f.state as unknown as {openTask?:Promise<void>}).openTask=new Promise<void>((_,reject)=>{rejectOpen=reject;});
+  f.scene.readiness.openTask=new Promise<void>((_,reject)=>{rejectOpen=reject;});
   let restarts=0;
   f.state.scene.restart=(options:SceneOptions)=>{restarts++;options.onReady?.();};
   const waiting=f.scene.waitWorldReady();
@@ -521,7 +548,7 @@ test('recoverWorld escalates a wait-only task into a rebuild after the open sett
   f.scene.options={map:'home',x:10,y:20,facing:'south'};
   delete (f.state as unknown as Record<string,unknown>).movement;
   let release!:()=>void,restarts=0;
-  (f.state as unknown as {openTask?:Promise<void>}).openTask=new Promise<void>(resolve=>{release=resolve;});
+  f.scene.readiness.openTask=new Promise<void>(resolve=>{release=resolve;});
   f.state.scene.restart=(options:SceneOptions)=>{restarts++;options.onReady?.();};
   const waiting=f.scene.waitWorldReady();
   const recovering=f.scene.recoverWorld();

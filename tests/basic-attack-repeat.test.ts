@@ -1,14 +1,9 @@
 import assert from 'node:assert/strict';
-import { registerHooks } from 'node:module';
 import test from 'node:test';
 import { BasicAttackRepeat } from '../src/domain/basic-attack-repeat.ts';
+import { buildTestWorldScene, loadWorldSceneClass } from './support/world-scene-fixture.ts';
 
-// 场景层的接线用例：用假 phaser 模块直接跑 Scene.update 的普攻分支，不需要浏览器。
-const phaser = registerHooks({resolve(specifier, context, next) {
-  return specifier === 'phaser' ? {url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true} : next(specifier,context);
-}});
-const { WorldScene } = await import('../src/scenes/world-scene.ts');
-phaser.deregister();
+const WorldScene = await loadWorldSceneClass();
 
 test('the repeat gate only continues an engaged attack while the character stands idle',()=>{
   const repeat=new BasicAttackRepeat();
@@ -25,18 +20,6 @@ test('the repeat gate only continues an engaged attack while the character stand
   assert.equal(repeat.next({targetId:'enemy',attackState:'idle'}),true);
 });
 
-/** 只声明用例要碰的部分，避免测试去动场景的私有成员。 */
-interface SceneHooks {
-  update(time:number,delta:number):void;
-  interact():void;
-  attackKey():void;
-  startBasicAttack():void;
-  offensiveSkillCompleted(actorId:string):void;
-  switchControlled(id:string):boolean;
-  switchMember(direction:-1|1):void;
-  autoAttack:BasicAttackRepeat;
-}
-
 function sceneFixture(){
   const calls:string[]=[];
   const combat={targetId:'enemy' as string|undefined,attackState:'idle' as 'idle'|'approaching'|'attacking',
@@ -44,17 +27,15 @@ function sceneFixture(){
     attack:()=>calls.push('attack'),update(){},playerCannotMove:()=>false,movementSpeedForPlayer:()=>4,
     cancelAttack:()=>calls.push('cancelAttack'),clearTarget:()=>calls.push('clearTarget'),cancelAmbushOnDirection(){},controlledId:'player',
     switchControl:()=>true,switchMember:()=>true};
-  const state={
-    player:{container:{x:0,y:0}},characters:[],near:null,loadingWorld:false,destroyed:false,
-    autoAttack:new BasicAttackRepeat(),
-    worldHud:{axis:{x:0,y:0},updateFps(){},updateStatus(){}},
+  const worldHud={axis:{x:0,y:0},updateFps(){},updateStatus(){}};
+  const scene=buildTestWorldScene(WorldScene,{
+    player:{container:{x:0,y:0}},
     movement:{drive:()=>calls.push('drive'),stop(){}},
     combat,
-    app:{ui:{ready:true},locked:false,suspended:false,director:{busy:false},session:{combatTick:0,refresh(){}}},
-    sys:{isActive:()=>true}
-  };
-  const scene=Object.setPrototypeOf(state,WorldScene.prototype) as unknown as SceneHooks;
-  return {scene,state,combat,calls};
+    worldHud,
+    app:{ui:{ready:true} as never,locked:false,suspended:false,director:{busy:false} as never,session:{combatTick:0,refresh(){}} as never},
+  });
+  return {scene,state:{worldHud},combat,calls};
 }
 
 test('the scene keeps a started attack going while the stick is at rest',()=>{
@@ -148,29 +129,29 @@ test('interacting does not arm the repeat',()=>{
 
 test('the attack key interacts with a nearby object before attacking',()=>{
   const calls:string[]=[];
-  const state={
-    player:{container:{x:0,y:0}},characters:[],loadingWorld:false,destroyed:false,
-    autoAttack:new BasicAttackRepeat(),
-    near:{actor:{},entity:{}} as {actor:object;entity:object}|null,
-    worldHud:{axis:{x:0,y:0},updateFps(){},updateStatus(){}},movement:{drive(){},stop(){}},
-    updateInteractionTarget(){},interact(){calls.push('interact');return true;},
+  const nearby={actor:{},entity:{}} as unknown as NonNullable<InstanceType<typeof WorldScene>['near']>;
+  let interactResult=true;
+  const scene=buildTestWorldScene(WorldScene,{
+    player:{container:{x:0,y:0}},
+    near:nearby,
+    worldHud:{axis:{x:0,y:0},updateFps(){},updateStatus(){}},
+    movement:{drive(){},stop(){}},
     combat:{targetId:'enemy' as string|undefined,attackState:'idle' as 'idle'|'approaching'|'attacking',
       attack:()=>calls.push('attack'),update(){},playerCannotMove:()=>false,movementSpeedForPlayer:()=>4,
       cancelAttack(){},clearTarget(){},cancelAmbushOnDirection(){},controlledId:'player'},
-    app:{ui:{ready:true},locked:false,suspended:false,director:{busy:false},session:{combatTick:0,refresh(){}}},
-    sys:{isActive:()=>true}
-  };
-  const scene=Object.setPrototypeOf(state,WorldScene.prototype) as unknown as SceneHooks;
+    app:{ui:{ready:true} as never,locked:false,suspended:false,director:{busy:false} as never,session:{combatTick:0,refresh(){}} as never},
+    sceneOverrides:{updateInteractionTarget(){},interact(){calls.push('interact');return interactResult;}},
+  });
   scene.attackKey();
   assert.deepEqual(calls,['interact'],'已选中敌人时也优先开箱／喝水／对话');
   assert.equal(scene.autoAttack.active,false,'交互不算发起普攻');
-  state.near=null;
+  scene.near=null;
   scene.attackKey();
   assert.deepEqual(calls,['interact','attack'],'身边没有可交互物才落普攻');
   assert.equal(scene.autoAttack.active,true);
   // 身边有可交互物、但这一下交互没成（例如目标这一刻不能交互）也落回普攻。
-  state.interact=()=>{calls.push('interact');return false;};
-  state.near={actor:{},entity:{}} as {actor:object;entity:object}|null;
+  interactResult=false;
+  scene.near=nearby;
   scene.attackKey();
   assert.deepEqual(calls,['interact','attack','interact','attack'],'交互落空时发普攻');
 });

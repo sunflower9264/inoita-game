@@ -26,11 +26,12 @@ import {
   createTestWorldCombat,
   installPhaserStubHooks,
 } from './support/world-combat-fixture.ts';
+import { buildTestWorldScene, loadWorldSceneClass } from './support/world-scene-fixture.ts';
 
 const hook=installPhaserStubHooks();
 const {CombatOutcomes}=await import('../src/rendering/combat-outcomes.ts');
-const {WorldScene}=await import('../src/scenes/world-scene.ts');
 hook.deregister();
+const WorldScene=await loadWorldSceneClass();
 
 function normalizeActorClips(actor:ActorDefinition):void{
   for(const clip of Object.values(actor.clips)){
@@ -243,15 +244,19 @@ test('rollback discards pending defeats without settling them',async t=>{
 
 test('checkpoints settle pending defeats before capturing session and world',()=>{
   let flushed=0,captured=0;
-  const host=Object.setPrototypeOf({
+  const host=buildTestWorldScene(WorldScene,{
     app:{pressureMode:false,session:{hasWaitingStoryRun:false,hasLivingMember:true},
       gm:undefined,checkpoint:{available:false,capture:()=>{captured++;return true;}}},
-    combat:{settleForSnapshot:()=>{flushed++;}},
-    worldReady:()=>true,map:{id:'camp'},movement:{position:()=>({x:0,y:0})},player:{},
-    captureStoryWorld:()=>({location:{map:'camp'},generatedEntities:[]}),
-    checkpointWaitLogged:false,checkpointPending:true
-  },WorldScene.prototype);
-  assert.equal(Reflect.get(WorldScene.prototype,'captureCheckpoint').call(host),true);
+    combat:{settleForSnapshot:()=>{flushed++;},canCheckpoint:true},
+    map:{id:'camp',exits:[]},
+    movement:{position:()=>({x:0,y:0})},
+    player:{container:{}},
+    sceneOverrides:{
+      captureStoryWorld:()=>({location:{map:'camp'},generatedEntities:[]}),
+      checkpointPending:true,
+    },
+  });
+  assert.equal(host.captureCheckpoint(),true);
   assert.equal(flushed,1,'捕获检查点前先结算死亡单');
   assert.equal(captured,1);
 });
@@ -259,21 +264,29 @@ test('checkpoints settle pending defeats before capturing session and world',()=
 
 test('normal map travel settles confirmed defeats before changing the session location',()=>{
   const calls:string[]=[];
-  const host=Object.setPrototypeOf({loadingWorld:false,exitAvailable:()=>true,
+  const host=buildTestWorldScene(WorldScene,{
+    loadingWorld:false,
     combat:{settleForSave(){calls.push('settle');},finishMapVisit(){calls.push('finish');}},
     app:{session:{applyStoryCommands(){calls.push('travel');}},ui:{loading(){}}},
-    beginWorldSwitch(){calls.push('switch');},scene:{restart(){calls.push('restart');}}
-  },WorldScene.prototype);
-  host.changeMap({destination:'next',spawn:{x:1,y:2},facing:'south'});
+    sceneOverrides:{
+      exitAvailable:()=>true,
+      beginWorldSwitch(){calls.push('switch');},
+      scene:{restart(){calls.push('restart');}},
+    },
+  });
+  host.changeMap({destination:'next',x:0,y:0,width:16,height:16,spawn:{x:1,y:2},facing:'south',exitFacing:'any'});
   assert.deepEqual(calls,['settle','finish','travel','switch','restart']);
 });
 
 test('world restore cancels old defeat work before projecting a different map',async()=>{
   const calls:string[]=[];
-  const host=Object.setPrototypeOf({map:{id:'old'},encounterResults:new Map(),app:{},
+  const host=buildTestWorldScene(WorldScene,{
+    map:{id:'old'},
     combat:{discardPendingDefeats(){calls.push('discard');}},
-    restartStoryWorld:async()=>{calls.push('restore');}
-  },WorldScene.prototype);
+    sceneOverrides:{
+      restartStoryWorld:async()=>{calls.push('restore');},
+    },
+  });
   await host.restoreStoryWorld({location:{map:'new'},generatedEntities:[]},new AbortController().signal);
   assert.deepEqual(calls,['discard','restore']);
 });

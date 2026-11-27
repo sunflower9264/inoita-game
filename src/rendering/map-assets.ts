@@ -14,9 +14,9 @@ import type { StoryNode } from '../domain/story-graph.ts';
 import type { StoryStage } from '../domain/story-performance.ts';
 import type { StoryEncounter, StoryWorldState } from '../domain/story-world.ts';
 import type { WardrobeCatalog } from '../domain/wardrobe.ts';
-import { characterAssets } from './characters.ts';
+import { characterAssets } from './combat-asset-descriptors.ts';
 import { characterSceneClips } from './combat-asset-descriptors.ts';
-import { mapSurfaceAssets } from './map-layers.ts';
+import { propAtlasAssets } from './prop-atlas.ts';
 import { enemyCombatAssets, partyMemberCombatAssets, playerCombatAssets, sharedCombatAssets } from './combat-assets.ts';
 import { groundLootAssets } from './ground-loot.ts';
 import { controlSkinAssets } from './control-skin.ts';
@@ -49,6 +49,21 @@ export interface WorldAssetInputs {
 export interface MapVisualPlan {
   assets: PendingAsset[];
   actorIds: Set<string>;
+}
+
+/** 进图/演出共用的静态地图素材清单：ground、canopy、每个 feature 的 prop。 */
+export function mapSurfaceAssets(
+  map: Pick<WorldMap, 'id' | 'ground' | 'canopy' | 'features'>,
+  props: readonly { key: string; file: string }[]
+): PendingAsset[] {
+  const assets: PendingAsset[] = [
+    { kind: 'image', key: map.id + '-ground', file: map.ground },
+    { kind: 'image', key: map.id + '-canopy', file: map.canopy }
+  ];
+  const propKeys = new Set(map.features.map(feature => feature.texture));
+  // 图集页每页只出现一次；未映射的 prop 仍按单图加载。
+  assets.push(...propAtlasAssets(propKeys, props));
+  return assets;
 }
 
 interface MapVisualOptions {

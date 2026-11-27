@@ -256,9 +256,9 @@ story  + runId + instanceId
 
 ## WorldScene 与 WorldCombat：正式片场
 
-主要文件：`src/scenes/world-scene.ts`、`src/scenes/world-combat.ts`
+主要文件：`src/scenes/world-scene.ts`、`src/scenes/world-readiness.ts`、`src/scenes/world-shortcuts.ts`、`src/scenes/world-loot.ts`、`src/scenes/world-triggers.ts`、`src/scenes/world-outfits.ts`、`src/scenes/world-prefetch.ts`、`src/scenes/world-combat.ts`、`src/scenes/world-combat-host.ts`
 
-`WorldScene` 负责正式地图：
+`WorldScene` 只保留 Phaser 生命周期、场景对象创建与端口装配，六个纯 TS 协作者（零 `phaser` import）分别承担跨代加载与就绪恢复（`WorldReadiness`）、快捷栏与道具分发（`WorldShortcutController`）、地面掉落与落点避让（`WorldLootCoordinator`）、区域/近身/出口触发与遭遇结算（`WorldTriggerCoordinator`，无头回放测试共用）、衣柜与预览 LRU（`WorldOutfits`）及邻图/剧情预取（`WorldPrefetcher`），共同负责正式地图：
 
 - 地图图层、人物、碰撞、出口、交互；
 - 把 `Session`/`StoryWorld` 的状态投影成画面；

@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { parseBattle, parseCampaign, parseCharacterStats, parseCompanions, parseItemCatalog, parseStoryClasses, parseWorld } from '../../src/application/content-validation.ts';
 import type { EntityPlacement, MapExit, WorldMap } from '../../src/domain/content.ts';
-import { registerHooks } from 'node:module';
 import { NavigationWorld } from '../../src/domain/navigation-world.ts';
 import { canTraverse } from '../../src/domain/pathfinding.ts';
 import { ExitTrigger, overlapsFootRect, within, type Point } from '../../src/domain/navigation.ts';
+import { WorldTriggerCoordinator, type TriggerCharacter } from '../../src/scenes/world-triggers.ts';
 import { nearInteractive } from '../../src/domain/chests.ts';
 import { newStorySession } from '../../src/domain/story-class.ts';
 import { StoryDirector, type StoryUI } from '../../src/domain/story-director.ts';
@@ -23,14 +23,6 @@ import { parseDrops, rollQuestDrops } from '../../src/domain/drops.ts';
 import { groundLootFor } from '../../src/domain/ground-loot.ts';
 import type { SessionState } from '../../src/domain/session.ts';
 import { calculateEnemy } from '../../src/domain/enemy-stats.ts';
-
-// 触发层要跑真实的场景代码，而 world-scene 顶层会加载 Phaser：这里把它短路成一个空模块，
-// 与 world-frame-work.test.ts 同一套写法。只用到 Object.create(WorldScene.prototype) 的宿主，
-// 不需要 Phaser 的运行时而只需要它的类型能被解析。
-const phaserHook=registerHooks({resolve(specifier,context,next){return specifier==='phaser'
-  ?{url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true}
-  :next(specifier,context);}});
-const {WorldScene}=await import('../../src/scenes/world-scene.ts');phaserHook.deregister();
 
 const read=(name:string)=>JSON.parse(readFileSync(new URL('../../public/content/'+name+'.json',import.meta.url),'utf8'));
 const campaign=parseCampaign(read('campaign')),world=parseWorld(read('world'));
@@ -205,49 +197,58 @@ export function playthrough(saved?:SessionState){
     }
     return best;
   };
-  // 触发层跑真实场景：区域／近身／出口的判定顺序、占用表与条件求值都走 scenes/world-scene.ts 的
-  // afterMovement。渲染、物理、UI 与切图的善后是桩——这里要验的是「这一帧该不该触发、该触发哪一个」。
-  // 连出口也是场景的 ExitTrigger 选出来的，只有「重建场景」那一半没有照做（否则要拉进整套
-  // Phaser 场景生命周期）；真实 changeMap 里的那一步写回转场位置照旧执行。
-  // 宿主每帧要改的只有这三样：当前地图、可见角色、玩家脚点。
+  // 触发层跑纯 TS 的 WorldTriggerCoordinator：区域／近身／出口的判定顺序、占用表与条件求值与
+  // WorldScene.afterMovement 完全同源。渲染、物理、UI 与切图重建是桩——这里要验的是「这一帧该不该触发、该触发哪一个」。
   interface SceneHost {
     map: WorldMap;
-    characters: unknown[];
+    characters: TriggerCharacter[];
     player: {container:{x:number;y:number}};
     combat: {roster?:WorldEnemyRoster};
+    exitTrigger: ExitTrigger<MapExit> | undefined;
     update(time:number, delta:number):void;
   }
-  let visit:{mapId:string;occupied:Set<string>;app:Record<string,unknown>;host:SceneHost}|undefined;
+  let visit:{mapId:string;occupied:Set<string>;app:Record<string,unknown>;host:SceneHost;triggers:WorldTriggerCoordinator;step:(events:typeof campaign.events)=>void}|undefined;
   let requestedExit:MapExit|undefined,firedExit:MapExit|undefined;
   const enterVisit=():void=>{
     const location=session.storyWorld.currentLocation!,map=maps.get(location.map)!;
     if(visit?.mapId===map.id)return;
     // 切图会重建场景，占用表随之清空——真实场景在 create 时也是这么做的。
-    const occupied=new Set<string>();
-    // canControl 读 ui.ready 与 ui.controlLayoutEditing：辅助器的 UI 桩没有这两项，
-    // 缺了的话 afterMovement 会在第一行就返回，触发层等于没跑。
+    const triggers=new WorldTriggerCoordinator();
+    triggers.setExitTrigger(map.exits??[],{x:location.x,y:location.y},false);
+    let lastPlayerPosition={x:location.x,y:location.y};
+    const playStory=(work:()=>Promise<boolean>)=>{void work().catch(error=>errors.push(error));};
     const app={session,campaign,director,ui:{...ui,ready:true,controlLayoutEditing:false},locked:false,suspended:false};
-    visit={mapId:map.id,occupied,app,host:Object.assign(Object.create(WorldScene.prototype),{
-      app,
-      sys:{isActive:()=>true},loadingWorld:false,destroyed:false,
-      map,characters:[],near:null,occupiedTriggers:occupied,occupiedCharacters:new Set<string>(),occupiedNearEvents:new Set<string>(),encounterResults:new Set<string>(),minimap:undefined,
-      lastPlayerPosition:{x:location.x,y:location.y},
+    const host:SceneHost={
+      map,characters:[],
       player:{container:{x:location.x,y:location.y}},
-      movement:{stop(){},position:()=>({...session.storyWorld.currentLocation!}),body:()=>({deltaXFinal:()=>0,deltaYFinal:()=>0})},
-      // playerCannotAct 为真让 afterMovement 跳过换剪辑那一步：假角色进不了动画系统。
-      combat:{controlledVisual:undefined,playerCannotAct:()=>true,playerCannotMove:()=>true,attackState:'idle',facing:'south',
-        update(){},afterMovement(){},roster:undefined as WorldEnemyRoster|undefined,
-        get completedStoryEncounters(){return this.roster?.completedEncounters()??[];}},
-      refreshCombatHud(){},
-      exitTrigger:new ExitTrigger(map.exits??[],{x:location.x,y:location.y},false),
-      collectGroundLoot:()=>{},updateInteractionTarget:()=>{},syncHud:()=>{},prefetchVisibleExit:()=>{},
-      playStory:(work:()=>Promise<boolean>)=>{void work().catch(error=>errors.push(error));},
-      changeMap:(exit:MapExit)=>{
-        firedExit=exit;
-        session.applyStoryCommands([{type:'travel',destination:{map:exit.destination,...exit.spawn,facing:exit.facing==='any'?'south':exit.facing}}]);
-        requestedExit=exit;
-      },
-    }) as SceneHost};
+      combat:{roster:undefined},
+      get exitTrigger(){return triggers.exitTrigger;},
+      set exitTrigger(value){triggers.exitTrigger=value;},
+      update(){triggers.settleCompletedEncounters(true,director,host.combat.roster?.completedEncounters(),playStory);},
+    };
+    const step=(events:typeof campaign.events)=>{
+      const current=session.storyWorld.currentLocation!;
+      const pos={x:current.x,y:current.y};
+      const previous=lastPlayerPosition;
+      const moving=Math.hypot(pos.x-previous.x,pos.y-previous.y)>.01;
+      lastPlayerPosition=pos;
+      triggers.stepAfterMovement({
+        map:host.map,
+        campaign:{...campaign,events},
+        session,
+        director,
+        characters:host.characters,
+        pos,
+        moving,
+        playStory,
+        onExit:(exit:MapExit)=>{
+          firedExit=exit;
+          session.applyStoryCommands([{type:'travel',destination:{map:exit.destination,...exit.spawn,facing:exit.facing==='any'?'south':exit.facing}}]);
+          requestedExit=exit;
+        },
+      });
+    };
+    visit={mapId:map.id,occupied:triggers.occupiedTriggers,app,host,triggers,step};
   };
   const afterMovement=(scope:'none'|'near'|'all'='none',only?:string|readonly string[]):void=>{
     enterVisit();
@@ -261,12 +262,11 @@ export function playthrough(saved?:SessionState){
     const events=wanted?campaign.events.filter(event=>wanted.includes(event.id))
       :scope==='all'?campaign.events
       :scope==='near'?campaign.events.filter(event=>event.source==='near'):[];
-    (host as unknown as {app:unknown}).app={...visit!.app,campaign:{...campaign,events}};
     host.map=maps.get(location.map)!;
-    host.characters=entities().map(entity=>({entity,actor:world.actors[entity.actor],clipName:'',
+    host.characters=entities().map(entity=>({entity,actor:world.actors[entity.actor],
       container:{x:entity.x,y:entity.y,visible:true}}));
     host.player.container.x=location.x;host.player.container.y=location.y;
-    Reflect.get(WorldScene.prototype,'afterMovement').call(host);
+    visit!.step(events);
   };
   const updateWorld = async (roster: WorldEnemyRoster) => {
     enterVisit();

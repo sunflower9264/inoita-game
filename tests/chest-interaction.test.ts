@@ -1,9 +1,8 @@
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { readFileSync } from 'node:fs';
-import { registerHooks } from 'node:module';
 import test from 'node:test';
-import { BasicAttackRepeat } from '../src/domain/basic-attack-repeat.ts';
+import type { BasicAttackRepeat } from '../src/domain/basic-attack-repeat.ts';
 import type { Campaign } from '../src/domain/campaign.ts';
 import { BattleCharacter, type CharacterStatsCatalog } from '../src/domain/character-stats.ts';
 import { CHEST_OPEN_MS, nearInteractable } from '../src/domain/chests.ts';
@@ -13,37 +12,25 @@ import { groundLootFor } from '../src/domain/ground-loot.ts';
 import type { ItemCatalog } from '../src/domain/items.ts';
 import { NavigationWorld, mirroredCollision } from '../src/domain/navigation-world.ts';
 import { Session } from '../src/domain/session.ts';
+import { buildTestWorldScene, loadWorldSceneClass } from './support/world-scene-fixture.ts';
 
-class Rectangle {
-  x:number;y:number;width:number;height:number;
-  constructor(x:number,y:number,width:number,height:number) {this.x=x;this.y=y;this.width=width;this.height=height;}
-  static Contains(area:Rectangle,x:number,y:number):boolean {return x>=area.x&&y>=area.y&&x<=area.x+area.width&&y<=area.y+area.height;}
-}
+interface Rect { x: number; y: number; width: number; height: number }
 
 // 仅替换 Phaser 的绘制边界；角色创建、事件注册、目标选择、开箱、随机掉落及会话状态均跑生产代码。
 class Display extends EventEmitter {
   x:number;y:number;visible=true;active=true;alpha=1;width=0;height=0;
   list:Display[]=[];
-  input?:{enabled:boolean;hitArea:Rectangle;hitAreaCallback:typeof Rectangle.Contains};
+  input?:{enabled:boolean;hitArea:Rect;hitAreaCallback:(area:Rect,x:number,y:number)=>boolean};
   anims={timeScale:1,accumulator:0};
   constructor(x=0,y=0) {super();this.x=x;this.y=y;}
   setDepth() {return this;} setOrigin() {return this;} setBlendMode() {return this;} setScale() {return this;}
   setAlpha(value:number) {this.alpha=value;return this;} setVisible(value:boolean) {this.visible=value;return this;}
   addAt(value:Display,index:number) {this.list.splice(index,0,value);return this;}
-  setInteractive(hitArea:Rectangle,hitAreaCallback:typeof Rectangle.Contains) {this.input={enabled:true,hitArea,hitAreaCallback};return this;}
+  setInteractive(hitArea:Rect,hitAreaCallback:(area:Rect,x:number,y:number)=>boolean) {this.input={enabled:true,hitArea,hitAreaCallback};return this;}
   disableInteractive() {if(this.input)this.input.enabled=false;return this;}
   play() {return this;} destroy() {this.active=false;this.removeAllListeners();}
 }
-const boundary=Symbol.for('inotia.chest-interaction-test.phaser');
-Object.defineProperty(globalThis,boundary,{value:{Rectangle},configurable:true});
-const phaser=registerHooks({resolve(specifier,context,next) {
-  return specifier==='phaser'?{shortCircuit:true,url:`data:text/javascript,${encodeURIComponent(`
-    const {Rectangle}=globalThis[Symbol.for('inotia.chest-interaction-test.phaser')];
-    export default {Geom:{Rectangle},BlendModes:{NORMAL:0,ADD:1,SCREEN:2,MULTIPLY:3},Scene:class{},Physics:{Arcade:{Body:class{}}}};
-  `)}`}:next(specifier,context);
-}});
-const {WorldScene}=await import('../src/scenes/world-scene.ts');
-phaser.deregister();
+const WorldScene=await loadWorldSceneClass();
 
 const read=<T>(file:string):T=>JSON.parse(readFileSync(new URL(`../public/${file}`,import.meta.url),'utf8')) as T;
 const world=read<WorldIndex>('content/world.json'),campaign=read<Campaign>('content/campaign.json');
@@ -65,15 +52,6 @@ const sourceMap=maps.find(map=>map.id==='shadow-forest-west')!;
 const sourceChest=sourceMap.entities.find(entity=>world.actors[entity.actor].chest==='ordinary')!;
 
 interface Character {entity:EntityPlacement;actor:ActorDefinition;container:Display;marker:null}
-interface SceneHooks {
-  createActor(entity:EntityPlacement):Character;
-  openChest(character:Character):void;
-  lootLanding(map:string,x:number,y:number):{x:number;y:number};
-  attackKey():void;
-  updateInteractionTarget():void;
-  refreshState():void;
-  syncHud():void;
-}
 
 function fixture(map:WorldMap,entity:EntityPlacement,session=new Session(campaign,undefined,undefined,items,new BattleCharacter('dark-knight',stats,items))) {
   session.chests.enterMap(map.id);
@@ -87,29 +65,40 @@ function fixture(map:WorldMap,entity:EntityPlacement,session=new Session(campaig
     facing:'south' as Facing,cannotAct:false,playerCannotAct:()=>combat.cannotAct,
     syncChestEnemies:()=>calls.push('enemies'),hasHostileTarget:()=>true,
     attack:()=>calls.push('attack')};
-  const state={
+  const state=buildTestWorldScene(WorldScene,{
     app:{world:visualWorld,items,session,campaign:{quests:[]},locked:false,suspended:false,director:{busy:false},characterStats:stats,
       ui:{ready:true,controlLayoutEditing:false},audio:{ui:(sound:string)=>calls.push(sound)}},
-    map,dropCatalog:drops,player:{container:new Display()},characters:[] as Character[],near:null as Character|null,
-    questStatuses:new Map(),questStatusVersion:undefined,
-    combat,autoAttack:new BasicAttackRepeat(),loadingWorld:false,active:true,
-    chestFades:new Map(),sys:{isActive:()=>state.active},
-    add:{container:(x:number,y:number)=>new Display(x,y),sprite:()=>new Display()},
-    anims:{exists:(key:string)=>animations.has(key),create:({key}:{key:string})=>animations.add(key),generateFrameNumbers:()=>[]},
+    map,dropCatalog:drops,player:{container:new Display()},characters:[] as Character[],combat,
     movement:{navigation,register:(character:Character)=>{
       enabled.set(character,true);navigation.register({
         shape:()=>({collision:mirroredCollision(character.actor.collision,character.entity.flip)}),
         position:()=>character.container,enabled:()=>enabled.get(character)??false
       });
     },setEnabled:(character:Character,value:boolean)=>enabled.set(character,value)},
-    tweens:{add:(options:{duration:number;ease:(value:number)=>number;onComplete:()=>void})=>{
-      const tween={...options,paused:false,pause:()=>{tween.paused=true;},resume:()=>{tween.paused=false;}};
-      tweens.push(tween);return tween;
-    }},
-    refreshCombatTarget() {},refreshLoadout() {}
+    sceneOverrides:{
+      active:true,
+      sys:{isActive:()=>(state as unknown as {active:boolean}).active},
+      add:{container:(x:number,y:number)=>new Display(x,y),sprite:()=>new Display()},
+      anims:{exists:(key:string)=>animations.has(key),create:({key}:{key:string})=>animations.add(key),generateFrameNumbers:()=>[]},
+      tweens:{add:(options:{duration:number;ease:(value:number)=>number;onComplete:()=>void})=>{
+        const tween={...options,paused:false,pause:()=>{tween.paused=true;},resume:()=>{tween.paused=false;}};
+        tweens.push(tween);return tween;
+      }},
+      refreshCombatTarget() {},refreshLoadout() {},noticeQuestChanges() {},
+    },
+  }) as unknown as Omit<InstanceType<typeof WorldScene>, 'player' | 'characters' | 'dropCatalog' | 'createActor' | 'openChest' | 'lootLanding'> & {
+    active:boolean;
+    app:{locked:boolean;suspended:boolean;director:{busy:boolean};ui:{ready:boolean;controlLayoutEditing:boolean}};
+    autoAttack:BasicAttackRepeat;
+    dropCatalog:DropCatalog;
+    player:{container:Display};
+    characters:Character[];
+    chestFades:Map<string,unknown>;
+    createActor(entity:EntityPlacement):Character;
+    openChest(character:Character):void;
+    lootLanding(map:string,x:number,y:number):{x:number;y:number};
   };
-  const scene=Object.setPrototypeOf(state,WorldScene.prototype) as unknown as SceneHooks;
-  const chest=scene.createActor({...entity});state.characters.push(chest);
+  const chest=state.createActor({...entity});state.characters.push(chest);
   const position=(x:number,y:number)=>Object.assign((combat.controlledVisual??state.player).container,{x,y});
   const click=(x?:number,y?:number)=>{
     const input=chest.container.input;
@@ -119,7 +108,7 @@ function fixture(map:WorldMap,entity:EntityPlacement,session=new Session(campaig
     chest.container.emit('pointerdown',{id:1},localX,localY,{stopPropagation:()=>calls.push('stopPropagation')});
     return true;
   };
-  return {scene,state,chest,calls,tweens,combat,session,navigation,enabled,position,click,
+  return {scene:state,state,chest,calls,tweens,combat,session,navigation,enabled,position,click,
     opened:()=>session.chests.isOpened(map.id,entity.id),loot:()=>groundLootFor(session).forMap(map.id)};
 }
 

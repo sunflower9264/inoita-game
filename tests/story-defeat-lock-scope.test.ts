@@ -1,18 +1,15 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { registerHooks } from 'node:module';
 import { setImmediate as tick } from 'node:timers/promises';
 import test from 'node:test';
 import type { Campaign } from '../src/domain/campaign.ts';
 import { Session } from '../src/domain/session.ts';
 import { StoryDirector } from '../src/domain/story-director.ts';
 import { GameUI } from '../src/ui/game-ui.ts';
+import { buildTestWorldScene, loadWorldSceneClass } from './support/world-scene-fixture.ts';
 
-// 真实 `GameUI` 不依赖 Phaser；`WorldScene` 的两个方法要用到真实原型，所以短路掉 phaser 再动态导入。
-const hook = registerHooks({ resolve(specifier, context, next) { return specifier === 'phaser'
-  ? { url: 'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}', shortCircuit: true }
-  : next(specifier, context); } });
-const { WorldScene } = await import('../src/scenes/world-scene.ts'); hook.deregister();
+// 真实 `GameUI` 与真实 `WorldScene` 协同检验锁、输入重置与 HUD 可见性。
+const WorldScene = await loadWorldSceneClass();
 
 const campaign = JSON.parse(readFileSync(new URL('../public/content/campaign.json', import.meta.url), 'utf8')) as Campaign;
 const presentation = { begin() {}, async execute() {}, async finish() {}, async release() {} };
@@ -24,8 +21,8 @@ async function idle(director: StoryDirector): Promise<void> {
 }
 
 /**
- * 装配与 `main.ts:282-286` 同一套接线：锁回调调真实 `ui.lock`，显示对象用只记录可见性的替身，
- * `resetInput`/`syncHud` 用真实原型。这样断言的就是玩家看得见的那层效果，而不只是锁数组。
+ * 装配与 `main.ts` 同一套接线：锁回调调真实 `ui.lock`，显示对象用只记录可见性的替身，
+ * `resetInput`/`syncHud` 走真实 `WorldScene` 实例方法。
  */
 function harness(content: Campaign = campaign) {
   const session = new Session(content), ui = new GameUI(), visible: Record<string, boolean | undefined> = {}, locks: boolean[] = [];
@@ -34,18 +31,31 @@ function harness(content: Campaign = campaign) {
   // 走的仍是真实 `GameUI` 与真实 `WorldScene` 方法——那才是本次要钉住的那层。
   ui.dialogue = async () => {}; ui.choice = async (_prompt, options) => options[0]; ui.questPopup = async () => {};
   const counters = { resets: 0, stops: 0, idleAssignments: 0, pauses: [] as boolean[] };
-  const view = (name: string) => ({ setVisible(value: boolean) { visible[name] = value; }, reset() {}, resetInput() {}, setAttack() {}, sync() {} });
-  const host = {
-    get canControl() { return !ui.locked; }, get canCombatControl() { return !ui.locked; },
-    loadingWorld: false, sys: { isActive: () => true }, app: { ui, suspended: false, session },
-    player: { container: {} }, movement: { stop() { counters.stops++; } },
+  const view = (name: string) => ({ setVisible(value: boolean) { visible[name] = value; } });
+  const overhead = view('overhead');
+  const host = buildTestWorldScene(WorldScene, {
+    app: { ui, suspended: false, session },
+    player: { container: {} },
+    movement: { stop() { counters.stops++; } },
     combat: { setPaused(value: boolean) { counters.pauses.push(value); }, hasHostileTarget: () => false },
-    chestFades: new Map(), near: null, refreshCombatTarget() {},
-    stick: view('stick'), controls: view('controls'), minimap: view('minimap'), statusHud: { ...view('statusHud'), setTarget() {} }, overheadStatus: view('overhead'),
-    syncHud() { WorldScene.prototype.syncHud.call(this); },
-  };
+    worldHud: {
+      sync(state: { enabled: boolean; backgroundVisible: boolean }) {
+        visible.stick = state.enabled;
+        visible.controls = state.enabled;
+        visible.minimap = state.backgroundVisible;
+        visible.statusHud = state.backgroundVisible;
+      },
+      resetInput() {},
+    },
+    sceneOverrides: {
+      get canControl() { return !ui.locked; },
+      get canCombatControl() { return !ui.locked; },
+      overheadStatus: overhead,
+      refreshCombatTarget() {},
+    },
+  });
   ui.onStateChange = () => host.syncHud();
-  ui.onResetInput = () => { counters.resets++; WorldScene.prototype.resetInput.call(host); };
+  ui.onResetInput = () => { counters.resets++; host.resetInput(); };
   const director = new StoryDirector(content, session, ui, locked => {
     locks.push(locked); ui.lock(locked, 'game'); if (locked) counters.idleAssignments++;
   }, presentation);
@@ -56,17 +66,18 @@ function harness(content: Campaign = campaign) {
 test('syncHud tolerates the boot state before a session is installed', () => {
   const ui = new GameUI();
   ui.mode = 'menu'; ui.ready = false;
-  const view = () => ({ setVisible() {} });
-  const host = {
-    canControl: false, loadingWorld: true,
-    sys: { isActive: () => false },
+  const host = buildTestWorldScene(WorldScene, {
+    loadingWorld: true,
     app: { ui, suspended: false, session: undefined },
-    player: { container: {} }, near: null, chestFades: new Map(),
-    stick: view(), controls: { ...view(), setAttack() {} },
-    skillHud: view(), minimap: view(), statusHud: { ...view(), setTarget() {} }, overheadStatus: view(),
-    nameBanner: { sync() {} },
-  };
-  assert.doesNotThrow(() => WorldScene.prototype.syncHud.call(host));
+    player: { container: {} },
+    worldHud: { sync() {}, resetInput() {} },
+    sceneOverrides: {
+      canControl: false,
+      sys: { isActive: () => false },
+      overheadStatus: { setVisible() {} },
+    },
+  });
+  assert.doesNotThrow(() => host.syncHud());
 });
 
 test('a defeat with no matching battle event leaves the input, the pose and the HUD untouched', async () => {

@@ -4,7 +4,13 @@ Phaser 场景层：驱动生命周期、转发输入，把 domain、rendering、
 
 ## 文件
 
-- `world-scene.ts`：主世界，负责地图加载、角色移动、镜头与地图内交互。
+- `world-scene.ts`：主世界，负责地图加载、角色移动、镜头与地图内交互；以下 6 个纯 TS 协作者（零 `phaser` import）承担各子领域协调逻辑：
+  - `world-readiness.ts`：`WorldReadiness`、`WorldReadinessHost`、`WorldReadinessOptions`、`STORY_WORLD_SWITCH_TIMEOUT_MS`、`waitForAbort`，承担跨代场景加载、就绪等待、失败重建、超时中止与入口剧情加载屏遮罩。
+  - `world-shortcuts.ts`：`WorldShortcutController`、`WorldShortcutHost`、`WorldShortcutCombatPort`，承担快捷栏页签名缓存、冷却快照合并、操控切换与快捷复活/恢复道具分发。
+  - `world-loot.ts`：`WorldLootCoordinator`、`WorldLootHost`、`resolveLootLanding`，承担掉落安全落点避让出口、地面掉落同步、自动拾取与剧情接管前清理。
+  - `world-triggers.ts`：`WorldTriggerCoordinator`、`TriggerCharacter`、`WorldTriggerStepInput`，承担区域/近身/出口触发顺序、占用表、条件求值与已完成遭遇结算，无头回放测试复用同一协调器。
+  - `world-outfits.ts`：`WorldOutfits`、`WorldOutfitsHost`、`WardrobePort`，承担主角与佣兵衣柜、换装并发令牌、预览 LRU 缓存及剧情投影后的装备刷新。
+  - `world-prefetch.ts`：`WorldPrefetcher`、`WorldPrefetchHost`，承担正式世界进图素材输入、剧情表现补载与沿出口移动时的邻图预加载。
 - `world-combat.ts`：世界内战斗的场景装配与帧更新入口，组合领域层的 `CombatConditions`、`CombatActorStats`、`CombatSettlementEngine`、`CombatThreatSystem`、场景资源管理器 `CombatSkillAssetManager` 以及渲染层的 `CombatStatusVisuals`；`world-combat-host.ts` 定义战斗需要的世界协作能力。
 - `combat-skill-assets.ts`：`CombatSkillAssetManager` 负责按技能配置加载与重试场景战斗贴图资源，避免 `WorldCombat` 直接持有资源加载细节。
 - `interaction-index.ts`：交互目标的 32 像素格子索引，供 `WorldScene` 查询候选。

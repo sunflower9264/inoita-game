@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { readFileSync } from 'node:fs';
-import { registerHooks } from 'node:module';
 import test from 'node:test';
 import type { Campaign } from '../src/domain/campaign.ts';
 import { BattleCharacter, type CharacterStatsCatalog } from '../src/domain/character-stats.ts';
@@ -10,12 +9,7 @@ import type { DropCatalog } from '../src/domain/drops.ts';
 import type { ItemCatalog } from '../src/domain/items.ts';
 import { Session } from '../src/domain/session.ts';
 import type { ShopCatalog } from '../src/domain/shop.ts';
-
-class Rectangle {
-  x:number;y:number;width:number;height:number;
-  constructor(x:number,y:number,width:number,height:number) {this.x=x;this.y=y;this.width=width;this.height=height;}
-  static Contains(area:Rectangle,x:number,y:number):boolean {return x>=area.x&&y>=area.y&&x<=area.x+area.width&&y<=area.y+area.height;}
-}
+import { buildTestWorldScene, loadWorldSceneClass } from './support/world-scene-fixture.ts';
 
 // 只替换 Phaser 的绘制边界；角色创建、目标选择与交互分发都跑生产代码。
 class Display extends EventEmitter {
@@ -33,16 +27,7 @@ class Display extends EventEmitter {
   disableInteractive() {if(this.input)this.input.enabled=false;return this;}
   play() {return this;} destroy() {this.active=false;this.removeAllListeners();}
 }
-const boundary=Symbol.for('inotia.world-interaction-test.phaser');
-Object.defineProperty(globalThis,boundary,{value:{Rectangle},configurable:true});
-const phaser=registerHooks({resolve(specifier,context,next) {
-  return specifier==='phaser'?{shortCircuit:true,url:`data:text/javascript,${encodeURIComponent(`
-    const {Rectangle}=globalThis[Symbol.for('inotia.world-interaction-test.phaser')];
-    export default {Geom:{Rectangle},BlendModes:{NORMAL:0,ADD:1,SCREEN:2,MULTIPLY:3},Scene:class{},Physics:{Arcade:{Body:class{}}}};
-  `)}`}:next(specifier,context);
-}});
-const {WorldScene}=await import('../src/scenes/world-scene.ts');
-phaser.deregister();
+const WorldScene=await loadWorldSceneClass();
 
 const read=<T>(file:string):T=>JSON.parse(readFileSync(new URL(`../public/${file}`,import.meta.url),'utf8')) as T;
 const world=read<WorldIndex>('content/world.json'),campaign=read<Campaign>('content/campaign.json');
@@ -65,10 +50,6 @@ const items=read<ItemCatalog>('content/items.json'),stats=read<CharacterStatsCat
 const drops=read<DropCatalog>('content/drops.json'),shops=read<ShopCatalog>('content/shops.json');
 
 interface Character {entity:EntityPlacement;actor:ActorDefinition;container:Display;marker:null}
-interface SceneHooks {
-  createActor(entity:EntityPlacement):Character;
-  attackKey():void;
-}
 
 function session():Session {
   return new Session(campaign,undefined,undefined,items,new BattleCharacter('dark-knight',stats,items));
@@ -101,7 +82,7 @@ function pressAttack(mapId:string,current=new Session(campaign,undefined,undefin
   const combat={controlledVisual:undefined as {container:Display}|undefined,controlledMember:{level:100},
     facing,cannotAct:false,playerCannotAct:()=>false,hasHostileTarget:()=>false,
     attack:()=>calls.push('attack'),syncChestEnemies(){}};
-  const state={
+  const scene=buildTestWorldScene(WorldScene,{
     app:{world:dynamicWorld(world),items,session:current,campaign,locked:false,suspended:false,characterStats:stats,
       autoSave:()=>calls.push('autosave'),
       ui:{ready:true,controlLayoutEditing:false,showInstant:(message:string)=>calls.push(`instant:${message}`)},
@@ -110,18 +91,18 @@ function pressAttack(mapId:string,current=new Session(campaign,undefined,undefin
       director:{interact:(_entity:EntityPlacement,actor:ActorDefinition)=>{calls.push(`interact:${actor.id}`);return Promise.resolve(true);},
         visitInnkeeper:(actor:ActorDefinition,quote:{cost:number},rest:()=>void)=>{calls.push(`visitInnkeeper:${actor.id}:${quote.cost}`);rest();return Promise.resolve(true);}},
       openCrafting:(actorId:string)=>calls.push(`openCrafting:${actorId}`)},
-    map,dropCatalog:drops,player:{container:new Display()},characters:[] as Character[],near:null as Character|null,combat,
-    autoAttack:{engage(){}},loadingWorld:false,active:true,chestFades:new Map(),
-    sys:{isActive:()=>true},
-    add:{container:(x:number,y:number)=>new Display(x,y),sprite:()=>new Display(),text:()=>new Display()},
-    anims:{exists:(key:string)=>animations.has(key),create:({key}:{key:string})=>animations.add(key),generateFrameNumbers:()=>[]},
+    map,dropCatalog:drops,player:{container:new Display()},characters:[] as Character[],combat,
     movement:{register(){},setEnabled(){}},
-    tweens:{add:()=>({paused:false,pause(){},resume(){}})},
-    refreshCombatTarget(){},refreshLoadout(){},refreshState(){calls.push('refresh');},syncHud(){},checkpointStoryWorld(){calls.push('checkpoint');}
-  };
-  const scene=Object.setPrototypeOf(state,WorldScene.prototype) as unknown as SceneHooks;
-  state.characters.push(scene.createActor({...entity}));
-  state.player.container.x=entity.x;state.player.container.y=entity.y+16;
+    sceneOverrides:{
+      active:true,
+      add:{container:(x:number,y:number)=>new Display(x,y),sprite:()=>new Display(),text:()=>new Display()},
+      anims:{exists:(key:string)=>animations.has(key),create:({key}:{key:string})=>animations.add(key),generateFrameNumbers:()=>[]},
+      tweens:{add:()=>({paused:false,pause(){},resume(){}})},
+      refreshCombatTarget(){},refreshLoadout(){},refreshState(){calls.push('refresh');},syncHud(){},checkpointStoryWorld(){calls.push('checkpoint');},noticeQuestChanges(){},
+    },
+  });
+  scene.characters.push(scene.createActor({...entity}));
+  scene.player!.container.x=entity.x;scene.player!.container.y=entity.y+16;
   scene.attackKey();
   return {calls,entity,combat};
 }
@@ -221,13 +202,11 @@ function revivalShortcut(fallenIds:string[]) {
       const index=entries.findIndex(entry=>entry.id===item);if(index>=0)entries.splice(index,1);
     },
   };
-  const state={
-    sys:{isActive:()=>true},loadingWorld:false,
+  const scene=buildTestWorldScene(WorldScene,{
     app:{session:{bag:{entries},party},items:{items:{'resurrection-scroll':{name:'复活卷轴',use:{kind:'revive'}}}},
       ui:{ready:true,showInstant:(message:string)=>messages.push(message)},locked:false,suspended:false,director:{busy:false}},
     combat:{revive:(id:string,item:string)=>{party.revive(id,item);return {kind:'revive'};}},
-  };
-  const scene=Object.setPrototypeOf(state,WorldScene.prototype) as unknown as {useShortcutItem(id:string):void};
+  });
   return {scene,revived,messages,entries};
 }
 

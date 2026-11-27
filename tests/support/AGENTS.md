@@ -6,7 +6,8 @@
 
 - `combat-driver.ts`：战斗测试驱动器，导出 `dispatchFrame` 和 `playCombat`，用领域 CombatRuntime 与 CombatActionDispatcher 向测试桩派发动作。
 - `combat-test-harness.ts`：纯 Node 战斗领域测试支撑，导出目录缓存加载器、`ZERO_PRIMARY_ATTRIBUTES`、`defaultTestPanel`、`createTestMember`、`createTestEnemy`、`createCombatTestHarness`、`createTestGameUi`、`createSimpleStatsPort`；纯领域测试通过本模块构造 `CombatActorStats`、`CombatSettlementEngine` 等领域对象，禁止导入 `phaser` 或 `scenes/world-combat.ts`。
-- `world-combat-fixture.ts`：场景级 `WorldCombat` 测试支撑，导出 `PHASER_STUB_SOURCE`、`loadWorldCombatClass`、`installPhaserStubHooks`、`createFakeContainer`、`createFakePhaserScene`、`createFakeMovementWorld`、`createTestWorldCombat`；供需要验证 `WorldCombat` 场景集成与渲染绑定的测试使用，禁止再通过 `WorldCombat.prototype` 反射私有方法。
+- `world-combat-fixture.ts`：场景级 `WorldCombat` 测试支撑，导出 `PHASER_STUB_SOURCE`（含 `Geom.Rectangle.Contains` 与 `Input.Events.POINTER_DOWN`）、`loadWorldCombatClass`、`installPhaserStubHooks`、`createFakeContainer`、`createFakePhaserScene`、`createFakeMovementWorld`、`createTestWorldCombat`；供需要验证 `WorldCombat` 场景集成与渲染绑定的测试使用，禁止再通过 `WorldCombat.prototype` 反射私有方法。
+- `world-scene-fixture.ts`：场景级 `WorldScene` 测试支撑，导出 `loadWorldSceneClass`、`buildTestWorldScene`、`createTestWorldScene`；通过真实构造 `WorldScene` 并注入测试子系统替身，禁止使用 `WorldScene.prototype` 反射或 `Object.setPrototypeOf(..., WorldScene.prototype)`。
 - `menu-dom.ts`：导出 `MenuElement`、`domWindow`、`menuFrame`、`installMenuDom`、`domEvent`；提供菜单测试的 DOM 环境、原生指针、捕获与冒泡。`menuFrame` 单独提供画框 CSS 矩形，与假场景的画布像素尺寸分别设置；显式安装时重置画框并返回恢复函数，测试文件结束时恢复全局对象。
 - `atlas-image.ts`：导出 `atlasImageSize`，读图集页的宽高并确认它是无损 WebP（`VP8L`）；图集页测试用它代替读 PNG 文件头。
 - `fake-sprite.ts`：导出 `FakeSprite`，只实现生产代码用到的链式调用面，避免启动真实渲染。

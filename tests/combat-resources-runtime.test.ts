@@ -19,11 +19,9 @@ import {
   type TestEnemyState,
   type TestMemberFixture,
 } from './support/combat-test-harness.ts';
-import {installPhaserStubHooks} from './support/world-combat-fixture.ts';
+import {loadWorldSceneClass} from './support/world-scene-fixture.ts';
 
-const phaser=installPhaserStubHooks();
-const {WorldScene}=await import('../src/scenes/world-scene.ts');
-phaser.deregister();
+const WorldScene=await loadWorldSceneClass();
 
 const battle=loadBattleCatalog(),campaign=loadCampaignCatalog();
 const effect=(overrides:Partial<BattleBuffEffect>):BattleBuffEffect=>({durationMs:10000,tickMs:0,modifiers:[],states:[],periodic:[],...overrides});

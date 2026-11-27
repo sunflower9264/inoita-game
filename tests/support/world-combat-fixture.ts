@@ -37,12 +37,16 @@ export default {
       constructor(x = 0, y = 0, width = 0, height = 0) {
         this.x = x; this.y = y; this.width = width; this.height = height;
       }
-      static Contains() { return true; }
+      static Contains(area, x, y) {
+        if (!area || typeof area !== 'object') return true;
+        return x >= area.x && y >= area.y && x <= area.x + area.width && y <= area.y + area.height;
+      }
     },
   },
   Core: { Events: { POST_RENDER: 'postrender' } },
   Scenes: { Events: { SHUTDOWN: 'shutdown', PRE_UPDATE: 'preupdate', POST_UPDATE: 'postupdate', PRE_RENDER: 'prerender' } },
-  Scene: class {},
+  Input: { Events: { POINTER_DOWN: 'pointerdown' } },
+  Scene: class { constructor(config) { this.config = config; } },
   Physics: { Arcade: { Body: class {} } },
 };
 `;
@@ -198,7 +202,27 @@ export function createFakePhaserScene(overrides: Record<string, unknown> = {}): 
   const scene = {
     events,
     game: { events: gameEvents, loop: { frame: 0 } },
-    cameras: { main: { width: 640, height: 360, zoomX: 1, zoomY: 1, worldView: undefined } },
+    cameras: {
+      main: {
+        width: 640,
+        height: 360,
+        zoomX: 1,
+        zoomY: 1,
+        scrollX: 0,
+        scrollY: 0,
+        visible: true,
+        followOffset: { x: 0, y: 0 },
+        setFollowOffset(x: number, y: number) { this.followOffset.x = x; this.followOffset.y = y; return this; },
+        setBackgroundColor() { return this; },
+        setVisible(value: boolean) { this.visible = value; return this; },
+        setZoom() { return this; },
+        setRoundPixels() { return this; },
+        setBounds() { return this; },
+        startFollow() { return this; },
+        preRender() {},
+        worldView: undefined,
+      },
+    },
     time: { now: 0, delayedCall: (_delay: number, _cb: () => void) => ({ remove() {} }) },
     tweens: { add: () => ({ stop() {}, pause() {}, resume() {} }) },
     textures: {

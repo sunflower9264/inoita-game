@@ -1,18 +1,11 @@
 import assert from 'node:assert/strict';
-import { registerHooks } from 'node:module';
 import test from 'node:test';
 import { nearInteractive, SHOP_COUNTER_GAP } from '../src/domain/chests.ts';
 import type { CollisionBox } from '../src/domain/content.ts';
 import { InteractionTargetIndex } from '../src/scenes/interaction-index.ts';
+import { buildTestWorldScene, loadWorldSceneClass } from './support/world-scene-fixture.ts';
 
-// 场景层只替 Phaser 的模块边界；目标选择跑生产代码（同 `world-frame-work.test.ts` 的做法）。
-const phaser = registerHooks({ resolve(specifier, context, next) {
-  return specifier === 'phaser' ? { shortCircuit: true, url: `data:text/javascript,${encodeURIComponent(
-    'export default {Geom:{Rectangle:class{}},BlendModes:{NORMAL:0,ADD:1,SCREEN:2,MULTIPLY:3},Scene:class{},Physics:{Arcade:{Body:class{}}}};')}` }
-    : next(specifier, context);
-} });
-const { WorldScene } = await import('../src/scenes/world-scene.ts');
-phaser.deregister();
+const WorldScene = await loadWorldSceneClass();
 
 interface FakeContainer {
   x: number; y: number; visible: boolean;
@@ -21,7 +14,7 @@ interface FakeContainer {
 }
 interface FakeCharacter {
   entity: { id: string; actor: string; flip?: boolean; spring?: boolean };
-  actor: { id: string; collision?: CollisionBox };
+  actor: { id: string; description?: string; collision?: CollisionBox };
   container: FakeContainer;
   rank?: number;
 }
@@ -39,40 +32,46 @@ function subject(id: string, x: number, y: number,
   options: { rank?: number; collision?: CollisionBox; visible?: boolean } = {}): FakeCharacter {
   return {
     entity: { id, actor: id },
-    actor: { id, collision: options.collision },
+    actor: { id, description: options.rank === undefined || options.rank <= 2 ? 'talk' : undefined, collision: options.collision },
     container: box(x, y, options.visible ?? true),
     rank: options.rank,
   };
 }
 
 function scene(characters: FakeCharacter[], playerX = 0, playerY = 0) {
-  const state = {
-    app: { session: {
-      questBook: { version: 0 }, storyWorld: { revision: 0 }, chests: { revision: 0 },
-      legendaryWeapons: { revision: 0 }, restorationVersion: 0,
-    } },
+  const byId = new Map(characters.map(character => [character.entity.id, character]));
+  return buildTestWorldScene(WorldScene, {
+    app: {
+      session: {
+        questBook: { version: 0 },
+        storyWorld: { revision: 0, isPlaced: () => false },
+        chests: { revision: 0, isOpened: () => false },
+        legendaryWeapons: { revision: 0, isPulled: () => false },
+        springs: { isEmpty: () => false },
+        restorationVersion: 0,
+        npcQuestSlot: () => undefined,
+        canInteract: (_actor: string, id: string) => byId.get(id)?.rank === 0,
+        status: () => 'locked' as const,
+        markerActor: (actor: string) => byId.get(actor)?.rank === 1,
+      },
+    },
     map: { id: 'map' },
     player: { container: { x: playerX, y: playerY } },
     characters,
-    near: null as FakeCharacter | null,
-    interactionRevision: 0,
-    charactersRevision: 0,
-    chestOpened: () => false,
-    legendarySwordConsumed: () => false,
-    interactionCandidate: (character: FakeCharacter) => character.rank ?? 2,
-    setClip() {},
-    refreshMinimapInteractions() {},
     movement: {
       placeAll(placements: { visual: FakeCharacter; position: { x: number; y: number } }[]) {
         for (const placement of placements) Object.assign(placement.visual.container, placement.position);
       },
     },
+    sceneOverrides: {
+      setClip() {},
+      refreshMinimapInteractions() {},
+    },
+  }) as unknown as Omit<InstanceType<typeof WorldScene>, 'player' | 'characters'> & {
+    player: { container: { x: number; y: number } };
+    characters: FakeCharacter[];
   };
-  return Object.setPrototypeOf(state, WorldScene.prototype) as typeof state & { updateInteractionTarget(): void };
 }
-
-const invoke = (host: object, name: string, ...args: unknown[]) =>
-  Reflect.get(WorldScene.prototype, name).call(host, ...args);
 
 test('only the player cell is queried, so distant characters do not take part', () => {
   const near = subject('near', 10, 0), far = subject('far', 500, 0);
@@ -140,13 +139,13 @@ test('moving a character through scene restore rebuilds the index', () => {
   const host = scene([npc]);
   host.updateInteractionTarget();
   assert.equal(host.near, npc);
-  invoke(host, 'restoreScenePositions', {
-    map: 'map', actors: [{ worldEntityId: 'npc', x: 500, y: 0, facing: 'south', visible: true }],
+  host.restoreScenePositions({
+    map: 'map', actors: [{ id: 'npc', actor: 'npc', worldEntityId: 'npc', x: 500, y: 0, facing: 'south', visible: true }],
   });
   host.updateInteractionTarget();
   assert.equal(host.near, null, '角色移走后索引跟随新位置');
-  invoke(host, 'restoreScenePositions', {
-    map: 'map', actors: [{ worldEntityId: 'npc', x: 10, y: 0, facing: 'south', visible: true }],
+  host.restoreScenePositions({
+    map: 'map', actors: [{ id: 'npc', actor: 'npc', worldEntityId: 'npc', x: 10, y: 0, facing: 'south', visible: true }],
   });
   host.updateInteractionTarget();
   assert.equal(host.near, npc, '角色移回来后重新选中');

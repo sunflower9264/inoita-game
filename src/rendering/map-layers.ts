@@ -1,8 +1,8 @@
 import type Phaser from 'phaser';
 import type { MapFeature, WorldMap } from '../domain/content.ts';
-import type { PendingAsset } from './scene-assets.ts';
 import { blendModeOf } from './blend-modes.ts';
-import { propAtlasAssets, propFrameSource, propRef } from './prop-atlas.ts';
+import { propFrameSource, propRef } from './prop-atlas.ts';
+export { mapSurfaceAssets } from './map-assets.ts';
 
 let serial = 0;
 
@@ -20,21 +20,6 @@ const RGB_CHANNEL_COUNT = 3;
 export interface MapLayerHandles {
   /** 幂等：销毁本层创建的图像和合成纹理，不碰地图资源租约里的 ground/canopy/prop。 */
   destroy(): void;
-}
-
-/** 进图/演出共用的静态地图素材清单：ground、canopy、每个 feature 的 prop。 */
-export function mapSurfaceAssets(
-  map: Pick<WorldMap, 'id' | 'ground' | 'canopy' | 'features'>,
-  props: readonly { key: string; file: string }[]
-): PendingAsset[] {
-  const assets: PendingAsset[] = [
-    { kind: 'image', key: map.id + '-ground', file: map.ground },
-    { kind: 'image', key: map.id + '-canopy', file: map.canopy }
-  ];
-  const propKeys = new Set(map.features.map(feature => feature.texture));
-  // 图集页每页只出现一次；未映射的 prop 仍按单图加载。
-  assets.push(...propAtlasAssets(propKeys, props));
-  return assets;
 }
 
 /** 颜色减淡的单通道结果；背景为零保留零，前景满值饱和。 */
