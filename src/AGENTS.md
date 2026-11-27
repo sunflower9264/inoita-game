@@ -6,9 +6,9 @@
 
 ## 文件
 
-- `app.ts`：启动装配；按阶段接 ports、UI 和状态，场景与界面通过 `application/ports.ts` 的能力接口取依赖。
-- `session-lifecycle.ts`：统一会话装配、候选读档交接和退出；本局回调绑定会话身份与取消信号，旧局回调不能操作新局。剧情连续执行超限时，会话和世界场景把节点轨迹写入诊断记录，界面显示简短错误。读档从点击开始计量资源下载与长任务，地图可操作时写 `load-ready`（字段见 `docs/diagnostics.md`），取消或失败时停止计量。
-- `main.ts`：Phaser 游戏配置与场景注册；新会话创建共用外观池，回标题或换会话释放；开发页、部署页与 APK 接入跳过耗时摘要。
+- `app.ts`：启动装配；按 5 段生命周期接 ports、UI 和状态（离局经 `clearSessionBindings()` 显式清空运行期绑定），场景与界面通过 `application/ports.ts` 的能力接口取依赖。
+- `session-lifecycle.ts`：纯 TS 会话与入口协调器（零 `phaser`/`scenes/`/`rendering/` import），统一承担新局、职业选择、压测启停与换职业、候选读档交接和退出；本局回调绑定会话身份与取消信号，旧局回调不能操作新局。剧情连续执行超限时，会话和世界场景把节点轨迹写入诊断记录，界面显示简短错误。读档从点击开始计量资源下载与长任务，地图可操作时写 `load-ready`（字段见 `docs/diagnostics.md`），取消或失败时停止计量。
+- `main.ts`：瘦装配根，负责 `browser-compat` 首行引入、`Phaser.Game` 配置、场景注册，并组装五个纯 TS 应用协调器与按需传入的 `OutfitPool`/`StoryPresenter`；开发页、部署页与 APK 接入跳过耗时摘要。
 - `game.css`：页面、画布、DOM 图片容器及其上方文字层的样式。
 - `scenes/`：地图、剧情舞台、菜单、加载、音频、正式界面与职业选择场景，编排生命周期；`debug/`：GM 动作与调试开关；`generated/`：构建生成的图集描述。
 - `domain/`：内容类型、会话状态、剧情调度、通行与战斗规则。
@@ -22,8 +22,8 @@
 - 玩法规则只在 `domain` 写一份，`application` 负责把它接到 Phaser 和浏览器。
 - 标题预载与直接进图通过同一内容准备入口取得城镇站立、行走的四向动作；这些动作跨会话复用，具体穿戴的外观按当前队伍合成。
 - 自动存档读取本局最近一次成功的截图。停止本局自动存档时，同时取消在等的截图并清空已有图片。
-- 手机系统键盘只影响 DOM 输入框，不改变游戏画布尺寸。`main.ts` 的 `visualViewport` 重排在输入框聚焦时只跟随位置偏移（`fitViewport({keepSize:true})`），不按键盘缩小后的可视区重算尺寸；云存档输入框挂在 `#game-frame` 内，与画布共用坐标系。
-- iOS 弹出键盘会让窗口短暂失焦。`main.ts` 在启动后接管 `window.onblur/onfocus` 并关闭 Phaser 的 `pauseOnBlur`：输入框聚焦期间的失焦不能暂停游戏循环或音频，真正的页面切走由 `visibilitychange` 驱动。
+- 手机系统键盘只影响 DOM 输入框，不改变游戏画布尺寸。`application/browser-lifecycle.ts`（`installViewportLayoutScheduler`）与 `main.ts` 的 `visualViewport` 重排在输入框聚焦时只跟随位置偏移（`fitViewport({keepSize:true})`），不按键盘缩小后的可视区重算尺寸；云存档输入框挂在 `#game-frame` 内，与画布共用坐标系。
+- iOS 弹出键盘会让窗口短暂失焦。`application/browser-lifecycle.ts`（`installWebAudioRecovery`）在启动后接管 `window.onblur/onfocus` 并关闭 Phaser 的 `pauseOnBlur`：输入框聚焦期间的失焦不能暂停游戏循环或音频，真正的页面切走由 `installPageSuspensionLifecycle` 的 `visibilitychange` 驱动。
 - **iOS 音频恢复要接住拒绝。** `resumeAudioContext` 只在页面可见且上下文未运行时尝试 `resume()`；自动事件跳过 Phaser 的 `locked` 快照，真实手势不受它阻挡（首次解锁被拒后 `locked` 会一直为 true）。iOS 回前台还要按 Phaser 原来的做法先 `suspend()` 再 `resume()`（`resetAudioContext`），因为 iOS 17/18 可能报 `running` 却没有声音；同步和异步拒绝都不能漏，`ready` 后摘掉 Phaser 自带的 `VISIBLE` 处理器，改用这套带 catch 的恢复。
 - 游戏世界实现顺序：Phaser 4 内置 API → 技能 → Phaser 4.2.1 官方文档。屏幕界面采用 DOM、CSS 和 SVG，复用现有布局与状态接口。
 - 进入游戏前通过同一个预载入口同步等待菜单、DOM 状态栏、轮盘、小地图和图集图片；回菜单统一释放界面持有的图片资源。
@@ -41,4 +41,4 @@
 
 ## 验证
 
-- `npm run typecheck` 覆盖整个 `src`；按改动另跑 `npm test -- tests/session.test.ts`。
+- `npm run typecheck` 覆盖整个 `src`；按改动另跑 `npm test -- tests/session.test.ts tests/session-lifecycle.test.ts tests/composition-services.test.ts`。

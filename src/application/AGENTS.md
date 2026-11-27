@@ -10,15 +10,16 @@
 
 ## 文件
 
-- 端口/场景键/事件：`ports.ts`（能力接口）、`scene-keys.ts`（场景键）、`ui-events.ts`（界面事件名）、`input-router.ts`（全局键盘作用域与优先级）、`entry-loading.ts`（入口加载与继续进度）、`entry-plan.ts`（入口计划、公共素材分批与地图资产）、`menu-images.ts`（标题与菜单图片分组）。
+- 端口/场景键/事件：`ports.ts`（能力接口，含 `AudioSceneContext`、`FormalUiSceneContext`）、`scene-keys.ts`（场景键）、`ui-events.ts`（界面事件名）、`input-router.ts`（全局键盘作用域与优先级）、`entry-loading.ts`（入口加载与继续进度）、`entry-plan.ts`（入口计划、公共素材分批与地图资产）、`menu-images.ts`（标题与菜单图片分组）。
+- 会话与入口协调：`content-bootstrap.ts`（`StoryContentBootstrap`，13 份核心目录并行拉取与校验、菜单核心/补充预载及公共素材后台预载）、`gm-session-bridge.ts`（`attachGmSessionBridge`、`detachGmSessionBridge`、`GmWorldScenePort`）。
 - 内容加载与校验：`content-loader.ts`（内容加载器与生产哨兵）、`content-validation.ts`（内容字段校验器）、`content-relations.ts`（引用关系校验）、`content-hash.ts`（规范化 JSON 与内容摘要）、`content-trust.ts`（构建期信任开关）、`story-performance-validation.ts`（剧情演出校验）、`story-reference-validation.ts`（剧情引用校验）。
-- 存档/自动保存：`saved-game.ts`（读档时校验格式、会话和地图现场）、`saved-game-loader.ts`（存档读取与取消）、`auto-save.ts`（自动保存节流与重试）、`quest-item-grants.ts`（任务物品净发放与溢出）、`world-snapshot.ts`（世界快照与存档捕获结果的数据类型）。
+- 存档/自动保存：`saved-game.ts`（读档时校验格式、会话和地图现场）、`saved-game-loader.ts`（存档读取与取消）、`auto-save.ts`（自动保存节流与重试）、`session-auto-save.ts`（`SessionAutoSaveController`，代次守卫与截图异步回写隔离）、`quest-item-grants.ts`（任务物品净发放与溢出）、`world-snapshot.ts`（世界快照与存档捕获结果的数据类型）。
 - 云存档：`cloud-save.ts`（HTTP 客户端、token 存储、续期、改密与结果化错误）、`cloud-save-sync.ts`（逐槽备份/恢复、覆盖确认与部分失败）、`endpoints.ts`（云存档/诊断服务地址解析，网页同源，宿主注入）。
 - 剧情素材：`story-asset-preparation.ts`（剧情目标的在途任务与完整素材使用权）。
 - 资源/版本：`assets.ts`（素材池与租约）、`asset-version.ts`（素材与内容版本号）。
 - 热更新接线：`live-update.ts`（标题页启动完成信号）。
 - 设置/控制：`control-settings.ts`（操作模式设置）、`control-state.ts`（操作状态与游戏模式）、`display-settings.ts`（显示偏好）、`key-bindings.ts`（键位偏好）、`fullscreen.ts`（全屏与横屏锁定）。
-- Phaser/浏览器适配：`game-audio.ts`（音频适配）、`game-timing.ts`（帧时钟适配）、`frame-pacing.ts`（帧率上限换算与刷新率测量）、`native-frame-rate.ts`（把玩家帧率告诉安卓壳）、`game-diagnostics.ts`（错误快照、帧统计、指标注入、跳过摘要与读档加载计量 `startLoadResourceMeter`）、`browser-compat.ts`（浏览器 API 兼容补丁）、`page-interaction-guard.ts`（整页缩放与长按菜单锁定）。
+- Phaser/浏览器适配与诊断：`game-audio.ts`（音频适配）、`game-timing.ts`（帧时钟适配）、`frame-pacing.ts`（帧率上限换算与刷新率测量）、`native-frame-rate.ts`（把玩家帧率告诉安卓壳）、`browser-lifecycle.ts`（`editingText`、视口重排防抖、显示刷新率同步、iOS WebAudio 恢复与竖屏挂起）、`game-diagnostics.ts`（错误快照、帧统计、指标注入、跳过摘要与读档加载计量 `startLoadResourceMeter`）、`runtime-diagnostics.ts`（`RuntimeDiagnosticsController`，帧监控、WebGL/纹理/存储缓存探测、低帧率 5 分钟冷却告警与每分钟心跳）、`browser-compat.ts`（浏览器 API 兼容补丁）、`page-interaction-guard.ts`（整页缩放与长按菜单锁定）。
 
 ## 规则
 
@@ -62,7 +63,7 @@
 ## 验证
 
 ```bash
-npm test -- tests/saved-game.test.ts
+npm test -- tests/saved-game.test.ts tests/session-lifecycle.test.ts tests/composition-services.test.ts
 npm test -- tests/cloud-save-client.test.ts tests/cloud-save-sync.test.ts tests/cloud-save-offline.test.ts
 npm test -- tests/endpoints.test.ts
 npm test -- tests/content-loader.test.ts

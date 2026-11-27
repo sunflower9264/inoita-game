@@ -69,7 +69,7 @@
 ### 存档与生命周期
 
 - `saved-game.test.ts` 覆盖格式 1 读档、尚未创建菜单时的后台保存、继续击败第八名哨兵，以及再次读档保留交付回执和奖励；`game-thumbnail.test.ts` 验证换局、截图超时和回调晚到时后台保存可用的画面。
-- `resident-combat-lifecycle.test.ts` 验证回标题后的会话资源与回调释放、迟到退出回调不能清理新会话；`session-lifecycle.test.ts` 验证退出先取消本局工作、场景 shutdown 后才释放资源；`session-cooldowns-party.test.ts` 验证放逐/预备队冷却、放逐清理掉落保底、剧情离队失败或撤销时恢复伙伴战斗状态。
+- `resident-combat-lifecycle.test.ts` 验证回标题后的会话资源与回调释放、迟到退出回调不能清理新会话；`session-lifecycle.test.ts` 验证退出先取消本局工作、场景 shutdown 后才释放资源以及入口与压测状态恢复；`composition-services.test.ts` 验证纯 TS 应用协调器（`SessionAutoSaveController`、`StoryContentBootstrap`、`RuntimeDiagnosticsController`、`attachGmSessionBridge`、`browser-lifecycle`）的取消隔离、防过期写入、告警冷却与清理边界；`session-cooldowns-party.test.ts` 验证放逐/预备队冷却、放逐清理掉落保底、剧情离队失败或撤销时恢复伙伴战斗状态。
 
 ### 资源、图集与渲染
 

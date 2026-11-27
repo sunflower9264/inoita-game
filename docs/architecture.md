@@ -10,7 +10,7 @@
 
 | 要改什么 | 状态与规则入口 | 装配、表现和内容 | 优先查看的测试 |
 |---|---|---|---|
-| 启动、标题、职业、读档 | `application/control-state.ts`、`application/saved-game*.ts` | `main.ts`、`app.ts`、`application/ports.ts`、`scenes/menu-scene.ts`、`scenes/story-class-scene.ts` | `title-save-entry`、`saved-game-loader`、`story-class` |
+| 启动、标题、职业、读档 | `application/control-state.ts`、`application/saved-game*.ts`、`application/content-bootstrap.ts`、`session-lifecycle.ts` | `main.ts`、`app.ts`、`application/ports.ts`、`application/browser-lifecycle.ts`、`scenes/menu-scene.ts`、`scenes/story-class-scene.ts` | `title-save-entry`、`saved-game-loader`、`story-class`、`session-lifecycle`、`composition-services` |
 | 动作起手、接近、取消 | `domain/combat.ts`、`combatant.ts`、`combat-targeting.ts`、`combat-runtime.ts`、`combat-action-dispatcher.ts` | `scenes/world-combat.ts`、`rendering/combat-presenter.ts`、`content/battle.json` | `combat`、`combat-runtime`、`combat-kernel` |
 | 技能效果与命中反应 | `combat-settlement.ts`、`combat-unit-execution.ts`、`combat-effect-executor.ts`、`combat-hit-resolution.ts`、`combat-reaction-pipeline.ts`、`combat-follow-ups.ts` | `world-combat.ts` 的状态与画面接口、`battle.json` | `skill-unit-runtime`、`skill-reaction-runtime`、对应技能测试 |
 | 冷却、状态、属性、持续效果与恢复 | `session.ts`、`combat-actor-stats.ts`、`combat-clock.ts`、`combat-cooldowns.ts`、`combat-conditions.ts`、`combat-periodic.ts`、`combat-resources.ts` | `world-combat.ts`、`scenes/combat-skill-assets.ts`、`rendering/combat-status-visuals.ts`、`status-hud.json` | `combat-clock-runtime`、`combat-cooldowns`、`combat-state-runtime`、`combat-resources-runtime` |
@@ -20,7 +20,7 @@
 | 背包、穿戴、人物成长 | `bag.ts`、`items.ts`、`character-stats.ts`、`attribute-allocation.ts`、`story-skills.ts` | `ui/story-ui.ts`、`rendering/wardrobe.ts`、`rendering/wardrobe-cache.ts`、`scenes/world-outfits.ts`、`items.json`、`character-stats.json`、`wardrobe.json` | `bag`、`character-stats`、`wardrobe`、`story-skills` |
 | 掉落、宝箱、泉水、商店、融合 | `drops.ts`、`ground-loot.ts`、`chests.ts`、`springs.ts`、`shop.ts`、`crafting.ts` | `world-scene.ts`、`scenes/world-loot.ts`、`ui/panels/shop-panel.ts`、`crafting-panel.ts`、对应内容目录 | `drops`、`chests`、`springs`、`shop`、`crafting` |
 | 快捷栏、状态栏、菜单和触控 | `shortcut-bar.ts`、`skill-configuration.ts`、`status-hud.ts`、`control-skin.ts` | `ui/dom/`、`ui/panels/`、`ui/hud/`、`scenes/world-shortcuts.ts`、`ui/story-ui.ts`、`ui/viewport.ts` | `shortcut-bar`、`status-hud`、`story-menu-interactions`、`viewport` |
-| GM 与状态上报 | `debug/gm-actions.ts` | `ui/panels/gm-panel.ts`、`ui/debug-page.ts`、`ui/system-page.ts`；[调试说明](debugging.md) | `gm-actions`、`story-menu-interactions` |
+| GM 与状态上报 | `debug/gm-actions.ts`、`application/gm-session-bridge.ts`、`application/runtime-diagnostics.ts` | `ui/panels/gm-panel.ts`、`ui/debug-page.ts`、`ui/system-page.ts`；[调试说明](debugging.md) | `gm-actions`、`composition-services`、`story-menu-interactions` |
 | 内容字段、引用与资源 | `domain/content.ts`、各内容类型 | `application/content-validation.ts`、`content-relations.ts`、`story-reference-validation.ts`、`story-performance-validation.ts` | `content`、对应目录测试；运行 `npm run validate:content` |
 | 音效和背景音乐 | `application/game-audio.ts` | `scenes/audio-scene.ts`、`content/audio.json` | `game-audio` |
 | 存档和安全检查点 | `save-game.ts`、`session-checkpoint.ts`、`session.ts`、`combat-snapshot.ts` | `application/saved-game*.ts`、`world-scene.ts`、`ui/panels/save-board.ts` | `save-game`、`saved-game`、`checkpoint`、`combat-snapshot` |
@@ -52,7 +52,7 @@
 
 ## 状态由谁持有
 
-`StoryApp` 装配内容、会话、导演、音频、场景和界面。场景与界面通过 `application/ports.ts` 获取能力。`ControlState` 记录运行模式与操作锁；每个锁有自己的持有者，关闭时释放本人的锁。
+`StoryApp` 按 5 段装配生命周期保存内容、会话、导演、场景和界面（退出时通过 `clearSessionBindings()` 显式清空运行期回调，不再使用字符串反射删属性）。`session-lifecycle.ts` 作为纯 TS 会话协调器统一承担新局、职业选择、压测重启、读档切换与回标题收尾；场景与界面通过 `application/ports.ts`（含 `AudioSceneContext`、`FormalUiSceneContext`）和 `rendering/story-presenter.ts`（`StoryWorldHost`、`StoryStageHost`）获取能力，`scenes/` 与 `rendering/` 不反向依赖上层模块。`ControlState` 记录运行模式与操作锁；每个锁有自己的持有者，关闭时释放本人的锁。
 
 `QuestBookState` 使用版本5，保存按接取追加、完成时尾项替位的 `runningQuestIds`；任务掉落按这份运行顺序逐任务尝试。清支线只重置仍在池中的支线，已交付记录保持完成。
 
@@ -123,7 +123,7 @@
 
 对话、击杀等任务事件的序号由任务簿分配。读格式 1 时，会话与任务簿两处记录按来源取最大值，下次保存时两处都来自同一本任务簿。
 
-`save-game.ts` 定义 `{format, summary, session, world}`。首次发行读写格式 1，初始存档槽为空，正式版不兼容任何旧存档。更早的格式按空槽处理，更新或损坏的格式显示为不可读取；内容变更导致旧存档引用不存在的任务或事件时按无效处理。已有正式存档后，结构或校验口径变化时增加格式号，旧格式不再读取，不补迁移。运行中的剧情快照与写档检查点各自保留外观约定；缺场景快照时按地图与剧情状态重新投影。存档分两类：十个手动槽使用 `inotia4.story.v1.slot0..9`，唯一的自动槽使用 `inotia4.story.v1.auto`；自动槽固定在读档界面第一行，只能读取。手动槽可以删除与改名（名字只保留中文、英文、数字，存在 `summary.name`），覆盖保存沿用旧名字；`summary.savedAt` 记录写入时刻。自动存档在进入新地图、剧情事件播完（世界投影之后）、任务接取/完成与每 5 分钟定时触发，由 `application/auto-save.ts` 合并写入，演出或菜单锁住时推迟。存档改名、云存档账号/密码和修改密码需要手机系统键盘，用 DOM 输入框覆盖画布（`ui/text-prompt.ts`、`ui/cloud-credentials-input.ts`、`ui/password-change-prompt.ts`）。演出快照保留角色是否尚未定位；角色切图按目标地图投影解析身份与位置，普通角色的演出移动按当前访问保存。演出生成并留在正式场景的敌人可记录访问寿命和不再刷新。捕捉源在敌人状态中保存所属地图与访问编号；转换出的交互NPC复用访问寿命。当前访问存读保留转换状态，正常离图后清理源抑制与目标NPC。摘要在保存时展开职业、地图、等级、立绘与游戏画面缩略图；没有截图时左侧留空。背包快照包含全部物品格位和每个页面的手动固定表；普通物品与任务物品均不限携带容量，显示网格随物品数量增长。
+`save-game.ts` 定义 `{format, summary, session, world}`。首次发行读写格式 1，初始存档槽为空，正式版不兼容任何旧存档。更早的格式按空槽处理，更新或损坏的格式显示为不可读取；内容变更导致旧存档引用不存在的任务或事件时按无效处理。已有正式存档后，结构或校验口径变化时增加格式号，旧格式不再读取，不补迁移。运行中的剧情快照与写档检查点各自保留外观约定；缺场景快照时按地图与剧情状态重新投影。存档分两类：十个手动槽使用 `inotia4.story.v1.slot0..9`，唯一的自动槽使用 `inotia4.story.v1.auto`；自动槽固定在读档界面第一行，只能读取。手动槽可以删除与改名（名字只保留中文、英文、数字，存在 `summary.name`），覆盖保存沿用旧名字；`summary.savedAt` 记录写入时刻。自动存档在进入新地图、剧情事件播完（世界投影之后）、任务接取/完成与每 5 分钟定时触发，由 `application/auto-save.ts` 与 `application/session-auto-save.ts`（`SessionAutoSaveController`）合并写入并做代次/截图校验，演出或菜单锁住时推迟。存档改名、云存档账号/密码和修改密码需要手机系统键盘，用 DOM 输入框覆盖画布（`ui/text-prompt.ts`、`ui/cloud-credentials-input.ts`、`ui/password-change-prompt.ts`）。演出快照保留角色是否尚未定位；角色切图按目标地图投影解析身份与位置，普通角色的演出移动按当前访问保存。演出生成并留在正式场景的敌人可记录访问寿命和不再刷新。捕捉源在敌人状态中保存所属地图与访问编号；转换出的交互NPC复用访问寿命。当前访问存读保留转换状态，正常离图后清理源抑制与目标NPC。摘要在保存时展开职业、地图、等级、立绘与游戏画面缩略图；没有截图时左侧留空。背包快照包含全部物品格位和每个页面的手动固定表；普通物品与任务物品均不限携带容量，显示网格随物品数量增长。
 
 读档在独立会话上校验并准备静止战斗状态，再等待旧场景 shutdown 后安装。准备失败保留旧会话；取消或迟到结果不能安装。`prepareCombatRestore` 在隔离副本上检查有限数值、身份、内容、状态和仇恨引用，并清掉动作路径与临时属性。内存检查点只在本次运行内存在，持久槽位跨刷新保存；安全检查点要求可以操作且没有待处理战斗工作。
 

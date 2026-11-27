@@ -835,6 +835,9 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
   setClip(character: Character, name: ClipName): void {
     setCharacterClip(this, character, name);
   }
+  setPlayerIdleClip(): void {
+    if (this.player) this.setClip(this.player, `idle-${this.facing}`);
+  }
 
   refreshCombatHud(cooldowns?: Readonly<Record<string, Cooldown>>): void { this.shortcuts.refreshCombatHud(cooldowns); }
   refreshCombatHudIfTickChanged(): void { this.shortcuts.refreshIfTickChanged(); }

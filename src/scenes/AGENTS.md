@@ -17,8 +17,8 @@ Phaser 场景层：驱动生命周期、转发输入，把 domain、rendering、
 - `story-stage-scene.ts`：剧情舞台，承接对白、选项和演出期间的输入锁定。
 - `menu-scene.ts`：标题界面生命周期与常驻素材；页面、存档槽、云存档和更新日志由 `ui/title-menu-controller.ts` 管理。
 - `story-class-scene.ts`：装配 `ui/class-selection-page.ts`，页面管理职业选择、角色预览、输入与素材使用权；场景管尺寸变化和加载失败后的重试。
-- `formal-ui-scene.ts`：正式 UI 场景，承载 HUD、背包装备、商店等菜单面板。
-- `audio-scene.ts`：音频设置页；跨场景常驻，切换场景不打断播放。
+- `formal-ui-scene.ts`：正式 UI 场景，承载 HUD、背包装备、商店等菜单面板；通过 `application/ports.ts` 的 `FormalUiSceneContext` 解耦 `app.ts`。
+- `audio-scene.ts`：音频设置页；跨场景常驻，切换场景不打断播放；通过 `application/ports.ts` 的 `AudioSceneContext` 解耦 `app.ts`。
 - `texture-loader-scene.ts`：承接图片与图集下载，在业务场景之前启动。
 
 ## 规则

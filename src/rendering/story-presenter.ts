@@ -4,22 +4,53 @@ import { prepareSceneVisit } from '../domain/scene-visit.ts';
 import { assertScenePlan, planScene } from '../domain/scene-plan.ts';
 import { diffSceneActors } from '../domain/scene-delta.ts';
 import { cachedDropCatalog } from '../domain/drops.ts';
-import type { SceneSnapshot } from '../domain/scene-snapshot.ts';
+import type { SceneActorState, SceneSnapshot } from '../domain/scene-snapshot.ts';
 import { SCENE_KEYS } from '../application/scene-keys.ts';
 import Phaser from 'phaser';
 import type { StoryContext } from '../application/ports.ts';
-import type { ActorDefinition, Facing, TravelDestination, WorldMap } from '../domain/content.ts';
+import type { ActorDefinition, ClipName, Facing, TravelDestination, WorldMap } from '../domain/content.ts';
 import type { PerformanceAction, PerformancePlayback, StoryCurtain, StoryPresentationPort, StoryStage, StoryStageSnapshot } from '../domain/story-performance.ts';
 import { cameraDuration, mapEffectTone } from '../domain/story-performance.ts';
 import { faceTarget } from '../domain/basic-attack.ts';
 import { characterAnimationState, characterAssets, setCharacterClip } from './characters.ts';
+import type { MovementWorld } from './movement-world.ts';
 import { missingSceneAssets } from './scene-assets.ts';
 import type { CharacterVisual } from './characters.ts';
 import { createEffect } from './effects.ts';
-import type { WorldScene } from '../scenes/world-scene.ts';
-import type { StoryStageScene } from '../scenes/story-stage-scene.ts';
 import type { StoryEntityState } from '../domain/story-world.ts';
 import { freezeSnapshot, storyDevMode } from '../domain/dev-mode.ts';
+
+export interface StoryWorldHost {
+  readonly map?: WorldMap;
+  readonly player?: { readonly actor: ActorDefinition; readonly container: { readonly x: number; readonly y: number } };
+  readonly facing: Facing;
+  readonly movement?: { readonly navigation: NavigationWorld };
+  readonly cameras: { readonly main: { readonly scrollX: number; readonly scrollY: number } };
+  readonly scene: {
+    get(key: string): unknown;
+    launch(key: string, data?: object): unknown;
+    moveAbove(keyA: string, keyB: string): unknown;
+  };
+  worldReady(): boolean;
+  captureStoryScene(): SceneSnapshot;
+  prefetchMap(destination: string): void;
+}
+
+export interface StoryStageHost extends Phaser.Scene {
+  readonly map?: WorldMap;
+  readonly movement?: MovementWorld;
+  readonly characters: ReadonlyMap<string, CharacterVisual>;
+  showInitialCurtain?(curtain: StoryCurtain): void;
+  clearEarlyCurtain(): void;
+  appearanceFor(actor: SceneActorState, stage: StoryStageSnapshot, playerAppearance?: ActorDefinition): ActorDefinition | undefined;
+  showStage(stage: StoryStageSnapshot, signal: AbortSignal, playerAppearance?: ActorDefinition): Promise<void>;
+  ensureActors(stage: StoryStageSnapshot): void;
+  refreshActorAppearance(actor: SceneActorState, stage: StoryStageSnapshot, playerAppearance: ActorDefinition | undefined, signal: AbortSignal): Promise<CharacterVisual | undefined>;
+  prepareActorAssets(actorId: string, signal: AbortSignal): Promise<void>;
+  prepareClipAssets(actor: ActorDefinition, clip: ClipName, signal: AbortSignal): Promise<void>;
+  prepareEffectAssets(name: string, signal: AbortSignal): Promise<void>;
+  releaseStage(preserveEarlyCurtain?: boolean): void;
+}
 
 /** 地点特效地面层：在底图之上、人物之下。 */
 const STORY_GROUND_EFFECT_DEPTH = -9999;
@@ -38,8 +69,8 @@ type LogicalSceneAction = Extract<VisualAction, { type: 'town-pose' | 'world-obj
 
 /** 独立舞台只产生语义结果，由运行时提交到正式世界。 */
 export class StoryPresenter implements StoryPresentationPort {
-  private readonly world: () => WorldScene|undefined;
-  private readonly scene: () => StoryStageScene;
+  private readonly world: () => StoryWorldHost | undefined;
+  private readonly scene: () => StoryStageHost;
   private readonly app: StoryContext;
   private actors = new Map<string, Performer>();
   private appearance?: ActorDefinition;
@@ -64,13 +95,13 @@ export class StoryPresenter implements StoryPresentationPort {
   private topEffects?: Phaser.GameObjects.Layer;
   private toneFilter?: Phaser.Filters.ColorMatrix;
   private mapEffect = false;
-  constructor(app: StoryContext, world: () => WorldScene|undefined, stage?: () => StoryStageScene) {
+  constructor(app: StoryContext, world: () => StoryWorldHost | undefined, stage?: () => StoryStageHost) {
     this.app = app; this.world = world;
-    this.scene = stage ?? (() => this.requireWorld().scene.get(SCENE_KEYS.storyStage) as StoryStageScene);
+    this.scene = stage ?? (() => this.requireWorld().scene.get(SCENE_KEYS.storyStage) as StoryStageHost);
   }
-  private requireWorld():WorldScene {
-    const world=this.world();
-    if(!world)throw new DOMException('剧情所属会话已关闭','AbortError');
+  private requireWorld(): StoryWorldHost {
+    const world = this.world();
+    if (!world) throw new DOMException('剧情所属会话已关闭', 'AbortError');
     return world;
   }
   prefetchMap(map: string): void { this.requireWorld().prefetchMap(map); }

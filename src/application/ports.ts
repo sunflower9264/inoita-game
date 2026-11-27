@@ -24,6 +24,21 @@ import type { SaveWorldResult, StoryWorldViewSnapshot } from './world-snapshot.t
 import type { DomUi } from '../ui/dom/dom-ui.ts';
 import type { PressureSettings } from '../domain/pressure-enemies.ts';
 
+export interface AudioSceneContext {
+  audio?: GameAudio;
+  readonly suspended: boolean;
+  readonly mode: import('./control-state.ts').GameMode;
+}
+
+export interface FormalUiSceneContext<TScene = never, TPreview = never> extends FormalUiContext {
+  readonly inputRouter: InputRouter;
+  uiAssets?: import('../ui/ui-asset-host.ts').UiAssetHost;
+  readonly storyUI: {
+    readonly menuOpen: boolean;
+    attach(scene: TScene, createPreview?: (actor: import('../domain/content.ts').ActorDefinition) => TPreview): void;
+  };
+}
+
 export interface StoryClassContext {
   readonly inputRouter: InputRouter;
   readonly storyClasses: StoryClassCatalog;

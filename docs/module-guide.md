@@ -62,9 +62,9 @@ StoryDirector.project → WorldScene 把结果投影回正式地图
 
 ## 启动与装配
 
-主要文件：`src/main.ts`、`src/app.ts`、`src/application/ports.ts`、`src/application/content-loader.ts`
+主要文件：`src/main.ts`、`src/app.ts`、`src/session-lifecycle.ts`、`src/application/ports.ts`、`src/application/content-bootstrap.ts`、`src/application/browser-lifecycle.ts`、`src/application/runtime-diagnostics.ts`、`src/application/content-loader.ts`
 
-`StoryApp` 是运行上下文，不是一个“万能管理器”。它保存已经装配好的内容目录、会话、导演、场景和界面，让场景通过 `application/ports.ts` 里的能力接口访问依赖，而不是互相直接 import。
+`StoryApp` 是运行上下文，不是一个“万能管理器”。它按 5 段装配生命周期保存内容、会话、导演、场景和界面（退出时经 `clearSessionBindings()` 显式清空运行期绑定），让场景与界面通过 `application/ports.ts`（含 `AudioSceneContext`、`FormalUiSceneContext`）和 `rendering/story-presenter.ts`（`StoryWorldHost`、`StoryStageHost`）访问依赖，不反向依赖上层模块。`main.ts` 仅作为瘦装配根组装 Phaser、DOM 与五组纯 TS 应用协调器；`session-lifecycle.ts`（零 `phaser`/`scenes/`/`rendering/` import）统一承担入口切换、压测重启、读档替换和会话清理。
 
 启动分几个阶段：
 
@@ -294,7 +294,7 @@ story  + runId + instanceId
 
 ## 存档、检查点与自动存档
 
-主要文件：`src/domain/save-game.ts`、`src/application/saved-game.ts`、`src/domain/session-checkpoint.ts`、`src/application/auto-save.ts`
+主要文件：`src/domain/save-game.ts`、`src/application/saved-game.ts`、`src/domain/session-checkpoint.ts`、`src/application/auto-save.ts`、`src/application/session-auto-save.ts`
 
 一份存档包含：
 
@@ -319,7 +319,7 @@ story  + runId + instanceId
 
 ## 调试与 GM
 
-主要文件：`src/debug/gm-actions.ts`、`src/ui/panels/gm-panel.ts`、`src/main.ts`
+主要文件：`src/debug/gm-actions.ts`、`src/application/gm-session-bridge.ts`、`src/application/runtime-diagnostics.ts`、`src/ui/panels/gm-panel.ts`、`src/main.ts`
 
 `gm-actions.ts` 是 GM 动作的唯一实现：面板、无浏览器测试和 `globalThis.gm` 共用同一份代码。它不能 import Phaser/UI；面板只负责显示和收集点击。
 
