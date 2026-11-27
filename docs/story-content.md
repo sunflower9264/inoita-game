@@ -8,7 +8,7 @@
 
 每个目标声明 `kind`、`target` 和 `quantity`：物品使用物品 ID；击杀使用敌人定义 ID；招募使用徽章物品 ID；对话和调查使用内容中的人物或目标 ID。各目标独立计数，物品目标随真实背包数量变化；数量下降可以使 ready 回到 active。
 
-交互目标可选 `feedbackText`：一次交互真的增加该目标计数时，用屏幕轻提示显示这段文字。目标记满后不再进入交互候选，同一对象不会重复计数或重复提示。
+交互目标记满后不再进入交互候选，同一对象不会重复计数。可见计数型任务的进度与完成提示由屏幕轻提示（`GameUI.showInstant` + `questNotices`）统一自动显示，不要在任务目标上另加自定义提示字段（已全局移除 `feedbackText` 与深色 `toast` 提示条；全项目提示通道分工见 `src/ui/AGENTS.md`）。
 
 | 字段 | 游戏含义 |
 |---|---|
@@ -87,7 +87,7 @@
 
 任务接取、完成先提交状态，再显示任务面板；日志外任务省略面板，同态重放跳过已结算操作。
 
-临时场景物件使用 `world.place` 的 `scope: "visit"`，保留到离开当前地图。`mapFromStage` 从实际演出地图解析位置归属。`instant-message` 通过游戏提示条显示教学文字。
+临时场景物件使用 `world.place` 的 `scope: "visit"`，保留到离开当前地图。`mapFromStage` 从实际演出地图解析位置归属。`instant-message` 通过 `GameUI.showInstant` 屏幕轻提示显示（当前用于结局旁白）。
 
 ## 版本与恢复
 

@@ -303727,8 +303727,7 @@
           "target": "horn-eeb4761a",
           "characterId": "npc-290",
           "quantity": 1,
-          "label": "号角",
-          "feedbackText": "破坏号角"
+          "label": "号角"
         },
         {
           "id": "objective-1",
@@ -303736,8 +303735,7 @@
           "target": "horn-089799f8",
           "characterId": "npc-291",
           "quantity": 1,
-          "label": "号角",
-          "feedbackText": "破坏号角"
+          "label": "号角"
         },
         {
           "id": "objective-2",
@@ -303745,8 +303743,7 @@
           "target": "horn-a08b0019",
           "characterId": "npc-292",
           "quantity": 1,
-          "label": "号角",
-          "feedbackText": "破坏号角"
+          "label": "号角"
         },
         {
           "id": "objective-3",
@@ -303754,8 +303751,7 @@
           "target": "horn-749abb78",
           "characterId": "npc-293",
           "quantity": 1,
-          "label": "号角",
-          "feedbackText": "破坏号角"
+          "label": "号角"
         }
       ],
       "onAcceptItems": [],

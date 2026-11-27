@@ -114,7 +114,7 @@ test('party revision changes trigger ally sync while failure retries stay pendin
     phaserScene:completePhaserScene(),
     hero,session,battleCatalog:battle,items,characterStats:stats,
     sceneOverrides:{preparePartyMember:async id=>{if(id!==second.id)return;prepareCalls++;if(shouldFail)throw new Error('sync failed');}},
-    appOverrides:{ui:{showInstant(){},toast(){}} as never,world:{actors:{[first.definition.actor]:dkActor,[second.definition.actor]:dkActor,[dkActor.id]:dkActor}} as never},
+    appOverrides:{ui:{showInstant(){}} as never,world:{actors:{[first.definition.actor]:dkActor,[second.definition.actor]:dkActor,[dkActor.id]:dkActor}} as never},
   });
   await world.combat.start();
   prepareCalls=0;

@@ -26,7 +26,7 @@ function harness(content: Campaign = campaign, overrides: Partial<StoryUI> = {},
     }),
     choice: () => new Promise(resolve => { choose = resolve; }),
     async questPopup() {},
-    skipDialogue: () => finish?.(), closeDialogue: () => cancel?.(), toast() {}, ...overrides
+    skipDialogue: () => finish?.(), closeDialogue: () => cancel?.(), ...overrides
   };
   const backdrops: boolean[] = [];
   const director = new StoryDirector(content, session, ui, value => locks.push(value), { begin() {}, async execute() {}, async finish() {},

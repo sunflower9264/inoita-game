@@ -35,7 +35,7 @@ test('371 inherits its actual battlefield, clears the trial-room barriers and ke
     }
   },getStageState:()=>stageSnapshot(stage),getWorldChanges:()=>[],async finish(){},release(){}};
   const ui:StoryUI={async dialogue(){},async choice(_prompt,options){return options[0];},async questPopup(){},
-    toast(){},closeDialogue(){},skipDialogue(){}};
+    closeDialogue(){},skipDialogue(){}};
   const director=new StoryDirector(campaign,session,ui,()=>{},presentation);
   try{
     await director.script('event-371');

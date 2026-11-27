@@ -481,7 +481,7 @@ export async function createTestWorldCombat(options: TestWorldCombatOptions = {}
     wardrobe,
     world: { actors: {} },
     statusHud: loadContentCatalog<StoryContext['statusHud']>('status-hud'),
-    ui: { showInstant() {}, toast() {} },
+    ui: { showInstant() {} },
     locked: false,
     suspended: false,
     pressureMode: false,

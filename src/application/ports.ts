@@ -63,7 +63,7 @@ export interface FormalUiContext {
   resumeSlot?: (slot: import('../domain/save-game.ts').SaveSlotRef, signal?: AbortSignal) => Promise<void>;
 }
 
-type SceneUI = Pick<GameUI,'ready'|'locked'|'mode'|'loading'|'loaded'|'error'|'toast'|'showInstant'|'resetInput'|'setMode'|'showDefeat'|'closeDefeat'|'controlLayoutEditing'|'keyBindingEditing'|'preloadPortraits'|'setWorldRebuildCover'|'setSkipBackdrop'>;
+type SceneUI = Pick<GameUI,'ready'|'locked'|'mode'|'loading'|'loaded'|'error'|'showInstant'|'resetInput'|'setMode'|'showDefeat'|'closeDefeat'|'controlLayoutEditing'|'keyBindingEditing'|'preloadPortraits'|'setWorldRebuildCover'|'setSkipBackdrop'>;
 export interface StoryContext {
   /** 压测模式：不写存档/检查点，世界持续刷怪并自动复活队伍。 */
   readonly pressureMode?: boolean;
@@ -170,7 +170,7 @@ export interface StoryUIContext {
   readonly crafting?: CraftingCatalog;
   readonly characterStats: import('../domain/character-stats.ts').CharacterStatsCatalog;
   /** `portrait` 是界面场景按需取图的那个入口。 */
-  readonly ui: Pick<GameUI,'ready'|'locked'|'suspended'|'mode'|'lock'|'resetInput'|'toast'|'showInstant'|'controlLayoutEditing'|'setControlLayoutEditing'|'keyBindingEditing'|'setKeyBindingEditing'|'portrait'|'defeated'|'revealDefeat'>;
+  readonly ui: Pick<GameUI,'ready'|'locked'|'suspended'|'mode'|'lock'|'resetInput'|'showInstant'|'controlLayoutEditing'|'setControlLayoutEditing'|'keyBindingEditing'|'setKeyBindingEditing'|'portrait'|'defeated'|'revealDefeat'>;
   returnToMenu?: () => void;
   /** GM（调试）动作层。**只在开关打开时存在**：关闭时没有它，系统页也就没有「调试」入口。 */
   readonly gm?: import('../debug/gm-actions.ts').GmActions;

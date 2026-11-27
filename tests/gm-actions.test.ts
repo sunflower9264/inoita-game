@@ -19,7 +19,7 @@ const campaign = read<Campaign>('campaign'), world = read<{ actors: Record<strin
 const classes = read<StoryClassCatalog>('story-classes'), items = read<ItemCatalog>('items');
 const stats = read<CharacterStatsCatalog>('character-stats'), battle = read<BattleCatalog>('battle');
 const companions = read<CompanionCatalog>('companions');
-const ui: StoryUI = { async dialogue() {}, async choice(_prompt, options) { return options[0]; }, async questPopup() {}, closeDialogue() {}, skipDialogue() {}, toast() {} };
+const ui: StoryUI = { async dialogue() {}, async choice(_prompt, options) { return options[0]; }, async questPopup() {}, closeDialogue() {}, skipDialogue() {} };
 const presentation = { begin() {}, async execute() {}, async finish() {}, async release() {} };
 
 function harness(rescue?: () => { ok: boolean; reason?: string; moved?: boolean; from?: unknown; to?: unknown }, combat?: GmCombatPort) {

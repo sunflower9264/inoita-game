@@ -185,7 +185,7 @@ export function createMiniQuestWorld(): QuestHarnessContent {
         deliveryCharacterId: 'npc-captain',
         completion: 'all',
         repeat: false,
-        goals: [{ id: 'horn', kind: 'interact', target: 'horn', characterId: 'npc-horn', quantity: 2, label: '警戒号角', feedbackText: '吹响了警戒号角！' }],
+        goals: [{ id: 'horn', kind: 'interact', target: 'horn', characterId: 'npc-horn', quantity: 2, label: '警戒号角' }],
         onAcceptItems: [],
         itemCompletion: 'all',
         availableWhen: { type: 'flag', flag: 'unlock-optional', value: true },

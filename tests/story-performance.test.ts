@@ -37,7 +37,7 @@ function harness(actions: ScriptAction[], presentation: StoryPresentationPort) {
   const content: Campaign = { ...campaign, scripts: { ...campaign.scripts, demo: compileScript('demo', actions) } };
   const session = new Session(content), locks: boolean[] = [], popups: string[] = [];
   let choose: ((option: ChoiceOption) => void) | undefined;
-  const ui: StoryUI = { async dialogue() {}, choice: () => new Promise(resolve => { choose = resolve; }), async questPopup(kind, quest) { popups.push(`${kind}:${quest.id}`); }, toast() {}, closeDialogue() {}, skipDialogue() {} };
+  const ui: StoryUI = { async dialogue() {}, choice: () => new Promise(resolve => { choose = resolve; }), async questPopup(kind, quest) { popups.push(`${kind}:${quest.id}`); }, closeDialogue() {}, skipDialogue() {} };
   const director = new StoryDirector(content, session, ui, locked => locks.push(locked), presentation);
   return { director, session, locks, popups, choose: (option: ChoiceOption) => choose!(option) };
 }
@@ -79,7 +79,7 @@ test('a failed objective performance can be retried without consuming the object
     objective:compileScript('objective',[{type:'wait',durationMs:60}])}};
   content.scripts.objective.nodes.find(node=>node.exit.type==='end')!.commands.push({type:'quest',command:{type:'fact',fact:{kind:'interact',target:'fixture-target',occurrence:{source:'fixture',sequence:1}}}});
   let fail=true;
-  const session=new Session(content),ui:StoryUI={async dialogue(){},async choice(){throw new Error('unused');},async questPopup(){},toast(){},closeDialogue(){},skipDialogue(){}};
+  const session=new Session(content),ui:StoryUI={async dialogue(){},async choice(){throw new Error('unused');},async questPopup(){},closeDialogue(){},skipDialogue(){}};
   const director=new StoryDirector(content,session,ui,()=>{},{begin(){},async execute(){if(fail)throw new Error('asset failed');},async finish(){}});
   session.accept(quest.id);
   const entity={id:'fixture-entity',actor:'earl-grafton',objective:'fixture-target',afterInteractScript:'objective',x:0,y:0};

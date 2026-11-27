@@ -7,7 +7,7 @@ import {Session} from '../src/domain/session.ts';
 import {StoryDirector,type StoryUI} from '../src/domain/story-director.ts';
 const read=(name:string)=>JSON.parse(readFileSync(new URL('../public/content/'+name+'.json',import.meta.url),'utf8'));
 const campaign=read('campaign') as Campaign,world=read('world');
-const ui:StoryUI={async dialogue(){},async choice(_prompt,options){return options[0];},async questPopup(){},closeDialogue(){},skipDialogue(){},toast(){}};
+const ui:StoryUI={async dialogue(){},async choice(_prompt,options){return options[0];},async questPopup(){},closeDialogue(){},skipDialogue(){}};
 function fixture(id:string){
   const quest={...campaign.quests.find(quest=>quest.id===id)!,availableWhen:{type:'always' as const,value:true}};
   const content={...campaign,quests:[quest],questGroups:[],events:[]} as Campaign;

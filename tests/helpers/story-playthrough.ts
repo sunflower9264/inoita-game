@@ -128,7 +128,7 @@ export function playthrough(saved?:SessionState){
     // 原版 NPC 菜单只执行任务槽 0，不会把多个任务做成「选择 / 离开」列表。
     if(options.some(option=>option.value==='leave'))assert.fail('NPC 任务选择菜单不应出现');
     const next=choiceQueue.shift();return options.find(option=>option.value===next)??options.at(-1)!;
-  },async questPopup(kind,quest){popups.push(kind+':'+quest.id);},toast(){},closeDialogue(){},skipDialogue(){}};
+  },async questPopup(kind,quest){popups.push(kind+':'+quest.id);},closeDialogue(){},skipDialogue(){}};
   const director=new StoryDirector(campaign,session,ui,()=>{},presentation);
   director.onError=error=>errors.push(error);
   // 每次建场都按 WorldScene 的出生落位规则修正玩家：出口给的 spawn 可能压在巨石或人物身上，

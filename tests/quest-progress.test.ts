@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import type { CampaignQuest } from '../src/domain/campaign.ts';
+import type { Campaign, CampaignQuest } from '../src/domain/campaign.ts';
 import type { QuestStatus } from '../src/domain/content.ts';
+import { Session } from '../src/domain/session.ts';
 import { questNotices, type QuestNoticeState } from '../src/ui/quest-progress.ts';
 
 const quest = (patch: Partial<CampaignQuest> & { id: string }): CampaignQuest => ({
@@ -166,4 +168,43 @@ test('story and talk quests stay out of the snapshot', () => {
   );
   assert.deepEqual(result.completions, []);
   assert.equal(result.snapshot.has('talk'), false);
+});
+
+test('Fort of Screams horn interactions deduplicate and drive unified progress and completion notices', () => {
+  const campaign = JSON.parse(readFileSync(new URL('../public/content/campaign.json', import.meta.url), 'utf8')) as Campaign;
+  const fortQuest = campaign.quests.find(item => item.id === 'quest-121')!;
+  assert.equal(fortQuest.goals.length, 4);
+  for (const goal of fortQuest.goals) {
+    assert.equal('feedbackText' in goal, false, '正式号角目标不应包含 feedbackText');
+  }
+  const session = new Session({ ...campaign, quests: [{ ...fortQuest, availableWhen: { type: 'always', value: true } }], questGroups: [], events: [] });
+  assert.equal(session.accept('quest-121'), true);
+
+  let snapshot = questNotices(new Map(), session.quests, id => session.definition(id)).snapshot;
+  const step = () => {
+    const next = questNotices(snapshot, session.quests, id => session.definition(id));
+    snapshot = next.snapshot;
+    return next;
+  };
+
+  for (const [index, goal] of fortQuest.goals.entries()) {
+    assert.equal(session.canInteract(goal.target, `horn-${index}`, goal.characterId), true);
+    assert.equal(session.markerActor(goal.target, goal.characterId), true);
+    assert.equal(session.interact(goal.target, `horn-${index}`, goal.characterId), true);
+    const notice = step();
+    if (index < 3) {
+      assert.equal(notice.progress, '任务进度：号角 1/1');
+      assert.deepEqual(notice.completions, []);
+    } else {
+      assert.equal(notice.progress, undefined);
+      assert.deepEqual(notice.completions, ['任务完成：悲鸣之要塞']);
+    }
+    assert.equal(session.canInteract(goal.target, `horn-${index}`, goal.characterId), false, '记满后不再可交互');
+    assert.equal(session.markerActor(goal.target, goal.characterId), false, '记满后隐藏目标标记');
+    assert.equal(session.interact(goal.target, `horn-${index}`, goal.characterId), false, '重复交互不推进目标');
+    const repeated = step();
+    assert.equal(repeated.progress, undefined);
+    assert.deepEqual(repeated.completions, []);
+  }
+  assert.equal(session.status('quest-121'), 'ready');
 });

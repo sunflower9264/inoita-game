@@ -5,7 +5,7 @@ type TestPresentationState={-readonly [K in keyof Parameters<typeof formalPresen
 function state(overrides:Record<string,unknown>={}):TestPresentationState{
   return {mode:'game',ready:true,suspended:false,worldRebuildCover:false,skipBackdrop:false,
     loadingState:undefined,defeatState:undefined,defeated:false,choices:undefined,quest:undefined,
-    dialogueLine:undefined,toastMessage:'',...overrides} as unknown as TestPresentationState;
+    dialogueLine:undefined,...overrides} as unknown as TestPresentationState;
 }
 test('full-screen presentation preserves priority without changing flow state',()=>{
   const ui=state({dialogueLine:{text:'对白'},choices:{options:[]},defeatState:{busy:false},defeated:true,loadingState:{label:'加载'}});
@@ -25,9 +25,9 @@ test('skip backdrop preserves choices and quest while world rebuild hides them',
   ui.worldRebuildCover=false;ui.quest=undefined;ui.choices={options:[]} as never;
   assert.equal(formalPresentation(ui,false,false).panel,'choice');
 });
-test('suspension hides toast and skip without deleting dialogue',()=>{
-  const ui=state({suspended:true,toastMessage:'提示',dialogueLine:{text:'对白'}});
+test('suspension hides skip without deleting dialogue',()=>{
+  const ui=state({suspended:true,dialogueLine:{text:'对白'}});
   const view=formalPresentation(ui,false,true);
-  assert.equal(view.toastVisible,false);assert.equal(view.showSkip,false);assert.equal(view.occluded,true);
+  assert.equal(view.showSkip,false);assert.equal(view.occluded,true);
   assert.ok(ui.dialogueLine);
 });

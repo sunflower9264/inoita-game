@@ -3312,7 +3312,7 @@ export class WorldCombat {
     }
     this.app.session.advanceGameTime(delta);
     if (this.shouldSyncParty(this.scene.time.now)) {
-      void this.syncAllies().catch(error => this.app.ui.toast((error as Error).message));
+      void this.syncAllies().catch(error => this.app.ui.showInstant((error as Error).message));
     }
     if (this.controlledId !== this.syncedControlledId && this.partyControllers.has(this.controlledId)) this.syncControlled(false);
     // 一个渲染帧里的全部战斗逻辑帧共用一次会话通知：每次命中、回复、扣蓝都会改血蓝，

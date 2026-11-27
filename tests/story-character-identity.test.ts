@@ -52,7 +52,7 @@ test('near events dispatch only for the approached character, including characte
   const content:Campaign={...campaign,quests:[],questGroups:[],events:['north','south'].map(id=>({id,source:'near',near:'guard',nearCharacterId:id,script:id})),
     scripts:Object.fromEntries(['north','south'].map(id=>[id,{entry:'done',nodes:[{id:'done',presentation:[],commands:[{type:'flag',flag:id}],exit:{type:'end'}}]}]))};
   const session=new Session(content);
-  const ui:StoryUI={async dialogue(){},async choice(_prompt,options){return options[0];},async questPopup(){},closeDialogue(){},skipDialogue(){},toast(){}};
+  const ui:StoryUI={async dialogue(){},async choice(_prompt,options){return options[0];},async questPopup(){},closeDialogue(){},skipDialogue(){}};
   const director=new StoryDirector(content,session,ui,()=>{});
   try{
     assert.equal(await director.approach(content.events[1], {id:'south-instance',actor:'guard',characterId:'south'}),true);

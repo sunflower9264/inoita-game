@@ -24,7 +24,7 @@ const definition=battle.enemies.find(enemy=>enemy.id===enemyId)!;
 // 使用正式任务、敌人、生成点和出口，隔离本条捕捉规则，无需重跑前十章。
 const content:Campaign={...published,quests:[quest],questGroups:[],events:[]};
 const ui:StoryUI={async dialogue(){},async choice(_prompt,options){return options[0];},async questPopup(){},
-  closeDialogue(){},skipDialogue(){},toast(){}};
+  closeDialogue(){},skipDialogue(){}};
 function createSession(){return new Session(content,undefined,undefined,items,
   new BattleCharacter('dark-knight',stats,items),battle,stats);}
 function enter(session:Session,destination:{map:string;x:number;y:number;facing:'north'|'south'|'east'|'west'},next:WorldMap){

@@ -711,7 +711,7 @@ test('equipment changed during initial ally preparation defers spawning until a 
     movement,
     appOverrides: {
       world: { actors: { [ally.definition.actor]: actor, [actor.id]: actor } } as never,
-      ui: { showInstant() {}, toast(msg: string) { throw new Error(msg); } } as never,
+      ui: { showInstant(msg: string) { throw new Error(msg); } } as never,
     },
     sceneOverrides: {
       preparePartyMember: async id => {

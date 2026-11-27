@@ -315,7 +315,7 @@ test('a party wipe opens the defeat panel without settling the waiting encounter
     app:{session:{storyWorld:{encounter:()=>encounter},party:{livingIds:[]},bag:{entries:[]}},
       director:{runtime:{snapshot:()=>({runs:[{status:'waiting',waiting:{outcomes:{lost:true},encounter:'enc-1'}}]})},
         async encounterResult(_encounter:string,outcome:string){outcomes.push(outcome);return true;}},
-      ui:{showDefeat(){shown++;},closeDefeat(){},toast(){}}},
+      ui:{showDefeat(){shown++;},closeDefeat(){}}},
   });
   scene.handleCombatDefeat();
   await new Promise(resolve=>setImmediate(resolve));

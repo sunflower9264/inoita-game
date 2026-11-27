@@ -7,16 +7,17 @@ test('CJK wrapping preserves explicit breaks and complete Unicode code points',(
   assert.deepEqual(wrapText('中文😀字\n下一行',2,value=>Array.from(value).length),['中文','😀字','下一','行']);
   assert.deepEqual(wrapText('甲\n\n乙',20,value=>value.length),['甲','','乙']);
 });
-test('scene time pauses typewriter and toast, and never cuts a surrogate pair',()=>{
-  const ui=new GameUI();ui.ready=true;ui.page='甲😀乙';ui.pending=()=>{};ui.toast('提示');
-  ui.tick(24);assert.equal(ui.revealed,3);ui.suspended=true;ui.tick(5000);assert.equal(ui.revealed,3);assert.equal(ui.toastMessage,'提示');
-  ui.suspended=false;ui.tick(2600);assert.equal(ui.revealed,ui.page.length);assert.equal(ui.toastMessage,'');
+test('scene time pauses typewriter and never cuts a surrogate pair',()=>{
+  const ui=new GameUI();ui.ready=true;ui.page='甲😀乙';ui.pending=()=>{};
+  ui.tick(24);assert.equal(ui.revealed,3);ui.suspended=true;ui.tick(5000);assert.equal(ui.revealed,3);
+  ui.suspended=false;ui.tick(2600);assert.equal(ui.revealed,ui.page.length);
 });
-test('scene time pauses the instant message too, and switching modes clears it',()=>{
+test('scene time pauses the instant message too, and switching modes or defeat clears it',()=>{
   const ui=new GameUI();ui.showInstant('魔法值正在缓慢的恢复。');
   ui.tick(600);assert.equal(ui.instant.alpha,1);
   ui.suspended=true;ui.tick(5000);assert.equal(ui.instant.text,'魔法值正在缓慢的恢复。');
   ui.suspended=false;ui.tick(600);ui.setMode('menu');assert.equal(ui.instant.text,'');assert.equal(ui.instant.alpha,0);
+  ui.showInstant('临时提示');ui.showDefeat({restore(){}});assert.equal(ui.instant.text,'');assert.equal(ui.instant.alpha,0);
 });
 test('world rebuild cover survives loading/loaded and is cleared by a mode switch',()=>{
   const ui=new GameUI();let syncs=0;ui.view={sync(){syncs++;},renderText(){},paginate:(_ui,text)=>[{text,end:text.length}],portrait:async()=>undefined};

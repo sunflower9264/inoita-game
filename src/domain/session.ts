@@ -814,13 +814,13 @@ export class Session {
     return this.questCoordinator.canInteract(this.questBook, target, characterId);
   }
 
-  interactWithFeedback(target: string, instance: string, characterId?: string): { advanced: boolean; feedback: string[] } {
+  interact(target: string, instance: string, characterId?: string): boolean {
     if (instance.startsWith('quest-target:')) {
       const source = this.enemyStore.raw(instance.slice('quest-target:'.length))?.capture, entity = this.storyWorld.entity(instance);
-      if (!source || source.visit !== this.storyWorld.visit || !entity || !this.storyWorld.visible(instance)) return { advanced: false, feedback: [] };
+      if (!source || source.visit !== this.storyWorld.visit || !entity || !this.storyWorld.visible(instance)) return false;
     }
     const entries = this.questCoordinator.waitingGoalEntries(this.questBook, target, characterId);
-    if (!entries.length) return { advanced: false, feedback: [] };
+    if (!entries.length) return false;
     const progressKey = (quest: CampaignQuest, goal: { id: string }) => quest.id + '\0' + goal.id;
     const before = new Map(entries.map(entry => [progressKey(entry.quest, entry.goal), this.questBook.state(entry.quest.id)?.goals[entry.goal.id] ?? 0]));
     const kinds = [...new Set(entries.map(entry => entry.kind))];
@@ -831,19 +831,9 @@ export class Session {
     }));
     if (remove) commands.push({ type: 'world', command: { kind: 'remove', id: instance } });
     this.batchNotifications(() => { this.applyStoryCommands(commands); });
-    const feedback: string[] = [];
-    let advanced = false;
-    for (const entry of entries) {
-      const after = this.questBook.state(entry.quest.id)?.goals[entry.goal.id] ?? 0;
-      if (after <= (before.get(progressKey(entry.quest, entry.goal)) ?? 0)) continue;
-      advanced = true;
-      if (entry.quest.journal === false || !entry.goal.feedbackText || feedback.includes(entry.goal.feedbackText)) continue;
-      feedback.push(entry.goal.feedbackText);
-    }
-    return { advanced, feedback };
+    return entries.some(entry =>
+      (this.questBook.state(entry.quest.id)?.goals[entry.goal.id] ?? 0) > (before.get(progressKey(entry.quest, entry.goal)) ?? 0));
   }
-
-  interact(target: string, instance: string, characterId?: string): boolean { return this.interactWithFeedback(target, instance, characterId).advanced; }
   nextQuestFact(kind: QuestFact['kind'], target: string, source: string = kind): QuestFact { return this.questCoordinator.nextQuestFact(this.questBook, kind, target, source); }
   recordQuestFact(kind: QuestFact['kind'], target: string, source: string = kind): void {
     this.applyStoryCommands([{ type: 'quest', command: { type: 'fact', fact: this.nextQuestFact(kind, target, source) } }]);

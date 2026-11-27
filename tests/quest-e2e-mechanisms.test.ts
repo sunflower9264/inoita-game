@@ -206,7 +206,7 @@ test('确认门取消重开、跨章清空未完成支线与多轮融合器重�
   }
 });
 
-test('可选接取脚本拒绝后重接、交互反馈去重、残血变身捕捉与穿戴快捷满足', async () => {
+test('可选接取脚本拒绝后重接、交互目标记满去重、残血变身捕捉与穿戴快捷满足', async () => {
   const h = createQuestE2EHarness(miniContent);
   try {
     h.session.applyStoryCommands([{ type: 'flag', flag: 'unlock-optional', value: true }]);
@@ -222,14 +222,17 @@ test('可选接取脚本拒绝后重接、交互反馈去重、残血变身捕�
     assert.equal(h.log.popups.filter(p => p.questId === 'q-optional-offer' && p.kind === 'start').length, 1);
 
     const horns = miniContent.maps.get('wilds')!.entities.filter(e => e.actor === 'horn');
+    const instantsBefore = h.log.instants.length;
     await h.interactWithEntity(horns[0]!, 'wilds');
     assert.equal(h.session.quests.get('q-optional-offer')?.goals.horn, 1);
+    assert.deepEqual(h.log.instants.slice(instantsBefore), ['任务进度：警戒号角 1/2']);
     await h.interactWithEntity(horns[1]!, 'wilds');
     assert.equal(h.session.status('q-optional-offer'), 'ready');
-    // 目标记满后再次交互号角不再重复记账、也不再重复弹出交互反馈提示
+    assert.deepEqual(h.log.instants.slice(instantsBefore), ['任务进度：警戒号角 1/2', '任务完成：可选侦察委托']);
+    // 目标记满后再次交互号角不再重复记账，也不再重复触发屏幕提示
     await h.interactWithEntity(horns[0]!, 'wilds');
     assert.equal(h.session.quests.get('q-optional-offer')?.goals.horn, 2);
-    assert.equal(h.log.toasts.filter(t => t === '吹响了警戒号角！').length, 2, '已记满目标重复交互不再弹反馈');
+    assert.deepEqual(h.log.instants.slice(instantsBefore), ['任务进度：警戒号角 1/2', '任务完成：可选侦察委托'], '已记满目标重复交互不再发提示');
 
     await h.interactByIdentity('captain', 'npc-captain');
     assert.equal(h.session.status('q-optional-offer'), 'completed');

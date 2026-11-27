@@ -316,7 +316,6 @@ test('attachGmSessionBridge and detachGmSessionBridge manage globalThis.gm and w
     dialogue: async () => {},
     choice: async (_p, opts) => opts[0]!,
     questPopup: async () => {},
-    toast() {},
     closeDialogue() {},
     skipDialogue() {},
   }, () => {});

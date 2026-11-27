@@ -6,7 +6,7 @@ import { Session } from '../src/domain/session.ts';
 import { StoryDirector, type StoryUI } from '../src/domain/story-director.ts';
 
 const campaign = JSON.parse(readFileSync(new URL('../public/content/campaign.json', import.meta.url), 'utf8')) as Campaign;
-const ui: StoryUI = { async dialogue() {}, async choice(_prompt, options) { return options[0]; }, async questPopup() {}, closeDialogue() {}, skipDialogue() {}, toast() {} };
+const ui: StoryUI = { async dialogue() {}, async choice(_prompt, options) { return options[0]; }, async questPopup() {}, closeDialogue() {}, skipDialogue() {} };
 const presentation = { begin() {}, async execute() {}, async finish() {}, async release() {} };
 
 /** 统计 `Session.quests` 被读了几次：每读一次都要克隆并序列化整本任务簿的状态。 */

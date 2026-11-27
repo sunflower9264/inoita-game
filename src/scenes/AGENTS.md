@@ -91,7 +91,7 @@ Phaser 场景层：驱动生命周期、转发输入，把 domain、rendering、
 - **剧情接管的输入、显隐和暂停分别由 `canControl`、`director.busy`、`stageOccluded`、`partyActionsSuspended` 承担。**
 - `captureStoryScene` 与剧情舞台快照共享演员外观引用，只复制必要的外壳字段；开发/测试模式下外观是冻结的，原地修改会直接报错。
 - 喝泉水的回血回蓝和技能点结算调用 `domain/springs.ts` 的 `applySpringRecovery`、`grantSpringSkillPoint`；正面状态按存活上阵队员逐个施加，负面或攻防混合状态只给当前操控者。
-- **任务完成和进度提示走 `showInstant`。** 只在任务簿版本变化时对比状态：有 `completion: 'all'` 的可见任务进入待交付时只提示 `任务完成：…`，这一轮不再发进度；没有完成提示时，才对目标数字增加的进行中任务提示 `任务进度：…`。对话/剧情任务已有任务窗，不重复提示。
+- **任务完成、任务进度与场景内全部非阻塞提示统一走 `GameUI.showInstant`。** `WorldScene.noticeQuestChanges` 只在任务簿版本变化时经 `questNotices` 对比状态：有 `completion: 'all'` 的可见任务进入待交付时只提示 `任务完成：…`，这一轮不再发进度；没有完成提示时，才对目标数字增加的进行中任务提示 `任务进度：…`。对话/剧情任务已有任务窗，日志外任务不提示；不再为单个交互目标额外发送提示。场景里的泉水、旅店、拔剑、快捷道具/技能校验、任务道具拾取上限以及异步同步队友失败等非阻塞提示一律走 `showInstant`，禁止使用深色方框 `toast`（完整提示通道分工见 `src/ui/AGENTS.md`）。
 - 场景键从 `SCENE_KEYS`（`src/application/scene-keys.ts`）取，构造、查找、启动都用它，不写裸字符串。
 - 新增场景在 `src/main.ts` 注册，并接上对应的模式。
 - **GM 面板的文字也走 DOM。** 游戏内 GM 面板用 `MenuTextWriter` 输出文字；按钮只留共用皮肤和命中区。

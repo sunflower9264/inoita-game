@@ -22,7 +22,7 @@ function harness(nodes:StoryNode[],presentation?:StoryPresentationPort,world?:St
     scripts:{...structuredClone(base.scripts),demo:{entry:nodes[0].id,nodes}},
     events:[{id:'demo-event',source:'start',script:'demo'}]};
   const session=new Session(campaign,player),locks:boolean[]=[];
-  const ui:StoryUI={async dialogue(){},async choice(_prompt,options){return options[0];},async questPopup(){},toast(){},closeDialogue(){},skipDialogue(){}};
+  const ui:StoryUI={async dialogue(){},async choice(_prompt,options){return options[0];},async questPopup(){},closeDialogue(){},skipDialogue(){}};
   const director=new StoryDirector(campaign,session,ui,value=>locks.push(value),presentation,world);
   return {campaign,session,ui,director,locks};
 }
@@ -123,7 +123,7 @@ test('a following script run releases the previous stage instead of inheriting i
   const session=new Session(campaign),log:string[]=[];
   const presentation:StoryPresentationPort={begin(_signal,value){log.push('begin:'+(value?.map??'world'));},
     async execute(action){log.push('execute:'+action.type);},async finish(){},async release(){log.push('release');}};
-  const ui:StoryUI={async dialogue(){},async choice(_prompt,options){return options[0];},async questPopup(){},toast(){},closeDialogue(){},skipDialogue(){}};
+  const ui:StoryUI={async dialogue(){},async choice(_prompt,options){return options[0];},async questPopup(){},closeDialogue(){},skipDialogue(){}};
   const director=new StoryDirector(campaign,session,ui,()=>{},presentation);
   try{await director.start();}finally{director.dispose();}
   assert.deepEqual(log.slice(0,5),[`begin:${base.start.map}`,'execute:stage','release','begin:shadow-hall','execute:stage'],
@@ -182,7 +182,7 @@ test('a quest completion popup finishes before the follow-up story starts',async
     // 教学菜单会重复出现；显式选“现在没事了”，避免测试一直停在同一个选项上。
     async choice(_prompt,options){log.push('choice');return options.find(option=>option.value==='option-3')??options[0];},
     questPopup(kind,quest){log.push('popup:'+kind+':'+quest.id);return new Promise<void>(resolve=>{closePopup=resolve;});},
-    toast(){},closeDialogue(){},skipDialogue(){}
+    closeDialogue(){},skipDialogue(){}
   };
   const stage:StoryStage={type:'stage',map:'shadow-camp',x:392,y:328,facing:'south',playerVisible:true,cast:[]};
   const director=new StoryDirector(base,session,ui,()=>{},{begin(){log.push('begin');},async execute(action){log.push('execute:'+action.type);},
@@ -206,7 +206,7 @@ test('手动剧情或收尾报错时，任务变化要等重试成功后才开�
     const campaign:Campaign={...base,quests:[quest('gift')],scripts:{follow:{entry:'after',nodes:[node('after')]}},
       events:[{id:'follow',source:'quest',key:'gift',script:'follow'}]};
     const session=new Session(campaign);
-    const ui:StoryUI={async dialogue(){},async choice(_prompt,options){return options[0];},async questPopup(){},toast(){},closeDialogue(){},skipDialogue(){}};
+    const ui:StoryUI={async dialogue(){},async choice(_prompt,options){return options[0];},async questPopup(){},closeDialogue(){},skipDialogue(){}};
     let fail=true,played=0;
     const director=new StoryDirector(campaign,session,ui,()=>{},{begin(){},async execute(){},async finish(){},
       async release(){if(fail&&failure==='cleanup')throw new Error(failure);}});
@@ -539,7 +539,7 @@ test('the latest completed encounter still triggers its battle event after older
     session.storyWorld.apply({kind:'encounter',encounter:{id:`filler-${index}`,map:base.start.map,status:'active',spawns:[]}});
     session.storyWorld.apply({kind:'encounter-result',id:`filler-${index}`,result:'won'});
   }
-  const ui:StoryUI={async dialogue(){},async choice(_prompt,options){return options[0];},async questPopup(){},toast(){},closeDialogue(){},skipDialogue(){}};
+  const ui:StoryUI={async dialogue(){},async choice(_prompt,options){return options[0];},async questPopup(){},closeDialogue(){},skipDialogue(){}};
   const director=new StoryDirector(content,session,ui,()=>{});
   session.applyStoryCommands([{type:'encounter',encounter:{id:'run-1:guards',definitionId:'guards',
     map:base.start.map,status:'active',spawns:[]}}]);

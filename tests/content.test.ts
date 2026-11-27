@@ -320,6 +320,9 @@ test('content validation rejects broken story interface assets, invalid quest qu
  assert.throws(()=>validateStoryItems(campaign,{...items,items:{}}),/物品/);
  const fraction=structuredClone(campaign);fraction.quests[0]!.goals[0]!.quantity=1.5;
  assert.throws(()=>parseCampaign(fraction),/整数/);
+ const withFeedback=structuredClone(campaign) as unknown as {quests:{goals:Record<string,unknown>[]}[]};
+ withFeedback.quests[0]!.goals[0]!.feedbackText='破坏号角';
+ assert.throws(()=>parseCampaign(withFeedback),/未定义字段/);
  for(const value of ['missing-event','event-285','event-186',undefined]){
   const copy=structuredClone(campaign) as unknown as Record<string,unknown>;
   const target=(copy.quests as {id:string;interactionEvent?:string}[]).find(q=>q.id==='quest-371')!;

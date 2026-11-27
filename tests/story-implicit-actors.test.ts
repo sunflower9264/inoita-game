@@ -110,7 +110,7 @@ test('world-bound ordinary NPC movement expires on leaving; native location regi
   session.applyStoryCommands([{type:'travel',destination:{map,x:24,y:24,facing:'south'}},
     {type:'world',command:{kind:'place',entity:{...ordinary,id:'quest-npc-located-npc-63',x:120}}}]);
   const moved=[{...ordinary,x:160},{...ordinary,id:'quest-npc-located-npc-63',x:200}];
-  const ui:StoryUI={async dialogue(){},async choice(_prompt,options){return options[0];},async questPopup(){},toast(){},closeDialogue(){},skipDialogue(){}};
+  const ui:StoryUI={async dialogue(){},async choice(_prompt,options){return options[0];},async questPopup(){},closeDialogue(){},skipDialogue(){}};
   const director=new StoryDirector(content,session,ui,()=>{}, {begin(){},async execute(){},async finish(){},getWorldChanges:()=>moved});
   try{
     await director.script('binding');
@@ -129,7 +129,7 @@ test('event 98 location registration is not overwritten by the old cinematic act
   const entity={id,map:'hwagan-canyon-2-c2fa2ee1',actor:'story-stranger-of-hwagan-b390b261',characterId:'npc-288',x:664,y:152,visible:true};
   session.applyStoryCommands([{type:'travel',destination:{map:entity.map,x:664,y:200,facing:'north'}},
     {type:'world',command:{kind:'place',entity}}]);
-  const ui:StoryUI={async dialogue(){},async choice(_prompt,options){return options[0];},async questPopup(){},toast(){},closeDialogue(){},skipDialogue(){}};
+  const ui:StoryUI={async dialogue(){},async choice(_prompt,options){return options[0];},async questPopup(){},closeDialogue(){},skipDialogue(){}};
   const director=new StoryDirector(content,session,ui,()=>{}, {begin(){},async execute(){},async finish(){},getWorldChanges:()=>[{...entity,visible:false}]});
   try{
     await director.script('event-98');

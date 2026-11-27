@@ -706,7 +706,7 @@ const campaign=shape<Campaign>({version:(v,p)=>requireValue(v===2,p,'剧情内�
   quests:array(object({id:text,title:text,description:text,giver:optional(text),giverCharacterId:optional(text),delivery:optional(text),deliveryCharacterId:optional(text),places:optional(object({available:optional(storyPlace),active:optional(storyPlace),ready:optional(storyPlace)})),guidance:object({available:text,active:text,counterLabel:optional(text)}),
     targetChanges:optional(array(object({goal:text,enemyId:text,actor:text,removeAfterInteraction:boolean,changedText:text,interactText:text}))),
     descriptionTargets:optional(array(object({target:text,characterId:optional(text),label:optional(text)}))),
-    goals:array(object({id:text,kind:oneOf('talk','item','interact','defeat','recruit'),target:text,characterId:optional(text),quantity:count,label:optional(text),feedbackText:optional(nonEmptyText)})),
+    goals:array(object({id:text,kind:oneOf('talk','item','interact','defeat','recruit'),target:text,characterId:optional(text),quantity:count,label:optional(text)})),
     availableWhen:optional(storyCondition),completion:oneOf('talk','all','story','internal'),journal:optional(boolean),repeat:optional(boolean),
     onAcceptItems:optional(array(object({item:text,quantity:count}))),handoverItems:optional(array(object({item:text,quantity:count,removal:optional(oneOf('quantity','all-matching'))}))),
     itemCompletion:optional(oneOf('all','equipped-item-shortcut')),acceptance:optional(oneOf('automatic','optional')),interactionEvent:optional(nonEmptyText),

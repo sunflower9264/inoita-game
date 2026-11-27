@@ -49,7 +49,6 @@ export class FormalUiView implements GameUiView {
   private domInstant?:DomLabel;
   /** 屏幕提示标签上次写入的文字与透明度；按标签缓存，标签重建后自然失效。 */
   private readonly instantStyle=new WeakMap<DomLabel,{text:string;alpha:string}>();
-  private domToast?:DomLabel;
   private domSpeaker?:DomLabel;
   private modalView!:FormalModalView;
   private dialogueDomRuns:DomLabel[]=[];
@@ -68,7 +67,6 @@ export class FormalUiView implements GameUiView {
     const domUi=this.app.domUi;
     if(domUi){
       this.domInstant=domUi.label('screen','dom-instant',{x:.5,y:0});
-      this.domToast=domUi.label('screen','dom-toast',{x:.5,y:0});
       this.domSpeaker=domUi.label('overlay','dom-speaker');
       this.layoutDomText();
     }
@@ -81,7 +79,7 @@ export class FormalUiView implements GameUiView {
   }
   destroy():void{
     if(this.disposed)return;this.disposed=true;this.request.abort();
-    this.uiAssets.releaseContent();this.surface?.destroy();this.questPopup?.destroy();this.baseLease?.release();this.domInstant?.remove();this.domInstant=undefined;this.domToast?.remove();this.domToast=undefined;this.domSpeaker?.remove();this.domSpeaker=undefined;for(const run of this.dialogueDomRuns)run.remove();this.dialogueDomRuns.length=0;this.choiceView?.destroy();this.modalView?.destroy();
+    this.uiAssets.releaseContent();this.surface?.destroy();this.questPopup?.destroy();this.baseLease?.release();this.domInstant?.remove();this.domInstant=undefined;this.domSpeaker?.remove();this.domSpeaker=undefined;for(const run of this.dialogueDomRuns)run.remove();this.dialogueDomRuns.length=0;this.choiceView?.destroy();this.modalView?.destroy();
     this.background?.destroy();this.blocker?.destroy();
   }
   /**
@@ -103,8 +101,8 @@ export class FormalUiView implements GameUiView {
   resetInput():void{this.scene.game?.events?.emit(UI_EVENTS.cancelInput);}
   update():void{this.syncInstantMessage();this.choiceView?.update();}
   /**
-   * 原版 `INSTANTMSG_Draw`：水平居中、纵向三成屏高，同一段文字带 1px 深色描边，末段按台阶淡出。
-   * 对白与弹窗期间不显示（原版这时画的是事件层界面）；菜单遮罩在 998 层，本来就压住它。
+   * 原版 `INSTANTMSG_Draw`：水平居中、纵向三成屏高，同一段文字带深色阴影，末段按台阶淡出。
+   * 位于 `#ui-screen`（`z-index: 2`），高于菜单正文以便菜单操作结果可见；对白、选项、任务窗与全屏遮挡期间隐藏。
    */
   private syncInstantMessage():void{
     const ui=this.app.ui,message=ui.instant.text;
@@ -122,9 +120,15 @@ export class FormalUiView implements GameUiView {
   private layoutDomText():void{
     const scale=this.surfacePoint(0,0).scale,frame=frameRect(),point=instantMessagePoint(frame.width,frame.height);
     this.domInstant?.setPosition(point.x,point.y);
-    this.domInstant?.setStyle({fontSize:`${Math.max(12,24*scale)}px`,color:GOLD,textShadow:'0 1px 2px rgba(0,0,0,.7)'});
-    this.domToast?.setStyle({fontSize:`${Math.max(12,24*scale)}px`,width:`${600*scale}px`,minHeight:`${90*scale}px`,
-      padding:`${14*scale}px ${20*scale}px 0`,background:'rgba(16,29,36,.95)',color:'#f5f0df',textAlign:'center',whiteSpace:'pre-wrap'});
+    this.domInstant?.setStyle({
+      fontSize:`${Math.max(12,24*scale)}px`,
+      color:GOLD,
+      textShadow:'0 1px 2px rgba(0,0,0,.7)',
+      maxWidth:`${Math.max(240,frame.width-32)}px`,
+      whiteSpace:'pre-wrap',
+      textAlign:'center',
+      zIndex:'2',
+    });
   }
   async preloadPortraits(files:string[],signal:AbortSignal,progress:(value:number)=>void):Promise<void>{
     const missing=[...new Set(files)].filter(file=>!domAssets.peek(file));
@@ -239,8 +243,6 @@ export class FormalUiView implements GameUiView {
     const speakerSignature=JSON.stringify([ui.dialogueLine?.speaker,ui.dialogueLine?.actor,ui.portraitFile,ui.playerActor]);
     const bodySignature=JSON.stringify([ui.dialoguePageMarkup,ui.dialogueLine?.presentation,speakerSignature]);
     const signature=JSON.stringify([ui.mode,ui.loadingState?.label,!!ui.loadingState?.retry,ui.failed,ui.suspended,portrait,cover,skipBackdrop,defeat,shell,ui.dialogueLine?null:ui.portraitFile,showSkip,ui.choices?.prompt,ui.choices?.description,ui.choices?.options,ui.quest?.definition.id,ui.quest?.kind]);
-    this.domToast?.setVisible(presentation.toastVisible);
-    if(this.domToast&&presentation.toastVisible){const point=this.surfacePoint(480,164);this.domToast.setText(ui.toastMessage).setPosition(point.x,point.y);}
     if(signature===this.signature){
       if(this.dialogueShell&&!uiOcclusion(ui)&&bodySignature!==this.dialogueBodySignature){
         if(speakerSignature!==this.dialogueSpeakerSignature)this.syncDialogueSpeaker(ui,speakerSignature);

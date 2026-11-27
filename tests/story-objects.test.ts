@@ -50,7 +50,7 @@ test('a scene object without an authored map uses the actual playback map',async
     {type:'world',command:{kind:'place',mapFromStage:true,scope:'visit',entity:{id:'rock',map:'preview-map',actor:'rock',x:8,y:40}}}
   ],exit:{type:'end'}}]}},events:[{id:'demo',script:'demo',source:'start'}]};
   const session=new Session(campaign);session.applyStoryCommands([{type:'travel',destination:location('actual-map')}]);
-  const ui:StoryUI={async dialogue(){},async choice(){throw new Error('unused');},async questPopup(){},toast(){},closeDialogue(){},skipDialogue(){}};
+  const ui:StoryUI={async dialogue(){},async choice(){throw new Error('unused');},async questPopup(){},closeDialogue(){},skipDialogue(){}};
   const director=new StoryDirector(campaign,session,ui,()=>{});
   await director.start();assert.equal(session.storyWorld.entity('rock')?.map,'actual-map');director.dispose();
 });

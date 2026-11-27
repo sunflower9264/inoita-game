@@ -1,6 +1,6 @@
 import type { GameUI } from './game-ui.ts';
 
-type PresentationState=Pick<GameUI,'mode'|'ready'|'suspended'|'worldRebuildCover'|'skipBackdrop'|'loadingState'|'defeatState'|'defeated'|'choices'|'quest'|'dialogueLine'|'toastMessage'>;
+type PresentationState=Pick<GameUI,'mode'|'ready'|'suspended'|'worldRebuildCover'|'skipBackdrop'|'loadingState'|'defeatState'|'defeated'|'choices'|'quest'|'dialogueLine'>;
 export type FormalPanel='portrait'|'loading'|'defeat'|'choice'|'dialogue'|'none';
 
 /** 只选择显示内容，不修改剧情状态，也不完成任何等待中的剧情动作。 */
@@ -14,7 +14,6 @@ export function formalPresentation(ui:PresentationState,portrait:boolean,directo
     panel,occluded,
     quest:ui.mode==='game'&&!portrait&&!cover&&!ui.loadingState&&!ui.defeated?ui.quest:undefined,
     showSkip:ui.mode==='game'&&ui.ready&&!ui.suspended&&!portrait&&!cover&&!ui.loadingState&&!ui.defeated&&!ui.choices&&!ui.quest&&directorCanSkip,
-    toastVisible:!!ui.toastMessage&&!portrait&&!cover&&!ui.loadingState&&!ui.defeated&&!ui.suspended,
     backgroundVisible:modal||ui.skipBackdrop,
     backgroundAlpha:ui.skipBackdrop?1:!!ui.defeatState&&!portrait&&!ui.loadingState&&!cover ? .65 : 1,
     blockInput:modal||ui.skipBackdrop||!!ui.quest||!!ui.dialogueLine||!!ui.choices,

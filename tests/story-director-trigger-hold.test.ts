@@ -7,7 +7,7 @@ import { StoryDirector, type StoryUI } from '../src/domain/story-director.ts';
 
 const campaign = JSON.parse(readFileSync(new URL('../public/content/campaign.json', import.meta.url), 'utf8')) as Campaign;
 const ui: StoryUI = { async dialogue() {}, async choice(_prompt, options) { return options[0]; },
-  async questPopup() {}, closeDialogue() {}, skipDialogue() {}, toast() {} };
+  async questPopup() {}, closeDialogue() {}, skipDialogue() {} };
 const presentation = { begin() {}, async execute() {}, async finish() {}, async release() {} };
 const tick = () => new Promise<void>(resolve => setImmediate(resolve));
 

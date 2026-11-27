@@ -16,7 +16,6 @@ export interface StoryUI {
   dialogue(line: DialogueLine, signal?: AbortSignal): Promise<void>;
   choice(prompt: string, options: ChoiceOption[], description?: string, signal?: AbortSignal): Promise<ChoiceOption>;
   questPopup(kind: 'start' | 'complete', quest: CampaignQuest, reward?: QuestRewardReceipt, signal?: AbortSignal): Promise<void>;
-  toast(message: string): void;
   closeDialogue(): void;
   skipDialogue(): void;
 }
@@ -694,19 +693,15 @@ export class StoryDirector {
       if (entity.objective) {
         if (!this.session.canInteract(entity.objective, entity.id)) await this.dialogue({ actor: entity.actor, speaker: actor.name, text: '现在没有需要在这里完成的任务。' });
         else if (entity.afterInteractScript) await this.script(entity.afterInteractScript);
-        else this.showInteractionFeedback(this.session.interactWithFeedback(entity.objective, entity.id));
+        else this.session.interact(entity.objective, entity.id);
         return;
       }
       await this.talk(entity, actor);
       // 说完这句话交互本身就算数：进行中任务里指到这个 NPC（它的 `actor`）的对话／交互目标
       // 各记一次。中途取消或失败抛出的这一行到不了，目标不会被提前消耗。
-      this.showInteractionFeedback(this.session.interactWithFeedback(entity.actor, entity.id, entity.characterId));
+      this.session.interact(entity.actor, entity.id, entity.characterId);
       if(entity.id.startsWith('quest-target:')){this.projectionPending=true;await this.project(this.manual.signal);}
     });
-  }
-  /** 原版对象交互成功后给的屏幕提示（如号角的「破坏号角」）；只有真的推进了目标才出现。 */
-  private showInteractionFeedback(result: { feedback: string[] }): void {
-    for (const message of result.feedback) this.ui.toast(message);
   }
   /** 跟一个 NPC 说话：有任务按发布者状态走接取／交付／追进度，没有就说一句闲话。 */
   private async talk(entity: EntityPlacement, actor: ActorDefinition): Promise<void> {

@@ -120,7 +120,7 @@ test('the foot can reach a blocked edge exit from its walkable approach',()=>{
 });
 test('dialogue work serializes and always releases the input lock',async()=>{
  const session=new Session(campaign),locks: boolean[]=[];
- const ui: StoryUI={closeDialogue(){},skipDialogue(){},dialogue:async()=>{},choice:async()=>{throw new Error('unused');},questPopup:async()=>{},toast(){}};
+ const ui: StoryUI={closeDialogue(){},skipDialogue(){},dialogue:async()=>{},choice:async()=>{throw new Error('unused');},questPopup:async()=>{}};
  const director=new StoryDirector(campaign,session,ui,v=>locks.push(v));
  let release!: (value?: void | PromiseLike<void>) => void;const work=director.run(()=>new Promise(resolve=>release=resolve));
  assert.equal(await director.run(()=>{throw new Error('duplicate');}),false);

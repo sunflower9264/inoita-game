@@ -34,8 +34,6 @@ export interface QuestGoal {
   characterId?: string;
   quantity: number;
   label?: string;
-  /** 交互推进这个目标时给玩家的屏幕提示；缺省不提示。 */
-  feedbackText?: string;
 }
 /** QuestDefinition adds presentation fields to this single set of domain rules. */
 export interface QuestRules {

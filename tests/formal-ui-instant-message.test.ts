@@ -24,11 +24,14 @@ class FakeLabel {
   visible = true;
   text = '';
   readonly opacities: string[] = [];
+  readonly styles: Partial<CSSStyleDeclaration> = {};
+  position?: { x: number; y: number };
   setText(text: string): this { this.text = text; return this; }
-  setPosition(): this { return this; }
+  setPosition(x: number, y: number): this { this.position = { x, y }; return this; }
   setAnchor(): this { return this; }
   setVisible(visible: boolean): this { this.visible = visible; return this; }
   setStyle(style: Partial<CSSStyleDeclaration>): this {
+    Object.assign(this.styles, style);
     if (style.opacity !== undefined) this.opacities.push(style.opacity);
     return this;
   }
@@ -85,4 +88,51 @@ test('instant message opacity is written only when the text or alpha changes', (
   scene.domInstant = rebuilt;
   scene.update(0, 16);
   assert.deepEqual(rebuilt.opacities, ['1'], '标签重建后缓存不沿用旧节点');
+});
+
+test('instant message hides during dialogue, choices, quest popups and occlusion, and wraps cleanly above menu text', () => {
+  const { scene, ui, label } = fixture();
+  const cases: Array<[string, () => void, () => void]> = [
+    ['dialogueLine', () => { ui.dialogueLine = { text: '对白' } as never; }, () => { ui.dialogueLine = undefined; }],
+    ['choices', () => { ui.choices = { prompt: '选' } as never; }, () => { ui.choices = undefined; }],
+    ['quest', () => { ui.quest = { kind: 'start' } as never; }, () => { ui.quest = undefined; }],
+    ['loadingState', () => { ui.loadingState = { label: '加载', progress: 0 }; }, () => { ui.loadingState = undefined; }],
+    ['defeated', () => { ui.defeated = true; }, () => { ui.defeated = false; }],
+    ['suspended', () => { ui.suspended = true; }, () => { ui.suspended = false; }],
+    ['worldRebuildCover', () => { ui.worldRebuildCover = true; }, () => { ui.worldRebuildCover = false; }],
+  ];
+  for (const [name, enter, leave] of cases) {
+    scene.update(0, 16);
+    assert.equal(label.visible, true, `${name} 前应显示`);
+    enter();
+    scene.update(0, 16);
+    assert.equal(label.visible, false, `${name} 期间应隐藏屏幕提示`);
+    leave();
+    scene.update(0, 16);
+    assert.equal(label.visible, true, `${name} 结束后应恢复显示`);
+  }
+
+  const host = scene as unknown as {
+    surface: { root: { getWorldTransformMatrix: () => { tx: number; ty: number; scaleX: number; transformPoint(x: number, y: number): { x: number; y: number } } } };
+    layoutDomText(): void;
+  };
+  host.surface = { root: { getWorldTransformMatrix: () => ({ tx: 0, ty: 0, scaleX: 1, transformPoint: (x, y) => ({ x, y }) }) } };
+  const prevWindow = (globalThis as Record<string, unknown>).window;
+  const prevDoc = (globalThis as Record<string, unknown>).document;
+  (globalThis as Record<string, unknown>).window = { innerWidth: 480, innerHeight: 320 };
+  (globalThis as Record<string, unknown>).document = {
+    getElementById: (id: string) => id === 'game-frame' ? { getBoundingClientRect: () => ({ left: 0, top: 0, width: 480, height: 320 }) } : null,
+  };
+  try {
+    host.layoutDomText();
+  } finally {
+    if (prevWindow === undefined) delete (globalThis as Record<string, unknown>).window;
+    else (globalThis as Record<string, unknown>).window = prevWindow;
+    if (prevDoc === undefined) delete (globalThis as Record<string, unknown>).document;
+    else (globalThis as Record<string, unknown>).document = prevDoc;
+  }
+  assert.equal(label.styles.whiteSpace, 'pre-wrap', '长提示应在屏幕内自动换行');
+  assert.equal(label.styles.textAlign, 'center');
+  assert.equal(label.styles.maxWidth, '448px');
+  assert.equal(label.styles.zIndex, '2', '屏幕提示层应高于同层菜单正文');
 });

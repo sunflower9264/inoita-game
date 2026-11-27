@@ -157,7 +157,6 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     dialogues: [] as { speaker: string; text: string }[],
     popups: [] as PopupRecord[],
     instants: [] as string[],
-    toasts: [] as string[],
     shopsOpened: [] as string[],
     servicesOpened: [] as string[],
     eventsCompleted: [] as string[],
@@ -375,12 +374,6 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
         }
       }
     });
-  };
-
-  const rawToast = ui.toast.bind(ui);
-  ui.toast = (message: string) => {
-    log.toasts.push(message);
-    rawToast(message);
   };
 
   ui.view = {
@@ -2060,7 +2053,6 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     log.dialogues.length = 0;
     log.popups.length = 0;
     log.instants.length = 0;
-    log.toasts.length = 0;
     log.shopsOpened.length = 0;
     log.servicesOpened.length = 0;
     log.eventsCompleted.length = 0;

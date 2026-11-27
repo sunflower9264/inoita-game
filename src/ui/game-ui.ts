@@ -6,8 +6,7 @@ import { InstantMessage } from './instant-message.ts';
 import { typedIndex, typedLength, typedOffset } from '../domain/text-markup.ts';
 import type { DialoguePage } from './dialogue-text.ts';
 
-/** 提示条停留时长，以及打字机每次推进的间隔和字数。 */
-const TOAST_DURATION_MS=2600;
+/** 打字机每次推进的间隔和字数。 */
 const TYPE_INTERVAL_MS=24;
 const TYPE_CHARS_PER_INTERVAL=2;
 
@@ -52,7 +51,6 @@ export class GameUI {
   onQuestPopup?:(kind:'start'|'complete')=>void; questItemName?:(id:string)=>string;
   view?:GameUiView;
   loadingState?:{label:string;progress:number;retry?:()=>void;actionLabel?:string};
-  toastMessage=''; private toastRemaining=0;
   /** 剧情跨图静默重建期间的全屏黑幕；与会画进度条的 loadingState 分开。 */
   private rebuildCover=false;
   get worldRebuildCover():boolean{return this.rebuildCover;}
@@ -72,7 +70,7 @@ export class GameUI {
     globalThis.storyDiagnostics?.record('story-skip-backdrop',{covered});
     this.updateControls();
   }
-  /** 原版 `INSTANTMSGSYSTEM_Add` 的屏幕提示（泉水效果文本走这条），与 toast 各自独立。 */
+  /** 原版 `INSTANTMSGSYSTEM_Add` 的屏幕提示；所有非阻塞屏幕轻提示统一走这条。 */
   readonly instant=new InstantMessage();
   showInstant(message:string):void{this.instant.show(message);}
   dialogueLine?:DialogueLine;
@@ -100,7 +98,7 @@ export class GameUI {
   setMode(mode:GameMode):void{
     this.controlLayoutEditing=false;this.keyBindingEditing=false;
     this.closeDefeat();this.mode=mode;this.ready=false;this.failed=false;this.resetInput();
-    this.closeDialogue();this.cancelQuestPopup?.();this.toastMessage='';this.instant.clear();this.loadingState=undefined;
+    this.closeDialogue();this.cancelQuestPopup?.();this.instant.clear();this.loadingState=undefined;
     // 回标题、读档和换模式都兜底撤掉两种黑幕，剧情异常留下的状态不能盖住菜单。
     this.rebuildCover=false;this.skipCover=false;this.updateControls();
   }
@@ -125,7 +123,7 @@ export class GameUI {
     if(this.defeatFlow)globalThis.storyDiagnostics?.record('defeat-flow-replaced',{
       busy:this.defeatFlow.busy,hidden:!!this.defeatFlow.hidden,
       confirmation:this.defeatFlow.confirmation??null,error:this.defeatFlow.error??null});
-    this.defeatFlow={actions,busy:false};this.toastMessage='';this.loadingState=undefined;this.lock(true,'defeat');
+    this.defeatFlow={actions,busy:false};this.instant.clear();this.loadingState=undefined;this.lock(true,'defeat');
   }
   selectDefeatAction(action:DefeatAction):void {
     const flow=this.defeatFlow;if(this.suspended||!flow||flow.busy)return;
@@ -161,11 +159,9 @@ export class GameUI {
     }
   }
   closeDefeat():void {if(!this.defeatFlow)return;this.defeatFlow=undefined;this.lock(false,'defeat');}
-  toast(message:string):void{this.toastMessage=message;this.toastRemaining=TOAST_DURATION_MS;this.view?.sync(this);}
   tick(delta:number):void{
     if(this.suspended)return;
     this.instant.tick(delta);
-    if(this.toastMessage){this.toastRemaining-=delta;if(this.toastRemaining<=0){this.toastMessage='';this.view?.sync(this);}}
     if(!this.pending){this.elapsed=0;return;}
     // 进度按**打出来的字**记：控制码零宽，显式换行是排版断行，都不该让打字机停一拍。
     // 当前页的可见文字只在换页或重排后重拆一次；等待玩家点击时不重复拆分整页。

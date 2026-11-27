@@ -644,10 +644,9 @@ export function createCombatTestHarness(options: CombatTestHarnessOptions = {}) 
   };
 }
 
-export function createTestGameUi(): { showInstant(): void; toast(): void } {
+export function createTestGameUi(): { showInstant(): void } {
   return {
     showInstant() {},
-    toast() {},
   };
 }
 
