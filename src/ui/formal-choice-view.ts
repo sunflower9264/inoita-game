@@ -1,7 +1,8 @@
-import type Phaser from 'phaser';
+import type { UiSceneHost } from './dom/node.ts';
+import { surfaceScreenPoint } from './panels/modal-placement.ts';
 import type { GameUI } from './game-ui.ts';
 import type { DomUi, DomLabel } from './dom/dom-ui.ts';
-import { UiSurface, GOLD, type ScrollArea } from './phaser/widgets.ts';
+import { UiSurface, GOLD, type ScrollArea } from './widgets.ts';
 import { FONT } from './text-style.ts';
 import { layoutMarkupText, type DialogueTextLayout } from './dialogue-text.ts';
 import { layoutChoicePanel } from './choice-layout.ts';
@@ -20,7 +21,7 @@ export class FormalChoiceView {
   private choiceDom?:ChoiceDom;
   private reading?:{choices:NonNullable<GameUI['choices']>;description?:ScrollArea;list:ScrollArea};
   private measureCanvas?:HTMLCanvasElement;
-  constructor(scene:Phaser.Scene,domUi?:DomUi){this.surface=new UiSurface(scene,960,640,1000,'overlay');this.domUi=domUi;this.surface.visible(false);}
+  constructor(scene:UiSceneHost,domUi?:DomUi){this.surface=new UiSurface(scene,960,640,1000,'overlay');this.domUi=domUi;this.surface.visible(false);}
   render(choices:NonNullable<GameUI['choices']>):void{
       const previous=this.reading?.choices===choices?this.reading:undefined;
       const descriptionTop=previous?.description?.scrollTop??0,listTop=previous?.list.scrollTop??0;
@@ -106,7 +107,7 @@ export class FormalChoiceView {
   destroy():void{this.surface.destroy();this.removeChoiceDom();}
   update():void{this.updateChoiceDomScroll();}
   private surfacePoint(x:number,y:number):{x:number;y:number;scale:number}{
-    const m=this.surface.root.getWorldTransformMatrix();return{x:m.tx+x*m.scaleX,y:m.ty+y*m.scaleY,scale:m.scaleX};
+    return surfaceScreenPoint(this.surface,x,y);
   }
   /** 选项等非对白文本：用浏览器字体度量排版，保留色码换色和显式换行。 */
   private uiTextMetrics<T>(size:number,use:(measure:(text:string)=>number,lineHeight:number)=>T):T{

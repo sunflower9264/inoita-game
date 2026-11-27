@@ -3,7 +3,7 @@ import { displaySettings } from '../application/display-settings.ts';
 import { fullscreenActive, fullscreenStatus, setFullscreen } from '../application/fullscreen.ts';
 import { controlSettings, nextControlMode, type ControlMode } from '../application/control-settings.ts';
 import type { StoryUIContext } from '../application/ports.ts';
-import { GOLD, UiSurface, type ScrollArea } from './phaser/widgets.ts';
+import { GOLD, UiSurface, type ScrollArea } from './widgets.ts';
 import { MenuTextLayer, type MenuTextWriter } from './dom/menu-text.ts';
 
 const CONTROL_MODE_LABELS:Record<ControlMode,string>={stick:'虚拟摇杆',dpad:'十字按键',keyboard:'电脑模式'};
@@ -35,8 +35,7 @@ export class SettingsPage {
         audio.setVolume(key,value);
         this.host.menuText?.setText('settings',`${key}-value`,volumeText(value));
       },content);
-      // 滑条自己的 Phaser 数值文字不再显示，只留轨道、滑块和热区。
-      this.hideSliderValueText(slider);
+      void slider;
     }
     // 帧率显示和音量一样是画面/声音偏好，放在同一个面板里；默认开启。
     const fpsButton=v.button('',485,260,220,66,()=>{
@@ -143,10 +142,5 @@ export class SettingsPage {
     const keyboard=controlSettings.mode==='keyboard';
     add('control-action-label',keyboard?'键位设置':'控件位置',260,rowTop+15,25);
     add('control-action-toggle',keyboard?'修改键位':'拖动调整',595,rowTop+33,22,.5,.5);
-  }
-  private hideSliderValueText(slider:{root:UiNode}):void{
-    for(const child of slider.root.list){
-      if((child as {type?:string}).type==='Text')(child as unknown as {setVisible(value:boolean):void}).setVisible(false);
-    }
   }
 }

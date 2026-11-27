@@ -1,14 +1,14 @@
-import type Phaser from 'phaser';
 import type { FormalUiContext } from '../application/ports.ts';
 import type { GameUI } from './game-ui.ts';
-import { UiSurface, GOLD } from './phaser/widgets.ts';
-import { UiNode, UiImage, uiMount } from './dom/node.ts';
+import { UiSurface, GOLD } from './widgets.ts';
+import { UiNode, UiImage, uiMount, type UiSceneHost } from './dom/node.ts';
+import { surfaceScreenPoint } from './panels/modal-placement.ts';
 import type { DomLabel } from './dom/dom-ui.ts';
 import { frameRect } from './viewport.ts';
 
 /** 加载、阵亡和横屏提示共用互斥显示层，持有自己的节点与文字。 */
 export class FormalModalView {
-  private readonly scene:Phaser.Scene;
+  private readonly scene:UiSceneHost;
   private readonly app:FormalUiContext;
   private readonly surface:UiSurface;
   private signature='';
@@ -31,7 +31,7 @@ export class FormalModalView {
   private domDefeatCheckpoint?:DomLabel;
   private domDefeatLoad?:DomLabel;
 
-  constructor(scene:Phaser.Scene,app:FormalModalView['app']){
+  constructor(scene:UiSceneHost,app:FormalModalView['app']){
     this.scene=scene;this.app=app;this.surface=new UiSurface(scene,960,640,1000,'overlay');this.surface.visible(false);
     const domUi=app.domUi;if(domUi){
       // 加载页文字放在 overlay 层：它要活过全局遮挡开关，其余文字一律收起。
@@ -91,7 +91,7 @@ export class FormalModalView {
     for(const label of [this.domLoadingTitle,this.domLoading,this.domLoadingAction,this.domLoadingMenu,this.domPortraitIcon,this.domPortraitTitle,this.domPortraitHint,this.domDefeatTitle,this.domDefeatMessage,this.domDefeatCancel,this.domDefeatConfirm,this.domDefeatCheckpoint,this.domDefeatLoad])label?.remove();
   }
   private surfacePoint(x:number,y:number):{x:number;y:number;scale:number}{
-    const m=this.surface.root.getWorldTransformMatrix();return{x:m.tx+x*m.scaleX,y:m.ty+y*m.scaleY,scale:m.scaleX};
+    return surfaceScreenPoint(this.surface,x,y);
   }
   /** 竖屏提示改为 DOM：画布 1 倍渲染时 Phaser 文字会发虚。 */
   private syncPortraitDom(portrait:boolean):void{

@@ -11,7 +11,6 @@ import {validateCrafting} from './domain/crafting.ts';
 import type { GameMode } from './application/control-state.ts';
 import { validateStoryPerformance } from './application/story-performance-validation.ts';
 import { storyReferenceMaps, validateStoryReferences } from './application/story-reference-validation.ts';
-import { ControlsScene } from './scenes/controls-scene.ts';
 import Phaser from 'phaser';
 import { StoryApp } from './app.ts';
 import { commonAssetBatches } from './application/entry-plan.ts';
@@ -916,7 +915,6 @@ function boot(): void {
     game.events.on(UI_EVENTS.select,()=>app.audio?.ui('select'));
     game.scene.add(SCENE_KEYS.textureLoader, new TextureLoaderScene(), true);
     game.scene.add(SCENE_KEYS.audio, new AudioScene(app), true);
-    game.scene.add(SCENE_KEYS.controlsUi, new ControlsScene(), true);
     game.scene.add(SCENE_KEYS.world, new WorldScene(app), false);
     game.scene.add(SCENE_KEYS.storyStage, new StoryStageScene(app), false);
     game.scene.add(SCENE_KEYS.classSelect, new StoryClassScene(app), false);

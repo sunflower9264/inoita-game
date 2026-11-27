@@ -64,11 +64,11 @@ import { PLAYER_MOVE_SPEED, characterAnimationState, characterAssets, createChar
 import { drawMapLayers, type MapLayerHandles } from '../rendering/map-layers.ts';
 import type { CharacterVisual } from '../rendering/characters.ts';
 import { loadSceneAssets, missingSceneAssets, retainLoadedSceneAssets } from '../rendering/scene-assets.ts';
-import type { ShortcutSlot } from '../ui/phaser/action-controls.ts';
+import type { ShortcutSlot } from '../ui/hud/action-controls.ts';
 import { WorldHud } from '../ui/world-hud.ts';
 import { ShortcutBar, type ShortcutEntry } from '../domain/shortcut-bar.ts';
 import { learnedSkillIds, type SkillConfiguration } from '../domain/skill-configuration.ts';
-import type { MinimapInteraction, MinimapTask } from '../rendering/story-minimap.ts';
+import type { MinimapInteraction, MinimapTask } from '../ui/hud/story-minimap.ts';
 import type { Cooldown } from '../domain/combat.ts';
 import type { PendingAsset } from '../rendering/scene-assets.ts';
 

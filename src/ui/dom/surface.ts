@@ -1,32 +1,67 @@
-import type Phaser from 'phaser';
 import { UI_EVENTS } from '../../application/ui-events.ts';
 import { frameRect, readSafeArea } from '../viewport.ts';
 import { COMMON_BUTTON } from '../common-button.ts';
 import { domAssets } from './assets.ts';
 import { paintCommonButtonFace } from './common-button-face.ts';
-import { UiNode,UiImage,UiText,uiMount,uiPointer,type UiPointer } from './node.ts';
+import { UiNode, UiImage, UiText, measureUiTextWidth, uiMount, uiPointer, type UiPointer, type UiSceneHost } from './node.ts';
 import { VolumeSlider } from './volume-slider.ts';
 
 /** 图框边框的厚度：四条边与四个角共用同一尺寸。 */
 const FRAME_BORDER_SIZE = 24;
 
+export interface UiFocusSurface {
+  readonly buttons: readonly UiNode[];
+  readonly root: { readonly shown: boolean };
+  readonly scene: UiSceneHost;
+  focusIndex: number;
+  enabled(): boolean;
+  focus(button: UiNode): void;
+}
+
+export function surfaceFocusables(surface: Pick<UiFocusSurface, 'buttons' | 'root' | 'enabled'>): UiNode[] {
+  return surface.enabled() && surface.root.shown
+    ? surface.buttons.filter(button => button.shown && button.input?.enabled)
+    : [];
+}
+
+export function routeSurfaceKey(surface: UiFocusSurface, event: KeyboardEvent): boolean {
+  const candidates = surfaceFocusables(surface);
+  if (event.key === 'Tab' && candidates.length) {
+    event.preventDefault();
+    surface.focusIndex = surface.focusIndex < 0
+      ? (event.shiftKey ? candidates.length - 1 : 0)
+      : (surface.focusIndex + (event.shiftKey ? -1 : 1) + candidates.length) % candidates.length;
+    surface.focus(candidates[surface.focusIndex]!);
+    return true;
+  }
+  if ((event.key === 'Enter' || event.key === ' ') && surface.focusIndex >= 0 && candidates[surface.focusIndex]) {
+    const button = candidates[surface.focusIndex]!;
+    if (button.getData('guard') && !button.getData('guard')()) return true;
+    event.preventDefault();
+    surface.scene.game?.events?.emit(UI_EVENTS.select);
+    button.getData('action')();
+    return true;
+  }
+  return false;
+}
+
 export interface ScrollBarOptions {offset?:number;insetY?:number;width?:number}
 export class UiSurface {
-  readonly scene:Phaser.Scene;readonly depth:number;
+  readonly scene:UiSceneHost;readonly depth:number;
   readonly root:UiNode;readonly staticRoot:UiNode;
   get width():number{return this.root.width;}
   get height():number{return this.root.height;}
   readonly mount:HTMLElement;
   readonly scrolls:ScrollArea[]=[];readonly sliders:VolumeSlider[]=[];
-  private buttons:UiNode[]=[];private focusIndex=-1;private staticKey?:string;
+  buttons:UiNode[]=[];focusIndex=-1;private staticKey?:string;
   /** 直接铺满画框、不随弹层缩放的覆盖层；随 clear 一起销毁。 */
   private overlay?:UiNode;private overlayRelayout?:()=>void;
   enabled=()=>true;
   private cancelInput=()=>{for(const button of this.buttons)if(button.active)button.cancelPress();for(const scroll of this.scrolls)scroll.cancelGesture();};
-  constructor(scene:Phaser.Scene,width:number,height:number,depth=100,layer='screen'){
+  constructor(scene:UiSceneHost,width:number,height:number,depth=100,layer='screen'){
     this.scene=scene;this.depth=depth;
     this.mount=uiMount(scene,layer);this.root=new UiNode(scene,this.mount).setDepth(depth).setSize(width,height);this.staticRoot=new UiNode(scene,this.root);
-    scene.game.events.on(UI_EVENTS.cancelInput,this.cancelInput);
+    scene.game?.events?.on(UI_EVENTS.cancelInput,this.cancelInput);
   }
   layout(padding=12):void{
     const frame=frameRect(),safe=readSafeArea();
@@ -39,7 +74,7 @@ export class UiSurface {
   pruneDestroyed():void{this.buttons=this.buttons.filter(button=>button.active);}
   clearStatic():void{this.staticKey=undefined;this.staticRoot.removeAll(true);}
   staticLayer(key:string,draw:()=>void):void{if(this.staticKey===key)return;this.clearStatic();this.staticKey=key;draw();}
-  destroy():void{this.scene.game.events.off(UI_EVENTS.cancelInput,this.cancelInput);this.clear();this.clearStatic();this.root.destroy();}
+  destroy():void{this.scene.game?.events?.off(UI_EVENTS.cancelInput,this.cancelInput);this.clear();this.clearStatic();this.root.destroy();}
   visible(value:boolean):void{this.root.setVisible(value);this.overlay?.setVisible(value);this.scrolls.forEach(scroll=>scroll.syncVisibility());}
   /** 登记铺满画框的覆盖层；它挂在同一个 mount 上，不跟着弹层根节点缩放。 */
   setOverlay(overlay:UiNode,relayout?:()=>void):void{this.overlay?.destroy();this.overlay=overlay;this.overlayRelayout=relayout;overlay.setVisible(this.root.shown);}
@@ -48,6 +83,7 @@ export class UiSurface {
   image(file:string,x:number,y:number,width?:number,height?:number,parent=this.root):UiImage{return new UiImage(this.scene,parent).setPosition(x,y).resize(width,height).load(file);}
   imageCover(file:string,x:number,y:number,width:number,height:number,parent=this.root,anchorX=.5,anchorY=.5):UiImage{return this.image(file,x,y,width,height,parent).fitting(anchorX,anchorY);}
   imageContain(file:string,x:number,y:number,width:number,height:number,parent=this.root):UiImage{return this.image(file,x,y,width,height,parent).fitting(.5,.5,'contain');}
+  measureText(value:string,size:number):number{return measureUiTextWidth(value,size);}
   text(value:string,x:number,y:number,width=0,size=22,color='#f3deb0',parent=this.root):UiText{return new UiText(this.scene,parent,value,x,y,width,size,color);}
   rect(x:number,y:number,width:number,height:number,color=0x21190f,alpha=.95,parent=this.root):UiNode{return new UiNode(this.scene,parent).setPosition(x,y).setSize(width,height).setFillStyle(color,alpha);}
   container(x=0,y=0,parent=this.root):UiNode{return new UiNode(this.scene,parent).setPosition(x,y);}
@@ -70,7 +106,7 @@ export class UiSurface {
     result.setData('cancelPress',cancel).setData('setEnabled',(value:boolean)=>{if(value)result.setInteractive().setAlpha(1);else{cancel();result.disableInteractive().setAlpha(.4);}});
     const repeat=()=>{if(press===undefined||!allowed()){cancel();return;}held=true;action();if(result.active&&press!==undefined&&allowed())timer=setTimeout(repeat,options.hold?.intervalMs??80);};
     result.on('pointerdown',(pointer:UiPointer)=>{if(!permitted())return;cancel();press=pointer.id;highlight?.setVisible(true);if(options.hold)timer=setTimeout(repeat,options.hold.delayMs??350);});
-    result.on('pointerup',(pointer:UiPointer)=>{if(press!==pointer.id)return;const repeated=held,run=allowed();cancel();if(!repeated&&run){this.scene.game.events.emit(UI_EVENTS.select);action();}});
+    result.on('pointerup',(pointer:UiPointer)=>{if(press!==pointer.id)return;const repeated=held,run=allowed();cancel();if(!repeated&&run){this.scene.game?.events?.emit(UI_EVENTS.select);action();}});
     result.on('pointerupoutside',cancel).once('destroy',cancel);
     if(options.disabled)result.getData('setEnabled')(false);this.buttons.push(result);return result;
   }
@@ -88,9 +124,9 @@ export class UiSurface {
       if(!cached)draw(lease.source);
     }).catch(error=>{if(!controller.signal.aborted)console.error(error);});return group;
   }
-  focusables():UiNode[]{return this.enabled()&&this.root.shown?this.buttons.filter(button=>button.shown&&button.input?.enabled):[];}
+  focusables():UiNode[]{return surfaceFocusables(this);}
   focus(button:UiNode):void{for(const candidate of this.buttons)candidate.getData('highlight')?.setVisible(candidate===button||candidate.getData('selected'));this.scrolls.find(scroll=>scroll.content===button.parentContainer)?.reveal(button);}
-  key(event:KeyboardEvent):boolean{const candidates=this.focusables();if(event.key==='Tab'&&candidates.length){event.preventDefault();this.focusIndex=this.focusIndex<0?(event.shiftKey?candidates.length-1:0):(this.focusIndex+(event.shiftKey?-1:1)+candidates.length)%candidates.length;this.focus(candidates[this.focusIndex]!);return true;}if((event.key==='Enter'||event.key===' ')&&this.focusIndex>=0&&candidates[this.focusIndex]){const button=candidates[this.focusIndex]!;if(button.getData('guard')&&!button.getData('guard')())return true;event.preventDefault();this.scene.game.events.emit(UI_EVENTS.select);button.getData('action')();return true;}return false;}
+  key(event:KeyboardEvent):boolean{return routeSurfaceKey(this,event);}
   private sliced(file:string,x:number,y:number,width:number,height:number,insetX:number,insetY:number,parent=this.root):UiNode{
     const group=this.container(x,y,parent).setSize(width,height),controller=group.controller;
     const draw=(source:NonNullable<ReturnType<typeof domAssets.peek>>)=>{

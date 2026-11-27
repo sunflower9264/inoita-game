@@ -10,15 +10,15 @@
 - `session-lifecycle.ts`：统一会话装配、候选读档交接和退出；本局回调绑定会话身份与取消信号，旧局回调不能操作新局。剧情连续执行超限时，会话和世界场景把节点轨迹写入诊断记录，界面显示简短错误。读档从点击开始计量资源下载与长任务，地图可操作时写 `load-ready`（字段见 `docs/diagnostics.md`），取消或失败时停止计量。
 - `main.ts`：Phaser 游戏配置与场景注册；新会话创建共用外观池，回标题或换会话释放；开发页、部署页与 APK 接入跳过耗时摘要。
 - `game.css`：页面、画布、DOM 图片容器及其上方文字层的样式。
-- `scenes/`：地图、剧情舞台、菜单、加载、音频、操作设置、正式界面与职业选择场景，编排生命周期；`debug/`：GM 动作与调试开关；`generated/`：构建生成的图集描述。
+- `scenes/`：地图、剧情舞台、菜单、加载、音频、正式界面与职业选择场景，编排生命周期；`debug/`：GM 动作与调试开关；`generated/`：构建生成的图集描述。
 - `domain/`：内容类型、会话状态、剧情调度、通行与战斗规则。
 - `application/`：内容加载、存档、设置和浏览器能力适配。
-- `rendering/`：角色、地图、战斗和特效的绘制；`ui/`：布局与界面逻辑，`ui/dom/` 负责 DOM 绘制与输入，`ui/phaser/` 负责场景内面板与输入适配。
+- `rendering/`：角色、地图、战斗和特效的绘制；`ui/`：布局、控制器与界面逻辑，`ui/dom/`、`ui/panels/`、`ui/hud/` 负责纯 DOM 绘制、面板与 HUD 接线，`ui/phaser/` 仅保留必需的 Phaser 画布适配（职业背景、角色预览、存档缩略图）。
 
 ## 规则
 
-- 依赖方向固定：`domain` 是纯 TypeScript，不 import Phaser 和上层目录；`debug` 不 import Phaser，只允许从 `application/endpoints.ts` 取服务地址；`application` 以纯逻辑为主，Phaser 适配只在 `game-audio.ts`、`game-timing.ts`，并允许引用 `rendering`/`ui` 的纯数据与计划函数。
-- 场景只编排生命周期；世界绘制归 `rendering`，布局和状态归 `ui`，DOM 绘制与输入归 `ui/dom`，场景内面板与输入适配归 `ui/phaser`。
+- 依赖方向固定：`domain` 是纯 TypeScript，不 import Phaser 和上层目录；`debug` 不 import Phaser，只允许从 `application/endpoints.ts` 取服务地址；`application` 以纯逻辑为主，Phaser 适配只在 `game-audio.ts`、`game-timing.ts`，并允许引用 `rendering`/`ui` 的纯数据与计划函数；`ui/dom/`、`ui/panels/`、`ui/hud/` 不 import `phaser`。
+- 场景只编排生命周期；世界绘制归 `rendering`，布局和状态归 `ui`，DOM 基元与输入归 `ui/dom`，菜单面板与控件编辑器归 `ui/panels`，世界屏幕 HUD 归 `ui/hud`，画布预览与缩略图适配归 `ui/phaser`。
 - 玩法规则只在 `domain` 写一份，`application` 负责把它接到 Phaser 和浏览器。
 - 标题预载与直接进图通过同一内容准备入口取得城镇站立、行走的四向动作；这些动作跨会话复用，具体穿戴的外观按当前队伍合成。
 - 自动存档读取本局最近一次成功的截图。停止本局自动存档时，同时取消在等的截图并清空已有图片。

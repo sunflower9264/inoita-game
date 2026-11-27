@@ -319,7 +319,7 @@ story  + runId + instanceId
 
 ## 调试与 GM
 
-主要文件：`src/debug/gm-actions.ts`、`src/ui/phaser/gm-panel.ts`、`src/main.ts`
+主要文件：`src/debug/gm-actions.ts`、`src/ui/panels/gm-panel.ts`、`src/main.ts`
 
 `gm-actions.ts` 是 GM 动作的唯一实现：面板、无浏览器测试和 `globalThis.gm` 共用同一份代码。它不能 import Phaser/UI；面板只负责显示和收集点击。
 

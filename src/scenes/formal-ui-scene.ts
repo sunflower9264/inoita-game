@@ -5,12 +5,12 @@ import { createCharacter } from '../rendering/characters.ts';
 import type { GameUI, GameUiView } from '../ui/game-ui.ts';
 import type { DialoguePage } from '../ui/dialogue-text.ts';
 import { FormalUiView } from '../ui/formal-ui-view.ts';
-import { SceneUiAssets } from '../ui/phaser/ui-asset-host.ts';
+import { SceneUiAssets } from '../ui/ui-asset-host.ts';
 
 /** 正式界面场景只连接引擎生命周期、全局输入与显示组件。 */
 export class FormalUiScene extends Phaser.Scene implements GameUiView {
   private readonly app:StoryApp;
-  private readonly uiAssets=new SceneUiAssets(this);
+  private readonly uiAssets=new SceneUiAssets();
   private uiAssetsBound=false;
   private view?:FormalUiView;
   private readonly bridgeKey=(event:KeyboardEvent):void=>{this.app.inputRouter.dispatch(event);};

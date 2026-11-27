@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { registerHooks } from 'node:module';
 import { boundedHealth,buffIconBlinking,buffIconPosition,gaugeFillWidth,memberColumnLayout,memberPanelIds,targetNameAnchor,targetNameColor } from '../src/domain/status-hud.ts';
 import { parseStatusHud,parseBattle,parseCharacterStats,parseItemCatalog,parseCampaign,parseStoryClasses } from '../src/application/content-validation.ts';
 import { BattleCharacter } from '../src/domain/character-stats.ts';
@@ -245,50 +244,49 @@ test('the member column stacks below the main panel and never reaches the swap b
 });
 
 /**
- * 佣兵面板的容器登记在 Hud 的可见性表里。谁绕过 `hud.setVisible` 直接改容器，表里就停在旧值，
- * 下一次重排（切图重建、旋转、从后台回来都会走到 `Hud.refresh`）会把旧值贴回去——表现为
- * 剧情演出、对白和菜单期间本该隐藏的佣兵面板又冒出来，而且一直留到演出结束。
+ * DOM HUD 组件通过 `SceneActivity` 订阅所属场景的生命周期状态；暂停、睡眠、重排与销毁后
+ * 回调始终与 `sys.isActive()` 一致，也不会留下过期监听。
  */
 test('DOM HUD visibility follows owner pause, wake, resize and destruction', async () => {
-  let active = true, destroyed = false;
-  const events = new Map<string, { callback: () => void; context: unknown }>();
-  const controlScene = {
-    add: { layer: () => ({ add() {}, destroy() { destroyed = true; } }) },
-    scene: { bringToTop() {} }, cameras: { main: { setSize() {} } }
+  let active = true;
+  const events = new Map<string, { callback: () => void; context: unknown }[]>();
+  const emit = (name: string) => {
+    for (const row of [...(events.get(name) ?? [])]) row.callback.call(row.context);
   };
   const owner = {
-    scene: { get: () => controlScene, manager: { keys: {} } },
     sys: { isActive: () => active },
     events: {
-      on(event: string, callback: () => void, context: unknown) { events.set(event, { callback, context }); },
-      off(event: string) { events.delete(event); }
+      on(event: string, callback: () => void, context: unknown) {
+        const rows = events.get(event) ?? [];
+        rows.push({ callback, context });
+        events.set(event, rows);
+      },
+      off(event: string, callback: () => void, context: unknown) {
+        events.set(event, (events.get(event) ?? []).filter(r => r.callback !== callback || r.context !== context));
+      }
     }
   };
-  const hook = registerHooks({ resolve(specifier, context, next) {
-    return specifier === 'phaser' ? { shortCircuit: true, url: 'data:text/javascript,export default {}' } : next(specifier, context);
-  } });
-  try {
-    const { Hud } = await import('../src/rendering/hud.ts');
-    const hud = new Hud(owner as unknown as Phaser.Scene);
-    const values: boolean[] = [];
-    const unsubscribe = hud.watchVisibility(value => values.push(value));
-    assert.deepEqual(values, [true], '登记时立即应用所属场景的状态');
-    active = false;
-    const pause = events.get('pause')!; pause.callback.call(pause.context);
-    assert.equal(values.at(-1), false, '暂停场景会同时隐藏 DOM 组件');
-    hud.layout(960, 640);
-    assert.equal(values.at(-1), false, '重排不会让暂停场景的组件重新出现');
-    active = true;
-    const wake = events.get('wake')!; wake.callback.call(wake.context);
-    assert.equal(values.at(-1), true);
-    unsubscribe();
-    const count = values.length;
-    active = false; pause.callback.call(pause.context);
-    assert.equal(values.length, count, '关闭组件后不再收到场景通知');
-    const remaining: boolean[] = [];
-    hud.watchVisibility(value => remaining.push(value));
-    hud.destroy();
-    assert.equal(remaining.at(-1), false);
-    assert.equal(events.size, 0); assert.equal(destroyed, true);
-  } finally { hook.deregister(); }
+  const { SceneActivity } = await import('../src/ui/hud/scene-activity.ts');
+  const activity = new SceneActivity(owner);
+  const values: boolean[] = [];
+  const unsubscribe = activity.watchVisibility(value => values.push(value));
+  assert.deepEqual(values, [true], '登记时立即应用所属场景的状态');
+  active = false;
+  emit('pause');
+  assert.equal(values.at(-1), false, '暂停场景会同时隐藏 DOM 组件');
+  activity.layout(960, 640);
+  assert.equal(values.at(-1), false, '重排不会让暂停场景的组件重新出现');
+  active = true;
+  emit('wake');
+  assert.equal(values.at(-1), true);
+  unsubscribe();
+  const count = values.length;
+  active = false;
+  emit('pause');
+  assert.equal(values.length, count, '关闭组件后不再收到场景通知');
+  const remaining: boolean[] = [];
+  activity.watchVisibility(value => remaining.push(value));
+  activity.destroy();
+  assert.equal(remaining.at(-1), false);
+  assert.equal([...events.values()].reduce((sum, list) => sum + list.length, 0), 0);
 });

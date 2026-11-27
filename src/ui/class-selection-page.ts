@@ -7,8 +7,8 @@ import { characterAssets, createCharacter } from '../rendering/characters.ts';
 import { LiveCharacterPreview } from './phaser/live-character-preview.ts';
 import type { UiImage } from './dom/node.ts';
 import { loadSceneAssets } from '../rendering/scene-assets.ts';
-import { UiSurface, loadUiImages } from './phaser/widgets.ts';
-import type { ScrollArea } from './phaser/widgets.ts';
+import { UiSurface, loadUiImages } from './widgets.ts';
+import type { ScrollArea } from './widgets.ts';
 import type { DomLabel, DomUi } from './dom/dom-ui.ts';
 import { screenRectToCanvas } from './viewport.ts';
 
@@ -116,7 +116,7 @@ export class ClassSelectionPage {
     // 预览角色可能由角色图集页承载，也可能仍是独立长条图；用同一份加载描述取真实纹理键。
     const previewAssets=classes.flatMap(entry=>characterAssets(entry.previewActor));
     await Promise.all([
-      loadUiImages(this.scene,[...Object.values(catalog.assets),...classes.map(entry=>entry.icon),'/assets/ui/menus/close.png','/assets/ui/menus/close-pressed.png'],value=>{if(!signal.aborted)this.app.ui.loading('正在准备职业…',value);},signal).then(lease=>{if(signal.aborted){lease.release();signal.throwIfAborted();}this.releaseUi=()=>lease.release();}),
+      loadUiImages([...Object.values(catalog.assets),...classes.map(entry=>entry.icon),'/assets/ui/menus/close.png','/assets/ui/menus/close-pressed.png'],value=>{if(!signal.aborted)this.app.ui.loading('正在准备职业…',value);},signal).then(lease=>{if(signal.aborted){lease.release();signal.throwIfAborted();}this.releaseUi=()=>lease.release();}),
       loadSceneAssets(this.scene,[{kind:'image',key:`class-background:${catalog.background}`,file:catalog.background},...previewAssets],{ progress: ()=>{}, signal }).then(lease=>{if(signal.aborted){lease.release();signal.throwIfAborted();}this.releaseSceneAssets=()=>lease.release();})
     ]);
     signal.throwIfAborted();

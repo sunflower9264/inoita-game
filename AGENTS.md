@@ -98,7 +98,7 @@ src/                   游戏源码（规则见 src/AGENTS.md）
   scenes/              地图、剧情舞台与菜单（AGENTS.md）
   domain/              内容类型、会话状态、剧情调度、通行、战斗规则（AGENTS.md）
   rendering/           角色、世界、战斗与特效表现（AGENTS.md）
-  ui/                  菜单、HUD、对话与界面逻辑（AGENTS.md；dom 屏幕绘制，phaser 场景面板）
+  ui/                  菜单、HUD、对话与界面逻辑（AGENTS.md；dom/panels/hud 纯 DOM 界面，phaser 少量场景画布适配）
   debug/               GM 动作层与调试开关（AGENTS.md）
   generated/           图集常量，生成物（AGENTS.md）
 public/                运行时静态资源和内容（图集页、地图、音频、未进图集的例外图片）

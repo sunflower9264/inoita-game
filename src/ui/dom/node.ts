@@ -1,9 +1,30 @@
-import type Phaser from 'phaser';
 import { domAssets, type DomImageSource } from './assets.ts';
 import type { AssetLease } from '../../application/assets.ts';
 import { FONT } from '../text-style.ts';
 import { wrapText } from '../text-layout.ts';
 import { frameRect } from '../viewport.ts';
+
+/** 宿主场景只需提供事件监听与节点创建回调，避免 UI 原语强绑定 Phaser.Scene 类型。 */
+export interface UiSceneHost {
+  readonly events?: {
+    on(event: string, fn: (...args: any[]) => void, context?: unknown): unknown;
+    once(event: string, fn: (...args: any[]) => void, context?: unknown): unknown;
+    off(event: string, fn: (...args: any[]) => void, context?: unknown): unknown;
+  };
+  readonly scale?: {
+    once?(event: string, fn: () => void): unknown;
+    readonly width?: number;
+    readonly height?: number;
+  };
+  readonly game?: {
+    readonly events?: {
+      on(event: string, fn: (...args: any[]) => void, context?: unknown): unknown;
+      off(event: string, fn: (...args: any[]) => void, context?: unknown): unknown;
+      emit(event: string, ...args: unknown[]): unknown;
+    };
+  };
+  onNodeCreated?(node: UiNode): void;
+}
 
 /** Phaser 的数字混合模式 `BlendModes.ADD`。 */
 const ADDITIVE_BLEND_MODE = 1;
@@ -17,12 +38,12 @@ type Listener = (...args:any[])=>void;
 export interface UiMatrix { tx:number; ty:number; scaleX:number; scaleY:number; transformPoint(x:number,y:number):{x:number;y:number} }
 export interface UiBounds { x:number;y:number;width:number;height:number;contains(x:number,y:number):boolean }
 export interface UiHitArea {x:number;y:number;width:number;height:number;setSize(width:number,height:number):void}
-const mounts=new WeakMap<Phaser.Scene,Map<string,HTMLElement>>();
-const pointers=new WeakMap<Phaser.Scene,Map<number,UiPointer>>();
-const interactiveNodes=new WeakMap<Phaser.Scene,Set<UiNode>>();
+const mounts=new WeakMap<UiSceneHost,Map<string,HTMLElement>>();
+const pointers=new WeakMap<UiSceneHost,Map<number,UiPointer>>();
+const interactiveNodes=new WeakMap<UiSceneHost,Set<UiNode>>();
 
 /** 屏幕节点直接使用画框内的 CSS 坐标；图片与控件在独立文字层下方排层。 */
-export function uiMount(scene:Phaser.Scene,layer='screen'):HTMLElement {
+export function uiMount(scene:UiSceneHost,layer='screen'):HTMLElement {
   let layers=mounts.get(scene);if(!layers){layers=new Map();mounts.set(scene,layers);}
   const old=layers.get(layer);if(old)return old;
   const parent=document.getElementById(`ui-${layer}`);if(!parent)throw new Error(`DOM UI layer missing: ${layer}`);
@@ -30,32 +51,32 @@ export function uiMount(scene:Phaser.Scene,layer='screen'):HTMLElement {
   Object.assign(element.style,{position:'absolute',inset:'0',zIndex:'0',pointerEvents:'none'});
   parent.appendChild(element);layers.set(layer,element);
   const hide=()=>{element.hidden=true;for(const pointer of pointers.get(scene)?.values()??[])pointer.isDown=false;for(const node of interactiveNodes.get(scene)??[])node.cancelPress();},show=()=>{element.hidden=false;};
-  scene.events.on('pause',hide);scene.events.on('sleep',hide);scene.events.on('resume',show);scene.events.on('wake',show);
+  scene.events?.on('pause',hide);scene.events?.on('sleep',hide);scene.events?.on('resume',show);scene.events?.on('wake',show);
   const input=new AbortController();
   for(const name of ['pointermove','pointerup','pointercancel'])window.addEventListener(name,event=>uiPointer(scene,event as PointerEvent),{capture:true,signal:input.signal});
   window.addEventListener('blur',()=>{for(const pointer of pointers.get(scene)?.values()??[])pointer.isDown=false;pointers.get(scene)?.clear();
     for(const node of interactiveNodes.get(scene)??[])node.cancelPress();},{signal:input.signal});
-  scene.events.once('shutdown',()=>{input.abort();pointers.delete(scene);for(const name of ['pause','sleep'])scene.events.off(name,hide);for(const name of ['resume','wake'])scene.events.off(name,show);element.remove();layers!.delete(layer);});
+  scene.events?.once('shutdown',()=>{input.abort();pointers.delete(scene);for(const name of ['pause','sleep'])scene.events?.off(name,hide);for(const name of ['resume','wake'])scene.events?.off(name,show);element.remove();layers!.delete(layer);});
   return element;
 }
 
 // 触屏摇杆每秒会送来几十次 pointer 事件；每次量画框位置都会强制浏览器同步布局。
 // 画框位置只在窗口尺寸变化时更新，其余时候直接用缓存。
-const frameBoundsCache=new WeakMap<Phaser.Scene,{left:number;top:number;width:number;height:number}>();
-function frameBounds(scene:Phaser.Scene):{left:number;top:number;width:number;height:number}{
+const frameBoundsCache=new WeakMap<UiSceneHost,{left:number;top:number;width:number;height:number}>();
+function frameBounds(scene:UiSceneHost):{left:number;top:number;width:number;height:number}{
   let cached=frameBoundsCache.get(scene);
   if(cached)return cached;
   const rect=frameRect();
   cached={left:rect.left,top:rect.top,width:rect.width,height:rect.height};
   frameBoundsCache.set(scene,cached);
   const invalidate=():void=>{frameBoundsCache.delete(scene);};
-  scene.scale.once('resize',invalidate);
+  scene.scale?.once?.('resize',invalidate);
   window.addEventListener('resize',invalidate,{once:true,passive:true});
   window.addEventListener('scroll',invalidate,{once:true,passive:true});
   return cached;
 }
 
-export function uiPointer(scene:Phaser.Scene,event:PointerEvent):UiPointer {
+export function uiPointer(scene:UiSceneHost,event:PointerEvent):UiPointer {
   const bounds=frameBounds(scene);
   let table=pointers.get(scene);if(!table){table=new Map();pointers.set(scene,table);}
   let pointer=table.get(event.pointerId);if(!pointer){pointer={id:event.pointerId,x:0,y:0,isDown:false};table.set(event.pointerId,pointer);}
@@ -67,7 +88,7 @@ export function uiPointer(scene:Phaser.Scene,event:PointerEvent):UiPointer {
 /** 布局树只管理 DOM：局部坐标、显隐、资源和原生指针的成对清理。 */
 export class UiNode {
   readonly element:HTMLElement;
-  readonly scene:Phaser.Scene;
+  readonly scene:UiSceneHost;
   readonly list:UiNode[]=[];
   parentContainer?:UiNode;
   x=0;y=0;width=0;height=0;scaleX=1;scaleY=1;depth=0;alpha=1;active=true;visible=true;
@@ -79,7 +100,7 @@ export class UiNode {
   private press?:{id:number;x:number;y:number;startX:number;startY:number};
   private hit?:HTMLElement;
   private autoHit=false;
-  constructor(scene:Phaser.Scene,parent:UiNode|HTMLElement=uiMount(scene),tag='div') {
+  constructor(scene:UiSceneHost,parent:UiNode|HTMLElement=uiMount(scene),tag='div') {
     this.scene=scene;this.element=document.createElement(tag);
     Object.assign(this.element.style,{position:'absolute',pointerEvents:'none',transformOrigin:'0 0',touchAction:'none'});
     if(parent instanceof UiNode)parent.add(this);else parent.appendChild(this.element);
@@ -115,6 +136,7 @@ export class UiNode {
     },{signal});
     this.element.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();},{signal});
     this.paint();
+    scene.onNodeCreated?.(this);
   }
   cancelPress():void{const id=this.press?.id;this.press=undefined;if(id!==undefined&&this.element.hasPointerCapture(id))this.element.releasePointerCapture(id);this.emit('pointerupoutside');this.getData('cancelPress')?.();}
   private accepts(x:number,y:number):boolean{const input=this.input;if(!input)return false;const area=input.hitArea;return x>=area.x&&x<=area.x+area.width&&y>=area.y&&y<=area.y+area.height&&(!input.hitAreaCallback||input.hitAreaCallback(area,x,y));}
@@ -201,7 +223,7 @@ export class UiImage extends UiNode {
   private source?:DomImageSource;
   private requestedWidth?:number;private requestedHeight?:number;
   private fit?:{x:number;y:number;mode:'cover'|'contain'};
-  constructor(scene:Phaser.Scene,parent:UiNode|HTMLElement=uiMount(scene),file?:string){
+  constructor(scene:UiSceneHost,parent:UiNode|HTMLElement=uiMount(scene),file?:string){
     super(scene,parent);this.element.style.overflow='hidden';this.picture=document.createElement('img');this.picture.draggable=false;this.picture.alt='';
     Object.assign(this.picture.style,{position:'absolute',maxWidth:'none',pointerEvents:'none'});this.element.appendChild(this.picture);
     if(file)this.load(file);
@@ -234,10 +256,19 @@ export class UiImage extends UiNode {
 }
 
 let measureCanvas:HTMLCanvasElement|undefined;
+/** 纯 2D Canvas 测宽：不在文档树里临时建删 DOM 节点。 */
+export function measureUiTextWidth(text:string,size:number):number{
+  if(typeof document==='undefined')return Array.from(text).length*size;
+  const canvas=measureCanvas??=document.createElement('canvas');
+  const context=canvas.getContext('2d');
+  if(!context)return Array.from(text).length*size;
+  context.font=`${size}px ${FONT}`;
+  return context.measureText(text).width;
+}
 export class UiText extends UiNode {
   readonly context:CanvasRenderingContext2D;
   private size:number;private wrapWidth:number;private align='left';
-  constructor(scene:Phaser.Scene,parent:UiNode,value:string,x:number,y:number,width:number,size:number,color:string){
+  constructor(scene:UiSceneHost,parent:UiNode,value:string,x:number,y:number,width:number,size:number,color:string){
     super(scene,parent);this.size=size;this.wrapWidth=width;
     measureCanvas??=document.createElement('canvas');this.context=measureCanvas.getContext('2d')!;
     Object.assign(this.element.style,{fontFamily:FONT,fontSize:`${size}px`,color,whiteSpace:'pre',lineHeight:`${size+5}px`});this.setPosition(x,y);this.setText(value);

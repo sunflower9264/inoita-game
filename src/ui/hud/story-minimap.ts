@@ -1,0 +1,42 @@
+import { UI_EVENTS } from '../../application/ui-events.ts';
+import type { WorldMap } from '../../domain/content.ts';
+import type { StoryInterface } from '../../domain/story-interface.ts';
+import type { Point } from '../../domain/navigation.ts';
+import type { DomUi } from '../dom/dom-ui.ts';
+import { DomMinimap, type MinimapInteraction, type MinimapTask } from '../dom/minimap.ts';
+import { controlViewport } from '../viewport.ts';
+import type { SceneActivity } from './scene-activity.ts';
+export type { MinimapInteraction, MinimapTask } from '../dom/minimap.ts';
+
+interface MinimapOwner {
+  readonly game?: { readonly events?: { emit(event: string, ...args: unknown[]): unknown } };
+}
+
+/** 小地图的场景接线；地形、边框和标记由 DOM/SVG 绘制。 */
+export class StoryMinimap {
+  private readonly owner: MinimapOwner;
+  private readonly view: DomMinimap;
+  private readonly unwatch: () => void;
+  private active = true;
+  private requested = false;
+  constructor(owner: MinimapOwner, activity: SceneActivity, map: WorldMap, content: StoryInterface, domUi: DomUi) {
+    const parent = domUi.layer('hud');
+    if (!parent) throw new Error('小地图界面尚未就绪');
+    this.owner = owner;
+    this.view = new DomMinimap(parent, map, content.assets, error => globalThis.storyDiagnostics?.record('ui-image-error', { error }));
+    this.unwatch = activity.watchVisibility(active => { this.active = active; this.view.visible(active && this.requested); });
+    this.layout();
+  }
+  layout(): void {
+    this.view.layout(controlViewport());
+    // 小地图高度是设计页面尺寸；菜单侧边按钮挂在 UiSurface 上，用同一套页面单位。
+    this.owner.game?.events?.emit(UI_EVENTS.minimapLayout, this.view.height);
+  }
+  extent(): { x: number; y: number; width: number; height: number } { return this.view.extent(); }
+  updatePlayer(point: Point): void { this.view.updatePlayer(point); }
+  updateTasks(tasks: MinimapTask[]): void { this.view.updateTasks(tasks); }
+  updateEnemies(enemies: (Point & { id: string })[]): void { this.view.updateEnemies(enemies); }
+  updateInteractions(interactions: MinimapInteraction[]): void { this.view.updateInteractions(interactions); }
+  setVisible(visible: boolean): void { this.requested = visible; this.view.visible(visible && this.active); }
+  destroy(): void { this.unwatch(); this.view.destroy(); }
+}

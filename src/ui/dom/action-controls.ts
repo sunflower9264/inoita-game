@@ -1,9 +1,8 @@
-import type { ActionControlsHandlers } from '../../rendering/action-controls.ts';
 import type { ControlSkin } from '../../domain/control-skin.ts';
 import type { Cooldown } from '../../domain/combat.ts';
 import { SHORTCUT_SLOT_COUNT } from '../../domain/shortcut-bar.ts';
 import { CONTROL_SIZES, resolveControlLayout, type ControlViewport, type ControlLayoutOverrides, type ControlId } from '../control-layout.ts';
-import { SLOT_ICON_SIZE, ITEM_ICON_SIZE, type ShortcutSlot } from '../shortcut-view.ts';
+import { SLOT_ICON_SIZE, ITEM_ICON_SIZE, type ActionControlsHandlers, type ShortcutSlot } from '../shortcut-view.ts';
 import { ActionPressGate } from '../action-press-gate.ts';
 import { domAssets, type DomAssets } from './assets.ts';
 import { DomButton, DomComponent, DomImage } from './components.ts';

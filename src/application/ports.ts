@@ -116,7 +116,7 @@ export interface StoryUIContext {
   readonly content: Pick<ContentLoader,'shopEquipment'>;
   readonly controlLayout:ControlLayoutPreferences;
   readonly keyBindings:KeyBindingPreferences;
-  captureControlPreview?:()=>readonly import('../ui/phaser/action-controls.ts').ShortcutSlot[];
+  captureControlPreview?:()=>readonly import('../ui/hud/action-controls.ts').ShortcutSlot[];
   resumeSlot?:(slot:import('../domain/save-game.ts').SaveSlotRef,signal?:AbortSignal)=>Promise<void>;
   /** 文本输入：默认弹系统键盘输入框；测试注入一个直接返回内容的实现。 */
   promptText?: (initial:string)=>Promise<string|undefined>;

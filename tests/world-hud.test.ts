@@ -8,9 +8,9 @@ const instances = new Map<string, Fake[]>();
 Reflect.set(globalThis, '__worldHudInstances', instances);
 test.after(() => Reflect.deleteProperty(globalThis, '__worldHudInstances'));
 const fakeModules = new Map([
-  ['../rendering/hud.ts','Hud'], ['../rendering/name-banner.ts','NameBanner'], ['../rendering/story-minimap.ts','StoryMinimap'],
-  ['./phaser/status-hud.ts','StatusHud'], ['./phaser/move-stick.ts','MoveStick'], ['./phaser/action-controls.ts','ActionControls'],
-  ['./phaser/computer-skill-hud.ts','ComputerSkillHud'], ['./phaser/keyboard-actions.ts','KeyboardActions']
+  ['./hud/name-banner.ts','NameBanner'], ['./hud/story-minimap.ts','StoryMinimap'],
+  ['./hud/status-hud.ts','StatusHud'], ['./hud/move-stick.ts','MoveStick'], ['./hud/action-controls.ts','ActionControls'],
+  ['./hud/computer-skill-hud.ts','ComputerSkillHud'], ['./hud/keyboard-actions.ts','KeyboardActions']
 ]);
 const hooks = registerHooks({resolve(specifier, context, next) {
   const name = context.parentURL?.endsWith('/src/ui/world-hud.ts') ? fakeModules.get(specifier) : undefined;
@@ -33,7 +33,7 @@ hooks.deregister();
 const latest=(name:string)=>instances.get(name)!.at(-1)!;
 function fixture() {
   instances.clear();
-  const owner={game:{loop:{frame:0}}};
+  const owner={sys:{isActive:()=>true},events:{on(){},off(){}},game:{loop:{frame:0}}};
   let active=true, called=0;
   const oldPlayer={health:11},newPlayer={health:99};
   const oldSession={player:oldPlayer,combatTick:7,subscribe:()=>()=>{},party:{activeSnapshot:()=>({old:true}),get:()=>undefined}};

@@ -6,7 +6,7 @@
 
 ```
 src/debug/gm-actions.ts      唯一实现（只依赖纯逻辑模块，不引入 Phaser/UI）
-  ├── src/ui/phaser/gm-panel.ts  人：游戏内「系统 → 调试」面板（触摸）
+  ├── src/ui/panels/gm-panel.ts  人：游戏内「系统 → 调试」面板（触摸）
   └── globalThis.gm          agent：浏览器里经 CDP 驱动
 ```
 

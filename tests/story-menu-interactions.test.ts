@@ -29,12 +29,12 @@ import type { StoryInterface } from '../src/domain/story-interface.ts';
 import { ControlLayoutPreferences, CONTROL_IDS, CONTROL_SIZES, HUD_SIDE_BUTTON_SIZE, resolveControlLayout, type ControlId } from '../src/ui/control-layout.ts';
 import { KeyBindingPreferences } from '../src/application/key-bindings.ts';
 import { controlSettings } from '../src/application/control-settings.ts';
-import { controlViewport } from '../src/ui/phaser/control-layout-viewport.ts';
+import { controlViewport } from '../src/ui/viewport.ts';
 import { GameUI } from '../src/ui/game-ui.ts';
-import type { ScrollArea, UiSurface } from '../src/ui/phaser/widgets.ts';
+import type { ScrollArea, UiSurface } from '../src/ui/widgets.ts';
 import { COMMON_BUTTON, COMMON_BUTTON_IMAGES } from '../src/ui/common-button.ts';
 import { createGmActions } from '../src/debug/gm-actions.ts';
-import type { ForgePanel } from '../src/ui/phaser/forge-panel.ts';
+import type { ForgePanel } from '../src/ui/panels/forge-panel.ts';
 import { InputRouter } from '../src/application/input-router.ts';
 
 // DOM 节点、原生事件、菜单、输入锁和交易运行真实代码；只替换浏览器环境。
@@ -72,14 +72,7 @@ type Display = UiNode & { readonly text?: string };
 const { StoryUI } = await import('../src/ui/story-ui.ts');
 after(installMenuDom());
 const preloaded = await domAssets.preloadFiles([...Object.keys(UI_ATLAS_FRAMES), ...Object.keys(UI_ICON_FRAMES), ...COMMON_BUTTON_IMAGES], new AbortController().signal, ()=>{});
-const positionNode=UiNode.prototype.setPosition;
-UiNode.prototype.setPosition=function(x:number,y:number){
-  const scene=this.scene as unknown as MenuScene;
-  if(scene.nodes&&!scene.nodes.includes(this as unknown as Display))scene.nodes.push(this as unknown as Display);
-  return positionNode.call(this,x,y);
-};
-const depthNode=UiNode.prototype.setDepth;UiNode.prototype.setDepth=function(depth:number){positionNode.call(this,this.x,this.y);const scene=this.scene as unknown as MenuScene;if(scene.nodes&&!scene.nodes.includes(this as unknown as Display))scene.nodes.push(this as unknown as Display);return depthNode.call(this,depth);};
-after(()=>{preloaded.release();UiNode.prototype.setPosition=positionNode;UiNode.prototype.setDepth=depthNode;});
+after(()=>{preloaded.release();});
 
 // Drawn objects remain inspectable, but only live, visible objects are returned.
 // click() executes the production UiSurface hit callback and pointer handlers.
@@ -87,6 +80,10 @@ class MenuScene {
   /** 键盘事件由测试桥接给全局 router；生产里由正式界面场景做同一件事。 */
   router?: InputRouter;
   readonly nodes: Display[] = [];
+  onNodeCreated(node: UiNode): void {
+    const display = node as Display;
+    if (!this.nodes.includes(display)) this.nodes.push(display);
+  }
   readonly events = new Events();
   readonly scale = Object.assign(new Events(), { width: 1024, height: 640 });
   readonly input = Object.assign(new Events(), { keyboard: new Events(), activePointer: { id: 1, x: 0, y: 0, isDown: false }, setDragState: () => {} });

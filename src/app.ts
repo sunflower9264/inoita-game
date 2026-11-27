@@ -70,7 +70,7 @@ export class StoryApp {
   gmSpeedMultiplier = 1;
   /** 剧情跳转事务进行中暂停自动存档；交接后恢复并补写一次。 */
   storyJumpActive = false;
-  captureControlPreview?:()=>readonly import('./ui/phaser/action-controls.ts').ShortcutSlot[];
+  captureControlPreview?:()=>readonly import('./ui/hud/action-controls.ts').ShortcutSlot[];
   readonly checkpoint = new SessionCheckpoint<StoryWorldViewSnapshot>();
   /** 三个存档槽的持久化。标题页与游戏内菜单读的是同一份，键在 `domain/save-game.ts`。 */
   readonly saves = new SaveSlots<StoryWorldViewSnapshot>();
@@ -121,7 +121,7 @@ export class StoryApp {
   menuPanels!: MenuPanels;
   storyClasses!: StoryClassCatalog;
   /** 当前界面场景持有的菜单图片租约账。 */
-  uiAssets?: import('./ui/phaser/ui-asset-host.ts').UiAssetHost;
+  uiAssets?: import('./ui/ui-asset-host.ts').UiAssetHost;
   startStory?: (classId: string) => void;
   prefetchStory?: () => void;
   /** 标题页后台预载与存档无关的公共素材；不阻塞菜单。 */

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {registerHooks} from 'node:module';
 import test from 'node:test';
-import type {ShortcutSlot} from '../src/ui/phaser/action-controls.ts';
+import type {ShortcutSlot} from '../src/ui/hud/action-controls.ts';
 import {controlSettings} from '../src/application/control-settings.ts';
 
 const phaser=registerHooks({resolve(specifier,context,next){
@@ -19,14 +19,14 @@ function fixture(){
   const visible=(name:string)=>({setVisible:(value:boolean)=>{visibility[name]=value;}});
   const state={sys:{isActive:()=>true},loadingWorld:false,near:null,chestFades:new Map(),
     app:{locked:true,suspended:false,ui:{ready:true,controlLayoutEditing:true},session:{combatTick:0}},
-    worldHud:Object.assign(Object.create(WorldHud.prototype),{
+    worldHud:Object.assign(new WorldHud({sys:{isActive:()=>true},events:{on(){},off(){}},game:{loop:{frame:0}}} as never),{
       active:()=>true,
       stick:{...visible('stick'),reset:()=>calls.push('stick-reset')},
       controls:{...visible('controls'),setAttack:()=>{},snapshot:()=>preview,resetInput:()=>calls.push('controls-reset')},
       skillHud:visible('skillHud'),
       mapView:visible('minimap'),statusHud:{...visible('status'),update:()=>{},setTarget:()=>{}},
       nameBanner:{sync:(value:boolean)=>{visibility.banner=value;}}
-    }),
+    }) as never,
     overheadStatus:visible('overhead'),
     refreshCombatTarget:()=>{},
     combat:{hasHostileTarget:()=>false,setPaused:(value:boolean)=>calls.push(`paused:${value}`),

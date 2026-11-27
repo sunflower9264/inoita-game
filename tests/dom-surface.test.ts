@@ -4,13 +4,13 @@ import { EventEmitter } from 'node:events';
 import { readFileSync } from 'node:fs';
 import type Phaser from 'phaser';
 import { UiNode, UiImage, uiMount } from '../src/ui/dom/node.ts';
-import { QuestPopup } from '../src/ui/phaser/quest-popup.ts';
+import { QuestPopup } from '../src/ui/panels/quest-popup.ts';
 import type { GameUI } from '../src/ui/game-ui.ts';
 import { UiSurface } from '../src/ui/dom/surface.ts';
 import { LiveCharacterPreview } from '../src/ui/phaser/live-character-preview.ts';
 import { characterAtlasPageKeys } from '../src/rendering/character-atlas.ts';
 import { domAssets } from '../src/ui/dom/assets.ts';
-import { SceneUiAssets } from '../src/ui/phaser/ui-asset-host.ts';
+import { SceneUiAssets } from '../src/ui/ui-asset-host.ts';
 import type { ActorDefinition } from '../src/domain/content.ts';
 import { installMenuDom, domEvent, domWindow, MenuElement } from './support/menu-dom.ts';
 
@@ -182,7 +182,7 @@ test('live character preview reuses the visual and tracks menu layout and visibi
 test('menu preloads share caller cancellation and release the retained DOM images',async t=>{
   const f=fixture();t.after(f.cleanup);const request=new AbortController();let signal:AbortSignal|undefined,released=0;
   t.mock.method(domAssets,'preloadFiles',async(_files:readonly string[],input:AbortSignal)=>{signal=input;input.throwIfAborted();return {release:()=>released++};});
-  const host=new SceneUiAssets(f.scene);await host.preloadFiles(['portrait.png'],request.signal,()=>{});
+  const host=new SceneUiAssets();await host.preloadFiles(['portrait.png'],request.signal,()=>{});
   assert.equal(signal,request.signal);host.releaseContent();host.releaseContent();assert.equal(released,1);
   request.abort();await assert.rejects(host.preloadFiles(['portrait.png'],request.signal,()=>{}),{name:'AbortError'});
 });
@@ -190,7 +190,7 @@ test('menu preloads share caller cancellation and release the retained DOM image
 test('resident menu images survive content release and are loaded once',async t=>{
   const f=fixture();t.after(f.cleanup);let calls=0,releases=0;
   t.mock.method(domAssets,'preloadFiles',async()=>{calls+=1;return {release:()=>releases++};});
-  const host=new SceneUiAssets(f.scene),signal=new AbortController().signal;
+  const host=new SceneUiAssets(),signal=new AbortController().signal;
   await host.preloadResident(['menu-frame.png'],signal,()=>{});
   await host.preloadResident(['/menu-frame.png'],signal,()=>{});
   assert.equal(calls,1,'同一张常驻图只加载一次');
@@ -201,7 +201,7 @@ test('resident menu images survive content release and are loaded once',async t=
 test('resident menu images are acquired again after the original request is cancelled',async t=>{
   const f=fixture();t.after(f.cleanup);const batches:string[][]=[];
   t.mock.method(domAssets,'preloadFiles',async(files:readonly string[])=>{batches.push([...files]);return {release:()=>{}};});
-  const host=new SceneUiAssets(f.scene),first=new AbortController(),second=new AbortController();
+  const host=new SceneUiAssets(),first=new AbortController(),second=new AbortController();
   await host.preloadResident(['menu-frame.png'],first.signal,()=>{});
   first.abort();
   await host.preloadResident(['menu-frame.png'],second.signal,()=>{});
@@ -213,7 +213,7 @@ test('resident menu images are acquired again after the original request is canc
 test('cancelled resident batches release their retained records',async t=>{
   const f=fixture();t.after(f.cleanup);let releases=0;
   t.mock.method(domAssets,'preloadFiles',async()=>({release:()=>releases++}));
-  const host=new SceneUiAssets(f.scene);
+  const host=new SceneUiAssets();
   for(let i=0;i<10;i++){
     const request=new AbortController();
     await host.preloadResident(['menu-frame.png'],request.signal,()=>{});
@@ -229,7 +229,7 @@ test('resident images remain owned by the new session after the old session ends
   t.mock.method(domAssets,'preloadFiles',async(_files:readonly string[],signal:AbortSignal)=>{
     active.add(signal);return {release:()=>active.delete(signal)};
   });
-  const host=new SceneUiAssets(f.scene),oldSession=new AbortController(),newSession=new AbortController();
+  const host=new SceneUiAssets(),oldSession=new AbortController(),newSession=new AbortController();
   await host.preloadResident(['menu-frame.png'],oldSession.signal,()=>{});
   await host.preloadResident(['menu-frame.png'],newSession.signal,()=>{});
   oldSession.abort();

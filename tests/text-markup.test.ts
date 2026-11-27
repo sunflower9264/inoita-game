@@ -5,7 +5,7 @@ import { textRuns, typedIndex, typedLength, typedOffset, visibleIndex, TEXT_COLO
 import { layoutMarkupText } from '../src/ui/dialogue-text.ts';
 import { plainText } from './support/story-fixtures.ts';
 
-/** 选项面板的基础色（`src/ui/phaser/widgets.ts` 的 GOLD），$B 回到这里。 */
+/** 选项面板的基础色（`src/ui/widgets.ts` 的 GOLD），$B 回到这里。 */
 const CHOICE_GOLD = '#f3deb0';
 const measure = (value: string): number => Array.from(value).length * 10;
 

@@ -67,7 +67,7 @@ export function installMenuDom() {
   const previous=names.map(name=>Object.getOwnPropertyDescriptor(globalThis,name));
   Object.defineProperties(globalThis,{
     window:{configurable:true,value:domWindow},
-    document:{configurable:true,value:{documentElement:documentRoot,body:documentRoot,createElement:()=>new MenuElement(),createElementNS:()=>new MenuElement(),getElementById:(id:string)=>layers.get(id),addEventListener:documentRoot.addEventListener.bind(documentRoot),removeEventListener:documentRoot.removeEventListener.bind(documentRoot)}},
+    document:{configurable:true,value:{documentElement:documentRoot,body:documentRoot,createElement:()=>new MenuElement(),createElementNS:()=>new MenuElement(),getElementById:(id:string)=>layers.get(id),addEventListener:documentRoot.addEventListener.bind(documentRoot),removeEventListener:documentRoot.removeEventListener.bind(documentRoot),dispatchEvent:documentRoot.dispatchEvent.bind(documentRoot)}},
     getComputedStyle:{configurable:true,value:()=>({paddingLeft:'0',paddingRight:'0',paddingTop:'0',paddingBottom:'0'})},
     Image:{configurable:true,value:class {onload?:()=>void;onerror?:()=>void;naturalWidth=0;naturalHeight=0;removeAttribute(){};set src(url:string){if(!url)return;const bytes=readFileSync(new URL(`../../public/${url.split('?')[0].replace(/^\//,'')}`,import.meta.url));this.naturalWidth=bytes.readUInt32BE(16);this.naturalHeight=bytes.readUInt32BE(20);queueMicrotask(()=>this.onload?.());}}},
     fetch:{configurable:true,value:async(url:string)=>({ok:true,json:async()=>JSON.parse(readFileSync(new URL(`../../public/${url.split('?')[0].replace(/^\//,'')}`,import.meta.url),'utf8'))})}

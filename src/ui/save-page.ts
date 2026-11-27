@@ -7,10 +7,10 @@ import type { WorldIndex } from '../domain/content.ts';
 import type { StoryUIContext } from '../application/ports.ts';
 import {captureSessionSave} from '../application/saved-game.ts';
 import type { SaveWorldReason, StoryWorldViewSnapshot } from '../application/world-snapshot.ts';
-import { SAVE_BOARD, SAVE_BOARD_LAYOUT, SaveBoardList, drawSaveBoardRow, emitSaveBoardTexts, newestFirstSlots, saveBoardOrigin, saveRowTitle, type SaveBoardRow, type SaveBoardTextSpec } from './phaser/save-board.ts';
-import { drawNativeMessage, type NativeMessageBand } from './phaser/native-message.ts';
-import { MENU_CANVAS_HEIGHT, MENU_CANVAS_WIDTH } from './phaser/modal-placement.ts';
-import type { ScrollArea, UiSurface } from './phaser/widgets.ts';
+import { SAVE_BOARD, SAVE_BOARD_LAYOUT, SaveBoardList, drawSaveBoardRow, newestFirstSlots, saveBoardOrigin, saveRowTitle, type SaveBoardRow, type SaveBoardTextSink, type SaveBoardTextSpec } from './panels/save-board.ts';
+import { drawNativeMessage, type NativeMessageBand } from './panels/native-message.ts';
+import { MENU_CANVAS_HEIGHT, MENU_CANVAS_WIDTH } from './panels/modal-placement.ts';
+import { GOLD, UiSurface, type ScrollArea } from './widgets.ts';
 import type { MenuTextWriter } from './dom/menu-text.ts';
 import {SaveSlotRename} from './save-slot-rename.ts';
 
@@ -96,18 +96,21 @@ export class SavePage {
     return this.slotRename.active;
   }
 
-  render(view: UiSurface, loading: boolean): void {
+  render(view: UiSurface, loading: boolean, sink?: SaveBoardTextSink): void {
     const app = this.host.app;
-    view.text(loading ? '读取存档' : '存档槽', 512, 16, 0, 28).setOrigin(.5, 0);
+    const title = loading ? '读取存档' : '存档槽';
+    if (sink) sink.add({ key: 'title', text: title, x: 512, y: 16, size: 28, color: GOLD, anchorX: 0.5, anchorY: 0 });
+    else view.text(title, 512, 16, 0, 28).setOrigin(.5, 0);
     const content = this.host.contentAssets();
     const assets = { frame: content['save-slot'], empty: content['save-empty'] };
     const origin = saveBoardOrigin(view.width);
     // 自动存档固定一行置顶：读档页可读，存档页只展示；永远没有改名与删除。
-    drawSaveBoardRow(view, assets, origin, SAVE_BOARD_LAYOUT.autoTop, this.saveRow(AUTO_SAVE_SLOT, loading));
+    drawSaveBoardRow(view, assets, origin, SAVE_BOARD_LAYOUT.autoTop, this.saveRow(AUTO_SAVE_SLOT, loading), undefined, sink);
     // 十个手动槽放进滚动区；按写入时间倒序，最新的排最前，空槽排在后面。
     const scroll = this.host.scroll('slots', origin.x, SAVE_BOARD_LAYOUT.listTop, SAVE_BOARD.panelWidth, SAVE_BOARD_LAYOUT.listHeight, view);
     this.board=new SaveBoardList(view,scroll,assets,slot=>this.saveRow(slot,loading));
-    emitSaveBoardTexts(view,this.board.render(newestFirstSlots(slot=>app.saves.peek(slot))));
+    const specs=this.board.render(newestFirstSlots(slot=>app.saves.peek(slot)));
+    if(sink)for(const spec of specs)sink.add(spec);
     this.host.finishScroll('slots', scroll, (MANUAL_SAVE_SLOT_COUNT - 1) * SAVE_BOARD.rowStep + SAVE_BOARD.frameHeight);
   }
 

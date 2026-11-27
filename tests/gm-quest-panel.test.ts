@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import test, { after } from 'node:test';
-import type Phaser from 'phaser';
 import { domWindow, installMenuDom, type MenuElement } from './support/menu-dom.ts';
 import type { Campaign, CampaignQuest } from '../src/domain/campaign.ts';
 import type { QuestGroupDefinition, QuestStatus } from '../src/domain/content.ts';
@@ -12,8 +11,8 @@ import type { MenuTextSpec } from '../src/ui/dom/menu-text.ts';
 import { UiNode } from '../src/ui/dom/node.ts';
 import { domAssets } from '../src/ui/dom/assets.ts';
 import { COMMON_BUTTON_IMAGES } from '../src/ui/common-button.ts';
-import { UiSurface } from '../src/ui/phaser/widgets.ts';
-import { GmPanel } from '../src/ui/phaser/gm-panel.ts';
+import { UiSurface } from '../src/ui/widgets.ts';
+import { GmPanel } from '../src/ui/panels/gm-panel.ts';
 
 /** 只保留菜单节点真正用到的 Phaser 边界：事件、画框尺寸和画布矩形。 */
 class Events {
@@ -44,6 +43,7 @@ class Events {
 }
 
 class MenuScene {
+  readonly nodes: UiNode[] = [];
   readonly events = new Events();
   readonly scale = Object.assign(new Events(), { width: 1024, height: 640 });
   readonly game = {
@@ -51,6 +51,10 @@ class MenuScene {
     canvas: { getBoundingClientRect: () => ({ x: 0, y: 0, left: 0, top: 0, width: 1024, height: 640 }) },
   };
   readonly textures = { exists: () => false };
+  onNodeCreated(node: UiNode): void {
+    created.push(node);
+    this.nodes.push(node);
+  }
 }
 
 const cleanupDom = installMenuDom();
@@ -87,12 +91,6 @@ after(() => preloaded.release());
 
 /** 记录所有创建过的 DOM 节点，按钮标签和顺序都从这份名单里找。 */
 const created: UiNode[] = [];
-const setPosition = UiNode.prototype.setPosition;
-UiNode.prototype.setPosition = function (x: number, y: number) {
-  if (!created.includes(this)) created.push(this);
-  return setPosition.call(this, x, y);
-};
-after(() => { UiNode.prototype.setPosition = setPosition; });
 
 const quest = (id: string, title: string): CampaignQuest => ({
   id, title, description: `${title}的说明`, completion: 'story',
@@ -203,7 +201,7 @@ function fixture(options: { unsatisfied?: boolean; ready?: boolean; scrollGroups
   }
 
   const scene = new MenuScene();
-  const body = new UiSurface(scene as unknown as Phaser.Scene, 960, 480);
+  const body = new UiSurface(scene, 960, 480);
   let specs: MenuTextSpec[] = [];
   const writer = { add: (spec: MenuTextSpec) => { specs.push(spec); } };
   let panel: GmPanel;

@@ -4,17 +4,17 @@
 
 ## 文件
 
-- 角色/移动：`characters.ts`、`arcade-movement.ts`、`movement-world.ts`、`movement-interpolation.ts`、`character-visibility.ts`、`name-banner.ts`、`control-skin.ts`、`depths.ts`。
-- 地图/资源：`map-layers.ts`、`map-assets.ts`、`prop-atlas.ts`、`scene-assets.ts`、`character-atlas.ts`、`story-map-view.ts`、`story-minimap.ts`。
+- 角色/移动：`characters.ts`、`arcade-movement.ts`、`movement-world.ts`、`movement-interpolation.ts`、`character-visibility.ts`、`control-skin.ts`、`depths.ts`。
+- 地图/资源：`map-layers.ts`、`map-assets.ts`、`prop-atlas.ts`、`scene-assets.ts`、`character-atlas.ts`、`story-map-view.ts`。
 - 资源所有权：`appearance-ownership.ts`、`texture-lifecycle.ts`。
 - 战斗表现：`combat-presenter.ts`、`combat-effects.ts`、`combat-feedback.ts`、`combat-outcomes.ts`、`combat-assets.ts`、`combat-asset-descriptors.ts`、`resident-combat-assets.ts`、`combat-status-visuals.ts`、`combat-visual-coverage.ts`、`buff-loop-renderer.ts`、`state-markers.ts`、`status-color.ts`、`status-hud.ts`、`overhead-status.ts`、`target-focus.ts`、`target-focus-assets.ts`、`target-focus-pulse.ts`（`combat-status-visuals.ts` 的 `CombatStatusVisuals` 承担目标焦点脉冲、敌人点击矩形 `enemyTapRect`、头顶状态条目、Buff 持续特效与状态标记的帧同步）。
-- 剧情/HUD/其他：`story-presenter.ts`、`hud.ts`、`action-controls.ts`、`ground-loot.ts`、`pickup-messages.ts`、`quest-marker.ts`、`wardrobe.ts`、`outfit-pool.ts`、`composition-budget.ts`、`wardrobe-cache.ts`、`effects.ts`、`effect-animations.ts`、`effect-colors.ts`、`blend-modes.ts`、`webgl-recovery.ts`。
+- 剧情/其他：`story-presenter.ts`、`ground-loot.ts`、`pickup-messages.ts`、`quest-marker.ts`、`wardrobe.ts`、`outfit-pool.ts`、`composition-budget.ts`、`wardrobe-cache.ts`、`effects.ts`、`effect-animations.ts`、`effect-colors.ts`、`blend-modes.ts`、`webgl-recovery.ts`。
 
 ## 规则
 
 - 剧情更换外观时，正常播放和跳过都刷新主角、队员和剧情刚指定外观的人物。场景快照中其余人物的外观继续沿用。
-- 本目录读取 `domain` 状态并绘制，规则变化和存档写入留在 `domain` 与 `application`。DOM 覆盖层（小地图、名称条、拾取提示）允许依赖 `ui/dom`、`ui/viewport` 与 `ui/phaser/control-layout-viewport.ts`，这是现有例外，不扩大。
-- `Hud.watchVisibility` 将所属场景的暂停、睡眠与恢复状态传给 DOM 状态栏；组件关闭时注销监听，场景销毁时统一隐藏。
+- 本目录读取 `domain` 状态并绘制，规则变化和存档写入留在 `domain` 与 `application`。DOM 拾取提示（`pickup-messages.ts`）允许依赖 `ui/dom` 与 `ui/viewport`，这是现有例外，不扩大。
+- 屏幕 HUD 的场景暂停、睡眠与恢复状态同步由 `ui/hud/scene-activity.ts`（`SceneActivity`）承接，`WorldHud` 统一装配并清理。
 - 拾取提示是画布外的 DOM 元素，每帧按当前镜头投影定位。
 - **脚下选中圈常驻。** `TargetFocus` 的绿圈跟当前受控角色，红圈优先跟该角色的动作/选中目标；移动清掉选择后回退到队友正在打的目标，最后退到队伍集火目标，佣兵继续攻击时圈不会消失。换目标后按原版 17 帧（30fps，约 567ms）做 80%..130% 缩放脉冲，之后常亮；脉冲按真实耗时推进，120/144Hz 屏不会播得更快。位置用 `displayPosition` 的脚点，深度取 `y - 0.5`，画在角色脚下；两张 24×18 小图不进 UI 图集，按原始路径走公共常驻包，切图与战斗结束都不释放。
 - **头顶任务图标画在独立高深度层。** `quest-marker.ts` 的 `QuestMarker` 是世界场景自己的图片，深度 `10001`，高于树冠 `10000` 和前景物件；位置由 `WorldScene` 只对有标记的角色更新，舞台遮挡和人物显隐同步到图标。只有任务状态变化时换图，不逐帧扫全图。三张状态图进共享入口素材，小地图那份 DOM 图片另由资源池持有。

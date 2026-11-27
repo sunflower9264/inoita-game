@@ -1,7 +1,7 @@
 /**
  * GM（调试）动作层——**三种消费者共用的唯一实现**：
  *
- * - 游戏内面板（`ui/phaser/gm-panel.ts`）：人用手指点；
+ * - 游戏内面板（`ui/panels/gm-panel.ts`）：人用手指点；
  * - `work/tools/gm.mjs`：agent 在没有浏览器的进程里跑真实内容；
  * - `globalThis.gm`：agent 在浏览器里经 CDP 驱动。
  *

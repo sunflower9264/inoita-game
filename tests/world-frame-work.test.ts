@@ -11,7 +11,7 @@ import {SkillConfiguration} from '../src/domain/skill-configuration.ts';
 import {CompanionSkillProgression} from '../src/domain/companion-progression.ts';
 import {SCENE_KEYS} from '../src/application/scene-keys.ts';
 import {groundLootFor} from '../src/domain/ground-loot.ts';
-import type {ShortcutSlot} from '../src/ui/phaser/action-controls.ts';
+import type {ShortcutSlot} from '../src/ui/hud/action-controls.ts';
 
 const hook=registerHooks({resolve(specifier,context,next){return specifier==='phaser'
   ?{url:'data:text/javascript,export default {BlendModes:{},Scene:class{},Physics:{Arcade:{Body:class{}}}}',shortCircuit:true}

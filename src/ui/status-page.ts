@@ -17,12 +17,12 @@ import type { CompanionMember } from '../domain/party.ts';
 
 import { NumberPrompt } from './number-prompt.ts';
 
-import { GOLD, UiSurface } from './phaser/widgets.ts';
+import { GOLD, UiSurface } from './widgets.ts';
 import { MenuTextLayer, type MenuTextSpec, type MenuTextWriter } from './dom/menu-text.ts';
 
-import { drawRoundBand } from './phaser/round-band.ts';
-import { drawSolidBorder } from './phaser/solid-border.ts';
-import { MENU_FRAME_MODAL_HEIGHT, MENU_FRAME_MODAL_WIDTH } from './phaser/modal-placement.ts';
+import { drawRoundBand } from './panels/round-band.ts';
+import { drawSolidBorder } from './panels/solid-border.ts';
+import { MENU_FRAME_MODAL_HEIGHT, MENU_FRAME_MODAL_WIDTH } from './panels/modal-placement.ts';
 
 import { TEXT_COLORS } from './text-style.ts';
 

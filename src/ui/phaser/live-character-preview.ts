@@ -2,6 +2,7 @@ import type Phaser from 'phaser';
 import type { ActorDefinition } from '../../domain/content.ts';
 import type { CharacterVisual } from '../../rendering/characters.ts';
 import { characterFrameList } from '../../rendering/character-atlas.ts';
+import type { UiSceneHost } from '../dom/node.ts';
 import type { UiSurface } from '../dom/surface.ts';
 import { screenRectToCanvas } from '../viewport.ts';
 
@@ -21,15 +22,20 @@ export class LiveCharacterPreview {
     backgroundAlpha:number|null=.65){
     this.scene=scene;this.hole=hole;this.create=create;this.backgroundAlpha=backgroundAlpha;
   }
-  static available(scene:Phaser.Scene,actor:ActorDefinition):boolean{
+  static available(scene:UiSceneHost|{readonly add?:unknown;readonly textures?:{exists(key:string):boolean}},actor:ActorDefinition):boolean{
+    const candidate=scene as {readonly add?:unknown;readonly textures?:{exists(key:string):boolean}};
     const clip=actor.clips['idle-south'];
-    if(!scene.add||!scene.textures||!clip||clip.layers.length===0)return false;
+    const textures=candidate.textures;
+    if(!candidate.add||!textures||!clip||clip.layers.length===0)return false;
     // 有文件的图层必须由角色图集页承载；只有动态外观（file 为空）才看图层键。
     return clip.layers.every(layer=>{
-      if(!layer.file)return scene.textures.exists(layer.key);
+      if(!layer.file)return textures.exists(layer.key);
       const frames=characterFrameList(layer.file,clip.frames);
-      return frames.length===clip.frames&&frames.every(frame=>scene.textures.exists(frame.key));
+      return frames.length===clip.frames&&frames.every(frame=>textures.exists(frame.key));
     });
+  }
+  available(actor:ActorDefinition):boolean{
+    return LiveCharacterPreview.available(this.scene,actor);
   }
   show(surface:UiSurface,actor:ActorDefinition,rect:PreviewRect):void{
     if(this.visual?.actor!==actor){

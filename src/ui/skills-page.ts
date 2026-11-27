@@ -7,14 +7,14 @@ import type { WorldIndex } from '../domain/content.ts';
 import type { CompanionMember } from '../domain/party.ts';
 import type { SkillLearningProgression } from '../domain/skill-learning.ts';
 import type { BattleClass, SkillLoadout } from '../domain/battle.ts';
-import { GOLD, UiSurface, type ScrollArea } from './phaser/widgets.ts';
+import { GOLD, UiSurface, type ScrollArea } from './widgets.ts';
 import { MenuTextLayer, type MenuTextSpec } from './dom/menu-text.ts';
-import { drawDescriptionSeparator } from './phaser/description-panel.ts';
-import { drawSolidBorder } from './phaser/solid-border.ts';
-import { MENU_FRAME_MODAL_HEIGHT, MENU_FRAME_MODAL_WIDTH } from './phaser/modal-placement.ts';
+import { drawDescriptionSeparator } from './panels/description-panel.ts';
+import { drawSolidBorder } from './panels/solid-border.ts';
+import { MENU_FRAME_MODAL_HEIGHT, MENU_FRAME_MODAL_WIDTH } from './panels/modal-placement.ts';
+import { layoutDescriptionTextForSurface } from './panels/description-text.ts';
 import { DESCRIPTION_PANEL } from './bag-layout.ts';
 import { SKILL_PREVIEW_COLORS, skillDescriptionParts, skillLearningParts, skillNextLevelPreview } from './skill-detail-lines.ts';
-import { layoutDescriptionText } from './description-text-layout.ts';
 import type { DescriptionTextPart } from '../domain/description-text.ts';
 import { TEXT_COLORS } from './text-style.ts';
 
@@ -91,12 +91,7 @@ export class SkillsPage {
   }
   private descriptionLayout(view:UiSurface,parts:readonly DescriptionTextPart[],width:number,size:number):
     {lines:{runs:{text:string;color?:string;x:number}[]}[];lineHeight:number;height:number}{
-    if(!parts.length)return{lines:[],lineHeight:0,height:0};
-    const probe=view.text('测',0,0,0,size,TEXT_COLORS.white);
-    const lines=layoutDescriptionText(parts,width,text=>probe.context.measureText(text).width);
-    const lineHeight=probe.height+5;
-    probe.destroy();
-    return{lines,lineHeight,height:Math.max(0,lines.length*lineHeight-5)};
+    return layoutDescriptionTextForSurface(view,parts,width,size);
   }
   renderSkills():void{
     this.skillTextSpecs=[];this.skillTabs.clear();this.skillCells.clear();
@@ -166,7 +161,7 @@ export class SkillsPage {
       style:{size:14,color:'#9a9a9a',anchorX:.5,anchorY:.5},scroll:'ai',clip:{top:24,bottom:391}
     }));
     // 两列之间与右列外侧的压暗分隔条。颜色与原版压暗带相同（RGB 111,111,111），但**不是**
-    // `phaser/round-band.ts` 那条：这里是没有圆角件的 37 宽直条，不透明度也直接按 0–255 给
+    // `panels/round-band.ts` 那条：这里是没有圆角件的 37 宽直条，不透明度也直接按 0–255 给
     // （30/255），而 `drawRoundBand` 的强度是 0–100 且带四角图。别把它们当成同一元件合并。
     v.rect(19,39,37,487,0x6f6f6f,30/255,list.content);v.rect(201,39,37,397,0x6f6f6f,30/255,list.content);
     character.skills.slice(0,9).forEach((id,index)=>{

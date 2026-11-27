@@ -18,13 +18,13 @@
 | 移动、碰撞、出口、落位 | `navigation-world.ts`、`pathfinding.ts`、`path-budget.ts`、`walk-route.ts`、`navigation.ts` | `rendering/movement-world.ts`、`arcade-movement.ts`、`movement-interpolation.ts`、`scenes/world-scene.ts` | `movement`、`movement-world`、`navigation-placement`、`map-placement`、`story-exit-gates` |
 | 任务、剧情与永久世界 | `campaign.ts`、`quest-book.ts`、`story-runtime.ts`、`story-world.ts`、`story-director.ts` | `campaign.json`、`rendering/story-presenter.ts`、`scenes/story-stage-scene.ts` | `session-quest-core`、`story-runtime`、`story-director-core`、`story-stage-isolation` |
 | 背包、穿戴、人物成长 | `bag.ts`、`items.ts`、`character-stats.ts`、`attribute-allocation.ts`、`story-skills.ts` | `ui/story-ui.ts`、`rendering/wardrobe.ts`、`rendering/wardrobe-cache.ts`、`items.json`、`character-stats.json`、`wardrobe.json` | `bag`、`character-stats`、`wardrobe`、`story-skills` |
-| 掉落、宝箱、泉水、商店、融合 | `drops.ts`、`ground-loot.ts`、`chests.ts`、`springs.ts`、`shop.ts`、`crafting.ts` | `world-scene.ts`、`ui/phaser/shop-panel.ts`、`crafting-panel.ts`、对应内容目录 | `drops`、`chests`、`springs`、`shop`、`crafting` |
-| 快捷栏、状态栏、菜单和触控 | `shortcut-bar.ts`、`skill-configuration.ts`、`status-hud.ts`、`control-skin.ts` | `ui/dom/`、`ui/phaser/`、`ui/story-ui.ts`、`rendering/hud.ts`、`ui/viewport.ts` | `shortcut-bar`、`status-hud`、`story-menu-interactions`、`viewport` |
-| GM 与状态上报 | `debug/gm-actions.ts` | `ui/phaser/gm-panel.ts`、`ui/system-page.ts`；[调试说明](debugging.md) | `gm-actions`、`story-menu-interactions` |
+| 掉落、宝箱、泉水、商店、融合 | `drops.ts`、`ground-loot.ts`、`chests.ts`、`springs.ts`、`shop.ts`、`crafting.ts` | `world-scene.ts`、`ui/panels/shop-panel.ts`、`crafting-panel.ts`、对应内容目录 | `drops`、`chests`、`springs`、`shop`、`crafting` |
+| 快捷栏、状态栏、菜单和触控 | `shortcut-bar.ts`、`skill-configuration.ts`、`status-hud.ts`、`control-skin.ts` | `ui/dom/`、`ui/panels/`、`ui/hud/`、`ui/story-ui.ts`、`ui/viewport.ts` | `shortcut-bar`、`status-hud`、`story-menu-interactions`、`viewport` |
+| GM 与状态上报 | `debug/gm-actions.ts` | `ui/panels/gm-panel.ts`、`ui/debug-page.ts`、`ui/system-page.ts`；[调试说明](debugging.md) | `gm-actions`、`story-menu-interactions` |
 | 内容字段、引用与资源 | `domain/content.ts`、各内容类型 | `application/content-validation.ts`、`content-relations.ts`、`story-reference-validation.ts`、`story-performance-validation.ts` | `content`、对应目录测试；运行 `npm run validate:content` |
 | 音效和背景音乐 | `application/game-audio.ts` | `scenes/audio-scene.ts`、`content/audio.json` | `game-audio` |
-| 存档和安全检查点 | `save-game.ts`、`session-checkpoint.ts`、`session.ts`、`combat-snapshot.ts` | `application/saved-game*.ts`、`world-scene.ts`、`ui/phaser/save-board.ts` | `save-game`、`saved-game`、`checkpoint`、`combat-snapshot` |
-| 云存档与账号 | `domain/cloud-save.ts` | `application/cloud-save.ts`、`cloud-save-sync.ts`、`scenes/menu-scene.ts`、`ui/cloud-save-layout.ts`、`ui/phaser/cloud-save-panel.ts`、`../tools/cloud-save-store.ts`、`../tools/cloud-save-service.ts` | `cloud-save`、`cloud-save-store`、`cloud-save-service`、`cloud-save-client`、`cloud-save-sync`、`cloud-save-offline` |
+| 存档和安全检查点 | `save-game.ts`、`session-checkpoint.ts`、`session.ts`、`combat-snapshot.ts` | `application/saved-game*.ts`、`world-scene.ts`、`ui/panels/save-board.ts` | `save-game`、`saved-game`、`checkpoint`、`combat-snapshot` |
+| 云存档与账号 | `domain/cloud-save.ts` | `application/cloud-save.ts`、`cloud-save-sync.ts`、`scenes/menu-scene.ts`、`ui/cloud-save-layout.ts`、`ui/panels/cloud-save-panel.ts`、`../tools/cloud-save-store.ts`、`../tools/cloud-save-service.ts` | `cloud-save`、`cloud-save-store`、`cloud-save-service`、`cloud-save-client`、`cloud-save-sync`、`cloud-save-offline` |
 
 ## 跨模块职责清单
 
@@ -147,7 +147,7 @@
 
 ## 云存档
 
-云存档是旁路能力：`application/cloud-save.ts` 负责 HTTP、token、懒续期、改密和结果化错误，`application/cloud-save-sync.ts` 负责逐槽上传/下载、覆盖确认和部分失败；`domain/cloud-save.ts` 定义账号、密码、槽位和锁定规则。服务端 `tools/cloud-save-store.ts` 把账号、单会话、scrypt 哈希和存档写到 `.cloud-save/`，`tools/cloud-save-service.ts` 提供 `/__cloud` 路由、CORS、限流和请求体上限。入口在存档槽页右上角，页面由 `ui/cloud-save-layout.ts` 和 `ui/phaser/cloud-save-panel.ts` 绘制。启动和游戏循环不调用云客户端；服务不可达只影响云页。详见 [云存档与账号](cloud-save.md)。
+云存档是旁路能力：`application/cloud-save.ts` 负责 HTTP、token、懒续期、改密和结果化错误，`application/cloud-save-sync.ts` 负责逐槽上传/下载、覆盖确认和部分失败；`domain/cloud-save.ts` 定义账号、密码、槽位和锁定规则。服务端 `tools/cloud-save-store.ts` 把账号、单会话、scrypt 哈希和存档写到 `.cloud-save/`，`tools/cloud-save-service.ts` 提供 `/__cloud` 路由、CORS、限流和请求体上限。入口在存档槽页右上角，页面由 `ui/cloud-save-layout.ts` 和 `ui/panels/cloud-save-panel.ts` 绘制。启动和游戏循环不调用云客户端；服务不可达只影响云页。详见 [云存档与账号](cloud-save.md)。
 
 ## 构建、缓存与部署
 
@@ -173,8 +173,8 @@
 
 当前两种地图战斗 Boss 使用显式的 `engagement: map-wide` 配置，加载和演出结束后发现整张地图中的队伍，继续使用原仇恨、技能和碰撞。普通怪物保持原有规则。字段写在 `battle.json` 的敌人定义里，行为与验证以 `domain/enemy-engagement.ts`、`tests/boss-engagement.test.ts` 为准。
 
-`StoryUI` 负责菜单路由、公共输入、遮罩和当前队员。`BagPage` 绑定创建时的会话，管理背包选择、物品确认、换装等待、页面缓存及局部刷新；离开或换人时取消本页工作，迟到结果只有仍属于当前操作时才能更新页面。强化、技能书和快捷栏通过明确的进入与返回操作交接背包上下文。`MenuItemDrag` 管理背包与合成共用的长按拖拽手势，各页面决定落点对应的游戏操作。
+`StoryUI` 负责菜单路由、公共输入、遮罩和当前队员；`DebugPage` 独立管理 GM 调试页状态与详情预览。`BagPage` 绑定创建时的会话，管理背包选择、物品确认、换装等待、页面缓存及局部刷新；离开或换人时取消本页工作，迟到结果只有仍属于当前操作时才能更新页面。强化、技能书和快捷栏通过明确的进入与返回操作交接背包上下文。`MenuItemDrag` 管理背包与合成共用的长按拖拽手势，各页面决定落点对应的游戏操作。
 
-菜单公共表面位于 `ui/dom/surface.ts`，图片、文本和原生指针的节点位于 `ui/dom/node.ts`。`ui/phaser/` 中的面板沿用原有页面动作与布局，绘制调用统一进入 DOM 表面。屏幕界面以 `#game-frame` 的 CSS 宽高与安全区为布局基准，设计尺寸按可用空间缩放一次；画布采样倍率只影响游戏画布。滚动裁剪层、滚动条、文字与原生指针共用屏幕坐标，嵌套菜单只应用一次位置与缩放。图片裁边只隐藏超出范围的像素，保持素材倍率；静态页签与图框在正文重绘时复用。独立文字与页面图片共用屏幕坐标，画框或安全区变化时一起重排；图片容器用明确的层级排在文字下方。全屏遮罩按画框宽高铺满，弹层根节点同步本次内容尺寸。
+菜单公共表面位于 `ui/dom/surface.ts`，图片、文本和原生指针的节点位于 `ui/dom/node.ts`；`ui/panels/` 与 `ui/hud/` 承载纯 DOM 面板与世界 HUD 接线，`ui/phaser/` 仅保留画布预览、职业背景与截图适配。屏幕界面以 `#game-frame` 的 CSS 宽高与安全区为布局基准，设计尺寸按可用空间缩放一次；画布采样倍率只影响游戏画布。滚动裁剪层、滚动条、文字与原生指针共用屏幕坐标，嵌套菜单只应用一次位置与缩放。图片裁边只隐藏超出范围的像素，保持素材倍率；静态页签与图框在正文重绘时复用。独立文字与页面图片共用屏幕坐标，画框或安全区变化时一起重排；图片容器用明确的层级排在文字下方。全屏遮罩按画框宽高铺满，弹层根节点同步本次内容尺寸。
 
 菜单、状态栏、技能图标和小地图图片通过同一个 DOM 预载入口准备，加载请求沿用调用方的取消信号；准备状态查询 DOM 缓存。角色菜单预览使用衣柜合成的待机动画，通过 `screenRectToCanvas` 将菜单里的屏幕矩形换成画布坐标；遮罩为预览留下的区域仍使用屏幕坐标。世界角色的纹理及动画继续由衣柜管理。原生窗口事件接续正文重绘前开始的长按与背包拖动，隐藏、取消和失焦时统一结束输入。

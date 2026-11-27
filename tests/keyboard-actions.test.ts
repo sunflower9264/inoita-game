@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { KeyBindingPreferences } from '../src/application/key-bindings.ts';
 import { InputRouter } from '../src/application/input-router.ts';
-import { KeyboardActions } from '../src/ui/phaser/keyboard-actions.ts';
+import { KeyboardActions } from '../src/ui/hud/keyboard-actions.ts';
 import type Phaser from 'phaser';
 
 interface FakeEvent extends Partial<KeyboardEvent> {

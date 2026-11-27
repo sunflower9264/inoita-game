@@ -1,4 +1,5 @@
-import { GAME_WIDTH, GAME_HEIGHT } from './viewport.ts';
+import { GAME_WIDTH, GAME_HEIGHT, type ControlViewport } from './viewport.ts';
+export type { ControlViewport };
 
 /** 操作键位属于设备偏好；角色、存档和两组快捷栏共用。 */
 export const CONTROL_IDS = ['move', 'attack', 'slot-0', 'slot-1', 'slot-2', 'slot-3', 'slot-4', 'slot-5', 'swap'] as const;
@@ -103,10 +104,6 @@ export class ControlLayoutPreferences {
   }
 }
 
-export interface ControlViewport {
-  width: number; height: number;
-  insets: {left: number; right: number; top: number; bottom: number};
-}
 export interface ControlPlacement extends ControlPoint {
   /** 屏幕适配缩放；不含用户倍率。 */
   scale: number;

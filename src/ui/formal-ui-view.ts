@@ -1,20 +1,19 @@
 import { formalPresentation } from './formal-presentation.ts';
 import { domAssets } from './dom/assets.ts';
-import { uiMount, type UiPointer } from './dom/node.ts';
-import { UiNode, UiImage } from './dom/node.ts';
+import { uiMount, type UiPointer, UiNode, UiImage, type UiSceneHost } from './dom/node.ts';
 import { UI_EVENTS } from '../application/ui-events.ts';
 import type { FormalUiContext } from '../application/ports.ts';
-import type Phaser from 'phaser';
 import { uiOcclusion, type GameUI, type GameUiView } from './game-ui.ts';
-import { UiSurface,loadUiImages,GOLD } from './phaser/widgets.ts';
+import { UiSurface,loadUiImages,GOLD } from './widgets.ts';
 import { TEXT_COLORS } from './text-style.ts';
 import { dialoguePages, layoutDialogueText, revealedRuns, type DialoguePage, type DialogueTextLayout } from './dialogue-text.ts';
 import { instantMessagePoint } from './instant-message.ts';
 import { FormalModalView } from './formal-modal-view.ts';
 import { FormalChoiceView } from './formal-choice-view.ts';
-import { SceneUiAssets } from './phaser/ui-asset-host.ts';
-import { QuestPopup } from './phaser/quest-popup.ts';
-import { screenCoverage } from './phaser/modal-placement.ts';
+import { SceneUiAssets } from './ui-asset-host.ts';
+import { QuestPopup } from './panels/quest-popup.ts';
+import { screenCoverage, surfaceScreenPoint } from './panels/modal-placement.ts';
+import { withSurfaceTextMetrics } from './panels/description-text.ts';
 import { frameRect, readSafeArea } from './viewport.ts';
 import type { AssetLease } from '../application/assets.ts';
 import type { DomLabel } from './dom/dom-ui.ts';
@@ -41,7 +40,7 @@ export class FormalUiView implements GameUiView {
   private baseLease?:AssetLease;
   /** 菜单图片与立绘的租约账，`prepareMenuCore` 通过 `app.uiAssets` 找到它。 */
   private readonly uiAssets:SceneUiAssets;
-  private readonly scene:Phaser.Scene;
+  private readonly scene:UiSceneHost;
   private readonly request=new AbortController();
   private disposed=false;
   private background!:UiNode;
@@ -57,7 +56,7 @@ export class FormalUiView implements GameUiView {
   /** 选项面板的 DOM 文字；提示、说明和每个选项各用一组复用的标签。 */
   private choiceView!:FormalChoiceView;
 
-  constructor(scene:Phaser.Scene,app:FormalUiView['app'],assets:SceneUiAssets){this.scene=scene;this.app=app;this.uiAssets=assets;}
+  constructor(scene:UiSceneHost,app:FormalUiView['app'],assets:SceneUiAssets){this.scene=scene;this.app=app;this.uiAssets=assets;}
   resize():void{this.modalView.invalidate();this.signature='';this.layoutDomText();this.sync(this.app.ui);this.app.ui.reflowDialogue();}
   create():void{
     this.background=new UiNode(this.scene,uiMount(this.scene,'overlay')).setSize(1,1).setFillStyle(0,1).setDepth(998);this.blocker=new UiNode(this.scene,uiMount(this.scene,'overlay')).setSize(1,1).setDepth(999).setInteractive();
@@ -77,7 +76,7 @@ export class FormalUiView implements GameUiView {
     this.choiceView=new FormalChoiceView(this.scene,this.app.domUi);
     this.questPopup=new QuestPopup(this.scene,()=>this.app.ui.ready&&!this.app.ui.suspended,this.app.domUi);
     this.surface.enabled=()=>!this.app.ui.suspended;
-    void loadUiImages(this.scene,['/assets/ui/loading-background.webp'],undefined,this.request.signal).then(lease=>{if(this.disposed){lease.release();return;}this.baseLease=lease;this.signature='';this.sync(this.app.ui);}).catch(error=>{if(!this.request.signal.aborted)console.error(error);});
+    void loadUiImages(['/assets/ui/loading-background.webp'],undefined,this.request.signal).then(lease=>{if(this.disposed){lease.release();return;}this.baseLease=lease;this.signature='';this.sync(this.app.ui);}).catch(error=>{if(!this.request.signal.aborted)console.error(error);});
     this.sync(this.app.ui);
   }
   destroy():void{
@@ -101,7 +100,7 @@ export class FormalUiView implements GameUiView {
     if(this.app.ui.loadingState||this.app.ui.defeated||(typeof window!=='undefined'&&window.innerHeight>window.innerWidth))return this.modalView.key(event);
     return this.app.ui.choices?this.choiceView.key(event):this.surface.key(event);
   };
-  resetInput():void{this.scene.game.events.emit(UI_EVENTS.cancelInput);}
+  resetInput():void{this.scene.game?.events?.emit(UI_EVENTS.cancelInput);}
   update():void{this.syncInstantMessage();this.choiceView?.update();}
   /**
    * 原版 `INSTANTMSG_Draw`：水平居中、纵向三成屏高，同一段文字带 1px 深色描边，末段按台阶淡出。
@@ -134,7 +133,7 @@ export class FormalUiView implements GameUiView {
   }
   async portrait(file:string,signal?:AbortSignal):Promise<void>{
     signal?.throwIfAborted();this.request.signal.throwIfAborted();if(domAssets.peek(file))return;
-    const lease=await loadUiImages(this.scene,[file],undefined,signal??this.request.signal);
+    const lease=await loadUiImages([file],undefined,signal??this.request.signal);
     if(this.disposed||signal?.aborted){lease.release();signal?.throwIfAborted();this.request.signal.throwIfAborted();}
     this.uiAssets.retain(lease);
   }
@@ -159,9 +158,7 @@ export class FormalUiView implements GameUiView {
    * 逐行画的间距要和它原来一次画整段时一样。探测用的 Text 用完即毁，不会留在画面上。
    */
   private dialogueMetrics<T>(size:number,use:(measure:(text:string)=>number,lineHeight:number)=>T):T{
-    const probe=this.surface.text('测',0,0,0,size);
-    try{return use(text=>probe.context.measureText(text).width,probe.height+5);}
-    finally{probe.destroy();}
+    return withSurfaceTextMetrics(this.surface,size,use);
   }
   paginate(ui:GameUI,text:string):DialoguePage[]{
     const box=this.textBox(ui);
@@ -179,8 +176,7 @@ export class FormalUiView implements GameUiView {
    * Phaser 的每个 Text 都有自己的画布纹理；翻页时销毁再新建几十个是演出卡顿的主因。
    */
   private surfacePoint(x:number,y:number):{x:number;y:number;scale:number}{
-    const m=this.surface.root.getWorldTransformMatrix();
-    return{x:(m.tx+x*m.scaleX),y:(m.ty+y*m.scaleY),scale:m.scaleX};
+    return surfaceScreenPoint(this.surface,x,y);
   }
   private hideDialogueDom():void{
     this.domSpeaker?.setVisible(false);

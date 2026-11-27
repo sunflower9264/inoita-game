@@ -7,18 +7,18 @@ import { SkillsPage } from './skills-page.ts';
 import { StatusPage } from './status-page.ts';
 import { BagPage } from './bag-page.ts';
 import { MenuItemDrag } from './menu-item-drag.ts';
-import { UiNode, UiImage, uiPointer, type UiPointer, type UiText } from './dom/node.ts';
+import { UiNode, UiImage, uiPointer, type UiPointer } from './dom/node.ts';
 import { UI_EVENTS } from '../application/ui-events.ts';
 import { displaySettings } from '../application/display-settings.ts';
 import { fullscreenActive, fullscreenStatus, onFullscreenChange } from '../application/fullscreen.ts';
 import { controlSettings } from '../application/control-settings.ts';
-import { CraftingPanel } from './phaser/crafting-panel.ts';
-import { ForgePanel, type ForgeTab } from './phaser/forge-panel.ts';
+import { CraftingPanel } from './panels/crafting-panel.ts';
+import { ForgePanel, type ForgeTab } from './panels/forge-panel.ts';
 import { EquipmentCrafting } from '../domain/crafting.ts';
 
 import type Phaser from 'phaser';
 import { ShortcutBar, type ShortcutEntry } from '../domain/shortcut-bar.ts';
-import { controlPlacement } from './phaser/action-controls.ts';
+import { controlPlacement } from './hud/action-controls.ts';
 
 import { type Modifier } from '../domain/character-stats.ts';
 
@@ -30,38 +30,39 @@ import type { WorldIndex } from '../domain/content.ts';
 import type { StoryInterface } from '../domain/story-interface.ts';
 import type { CompanionMember } from '../domain/party.ts';
 
-import { ShopPanel } from './phaser/shop-panel.ts';
+import { ShopPanel } from './panels/shop-panel.ts';
 
 import { Storefront } from '../domain/shop.ts';
-import { QuestPanel } from './phaser/quest-panel.ts';
-import { PartyPanel } from './phaser/party-panel.ts';
+import { QuestPanel } from './panels/quest-panel.ts';
+import { PartyPanel } from './panels/party-panel.ts';
 import { type InventoryView } from '../domain/inventory.ts';
-import { type EquipmentSlot, type ItemInstance } from '../domain/items.ts';
-import { GmPanel } from './phaser/gm-panel.ts';
+import { type EquipmentSlot } from '../domain/items.ts';
 import type { QuestStartPlan } from '../debug/quest-jump.ts';
-import type { GmActions } from '../debug/gm-actions.ts';
-import { frameRect, readSafeArea, uiUnitScale } from './viewport.ts';
-import { ControlLayoutEditor } from './phaser/control-layout-editor.ts';
-import { KeyBindingEditor } from './phaser/key-binding-editor.ts';
+import { frameRect, readSafeArea, uiUnitScale, controlViewport } from './viewport.ts';
+import { ControlLayoutEditor } from './panels/control-layout-editor.ts';
+import { KeyBindingEditor } from './panels/key-binding-editor.ts';
 import { HUD_SIDE_BUTTON_SIZE } from './control-layout.ts';
-import { controlViewport } from './phaser/control-layout-viewport.ts';
-import { GOLD, UiSurface, type ScrollArea } from './phaser/widgets.ts';
+import { GOLD, UiSurface, type ScrollArea } from './widgets.ts';
 import { MenuTextLayer, type MenuTextOcclude, type MenuTextSpec, type MenuTextWriter } from './dom/menu-text.ts';
 import type { DomLabel } from './dom/dom-ui.ts';
-import { setSaveBoardTextSink, type SaveBoardTextSpec } from './phaser/save-board.ts';
-import { descriptionTitleOverflow, drawDescriptionClose, drawDescriptionPanel, drawDescriptionRows, drawDescriptionTitle } from './phaser/description-panel.ts';
-import { drawNativeMessage, NATIVE_MESSAGE_EDGE, type NativeMessageBand } from './phaser/native-message.ts';
+import type { SaveBoardTextSpec } from './panels/save-board.ts';
+import { drawNativeMessage, NATIVE_MESSAGE_EDGE, type NativeMessageBand } from './panels/native-message.ts';
 
 import { SavePage } from './save-page.ts';
+import { DebugPage } from './debug-page.ts';
 
-import { SkillBookPanel } from './phaser/skill-book-panel.ts';
+import { SkillBookPanel } from './panels/skill-book-panel.ts';
 
-import { MENU_CANVAS_HEIGHT, MENU_CANVAS_WIDTH, centerModal } from './phaser/modal-placement.ts';
+import {
+  MENU_CANVAS_HEIGHT,
+  MENU_CANVAS_WIDTH,
+  bandOcclusionRect,
+  centerModal,
+  modalOcclusionRect,
+  surfaceScreenPoint,
+  transformModalTextSpec,
+} from './panels/modal-placement.ts';
 import { ACTIVE_PARTY_SLOT_COUNT } from '../domain/party-slots.ts';
-
-import { itemDescriptionBody } from './item-detail-lines.ts';
-
-import { BAG_DESCRIPTION_WIDTH, descriptionPanel } from './bag-layout.ts';
 
 import { POPUP_FRAME, tradeLayout } from './shop-layout.ts';
 
@@ -80,17 +81,13 @@ export class StoryUI {
   private bagPage?:BagPage;
   private statusPage?:StatusPage;
   private skillsPage?:SkillsPage;
+  private debugPage?:DebugPage;
   private get menuBusy():boolean{return this.busy||!!this.bagPage?.isBusy||!!this.statusPage?.isBusy||!!this.skillsPage?.isBusy||!!this.shortcutEditor?.isBusy||!!this.savePage?.isBusy;}
-  /** GM 面板按当前的动作层实例缓存；换会话（动作层重建）时一起换掉。 */
-  private gmPanel?:GmPanel;
-  private gmPanelOwner?:GmActions;
   private minimapHeight=132;
   private scene?:Phaser.Scene;private surface?:UiSurface;private body?:UiSurface;private hudButtons?:UiSurface;private modal?:UiSurface;private description?:UiSurface;
   /** 菜单页文字走 DOM；图框、按钮、滑条热区和滚动仍由 Phaser 画。 */
   private menuText?:MenuTextLayer;
   /** 技能页这一轮绘制收集到的文字；右侧说明区会随滚动一起换位置。 */
-    /** GM 调试页这一轮绘制收集到的文字。 */
-  private gmTextSpecs:MenuTextSpec[]=[];
   /** 存档/读档页上一次绘制收集到的文字；确认框打开时改用它自己的那一份。 */
   private saveTextSpecs:MenuTextSpec[]=[];
   private saveModalTextSpecs:MenuTextSpec[]=[];
@@ -98,8 +95,6 @@ export class StoryUI {
   private noticeTextSpecs:MenuTextSpec[]=[];
   /** 原生提示横带的弹层本地覆盖范围；用于裁剪和页面文字让位。 */
   private noticeBand?:NativeMessageBand;
-      private gmDetailTextSpecs:MenuTextSpec[]=[];
-  private gmDetailOpen=false;
   /** 弹层/说明下方的黑色遮罩；画在菜单之上、说明层之下。 */
   private popupMask?:UiNode;
   /** 技能初始化确认框的文字规格；仍是弹层本地坐标，输出时统一换算。 */
@@ -168,6 +163,7 @@ export class StoryUI {
     this.modal=new UiSurface(scene,tradeLayout.quantity.width,tradeLayout.quantity.height,400);
     this.modal.root.setPosition((MENU_CANVAS_WIDTH-tradeLayout.quantity.width)/2,(MENU_CANVAS_HEIGHT-tradeLayout.quantity.height)/2);
     // 存档页自己管确认框、改名输入和读档请求；菜单只提供重绘、弹层和滚动区位置。
+    const menu=this;
     this.savePage=new SavePage({
       app:this.app,
       session:()=>this.session,
@@ -200,6 +196,28 @@ export class StoryUI {
       beginModal:(width,height)=>this.beginModal(width,height),
       scroll:(name,x,y,width,height,surface)=>this.scroll(name,x,y,width,height,surface),
       finishScroll:(name,scroll,height)=>this.finishScroll(name,scroll,height)
+    });
+    this.debugPage=new DebugPage({
+      app:this.app,
+      get open(){return menu.open;},
+      get page(){return menu.page;},
+      get body(){return menu.body;},
+      get description(){return menu.description;},
+      get menuText(){return menu.menuText;},
+      scrollOffsets:this.scrollOffsets,
+      session:()=>this.session,
+      member:()=>this.member(),
+      classNames:()=>this.classNames(),
+      scroll:(name,x,y,width,height,surface)=>this.scroll(name,x,y,width,height,surface),
+      finishScroll:(name,scroll,height)=>this.finishScroll(name,scroll,height),
+      registerScroll:(name,scroll)=>{this.scrollNames.set(name,scroll);},
+      removeScroll:scroll=>{for(const [name,value] of this.scrollNames)if(value===scroll)this.scrollNames.delete(name);},
+      removeDescriptionScrolls:()=>this.removeDescriptionScrolls(),
+      close:()=>this.close(),
+      requestStoryJump:plan=>this.requestStoryJump(plan),
+      runAction:action=>{this.busy=true;try{return action();}finally{this.busy=false;this.sessionSignature=this.sessionDataSignature()??this.sessionSignature;}},
+      commitSession:()=>{this.sessionSignature=this.sessionDataSignature()??this.sessionSignature;},
+      sync:()=>this.sync(),
     });
     // 说明面板单独一层，深度高于内容块的滚动层（`ScrollArea` 的 Layer 取父画布深度 +1）。
     // 停在右栏时它压在背包格子上，画在内容块里会被那一层整个盖住，底色和边框都看不见。
@@ -285,12 +303,10 @@ export class StoryUI {
         panel.renderText(page);
         if(panel.confirming)panel.renderModalText({add:spec=>writer.add(this.modalTextSpec(spec))});
       });
-      // GM 调试页的文字由面板自己收集。
+      // GM 调试页的文字由调试页控制器自己收集。
       this.menuText.register('debug',writer=>{
         this.renderTabsText(writer);
-        // 物品详情只盖住左侧一块：矩形外的调试页文字继续显示。
-        for(const spec of this.gmTextSpecs)if(!this.gmDetailOpen||!this.gmDescriptionCovers(spec))writer.add(spec);
-        if(this.gmDetailOpen)for(const spec of this.gmDetailTextSpecs)writer.add(spec);
+        this.debugPage?.renderText(writer);
         this.renderNoticeText(writer);
       });
       // 原生提示盖在页面上：页面文字整体压暗，横带矩形里的部分让位；弹层文字不压暗。
@@ -337,7 +353,7 @@ export class StoryUI {
     window.addEventListener('blur',()=>{this.statusPage?.cancelPress();this.cancelDrag();},{signal:nativeInput.signal});
     scene.events.once('shutdown',()=>nativeInput.abort());
     scene.game.events.on(UI_EVENTS.minimapLayout,this.onMinimap,this);scene.game.events.on(UI_EVENTS.cancelInput,this.cancelDrag,this);
-    scene.events.once('shutdown',()=>{this.closePressureDebug();this.unregisterKeyboard?.();this.unregisterKeyboard=undefined;this.unsubscribe?.();this.unsubscribeFullscreen?.();this.statusPage?.destroy();this.skillsPage?.destroy();this.settingsPage?.destroy();this.menuText?.destroy();this.menuText=undefined;this.shortcutPrompt?.remove();this.shortcutPrompt=undefined;scene.scale.off('resize',this.resize,this);scene.game.events.off(UI_EVENTS.minimapLayout,this.onMinimap,this);scene.game.events.off(UI_EVENTS.cancelInput,this.cancelDrag,this);this.cancelOperation();this.bagPage?.destroy();this.savePage.destroy();this.surface!.root.remove(this.body!.root);this.surface?.destroy();this.body?.destroy();this.modal?.destroy();this.hudButtons?.destroy();this.description?.destroy();this.shortcutScreen?.destroy();this.backTab?.destroy();this.bagPortrait?.destroy();this.backdrop?.destroy();this.popupMask?.destroy();this.popupMask=undefined;this.controlEditor?.destroy();this.controlEditor=undefined;this.keyBindingEditor?.destroy();this.keyBindingEditor=undefined;});
+    scene.events.once('shutdown',()=>{this.closePressureDebug();this.debugPage?.release();this.debugPage=undefined;this.partyPanel?.close();this.partyPanel?.destroyPreview();this.unregisterKeyboard?.();this.unregisterKeyboard=undefined;this.unsubscribe?.();this.unsubscribeFullscreen?.();this.statusPage?.destroy();this.skillsPage?.destroy();this.settingsPage?.destroy();this.menuText?.destroy();this.menuText=undefined;this.shortcutPrompt?.remove();this.shortcutPrompt=undefined;scene.scale.off('resize',this.resize,this);scene.game.events.off(UI_EVENTS.minimapLayout,this.onMinimap,this);scene.game.events.off(UI_EVENTS.cancelInput,this.cancelDrag,this);this.cancelOperation();this.bagPage?.destroy();this.savePage.destroy();this.surface!.root.remove(this.body!.root);this.surface?.destroy();this.body?.destroy();this.modal?.destroy();this.hudButtons?.destroy();this.description?.destroy();this.shortcutScreen?.destroy();this.backTab?.destroy();this.bagPortrait?.destroy();this.backdrop?.destroy();this.popupMask?.destroy();this.popupMask=undefined;this.controlEditor?.destroy();this.controlEditor=undefined;this.keyBindingEditor?.destroy();this.keyBindingEditor=undefined;});
     this.sync();
   }
   private openPressureDebug():void {
@@ -446,7 +462,7 @@ export class StoryUI {
       if(this.page==='bag'){this.bagPage?.refresh(signature??'',false);return;}
       if(this.menuBusy)return;
       if(signature===undefined||signature!==this.sessionSignature){
-        if(this.page==='debug')this.updateDebugPanel();else this.render();
+        if(this.page==='debug')this.debugPage?.update();else this.render();
       }
     });this.sync();
   }
@@ -498,7 +514,7 @@ export class StoryUI {
     const previousPage=this.page;
     if(this.page!==page){
       if(this.page==='party')this.app.releasePartyPreview?.();
-      if(this.page==='debug')this.releaseDebugPanel();
+      if(this.page==='debug')this.debugPage?.release();
       if(this.page==='bag')this.bagPage?.clearBagTransientState();
       this.statusPage?.closePrompt();
       this.bagPage?.clearResult();this.cancelOperation();this.notice='';
@@ -585,7 +601,7 @@ export class StoryUI {
       this.partyPanel?.destroyPreview();this.app.releasePartyPreview?.();
       return;
     }
-    if(this.page==='debug')this.releaseDebugPanel();this.controlEditor?.close();this.app.ui.setControlLayoutEditing(false);
+    if(this.page==='debug')this.debugPage?.release();this.controlEditor?.close();this.app.ui.setControlLayoutEditing(false);
     this.keyBindingEditor?.close();this.app.ui.setKeyBindingEditing(false);this.cancelOperation();this.statusPage?.closePrompt();this.modalActive=false;this.shortcutEditor?.close();this.backTab?.clear();
     // 背包的说明面板和使用结果不属于缓存页面；下次打开背包时应回到干净的列表。
     const hadBagDetail=this.page==='bag'&&(this.bagPage?.hasSelection||this.bagPage?.hasResult);
@@ -624,15 +640,10 @@ export class StoryUI {
       else this.app.ui.toast(message);
     });
   }
-  private releaseDebugPanel():void{
-    this.gmPanel?.dispose();this.gmPanel=undefined;this.gmPanelOwner=undefined;
-    this.gmTextSpecs=[];this.gmDetailTextSpecs=[];this.gmDetailOpen=false;
-    this.menuText?.beginPage('');
-  }
   releaseSession(expected:Session|undefined):void{
     if(this.session!==expected)return;
     this.closePressureDebug(false);
-    this.statusPage?.discardAllocation();this.close();this.discardBagPage();this.releaseDebugPanel();this.unsubscribe?.();this.unsubscribe=undefined;
+    this.statusPage?.discardAllocation();this.close();this.discardBagPage();this.debugPage?.release();this.unsubscribe?.();this.unsubscribe=undefined;
     this.questPanel=undefined;this.partyPanel?.destroyPreview();this.partyPanel=undefined;
     // 页面节点已经随 close/discardBagPage 销毁，清掉包装引用，别让旧会话的 DOM 留到下一次渲染。
     this.bagPage?.destroy();this.bagPage=undefined;this.drops=[];
@@ -676,7 +687,7 @@ export class StoryUI {
     }
     // 改名或数字输入框开着时键盘归系统输入法：Enter/Escape 由输入框自己处理。
     if(this.savePage.renaming||this.shopPanel?.prompting||this.statusPage?.prompting
-      ||(this.page==='debug'&&!!this.gmPanel?.searchFocused))return true;
+      ||(this.page==='debug'&&!!this.debugPage?.searchFocused))return true;
     if(this.app.ui.controlLayoutEditing){if(event.key==='Escape'){event.preventDefault();this.closeControlEditor();}else this.controlEditor?.key(event);return true;}
     if(event.key==='Escape'&&this.itemNotice){event.preventDefault();this.itemNotice=undefined;this.updateItemNotice();return true;}
     if(this.savePage.handleEscape(event))return true;
@@ -709,7 +720,7 @@ export class StoryUI {
     this.controlEditor?.layout();this.keyBindingEditor?.layout();
     this.pressureDebug?.layout();
     this.surface?.layout(12);this.positionModal();this.modal?.relayoutOverlay();
-    if(this.open&&this.page==='debug'&&this.gmPanel&&this.body)this.gmPanel.layoutSearch(this.body);
+    if(this.open&&this.page==='debug'&&this.body)this.debugPage?.layout(this.body);
     // 说明面板不在 surface 之下，位置与缩放按 surface 的世界变换同步，坐标系与内容块一致。
     if(this.surface&&this.description){const matrix=this.surface.root.getWorldTransformMatrix(),position=matrix.transformPoint(CONTENT_ORIGIN.x,CONTENT_ORIGIN.y);this.description.root.setPosition(position.x,position.y).setScale(matrix.scaleX,matrix.scaleY);}
     // 登记快捷键那一屏按原版的屏幕坐标摆：缩放取操作区的缩放，屏幕左上角为原点；
@@ -741,19 +752,8 @@ export class StoryUI {
   private menuTextPoint(x:number,y:number):{x:number;y:number;scale:number}{
     // 系统页和存档/读档页按整块菜单画布排布（标签行 + 内容块），其它页用内容块坐标。
     const fullPage=this.page==='system'||this.page==='save'||this.page==='load';
-    const root=fullPage?this.surface?.root:this.body?.root;
-    if(!root)return{x,y,scale:1};
-    const matrix=root.getWorldTransformMatrix(),point=matrix.transformPoint(x,y);
-    return{x:point.x,y:point.y,scale:matrix.scaleX};
-  }
-  /** 弹层本地坐标 → 内容块坐标；DOM 层统一按内容块根节点换算 CSS 位置。 */
-  private modalToPagePoint(x:number,y:number):{x:number;y:number}{
-    const modal=this.modal,body=this.body;
-    if(!modal||!body)return{x,y};
-    const world=modal.root.getWorldTransformMatrix().transformPoint(x,y);
-    // 画布容器只有平移和缩放，没有旋转；用原点加比例反算，不依赖矩阵的 applyInverse。
-    const matrix=body.root.getWorldTransformMatrix(),origin=matrix.transformPoint(0,0);
-    return{x:(world.x-origin.x)/matrix.scaleX,y:(world.y-origin.y)/matrix.scaleY};
+    const target=fullPage?this.surface:this.body;
+    return target?surfaceScreenPoint(target,x,y):{x,y,scale:1};
   }
   /** 三个内容页共用的顶部标签行；坐标从菜单画布换到内容块。 */
   private renderTabsText(writer:MenuTextWriter):void{
@@ -762,49 +762,28 @@ export class StoryUI {
       style:{size:20,color:GOLD,anchorX:.5,anchorY:0,width:90,align:'center'}}));
   }
 
-  /** 页面文字是否落在说明面板盖住的矩形里。 */
-  private descriptionCovers(spec:MenuTextSpec,rect:{x:number;y:number;width:number;height:number}):boolean {
-    return spec.x>=rect.x&&spec.x<=rect.x+rect.width&&spec.y>=rect.y&&spec.y<=rect.y+rect.height;
-  }
-      /** 弹层在内容块坐标里的覆盖矩形；`pad` 用于把 drawPopupPanel 的图框外沿一起让出。 */
+  /** 弹层在内容块坐标里的覆盖矩形；`pad` 用于把 drawPopupPanel 的图框外沿一起让出。 */
   private modalOcclusion(pad=0):MenuTextOcclude|undefined {
     if(!this.modal||!this.body)return undefined;
-    const start=this.modalToPagePoint(0,0),end=this.modalToPagePoint(this.modalBox.width,this.modalBox.height);
-    return{left:start.x-pad,top:start.y-pad,right:end.x+pad,bottom:end.y+pad};
+    return modalOcclusionRect(this.modal,this.body,this.modalBox.width,this.modalBox.height,pad);
   }
   /** 原生提示横带在内容块坐标里的覆盖矩形；按横带实际左右范围让位。 */
   private bandOcclusion(band?:NativeMessageBand):MenuTextOcclude|undefined {
     if(!this.modal||!this.body||!band)return undefined;
-    const edge=NATIVE_MESSAGE_EDGE,
-      start=this.modalToPagePoint(band.left,band.top-edge),end=this.modalToPagePoint(band.left+band.width,band.top+band.height+edge);
-    return{left:start.x,top:start.y,right:end.x,bottom:end.y};
+    return bandOcclusionRect(this.modal,this.body,band,NATIVE_MESSAGE_EDGE);
   }
   /** 弹层在整页表面坐标里的覆盖矩形；存档/读档页的页面文字用这一份。 */
   private modalSurfaceOcclusion():MenuTextOcclude|undefined {
     if(!this.modal||!this.surface)return undefined;
-    const matrix=this.surface.root.getWorldTransformMatrix(),origin=matrix.transformPoint(0,0),
-      point=(x:number,y:number)=>{const world=this.modal!.root.getWorldTransformMatrix().transformPoint(x,y);
-        return{x:(world.x-origin.x)/matrix.scaleX,y:(world.y-origin.y)/matrix.scaleY};},
-      start=point(0,0),end=point(this.modalBox.width,this.modalBox.height);
-    return{left:start.x,top:start.y,right:end.x,bottom:end.y};
+    return modalOcclusionRect(this.modal,this.surface,this.modalBox.width,this.modalBox.height);
   }
   private bandSurfaceOcclusion(band?:NativeMessageBand):MenuTextOcclude|undefined {
     if(!this.modal||!this.surface||!band)return undefined;
-    const matrix=this.surface.root.getWorldTransformMatrix(),origin=matrix.transformPoint(0,0),
-      point=(x:number,y:number)=>{const world=this.modal!.root.getWorldTransformMatrix().transformPoint(x,y);
-        return{x:(world.x-origin.x)/matrix.scaleX,y:(world.y-origin.y)/matrix.scaleY};},
-      edge=NATIVE_MESSAGE_EDGE,
-      start=point(band.left,band.top-edge),end=point(band.left+band.width,band.top+band.height+edge);
-    return{left:start.x,top:start.y,right:end.x,bottom:end.y};
+    return bandOcclusionRect(this.modal,this.surface,band,NATIVE_MESSAGE_EDGE);
   }
   /** 页面文字统一压暗，并让出弹层覆盖的矩形。 */
   private dimPage(writer:MenuTextWriter,occlude?:MenuTextOcclude):MenuTextWriter {
     return{add:spec=>writer.add({...spec,dim:true,occlude})};
-  }
-  /** GM 调试页的物品详情固定在左侧，高 392；只让出这块矩形里的文字。 */
-  private gmDescriptionCovers(spec:MenuTextSpec):boolean {
-    const panel=descriptionPanel(BAG_DESCRIPTION_WIDTH);
-    return this.descriptionCovers(spec,{x:60,y:panel.y,width:panel.width,height:392});
   }
   /** 底部提示行；设置等页用内容块坐标，系统/存档页用整页菜单坐标。 */
   private renderNoticeText(writer:MenuTextWriter,fullPage=false):void{
@@ -814,10 +793,8 @@ export class StoryUI {
   }
   /** 弹层文字规格换成内容块坐标；滚动裁剪边界和文字一起换算。 */
   private modalTextSpec(spec:MenuTextSpec):MenuTextSpec{
-    const point=this.modalToPagePoint(spec.x,spec.y);
-    const clip=spec.clip?{top:this.modalToPagePoint(0,spec.clip.top).y,
-      bottom:this.modalToPagePoint(0,spec.clip.bottom).y}:undefined;
-    return{...spec,x:point.x,y:point.y,clip};
+    if(!this.modal||!this.body)return spec;
+    return transformModalTextSpec(spec,this.modal,this.body);
   }
   private member(){return this.selectedMemberId==='player'?this.session!.hero:this.session!.party?.get(this.selectedMemberId);}
   private classNames(){return Object.fromEntries(this.app.storyClasses.classes.map(value=>[value.id,value.name]));}
@@ -968,45 +945,7 @@ export class StoryUI {
     if(this.page==='forge'&&this.forge)this.forge.render(this.body,this.modal!,this.placeModal,{scroll:textScroll,refresh:refreshText,updatePage:()=>this.menuText?.renderPage('forge')});
     if(this.page==='learn'&&this.skillBook)this.skillBook.render(this.body!);
     if(this.page==='system')this.systemPage?.render();
-    if(this.page==='debug'&&this.app.gm){
-      // 面板按当前动作层实例缓存：同一会话里保留过滤与选中，换会话就重建。
-      if(this.gmPanelOwner!==this.app.gm){
-        const gm=this.app.gm;
-        this.gmPanel=new GmPanel(gm,this.session.campaign,{close:()=>this.close(),render:()=>{if(this.app.gm===gm&&this.gmPanelOwner===gm)this.updateDebugPanel();},runAction:action=>{this.busy=true;try{return action();}finally{this.busy=false;this.sessionSignature=this.sessionDataSignature()??this.sessionSignature;}},requestStoryJump:plan=>this.requestStoryJump(plan)},{
-          itemSlot:this.app.menuPanels.assets['inventory-slot'],
-          itemSelected:this.app.menuPanels.assets['inventory-selected'],
-          assets:this.app.menuPanels.assets,
-          questRow:this.app.menuPanels.assets['quest-row'],
-          questRowSelected:this.app.menuPanels.assets['quest-row-selected'],
-          questRowPressed:this.app.menuPanels.assets['quest-row-pressed'],
-          questReady:this.app.menuPanels.assets['quest-ready'],
-          questMain:this.app.menuPanels.assets['quest-main'],
-          moveText:(key,text,y)=>{
-            const spec=this.gmTextSpecs.find(value=>value.key===key);
-            if(spec){spec.text=text;spec.y=y;}
-            this.menuText?.setText('debug',key,text);
-            this.menuText?.refresh();
-          },
-          itemDetail:(itemId,close)=>this.renderGmItemDetail(itemId,close),
-          updateItemDetail:(itemId,close)=>{
-            if(!this.open||this.page!=='debug'||this.gmPanelOwner!==gm)return;
-            this.description?.clear();this.removeDescriptionScrolls();this.gmDetailTextSpecs=[];this.gmDetailOpen=false;
-            if(itemId)this.renderGmItemDetail(itemId,close);this.menuText?.renderPage('debug');this.sync();
-          },
-          registerScroll:(name,scroll)=>this.scrollNames.set(name,scroll),
-          removeScroll:scroll=>{for(const [name,value] of this.scrollNames)if(value===scroll)this.scrollNames.delete(name);},
-          active:()=>this.open&&this.page==='debug'&&this.gmPanelOwner===gm,
-          refresh:()=>this.menuText?.refresh(),
-          setText:(key,text)=>{
-            const spec=this.gmTextSpecs.find(spec=>spec.key===key);if(spec)spec.text=text;
-            this.menuText?.setText('debug',key,text);
-          },
-        });
-        this.gmPanelOwner=gm;
-      }
-      this.gmTextSpecs=[];this.gmDetailTextSpecs=[];this.gmDetailOpen=false;
-      this.gmPanel?.render(this.body!,{add:spec=>this.gmTextSpecs.push(spec)});
-    }
+    if(this.page==='debug')this.debugPage?.render(this.body!);
     if(this.page==='save'||this.page==='load')this.renderSavePage();
     if(this.page==='settings')this.settingsPage?.render();
     if(this.bagPage?.operationOpen)this.bagPage?.renderOperation();if(this.statusPage?.confirming)this.statusPage?.renderAllocationConfirmation();if(this.skillsPage?.confirming)this.skillsPage?.renderSkillResetConfirmation();
@@ -1060,22 +999,11 @@ export class StoryUI {
     for(const spec of this.saveTextSpecs)writer.add(spec);
     this.renderNoticeText(writer,true);
   }
-  /**
-   * 存档/读档页：槽位文字由 `save-board` 写进接收器，页标题仍由 controller 调用
-   * `surface.text`，在这里截下来换成 DOM 文字。图框、点击行和滚动仍归 Phaser。
-   */
+  /** 存档/读档页：槽位与页标题显式写入文字接收器；图框、点击行和滚动仍归 DOM 表面。 */
   private renderSavePage():void{
     const surface=this.surface!,specs:MenuTextSpec[]=[];
     this.saveTextSpecs=specs;this.saveModalTextSpecs=[];
-    setSaveBoardTextSink(surface,{add:spec=>specs.push(this.saveBoardText(spec))});
-    const originalText=surface.text;
-    const surfaceText=surface as unknown as {text:UiSurface['text']};
-    surfaceText.text=((value:string,x:number,y:number,width=0,size=22,color=GOLD)=>{
-      const spec:MenuTextSpec={key:'title',text:value,x,y,style:{size,color,width:width||undefined}};
-      specs.push(spec);return this.captureText(spec);
-    }) as UiSurface['text'];
-    try{ this.savePage.render(surface,this.page==='load'); }
-    finally{ surfaceText.text=originalText;setSaveBoardTextSink(surface,undefined); }
+    this.savePage.render(surface,this.page==='load',{add:spec=>specs.push(this.saveBoardText(spec))});
     // 确认框打开时，主页面文字让位给确认框那一份，由 `renderSaveConfirmations` 统一渲染。
     if(!this.savePage.modalOpen)this.menuText?.renderPage(this.page);
   }
@@ -1101,12 +1029,6 @@ export class StoryUI {
     for(const [name,scroll] of this.scrollNames)if(scroll.surface===this.modal)this.scrollNames.delete(name);
     this.noticeBand=undefined;this.noticeTextSpecs=[];if(this.itemNotice)this.drawItemNotice();
     this.menuText?.renderPage(this.itemNotice?'native-notice':this.page);this.sync();
-  }
-  private updateDebugPanel():void{
-    if(!this.open||this.page!=='debug'||!this.gmPanel||!this.body)return;
-    this.description?.clear();this.removeDescriptionScrolls();this.gmDetailOpen=false;this.gmDetailTextSpecs=[];this.gmTextSpecs=[];
-    this.gmPanel.update(this.body,{add:spec=>this.gmTextSpecs.push(spec)});
-    this.menuText?.renderPage('debug');this.sessionSignature=this.sessionDataSignature()??this.sessionSignature;this.sync();
   }
   private updatePartyModal():void{
     if(!this.modal||!this.partyPanel||this.page!=='party')return;
@@ -1137,30 +1059,13 @@ export class StoryUI {
   private modalSurfaceTextSpec(spec:MenuTextSpec):MenuTextSpec{
     const modal=this.modal,surface=this.surface;
     if(!modal||!surface)return spec;
-    const matrix=surface.root.getWorldTransformMatrix(),origin=matrix.transformPoint(0,0),
-      point=(x:number,y:number)=>{const world=modal.root.getWorldTransformMatrix().transformPoint(x,y);
-        return{x:(world.x-origin.x)/matrix.scaleX,y:(world.y-origin.y)/matrix.scaleY};},
-      start=point(spec.x,spec.y),
-      clip=spec.clip?{top:point(0,spec.clip.top).y,bottom:point(0,spec.clip.bottom).y}:undefined;
-    return{...spec,x:start.x,y:start.y,clip};
+    return transformModalTextSpec(spec,modal,surface);
   }
   /** 槽位文字（页面坐标）→ DOM 文字；有换行宽度时按词断行。 */
   private saveBoardText(spec:SaveBoardTextSpec):MenuTextSpec{
     return {key:spec.key,text:spec.text,x:spec.x,y:spec.y,scroll:spec.scroll,clip:spec.clip,
       style:{size:spec.size,color:spec.color,anchorX:spec.anchorX,anchorY:spec.anchorY,
         width:spec.width,wrap:spec.width?'word':undefined}};
-  }
-  /** 一段只用于收集的文字：controller 的 `setOrigin/Align/Position` 改的是 DOM 规格。 */
-  private captureText(spec:MenuTextSpec):UiText{
-    const label={
-      height:spec.style.size+5,originX:spec.style.anchorX??0,originY:spec.style.anchorY??0,
-      setOrigin(anchorX=0,anchorY=0){spec.style.anchorX=anchorX;spec.style.anchorY=anchorY;label.originX=anchorX;label.originY=anchorY;return label;},
-      setAlign(align:'left'|'center'|'right'){spec.style.align=align;return label;},
-      setPosition(x:number,y:number){spec.x=x;spec.y=y;return label;},
-      setVisible(){return label;},
-      destroy(){}
-    };
-    return label as unknown as UiText;
   }
 
 
@@ -1197,45 +1102,8 @@ export class StoryUI {
     if(this.shortcutEditor?.active)this.closeShortcutScreen();
   }
 
-          private removeDescriptionScrolls():void{
+  private removeDescriptionScrolls():void{
     for(const [name,scroll] of this.scrollNames)if(scroll.surface===this.description)this.scrollNames.delete(name);
-  }
-      /**
-   * GM 道具页的详情层：用背包同一套说明面板与正文生成器，画在独立的说明画布（深度 300）上，
-   * 因此表现为盖在道具页右侧的弹出层。物品可能还没进背包，所以用一份基础实例预览。
-   */
-  private renderGmItemDetail(itemId:string,close:()=>void):void{
-    const v=this.description!,catalog=this.session!.bag.catalog,item=catalog.items[itemId];
-    if(!item)return;
-    this.gmDetailOpen=true;
-    // 未持有的物品没有掷出的实例数值；用目录默认值与最大孔数预览，避免详情里全是 0。
-    const defaults=this.app.characterStats.equipment[itemId];
-    const entry:ItemInstance={id:'gm-preview',item:itemId,quantity:1,enhancement:0,gems:[],
-      ...(defaults?{numbers:{grade:defaults.defaultGrade??2,gradeName:defaults.gradeName,modifiers:[],gemModifiers:[],
-        magicPercent:defaults.magicPercent[0]??0,sockets:item.equipment?.socketCapacity??0,
-        enhancementUses:defaults.fixedEnhancementUses??defaults.enhancementUses[0]??0}}:{})};
-    // 详情层停在左侧、底边抬到底部按钮之上：右侧数量/发放按钮与底部金币按钮始终可点。
-    const panel=descriptionPanel(BAG_DESCRIPTION_WIDTH),left=60,top=panel.y,panelHeight=392;
-    // 透明拦截层挡住被盖住的道具格，避免点到看不见的物品；右侧与底部不在它范围内。
-    v.rect(left,top,panel.width,panelHeight,0x000000,0).setInteractive();
-    drawDescriptionPanel(v,this.app.menuPanels.assets,left,top,panel.width,panelHeight);
-    // 每次打开都从正文顶部开始，不沿用上一件物品的滚动位置。
-    this.scrollOffsets.delete('debug:item');
-    const body=itemDescriptionBody({item,entry,numbers:this.app.characterStats.equipment[entry.item],
-      catalog:this.app.characterStats,grades:this.app.shops.grades,member:this.member(),
-      classNames:this.classNames(),gemNames:entry.gems.map(id=>catalog.items[id]?.name),skill:entry.skill?catalog.skillDescriptions?.[entry.skill]:undefined});
-    // 名字换行时正文区整体下移，底边仍停在原面板内。
-    const titleOverflow=descriptionTitleOverflow(v,body.title,panel.width,panel.title.y,panel.scroll.y,panel.scroll.height),
-      scrollX=left+panel.scroll.x,scrollY=top+panel.scroll.y+titleOverflow,
-      scrollHeight=Math.max(60,panel.scroll.height-titleOverflow),
-      clip={top:scrollY,bottom:scrollY+scrollHeight},
-      writer={add:(spec:MenuTextSpec)=>this.gmDetailTextSpecs.push(spec)};
-    const detail=this.scroll('item',left+panel.scroll.x,scrollY,panel.scroll.width,scrollHeight,v);
-    drawDescriptionTitle(body.title,left,top,panel.width,body.color,{writer,keyPrefix:'gm-item-title'});
-    const height=drawDescriptionRows(v,body.rows,panel.scroll.width,
-      {writer,keyPrefix:'gm-item-row',x:scrollX,y:scrollY,scroll:'item',clip});
-    this.finishScroll('item',detail,height);
-    drawDescriptionClose(v,this.app.menuPanels.assets,panel,left,top,close);
   }
       private openForge(targetId:string):void {
     const bag=this.session?.bag,target=bag?.get(targetId),equipment=target&&bag?bag.catalog.items[target.item].equipment:undefined;

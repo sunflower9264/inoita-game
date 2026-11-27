@@ -6,7 +6,7 @@ import { gameMenuImageGroups, titleMenuImages } from '../src/application/menu-im
 import { COMMON_BUTTON_IMAGES } from '../src/ui/common-button.ts';
 import { UI_ATLAS_FRAMES, UI_ATLAS_PAGES } from '../src/generated/ui-atlas.ts';
 import { UI_ICON_ATLAS_DATA, UI_ICON_FRAMES } from '../src/generated/icon-atlas.ts';
-import { uiImageFileNames } from '../src/ui/phaser/widgets.ts';
+import { uiImageFileNames } from '../src/ui/widgets.ts';
 
 const content = (name: string) => JSON.parse(readFileSync(resolve('public/content', `${name}.json`), 'utf8'));
 

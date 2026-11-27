@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { CONTROL_IDS, CONTROL_LAYOUT_STORAGE_KEY, CONTROL_SIZES, ControlLayoutPreferences, maxControlScale, normalizeControlPosition, resolveControlLayout,
   type ControlLayoutOverrides, type ControlViewport, type StorageLike } from '../src/ui/control-layout.ts';
-import { controlViewport } from '../src/ui/phaser/control-layout-viewport.ts';
+import { controlViewport } from '../src/ui/viewport.ts';
 
 const viewport: ControlViewport = {width: 960, height: 640, insets: {left: 0, right: 0, top: 0, bottom: 0}};
 class MemoryStorage implements StorageLike {

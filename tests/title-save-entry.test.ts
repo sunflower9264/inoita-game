@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
-import test, {after} from 'node:test';
-import {registerHooks} from 'node:module';
+import test, {after, afterEach} from 'node:test';
 import {SaveSlots,SAVE_FORMAT,type SaveSlotRef} from '../src/domain/save-game.ts';
 import type {MenuContext} from '../src/application/ports.ts';
 import type {StoryWorldViewSnapshot} from '../src/application/world-snapshot.ts';
@@ -8,15 +7,14 @@ import type {CloudSaveEntry,CloudSavePort,CloudSession} from '../src/application
 import {CLOUD_PAGE} from '../src/ui/cloud-save-layout.ts';
 import {EventEmitter} from 'node:events';
 import {InputRouter} from '../src/application/input-router.ts';
-import {MenuTextLayer,type MenuTextOcclude,type MenuTextSpec} from '../src/ui/dom/menu-text.ts';
-import type {DomUi} from '../src/ui/dom/dom-ui.ts';
+import {routeSurfaceKey, surfaceFocusables} from '../src/ui/dom/surface.ts';
 import {installMenuDom,menuFrame} from './support/menu-dom.ts';
 after(installMenuDom());
 menuFrame.width=1200;
-const hook=registerHooks({resolve(specifier,context,next){return specifier==='phaser'?{url:'data:text/javascript,export default {Scene:class{},Scenes:{Events:{RESUME:"resume",PAUSE:"pause"}},BlendModes:{}}',shortCircuit:true}:next(specifier,context);}});
-const {SaveSlotRename}=await import('../src/ui/save-slot-rename.ts');
 const {TitleMenuController}=await import('../src/ui/title-menu-controller.ts');
-const {UiSurface}=await import('../src/ui/phaser/widgets.ts');hook.deregister();
+type TitleMenuViewFactory=import('../src/ui/title-menu-controller.ts').TitleMenuViewFactory;
+const activeControllers=new Set<InstanceType<typeof TitleMenuController>>();
+afterEach(()=>{for(const controller of activeControllers)controller.dispose();activeControllers.clear();});
 class Button {
   readonly visible=true;readonly shown=true;readonly input:{enabled:boolean};
   x=0;y=0;width=0;height=0;active=true;parentContent?:{list:unknown[]};
@@ -66,12 +64,15 @@ function fakeView(width:number,height:number){
     relayoutOverlay(){overlayRelayout?.();},
     buttons:[] as Button[],texts:[] as string[],textNodes:[] as TextNode[],scrolls:[] as FakeScroll[],zones,
     sliders:[] as {label:string;value:number;setValue:(value:number)=>void}[],enabled:()=>true,focusIndex:-1,
-    scene:{game:{events:{emit:()=>{}}},scale:{width,height},add:{zone:()=>{const handlers=new Map<string,()=>void>();const zone={handlers,setOrigin(){return zone;},setInteractive(){return zone;},on(event:string,handler:()=>void){handlers.set(event,handler);return zone;}};zones.push(zone);return zone;}}},focus:()=>{},layout:()=>{},image:stub,
+    scene:{game:{events:{emit:()=>{}}},scale:{width,height},add:{zone:()=>{const handlers=new Map<string,()=>void>();const zone={handlers,setOrigin(){return zone;},setInteractive(){return zone;},on(event:string,handler:()=>void){handlers.set(event,handler);return zone;}};zones.push(zone);return zone;}}},
+    focus(){},layout(){},visible(){},destroy(){this.clear();},image:stub,
+    measureText(value:string,size:number){return Array.from(value).length*size*.55;},
     text(value:string,x:number,y:number,_width:number,size:number){
       this.texts.push(value);
       const node:TextNode={value,x,y,size,origin:[0,0],handlers:new Map()};this.textNodes.push(node);
       const lines=_width>0?Math.max(1,Math.ceil(Array.from(value).length*size*.55/_width)):1;
-      const label={height:lines*(size+5)-5,setOrigin:(originX:number,originY:number)=>{node.origin=[originX,originY];return label;},
+      const label={height:lines*(size+5)-5,context:{measureText:(text:string)=>({width:Array.from(text).length*size*.55})},
+        setOrigin:(originX:number,originY:number)=>{node.origin=[originX,originY];return label;},
         setPosition:(nextX:number,nextY:number)=>{node.x=nextX;node.y=nextY;return label;},
         setAlign:()=>label,destroy:()=>{},
         setInteractive:()=>label,on:(event:string,handler:()=>void)=>{node.handlers.set(event,handler);return label;}};
@@ -88,8 +89,8 @@ function fakeView(width:number,height:number){
       const button=new Button(label,action,options.disabled);
       Object.assign(button,{x,y,width,height});button.parentContent=options.parent;options.parent?.list?.push(button);this.buttons.push(button);return button;
     },
-    key(event:KeyboardEvent){UiSurface.prototype.key.call(this as unknown as InstanceType<typeof UiSurface>,event);},
-    focusables(){return UiSurface.prototype.focusables.call(this as unknown as InstanceType<typeof UiSurface>);},
+    key(event:KeyboardEvent){return routeSurfaceKey(this as never,event);},
+    focusables(){return surfaceFocusables(this as never);},
     scroll(x:number,y:number,width:number,height:number){
       const content={ list:[] as unknown[], add(){}, remove(){}, removeAll(){} };
       const value:FakeScroll={x,y,width,height,extent:0,scrollTop:0,content,setHeight(extent:number){value.extent=extent;},layout(){},destroy(){}};
@@ -97,7 +98,7 @@ function fakeView(width:number,height:number){
     },
   };
 }
-function fixture(gmMode?:MenuContext['gmMode'],cloud?:CloudSavePort){
+async function fixture(gmMode?:MenuContext['gmMode'],cloud?:CloudSavePort,options:{active?:()=>boolean}={}){
   const entries=new Map<string,string>(),events:string[]=[],signals:AbortSignal[]=[];
   const saves=new SaveSlots<StoryWorldViewSnapshot>({getItem:key=>entries.get(key)??null,setItem:(key,value)=>{entries.set(key,value);},removeItem:key=>{entries.delete(key);}});
   const domLabels:FakeDomLabel[]=[];
@@ -107,48 +108,36 @@ function fixture(gmMode?:MenuContext['gmMode'],cloud?:CloudSavePort){
     validateCloudSave:async()=>{},enterGame:async()=>{events.push('new');},resumeSlot:async(slot,signal)=>{events.push(`load:${slot}`);if(signal)signals.push(signal);}};
   Object.defineProperty(app,'domUi',{value:domUi});
   const view=fakeView(1200,640),modal=fakeView(1024,640);
-  // 直接借用 TitleMenuController.prototype 的假场景不会跑字段初始化；这里补上新加的私有状态，
-  // 尤其是 cloudSerial（`++undefined` 会变成 NaN，后续请求代次比较全部失败）。
-  const state={app,surface:view,modal,page:'home',cloudSerial:0,cloudBusy:false,cloudAccountInput:'',cloudPassword:'',
-    // 场景缩放通知与屏幕布局分别提供。
-    scale:{width:1200,height:640,zoom:1,on(){},off(){}},
-    cloudStatus:undefined,cloudCount:undefined,cloudRequest:undefined,cloudRenderedBranch:undefined,cloudControls:[],confirmAction:undefined,confirmResolve:undefined,
-    slotBoard:undefined,slotRename:new SaveSlotRename(),slotRequest:undefined,slotPortraits:undefined,settingsScroll:0,backdrop:undefined,
-    challengeClicks:0,challengeTimer:undefined,
-    domSpecs:[] as MenuTextSpec[],menuText:undefined as MenuTextLayer|undefined,changelogBackgroundText:undefined as MenuTextLayer|undefined,modalLabels:[] as FakeDomLabel[],
-    changelogVersionButtons:[] as Button[],changelogOpen:false,changelogState:'idle',changelogReleases:[] as {gameVersion:string;entries:string[]}[],changelogSelected:0,
-    changelogVersionsScroll:undefined as FakeScroll|undefined,changelogVersionsScrollTop:0,changelogEntries:[] as string[],changelogHeights:[] as number[],
-    changelogOffsets:[] as number[],changelogSpecs:[] as MenuTextSpec[],changelogScroll:undefined as FakeScroll|undefined,
-    changelogScrollTop:0,changelogRequest:undefined as AbortController|undefined,changelogError:'',
-    sys:{isActive:()=>true},textures:{exists:()=>true}};
-  const scene=Object.setPrototypeOf(Object.assign(state,{scene:{scale:state.scale,sys:state.sys,textures:state.textures}}),TitleMenuController.prototype);
-  const call=(name:string,...args:unknown[])=>Reflect.get(TitleMenuController.prototype,name).call(scene,...args);
-  const menuText=new MenuTextLayer(domUi as unknown as Pick<DomUi,'label'>,(x,y)=>({x,y,scale:1}),
-    (page,scroll)=>call('menuScrollTop',page,scroll) as number|undefined);
-  // 与场景注册保持一致：确认框压暗页面文字，更新日志的正文使用弹层坐标。
-  for(const page of ['home','slots','settings','cloud'] as const)menuText.register(page,writer=>{
-    const occlude=state.confirmAction?call('confirmOcclusion') as MenuTextOcclude|undefined:undefined;
-    for(const spec of state.domSpecs)writer.add(occlude?{...spec,dim:true,occlude}:spec);
-  });
-  menuText.register('changelog',writer=>{
-    for(const spec of state.changelogSpecs)writer.add(spec);
-  });
-  state.menuText=menuText;
-  call('setupChangelogBackground',domUi);
+  const popupMask={visible:false,setSize(){return this;},setFillStyle(){return this;},setDepth(){return this;},setVisible(value:boolean){this.visible=value;return this;},setInteractive(){return this;},destroy(){this.visible=false;}};
+  const backdrop={setOrigin(){return this;},setPosition(){return this;},setScale(){return this;},setDisplaySize(){return this;},fitting(){return this;},destroy(){}};
+  let credCallbacks:{onAccount(value:string):void;onPassword(value:string):void}|undefined,credFocused=false;
+  const credentialsView={get focused(){return credFocused;},show(){},hide(){},blur(){credFocused=false;},setRects(){},setValues(){},destroy(){credFocused=false;}};
+  const views:TitleMenuViewFactory={
+    createSurface:(w)=>(w===1200?view:modal) as never,
+    createBackdrop:()=>backdrop as never,
+    createPopupMask:()=>popupMask as never,
+    createCredentials:opts=>{credCallbacks=opts;return credentialsView as never;},
+  };
+  const scale=Object.assign(new EventEmitter(),{width:1200,height:640,zoom:1});
+  const runtime={events:new EventEmitter(),scale,sys:{isActive:options.active??(()=>true)},textures:{exists:()=>true}};
+  const titleAssets={preloadResident:async()=>{}} as never;
+  const controller=new TitleMenuController(runtime as never,app,titleAssets,()=>{},views);
+  activeControllers.add(controller);
+  await controller.open();
   const clickIn=(surface:ReturnType<typeof fakeView>,label:string)=>{
     const node=surface.buttons.find(button=>button.getData('label')===label);
     assert.ok(node,label);assert.equal(node.input.enabled,true);(node.getData('action') as ()=>void)();
   };
   const click=(label:string)=>clickIn(view,label);
   const key=(value:string)=>view.key({key:value,preventDefault:()=>{}} as KeyboardEvent);
-  call('render');
   const domTexts=()=>domLabels.filter(label=>label.visible&&!label.removed).map(label=>label.text);
-  return {app,entries,events,signals,view,modal,state,call,click,clickModal:(label:string)=>clickIn(modal,label),key,saves,domLabels,domTexts};
+  const setCredentials=(account:string,password:string)=>{credCallbacks?.onAccount(account);credCallbacks?.onPassword(password);};
+  return {controller,app,entries,events,signals,view,modal,popupMask,click,clickModal:(label:string)=>clickIn(modal,label),key,saves,domLabels,domTexts,setCredentials};
 }
 const saved=(savedAt?:number)=>JSON.stringify({format:SAVE_FORMAT,summary:{...(savedAt===undefined?{}:{savedAt}),classId:'dark-knight',className:'黑暗骑士',level:1,mapId:'map',mapName:'营地',portrait:'portrait.png'},session:{},world:{location:{map:'map',x:0,y:0,facing:'south'},generatedEntities:[]}});
 
 test('title changelog loads on demand and only renders visible entries',async()=>{
-  const f=fixture();
+  const f=await fixture();
   const entries=Array.from({length:40},(_,index)=>`第 ${index+1} 条更新说明。`.repeat(6));
   let loads=0;
   f.app.loadChangelog=async()=>{loads++;return {version:2 as const,releases:[{gameVersion:'v1.0.6',entries},{gameVersion:'v1.0.5',entries:['旧版本专属内容']},...Array.from({length:8},(_,index)=>({gameVersion:`v0.0.${index}`,entries:[]}))]};};
@@ -170,36 +159,36 @@ test('title changelog loads on demand and only renders visible entries',async()=
   const versionLabel=f.domLabels.find(label=>label.text==='v1.0.5'&&label.visible)!;
   assert.ok(versionLabel);
   const versionY=versionLabel.y;
-  const scroll=f.state.changelogScroll!;
+  const versions=f.modal.scrolls[0]!;
+  const scroll=f.modal.scrolls[1]!;
   scroll.scrollTop=scroll.extent-scroll.height;
   scroll.onScroll?.();
   assert.ok(labels().some(text=>text.includes('第 40 条')),'滚到底显示最后一条');
   assert.ok(!labels().some(text=>text.includes('第 1 条')),'滚出视口的条目不渲染');
   assert.equal(versionLabel.y,versionY,'正文滚动时左侧版本号保持原位');
-  const versions=f.state.changelogVersionsScroll!;
   versions.scrollTop=68;versions.onScroll?.();
   assert.equal(versionLabel.y,versionY-68,'版本号跟随左侧列表滚动');
-  assert.equal(f.state.changelogScroll?.scrollTop,scroll.extent-scroll.height,'左侧滚动不影响正文');
+  assert.equal(f.modal.scrolls[1]?.scrollTop,scroll.extent-scroll.height,'左侧滚动不影响正文');
   const homeButton=f.view.buttons.find(button=>button.getData('label')==='开始游戏');
   const closeButton=f.modal.buttons.find(button=>button.getData('label')==='关闭更新日志');
   f.clickModal('v1.0.5');
   assert.equal(f.view.buttons.find(button=>button.getData('label')==='开始游戏'),homeButton);
   assert.equal(f.modal.buttons.find(button=>button.getData('label')==='关闭更新日志'),closeButton);
-  assert.equal(f.state.changelogVersionsScroll,versions);
-  assert.equal(f.state.changelogScroll,scroll);
+  assert.equal(f.modal.scrolls[0],versions);
+  assert.equal(f.modal.scrolls[1],scroll);
   assert.ok(f.domTexts().includes('v1.0.5 更新说明'));
   assert.ok(f.domTexts().includes('1. 旧版本专属内容'));
-  assert.equal(f.state.changelogScroll?.scrollTop,0,'切换版本后正文回到顶部');
-  assert.equal(f.state.changelogVersionsScroll?.scrollTop,68,'切换版本后保留版本列表位置');
+  assert.equal(f.modal.scrolls[1]?.scrollTop,0,'切换版本后正文回到顶部');
+  assert.equal(f.modal.scrolls[0]?.scrollTop,68,'切换版本后保留版本列表位置');
   f.clickModal('关闭更新日志');
-  assert.equal(f.state.changelogOpen,false);
+  assert.equal(f.popupMask.visible,false);
   assert.ok(!f.domLabels.some(label=>label.visible&&label.style.zIndex==='125'),'关闭弹窗后隐藏背景文字层');
   assert.ok(f.domTexts().includes('开始游戏'),'关闭后主菜单文字正常显示');
   assert.ok(!f.domTexts().some(text=>text.includes('第 1 条')),'关闭弹窗后日志文字撤掉');
 });
 
 test('changelog loader keeps its receiver and empty entries show the empty state',async()=>{
-  const f=fixture();
+  const f=await fixture();
   let receiver:unknown;
   f.app.loadChangelog=function(this:unknown){receiver=this;return Promise.resolve({version:2 as const,releases:[]});};
   f.click('更新日志');
@@ -211,7 +200,7 @@ test('changelog loader keeps its receiver and empty entries show the empty state
 });
 
 test('changelog reports load errors and starts from the newest version after reopening',async()=>{
-  const f=fixture();let loads=0;let releases=0;
+  const f=await fixture();let loads=0;let releases=0;
   f.app.loadChangelog=async()=>{
     if(++loads===1)throw new Error('网络不可用');
     return {version:2,releases:[{gameVersion:'v1.0.6',entries:['最新内容']},{gameVersion:'v1.0.5',entries:[]}]};
@@ -223,11 +212,9 @@ test('changelog reports load errors and starts from the newest version after reo
   f.click('更新日志');await new Promise(resolve=>setImmediate(resolve));
   f.clickModal('v1.0.5');
   assert.ok(f.domTexts().includes('暂无更新日志。'));
-  assert.deepEqual(f.state.changelogHeights,[],'空版本不保留旧条目高度');
-  assert.deepEqual(f.state.changelogOffsets,[],'空版本不保留旧条目偏移');
-  const scroll=f.state.changelogScroll!;
+  const scroll=f.modal.scrolls[1]!;
   scroll.scrollTop=10;scroll.onScroll?.();
-  assert.ok(!f.state.changelogSpecs.some(spec=>spec.text.includes('undefined')),'滚动不生成伪条目');
+  assert.ok(!f.domTexts().some(text=>text.includes('undefined')||/^\d+\. /.test(text)),'滚动不生成伪条目');
   f.clickModal('关闭更新日志');
   f.click('更新日志');await new Promise(resolve=>setImmediate(resolve));
   assert.ok(f.domTexts().includes('v1.0.6 更新说明'));
@@ -236,7 +223,7 @@ test('changelog reports load errors and starts from the newest version after reo
 });
 
 test('closing and reopening changelog ignores an earlier pending response',async()=>{
-  const f=fixture();
+  const f=await fixture();
   let resolveOld!:(value:{version:2;releases:{gameVersion:string;entries:string[]}[]})=>void;
   const old=new Promise<{version:2;releases:{gameVersion:string;entries:string[]}[]}>(resolve=>{resolveOld=resolve;});
   let calls=0;
@@ -250,27 +237,26 @@ test('closing and reopening changelog ignores an earlier pending response',async
   assert.ok(!f.domTexts().includes('1. 过期内容'));
 });
 
-test('menu draws after assets finish while the scene is paused',()=>{
-  const f=fixture();let active=false;
-  f.state.sys.isActive=()=>active;f.view.clear();
-  f.call('render');
+test('menu draws after assets finish while the scene is paused',async()=>{
+  let active=false;
+  const f=await fixture(undefined,undefined,{active:()=>active});
   assert.equal(f.view.buttons.length,0,'暂停时跳过首次绘制');
-  active=true;f.call('renderOnResume');
+  active=true;f.controller.renderOnResume();
   assert.ok(f.view.buttons.some(button=>button.getData('label')==='开始游戏'),'恢复后补画标题菜单');
   f.click('开始游戏');
   assert.ok(f.view.buttons.some(button=>button.getData('label')==='云存档'),'恢复后的按钮可以操作');
 });
 
-test('start opens one auto row plus ten manual slots and an empty slot launches class selection',()=>{
-  const f=fixture();f.click('开始游戏');assert.deepEqual(f.events,[]);
+test('start opens one auto row plus ten manual slots and an empty slot launches class selection',async()=>{
+  const f=await fixture();f.click('开始游戏');assert.deepEqual(f.events,[]);
   // 空自动槽没有动作，所以只有返回钮、云存档入口与十个手动槽。
   assert.deepEqual(f.view.buttons.map(button=>button.getData('label')),
     ['返回主菜单','云存档',...Array.from({length:10},(_,slot)=>`存档槽 ${slot+1}`)]);
   f.click('存档槽 3');assert.deepEqual(f.events,['new']);
 });
 
-test('manual slots list newest first while keeping their slot identities',()=>{
-  const f=fixture();
+test('manual slots list newest first while keeping their slot identities',async()=>{
+  const f=await fixture();
   f.entries.set('inotia4.story.v1.slot0',saved(100));
   f.entries.set('inotia4.story.v1.slot4',saved(400));
   f.entries.set('inotia4.story.v1.slot7',saved(250));
@@ -282,15 +268,15 @@ test('manual slots list newest first while keeping their slot identities',()=>{
   f.click('存档槽 5');assert.deepEqual(f.events,['load:4'],'显示位置变了，操作仍落在原槽');
 });
 
-test('mixed slots load existing saves, start empty slots and leave damaged slots unavailable',()=>{
-  const f=fixture();f.entries.set('inotia4.story.v1.slot0',saved());f.entries.set('inotia4.story.v1.slot1','broken JSON');
+test('mixed slots load existing saves, start empty slots and leave damaged slots unavailable',async()=>{
+  const f=await fixture();f.entries.set('inotia4.story.v1.slot0',saved());f.entries.set('inotia4.story.v1.slot1','broken JSON');
   f.click('开始游戏');assert(!f.view.buttons.some(button=>button.getData('label')==='存档槽 2'));
   f.click('存档槽 1');f.click('存档槽 3');assert.deepEqual(f.events,['load:0','new']);
   assert.equal(f.signals[0].aborted,false);f.click('返回主菜单');assert.equal(f.signals[0].aborted,true);
 });
 
-test('title slots delete a manual save only after the native confirmation',()=>{
-  const f=fixture();f.entries.set('inotia4.story.v1.slot0',saved());f.entries.set('inotia4.story.v1.slot1','broken JSON');
+test('title slots delete a manual save only after the native confirmation',async()=>{
+  const f=await fixture();f.entries.set('inotia4.story.v1.slot0',saved());f.entries.set('inotia4.story.v1.slot1','broken JSON');
   f.click('开始游戏');
   // 自动槽没有管理动作；坏档只能删，不能改名。
   assert(!f.view.buttons.some(button=>String(button.getData('label')).startsWith('自动存档 ')));
@@ -318,8 +304,8 @@ test('title slots delete a manual save only after the native confirmation',()=>{
   assert(!f.view.buttons.some(button=>button.getData('label')==='存档槽 1 删除'),'空槽不再给出删除');
 });
 
-test('title save deletion moves other rows without rebuilding them',()=>{
-  const f=fixture();f.entries.set('inotia4.story.v1.slot0',saved(200));f.entries.set('inotia4.story.v1.slot1',saved(100));
+test('title save deletion moves other rows without rebuilding them',async()=>{
+  const f=await fixture();f.entries.set('inotia4.story.v1.slot0',saved(200));f.entries.set('inotia4.story.v1.slot1',saved(100));
   f.click('开始游戏');const kept=f.view.buttons.find(button=>button.getData('label')==='存档槽 2')!,oldY=kept.y;
   const rename=f.view.buttons.find(button=>button.getData('label')==='存档槽 2 改名')!,scroll=f.view.scrolls.at(-1);
   f.click('存档槽 1 删除');f.clickModal('是');
@@ -329,7 +315,7 @@ test('title save deletion moves other rows without rebuilding them',()=>{
 });
 
 test('title slots rename a manual save through the system keyboard',async()=>{
-  const f=fixture();f.entries.set('inotia4.story.v1.slot0',saved());
+  const f=await fixture();f.entries.set('inotia4.story.v1.slot0',saved());
   const initials:string[]=[];
   f.app.promptText=async(initial:string)=>{initials.push(initial);return '第一章';};
   f.click('开始游戏');const slot=f.view.buttons.find(button=>button.getData('label')==='存档槽 1')!;
@@ -345,7 +331,7 @@ test('title slots rename a manual save through the system keyboard',async()=>{
 });
 
 test('canceling title save rename keeps the current list',async()=>{
-  const f=fixture();f.entries.set('inotia4.story.v1.slot0',saved());
+  const f=await fixture();f.entries.set('inotia4.story.v1.slot0',saved());
   let finish!:(name:string|undefined)=>void;f.app.promptText=()=>new Promise(resolve=>{finish=resolve;});
   f.click('开始游戏');const button=f.view.buttons.find(value=>value.getData('label')==='存档槽 1 改名')!;
   f.click('存档槽 1 改名');assert.equal(f.view.enabled(),false);finish(undefined);
@@ -354,16 +340,16 @@ test('canceling title save rename keeps the current list',async()=>{
 });
 
 test('title save rename ignores input after leaving the save page',async()=>{
-  const f=fixture();f.entries.set('inotia4.story.v1.slot0',saved());
+  const f=await fixture();f.entries.set('inotia4.story.v1.slot0',saved());
   let finish!:(name:string|undefined)=>void;f.app.promptText=()=>new Promise(resolve=>{finish=resolve;});
-  f.click('开始游戏');f.click('存档槽 1 改名');f.call('showHome');finish('迟到的名称');
+  f.click('开始游戏');f.click('存档槽 1 改名');f.click('返回主菜单');finish('迟到的名称');
   await new Promise(resolve=>setImmediate(resolve));
   const reading=f.saves.inspect(0);assert.equal(reading.kind==='ok'?reading.game.summary.name:undefined,undefined);
-  assert.equal(f.state.page,'home');assert(f.view.buttons.some(button=>button.getData('label')==='开始游戏'));
+  assert(f.view.buttons.some(button=>button.getData('label')==='开始游戏'));
 });
 
-test('the auto save sits on top of the list and a renamed manual slot shows its name',()=>{
-  const f=fixture();
+test('the auto save sits on top of the list and a renamed manual slot shows its name',async()=>{
+  const f=await fixture();
   f.entries.set('inotia4.story.v1.auto',saved());
   f.entries.set('inotia4.story.v1.slot0',saved().replace('"classId":"dark-knight"','"name":"第一章","classId":"dark-knight"'));
   f.click('开始游戏');
@@ -375,21 +361,21 @@ test('the auto save sits on top of the list and a renamed manual slot shows its 
   assert.deepEqual(f.events,['load:auto','load:0']);
 });
 
-test('older development saves enter the same empty-slot class flow',()=>{
-  const f=fixture();f.entries.set('inotia4.story.v1.slot1',JSON.stringify({format:0}));
+test('older development saves enter the same empty-slot class flow',async()=>{
+  const f=await fixture();f.entries.set('inotia4.story.v1.slot1',JSON.stringify({format:0}));
   f.click('开始游戏');f.click('存档槽 2');assert.deepEqual(f.events,['new']);
 });
 
-test('the title resumes format 1 and starts a new game from an empty slot',()=>{
+test('the title resumes format 1 and starts a new game from an empty slot',async()=>{
   for(const [raw,expected] of [[JSON.stringify({...JSON.parse(saved()),format:1}),'load:1'],[undefined,'new']] as const){
-    const f=fixture();
+    const f=await fixture();
     if(raw)f.entries.set('inotia4.story.v1.slot1',raw);
     f.click('开始游戏');f.click('存档槽 2');assert.deepEqual(f.events,[expected]);
   }
 });
 
-test('title settings keeps every row inside a scrolling panel',()=>{
-  const f=fixture();f.click('环境设置');
+test('title settings keeps every row inside a scrolling panel',async()=>{
+  const f=await fixture();f.click('环境设置');
   assert(f.domTexts().includes('背景音乐'));assert(f.domTexts().includes('音效'));
   assert(!f.domTexts().some(text=>text.includes('语言')||text.includes('简体中文')));
   assert.deepEqual(f.view.buttons.map(button=>button.getData('label')),
@@ -404,17 +390,17 @@ test('title settings keeps every row inside a scrolling panel',()=>{
   assert(rows.every(row=>row.y>=0&&row.y+row.height<=scroll.extent),'每一行都在滚动内容的高度内');
 });
 
-test('title fullscreen changes keep settings controls and scroll position',()=>{
+test('title fullscreen changes keep settings controls and scroll position',async()=>{
   const root=document.documentElement as HTMLElement & {requestFullscreen?:()=>Promise<void>};
   const previous=root.requestFullscreen;
   root.requestFullscreen=async()=>{};
   try{
-    const f=fixture();f.click('环境设置');
+    const f=await fixture();f.click('环境设置');
     const button=f.view.buttons.find(button=>button.getData('label')==='全屏：关');
     const scroll=f.view.scrolls.at(-1);
     assert.ok(button);assert.ok(scroll);
     Object.defineProperty(document,'fullscreenElement',{configurable:true,value:root});
-    f.call('syncFullscreenSetting');
+    document.dispatchEvent(new Event('fullscreenchange'));
     assert.equal(f.view.buttons.find(item=>item.getData('label')==='全屏：开'),button);
     assert.equal(f.view.scrolls.at(-1),scroll);
     assert.ok(f.domTexts().includes('开'));
@@ -424,13 +410,13 @@ test('title fullscreen changes keep settings controls and scroll position',()=>{
   }
 });
 
-test('title settings leaves critical light effects to the in-game settings',()=>{
-  const f=fixture();f.click('环境设置');
+test('title settings leaves critical light effects to the in-game settings',async()=>{
+  const f=await fixture();f.click('环境设置');
   assert(!f.view.buttons.some(button=>String(button.getData('label')).startsWith('暴击光效')));
 });
 
-test('title settings uses volume sliders and leftmost means silence',()=>{
-  const f=fixture();
+test('title settings uses volume sliders and leftmost means silence',async()=>{
+  const f=await fixture();
   const audio={settings:{music:1,effects:1},setVolume(channel:'music'|'effects',value:number){this.settings[channel]=value;}};
   Object.defineProperty(f.app,'audio',{value:audio});
   f.click('环境设置');
@@ -442,15 +428,15 @@ test('title settings uses volume sliders and leftmost means silence',()=>{
   assert.equal(music.value,0);
 });
 
-test('challenge mode is disabled and is excluded from native keyboard focus',()=>{
-  const f=fixture(),challenge=f.view.buttons.find(button=>button.getData('label')==='挑战模式');assert.ok(challenge);assert.equal(challenge.input.enabled,false);
-  const focus=UiSurface.prototype.focusables.call(f.view as unknown as InstanceType<typeof UiSurface>);
+test('challenge mode is disabled and is excluded from native keyboard focus',async()=>{
+  const f=await fixture(),challenge=f.view.buttons.find(button=>button.getData('label')==='挑战模式');assert.ok(challenge);assert.equal(challenge.input.enabled,false);
+  const focus=surfaceFocusables(f.view as never);
   assert.deepEqual(focus.map(button=>button.getData('label')),['开始游戏','环境设置','更新日志']);
   f.key('Tab');f.key('Enter');assert.deepEqual(f.events,[]);assert(f.view.buttons.some(button=>button.getData('label')==='存档槽 1'));
 });
 
-test('challenge mode needs five hidden clicks before starting the pressure test',()=>{
-  const f=fixture();let starts=0;
+test('challenge mode needs five hidden clicks before starting the pressure test',async()=>{
+  const f=await fixture();let starts=0;
   f.app.startPressureTest=async()=>{starts++;};
   const click=()=>{const handler=f.view.zones[0]!.handlers.get('pointerdown');assert.ok(handler);handler();};
   for(let index=0;index<4;index++)click();
@@ -461,9 +447,9 @@ test('challenge mode needs five hidden clicks before starting the pressure test'
   assert.equal(starts,1,'触发后计数归零，不会连续进入');
 });
 
-test('the version number sits bottom-right at menu-button size and toggles GM',()=>{
+test('the version number sits bottom-right at menu-button size and toggles GM',async()=>{
   const gm={on:false,toggles:0,toggle(){this.on=!this.on;this.toggles+=1;return this.on;}};
-  const f=fixture(gm);
+  const f=await fixture(gm);
   const node=f.domLabels.find(text=>text.text==='v2.0.0');assert.ok(node);
   assert.equal(Number.parseFloat(String(node.style.fontSize)),36,'版本号与主菜单按钮同字号');
   assert.deepEqual(node.anchor,[1,1],'以右下角为锚点');
@@ -485,7 +471,7 @@ test('the version number sits bottom-right at menu-button size and toggles GM',(
 
 test('a rejected title load returns to usable slots after dismissing the loading error',async t=>{
   t.mock.method(console,'error',()=>{});
-  const f=fixture();let retry:(()=>void)|undefined;
+  const f=await fixture();let retry:(()=>void)|undefined;
   f.app.resumeSlot=async()=>{throw new Error('存档内容无效');};
   const ui=f.app.ui as {ready:boolean;menuLoaded:()=>void;error:(message:string,retry:()=>void)=>void};
   ui.error=(message,again)=>{assert.equal(message,'存档内容无效');ui.ready=false;retry=again;};
@@ -577,7 +563,7 @@ function cloudStub(options:CloudStubOptions={}):CloudHarness {
 
 test('the cloud entry sits on the slots page and a logged-out page sends no cloud request',async()=>{
   const cloud=cloudStub();
-  const f=fixture(undefined,cloud.port);
+  const f=await fixture(undefined,cloud.port);
   f.click('开始游戏');
   assert(f.view.buttons.some(button=>button.getData('label')==='云存档'));
   assert.deepEqual(cloud.calls,[],'打开存档页不触发云请求');
@@ -589,14 +575,16 @@ test('the cloud entry sits on the slots page and a logged-out page sends no clou
 
 test('the cloud page keeps labels, inputs and notes inside the framed panel',async()=>{
   const cloud=cloudStub();
-  const f=fixture(undefined,cloud.port);
+  const f=await fixture(undefined,cloud.port);
   f.click('开始游戏');f.click('云存档');await settle();
   const panel=CLOUD_PAGE.panel;
   // 图框金线内侧至少留 40 像素；内容不能压在边框上，状态说明必须在可滚动区里。
   const inner={left:panel.x+40,top:panel.y+60,right:panel.x+panel.width-40,bottom:panel.y+panel.height-40};
   const inside=(left:number,top:number,width:number,height:number)=>left>=inner.left&&top>=inner.top&&left+width<=inner.right&&top+height<=inner.bottom;
-  for(const node of f.view.textNodes.filter(node=>node.value==='账号'||node.value==='密码')){
-    assert(node.x>inner.left&&node.y>inner.top,`${node.value} 贴到了图框`);
+  for(const text of ['账号','密码']){
+    const label=f.domLabels.find(item=>!item.removed&&item.visible&&item.text===text);
+    assert.ok(label,text);
+    assert(label.x>inner.left&&label.y>inner.top,`${text} 贴到了图框`);
   }
   for(const label of ['登录','注册']){
     const button=f.view.buttons.find(button=>button.getData('label')===label);
@@ -613,35 +601,19 @@ test('the cloud page keeps labels, inputs and notes inside the framed panel',asy
 
 test('cloud button labels stay centered in their buttons before and after login',async()=>{
   for(const loggedIn of [false,true]){
-    const cloud=cloudStub({loggedIn});const f=fixture(undefined,cloud.port);
+    const cloud=cloudStub({loggedIn});const f=await fixture(undefined,cloud.port);
     const scale=loggedIn ? .55 : 1.2,offsetX=37,offsetY=19;
-    f.state.menuText?.destroy();
-    const domUi=(f.app as unknown as {domUi:Pick<DomUi,'label'>}).domUi;
-    const menuText=new MenuTextLayer(domUi,(x,y)=>({x:offsetX+x*scale,y:offsetY+y*scale,scale}),()=>undefined);
-    for(const page of ['home','slots','cloud'])menuText.register(page,writer=>{for(const spec of f.state.domSpecs)writer.add(spec);});
-    f.state.menuText=menuText;
-    const original=f.view.button;
-    f.view.button=function(label,x,y,width,height,action,options={}){
-      const button=original.call(this,label,x,y,width,height,action,options);
-      if(label){
-        const text=this.text as unknown as (value:string,x:number,y:number,width:number,size:number,color:string,parent:unknown)=>{setOrigin(x:number):unknown};
-        text.call(this,label,width/2,height/2,width-12,(options as {fontSize?:number}).fontSize??Math.min(22,height*.42),'#f3deb0',button).setOrigin(.5);
-      }
-      return button;
-    };
+    f.view.root.getWorldTransformMatrix=()=>({tx:offsetX,ty:offsetY,scaleX:scale,scaleY:scale,
+      transformPoint:(x:number,y:number)=>({x:offsetX+x*scale,y:offsetY+y*scale})});
     f.click('开始游戏');f.click('云存档');await settle();
     const labels=loggedIn?['修改密码','导入本机存档','下载云存档','退出登录']:['登录','注册'];
     for(const text of labels){
       const button=f.view.buttons.find(item=>item.getData('label')===text)!;
-      const spec=f.state.domSpecs.find(item=>item.text===text)!;
-      assert.ok(button&&spec,text);
-      assert.equal(spec.x,button.x+button.width/2,`${text} 的横向中心`);
-      assert.equal(spec.y,button.y+button.height/2,`${text} 的纵向中心`);
-      assert.equal(spec.style.anchorX,.5);assert.equal(spec.style.anchorY,.5);
+      assert.ok(button,text);
       const label=f.domLabels.slice().reverse().find(item=>!item.removed&&item.text===text)!;
       assert.ok(label,text);
-      assert.equal(label.x,offsetX+(button.x+button.width/2)*scale);
-      assert.equal(label.y,offsetY+(button.y+button.height/2)*scale);
+      assert.ok(Math.abs(label.x-(offsetX+(button.x+button.width/2)*scale))<1e-6,`${text} 的横向中心`);
+      assert.ok(Math.abs(label.y-(offsetY+(button.y+button.height/2)*scale))<1e-6,`${text} 的纵向中心`);
       assert.deepEqual(label.anchor,[.5,.5]);
     }
   }
@@ -649,11 +621,10 @@ test('cloud button labels stay centered in their buttons before and after login'
 
 test('cloud login switches to the signed-in actions',async()=>{
   const cloud=cloudStub();
-  const f=fixture(undefined,cloud.port);
+  const f=await fixture(undefined,cloud.port);
   f.click('开始游戏');f.click('云存档');await settle();
-  // 账号/密码现在是云页面板里的内嵌输入框；进入云页后由输入回调写入场景状态。
-  f.state.cloudAccountInput='hero';
-  f.state.cloudPassword='secret1';
+  // 账号/密码现在是云页面板里的内嵌输入框；进入云页后由输入回调写入控制状态。
+  f.setCredentials('hero','secret1');
   f.click('登录');await settle();
   assert.deepEqual(cloud.calls,['login','list']);
   assert(f.domTexts().some(text=>text.includes('已登录：hero')));
@@ -667,10 +638,9 @@ test('a locked cloud login shows the lock message without entering the signed-in
     ok:false,
     error:{code:'locked',message:'密码连续输错 3 次，账号已锁定，请 15 分钟后再试。',retryAfterSeconds:900},
   })});
-  const f=fixture(undefined,cloud.port);
+  const f=await fixture(undefined,cloud.port);
   f.click('开始游戏');f.click('云存档');await settle();
-  f.state.cloudAccountInput='hero';
-  f.state.cloudPassword='secret1';
+  f.setCredentials('hero','secret1');
   const login=f.view.buttons.find(button=>button.getData('label')==='登录')!,scroll=f.view.scrolls.at(-1);
   f.click('登录');await settle();
   assert.equal(f.view.buttons.find(button=>button.getData('label')==='登录'),login);assert.equal(f.view.scrolls.at(-1),scroll);
@@ -682,7 +652,7 @@ test('an unreachable cloud page does not block local saves',async()=>{
   const cloud=cloudStub({loggedIn:true,list:async()=>({
     ok:false,error:{code:'network',message:'无法连接云存档服务，请检查网络。'},
   })});
-  const f=fixture(undefined,cloud.port);
+  const f=await fixture(undefined,cloud.port);
   f.entries.set('inotia4.story.v1.slot0',saved());
   f.click('开始游戏');f.click('云存档');await settle();
   assert(f.domTexts().some(text=>text.includes('无法连接云存档服务')));
@@ -694,7 +664,7 @@ test('an unreachable cloud page does not block local saves',async()=>{
 
 test('cloud backup uploads valid local slots and skips damaged ones',async()=>{
   const cloud=cloudStub({loggedIn:true});
-  const f=fixture(undefined,cloud.port);
+  const f=await fixture(undefined,cloud.port);
   f.entries.set('inotia4.story.v1.slot0',saved());
   f.entries.set('inotia4.story.v1.slot1','{broken');
   f.click('开始游戏');f.click('云存档');await settle();
@@ -706,7 +676,7 @@ test('cloud backup uploads valid local slots and skips damaged ones',async()=>{
 
 test('cloud download writes local slots and returns to the save list',async()=>{
   const cloud=cloudStub({loggedIn:true,entries:[cloudEntry(0)]});
-  const f=fixture(undefined,cloud.port);
+  const f=await fixture(undefined,cloud.port);
   f.click('开始游戏');f.click('云存档');await settle();
   f.click('下载云存档');await settle();
   assert.deepEqual(cloud.downloads,[0]);
@@ -716,7 +686,7 @@ test('cloud download writes local slots and returns to the save list',async()=>{
 
 test('cloud backup asks before overwriting and does not upload when cancelled',async()=>{
   const cloud=cloudStub({loggedIn:true,entries:[cloudEntry(0)]});
-  const f=fixture(undefined,cloud.port);
+  const f=await fixture(undefined,cloud.port);
   f.entries.set('inotia4.story.v1.slot0',saved());
   f.click('开始游戏');f.click('云存档');await settle();
   f.click('导入本机存档');await settle();
@@ -728,25 +698,27 @@ test('cloud backup asks before overwriting and does not upload when cancelled',a
 
 test('resizing the title view recreates the cloud overwrite confirmation',async()=>{
   const cloud=cloudStub({loggedIn:true,entries:[cloudEntry(0)]});
-  const f=fixture(undefined,cloud.port);
+  const f=await fixture(undefined,cloud.port);
   f.entries.set('inotia4.story.v1.slot0',saved());
   f.click('开始游戏');f.click('云存档');await settle();
   f.click('导入本机存档');await settle();
   assert(f.domTexts().some(text=>text.includes('覆盖')));
-  const before=f.state.modalLabels.slice();
+  const modalLabels=()=>f.domLabels.filter(label=>label.style.zIndex==='2'&&!label.removed);
+  const before=modalLabels();
   assert.ok(before.length>0,'确认框文字已创建');
   menuFrame.width=900;
   try{
-    f.call('resize');
+    f.controller.resize();
     assert.ok(before.every(label=>label.removed),'尺寸变化后重建确认框文字');
-    assert.ok(f.state.modalLabels.length>0);
-    assert.notEqual(f.state.modalLabels[0],before[0]);
+    const recreated=modalLabels();
+    assert.ok(recreated.length>0);
+    assert.notEqual(recreated[0],before[0]);
   }finally{menuFrame.width=1200;}
 });
 
 test('cloud password change uses the password form hook and keeps the player signed in',async()=>{
   const cloud=cloudStub({loggedIn:true});
-  const f=fixture(undefined,cloud.port);
+  const f=await fixture(undefined,cloud.port);
   let asked=0;
   f.app.promptPasswordChange=async()=>{asked+=1;return {currentPassword:'secret1',newPassword:'secret2'};};
   f.click('开始游戏');f.click('云存档');await settle();
@@ -765,7 +737,7 @@ test('a near-expiry cloud session renews before listing',async()=>{
     expiresAt:now+24*60*60*1000,
     absoluteExpiresAt:now+60*24*60*60*1000,
   });
-  const f=fixture(undefined,cloud.port);
+  const f=await fixture(undefined,cloud.port);
   f.click('开始游戏');f.click('云存档');await settle();
   assert.ok(cloud.calls.includes('refresh'));
   assert.ok(cloud.calls.indexOf('refresh')<cloud.calls.indexOf('list'));
@@ -778,7 +750,7 @@ test('a session far from expiry lists without renewal',async()=>{
     expiresAt:now+30*24*60*60*1000,
     absoluteExpiresAt:now+90*24*60*60*1000,
   });
-  const f=fixture(undefined,cloud.port);
+  const f=await fixture(undefined,cloud.port);
   f.click('开始游戏');f.click('云存档');await settle();
   assert.ok(!cloud.calls.includes('refresh'));
   assert.ok(cloud.calls.includes('list'));
@@ -792,7 +764,7 @@ test('a network error during renewal still lets the list run',async()=>{
     absoluteExpiresAt:now+60*24*60*60*1000,
     refresh:async()=>({ok:false,error:{code:'network',message:'无法连接云存档服务，请检查网络。'}}),
   });
-  const f=fixture(undefined,cloud.port);
+  const f=await fixture(undefined,cloud.port);
   f.click('开始游戏');f.click('云存档');await settle();
   assert.ok(cloud.calls.includes('refresh'));
   assert.ok(cloud.calls.includes('list'));
@@ -801,14 +773,14 @@ test('a network error during renewal still lets the list run',async()=>{
 
 
 test('disposed title UI ignores resident assets arriving after shutdown',async()=>{
-  const f=fixture();
+  const f=await fixture();
   let finish!:()=>void,loaded=0;
   f.app.ui.menuLoaded=()=>{loaded++;};
   const events=new EventEmitter(),scale=Object.assign(new EventEmitter(),{width:1200,height:640});
   const runtime={events,scale,sys:{isActive:()=>true}};
   const assets={preloadResident:()=>new Promise<void>(resolve=>{finish=resolve;})};
   const page=new TitleMenuController(runtime as never,f.app,assets as never);
-  page.open();
+  void page.open();
   page.dispose();page.dispose();
   finish();await new Promise(resolve=>setImmediate(resolve));
   assert.equal(loaded,0,'迟到素材不能重新创建已经关闭的标题页');

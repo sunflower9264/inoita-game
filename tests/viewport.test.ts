@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fitViewport,configureCanvas,screenRectToCanvas,readSafeArea} from '../src/ui/viewport.ts';
-import {controlViewport} from '../src/ui/phaser/control-layout-viewport.ts';
+import {controlViewport} from '../src/ui/viewport.ts';
 
 /** 假窗口对象：测试只需要 `fitViewport` 读的 `visualViewport`。 */
 interface FakeWindow {

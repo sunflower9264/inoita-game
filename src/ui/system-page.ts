@@ -1,6 +1,6 @@
 import type {StoryUIContext} from '../application/ports.ts';
 import type {StoryMenuPage} from './story-ui-signature.ts';
-import {GOLD,type UiSurface,type ScrollArea} from './phaser/widgets.ts';
+import {GOLD,type UiSurface,type ScrollArea} from './widgets.ts';
 import type {MenuTextWriter} from './dom/menu-text.ts';
 interface SystemPageHost {
  readonly body:UiSurface;

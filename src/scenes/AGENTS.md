@@ -13,7 +13,6 @@ Phaser 场景层：驱动生命周期、转发输入，把 domain、rendering、
 - `story-class-scene.ts`：装配 `ui/class-selection-page.ts`，页面管理职业选择、角色预览、输入与素材使用权；场景管尺寸变化和加载失败后的重试。
 - `formal-ui-scene.ts`：正式 UI 场景，承载 HUD、背包装备、商店等菜单面板。
 - `audio-scene.ts`：音频设置页；跨场景常驻，切换场景不打断播放。
-- `controls-scene.ts`：操作设置页，键位与控件布局。
 - `texture-loader-scene.ts`：承接图片与图集下载，在业务场景之前启动。
 
 ## 规则
@@ -37,7 +36,7 @@ Phaser 场景层：驱动生命周期、转发输入，把 domain、rendering、
 - `WorldCombat` 还持有一份 `FlowFieldStore`，敌人端口按目标、目标所在 16 像素格和身体尺寸请求共享流场。流场只用 `terrainFree` 和 `blockedByContent`，不把会移动的角色当永久墙；每渲染帧和 `pathBudget` 一起重置。
 - **补位落点避开主角和所有队友。** `partyLanding` 的侧位用 `Party.followSlotOf(leaderId, id)`，避让名单同时包含当前队长、主角和其余队友；操控佣兵时主角不属于 `allies`，必须单独加入，否则卡住补位会瞬移到主角身上。
 
-- 场景只驱动生命周期、转发输入、调度下层模块；判定和数值规则写进 `src/domain/`，世界绘制交给 `src/rendering/`，DOM 绘制与输入交给 `src/ui/dom/`，场景内面板由 `src/ui/phaser/` 提供并由 `src/ui/world-hud.ts` 组合。
+- 场景只驱动生命周期、转发输入、调度下层模块；判定和数值规则写进 `src/domain/`，世界绘制交给 `src/rendering/`，DOM 绘制与输入交给 `src/ui/dom/`，菜单面板由 `src/ui/panels/` 承接，世界屏幕控件由 `src/ui/hud/` 与 `src/ui/world-hud.ts` 组合。
 - **场景构造函数只保存依赖。** 场景由 `main.ts` 直接构造（`new Scene(app)` 或 `new Scene()`），这时 Phaser 还没把 `events`、`scale`、`add` 等系统注入到实例上；事件监听、销毁回调、尺寸监听都写进 `create()`，需要幂等时加一个 `xxxBound` 标记。
 - 标题、职业选择、对白、选项、加载与阵亡界面使用 DOM 菜单表面；透明热区、文字与显示节点共用画框内的 CSS 坐标。剧情对白的点击推进挂在铺满画框的挡板上，整个屏幕都能补完打字机或翻到下一句；选项和「跳过」按钮层级更高，优先命中。立绘预载状态查 DOM 图片缓存，预载请求沿用页面取消信号。
 - 对白翻页时沿用前文的颜色和颜色锁定状态，逐字进度仍按原文的位置计算。
@@ -94,7 +93,7 @@ Phaser 场景层：驱动生命周期、转发输入，把 domain、rendering、
 - 云存档页从存档槽页右上角进入，返回和 Escape 都回存档槽页；忙碌时只禁用云操作，返回始终可用，离开页面 abort 请求。账号/密码框直接盖在面板对应行上，输入框有焦点时场景键盘处理器让路；确认框、改名和修改密码表单打开时隐藏输入覆盖层。
 - 云存档续期只在打开云页时检查：token 剩余不足 7 天才发 `/__cloud/refresh`，不在游戏循环或后台定时。
 - 云存档错误只写页面状态行，不调用 `ui.error()`；场景 `shutdown` 时 abort 云请求并把待确认 Promise 落地。
-- 场景键盘只桥接一次：`FormalUiScene` 把原始 `keydown` 交给 `app.inputRouter`，其他场景只注册自己的作用域，不再各挂一份 `keydown`。`StoryUI.attach` 注册 `menu` 作用域，`FormalUiScene` 注册 `modal`，`ui/phaser` 的键盘适配器注册 `world`。场景 `shutdown` 时注销作用域。
+- 场景键盘只桥接一次：`FormalUiScene` 把原始 `keydown` 交给 `app.inputRouter`，其他场景只注册自己的作用域，不再各挂一份 `keydown`。`StoryUI.attach` 注册 `menu` 作用域，`FormalUiScene` 注册 `modal`，`ui/hud` 的键盘适配器注册 `world`。场景 `shutdown` 时注销作用域。
 - 场景 `shutdown` 时解绑输入、计时器和 tween，避免重启后重复触发。
 - 标题页在场景恢复时重绘当前页面，确保竖屏或后台暂停期间完成的首次加载能显示菜单。
 - 标题页资源加载完成后调用 `notifyBootReady()`（`application/live-update.ts`，模块级 once）。热更新壳靠这个信号提交新版本；漏掉会被当成启动失败而回退。

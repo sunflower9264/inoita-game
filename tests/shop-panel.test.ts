@@ -12,8 +12,8 @@ import { descriptionPanel } from '../src/ui/bag-layout.ts';
 import { POPUP_FRAME, shopLayout, tradeLayout, tradeMessageLayout } from '../src/ui/shop-layout.ts';
 import { INVENTORY_LABELS, INVENTORY_SIDE_FILTERS } from '../src/domain/inventory.ts';
 import { splitMoney } from '../src/domain/money.ts';
-import { ShopPanel } from '../src/ui/phaser/shop-panel.ts';
-import { centerModal } from '../src/ui/phaser/modal-placement.ts';
+import { ShopPanel } from '../src/ui/panels/shop-panel.ts';
+import { centerModal } from '../src/ui/panels/modal-placement.ts';
 import { SOURCE_ASSETS, sourceAssetPath } from '../tools/asset-source.ts';
 
 const read=<T>(name:string):T=>JSON.parse(fs.readFileSync(new URL(`../public/content/${name}.json`,import.meta.url),'utf8')) as T;

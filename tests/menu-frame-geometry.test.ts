@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { drawRoundBand } from '../src/ui/phaser/round-band.ts';
-import { drawSolidBorder } from '../src/ui/phaser/solid-border.ts';
+import { drawRoundBand } from '../src/ui/panels/round-band.ts';
+import { drawSolidBorder } from '../src/ui/panels/solid-border.ts';
 
 type Box = { x:number; y:number; width:number; height:number };
 class Node {

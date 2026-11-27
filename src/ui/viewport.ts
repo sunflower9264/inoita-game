@@ -1,5 +1,10 @@
 import type { RenderScale } from '../application/display-settings.ts';
 
+export interface ControlViewport {
+  width: number; height: number;
+  insets: {left: number; right: number; top: number; bottom: number};
+}
+
 function element(id: string): HTMLElement {
   const node = document.getElementById(id);
   if (!node) throw new Error(`缺少界面元素：${id}`);
@@ -103,4 +108,15 @@ export function worldZoom(scene:import('phaser').Scene):number {
   const bounds=scene.game.canvas.getBoundingClientRect();
   const fit=Math.min(bounds.width/GAME_WIDTH,bounds.height/GAME_HEIGHT);
   return WORLD_ZOOM_SCALE*fit*scene.scale.width/Math.max(1,bounds.width);
+}
+
+/** 所有屏幕控件共用画框的 CSS 宽高和安全区。 */
+export function controlViewport(): ControlViewport {
+  const frame = frameRect();
+  const safe = readSafeArea();
+  return {
+    width: frame.width,
+    height: frame.height,
+    insets: { left: safe.left, right: safe.right, top: safe.top, bottom: safe.bottom },
+  };
 }

@@ -4,20 +4,20 @@
 
 存档页负责选择槽位、等待截图和取消迟到的保存。记录由应用层从该次保存绑定的会话生成。
 
-界面的布局、文本与接口层：算好矩形、断行、颜色和提示内容，交给 `ui/dom` 绘制、`ui/phaser` 装配场景面板。
+界面的布局、文本、控制器与接口层：算好矩形、断行、颜色和提示内容，交给 `ui/dom` 绘制、由 `ui/panels` 装配菜单面板、`ui/hud` 连接世界屏幕 HUD、`ui/phaser` 仅保留 Phaser 画布适配。
 
 ## 文件
 
-- 布局：`bag-layout.ts`（背包格位）、`skill-book-layout.ts`（技能书页的图标格与右栏）、`choice-layout.ts`（选项竖排）、`control-layout.ts`（控件键位）、`item-layout.ts`（物品格与货币）、`shop-layout.ts`（商店两栏）、`quest-popup-layout.ts`（任务窗）、`description-text-layout.ts`（说明断行）、`text-layout.ts`（通用换行）、`cloud-save-layout.ts`（云存档页状态、颜色与几何）、`changelog-layout.ts`（标题页更新日志弹窗与可视窗口）、`portrait-fit.ts`（头像等比裁剪）、`viewport.ts`（屏幕尺寸、安全区、画布采样倍率与参考分辨率；`screenRectToCanvas` 将菜单预览的屏幕矩形交给游戏画布）。
+- 布局：`bag-layout.ts`（背包格位）、`skill-book-layout.ts`（技能书页的图标格与右栏）、`choice-layout.ts`（选项竖排）、`control-layout.ts`（控件键位）、`item-layout.ts`（物品格与货币）、`shop-layout.ts`（商店两栏）、`quest-popup-layout.ts`（任务窗）、`description-text-layout.ts`（说明断行）、`text-layout.ts`（通用换行）、`cloud-save-layout.ts`（云存档页状态、颜色与几何）、`changelog-layout.ts`（标题页更新日志弹窗与可视窗口）、`portrait-fit.ts`（头像等比裁剪）、`viewport.ts`（屏幕尺寸、安全区、画布采样倍率、参考分辨率与 `controlViewport` 视口测量；`screenRectToCanvas` 将菜单预览的屏幕矩形交给游戏画布）。
 - 文本与样式：`text-style.ts`（共用字体）、`text-prompt.ts`（系统键盘输入，用于存档改名）、`number-prompt.ts`（商店数量与能力点数字输入卡，负责范围校验和红色提示）、`cloud-credentials-input.ts`（云存档页内嵌的账号/密码输入框）、`dom/quest-search-input.ts`（GM 任务页左栏上方的搜索输入框）、`password-change-prompt.ts`（修改密码的当前/新/确认三项表单）、`dialogue-text.ts`（对白分页、断行与逐字显示）、`item-detail-lines.ts`（物品说明行）、`skill-detail-lines.ts`（技能说明行）、`item-result-details.ts`（操作结果说明）、`enhancement-odds-lines.ts`（强化结果句与混沌结果表）、`item-name-color.ts`（品质颜色与装备格边框）、`character-values.ts`（角色数值）。
-- 接口与交互：`game-ui.ts`（UI 能力与视图接口）、`story-ui.ts`（剧情与菜单 UI 的接口、页面枚举和提示文案）、`story-ui-signature.ts`（菜单页面 viewModel 与显式签名）、`save-page.ts`（存档/读档页 controller，自行取消读档请求）、`save-slot-rename.ts`（手动槽改名输入、写入和取消）、`bag-page.ts`（背包状态、绘制与操作）、`status-page.ts`（人物与加点）、`skills-page.ts`（技能学习与自动使用设置）、`settings-page.ts`（游戏设置）、`system-page.ts`（系统菜单）、`shortcut-editor.ts`（快捷栏登记）、`shortcut-view.ts`（快捷位显示契约）、`menu-item-drag.ts`（背包与合成共用长按拖拽）、`action-press-gate.ts`（动作按钮互斥）、`common-button.ts`（通用按钮素材）、`prompt-assets.ts`（独立输入表单边框与按钮素材）、`instant-message.ts`（屏幕提示）、`quest-progress.ts`（任务完成/进度提示的纯函数）、`slot-frame.ts`（格子底图）、`world-hud.ts`（一次地图访问的屏幕控件与释放）。
-- DOM 组件与文字：`dom/node.ts`、`dom/surface.ts` 提供菜单图片、文本、按钮、裁剪、滚动与原生指针；`dom/volume-slider.ts` 提供音量条；`dom/dom-ui.ts` 负责标签创建、层与坐标换算；`dom/menu-text.ts` 负责菜单页、滚动与裁剪。
+- 接口与交互：`game-ui.ts`（UI 能力与视图接口）、`widgets.ts`（DOM 菜单表面与 `loadUiImages` 图片预载）、`ui-asset-host.ts`（页面图片与常驻素材租约管家）、`story-ui.ts`（剧情与菜单 UI 路由和公共弹层）、`story-ui-signature.ts`（菜单页面 viewModel 与显式签名）、`debug-page.ts`（GM 调试页 controller，管理面板缓存与物品详情预览）、`save-page.ts`（存档/读档页 controller，自行取消读档请求）、`save-slot-rename.ts`（手动槽改名输入、写入和取消）、`bag-page.ts`（背包状态、绘制与操作）、`status-page.ts`（人物与加点）、`skills-page.ts`（技能学习与自动使用设置）、`settings-page.ts`（游戏设置）、`system-page.ts`（系统菜单）、`shortcut-editor.ts`（快捷栏登记）、`shortcut-view.ts`（快捷位与操作处理契约）、`menu-item-drag.ts`（背包与合成共用长按拖拽）、`action-press-gate.ts`（动作按钮互斥）、`common-button.ts`（通用按钮素材）、`prompt-assets.ts`（独立输入表单边框与按钮素材）、`instant-message.ts`（屏幕提示）、`quest-progress.ts`（任务完成/进度提示的纯函数）、`slot-frame.ts`（格子底图）、`world-hud.ts`（一次地图访问的屏幕控件与释放）。
+- 子目录：`dom/`（DOM 基元、输入、文字与资产缓存）、`panels/`（纯 DOM 菜单/弹出面板与编辑器）、`hud/`（世界 HUD 生命周期、状态同步与键盘路由）、`phaser/`（职业背景、待机角色预览、存档缩略图 3 个 Phaser 适配模块）。
 
 ## 规则
 
-- `ui` 顶层是组合层：可以持有 `rendering` 对象和 `ui/phaser` 面板；`ui/dom` 不反向依赖它们。
+- `ui` 顶层是组合层：通过 `panels/` 与 `hud/` 装配菜单与屏幕控件；`ui/dom/` 不反向依赖它们，且 `ui/dom/`、`ui/panels/`、`ui/hud/` 不 import `phaser`。
 - 对白翻页绘制时继承前文的颜色控制状态，分页游标和逐字进度继续使用原文位置。每页建立新的点击等待时继续沿用对白框、立绘和跳过按钮。同一个选项面板调整大小或被临时遮住时，分别保留说明和选项列表的滚动位置。
-- 本目录承载布局、断行、状态和动作接口；`ui/dom` 提供 DOM/CSS/SVG 基元，`ui/phaser` 装配场景面板与输入适配。
+- 本目录承载布局、断行、状态和控制器接口；`ui/dom` 提供 DOM/CSS/SVG 基元，`ui/panels` 提供菜单与弹出面板，`ui/hud` 负责 HUD 接线，`ui/phaser` 只保留真用到 Phaser 画布的视图适配。
 - **头像按比例裁进框。** HUD、人物页和队员栏的头像用 `portraitFit` / `UiSurface.imageCover` 等比缩放后裁剪；背包和队伍装备页的备用人物图用 `imageContain` 完整放进预览框。
 - 人物页的生命、魔法、经验三行位于立绘下方；标签、数值和百分比按对应槽位的中心线对齐，最后一行完整落在面板内。叠在彩色槽上的数值使用贴合文字宽度的深色底，保持笔画清晰。
 - **画面铺满，安全区只给 UI 避让。** Android 壳用 edge-to-edge 铺满整屏；`readSafeArea()` 只用于 HUD、侧边按钮、小地图和文字的安全边，不参与画布尺寸。画布内部像素按采样倍率放大，再由 CSS 缩回画框。
@@ -37,7 +37,7 @@
 - **无法读取的存档槽要显示原因。** 标题页和存档页的 `unreadable` 行画槽名和失败原因，不能只复用空槽图；空槽仍只由 EMPTY 图表示。
 - **菜单预览共用角色画面的外观持有规则。** 背包页和队伍页用 `previewAppearance` 取外观，`createCharacter` 创建的角色自行借住合成外观；`LiveCharacterPreview.detach`/`destroy` 销毁角色时归还，隐藏期间继续持有。
 - 关闭调试界面或切页时清理面板、预览与文字；回标题时同时解除菜单持有的会话引用。
-- `src/ui/` 顶层与 `ui/dom/` 只用 `import type Phaser`；运行时 Phaser 仅限 `ui/phaser/` 的视图适配文件。
+- `src/ui/` 顶层与 `ui/dom/`、`ui/panels/`、`ui/hud/` 不引入运行时 Phaser（顶层仅在需传场景画布的少数适配处用 `import type Phaser`）；运行时 Phaser 仅限 `ui/phaser/` 的 3 个画布适配文件。
 - **DOM 文字统一带 `dom-label`。** `DomUi.label` 会自动补上这个类，它负责绝对定位、不换行和禁用指针事件；调用方只加自己的样式类。压在游戏画面上的文字用 `#ui-world`/`#ui-hud` 的软阴影；菜单文字按背景需要设置对比样式。
 - **定宽居中文字要显式写 `align:'center'`。** `MenuTextLayer` 对定宽文字默认左对齐；同时用了 `anchorX:.5` 和 `width` 的按钮文字、数量行和底部说明若不写对齐，整段文字会贴在自己盒子的左边，看起来像没在按钮里。
 - **弹层打开时页面文字整体压暗，被盖住的部分按实际盒宽裁剪。** DOM 文字在所有画布表面之上，弹层黑底挡不住标签；用 `MenuTextSpec.dim` 压暗页面文字，用 `occlude` + `clip-path` 只裁掉与不透明弹层相交的那一段，不要整条删除，也不要整页隐藏。页面渲染函数在弹层打开时仍要输出页面文字，再额外输出弹层文字；不要再写「弹层打开就只输出弹层那一份」的二选一分支。单行文字拿不到稳定盒宽时，只有整条落在弹层里才隐藏。
@@ -57,10 +57,10 @@
 - 字体、字号和颜色取 `text-style.ts`，新面板不再另建一套字体栈。
 - 说明面板底部动作 1–3 个排一横排；4 个用 2×2，5–6 个用 2×3，几何由 `descriptionActionLayout` 统一给出。动作文字按按钮中间可用宽度缩小字号并居中，完整文案保持在按钮内部。
 - **物品操作弹层按正文高度定高。** 先量物品名、说明、结果行和奖励行，再决定弹层高度（不低于原版 450×350）；数量行固定在底部按钮上方，正文只在它上面滚动，长说明不会截断下半截，`−/＋/全部` 也不会掉出框外。
-- 新增面板先在这里补几何和文本函数，再在 `ui/phaser` 装配、在 `ui/dom` 补基元。
+- 新增面板先在这里补几何和文本函数，再在 `ui/panels` 装配、在 `ui/dom` 补基元。
 - **融合器预览按当前页签档位取色。** 混沌/深渊混沌预览的标题颜色和格子边框由页签档位决定；合成完成后的背包按实例真实档位显示。
 - 云存档页的状态颜色和面板几何从 `cloud-save-layout.ts` 取；账号/密码输入用 `cloud-credentials-input.ts` 的内嵌输入框，直接定位在面板对应行上，不用独立弹层。存档改名继续用 `TextPrompt`。
-- **GM 任务页搜索框在左栏上方。** 输入框是挂在 `#game-frame` 的原生 `input`（`QUEST_SEARCH`：30,8,500×46，与页签同一行），左右两栏内容从 y=70 开始；placeholder 用 `.875em` 单独缩小（约 14px），输入文字仍按画框倍率且不低于 16px。输入框有焦点时 `story-ui.ts` 的菜单键盘整块让路，Enter 打开第一条结果，Escape 只清空并 blur。画框缩放/旋转时 `story-ui.layout()` 调 `gmPanel.layoutSearch()` 重贴；输入框高度不低于 22px，`keyCode 229` 视为输入法确认。任务名和说明统一经 `readableStoryText` 转成可读文本，搜索同时匹配原始标题和可读标题。
+- **GM 任务页搜索框在左栏上方。** 输入框是挂在 `#game-frame` 的原生 `input`，`QUEST_SEARCH` 30,8,500×46 与页签同行，`debugPage.layout(body)` 在画框布局变化后按 `body.root` 矩阵重贴；placeholder 用 `.875em` 单独缩小（约 14px），输入文字仍按画框倍率且不低于 16px。输入框有焦点时 `story-ui.ts` 的菜单键盘整块让路，Enter 打开第一条结果，Escape 只清空并 blur。输入框高度不低于 22px，`keyCode 229` 视为输入法确认。任务名和说明统一经 `readableStoryText` 转成可读文本，搜索同时匹配原始标题和可读标题。
 - **强化结果先写人话。** 普通卷轴写成「当前 +N：X% 到 +N+1，Y% 到 +N+2」；混沌卷轴写成三行结果表。概率文案统一由 `enhancement-odds-lines.ts` 生成，面板只负责画。
 - **菜单子页面保留底层。** 强化台、合成台、技能书这类从菜单进入的子页面用 `page` 渲染在 `body` 上；`surface`/`body` 继续可见，只把说明层让位，不要隐藏整层再铺纯黑遮罩。
 - **技能书页复用技能目录的图标语言。** 左框只列当前可升级的技能（4×4 图标格，一屏放下），没有可升级技能时显示「暂无可升级技能」；右框显示等级变化与下一级数值预览，确认后才消耗技能书。封印书开封后在背包结果层显示「已永久解锁」、技能名称和职业，保留其他物品格与滚动位置。

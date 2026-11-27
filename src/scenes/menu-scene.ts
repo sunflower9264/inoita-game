@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { SCENE_KEYS } from '../application/scene-keys.ts';
 import type { MenuContext } from '../application/ports.ts';
-import { SceneUiAssets } from '../ui/phaser/ui-asset-host.ts';
+import { SceneUiAssets } from '../ui/ui-asset-host.ts';
 import { TitleMenuController } from '../ui/title-menu-controller.ts';
 
 /** 场景持有常驻素材；每次进入标题页创建独立的界面。 */
@@ -10,7 +10,7 @@ export class MenuScene extends Phaser.Scene {
   private readonly titleAssets:SceneUiAssets;
   private assetsBound=false;
   private page?:TitleMenuController;
-  constructor(app:MenuContext){super(SCENE_KEYS.menu);this.app=app;this.titleAssets=new SceneUiAssets(this);}
+  constructor(app:MenuContext){super(SCENE_KEYS.menu);this.app=app;this.titleAssets=new SceneUiAssets();}
   create(options:{page?:'home'|'slots'}={}):void {
     if(!this.assetsBound){this.assetsBound=true;this.events.once(Phaser.Scenes.Events.DESTROY,()=>this.titleAssets.releaseResident());}
     const previous=this.page;

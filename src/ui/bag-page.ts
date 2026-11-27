@@ -1,6 +1,5 @@
-import { UiNode, UiImage, type UiPointer } from './dom/node.ts';
+import { UiNode, UiImage, type UiPointer, type UiSceneHost } from './dom/node.ts';
 
-import type Phaser from 'phaser';
 import { ShortcutBar, type ShortcutEntry } from '../domain/shortcut-bar.ts';
 
 import { memberArt as memberArtwork } from '../domain/menu-panels.ts';
@@ -14,26 +13,26 @@ import type { CompanionMember } from '../domain/party.ts';
 import { inventoryView, INVENTORY_LABELS, INVENTORY_SIDE_FILTERS, type InventoryView } from '../domain/inventory.ts';
 import { EQUIPMENT_SLOTS, SKILL_POINT_ITEM, USE_LABELS, unimplementedItemUse, type EquipmentSlot, type ItemInstance, type ItemResult } from '../domain/items.ts';
 
-import { GOLD, UiSurface, type ScrollArea } from './phaser/widgets.ts';
+import { GOLD, UiSurface, type ScrollArea } from './widgets.ts';
 import { MenuTextLayer, type MenuTextOcclude, type MenuTextSpec, type MenuTextWriter } from './dom/menu-text.ts';
 
-import { descriptionTitleOverflow, drawDescriptionClose, drawDescriptionPanel, drawDescriptionRows, drawDescriptionTitle } from './phaser/description-panel.ts';
+import { descriptionTitleOverflow, drawDescriptionClose, drawDescriptionPanel, drawDescriptionRows, drawDescriptionTitle } from './panels/description-panel.ts';
+import { layoutDescriptionTextForSurface } from './panels/description-text.ts';
 
-import { drawBagRail } from './phaser/bag-rail.ts';
+import { drawBagRail } from './panels/bag-rail.ts';
 
-import { drawPopupPanel } from './phaser/popup-panel.ts';
+import { drawPopupPanel } from './panels/popup-panel.ts';
 
 import { itemResultDetails } from './item-result-details.ts';
 import { itemDescriptionBody } from './item-detail-lines.ts';
 import { slotFrameImage, updateEquipmentLock } from './slot-frame.ts';
 import { bagLayout, BAG_DESCRIPTION_WIDTH, descriptionActionLayout, descriptionActionLabelSize, descriptionPanel, SIDE_FILTER_TEXT_SIZE } from './bag-layout.ts';
 
-import { layoutDescriptionText } from './description-text-layout.ts';
 import type { DescriptionTextPart } from '../domain/description-text.ts';
 import { tradeLayout } from './shop-layout.ts';
 import { TEXT_COLORS } from './text-style.ts';
 import { splitMoney } from '../domain/money.ts';
-import { LiveCharacterPreview } from './phaser/live-character-preview.ts';
+import type { LiveCharacterPreview } from './phaser/live-character-preview.ts';
 
 const NON_MENU_USE_KINDS=new Set(['enchant','socket','purify']);
 interface Operation {entry:string;kind:'use'|'discard';member?:string;quantity:number;confirmed?:boolean;error?:string}
@@ -63,7 +62,7 @@ export interface BagPageHost {
  startDrag(pointer:UiPointer,entry:string,scroll?:ScrollArea):void;
  view:{
   readonly body:UiSurface|undefined;readonly description:UiSurface|undefined;readonly modal:UiSurface|undefined;
-  readonly menuText:MenuTextLayer|undefined;readonly scene:Phaser.Scene|undefined;readonly bagPortrait:LiveCharacterPreview|undefined;
+  readonly menuText:MenuTextLayer|undefined;readonly scene:UiSceneHost|undefined;readonly bagPortrait:LiveCharacterPreview|undefined;
   drops:BagDropTarget[];
   scroll(name:string,x:number,y:number,w:number,h:number,surface?:UiSurface,bleed?:number,bar?:Parameters<UiSurface['scroll']>[5]):ScrollArea;
   finishScroll(name:string,scroll:ScrollArea,height:number):void;
@@ -161,12 +160,7 @@ private pushDescriptionText(target:MenuTextSpec[],keyPrefix:string,
   }
 private descriptionLayout(view:UiSurface,parts:readonly DescriptionTextPart[],width:number,size:number):
     {lines:{runs:{text:string;color?:string;x:number}[]}[];lineHeight:number;height:number}{
-    if(!parts.length)return{lines:[],lineHeight:0,height:0};
-    const probe=view.text('测',0,0,0,size,TEXT_COLORS.white);
-    const lines=layoutDescriptionText(parts,width,text=>probe.context.measureText(text).width);
-    const lineHeight=probe.height+5;
-    probe.destroy();
-    return{lines,lineHeight,height:Math.max(0,lines.length*lineHeight-5)};
+    return layoutDescriptionTextForSurface(view,parts,width,size);
   }
 renderBag():void{
     this.bagTextSpecs=[];this.bagDetailTextSpecs=[];this.bagDetailOpen=false;this.bagEquipment.clear();this.bagSelection=undefined;
@@ -747,7 +741,7 @@ renderBagPreview():void{
     if(!v||!parent?.active||!member||!this.host.view.scene)return;
     parent.removeAll(true);
     const preview=bagLayout().preview,appearance=this.app.previewAppearance?.(this.host.selectedMemberId)??this.app.equipmentAppearance?.(this.host.selectedMemberId);
-    if(appearance&&this.host.view.bagPortrait&&LiveCharacterPreview.available(this.host.view.scene,appearance)){
+    if(appearance&&this.host.view.bagPortrait?.available(appearance)){
       this.host.view.bagPortrait.show(v,appearance,preview);
     }else{
       this.host.view.bagPortrait?.detach();

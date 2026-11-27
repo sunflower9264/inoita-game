@@ -1,28 +1,40 @@
-import { UiNode, UiImage, type UiText } from './dom/node.ts';
+import { UiNode, UiImage, type UiSceneHost } from './dom/node.ts';
 import { notifyBootReady } from '../application/live-update.ts';
 import { fullscreenActive, fullscreenStatus, onFullscreenChange, setFullscreen } from '../application/fullscreen.ts';
-import type Phaser from 'phaser';
 import type { MenuContext } from '../application/ports.ts';
 import { TITLE_MESSAGE_ASSETS, titleMenuImages } from '../application/menu-images.ts';
-import { GOLD, UiSurface, type ScrollArea } from './phaser/widgets.ts';
-import { SceneUiAssets } from './phaser/ui-asset-host.ts';
-import { SAVE_BOARD, SAVE_BOARD_LAYOUT, SaveBoardList, drawSaveBoardRow, emitSaveBoardTexts, newestFirstSlots, saveBoardOrigin, saveRowTitle, setSaveBoardTextSink, type SaveBoardControl, type SaveBoardTextSpec } from './phaser/save-board.ts';
+import { GOLD, UiSurface, type ScrollArea } from './widgets.ts';
+import { TEXT_COLORS } from './text-style.ts';
+import { SceneUiAssets } from './ui-asset-host.ts';
+import { SAVE_BOARD, SAVE_BOARD_LAYOUT, SaveBoardList, drawSaveBoardRow, newestFirstSlots, saveBoardOrigin, saveRowTitle, type SaveBoardControl, type SaveBoardTextSink, type SaveBoardTextSpec } from './panels/save-board.ts';
 import { MenuTextLayer, type MenuTextClip, type MenuTextOcclude, type MenuTextPoint, type MenuTextSpec, type MenuTextWriter } from './dom/menu-text.ts';
 import type { DomLabel, DomUi } from './dom/dom-ui.ts';
-import { frameRect } from './viewport.ts';
-import { controlViewport } from './phaser/control-layout-viewport.ts';
-import { drawNativeMessage, NATIVE_MESSAGE_EDGE, type NativeMessageBand } from './phaser/native-message.ts';
-import { centerModal } from './phaser/modal-placement.ts';
+import { controlViewport, frameRect } from './viewport.ts';
+import { drawNativeMessage, NATIVE_MESSAGE_EDGE, type NativeMessageBand } from './panels/native-message.ts';
+import { bandOcclusionRect, centerModal, surfaceScreenPoint } from './panels/modal-placement.ts';
+import { withSurfaceTextMetrics } from './panels/description-text.ts';
+import { wrapText } from './text-layout.ts';
 import { CHANGELOG_LAYOUT, changelogMetrics, changelogVisibleRange } from './changelog-layout.ts';
 import {SaveSlotRename} from './save-slot-rename.ts';
 import { PasswordChangePrompt } from './password-change-prompt.ts';
 import { CloudCredentialsInput, type CredentialInputRect } from './cloud-credentials-input.ts';
 import { AUTO_SAVE_SLOT, MANUAL_SAVE_SLOT_COUNT, saveSlotLabel, type SaveSlotRef, type SlotSummaryReading } from '../domain/save-game.ts';
 import { CLOUD_PAGE, cloudStatusColor, cloudStatusKind, cloudStatusText, type CloudPageActions, type CloudPageState, type CloudPageStatus } from './cloud-save-layout.ts';
-import { drawCloudSavePage } from './phaser/cloud-save-panel.ts';
+import { drawCloudSavePage } from './panels/cloud-save-panel.ts';
 import { CLOUD_NEW_PASSWORD_SAME_MESSAGE, CLOUD_PASSWORD_CHANGED_MESSAGE, CLOUD_SESSION_RENEW_WINDOW_MS, cloudSlotLabel, normalizeCloudAccount, validateCloudAccount, validateCloudPassword } from '../domain/cloud-save.ts';
 import { backupLocalSaves, restoreCloudSaves, type CloudSyncResult } from '../application/cloud-save-sync.ts';
 import type { CloudSavePort } from '../application/cloud-save.ts';
+
+export interface TitleMenuSceneHost extends UiSceneHost {
+  readonly sys: { isActive(): boolean };
+}
+
+export interface TitleMenuViewFactory {
+  createSurface?(width: number, height: number, depth?: number): UiSurface;
+  createBackdrop?(file: string): UiImage;
+  createPopupMask?(): UiNode;
+  createCredentials?(options: { onAccount(value: string): void; onPassword(value: string): void }): Pick<CloudCredentialsInput, 'focused' | 'show' | 'hide' | 'blur' | 'setRects' | 'setValues' | 'destroy'>;
+}
 
 const art=(name:string)=>`/assets/ui/title-menu/${name}.png`;
 /** 标题页右下角展示的版本号；等用户要求时再改。 */
@@ -53,7 +65,7 @@ interface ConfirmRequest {
 }
 
 export class TitleMenuController {
-  private readonly scene:Phaser.Scene;
+  private readonly scene:TitleMenuSceneHost;
   private readonly request=new AbortController();
   private disposed=false;
   private releaseFullscreen?:()=>void;
@@ -94,7 +106,7 @@ export class TitleMenuController {
   private readonly slotRename=new SaveSlotRename();
   private passwordPrompt?:PasswordChangePrompt;
   /** 云存档登录的账号/密码输入框：直接盖在面板行上，不是独立弹层。 */
-  private credentials?:CloudCredentialsInput;
+  private credentials?:Pick<CloudCredentialsInput, 'focused' | 'show' | 'hide' | 'blur' | 'setRects' | 'setValues' | 'destroy'>;
   private confirmAction?:ConfirmRequest;
   private confirmResolve?:(value:boolean)=>void;
   /** 云存档请求：离开云页、回主页或场景关闭时 abort；代次防止旧结果覆盖新页面。 */
@@ -126,8 +138,11 @@ export class TitleMenuController {
   }
   readonly hideCredentials=():void=>{this.credentials?.hide();};
   private readonly retry:()=>void;
-  constructor(scene:Phaser.Scene,app:MenuContext,titleAssets:SceneUiAssets,retry:()=>void=()=>{}){this.scene=scene;this.app=app;this.titleAssets=titleAssets;this.retry=retry;}
-  open(options:{page?:'home'|'slots'}={}):void {
+  private readonly views?:TitleMenuViewFactory;
+  constructor(scene:TitleMenuSceneHost,app:MenuContext,titleAssets:SceneUiAssets,retry:()=>void=()=>{},views?:TitleMenuViewFactory){
+    this.scene=scene;this.app=app;this.titleAssets=titleAssets;this.retry=retry;this.views=views;
+  }
+  open(options:{page?:'home'|'slots'}={}):Promise<void> {
     this.page='home';this.app.ui.setMode('menu');this.app.ui.loading('正在准备主菜单…');
     const controller=this.request;
 
@@ -135,13 +150,16 @@ export class TitleMenuController {
     this.unregisterInput?.();this.unregisterInput=this.app.inputRouter.register('menu',this.routeKey,{exclusive:()=>true});
     this.resizeViewport=JSON.stringify(controlViewport());
     // 浏览器自身的退出（Esc、手势）不会走设置页的按钮，靠事件把开关状态同步回来。
+    this.releaseFullscreen?.();
     this.releaseFullscreen=onFullscreenChange(()=>this.syncFullscreenSetting());
-    void this.titleAssets.preloadResident(titleMenuImages,controller.signal,()=>{}).then(()=>{
+    return this.titleAssets.preloadResident(titleMenuImages,controller.signal,()=>{}).then(()=>{
       if(controller.signal.aborted)return;
-      this.backdrop=new UiImage(this.scene,undefined,art('background')).setOrigin(.5);
+      this.backdrop=this.views?.createBackdrop?.(art('background'))??new UiImage(this.scene,undefined,art('background')).setOrigin(.5);
       // 遮罩同时拦掉底层输入；弹层在它上面，按钮仍然先命中。
-      this.popupMask=new UiNode(this.scene).setSize(1,1).setFillStyle(0,.65).setDepth(150).setVisible(false).setInteractive();
-      this.surface=new UiSurface(this.scene,1200,640);this.modal=new UiSurface(this.scene,1024,640,200);this.passwordPrompt=new PasswordChangePrompt();
+      this.popupMask=this.views?.createPopupMask?.()??new UiNode(this.scene).setSize(1,1).setFillStyle(0,.65).setDepth(150).setVisible(false).setInteractive();
+      this.surface=this.views?.createSurface?.(1200,640,0)??new UiSurface(this.scene,1200,640);
+      this.modal=this.views?.createSurface?.(1024,640,200)??new UiSurface(this.scene,1024,640,200);
+      this.passwordPrompt=new PasswordChangePrompt();
       const domUi=this.domUi;
       if(domUi){
         // 更新日志画在弹层画布上，文字定位跟着弹层根节点；其它页面仍用标题页画布。
@@ -158,10 +176,11 @@ export class TitleMenuController {
           for(const spec of this.changelogSpecs)writer.add(spec);
         });
       }
-      this.credentials=new CloudCredentialsInput({
-        onAccount:value=>{this.cloudAccountInput=value;},
-        onPassword:value=>{this.cloudPassword=value;},
-      });
+      const credentialsHandler={
+        onAccount:(value:string)=>{this.cloudAccountInput=value;},
+        onPassword:(value:string)=>{this.cloudPassword=value;},
+      };
+      this.credentials=this.views?.createCredentials?.(credentialsHandler)??new CloudCredentialsInput(credentialsHandler);
       // 确认框打开时页面整块不响应，确认框自己也只在有确认时响应。
       this.modal.enabled=()=>this.app.ui.ready&&!this.app.ui.suspended&&this.scene.sys.isActive()&&(this.confirmAction!==undefined||this.changelogOpen);
       this.app.ui.menuLoaded();if(options.page==='slots')this.openSlots();else this.render();this.app.syncLifecycle?.();notifyBootReady();this.app.prefetchCommon?.();
@@ -382,12 +401,11 @@ export class TitleMenuController {
   /** 先量每条正文的实际高度，算出总高度；真正输出时只取可视范围。 */
   private renderChangelogEntries(v:UiSurface,scroll:ScrollArea,textSize:number):void{
     const area=CHANGELOG_LAYOUT.scroll;
-    const heights=this.changelogEntries.map((_entry,index)=>{
-      const probe=v.text(this.changelogEntryText(index),0,0,area.width,textSize,GOLD);
-      const height=probe.height;
-      probe.destroy();
-      return height;
-    });
+    const heights=withSurfaceTextMetrics(v,textSize,(measure,lineHeight)=>
+      this.changelogEntries.map((_entry,index)=>{
+        const lines=wrapText(this.changelogEntryText(index),area.width,measure);
+        return Math.max(1,lines.length)*lineHeight-5;
+      }));
     const metrics=changelogMetrics(heights);
     this.changelogHeights=heights;this.changelogOffsets=metrics.offsets;
     scroll.setHeight(metrics.total);
@@ -414,7 +432,8 @@ export class TitleMenuController {
   }
   /** 更新日志打开时，主菜单文字与按钮一样位于遮罩和弹层之下。 */
   private setupChangelogBackground(dom:DomUi):void {
-    const mount=this.surface!.mount;
+    const mount=this.surface?.mount;
+    if(!mount)return;
     const labels:Pick<DomUi,'label'>={label:(layer,className,anchor)=>{
       const label=dom.label(layer,className,anchor);
       label.setStyle({zIndex:'125'});
@@ -431,10 +450,7 @@ export class TitleMenuController {
 
   /** 页面坐标 → 画框 CSS 坐标；和 `UiSurface` 的根变换同一口径。 */
   private menuTextPoint(x:number,y:number):MenuTextPoint {
-    const root=this.surface?.root;
-    if(!root)return{x,y,scale:1};
-    const matrix=root.getWorldTransformMatrix(),point=matrix.transformPoint(x,y);
-    return{x:point.x,y:point.y,scale:matrix.scaleX};
+    return this.surface?surfaceScreenPoint(this.surface,x,y):{x,y,scale:1};
   }
   /**
    * 弹层本地坐标 → 画框 CSS 坐标。弹层和页面是同一屏幕层上的两个根节点，
@@ -442,21 +458,13 @@ export class TitleMenuController {
    * 不能再减页面原点或除以页面缩放。
    */
   private modalTextPoint(x:number,y:number):MenuTextPoint {
-    const modal=this.modal;
-    if(!modal)return this.menuTextPoint(x,y);
-    const matrix=modal.root.getWorldTransformMatrix(),point=matrix.transformPoint(x,y);
-    return{x:point.x,y:point.y,scale:matrix.scaleX};
+    return this.modal?surfaceScreenPoint(this.modal,x,y):this.menuTextPoint(x,y);
   }
   /** 确认横带在标题页本地坐标里的矩形；页面文字按它裁剪。 */
   private confirmOcclusion():MenuTextOcclude|undefined {
     const modal=this.modal,surface=this.surface,band=this.confirmBand;
     if(!modal||!surface||!band)return undefined;
-    const matrix=surface.root.getWorldTransformMatrix(),origin=matrix.transformPoint(0,0),
-      point=(x:number,y:number)=>{const world=modal.root.getWorldTransformMatrix().transformPoint(x,y);
-        return{x:(world.x-origin.x)/matrix.scaleX,y:(world.y-origin.y)/matrix.scaleY};},
-      edge=NATIVE_MESSAGE_EDGE,
-      start=point(band.left,band.top-edge),end=point(band.left+band.width,band.top+band.height+edge);
-    return{left:start.x,top:start.y,right:end.x,bottom:end.y};
+    return bandOcclusionRect(modal,surface,band,NATIVE_MESSAGE_EDGE);
   }
   /** 浏览器全屏状态变化时，只更新当前设置项。 */
   private syncFullscreenSetting():void {
@@ -482,61 +490,13 @@ export class TitleMenuController {
       style:{size:spec.size,color:spec.color,anchorX:spec.anchorX,anchorY:spec.anchorY,
         width:spec.width,wrap:spec.width?'word':undefined}};
   }
-  /**
-   * 云存档页的文字由面板绘制函数产出。这里截下 `text` 的调用换成 DOM 规格，
-   * 图框、按钮和滚动区仍照常画；面板没有文字接收器，所以只在菜单场景这一层适配。
-   */
+  /** 云存档页：由面板以 `domMode` 直接收集 DOM 文字规格与控件句柄。 */
   private drawCloudPage(view:UiSurface):MenuTextSpec[] {
-    const made:{spec:MenuTextSpec;parent:UiNode}[]=[];
-    const target=view as unknown as {text:UiSurface['text'];button:UiSurface['button']};
-    const original=target.text,originalButton=target.button;this.cloudControls=[];
-    target.button=((...args:Parameters<UiSurface['button']>)=>{const button=originalButton.apply(view,args);this.cloudControls.push(button);return button;}) as UiSurface['button'];
-    target.text=((value:string,x:number,y:number,width=0,size=22,color=GOLD,parent=view.root)=>{
-      const spec:MenuTextSpec={key:`cloud-${made.length}`,text:value,x,y,
-        style:{size,color,anchorX:0,anchorY:0,width:width||undefined,wrap:width?'word':undefined}};
-      const fake:{
-        height:number;
-        setOrigin:(anchorX?:number,anchorY?:number)=>unknown;
-        setAlign:(align:'left'|'center'|'right')=>unknown;
-        setPosition:(x:number,y:number)=>unknown;
-        setVisible:(visible?:boolean)=>unknown;
-      }={
-        height:size+5,
-        setOrigin(anchorX=0,anchorY=anchorX){spec.style.anchorX=anchorX;spec.style.anchorY=anchorY;return fake;},
-        setAlign(align){spec.style.align=align;return fake;},
-        setPosition(nextX,nextY){spec.x=nextX;spec.y=nextY;return fake;},
-        setVisible(){return fake;},
-      };
-      made.push({spec,parent});
-      return fake as unknown as UiText;
-    }) as UiSurface['text'];
-    try{
-      drawCloudSavePage(view,this.cloudState(),this.cloudActions(),{frame:art('slot'),close:CLOSE_IMAGE,closePressed:CLOSE_PRESSED});
-    }finally{
-      target.text=original;target.button=originalButton;
-    }
-    // 云页只有说明和状态在一个滚动区里；按钮文字直接挂在画布根节点上。
-    const note=view.scrolls.at(-1);
-    this.cloudScroll=note;
-    if(note)note.onScroll=()=>this.menuText?.refresh();
-    const specs:MenuTextSpec[]=[];
-    for(const {spec,parent} of made){
-      if(note&&parent===note.content&&spec.y===72)spec.key='cloud-status';
-      else if(spec.text.startsWith('已登录：'))spec.key='cloud-account';
-      else if(spec.text.startsWith('云端存档：'))spec.key='cloud-count';
-      else if(['登录','注册','修改密码','导入本机存档','下载云存档','退出登录'].includes(spec.text))spec.key=`cloud-button-${spec.text}`;
-      if(note&&parent===note.content){
-        spec.x+=note.x;spec.y+=note.y;spec.scroll='cloud-note';
-        spec.clip={top:note.y,bottom:note.y+note.height};
-      }else if(parent!==view.root){
-        spec.x+=parent.x;spec.y+=parent.y;
-        if(parent.alpha<1&&spec.style.color)spec.style.color=fadeColor(spec.style.color,parent.alpha);
-      }
-      // 按钮标签在原实现里以自身中心为原点；有换行宽度时也要居中对齐。
-      if(spec.style.anchorX===.5)spec.style.align='center';
-      specs.push(spec);
-    }
-    return specs;
+    const {texts,controls,scroll}=drawCloudSavePage(view,this.cloudState(),this.cloudActions(),{frame:art('slot'),close:CLOSE_IMAGE,closePressed:CLOSE_PRESSED},true);
+    this.cloudControls=controls;
+    this.cloudScroll=scroll;
+    if(scroll)scroll.onScroll=()=>this.menuText?.refresh();
+    return texts;
   }
   private render():void {
     // 异步目录加载和指针回调可能在场景关闭后才回来；surface 此时已经销毁。
@@ -592,24 +552,22 @@ export class TitleMenuController {
         buttonText('cloud-entry','云存档',CLOUD_PAGE.entry.x,CLOUD_PAGE.entry.y,CLOUD_PAGE.entry.width,CLOUD_PAGE.entry.height,26);
         const assets={frame:art('slot'),empty:art('slot-empty')};
         const origin=saveBoardOrigin(view.width);
-        setSaveBoardTextSink(view,{add:spec=>texts.push(this.saveBoardSpec(spec))});
-        try{
-          // 自动存档固定一行置顶；它没有改名与删除。
-          const auto=this.app.saves.peek(AUTO_SAVE_SLOT),autoTitle=saveRowTitle(AUTO_SAVE_SLOT,auto);
-          drawSaveBoardRow(view,assets,origin,SAVE_BOARD_LAYOUT.autoTop,
-            {reading:auto,action:auto.kind==='ok'?()=>this.resume(AUTO_SAVE_SLOT):undefined,label:autoTitle,title:autoTitle,auto:true});
-          // 十个手动槽放进滚动区；按写入时间倒序，最新的排最前，空槽排在后面。
-          const scroll=view.scroll(origin.x,SAVE_BOARD_LAYOUT.listTop,SAVE_BOARD.panelWidth,SAVE_BOARD_LAYOUT.listHeight);
-          this.slotsScroll=scroll;scroll.onScroll=()=>this.menuText?.refresh();
-          this.slotBoard=new SaveBoardList(view,scroll,assets,slot=>{
-            const ref=slot,reading=this.app.saves.peek(ref),title=saveRowTitle(ref,reading);
-            return {reading,label:title,title,
-              action:reading.kind==='ok'?()=>this.resume(ref):reading.kind==='empty'?()=>{void this.app.enterGame?.(slot);}:undefined,
-              ...this.slotControls(ref,reading)};
-          });
-          emitSaveBoardTexts(view,this.slotBoard.render(newestFirstSlots(slot=>this.app.saves.peek(slot))));
-          scroll.setHeight((MANUAL_SAVE_SLOT_COUNT-1)*SAVE_BOARD.rowStep+SAVE_BOARD.frameHeight);
-        }finally{setSaveBoardTextSink(view,undefined);}
+        const sink:SaveBoardTextSink={add:spec=>texts.push(this.saveBoardSpec(spec))};
+        // 自动存档固定一行置顶；它没有改名与删除。
+        const auto=this.app.saves.peek(AUTO_SAVE_SLOT),autoTitle=saveRowTitle(AUTO_SAVE_SLOT,auto);
+        drawSaveBoardRow(view,assets,origin,SAVE_BOARD_LAYOUT.autoTop,
+          {reading:auto,action:auto.kind==='ok'?()=>this.resume(AUTO_SAVE_SLOT):undefined,label:autoTitle,title:autoTitle,auto:true},undefined,sink);
+        // 十个手动槽放进滚动区；按写入时间倒序，最新的排最前，空槽排在后面。
+        const scroll=view.scroll(origin.x,SAVE_BOARD_LAYOUT.listTop,SAVE_BOARD.panelWidth,SAVE_BOARD_LAYOUT.listHeight);
+        this.slotsScroll=scroll;scroll.onScroll=()=>this.menuText?.refresh();
+        this.slotBoard=new SaveBoardList(view,scroll,assets,slot=>{
+          const ref=slot,reading=this.app.saves.peek(ref),title=saveRowTitle(ref,reading);
+          return {reading,label:title,title,
+            action:reading.kind==='ok'?()=>this.resume(ref):reading.kind==='empty'?()=>{void this.app.enterGame?.(slot);}:undefined,
+            ...this.slotControls(ref,reading)};
+        });
+        for(const spec of this.slotBoard.render(newestFirstSlots(slot=>this.app.saves.peek(slot))))sink.add(spec);
+        scroll.setHeight((MANUAL_SAVE_SLOT_COUNT-1)*SAVE_BOARD.rowStep+SAVE_BOARD.frameHeight);
       }else{
         texts.push({key:'settings-title',text:'环境设置',x:600,y:20,style:{size:49,anchorX:.5,anchorY:0}});
         // 边框固定在原版位置；选项排进金色边线内侧的滚动区，行数增加时只滚动，不会压到边线。
@@ -717,7 +675,7 @@ export class TitleMenuController {
     }
     const keys=labels.map(label=>`cloud-button-${label}`);
     for(const key of keys){const spec=specs.find(item=>item.key===key);if(spec)spec.style.color=disabled?fadeColor(GOLD,.4):GOLD;}
-    const status=cloudStatusText(state),color=!state.available&&!status?'#e9a08a':cloudStatusColor(cloudStatusKind(state));
+    const status=cloudStatusText(state),color=!state.available&&!status?TEXT_COLORS.dangerSoft:cloudStatusColor(cloudStatusKind(state));
     replace('cloud-status',status??(!state.available?'云存档暂不可用，本机存档不受影响。':''),color);
     this.menuText?.renderPage('cloud');this.layout();
   }

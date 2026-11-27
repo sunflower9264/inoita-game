@@ -1,13 +1,13 @@
 import { UiNode, UiImage } from './dom/node.ts';
 import { SHORTCUT_PAGE_COUNT, SHORTCUT_SLOT_COUNT, ShortcutBar, type ShortcutEntry } from '../domain/shortcut-bar.ts';
-import { SLOT_ICON_SIZE, ITEM_ICON_SIZE, controlPlacement } from './phaser/action-controls.ts';
+import { SLOT_ICON_SIZE, ITEM_ICON_SIZE, controlPlacement } from './hud/action-controls.ts';
 import type { StoryUIContext } from '../application/ports.ts';
 import type { Session } from '../domain/session.ts';
 import type { CompanionMember } from '../domain/party.ts';
 import { frameRect } from './viewport.ts';
 import { CONTROL_SIZES, PENDING_OFFSET, resolveControlLayout, type ControlId } from './control-layout.ts';
-import { controlViewport } from './phaser/control-layout-viewport.ts';
-import { UiSurface } from './phaser/widgets.ts';
+import { controlViewport } from './viewport.ts';
+import { UiSurface } from './widgets.ts';
 import type { DomLabel } from './dom/dom-ui.ts';
 import { TEXT_COLORS } from './text-style.ts';
 

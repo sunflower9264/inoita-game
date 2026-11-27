@@ -16,6 +16,5 @@ export const SCENE_KEYS = {
   world: 'world',
   storyStage: 'story-stage',
   formalUi: 'formal-ui',
-  controlsUi: 'controls-ui',
   audio: 'audio',
 } as const;

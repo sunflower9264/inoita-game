@@ -1,4 +1,3 @@
-import type Phaser from 'phaser';
 import type { StoryClass, StoryClassCatalog } from '../domain/story-class.ts';
 import {
   PRESSURE_DEFAULT_MAX_ENEMIES,
@@ -10,9 +9,9 @@ import {
   normalizePressureMaxEnemies,
   type PressureSettings,
 } from '../domain/pressure-enemies.ts';
-import { UiNode, type UiImage, type UiText } from './dom/node.ts';
+import { UiNode, type UiImage, type UiSceneHost, type UiText } from './dom/node.ts';
 import { NumberPrompt } from './number-prompt.ts';
-import { UiSurface, loadUiImages } from './phaser/widgets.ts';
+import { UiSurface, loadUiImages } from './widgets.ts';
 import { frameRect } from './viewport.ts';
 
 export type PressureDebugTab = 'class' | 'monster';
@@ -75,7 +74,7 @@ interface ClassCardEntry {
 }
 
 export interface PressureDebugPanelOptions {
-  readonly scene: Phaser.Scene;
+  readonly scene: UiSceneHost;
   readonly catalog: StoryClassCatalog;
   readonly classes: readonly StoryClass[];
   readonly currentClassId: string;
@@ -154,7 +153,7 @@ export class PressureDebugPanel {
       catalog.assets.selected,
       ...(closeAssets ? [closeAssets.close, closeAssets.closePressed] : []),
     ])];
-    void loadUiImages(scene, preloadFiles, undefined, this.controller.signal).then(lease => {
+    void loadUiImages(preloadFiles, undefined, this.controller.signal).then(lease => {
       if (this.disposed) {
         lease.release();
         return;

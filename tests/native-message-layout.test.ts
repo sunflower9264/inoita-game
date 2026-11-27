@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test, {after} from 'node:test';
-import { drawNativeMessage } from '../src/ui/phaser/native-message.ts';
-import type { UiSurface } from '../src/ui/phaser/widgets.ts';
+import { drawNativeMessage } from '../src/ui/panels/native-message.ts';
+import type { UiSurface } from '../src/ui/widgets.ts';
 import type { UiNode } from '../src/ui/dom/node.ts';
 import { installMenuDom, MenuElement, menuFrame } from './support/menu-dom.ts';
 

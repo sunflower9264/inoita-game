@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import type { UiImage, UiNode } from '../dom/node.ts';
-import type { UiSurface } from './widgets.ts';
+import type { UiSurface } from '../widgets.ts';
 
 /** 职业选择页的 Phaser 视图适配：页面只持有抽象结果，具体场景系统留在本层。 */
 export function setClassSelectionBackdrop(scene: Phaser.Scene): void {

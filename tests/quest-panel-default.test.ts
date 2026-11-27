@@ -1,17 +1,9 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { registerHooks } from 'node:module';
 import test from 'node:test';
 import { parseCampaign, parseWorld } from '../src/application/content-validation.ts';
 import { Session } from '../src/domain/session.ts';
-
-const hook = registerHooks({ resolve(specifier, context, next) {
-  return specifier === 'phaser'
-    ? { shortCircuit: true, url: 'data:text/javascript,export default {GameObjects:{},Textures:{FilterMode:{LINEAR:1}}};' }
-    : next(specifier, context);
-} });
-const { QuestPanel } = await import('../src/ui/phaser/quest-panel.ts');
-hook.deregister();
+import { QuestPanel } from '../src/ui/panels/quest-panel.ts';
 
 const read = (name: string) => JSON.parse(readFileSync(new URL(`../public/content/${name}.json`, import.meta.url), 'utf8'));
 const campaign = parseCampaign(read('campaign')), world = parseWorld(read('world'));

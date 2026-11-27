@@ -1,8 +1,21 @@
-import type Phaser from 'phaser';
 import { FONT } from '../text-style.ts';
 import { UI_UNIT_HEIGHT, UI_UNIT_WIDTH } from '../viewport.ts';
 
 type DomLayerName = 'world' | 'hud' | 'screen' | 'overlay';
+
+export interface DomWorldGame {
+  readonly canvas?: HTMLCanvasElement | null;
+  readonly loop?: { readonly frame?: number };
+}
+
+export interface DomWorldCamera {
+  readonly zoom: number;
+  readonly worldView: { readonly x: number; readonly y: number };
+  readonly scene?: {
+    readonly game?: DomWorldGame;
+    readonly scale: { readonly width: number; readonly height: number };
+  };
+}
 
 /** 一个 DOM 文字节点；只改内容、位置和显隐，不参与 Phaser 渲染。 */
 export interface DomLabel {
@@ -19,8 +32,8 @@ interface DomPoint { x: number; y: number }
 interface WorldMeasurements {
   frame: HTMLElement;
   canvas: HTMLCanvasElement;
-  game: Phaser.Game;
-  frameNumber: number;
+  game: DomWorldGame;
+  frameNumber?: number;
   frameRect: DOMRect;
   canvasRect: DOMRect;
 }
@@ -161,7 +174,7 @@ export class DomUi {
   }
 
   /** 当前画框的 CSS 尺寸；DOM 文字用它换算字号和位置。 */
-  frameSize(camera?: Phaser.Cameras.Scene2D.Camera): { width: number; height: number } {
+  frameSize(camera?: DomWorldCamera): { width: number; height: number } {
     const measurements = camera && this.measureWorld(camera);
     if (measurements) return { width: measurements.frameRect.width, height: measurements.frameRect.height };
     if (typeof document === 'undefined') return { width: 0, height: 0 };
@@ -172,7 +185,7 @@ export class DomUi {
   }
 
   /** 界面单位：800×480 基准，与现有 `uiUnitScale` 同一口径。 */
-  storyUnit(camera?: Phaser.Cameras.Scene2D.Camera): number {
+  storyUnit(camera?: DomWorldCamera): number {
     const { width, height } = this.frameSize(camera);
     return Math.min(width / UI_UNIT_WIDTH, height / UI_UNIT_HEIGHT);
   }
@@ -181,7 +194,7 @@ export class DomUi {
    * 世界坐标 → 画框内 CSS 坐标。
    * 必须在相机 `preRender` 之后读取，否则会用到上一帧的 `worldView`。
    */
-  private measureWorld(camera: Phaser.Cameras.Scene2D.Camera): WorldMeasurements | undefined {
+  private measureWorld(camera: DomWorldCamera): WorldMeasurements | undefined {
     const frame = this.frame ?? (typeof document === 'undefined' ? undefined : document.getElementById('game-frame'));
     const game = camera.scene?.game, canvas = game?.canvas;
     if (!frame || !game || !canvas) return undefined;
@@ -195,12 +208,12 @@ export class DomUi {
     return measurements;
   }
 
-  worldToScreen(camera: Phaser.Cameras.Scene2D.Camera, x: number, y: number): DomPoint {
+  worldToScreen(camera: DomWorldCamera, x: number, y: number): DomPoint {
     const measurements = this.measureWorld(camera);
     if (!measurements) return { x: 0, y: 0 };
     const { frameRect, canvasRect } = measurements;
-    const scaleX = canvasRect.width / Math.max(1, camera.scene.scale.width);
-    const scaleY = canvasRect.height / Math.max(1, camera.scene.scale.height);
+    const scaleX = canvasRect.width / Math.max(1, camera.scene!.scale.width);
+    const scaleY = canvasRect.height / Math.max(1, camera.scene!.scale.height);
     return {
       x: canvasRect.left - frameRect.left + (x - camera.worldView.x) * camera.zoom * scaleX,
       y: canvasRect.top - frameRect.top + (y - camera.worldView.y) * camera.zoom * scaleY

@@ -6,7 +6,7 @@ import { EventEmitter } from 'node:events';
 import { readFileSync } from 'node:fs';
 import { DomUi } from '../src/ui/dom/dom-ui.ts';
 import type { GameUI } from '../src/ui/game-ui.ts';
-import { UiNode } from '../src/ui/dom/node.ts';
+import { UiImage, UiNode } from '../src/ui/dom/node.ts';
 import { UiSurface } from '../src/ui/dom/surface.ts';
 import { installMenuDom, menuFrame, MenuElement } from './support/menu-dom.ts';
 import { domAssets } from '../src/ui/dom/assets.ts';
@@ -339,18 +339,72 @@ test('标题页的 Escape 先关确认框，再返回上一页', async () => {
   assert.deepEqual(calls, ['cancel-confirm', 'back', 'back'], '取消改名后 Escape 恢复返回页面');
 });
 
-test('确认框文字使用弹层的屏幕坐标，不再减页面原点', () => {
-  const matrix = (tx: number, ty: number, scale: number) => ({
-    scaleX: scale, scaleY: scale,
-    transformPoint: (x: number, y: number) => ({ x: tx + x * scale, y: ty + y * scale }),
-  });
-  const host = {
-    modal: { root: { getWorldTransformMatrix: () => matrix(144, 0, .5) } },
-    surface: { root: { getWorldTransformMatrix: () => matrix(100, 50, .5) } },
-    menuTextPoint: () => { throw new Error('弹层文字不能回退到页面坐标'); },
+test('确认框文字使用弹层的屏幕坐标，不再减页面原点', async t => {
+  const restore = installMenuDom();
+  t.after(restore);
+  menuFrame.width = 960;
+  menuFrame.height = 640;
+  const host = { sys: { isActive: () => true }, events: new EventEmitter() };
+  const realDomUi = new DomUi();
+  realDomUi.layer = name => document.getElementById(`ui-${name}`) as HTMLDivElement;
+  const placed: { text: string; x: number; y: number }[] = [];
+  const domUi = {
+    layer: (name: Parameters<DomUi['layer']>[0]) => realDomUi.layer(name),
+    label: (layer: Parameters<DomUi['label']>[0], className?: string, anchor?: { x: number; y: number }) => {
+      const label = realDomUi.label(layer, className, anchor);
+      const origSetPosition = label.setPosition.bind(label);
+      let currentText = '';
+      const origSetText = label.setText.bind(label);
+      label.setText = value => { currentText = value; return origSetText(value); };
+      label.setPosition = (x, y) => {
+        if (className?.includes('dom-native-message')) placed.push({ text: currentText, x, y });
+        return origSetPosition(x, y);
+      };
+      return label;
+    },
   };
-  const point = Reflect.get(TitleMenuController.prototype, 'modalTextPoint').call(host, 10, 20) as { x: number; y: number; scale: number };
-  assert.deepEqual(point, { x: 149, y: 10, scale: .5 }, '弹层原点加本地偏移后直接就是屏幕坐标');
+  const app = {
+    inputRouter: new InputRouter({ textInputFocused: () => false }),
+    domUi,
+    ui: {
+      mode: 'menu', ready: true, suspended: false,
+      setMode() {}, loading() {}, menuLoaded() {}, error() {},
+    },
+    saves: { list: () => [], peek: () => ({ kind: 'empty' }) },
+    prefetchCommon() {},
+  };
+  const views = {
+    createBackdrop: () => new UiImage(host),
+    createPopupMask: () => new UiNode(host),
+    createSurface: (width: number, height: number, depth = 0) => {
+      const surface = new UiSurface(host, width, height, depth);
+      if (width === 1200) {
+        surface.layout = () => { surface.root.setScale(.5).setPosition(100, 50); };
+        surface.layout();
+      }
+      return surface;
+    },
+    createCredentials: () => ({ focused: false, show() {}, hide() {}, blur() {}, setRects() {}, setValues() {}, destroy() {} }),
+  };
+  const titleAssets = { preloadResident: async () => {} };
+  const controller = new TitleMenuController(host, app as never, titleAssets as never, () => {}, views);
+  t.after(() => controller.dispose());
+  await controller.open();
+
+  const internal = controller as unknown as {
+    confirmAction?: { message: string; accept(): void; cancel(): void };
+    render(): void;
+  };
+  internal.confirmAction = { message: '确认读取存档？', accept() {}, cancel() {} };
+  placed.length = 0;
+  internal.render();
+
+  const body = placed.find(item => item.text === '确认读取存档？');
+  assert.ok(body, '确认框正文通过 TitleMenuController.modalTextPoint 创建了 DOM 标签');
+  // surface(1200x640) 位于 (100, 50), scale = 0.5；centerModal 把 modal(1024x640) 放在
+  // tx = 100 + (1200 - 1024) / 2 * 0.5 = 144, ty = 50, scale = 0.5。
+  // 正文中心 modal-local x = 512，按 modal 换算应为 144 + 512 * 0.5 = 400（而非 surface 的 356）。
+  assert.equal(body.x, 400, '弹层文字通过 modal 屏幕坐标定位，而不是回退到 surface 坐标');
 });
 
 test('职业选择页的 Escape 回标题，其他按键交给页面按钮', () => {

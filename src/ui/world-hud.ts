@@ -1,22 +1,26 @@
-import type Phaser from 'phaser';
-import type { StoryContext } from '../application/ports.ts';
 import { controlSettings } from '../application/control-settings.ts';
 import { displaySettings } from '../application/display-settings.ts';
 import { memberArt } from '../domain/menu-panels.ts';
 import type { TargetStatus } from '../domain/status-hud.ts';
 import type { StoryPlayerState } from '../domain/story-interface.ts';
 import type { ActiveCondition } from '../domain/combat-conditions.ts';
-import { Hud } from '../rendering/hud.ts';
-import { NameBanner } from '../rendering/name-banner.ts';
-import { StoryMinimap } from '../rendering/story-minimap.ts';
-import { StatusHud } from './phaser/status-hud.ts';
-import { MoveStick } from './phaser/move-stick.ts';
-import { ActionControls, type ShortcutSlot } from './phaser/action-controls.ts';
-import { ComputerSkillHud } from './phaser/computer-skill-hud.ts';
-import { KeyboardActions } from './phaser/keyboard-actions.ts';
+import { SceneActivity, type SceneActivitySource } from './hud/scene-activity.ts';
+import { NameBanner, type NameBannerHost } from './hud/name-banner.ts';
+import { StoryMinimap } from './hud/story-minimap.ts';
+import { StatusHud } from './hud/status-hud.ts';
+import { MoveStick, type MoveStickOwner } from './hud/move-stick.ts';
+import { ActionControls, type ShortcutSlot } from './hud/action-controls.ts';
+import { ComputerSkillHud } from './hud/computer-skill-hud.ts';
+import { KeyboardActions, type KeyboardSceneSource } from './hud/keyboard-actions.ts';
 import type { DomUi, DomLabel } from './dom/dom-ui.ts';
+import type { UiSceneHost } from './dom/node.ts';
 import type { WorldMap } from '../domain/content.ts';
 
+import type { StoryContext } from '../application/ports.ts';
+
+type WorldHudOwner = SceneActivitySource & NameBannerHost & MoveStickOwner & KeyboardSceneSource & UiSceneHost & {
+  readonly game: { readonly loop: { readonly frame: number }; readonly canvas: { getBoundingClientRect(): { width: number; height: number } }; readonly events?: { on(...args: any[]): unknown; off(...args: any[]): unknown; emit(...args: any[]): unknown } };
+};
 type HudContext = Pick<StoryContext, 'session'|'statusHud'|'world'|'menuPanels'|'controlSkin'|'controlLayout'|'keyBindings'|'inputRouter'|'storyInterface'>;
 interface HudActions {
   attack(): void;
@@ -47,9 +51,9 @@ const FPS_RESET_AFTER_IDLE_MS = 2000;
 
 /** 一次地图访问的屏幕控件；会话、订阅和节点随本次访问一起释放。 */
 export class WorldHud {
-  private readonly owner: Phaser.Scene;
+  private readonly owner: WorldHudOwner;
   private readonly domUi?: DomUi;
-  private readonly hud: Hud;
+  private readonly activity: SceneActivity;
   private statusHud?: StatusHud;
   private stick?: MoveStick;
   private controls?: ActionControls;
@@ -68,8 +72,8 @@ export class WorldHud {
   private fpsWindowStart = 0;
   private fpsActualFrames = 0;
 
-  constructor(owner: Phaser.Scene, domUi?: DomUi) {
-    this.owner = owner; this.domUi = domUi; this.hud = new Hud(owner);
+  constructor(owner: WorldHudOwner, domUi?: DomUi) {
+    this.owner = owner; this.domUi = domUi; this.activity = new SceneActivity(owner);
   }
   get minimap(): StoryMinimap | undefined { return this.mapView; }
   get axis(): {x:number;y:number} { return this.active() ? this.stick?.axis ?? NEUTRAL_AXIS : NEUTRAL_AXIS; }
@@ -82,32 +86,32 @@ export class WorldHud {
     const run = <A extends unknown[]>(action: (...args:A)=>void) => (...args:A) => {
       if (!this.destroyed && sources.active()) action(...args);
     };
-    this.statusHud = new StatusHud(this.hud, context.statusHud, () => (sources.active() ? sources.player() : undefined) ?? session.player,
+    this.statusHud = new StatusHud(this.activity, context.statusHud, () => (sources.active() ? sources.player() : undefined) ?? session.player,
       listener => session.subscribe(listener), () => session.party?.activeSnapshot(), run(actions.select), id => {
         if (id === 'player') return context.statusHud.assets['player-portrait'];
         const member = session.party?.get(id); if (!member) return undefined;
         return memberArt(context.menuPanels, context.world.actors[member.definition.actor], member.classId, member.source).partyIcon;
       }, run(actions.focus), id => sources.active() ? sources.conditions(id) : [], () => session.player, this.domUi);
-    this.stick = new MoveStick(this.owner, this.hud, context.controlSkin, context.controlLayout, context.keyBindings, context.inputRouter, this.domUi);
+    this.stick = new MoveStick(this.owner, this.activity, context.controlSkin, context.controlLayout, context.keyBindings, context.inputRouter, this.domUi);
     this.controls = new ActionControls(this.owner, {
       attack: run(actions.attack), skill: run(actions.skill), item: run(actions.item), swap: run(actions.cycle)
-    }, context.controlSkin, context.controlLayout, this.domUi);
+    }, context.controlSkin, context.controlLayout, this.domUi, this.activity);
     this.keyboardActions = new KeyboardActions(this.owner, context.keyBindings, {
       skill: run(actions.slot), cycle: run(actions.cycle), previousMember: run(() => actions.member(-1)), nextMember: run(() => actions.member(1))
     }, context.inputRouter);
-    this.skillHud = new ComputerSkillHud(this.hud, context.controlSkin, this.domUi);
+    this.skillHud = new ComputerSkillHud(this.activity, context.controlSkin, this.domUi);
     this.nameBanner = new NameBanner(this.owner, map.name, this.domUi);
     this.unsubscribeMode = controlSettings.subscribeMode(() => { if (this.lastState) this.sync(this.lastState); });
   }
   mountMinimap(map: WorldMap, content: HudContext['storyInterface']): void {
     if (this.destroyed || this.mapView) return;
     if (!this.domUi) throw new Error('小地图界面尚未就绪');
-    this.mapView = new StoryMinimap(this.owner, this.hud, map, content, this.domUi);
+    this.mapView = new StoryMinimap(this.owner, this.activity, map, content, this.domUi);
     this.fpsReadout = this.createFpsReadout();
   }
   layout(width: number, height: number): void {
     if (this.destroyed) return;
-    this.hud.layout(width, height); this.stick?.layout(); this.controls?.layout(); this.skillHud?.layout();
+    this.activity.layout(width, height); this.stick?.layout(); this.controls?.layout(); this.skillHud?.layout();
     this.nameBanner?.layout(); this.mapView?.layout(); this.layoutFps(); this.statusHud?.layout();
   }
   sync(state: WorldHudState): void {
@@ -185,7 +189,7 @@ export class WorldHud {
     this.unsubscribeMode?.(); this.unsubscribeMode = undefined;
     this.stick?.destroy(); this.controls?.destroy(); this.keyboardActions?.destroy(); this.skillHud?.destroy();
     this.nameBanner?.destroy(); this.mapView?.destroy(); this.fpsReadout?.dom?.remove(); this.statusHud?.destroy();
-    this.hud.destroy();
+    this.activity.destroy();
     this.session = undefined; this.active = () => false; this.lastState = undefined;
     this.stick = undefined; this.controls = undefined; this.keyboardActions = undefined; this.skillHud = undefined;
     this.nameBanner = undefined; this.mapView = undefined; this.statusHud = undefined; this.fpsReadout = undefined;
