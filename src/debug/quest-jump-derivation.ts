@@ -637,6 +637,12 @@ class Planner {
             }
           }
           const placerMap = this.triggerMap(placer.event, state);
+          const sameSpotChars = new Set(
+            this.campaign.placements
+              .filter(other => other.map === p.map && other.characterId !== charId && (other.actor === p.actor || (other.x === p.x && other.y === p.y)))
+              .map(other => other.characterId)
+              .filter((id): id is string => !!id),
+          );
           let flagPushed = false;
           for (const cmd of placer.commands) {
             if (cmd.type === 'world' && cmd.command.kind === 'place' && cmd.command.scope !== 'visit' && cmd.command.entity.characterId === charId) {
@@ -649,6 +655,15 @@ class Planner {
                   this.recordPlacement(state, resolved.entity);
                 }
               }
+            } else if (
+              cmd.type === 'world' &&
+              cmd.command.kind === 'actor-visibility' &&
+              cmd.command.visible === false &&
+              cmd.command.map === p.map &&
+              cmd.command.characterId !== charId &&
+              (cmd.command.actor === p.actor || (cmd.command.characterId !== undefined && sameSpotChars.has(cmd.command.characterId)))
+            ) {
+              state.world.push(cmd);
             } else if (!flagPushed && cmd.type === 'flag' && cmd.flag === flag && (cmd.value ?? true)) {
               state.flags.set(flag, true);
               state.world.push(cmd);

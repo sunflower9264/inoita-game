@@ -504,3 +504,24 @@ test('潜入骨之兽人部落时恢复同行的沃尔达克和伪装，重复�
     assert.notEqual(session.bag.equipmentItems().head, 'disguise-mask');
   } finally { h.director.dispose(); }
 });
+
+test('跳转到《试验新型融合器》时同步隐藏同坐标的初级融合器旧实例，避免按交互键被旧任务抢占', () => {
+  const h = playthrough();
+  try {
+    h.director.holdTriggers();
+    const plan = planQuestStart(h.session.campaign, h.session, 'quest-356', 'available');
+    applyQuestStartPlan(h.session, plan);
+    assert.equal(h.session.storyWorld.isPlaced('quest-npc-located-npc-579'), true);
+    assert.equal(
+      h.session.storyWorld.actorVisible('shadow-hall', 'fusion-machine-3d13b5ee', 'npc-576'),
+      false,
+      '放置中级融合器 npc-579 的同时必须隐藏同点初级融合器 npc-576',
+    );
+    assert.equal(
+      h.session.storyWorld.actorVisible('shadow-hall', 'fusion-machine-3d13b5ee', 'npc-579'),
+      true,
+    );
+  } finally {
+    h.director.dispose();
+  }
+});
