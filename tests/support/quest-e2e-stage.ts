@@ -111,9 +111,13 @@ export function createStoryPresentationPorts(params: {
 
   let stage: StoryStageSnapshot | undefined;
   const scenes = new Map<string, SceneSnapshot>();
+  const lastRememberedRaw = new Map<string, SceneSnapshot>();
   const committedScenes = new Map<string, SceneSnapshot>();
   const remember = () => {
-    if (stage) scenes.set(stage.map, structuredClone(stage.scene));
+    if (!stage) return;
+    if (lastRememberedRaw.get(stage.map) === stage.scene) return;
+    lastRememberedRaw.set(stage.map, stage.scene);
+    scenes.set(stage.map, structuredClone(stage.scene));
   };
 
   const captureScene = (declaration?: StoryStage): SceneSnapshot => {
@@ -147,6 +151,7 @@ export function createStoryPresentationPorts(params: {
     begin(_signal, restored) {
       stage = undefined;
       scenes.clear();
+      lastRememberedRaw.clear();
       committedScenes.clear();
       const loc = session.storyWorld.currentLocation ?? { ...content.campaign.start, facing: 'south' as const };
       stage = restored && 'scene' in restored
@@ -159,13 +164,15 @@ export function createStoryPresentationPorts(params: {
     },
     async execute(action, _playback, pendingEntrances) {
       await onStageAction?.(action);
+      const prevScene = stage?.scene;
+      const prevBindings = stage?.bindings;
       if (action.type === 'stage') {
         stage = resolveStage(action);
         if (pendingEntrances?.length) stage = hidePendingEntrances(stage, action, pendingEntrances);
       } else if (stage) {
         stage = applyStorySceneAction(stage, action);
       }
-      if (stage) {
+      if (stage && (stage.scene !== prevScene || stage.bindings !== prevBindings)) {
         assertUniqueActorInstances(stage.scene.actors, `舞台 ${stage.map}/${action.type}`);
         assertScenePlan(planScene(stage.scene, stage.bindings));
       }
@@ -173,8 +180,10 @@ export function createStoryPresentationPorts(params: {
     async restoreStage(saved) {
       stage = structuredClone(saved);
       scenes.clear();
+      lastRememberedRaw.clear();
       for (const s of saved.scenes ?? []) scenes.set(s.map, structuredClone(s));
       scenes.set(saved.map, structuredClone(saved.scene));
+      lastRememberedRaw.set(stage.map, stage.scene);
       committedScenes.clear();
       for (const [m, s] of scenes) committedScenes.set(m, structuredClone(s));
       assertUniqueActorInstances(stage.scene.actors, `舞台 ${stage.map}/restore`);
@@ -232,6 +241,7 @@ export function createStoryPresentationPorts(params: {
     release() {
       stage = undefined;
       scenes.clear();
+      lastRememberedRaw.clear();
       committedScenes.clear();
     },
   };

@@ -711,8 +711,8 @@ test('全部 487 个正式任务逐一独立跑通「接取 → 目标达成 →
 
   for (const group of campaign.questGroups) {
     await t.test(`[${group.kind === 'main' ? '主线组' : '支线组'}] ${group.title} (${group.id})`, async () => {
-      // 每组重建独立干净会话（复用已解析的只读 official 内容与索引），彻底杜绝跨组状态污染
-      const h = createQuestE2EHarness(official, { validateStages: false });
+      // 每组重建独立干净会话（复用已解析的只读 official 内容与索引），开启完整舞台核验并杜绝跨组状态污染
+      const h = createQuestE2EHarness(official, { validateStages: true });
       try {
         for (const questId of group.questIds) {
         const quest = indexes.questById.get(questId);
@@ -782,7 +782,7 @@ test('全部 487 个正式任务逐一独立跑通「接取 → 目标达成 →
             // 对抽样章节代表任务执行正式格式 1 存读档往返校验
             if (group.questIds[0] === questId && saveRoundtripsVerified < 24 && !scriptResetAfterComplete) {
               saveRoundtripsVerified++;
-              const { restored } = h.roundtripSaveLoad({ validateStages: false });
+              const { restored } = h.roundtripSaveLoad({ validateStages: true });
               try {
                 assert.equal(restored.session.status(questId), 'completed', `任务 ${questId} 读档后完成态丢失`);
                 assert.equal(restored.session.complete(questId), false);

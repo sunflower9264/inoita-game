@@ -2012,6 +2012,9 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     const plan = planQuestStart(content.campaign, session, questId, 'available');
     assert.deepEqual(plan.conditionPatch.unsatisfied, [], `任务 ${questId} 前置条件无法满足`);
     applyQuestStartPlan(session, plan);
+    // 立即撤销调试跳转遗留的 forceAvailable / forceProgress，确保接取资格 100% 由真实 availableWhen 求值通过
+    session.questBook.clearDebugOverrides();
+    session.questBook.commit(session.questBook.plan({ type: 'refresh' }));
     const startCycles = session.questBook.completedCycles(questId);
     director.runtime.restore(session.runtimeState);
     if (plan.destination) {
@@ -2023,12 +2026,18 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     director.releaseTriggers();
 
     if (['active', 'ready'].includes(session.status(questId))) {
-      session.questBook.clearDebugOverrides();
-      session.questBook.commit(session.questBook.plan({ type: 'refresh' }));
       phaseMode = 'complete';
       await settle();
       await settleActiveEncounters();
       return quest;
+    }
+
+    if (!plan.accept?.eventId && quest.giver) {
+      assert.equal(
+        session.status(questId),
+        'available',
+        `任务 ${questId}（${quest.title}）清除 forceAvailable 后未能凭真实 availableWhen 自然解锁`,
+      );
     }
 
     if (plan.accept?.eventId) {
