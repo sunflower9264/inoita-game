@@ -19,15 +19,19 @@ export function createStoryPresentationPorts(params: {
   if (!validateStages) {
     let fastStage: StoryStageSnapshot | undefined;
     const makeFastStage = (declaration: StoryStage): StoryStageSnapshot => {
-      const fallbackMap = fastStage?.map ?? session.storyWorld.currentLocation?.map ?? content.campaign.start.map;
+      const loc = session.storyWorld.currentLocation;
+      const fallbackMap = fastStage?.map ?? loc?.map ?? content.campaign.start.map;
       const map = declaration.mapFromWorld ? fallbackMap : declaration.map;
-      const facing = declaration.facing ?? 'south';
+      const inheritSource = fastStage?.map === map ? fastStage : loc?.map === map ? loc : undefined;
+      const x = declaration.retainPlayerPosition && inheritSource ? inheritSource.x : declaration.x;
+      const y = declaration.retainPlayerPosition && inheritSource ? inheritSource.y : declaration.y;
+      const facing = (declaration.retainPlayerPosition && inheritSource ? inheritSource.facing : declaration.facing) ?? 'south';
       const actors: SceneSnapshot['actors'] = [
         {
           id: 'player',
           actor: content.campaign.start.actor,
-          x: declaration.x,
-          y: declaration.y,
+          x,
+          y,
           facing,
           visible: declaration.playerVisible,
         },
@@ -53,10 +57,43 @@ export function createStoryPresentationPorts(params: {
       return {
         ...declaration,
         map,
+        x,
+        y,
         facing,
         scene: { map, actors },
         bindings,
       };
+    };
+
+    const applyFastAction = (action: PerformanceAction) => {
+      if (action.type === 'stage') {
+        fastStage = makeFastStage(action);
+      } else if (action.type === 'parallel') {
+        for (const child of action.actions) applyFastAction(child);
+      } else if (fastStage && (action.type === 'walk' || action.type === 'appear') && action.target === 'player') {
+        const nextFacing = action.type === 'appear' && action.facing ? action.facing : fastStage.facing;
+        fastStage = {
+          ...fastStage,
+          x: action.x,
+          y: action.y,
+          facing: nextFacing,
+          scene: {
+            ...fastStage.scene,
+            actors: fastStage.scene.actors.map(a =>
+              a.id === 'player' ? { ...a, x: action.x, y: action.y, facing: nextFacing } : a,
+            ),
+          },
+        };
+      } else if (fastStage && action.type === 'face' && action.target === 'player') {
+        fastStage = {
+          ...fastStage,
+          facing: action.facing,
+          scene: {
+            ...fastStage.scene,
+            actors: fastStage.scene.actors.map(a => (a.id === 'player' ? { ...a, facing: action.facing } : a)),
+          },
+        };
+      }
     };
 
     return {
@@ -72,28 +109,7 @@ export function createStoryPresentationPorts(params: {
       },
       async execute(action) {
         await onStageAction?.(action);
-        if (action.type === 'stage') {
-          fastStage = makeFastStage(action);
-        } else if (fastStage && action.type === 'walk' && action.target === 'player') {
-          fastStage = {
-            ...fastStage,
-            x: action.x,
-            y: action.y,
-            scene: {
-              ...fastStage.scene,
-              actors: fastStage.scene.actors.map(a => (a.id === 'player' ? { ...a, x: action.x, y: action.y } : a)),
-            },
-          };
-        } else if (fastStage && action.type === 'face' && action.target === 'player') {
-          fastStage = {
-            ...fastStage,
-            facing: action.facing,
-            scene: {
-              ...fastStage.scene,
-              actors: fastStage.scene.actors.map(a => (a.id === 'player' ? { ...a, facing: action.facing } : a)),
-            },
-          };
-        }
+        applyFastAction(action);
       },
       async restoreStage(saved) {
         fastStage = structuredClone(saved);

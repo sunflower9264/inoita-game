@@ -265,6 +265,9 @@ export interface ContentSourceIndexes {
   eventsSpawningEnemy: Map<string, StoryEvent[]>;
   eventsPlacingChar: Map<string, StoryEvent[]>;
   eventsHidingActorOnMap: Map<string, StoryEvent[]>;
+  placementsByMap: Map<string, Campaign['placements']>;
+  regionEventsByMap: Map<string, { event: StoryEvent; isPushbackGuard: boolean; pushbackTarget?: Point }[]>;
+  pushbackGuardEventIds: ReadonlySet<string>;
   bfsCache: Map<string, Point[]>;
 }
 
@@ -466,6 +469,12 @@ export function buildContentSourceIndexes(content: QuestHarnessContent): Content
     }
   }
   for (const ep of content.campaign.enemyPlacements ?? []) pushUnique(mapsByEnemy, ep.enemyId, ep.map);
+  const placementsByMap = new Map<string, Campaign['placements']>();
+  for (const p of content.campaign.placements) {
+    const list = placementsByMap.get(p.map) ?? [];
+    list.push(p);
+    placementsByMap.set(p.map, list);
+  }
   for (const p of [...content.campaign.placements, ...(content.campaign.mapEntryPlacements ?? [])]) {
     if (p.characterId) pushUnique(mapsByChar, p.characterId, p.map);
     pushUnique(mapsByActor, p.actor, p.map);
@@ -523,7 +532,61 @@ export function buildContentSourceIndexes(content: QuestHarnessContent): Content
         if (cmd.type === 'world' && cmd.command.kind === 'actor-visibility' && !cmd.command.visible) {
           pushUnique(eventsHidingActorOnMap, `${cmd.command.map}\0${cmd.command.characterId ?? cmd.command.actor}`, ev);
         }
+        if (cmd.type === 'world' && cmd.command.kind === 'remove-character') {
+          const stageMap =
+            node.stage && !node.stage.mapFromWorld
+              ? node.stage.map
+              : node.presentation.find((p): p is Extract<typeof p, { type: 'stage' }> => p.type === 'stage' && !p.mapFromWorld)?.map ??
+                ev.map;
+          const remMap = cmd.command.mapFromStage ? stageMap ?? cmd.command.map : cmd.command.map;
+          if (remMap) pushUnique(eventsHidingActorOnMap, `${remMap}\0${cmd.command.characterId}`, ev);
+        }
+        if (cmd.type === 'world' && cmd.command.kind === 'remove') {
+          const remMatch = /^quest-npc-located-(npc-\d+)$/.exec(cmd.command.id);
+          if (remMatch) {
+            const cid = remMatch[1]!;
+            for (const m of mapsByChar.get(cid) ?? []) {
+              pushUnique(eventsHidingActorOnMap, `${m}\0${cid}`, ev);
+            }
+          }
+        }
       }
+    }
+  }
+
+  const regionEventsByMap = new Map<string, { event: StoryEvent; isPushbackGuard: boolean; pushbackTarget?: Point }[]>();
+  const pushbackGuardEventIds = new Set<string>();
+  for (const ev of content.campaign.events) {
+    if (ev.source === 'region' && ev.map && ev.region) {
+      const script = content.campaign.scripts[ev.script];
+      let hasProgression = false;
+      let pushbackTarget: Point | undefined;
+      for (const n of script?.nodes ?? []) {
+        if (n.exit.type === 'choice' || n.exit.type === 'waitEncounter') hasProgression = true;
+        if (n.stage && !n.stage.mapFromWorld && n.stage.map !== ev.map) hasProgression = true;
+        for (const p of n.presentation) {
+          if (p.type === 'stage' && !p.mapFromWorld && p.map !== ev.map) hasProgression = true;
+          if (p.type === 'walk' && p.target === 'player') pushbackTarget = { x: p.x, y: p.y };
+        }
+        for (const c of n.commands) {
+          if (
+            c.type === 'quest' ||
+            c.type === 'flag' ||
+            c.type === 'travel' ||
+            c.type === 'item-give' ||
+            c.type === 'item-drop' ||
+            c.type === 'encounter' ||
+            (c.type === 'world' && (c.command.kind === 'travel' || c.command.kind === 'flag' || c.command.kind === 'exit'))
+          ) {
+            hasProgression = true;
+          }
+        }
+      }
+      const isPushbackGuard = !!ev.repeat && !hasProgression;
+      if (isPushbackGuard) pushbackGuardEventIds.add(ev.id);
+      const list = regionEventsByMap.get(ev.map) ?? [];
+      list.push({ event: ev, isPushbackGuard, ...(isPushbackGuard && pushbackTarget ? { pushbackTarget } : {}) });
+      regionEventsByMap.set(ev.map, list);
     }
   }
 
@@ -553,6 +616,9 @@ export function buildContentSourceIndexes(content: QuestHarnessContent): Content
     eventsSpawningEnemy,
     eventsPlacingChar,
     eventsHidingActorOnMap,
+    placementsByMap,
+    regionEventsByMap,
+    pushbackGuardEventIds,
     bfsCache: new Map(),
   };
   sourceIndexCache.set(content, built);

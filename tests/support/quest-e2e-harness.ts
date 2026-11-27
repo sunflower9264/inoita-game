@@ -48,6 +48,7 @@ import { createQuestNavigation, type ObstacleTarget } from './quest-e2e-navigati
 import { createStoryPresentationPorts } from './quest-e2e-stage.ts';
 
 export { buildCampaignIndexes, loadOfficialQuestContent, type QuestHarnessContent };
+export { runContinuousCampaignPlaythrough, type ContinuousPlaythroughReport } from './quest-e2e-playthrough.ts';
 
 export interface PopupRecord {
   kind: 'start' | 'complete';
@@ -62,6 +63,12 @@ export interface QuestHarnessOptions {
   targetQuestId?: string;
   saved?: SaveGame<StoryWorldViewSnapshot>;
   validateStages?: boolean;
+  /** 是否允许单任务闭环按条件树反推前置事件/子任务；一镜到底连贯通关设为 false，强制 100% 自然前向推进。 */
+  allowRecursiveConditionSolve?: boolean;
+  chooseOption?: (
+    options: ChoiceOption[],
+    context: { choiceKey?: string; casesMap?: Record<string, { script: string; node: string }> },
+  ) => ChoiceOption | undefined;
   onPopupOpen?: (kind: 'start' | 'complete', quest: CampaignQuest, reward: QuestRewardReceipt | undefined, ui: GameUI) => void | Promise<void>;
   onStageAction?: (action: PerformanceAction) => void | Promise<void>;
 }
@@ -77,6 +84,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
   const sources = buildContentSourceIndexes(content);
   const kiyanActor = content.world.actors[content.campaign.start.actor] ?? content.world.actors.kiyan!;
   const validateStages = options.validateStages ?? true;
+  const allowRecursiveSolve = options.allowRecursiveConditionSolve ?? true;
   const chosenClass = options.classId
     ? content.storyClasses.classes.find(entry => entry.id === options.classId) ?? content.storyClasses.classes[0]!
     : content.storyClasses.classes[0]!;
@@ -116,12 +124,14 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
   }
 
   const questEnemies = new QuestEnemyWatch(session, content.drops.questItems);
-  const nav = createQuestNavigation(content, sources, session, kiyanActor);
+  const nav = createQuestNavigation(content, sources, session, kiyanActor, {
+    enforceOneShotRegionGates: !allowRecursiveSolve,
+  });
   const {
     currentMapObj,
     visibleEntities,
     reachableMapsFrom,
-    reachableEntrancesFor,
+    pickBestReachableEntrance,
     isEnemySpawnReachable,
     canStaticallyWalkBetween,
     hasFormalStoryBridgeToIsland,
@@ -253,6 +263,10 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
         casesMap = node.exit.cases;
         break;
       }
+    }
+    if (options.chooseOption) {
+      const custom = options.chooseOption(optionsList, { choiceKey, casesMap });
+      if (custom && optionsList.includes(custom)) return custom;
     }
     if (!choiceKey) return optionsList[0]!;
 
@@ -443,9 +457,18 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
    * 普通同岛换图：严格校验目标地图必须沿当前已开启的静态出口可达（严禁穿墙跨过锁死出口或偷跑跨岛），
    * 并一律落到目标地图真实入口坐标，严禁瞬移到目标脸上掩盖动态路障；同时对齐正式 WorldScene 重置触发占用并派发进图事件。
    */
-  const travelToMapEntrance = (mapId: string) => {
+  const travelToMapEntrance = (mapId: string, targetHint?: Point) => {
     const curMap = session.storyWorld.currentLocation?.map;
-    if (curMap === mapId) return;
+    if (curMap === mapId && !targetHint) return;
+    if (curMap === mapId && targetHint) {
+      const curCells = reachableCellsWithDynamicObstacles(mapId).cells;
+      if (curCells.some(pt => Math.hypot(pt.x - targetHint.x, pt.y - targetHint.y) <= 48)) return;
+      const alt = pickBestReachableEntrance(mapId, curMap, targetHint);
+      if (alt) {
+        session.applyStoryCommands([{ type: 'travel', destination: { map: mapId, x: alt.x, y: alt.y, facing: 'south' } }]);
+      }
+      return;
+    }
     const map = content.maps.get(mapId);
     assert.ok(map, `切换目标地图不存在：${mapId}`);
     if (curMap) {
@@ -456,7 +479,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
       );
     }
     const entrance =
-      (curMap ? reachableEntrancesFor(mapId, curMap)[0] : undefined) ??
+      (curMap ? pickBestReachableEntrance(mapId, curMap, targetHint) : undefined) ??
       sources.upstreamIncomingExits.get(mapId)?.[0]?.point ??
       sources.mapEntrances.get(mapId)?.[0];
     const destX = entrance?.x ?? 64;
@@ -505,23 +528,59 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     }
   };
 
-  /** GM 跳转落点：仅在初始化任务起点承接 plan.destination 时按精确落点就位。 */
+  /** GM 跳转落点：仅在初始化任务起点承接 plan.destination 时按精确落点就位；若落点压在门栓/障碍体上，对齐地图主通道侧站位而不卡进上锁牢房内侧。 */
   const placeAtDestination = (destination: TravelDestination) => {
     const map = content.maps.get(destination.map);
     assert.ok(map, `GM 跳转落点地图不存在：${destination.map}`);
     resetMapTriggerContacts(destination.map);
+    let destX = destination.x;
+    let destY = destination.y;
+    const entranceSeeds = [
+      ...(sources.upstreamIncomingExits.get(destination.map)?.map(e => e.point) ?? []),
+      ...(sources.mapEntrances.get(destination.map) ?? []),
+    ];
+    if (entranceSeeds.length > 0) {
+      const corridorCells = reachableCellsWithDynamicObstacles(destination.map, { extraStarts: entranceSeeds }).cells;
+      const standsInCorridor = corridorCells.some(pt => Math.hypot(pt.x - destX, pt.y - destY) <= 12);
+      if (!standsInCorridor) {
+        let bestCell: Point | undefined;
+        let bestDist = Infinity;
+        for (const pt of corridorCells) {
+          const d = Math.hypot(pt.x - destX, pt.y - destY);
+          if (d <= 36 && d < bestDist) {
+            bestDist = d;
+            bestCell = pt;
+          }
+        }
+        if (bestCell) {
+          destX = bestCell.x;
+          destY = bestCell.y;
+        }
+      }
+    }
     session.applyStoryCommands([
       {
         type: 'travel',
         destination: {
           map: destination.map,
-          x: destination.x,
-          y: destination.y,
+          x: destX,
+          y: destY,
           facing: destination.facing ?? 'south',
         },
       },
     ]);
     session.enterMap(map.id, map.questItemSpawns ?? [], map, map.enemySpawns);
+  };
+
+  let cachedEntitiesRev = -1;
+  let cachedStoryEntities: ReturnType<typeof session.storyWorld.captureState>['entities'] = [];
+  const currentStoryEntities = () => {
+    const rev = session.storyWorld.revision;
+    if (rev !== cachedEntitiesRev) {
+      cachedEntitiesRev = rev;
+      cachedStoryEntities = session.storyWorld.captureState().entities;
+    }
+    return cachedStoryEntities;
   };
 
   /** 仅从当前会话真实投影出的 visibleEntities 中定位实体（零原始地图兜底、零无条件摆放兜底、零虚拟实体）。 */
@@ -537,7 +596,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     };
     addCand(currentId);
     for (const mid of preferredMaps) addCand(mid);
-    for (const st of session.storyWorld.captureState().entities) {
+    for (const st of currentStoryEntities()) {
       if (st.map && !st.removed && ((characterId && st.characterId === characterId) || st.actor === actorOrCharId || st.characterId === actorOrCharId || st.id === actorOrCharId)) {
         addCand(st.map);
       }
@@ -947,7 +1006,9 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     }
     if (!attempt.found && !activeSpawningEnemies.has(enemyId)) {
       const spawnerEvs = (sources.eventsSpawningEnemy.get(enemyId) ?? []).filter(
-        ev => ev.repeat || director.runtime.eventStatus(ev.id) !== 'completed',
+        ev =>
+          (ev.repeat || director.runtime.eventStatus(ev.id) !== 'completed') &&
+          (allowRecursiveSolve || !ev.condition || session.evaluateCondition(ev.condition)),
       );
       if (spawnerEvs.length > 0) {
         const readyEv = spawnerEvs.find(ev => !ev.condition || session.evaluateCondition(ev.condition)) ?? spawnerEvs[0]!;
@@ -1447,13 +1508,13 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     return fired;
   };
 
-  /** 判断某物品是否属于当前任意进行中任务所需（任务道具或交接物品），优先保障背包空间不被普通杂物塞满。 */
+  /** 判断某物品是否属于当前任意进行中任务所需（任务道具、招募徽章或交接物品），优先保障背包空间不被普通杂物塞满。 */
   const isNeededByRunningQuest = (itemId: string): boolean => {
     if (content.items.items[itemId]?.category === 'quest') return true;
     for (const qid of session.questBook.runningQuestIds) {
       const q = indexes.questById.get(qid);
       if (!q) continue;
-      if (q.goals.some(g => g.kind === 'item' && g.target === itemId)) return true;
+      if (q.goals.some(g => (g.kind === 'item' || g.kind === 'recruit') && g.target === itemId)) return true;
       if (q.handoverItems?.some(h => h.item === itemId)) return true;
     }
     return false;
@@ -1611,6 +1672,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     for (const ev of giveEvents) {
       if (session.itemCount(itemId) >= targetQty) break;
       if (!ev.repeat && director.runtime.eventStatus(ev.id) === 'completed') continue;
+      if (!allowRecursiveSolve && ev.condition && !session.evaluateCondition(ev.condition)) continue;
       await satisfyEventCondition(ev.condition, visitedQuests);
       if (session.itemCount(itemId) >= targetQty) break;
       await fireStoryEvent(ev, visitedQuests);
@@ -1618,26 +1680,28 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     if (session.itemCount(itemId) >= targetQty) return;
 
     // 渠道 5：真实关联子任务奖励（rewards.items）
-    const rewardQuests = sources.questsRewardingItem.get(itemId) ?? [];
-    for (const rq of rewardQuests) {
-      if (session.itemCount(itemId) >= targetQty) break;
-      if (visitedQuests.has(rq.id)) continue;
-      visitedQuests.add(rq.id);
-      if (session.status(rq.id) === 'locked') {
-        await satisfyEventCondition(rq.availableWhen, visitedQuests);
+    if (allowRecursiveSolve) {
+      const rewardQuests = sources.questsRewardingItem.get(itemId) ?? [];
+      for (const rq of rewardQuests) {
+        if (session.itemCount(itemId) >= targetQty) break;
+        if (visitedQuests.has(rq.id)) continue;
+        visitedQuests.add(rq.id);
+        if (session.status(rq.id) === 'locked') {
+          await satisfyEventCondition(rq.availableWhen, visitedQuests);
+        }
+        if (session.status(rq.id) === 'available') {
+          const accEv = (indexes.eventsAcceptingQuest.get(rq.id) ?? []).find(
+            e => !e.condition || session.evaluateCondition(e.condition),
+          );
+          if (accEv) await fireStoryEvent(accEv, visitedQuests);
+          else if (rq.giver) await admitViaGiver(rq, visitedQuests);
+        }
+        if (['active', 'ready'].includes(session.status(rq.id))) {
+          await completeQuest(rq, visitedQuests);
+        }
       }
-      if (session.status(rq.id) === 'available') {
-        const accEv = (indexes.eventsAcceptingQuest.get(rq.id) ?? []).find(
-          e => !e.condition || session.evaluateCondition(e.condition),
-        );
-        if (accEv) await fireStoryEvent(accEv, visitedQuests);
-        else if (rq.giver) await admitViaGiver(rq, visitedQuests);
-      }
-      if (['active', 'ready'].includes(session.status(rq.id))) {
-        await completeQuest(rq, visitedQuests);
-      }
+      if (session.itemCount(itemId) >= targetQty) return;
     }
-    if (session.itemCount(itemId) >= targetQty) return;
 
     // 渠道 6：真实商店货架购买（Storefront，仅限当前可达地图上真实在场且可走近的商店）
     if (content.shops) {
@@ -1708,6 +1772,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     charId: string | undefined,
     visitedQuests: Set<string>,
   ): Promise<boolean> => {
+    if (!allowRecursiveSolve) return false;
     if (!charId || activePlacingChars.has(charId)) return false;
     if (tryLocateVisibleEntity(charId, charId)) return false;
     const placers = (sources.eventsPlacingChar.get(charId) ?? []).filter(
@@ -1751,7 +1816,8 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
         ev =>
           !activeUnlockEvents.has(ev.id) &&
           (ev.repeat || director.runtime.eventStatus(ev.id) !== 'completed') &&
-          (!isSideQuestTarget() || !indexes.scriptResetsSideQuests.get(ev.script)),
+          (!isSideQuestTarget() || !indexes.scriptResetsSideQuests.get(ev.script)) &&
+          (allowRecursiveSolve || !ev.condition || session.evaluateCondition(ev.condition)),
       );
       if (candidates.length === 0) break;
       const ev = candidates.find(e => !e.condition || session.evaluateCondition(e.condition)) ?? candidates[0]!;
@@ -1865,7 +1931,8 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
               !activeUnlockEvents.has(ev.id) &&
               (ev.repeat || director.runtime.eventStatus(ev.id) !== 'completed') &&
               (!isSideQuestTarget() || !indexes.scriptResetsSideQuests.get(ev.script)) &&
-              !(ev.map && !reachableNow.has(ev.map) && ev.map === destMapId),
+              !(ev.map && !reachableNow.has(ev.map) && ev.map === destMapId) &&
+              (allowRecursiveSolve || !ev.condition || session.evaluateCondition(ev.condition)),
           );
           if (unlockEvs.length === 0) continue;
           const readyNow = unlockEvs.some(
@@ -2341,12 +2408,23 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
 
   const roundtripSaveLoad = (nextOptions: Omit<QuestHarnessOptions, 'saved'> = {}) => {
     const record = saveGame();
-    return { record, restored: createQuestE2EHarness(content, { ...nextOptions, classId: chosenClass.id, saved: record }) };
+    return {
+      record,
+      restored: createQuestE2EHarness(content, {
+        validateStages,
+        allowRecursiveConditionSolve: allowRecursiveSolve,
+        chooseOption: options.chooseOption,
+        ...nextOptions,
+        classId: chosenClass.id,
+        saved: record,
+      }),
+    };
   };
 
   return {
     content,
     indexes,
+    sources,
     session,
     director,
     ui,
@@ -2409,12 +2487,18 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     crossIslandToMap,
     placeAtDestination,
     visibleEntities,
+    currentStoryEntities,
     reachableMapsFrom,
+    canStaticallyWalkBetween,
+    reachableCellsWithDynamicObstacles,
     assertRegionReachable,
     assertEntityApproachable,
+    tryLocateVisibleEntity,
     locateEntity,
+    tryLocateSpawnedEnemy,
     locateSpawnedEnemy,
     defeatRealEnemy,
+    acquireQuestItemFromLegalSource,
     interactWithEntity,
     interactByIdentity,
     fireStoryEvent,

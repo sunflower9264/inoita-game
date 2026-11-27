@@ -9,6 +9,7 @@ import {
   buildCampaignIndexes,
   createQuestE2EHarness,
   loadOfficialQuestContent,
+  runContinuousCampaignPlaythrough,
 } from './support/quest-e2e-harness.ts';
 
 const official = loadOfficialQuestContent();
@@ -817,5 +818,46 @@ test('全部 487 个正式任务逐一独立跑通「接取 → 目标达成 →
     [...crossIslandQuestIds].sort(),
     ['quest-180', 'quest-298'],
     `跨岛专用通道命中清单超出预期：[${[...crossIslandQuestIds].sort().join(', ')}]`,
+  );
+});
+
+/**
+ * 第三部分：新开局一镜到底全战役连贯通关验证（零调试跳转、零清包、零反推补条件、开启完整舞台核验）。
+ * 从 campaign.start 单一会话出发，真实验证跨地图多任务并发持单、同一人物连续交接、
+ * 必经区域触发门与退回路障通行、跨章清支线边界及正式格式 1 存读档实例接力通关全部 487 个正式任务。
+ */
+test('新开局一镜到底跨地图并发持单、同人连续交接与跨章存读档接力通关全部 487 个正式任务', async () => {
+  const report = await runContinuousCampaignPlaythrough(official, { validateStages: true });
+
+  assert.equal(report.acceptedCount, campaign.quests.length, '一镜到底连贯通关必须 100% 自然接取全部 487 个正式任务');
+  assert.equal(
+    report.completedCount + report.terminalLandmarkIds.length,
+    campaign.quests.length,
+    '一镜到底连贯通关必须结清全部非路标任务并保留全部终态日志外任务',
+  );
+  assert.deepEqual(
+    [...report.terminalLandmarkIds].sort(),
+    ['quest-178', 'quest-296', 'quest-297', 'quest-459', 'quest-472'],
+    `一镜到底连贯通关终态日志外任务集合不一致：[${report.terminalLandmarkIds.join(', ')}]`,
+  );
+  assert.ok(
+    report.peakConcurrentRunningQuests >= 10,
+    `跨地图多任务并发持单峰值不足：${report.peakConcurrentRunningQuests}`,
+  );
+  assert.ok(
+    report.peakConcurrentJournalQuests >= 5,
+    `任务日志可见并发持单峰值不足：${report.peakConcurrentJournalQuests}`,
+  );
+  assert.ok(
+    report.sameNpcSequentialHandoffs >= 5,
+    `同一人物头顶槽位连续交接次数不足：${report.sameNpcSequentialHandoffs}`,
+  );
+  assert.ok(
+    report.crossMapDeliveries >= 150,
+    `跨地图异地接取与交付数量不足：${report.crossMapDeliveries}`,
+  );
+  assert.ok(
+    report.saveLoadRelays >= 10,
+    `跨章节正式格式 1 存读档实例接力次数不足：${report.saveLoadRelays}`,
   );
 });
