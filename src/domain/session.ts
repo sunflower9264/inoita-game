@@ -19,9 +19,9 @@ import type { ActorDefinition, CampaignEnemyPlacement, ChestKind, EntityPlacemen
 import type { Campaign, CampaignQuest } from './campaign.ts';
 import { QuestBook, sideQuestIds, type QuestBookState, type QuestCommand, type QuestProgress, type QuestFact, type QuestSettlement } from './quest-book.ts';
 import { evaluateStoryCondition, type StoryCondition, type StoryConditionContext, type StoryWorldValue } from './story-condition.ts';
-import { StoryWorldState, type StoryWorldSnapshot } from './story-world.ts';
+import { StoryWorldState, encounterSpawnId, type StoryWorldSnapshot } from './story-world.ts';
 import type { StoryCommand, StoryEvent } from './story-graph.ts';
-import { StoryRuntime, type StoryRuntimeSnapshot } from './story-runtime.ts';
+import { ENCOUNTER_RESULT_HISTORY_LIMIT, findSupersededWaitingEncounters, StoryRuntime, type StoryRuntimeSnapshot } from './story-runtime.ts';
 import { toPlaybackCheckpoint } from './playback-checkpoint.ts';
 import type { StoryPlayerState } from './story-interface.ts';
 import { LOGIC_FRAME_MS, type BattleCatalog } from './battle.ts';
@@ -211,8 +211,15 @@ export class Session {
   get levelUpSkillPoints(): number { return this.levelUpSkillPointsOverride ?? this.stats?.skillPointsPerLevel ?? 1; }
   /** 运行时快照不可变，按引用返回；需要修改时由调用方先复制。 */
   get runtimeState(): StoryRuntimeSnapshot { return this.runtimeSnapshot; }
-  /** 当前是否有剧情 run 在等待战斗结果；检查点据此避开战斗开局。 */
+  /** 当前是否有剧情 run 在等待战斗结果；检查点按所在地图避开战斗开局。 */
   get hasWaitingStoryRun(): boolean { return this.runtimeSnapshot.runs.some(run => run.status === 'waiting'); }
+  hasWaitingEncounterOnMap(mapId: string): boolean {
+    if (!mapId) return false;
+    return this.runtimeSnapshot.runs.some(run => {
+      if (run.status !== 'waiting' || !run.waiting) return false;
+      return this.storyWorld.encounter(run.waiting.encounter)?.map === mapId;
+    });
+  }
   set runtimeState(value: StoryRuntimeSnapshot) {
     const next = this.prepareRuntime(value);
     validateSessionStoryLinks(this.campaign, this.storyWorld.captureState(), next);
@@ -911,6 +918,56 @@ export class Session {
     mapId = this.storyWorld.currentLocation?.map,
   ): boolean {
     return this.nearEvent(entity, mapId) !== undefined;
+  }
+  isEncounterSpawnDefeated(encounterId: string, spawnId: string): boolean {
+    const state = this.enemyStore.raw(encounterSpawnId(encounterId, spawnId));
+    return state?.deadUntil !== undefined && !state.capture;
+  }
+  /**
+   * 仅在正式读取持久存档（`restoreSaveGame`）时调用：幂等结清旧存档里已被后续战斗/切图剧情收尾的残留 `waiting` 遭遇。
+   * 内部沙盒（`prepareSceneVisit`）与运行时检查点恢复只调 `restoreState`，不走此修补入口。
+   */
+  repairSupersededWaitingEncounters(): void {
+    const encounters = new Map<string, { map: string; status: string; spawns: readonly { id: string; enemyId: string }[] }>();
+    for (const encounter of this.storyWorld.activeEncounters) {
+      encounters.set(encounter.id, encounter);
+    }
+    const superseded = findSupersededWaitingEncounters(
+      this.campaign,
+      this.runtimeSnapshot,
+      encounters,
+      (encounterId, spawnId) => this.isEncounterSpawnDefeated(encounterId, spawnId),
+    );
+    if (!superseded.length) return;
+    const settledIds = new Set(superseded.map(entry => entry.runId));
+    let completedEvents = [...this.runtimeSnapshot.completedEvents];
+    let encounterResults = [...this.runtimeSnapshot.encounterResults];
+    const commands: StoryCommand[] = [];
+    for (const entry of superseded) {
+      commands.push(...entry.commands);
+      if (entry.eventId && !completedEvents.includes(entry.eventId)) {
+        completedEvents = [...completedEvents, entry.eventId];
+      }
+      const resultId = `result:${entry.encounterId}:won`;
+      if (!encounterResults.includes(resultId)) {
+        encounterResults = [...encounterResults, resultId].slice(-ENCOUNTER_RESULT_HISTORY_LIMIT);
+      }
+    }
+    const nextRuntime: StoryRuntimeSnapshot = {
+      ...this.runtimeSnapshot,
+      runs: this.runtimeSnapshot.runs.filter(run => !settledIds.has(run.id)),
+      completedEvents,
+      encounterResults,
+    };
+    this.applyStoryCommands(commands, nextRuntime);
+    globalThis.storyDiagnostics?.record(
+      'save-repaired-waiting-encounters',
+      {
+        runs: superseded.map(entry => entry.runId),
+        events: superseded.flatMap(entry => (entry.eventId ? [entry.eventId] : [])),
+      },
+      false,
+    );
   }
   currentQuest(): CampaignQuest | undefined { return this.questCoordinator.currentQuest(this.questBook); }
   trackQuest(id: string): boolean {

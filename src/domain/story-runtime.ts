@@ -2,13 +2,14 @@ import { MAX_STORY_CALL_DEPTH, STORY_TRIGGER_SOURCES, validateStoryGraph } from 
 import type { StoryCommand, StoryEvent, StoryGraph, StoryNode, StoryNodeRef, StoryTriggerSource } from './story-graph.ts';
 import type { StoryCondition } from './story-condition.ts';
 import { validateStoryStageSnapshot, type StoryStage, type StoryStageSnapshot } from './story-performance.ts';
+import { encounterSpawnId } from './story-world.ts';
 import { freezeSnapshot, storyDevMode } from './dev-mode.ts';
 
 /** 一次连续执行最多推进的剧情节点数，防止条件环让播放停不下来。 */
 const MAX_STORY_EXECUTION_STEPS = 1000;
 const STORY_EXECUTION_TRACE_SIZE = 12;
 /** 遭遇结果记账只保留最近这么多次，避免快照无限增长。 */
-const ENCOUNTER_RESULT_HISTORY_LIMIT = 64;
+export const ENCOUNTER_RESULT_HISTORY_LIMIT = 64;
 
 export class StoryExecutionBudgetError extends Error {
   readonly details: {
@@ -80,6 +81,10 @@ export interface StoryRuntimePort {
   rollback(baseline: unknown, context: StoryPlaybackContext): void;
   evaluate(condition: StoryCondition): boolean;
   validOccurrence?(occurrence: StoryOccurrence): boolean;
+  /** 当前世界中处于进行态的遭遇表；用于解析 `mapFromStage` 遭遇的实际运行地图。 */
+  activeEncounters?(): ReadonlyMap<string, { map: string; status: string; spawns: readonly { id: string; enemyId: string }[] }>;
+  /** 遭遇刷怪是否已在会话里确认阵亡（例如击杀同帧触发任务切图演出，世界帧尚未走完 `completedEncounters`）。 */
+  isEncounterSpawnDefeated?(encounterId: string, spawnId: string): boolean;
   /** 调试焦点：返回 false 的自动事件不参与这次发生；显式 `start` 不经过此判断。 */
   eventAllowed?(event: StoryEvent): boolean;
   onBusy?(busy: boolean): void;
@@ -127,6 +132,81 @@ function prepareStory(source: StoryGraph): PreparedStory {
 }
 
 /** 一个前台导演；提交后的节点与等待遭遇都可以独立恢复。 */
+export interface SupersededWaitingEncounter {
+  runId: string;
+  eventId?: string;
+  encounterId: string;
+  commands: StoryCommand[];
+}
+
+function battleEventTargetEnemy(event: StoryEvent | undefined): string | undefined {
+  if (!event || event.source !== 'battle' || !event.key) return undefined;
+  if (event.key.startsWith('defeat:')) return event.key.slice('defeat:'.length);
+  if (event.key.startsWith('health-below-30:')) return event.key.slice('health-below-30:'.length);
+  return undefined;
+}
+
+/**
+ * 找出已被后续剧情（`defeat:` / `health-below-30:` 战斗事件，或全部遭遇怪已确认击杀后紧接着的任务切图事件）
+ * 接管收尾、却仍停在 `waiting` 的遭遇运行。在对应事件完成或读档恢复时同步按 `won` 结清，避免永久挂起阻塞检查点。
+ */
+export function findSupersededWaitingEncounters(
+  graph: StoryGraph,
+  runtime: Pick<StoryRuntimeSnapshot, 'runs' | 'completedEvents'>,
+  encounters?: ReadonlyMap<string, { map: string; status: string; spawns: readonly { id: string; enemyId: string }[] }>,
+  isSpawnDefeated?: (encounterId: string, spawnId: string) => boolean,
+): SupersededWaitingEncounter[] {
+  if (!runtime.runs.some(run => run.status === 'waiting')) return [];
+  const completedSet = new Set(runtime.completedEvents);
+  const settledIds = new Set<string>();
+  const settled: SupersededWaitingEncounter[] = [];
+  while (true) {
+    const completedBattles: { enemyId: string; map?: string }[] = [];
+    for (const event of graph.events) {
+      if (!completedSet.has(event.id)) continue;
+      const enemyId = battleEventTargetEnemy(event);
+      if (enemyId) completedBattles.push({ enemyId, map: event.map });
+    }
+    if (!completedBattles.length && !isSpawnDefeated) break;
+    let progressed = false;
+    for (const run of runtime.runs) {
+      if (settledIds.has(run.id) || run.status !== 'waiting' || !run.waiting || run.stack?.length) continue;
+      const waitNode = graph.scripts[run.cursor.script]?.nodes.find(entry => entry.id === run.cursor.node);
+      if (waitNode?.exit.type !== 'waitEncounter') continue;
+      const encounterId = run.waiting.encounter;
+      const worldEncounter = encounters?.get(encounterId);
+      if (encounters && (!worldEncounter || worldEncounter.status !== 'active')) continue;
+      const encounterMap = worldEncounter?.map ?? waitNode.exit.encounter.map;
+      const spawns = worldEncounter?.spawns ?? waitNode.exit.encounter.spawns;
+      const allSpawnsDead =
+        !!isSpawnDefeated && spawns.length > 0 && spawns.every(spawn => isSpawnDefeated(encounterId, spawn.id));
+      const matchedBattle = completedBattles.some(
+        battle => (!battle.map || battle.map === encounterMap) && spawns.some(spawn => spawn.enemyId === battle.enemyId),
+      );
+      if (!allSpawnsDead && !matchedBattle) continue;
+      const wonRef = run.waiting.outcomes.won;
+      const wonNode = wonRef ? graph.scripts[wonRef.script]?.nodes.find(entry => entry.id === wonRef.node) : undefined;
+      if (!wonNode || wonNode.presentation.length > 0 || wonNode.exit.type !== 'end') continue;
+      settledIds.add(run.id);
+      if (run.eventId) completedSet.add(run.eventId);
+      settled.push({
+        runId: run.id,
+        eventId: run.eventId,
+        encounterId,
+        commands: [
+          ...clone(wonNode.commands),
+          { type: 'world', command: { kind: 'encounter-result', id: encounterId, result: 'won' } },
+        ],
+      });
+      progressed = true;
+    }
+    if (!progressed) break;
+  }
+  return settled;
+}
+
+export { encounterSpawnId };
+
 export class StoryRuntime {
   private readonly graph: StoryGraph;
   private readonly port: StoryRuntimePort;
@@ -506,9 +586,32 @@ export class StoryRuntime {
       if (nextRun.status === 'completed' || nextRun.status === 'deferred') runs = runs.filter(candidate =>
         candidate.id === run.id || candidate.status === 'running' || candidate.status === 'waiting'
         || (run.eventId ? candidate.eventId !== run.eventId : candidate.eventId !== undefined || candidate.cursor.script !== nextRun.cursor.script));
+      let encounterResults = this.state.encounterResults;
+      if (nextRun.status === 'completed' && run.eventId) {
+        const superseded = findSupersededWaitingEncounters(
+          this.graph,
+          { runs, completedEvents },
+          this.port.activeEncounters?.(),
+          this.port.isEncounterSpawnDefeated,
+        );
+        if (superseded.length) {
+          const settledIds = new Set(superseded.map(entry => entry.runId));
+          runs = runs.filter(candidate => !settledIds.has(candidate.id));
+          for (const entry of superseded) {
+            commands.push(...entry.commands);
+            if (entry.eventId && !completedEvents.includes(entry.eventId)) {
+              completedEvents = [...completedEvents, entry.eventId];
+            }
+            const resultId = `result:${entry.encounterId}:won`;
+            if (!encounterResults.includes(resultId)) {
+              encounterResults = [...encounterResults, resultId].slice(-ENCOUNTER_RESULT_HISTORY_LIMIT);
+            }
+          }
+        }
+      }
       const stage = nextRun.stage;
       if (nextRun.status !== 'running' || commands.some(command => command.type === 'travel' || command.type === 'world' && command.command.kind === 'travel')) delete nextRun.stage;
-      const next: StoryRuntimeSnapshot = freezeSnapshot({ ...this.state, runs, completedEvents, handledOccurrences, occurrenceSequences });
+      const next: StoryRuntimeSnapshot = freezeSnapshot({ ...this.state, runs, completedEvents, handledOccurrences, occurrenceSequences, encounterResults });
       let commit: StoryNodeCommit = { commands, checkpoint: next, eventId: run.eventId, node: run.cursor, runId: run.id, stage };
       if (node.exit.type === 'branch') {
         // 命令先落地，再读真实状态求值；分支游标替换成一条新的 run 对象。

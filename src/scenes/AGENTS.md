@@ -87,7 +87,7 @@ Phaser 场景层：驱动生命周期、转发输入，把 domain、rendering、
 - `WorldCombat.update` 在可推进战斗的逻辑帧把主镜头 `worldView` 的地图坐标范围传给名册，供视野外提前刷新使用；屏幕尺寸与画面采样精度由镜头换算，刷新规则留在领域层。暂停时既不推进游戏时间，也不触发提前刷新。
 - **一个渲染帧里的战斗逻辑帧共用一次会话通知。** `WorldCombat.update` 把整个 `advanceCombatFrames` 包进一次 `Session.batchNotifications`，命中、回复和扣蓝在帧末只通知一次；逻辑帧循环本身和战斗状态仍按帧推进。
 - **快捷栏冷却和快捷页在同一逻辑帧只绘制一次。** WorldScene 的统一入口取一次冷却快照和快捷页数据，再更新触摸栏与键盘 HUD；换人、换页、背包变化等事件仍立即刷新。
-- **进图兜底检查点抓取成功即清除待抓。** 只有捕获失败才保留 `checkpointPending` 重试；剧情导演在剧情结束后仍抓一次检查点。
+- **进图兜底检查点抓取成功即清除待抓。** 只有捕获失败才保留 `checkpointPending` 重试；剧情导演在剧情结束后仍抓一次检查点。等待战斗期间只在本图存在挂起遭遇（`hasWaitingEncounterOnMap`）时保留战前检查点，不跨图阻断其他地图的检查点更新。
 - **剧情接管的输入、显隐和暂停分别由 `canControl`、`director.busy`、`stageOccluded`、`partyActionsSuspended` 承担。**
 - `captureStoryScene` 与剧情舞台快照共享演员外观引用，只复制必要的外壳字段；开发/测试模式下外观是冻结的，原地修改会直接报错。
 - 喝泉水的回血回蓝和技能点结算调用 `domain/springs.ts` 的 `applySpringRecovery`、`grantSpringSkillPoint`；正面状态按存活上阵队员逐个施加，负面或攻防混合状态只给当前操控者。

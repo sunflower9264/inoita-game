@@ -19,6 +19,7 @@
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | P-001 | 运行时/上游 | Phaser 4.2.1 动态缓冲区 + 绘图缓冲失败清理 | `tools/patch-phaser.mjs` | 上游 PR #7420；绘图缓冲清理同脚本 | `postinstall`/`predev`/`prebuild` 自动应用；`tests/phaser-framebuffer.test.ts`；升级时核对锚点 | Phaser 包含修复或升级到已修复版本后 | active | 2026-11-17 |
 | C-001 | 内容/数据 | `event-145`/`event-341`/`event-342` 固定走位落点 | `public/content/campaign.json` / 舞台地图 | 目标格受阻时演出按实际地图就近落位，作者预期的站位仍待核对 | `npm run validate:content`；`tests/movement-world.test.ts` 及剧情测试 | 三处坐标核对/修正后 | active | 2026-11-17 |
+| S-001 | 存档修补 | 读档结清已被后续战斗剧情收尾的残留 `waiting` 遭遇 | `src/domain/save-game.ts` / `src/domain/session.ts` (`repairSupersededWaitingEncounters`) | 旧版 `waitEncounter` 在 `health-below-30:`/`defeat:` 或击杀切图后未结清，导致 `hasWaitingStoryRun` 常真 | `restoreSaveGame` 幂等结清并记 `save-repaired-waiting-encounters`（内部 `Session.restoreState` 沙盒/检查点不触发）；`tests/waiting-encounter-settlement.test.ts` | 兼容窗口结束、线上不再出现该诊断后删除 `repairSupersededWaitingEncounters` 入口（保留运行时实时结清） | active | 2026-11-28 |
 
 ## 存档修补标准
 

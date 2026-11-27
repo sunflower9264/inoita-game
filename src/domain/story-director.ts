@@ -159,6 +159,12 @@ export class StoryDirector {
       evaluate: condition => this.session.evaluateCondition(condition),
       validOccurrence: occurrence => (!occurrence.map || !this.session.storyWorld.currentLocation || occurrence.map === this.session.storyWorld.currentLocation.map)
         && (occurrence.mapVisit === undefined || occurrence.mapVisit === this.session.storyWorld.visit),
+      activeEncounters: () => {
+        const active = new Map<string, { map: string; status: string; spawns: readonly { id: string; enemyId: string }[] }>();
+        for (const encounter of this.session.storyWorld.activeEncounters) active.set(encounter.id, encounter);
+        return active;
+      },
+      isEncounterSpawnDefeated: (encounterId, spawnId) => this.session.isEncounterSpawnDefeated(encounterId, spawnId),
       eventAllowed: event => this.allowsAutomaticEvent(event),
       onBusy: busy => {
         if (busy) { if (!this.manualBusy) this.resetPlayback(); this.setLocked(true); }

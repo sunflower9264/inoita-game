@@ -133,6 +133,7 @@ export function captureSaveGame<World>(session:Session, world:World, summary:Sav
 /** 把存档灌回一个同职业的新会话。校验全部交给 `Session.restoreState`：它对背包、技能、任务、队伍逐项验。 */
 export function restoreSaveGame<World>(session:Session, game:SaveGame<World>):World {
   session.restoreState(game.session);
+  session.repairSupersededWaitingEncounters();
   return game.world;
 }
 

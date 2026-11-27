@@ -1512,7 +1512,10 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
 
   captureCheckpoint(): boolean {
     if (this.app.pressureMode) return false;
-    if (this.app.checkpoint.available && this.app.session.hasWaitingStoryRun) {
+    const waitingOnMap = this.map
+      ? (this.app.session.hasWaitingEncounterOnMap?.(this.map.id) ?? this.app.session.hasWaitingStoryRun)
+      : this.app.session.hasWaitingStoryRun;
+    if (this.app.checkpoint.available && waitingOnMap) {
       if (!this.checkpointWaitLogged) {
         this.checkpointWaitLogged = true;
         globalThis.storyDiagnostics?.record('checkpoint-kept-waiting-encounter', { map: this.map?.id });
