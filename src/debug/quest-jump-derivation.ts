@@ -52,6 +52,9 @@ interface ChoiceWriter {
 
 interface ContentIndex {
   quests: Map<string, CampaignQuest>;
+  mainQuestIds: Set<string>;
+  earliestMainMapIndex: Map<string, number>;
+  chapterBoundaryIndices: number[];
   events: Map<string, EventInfo>;
   eventOrder: EventInfo[];
   nodes: Map<string, Map<string, StoryNode>>;
@@ -204,8 +207,48 @@ function buildIndex(campaign: Campaign): ContentIndex {
       { type: 'unequip-destroy', member: command.member, item: command.item, ifPresent: true });
   }
 
+  const mainQuestIds = new Set<string>();
+  for (const group of campaign.questGroups) {
+    if (group.kind === 'main') {
+      for (const qid of group.questIds) mainQuestIds.add(qid);
+    }
+  }
+  const earliestMainMapIndex = new Map<string, number>();
+  const recordMainMap = (mapId: string | undefined, idx: number) => {
+    if (!mapId) return;
+    const prev = earliestMainMapIndex.get(mapId);
+    if (prev === undefined || idx < prev) earliestMainMapIndex.set(mapId, idx);
+  };
+  const chapterBoundaryIndices: number[] = [];
+  for (const info of eventOrder) {
+    const hasResetSide = info.commands.some(c => c.type === 'quest' && c.command.type === 'reset-side-quests');
+    if (hasResetSide) chapterBoundaryIndices.push(info.index);
+    if (info.event.repeat) continue;
+    recordMainMap(info.event.map, info.index);
+    if (info.event.place?.type === 'fixed') recordMainMap(info.event.place.map, info.index);
+    for (const node of reachableNodes(campaign.scripts, nodes, info.event.script)) {
+      if (node.stage && !node.stage.mapFromWorld) recordMainMap(node.stage.map, info.index);
+      for (const act of node.presentation) {
+        if (act.type === 'stage' && !act.mapFromWorld) recordMainMap(act.map, info.index);
+      }
+      for (const cmd of node.commands) {
+        if (cmd.type === 'travel') recordMainMap(cmd.destination.map, info.index);
+        else if (cmd.type === 'world' && cmd.command.kind === 'travel') recordMainMap(cmd.command.destination.map, info.index);
+        else if (cmd.type === 'quest' && 'quest' in cmd.command && mainQuestIds.has(cmd.command.quest)) {
+          const mq = quests.get(cmd.command.quest);
+          for (const place of [mq?.places?.available, mq?.places?.active, mq?.places?.ready]) {
+            if (place?.type === 'fixed') recordMainMap(place.map, info.index);
+            else if (place?.type === 'alternatives') {
+              for (const spot of place.spots) recordMainMap(spot.map, info.index);
+            }
+          }
+        }
+      }
+    }
+  }
+
   return {
-    quests, events, eventOrder, nodes, commandsByScript: commandCache,
+    quests, mainQuestIds, earliestMainMapIndex, chapterBoundaryIndices, events, eventOrder, nodes, commandsByScript: commandCache,
     acceptors, completers, readyProducers, choiceWriters,
     startEvents: campaign.events.filter(event => event.source === 'start'),
     itemIds, companions, equipmentCleanup,
@@ -678,66 +721,115 @@ class Planner {
       }
     }
 
-    // 3. 目标接取或完成事件为 region 触发框时，按事件净显隐状态投影更早章节清除该图路障/打开通道出口的 actor-visibility 命令
+    // 3. 按事件净显隐状态投影更早章节清除沿途路障/打开通道出口的 actor-visibility 命令（仅针对显式路障与地图出口，绝不隐藏村民或提前打开本任务自身门锁）
     const OBSTACLE_ACTOR_TOKENS = [
       'barricade', 'boulder', 'fence', 'steel-door', 'closed-door',
-      'prison-gates', 'stone-gate', 'gateway', 'sealed-dungeon-barrier', 'door-of-memories',
+      'prison-gates', 'stone-gate', 'gateway', 'sealed-dungeon-barrier', 'door-of-memories', 'spider-web',
     ] as const;
     const isObstacleActor = (actor: string): boolean => OBSTACLE_ACTOR_TOKENS.some(token => actor.includes(token));
-    const targetRegionEvents: StoryEvent[] = [];
-    if (this.targetAccept?.kind === 'event' && this.targetAccept.event!.source === 'region' && this.targetAccept.event!.map) {
-      targetRegionEvents.push(this.targetAccept.event!);
+    const placeMapsOf = (place: StoryEvent['place']): string[] =>
+      place?.type === 'fixed' ? [place.map] : place?.type === 'alternatives' ? place.spots.map(s => s.map) : [];
+    const targetMaps = new Set<string>([
+      ...placeMapsOf(this.target.places?.available),
+      ...placeMapsOf(this.target.places?.active),
+      ...placeMapsOf(this.target.places?.ready),
+    ]);
+    if (this.targetAccept?.kind === 'event' && this.targetAccept.event?.map) {
+      targetMaps.add(this.targetAccept.event.map);
     }
     for (const comp of this.index.completers.get(this.questId) ?? []) {
-      if (comp.kind === 'event' && comp.event!.source === 'region' && comp.event!.map && !targetRegionEvents.includes(comp.event!)) {
-        targetRegionEvents.push(comp.event!);
+      if (comp.kind === 'event' && comp.event?.map) targetMaps.add(comp.event.map);
+    }
+
+    const explicitCutoff = this.mode === 'available' && targetAcceptIndex >= 0
+      ? targetAcceptIndex
+      : maxCompletedIndex;
+    const isJournalSideQuest = !this.index.mainQuestIds.has(this.questId) && this.target.journal !== false;
+    let sideChapterCutoff = explicitCutoff;
+    // 仅当日志内支线自身缺乏显式事件历史（explicitCutoff <= 0，如无前置条件的跨章赏金支线）时，按阶段地图推导其所属章节上限；
+    // 已有显式前置事件链的支线（如 quest-301 在 event-274 刚解锁、quest-304 在 event-338 已推进）严格沿用自身 explicitCutoff，不超前隐藏后续任务还需接触的机关。
+    if (isJournalSideQuest && explicitCutoff <= 0) {
+      let rawEra = -1;
+      for (const m of targetMaps) {
+        const arrival = this.index.earliestMainMapIndex.get(m);
+        if (arrival !== undefined && arrival > rawEra) rawEra = arrival;
+      }
+      if (rawEra >= 45) {
+        const nextBoundary = this.index.chapterBoundaryIndices.find(idx => idx > rawEra);
+        sideChapterCutoff = nextBoundary ?? this.index.eventOrder.length;
       }
     }
-    if (targetRegionEvents.length > 0) {
-      const appliedPassageKeys = new Set<string>();
-      for (const regEv of targetRegionEvents) {
-        const targetIndex = this.index.events.get(regEv.id)?.index ?? -1;
-        // available 模式下只清理早于目标接取事件的前序章节路障，绝不提前清理接取之后、交付之前才解锁的本任务过程路障
-        const cutoffIndex = this.mode === 'available' && targetAcceptIndex >= 0
-          ? Math.min(targetIndex, targetAcceptIndex)
-          : targetIndex;
-        if (cutoffIndex <= 0) continue;
-        const latestByKey = new Map<string, { cmd: Extract<StoryCommand, { type: 'world' }>; visible: boolean; actor: string }>();
-        for (const info of this.index.eventOrder) {
-          if (info.index >= cutoffIndex) continue;
-          if (info.event.repeat || state.completedEvents.has(info.event.id)) continue;
-          if (this.conditionConflicts(info.event.condition) || eventTouchesTargetQuest(info)) continue;
-          const isUncond = isUnconditionalCondition(info.event.condition);
-          if (!isUncond && (info.index >= maxCompletedIndex || !withinChronology(info, false))) continue;
-          for (const cmd of info.commands) {
-            if (cmd.type !== 'world' || cmd.command.kind !== 'actor-visibility') continue;
-            if (cmd.command.map !== regEv.map) continue;
-            if (!cmd.command.actor.startsWith('map-exit') && !isObstacleActor(cmd.command.actor)) continue;
-            const key = visKey(cmd.command.map, cmd.command.actor, cmd.command.characterId);
-            if ((lastVisWriteIndex.get(key) ?? -1) > info.index) continue;
-            latestByKey.set(key, { cmd, visible: cmd.command.visible, actor: cmd.command.actor });
+
+    const effectiveMainEraIndex = (info: EventInfo): number => {
+      const refs = positiveQuestRefs(info.event.condition);
+      if (refs.length === 0) return info.index;
+      let maxRefIdx = -1;
+      for (const ref of refs) {
+        const prods = ref.status === 'completed' || ref.status === 'settled'
+          ? [this.primaryCompleterFor(ref.quest), this.primaryReadyProducerFor(ref.quest), this.primaryAcceptorFor(ref.quest)]
+          : [this.primaryAcceptorFor(ref.quest), this.primaryReadyProducerFor(ref.quest), this.primaryCompleterFor(ref.quest)];
+        const evProd = prods.find(p => p?.kind === 'event' && p.event);
+        const idx = evProd?.event ? (this.index.events.get(evProd.event.id)?.index ?? -1) : -1;
+        if (idx > maxRefIdx) maxRefIdx = idx;
+      }
+      return maxRefIdx >= 0 ? Math.min(info.index, maxRefIdx) : info.index;
+    };
+
+    const passageCutoff = Math.max(explicitCutoff, sideChapterCutoff);
+    if (passageCutoff > 0) {
+      const latestByKey = new Map<string, { cmd: Extract<StoryCommand, { type: 'world' }>; visible: boolean; actor: string }>();
+      for (const info of this.index.eventOrder) {
+        if (info.event.repeat || state.completedEvents.has(info.event.id)) continue;
+        if (this.conditionConflicts(info.event.condition) || eventTouchesTargetQuest(info) || this.eventPresupposesTargetCompletion(info.event)) continue;
+        const isUncond = isUnconditionalCondition(info.event.condition);
+        let eligible = false;
+        if (info.index < explicitCutoff) {
+          eligible = isUncond ? targetMaps.size > 0 : (info.index < maxCompletedIndex && withinChronology(info, false));
+        }
+        if (!eligible && isJournalSideQuest && sideChapterCutoff > 0) {
+          const effIdx = effectiveMainEraIndex(info);
+          if (effIdx < sideChapterCutoff) {
+            if (isUncond) {
+              eligible = info.index < sideChapterCutoff;
+            } else {
+              const qRefs = positiveQuestRefs(info.event.condition);
+              const evRefs = eventRefs(info.event.condition);
+              const allMainRefs = qRefs.length > 0
+                && qRefs.every(r =>
+                  this.index.mainQuestIds.has(r.quest) &&
+                  (!state.opened.has(r.quest) || questRefSatisfied(r, true)))
+                && evRefs.every(r => r.status === 'completed' && (this.index.events.get(r.event)?.index ?? Infinity) < sideChapterCutoff);
+              eligible = allMainRefs;
+            }
           }
         }
-        for (const [key, latest] of latestByKey) {
-          if (appliedPassageKeys.has(key)) continue;
-          const clearsExit =
-            latest.visible === true &&
-            visibility.get(key)?.visible === false &&
-            latest.actor.startsWith('map-exit');
-          const clearsObstacle =
-            latest.visible === false &&
-            isObstacleActor(latest.actor);
-          if (clearsExit || clearsObstacle) {
-            state.world.push(latest.cmd);
-            if (latest.cmd.command.kind === 'actor-visibility') {
-              visibility.set(key, {
-                map: latest.cmd.command.map,
-                actor: latest.cmd.command.actor,
-                characterId: latest.cmd.command.characterId,
-                visible: latest.visible,
-              });
-            }
-            appliedPassageKeys.add(key);
+        if (!eligible) continue;
+        for (const cmd of info.commands) {
+          if (cmd.type !== 'world' || cmd.command.kind !== 'actor-visibility') continue;
+          if (!isJournalSideQuest && !targetMaps.has(cmd.command.map)) continue;
+          if (!cmd.command.actor.startsWith('map-exit') && !isObstacleActor(cmd.command.actor)) continue;
+          const key = visKey(cmd.command.map, cmd.command.actor, cmd.command.characterId);
+          if ((lastVisWriteIndex.get(key) ?? -1) > info.index) continue;
+          latestByKey.set(key, { cmd, visible: cmd.command.visible, actor: cmd.command.actor });
+        }
+      }
+      for (const [key, latest] of latestByKey) {
+        const clearsExit =
+          latest.visible === true &&
+          visibility.get(key)?.visible === false &&
+          latest.actor.startsWith('map-exit');
+        const clearsObstacle =
+          latest.visible === false &&
+          isObstacleActor(latest.actor);
+        if (clearsExit || clearsObstacle) {
+          state.world.push(latest.cmd);
+          if (latest.cmd.command.kind === 'actor-visibility') {
+            visibility.set(key, {
+              map: latest.cmd.command.map,
+              actor: latest.cmd.command.actor,
+              characterId: latest.cmd.command.characterId,
+              visible: latest.visible,
+            });
           }
         }
       }

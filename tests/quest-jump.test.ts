@@ -525,3 +525,35 @@ test('跳转到《试验新型融合器》时同步隐藏同坐标的初级融�
     h.director.dispose();
   }
 });
+
+test('跳转到后章发布人/近身支线与赏金支线时投影前序主线路障清理，且不污染无关完成事件或进行中前置路障', () => {
+  const h = playthrough();
+  try {
+    h.director.holdTriggers();
+    // 1. 终章后贝勒塞首都支线（街边的小混混1 / 3）必须清除序章遗留的广场出口木栅栏 npc-120
+    for (const qid of ['quest-493', 'quest-500']) {
+      applyQuestStartPlan(h.session, planQuestStart(h.session.campaign, h.session, qid, 'available'));
+      assert.equal(
+        h.session.storyWorld.actorVisible('berkel-capital', 'barricade-a1eb664e', 'npc-120'),
+        false,
+        `${qid} 应清除贝勒塞首都通往广场的序章路障`,
+      );
+    }
+
+    // 2. 永恒之森6返程支线（被打磨的剑）与比奥利安赏金支线（quest-348）清除沿途主线路障，不把无关主线塞进 completedEvents
+    applyQuestStartPlan(h.session, planQuestStart(h.session.campaign, h.session, 'quest-304', 'available'));
+    assert.equal(h.session.storyWorld.actorVisible('eternal-forest-4-b171b16c', 'sealed-dungeon-barrier-eaae1bdd', 'npc-410'), false);
+    assert.equal(h.session.storyWorld.actorVisible('eternal-forest-4-b171b16c', 'spider-web-6ea8390d', 'npc-97'), false);
+
+    applyQuestStartPlan(h.session, planQuestStart(h.session.campaign, h.session, 'quest-348', 'available'));
+    assert.equal(h.session.storyWorld.actorVisible('maze-of-death-2-6cf130f6', 'fence-7de349c8', 'npc-219'), false);
+    assert.equal(h.session.runtimeState.completedEvents.includes('event-219'), false);
+
+    // 3. 皮肤保养（quest-281）要求前置「老鼠的晚餐」（quest-248）仍处于进行中，严禁提前清除 quest-248 完成后才开的北风之林巨石
+    applyQuestStartPlan(h.session, planQuestStart(h.session.campaign, h.session, 'quest-281', 'available'));
+    assert.equal(h.session.status('quest-248'), 'active');
+    assert.equal(h.session.storyWorld.actorVisible('northern-winds-forest-9e4c10fe', 'boulder3-dc017f0f', 'npc-101'), true);
+  } finally {
+    h.director.dispose();
+  }
+});
