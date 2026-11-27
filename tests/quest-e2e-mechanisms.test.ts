@@ -779,3 +779,117 @@ test('正式世界交互选目标竞争与柜台距离：同坐标目标未满�
     h.dispose();
   }
 });
+
+test('跨图出口物理路障与同图传送阵先后顺序：出口未上锁但被在场守卫物理封死严禁换图，同图传送阵入口被堵严禁借传送终点绕后', async () => {
+  // 1. camp -> wilds 出口未设 exitRules 锁，但在场动态障碍把出口框(144,64,16,32)物理堵死：严禁换图、找人或刷怪；正式清障后恢复通行
+  const exitGuardContent = {
+    ...miniContent,
+    campaign: {
+      ...miniContent.campaign,
+      scripts: {
+        ...miniContent.campaign.scripts,
+        's-open-exit-wall': {
+          entry: 'n',
+          nodes: [
+            {
+              id: 'n',
+              presentation: [],
+              commands: [{ type: 'world' as const, command: { kind: 'actor-visibility' as const, map: 'camp', actor: 'barricade', characterId: 'npc-exit-wall', visible: false } }],
+              exit: { type: 'end' as const },
+            },
+          ],
+        },
+      },
+      events: [
+        ...miniContent.campaign.events,
+        {
+          id: 'ev-open-exit-wall',
+          source: 'event' as const,
+          key: 'open-exit-wall',
+          map: 'camp',
+          condition: { type: 'flag' as const, flag: 'exit-pass-granted', value: true },
+          script: 's-open-exit-wall',
+        },
+      ],
+    },
+  };
+  const hExit = createQuestE2EHarness(exitGuardContent);
+  try {
+    hExit.session.applyStoryCommands([
+      { type: 'world', command: { kind: 'place', entity: { id: 'ew-1', map: 'camp', actor: 'barricade', characterId: 'npc-exit-wall', x: 136, y: 56, visible: true } } },
+      { type: 'world', command: { kind: 'place', entity: { id: 'ew-2', map: 'camp', actor: 'barricade', characterId: 'npc-exit-wall', x: 136, y: 72, visible: true } } },
+      { type: 'world', command: { kind: 'place', entity: { id: 'ew-3', map: 'camp', actor: 'barricade', characterId: 'npc-exit-wall', x: 136, y: 88, visible: true } } },
+      { type: 'world', command: { kind: 'place', entity: { id: 'ew-4', map: 'camp', actor: 'barricade', characterId: 'npc-exit-wall', x: 136, y: 104, visible: true } } },
+      { type: 'world', command: { kind: 'place', entity: { id: 'ew-5', map: 'camp', actor: 'barricade', characterId: 'npc-exit-wall', x: 152, y: 56, visible: true } } },
+      { type: 'world', command: { kind: 'place', entity: { id: 'ew-6', map: 'camp', actor: 'barricade', characterId: 'npc-exit-wall', x: 152, y: 104, visible: true } } },
+    ]);
+    assert.equal(hExit.reachableMapsFrom('camp').has('wilds'), false, '出口被动态碰撞体物理封死时 wilds 必须不可达');
+    assert.throws(() => hExit.travelToMapEntrance('wilds'), /禁止穿墙换图/);
+    assert.throws(() => hExit.locateSpawnedEnemy('enemy-reagents-1', ['wilds']), /找不到已启用的敌人/);
+
+    // 授予通行条件后，跨图交互自动走正式清障事件移除出口路障，随后合法抵达 wilds
+    hExit.session.applyStoryCommands([{ type: 'flag', flag: 'exit-pass-granted', value: true }]);
+    const wildsHorn = exitGuardContent.maps.get('wilds')!.entities[0]!;
+    await hExit.interactByIdentity('horn', 'npc-horn', ['wilds']);
+    assert.equal(hExit.reachableMapsFrom('camp').has('wilds'), true);
+    assert.ok(wildsHorn);
+  } finally {
+    hExit.dispose();
+  }
+
+  // 2. 同图传送阵（destination === 'camp'）：密室四周全被地形墙封死，唯一进法是踩进(16,128)的同图传送阵落到(24,24)；
+  //    当传送阵入口(16,128)被动态障碍堵死时，密室内的目标严禁被判为可达！
+  const campOrig = miniContent.maps.get('camp')!;
+  const blockedVault = [...campOrig.blocked];
+  // 用地形墙围出左上角 3×3 封闭密室（列 0..3, 行 0..3 外圈封墙，内部格 (1,1)=24,24 与 (2,1)=40,24 留空）
+  for (let cx = 0; cx <= 3; cx++) blockedVault[3 * 10 + cx] = true;
+  for (let cy = 0; cy <= 3; cy++) blockedVault[cy * 10 + 3] = true;
+  const teleporterCamp = {
+    ...campOrig,
+    blocked: blockedVault,
+    entities: [
+      ...campOrig.entities,
+      { id: 'vault-horn', actor: 'horn', characterId: 'npc-vault-horn', objective: 'horn', x: 24, y: 24, flip: false },
+    ],
+    exits: [
+      ...campOrig.exits,
+      {
+        id: 'camp-self-warp',
+        x: 16,
+        y: 128,
+        width: 16,
+        height: 16,
+        destination: 'camp',
+        spawn: { x: 40, y: 24 },
+        facing: 'south' as const,
+        exitFacing: 'south' as const,
+      },
+    ],
+  };
+  const warpContent = {
+    ...miniContent,
+    maps: new Map([...miniContent.maps, ['camp', teleporterCamp]]),
+  };
+  const hWarp = createQuestE2EHarness(warpContent);
+  try {
+    const vaultHorn = teleporterCamp.entities.find(e => e.id === 'vault-horn')!;
+    // 传送阵入口畅通时：可踩进(16,128)传送至(40,24)接近密室号角
+    assert.doesNotThrow(() => hWarp.assertEntityApproachable('camp', vaultHorn, 'warp-open'));
+
+    // 将同图传送阵入口(16,128)用路障围死后：严禁无条件把传送阵终点(40,24)当作初始起点绕过路障
+    hWarp.session.applyStoryCommands([
+      { type: 'world', command: { kind: 'place', entity: { id: 'wp-1', map: 'camp', actor: 'sealstone', x: 8, y: 120, visible: true } } },
+      { type: 'world', command: { kind: 'place', entity: { id: 'wp-2', map: 'camp', actor: 'sealstone', x: 24, y: 120, visible: true } } },
+      { type: 'world', command: { kind: 'place', entity: { id: 'wp-3', map: 'camp', actor: 'sealstone', x: 40, y: 120, visible: true } } },
+      { type: 'world', command: { kind: 'place', entity: { id: 'wp-4', map: 'camp', actor: 'sealstone', x: 8, y: 136, visible: true } } },
+      { type: 'world', command: { kind: 'place', entity: { id: 'wp-5', map: 'camp', actor: 'sealstone', x: 24, y: 136, visible: true } } },
+      { type: 'world', command: { kind: 'place', entity: { id: 'wp-6', map: 'camp', actor: 'sealstone', x: 40, y: 136, visible: true } } },
+      { type: 'world', command: { kind: 'place', entity: { id: 'wp-7', map: 'camp', actor: 'sealstone', x: 8, y: 152, visible: true } } },
+      { type: 'world', command: { kind: 'place', entity: { id: 'wp-8', map: 'camp', actor: 'sealstone', x: 24, y: 152, visible: true } } },
+      { type: 'world', command: { kind: 'place', entity: { id: 'wp-9', map: 'camp', actor: 'sealstone', x: 40, y: 152, visible: true } } },
+    ]);
+    assert.throws(() => hWarp.assertEntityApproachable('camp', vaultHorn, 'warp-blocked'), /不可接近或被路障隔绝/);
+  } finally {
+    hWarp.dispose();
+  }
+});

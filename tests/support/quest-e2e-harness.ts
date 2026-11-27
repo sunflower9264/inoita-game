@@ -121,6 +121,8 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     currentMapObj,
     visibleEntities,
     reachableMapsFrom,
+    reachableEntrancesFor,
+    isEnemySpawnReachable,
     canStaticallyWalkBetween,
     hasFormalStoryBridgeToIsland,
     reachableCellsWithDynamicObstacles,
@@ -450,10 +452,13 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
       assert.equal(
         reachableMapsFrom(curMap).has(mapId),
         true,
-        `禁止穿墙换图：从 ${curMap} 沿当前已开启的静态出口无法到达 ${mapId}`,
+        `禁止穿墙换图：从 ${curMap} 沿当前已开启且未被动态路障封锁的出口无法到达 ${mapId}`,
       );
     }
-    const entrance = sources.mapEntrances.get(mapId)?.[0];
+    const entrance =
+      (curMap ? reachableEntrancesFor(mapId, curMap)[0] : undefined) ??
+      sources.upstreamIncomingExits.get(mapId)?.[0]?.point ??
+      sources.mapEntrances.get(mapId)?.[0];
     const destX = entrance?.x ?? 64;
     const destY = entrance?.y ?? 64;
     resetMapTriggerContacts(mapId);
@@ -696,7 +701,22 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     preferredMaps: readonly string[] = [],
     visitedQuests = new Set<string>(),
   ): Promise<string> => {
-    const located = locateEntity(actorOrCharId, characterId, preferredMaps);
+    let found = tryLocateVisibleEntity(actorOrCharId, characterId, preferredMaps);
+    if (!found) {
+      const candidateMaps = [
+        ...preferredMaps,
+        ...(characterId ? sources.mapsByChar.get(characterId) ?? [] : []),
+        ...(sources.mapsByActor.get(actorOrCharId) ?? []),
+        ...(sources.mapsByChar.get(actorOrCharId) ?? []),
+      ];
+      for (const m of candidateMaps) {
+        if (await tryEnsureMapReachable(m, visitedQuests)) {
+          found = tryLocateVisibleEntity(actorOrCharId, characterId, preferredMaps);
+          if (found) break;
+        }
+      }
+    }
+    const located = found ?? locateEntity(actorOrCharId, characterId, preferredMaps);
     return interactWithEntity(located.entity, located.mapId, visitedQuests);
   };
 
@@ -834,13 +854,15 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
 
       travelToMapEntrance(mid);
       let roster = new WorldEnemyRoster(session, map, mapPlacements, session.hero?.level ?? 1, questEnemies);
-      let placed = roster.enemies.find(e => e.enemyId === enemyId);
+      const matchesReachableEnemy = (e: WorldEnemyRoster['enemies'][number]) =>
+        e.enemyId === enemyId && isEnemySpawnReachable(mid, enemyDef.actor.id, e);
+      let placed = roster.enemies.find(matchesReachableEnemy);
       if (!placed) {
         const hasRespawnable = roster.spawns.some(sp => sp.enemyId === enemyId && sp.respawn !== false);
         if (hasRespawnable) {
           session.advanceGameTime(65_000);
           roster.refresh();
-          placed = roster.enemies.find(e => e.enemyId === enemyId);
+          placed = roster.enemies.find(matchesReachableEnemy);
         }
       }
       if (!placed) {
@@ -860,7 +882,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
             travelToMapEntrance(neighbor);
             travelToMapEntrance(mid);
             roster = new WorldEnemyRoster(session, map, mapPlacements, session.hero?.level ?? 1, questEnemies);
-            placed = roster.enemies.find(e => e.enemyId === enemyId);
+            placed = roster.enemies.find(matchesReachableEnemy);
           }
         }
       }
@@ -895,6 +917,34 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     visitedQuests = new Set<string>(),
   ): Promise<{ mapId: string; key: string; droppedItems: string[] }> => {
     let attempt = tryLocateSpawnedEnemy(enemyId, preferredMaps);
+    if (!attempt.found) {
+      const potentialMaps = [...new Set([...preferredMaps, ...(sources.mapsByEnemy.get(enemyId) ?? [])])];
+      for (const m of potentialMaps) {
+        if (await tryEnsureMapReachable(m, visitedQuests)) {
+          attempt = tryLocateSpawnedEnemy(enemyId, preferredMaps);
+          if (attempt.found) break;
+        }
+        if (reachableMapsFrom().has(m)) {
+          const map = content.maps.get(m)!;
+          const mapPlacements = (content.campaign.enemyPlacements ?? []).filter(ep => ep.map === m);
+          const roster = new WorldEnemyRoster(session, map, mapPlacements, session.hero?.level ?? 1, questEnemies);
+          const blockedEnemy = roster.enemies.find(e => e.enemyId === enemyId);
+          if (blockedEnemy) {
+            travelToMapEntrance(m);
+            await settle();
+            const unlocked = await tryUnlockMapObstacles(
+              m,
+              { kind: 'region', region: { x: blockedEnemy.x - 16, y: blockedEnemy.y - 16, width: 32, height: 32 } },
+              visitedQuests,
+            );
+            if (unlocked) {
+              attempt = tryLocateSpawnedEnemy(enemyId, [m, ...preferredMaps]);
+              if (attempt.found) break;
+            }
+          }
+        }
+      }
+    }
     if (!attempt.found && !activeSpawningEnemies.has(enemyId)) {
       const spawnerEvs = (sources.eventsSpawningEnemy.get(enemyId) ?? []).filter(
         ev => ev.repeat || director.runtime.eventStatus(ev.id) !== 'completed',
@@ -1103,7 +1153,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
           : undefined;
     const mapId = event.map ?? spot?.map ?? session.storyWorld.currentLocation?.map ?? content.campaign.start.map;
 
-    const moveToEventMap = (destMapId: string) => {
+    const moveToEventMap = async (destMapId: string) => {
       const curMap = session.storyWorld.currentLocation?.map;
       if (!curMap || curMap === destMapId || reachableMapsFrom(curMap).has(destMapId)) {
         travelToMapEntrance(destMapId);
@@ -1111,6 +1161,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
         // 仅在真正跨岛（两岛间物理无步行静态出口）时走独立跨岛通道；若同岛锁门则落入 travelToMapEntrance 直接报错拦截
         crossIslandToMap(destMapId, `event:${event.id}`);
       } else {
+        await tryEnsureMapReachable(destMapId, visitedQuests);
         travelToMapEntrance(destMapId);
       }
     };
@@ -1118,13 +1169,13 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     let fired = false;
     switch (event.source) {
       case 'start':
-        moveToEventMap(mapId);
+        await moveToEventMap(mapId);
         await settle();
         fired = await director.start();
         break;
       case 'region': {
         assert.ok(event.map && event.region, `区域事件 ${event.id} 缺少 map 或 region`);
-        moveToEventMap(event.map);
+        await moveToEventMap(event.map);
         await settle();
         if (!event.repeat && director.runtime.eventStatus(event.id) === 'completed') {
           fired = true;
@@ -1135,14 +1186,14 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
         } catch (regionErr) {
           const unlocked = await tryUnlockMapObstacles(event.map, { kind: 'region', region: event.region }, visitedQuests);
           if (!unlocked) throw regionErr;
-          moveToEventMap(event.map);
+          await moveToEventMap(event.map);
           await settle();
           assertRegionReachable(event.map, event.region, `event:${event.id}`);
         }
 
         for (let attempt = 0; attempt < 6; attempt++) {
           if (session.storyWorld.currentLocation?.map !== event.map) {
-            moveToEventMap(event.map);
+            await moveToEventMap(event.map);
             await settle();
           }
           if (!event.repeat && director.runtime.eventStatus(event.id) === 'completed') {
@@ -1190,7 +1241,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
       }
       case 'map-entry': {
         const completedBefore = log.eventsCompleted.length;
-        moveToEventMap(mapId);
+        await moveToEventMap(mapId);
         await settle();
         if (
           log.eventsCompleted.slice(completedBefore).includes(event.id) ||
@@ -1206,6 +1257,19 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
         assert.ok(event.near || event.entity, `近身事件 ${event.id} 缺少 near/entity 标识`);
         if (event.nearCharacterId) {
           await ensureRegisteredNpcPlaced(event.nearCharacterId, visitedQuests);
+          if (!event.repeat && director.runtime.eventStatus(event.id) === 'completed') {
+            fired = true;
+            break;
+          }
+          if (event.repeat && !tryLocateVisibleEntity(event.entity ?? event.near!, event.entity ? undefined : event.nearCharacterId, candMaps)) {
+            fired = false;
+            break;
+          }
+        }
+        for (const m of candMaps) {
+          if (!reachableMapsFrom().has(m)) {
+            await tryEnsureMapReachable(m, visitedQuests);
+          }
         }
         const located = event.entity
           ? locateEntity(event.entity, undefined, candMaps)
@@ -1446,7 +1510,15 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
         const before = session.itemCount(itemId);
         let progressedThisRound = false;
         for (const enemyId of droppers) {
-          const located = tryLocateSpawnedEnemy(enemyId, activeMaps).found;
+          let located = tryLocateSpawnedEnemy(enemyId, activeMaps).found;
+          if (!located) {
+            for (const m of [...activeMaps, ...(sources.mapsByEnemy.get(enemyId) ?? [])]) {
+              if (await tryEnsureMapReachable(m, visitedQuests)) {
+                located = tryLocateSpawnedEnemy(enemyId, activeMaps).found;
+                if (located) break;
+              }
+            }
+          }
           const hasSpawnerEv = (sources.eventsSpawningEnemy.get(enemyId) ?? []).some(
             ev => ev.repeat || director.runtime.eventStatus(ev.id) !== 'completed',
           );
@@ -1479,16 +1551,36 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
       sources.mapsByQuestItemKey.get(`${quest.id}\0${itemId}`) ??
       sources.mapsByItemSpawn.get(itemId) ??
       [];
+    if (rawSpawnEntries.length > 0 && !rawSpawnEntries.some(e => reachableMapsFrom().has(e.mapId))) {
+      for (const e of rawSpawnEntries) {
+        if (await tryEnsureMapReachable(e.mapId, visitedQuests)) break;
+      }
+    }
     const reachableForSpawns = reachableMapsFrom();
     const spawnEntries = rawSpawnEntries.filter(e => reachableForSpawns.has(e.mapId));
     if (spawnEntries.length > 0) {
       const targetMapId = spawnEntries.find(e => activeMaps.includes(e.mapId))?.mapId ?? spawnEntries[0]!.mapId;
       const onMapSpawns = spawnEntries.filter(e => e.mapId === targetMapId);
       travelToMapEntrance(targetMapId);
-      const { cells } = reachableCellsWithDynamicObstacles(targetMapId);
-      const anySpawnReachable = onMapSpawns.some(({ spawn }) =>
+      await settle();
+      let { cells } = reachableCellsWithDynamicObstacles(targetMapId);
+      let anySpawnReachable = onMapSpawns.some(({ spawn }) =>
         cells.some(pt => Math.hypot(pt.x - spawn.x, pt.y - spawn.y) <= 28),
       );
+      if (!anySpawnReachable && onMapSpawns[0]) {
+        const sp0 = onMapSpawns[0].spawn;
+        const unlocked = await tryUnlockMapObstacles(
+          targetMapId,
+          { kind: 'region', region: { x: sp0.x - 16, y: sp0.y - 16, width: 32, height: 32 } },
+          visitedQuests,
+        );
+        if (unlocked) {
+          cells = reachableCellsWithDynamicObstacles(targetMapId).cells;
+          anySpawnReachable = onMapSpawns.some(({ spawn }) =>
+            cells.some(pt => Math.hypot(pt.x - spawn.x, pt.y - spawn.y) <= 28),
+          );
+        }
+      }
       assert.equal(
         anySpawnReachable,
         true,
@@ -1637,6 +1729,12 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     }
   };
 
+  const isSideQuestTarget = (): boolean => {
+    if (!targetQuestId) return false;
+    const q = indexes.questById.get(targetQuestId);
+    return indexes.groupKindByQuest.get(targetQuestId) === 'side' && q?.journal !== false;
+  };
+
   /**
    * 通过纯几何阻塞判定识别挡住目标的动态障碍（零英文名正则），走正式解锁任务与事件清障。
    */
@@ -1650,7 +1748,10 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
       const candidates = findBlockingUnlockEvents(
         mapId,
         target,
-        ev => !activeUnlockEvents.has(ev.id) && (ev.repeat || director.runtime.eventStatus(ev.id) !== 'completed'),
+        ev =>
+          !activeUnlockEvents.has(ev.id) &&
+          (ev.repeat || director.runtime.eventStatus(ev.id) !== 'completed') &&
+          (!isSideQuestTarget() || !indexes.scriptResetsSideQuests.get(ev.script)),
       );
       if (candidates.length === 0) break;
       const ev = candidates.find(e => !e.condition || session.evaluateCondition(e.condition)) ?? candidates[0]!;
@@ -1686,6 +1787,114 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
       }
     }
     return unlockedAny;
+  };
+
+  /**
+   * 若同岛目标地图因中间地图的出口前站着可由正式剧情移除的动态路障而不可达，
+   * 必须先走正式剧情打通该前沿出口；若被 exitRules/exitEnabled 锁死或无正式清障事件，保持不可达并交由下游断言拒绝。
+   */
+  const tryEnsureMapReachable = async (destMapId: string, visitedQuests: Set<string>): Promise<boolean> => {
+    const originMap = session.storyWorld.currentLocation?.map ?? content.campaign.start.map;
+    if (originMap === destMapId || reachableMapsFrom(originMap).has(destMapId)) return true;
+    if (!canStaticallyWalkBetween(originMap, destMapId)) return false;
+
+    for (let step = 0; step < 10; step++) {
+      const curOrigin = session.storyWorld.currentLocation?.map ?? content.campaign.start.map;
+      const reachableNow = reachableMapsFrom(curOrigin);
+      if (reachableNow.has(destMapId)) return true;
+
+      const cellsByMap = new Map<string, Point[]>();
+      for (const mid of reachableNow) {
+        cellsByMap.set(mid, reachableCellsWithDynamicObstacles(mid).cells);
+      }
+
+      const forwardHopDistance = (startNextMap: string, startSpawn: Point): number | undefined => {
+        if (startNextMap === destMapId) return 0;
+        const reachedCellsAtStart = cellsByMap.get(startNextMap);
+        if (reachedCellsAtStart?.some(pt => Math.hypot(pt.x - startSpawn.x, pt.y - startSpawn.y) <= 24)) {
+          return undefined;
+        }
+        const dist = new Map<string, number>([[startNextMap, 1]]);
+        const q = [startNextMap];
+        for (let i = 0; i < q.length; i++) {
+          const u = q[i]!;
+          const d = dist.get(u)!;
+          const mObj = content.maps.get(u);
+          if (!mObj) continue;
+          for (const uEx of mObj.exits) {
+            const v = uEx.destination;
+            if (v === u || !content.maps.has(v)) continue;
+            if (v === destMapId) return d;
+            if (dist.has(v)) continue;
+            const existingCells = cellsByMap.get(v);
+            if (existingCells && existingCells.some(pt => Math.hypot(pt.x - uEx.spawn.x, pt.y - uEx.spawn.y) <= 24)) {
+              continue;
+            }
+            dist.set(v, d + 1);
+            q.push(v);
+          }
+        }
+        return undefined;
+      };
+
+      interface FrontierCandidate {
+        mid: string;
+        ex: ReturnType<typeof currentMapObj>['exits'][number];
+        readyNow: boolean;
+        hopDist: number;
+      }
+      const frontierCandidates: FrontierCandidate[] = [];
+
+      for (const mid of reachableNow) {
+        const mapObj = content.maps.get(mid);
+        if (!mapObj) continue;
+        const cells = cellsByMap.get(mid)!;
+        for (const ex of mapObj.exits) {
+          if (ex.destination === mid || !content.maps.has(ex.destination)) continue;
+          const eid = storyExitId(mid, ex);
+          const ruleCond = sources.exitRuleByKey.get(`${mid}\0${eid}`);
+          const ruleOk = !ruleCond || session.evaluateCondition(ruleCond);
+          if (!ruleOk || !session.storyWorld.exitEnabled(mid, ex)) continue;
+          if (cells.some(pt => overlapsFootRect(pt, ex))) continue;
+          const hopDist = forwardHopDistance(ex.destination, ex.spawn);
+          if (hopDist === undefined) continue;
+          const unlockEvs = findBlockingUnlockEvents(
+            mid,
+            { kind: 'region', region: ex },
+            ev =>
+              !activeUnlockEvents.has(ev.id) &&
+              (ev.repeat || director.runtime.eventStatus(ev.id) !== 'completed') &&
+              (!isSideQuestTarget() || !indexes.scriptResetsSideQuests.get(ev.script)) &&
+              !(ev.map && !reachableNow.has(ev.map) && ev.map === destMapId),
+          );
+          if (unlockEvs.length === 0) continue;
+          const readyNow = unlockEvs.some(
+            ev => (!ev.condition || session.evaluateCondition(ev.condition)) && (!ev.map || reachableNow.has(ev.map)),
+          );
+          frontierCandidates.push({ mid, ex, readyNow, hopDist });
+        }
+      }
+
+      frontierCandidates.sort((a, b) => {
+        if (a.readyNow !== b.readyNow) return a.readyNow ? -1 : 1;
+        return a.hopDist - b.hopDist;
+      });
+
+      let clearedExit = false;
+      for (const cand of frontierCandidates) {
+        if (!reachableMapsFrom().has(cand.mid)) continue;
+        travelToMapEntrance(cand.mid);
+        await settle();
+        const ok = await tryUnlockMapObstacles(cand.mid, { kind: 'region', region: cand.ex }, visitedQuests);
+        if (ok) {
+          clearedExit = true;
+          break;
+        }
+      }
+      if (!clearedExit) break;
+    }
+    const afterOrigin = session.storyWorld.currentLocation?.map ?? content.campaign.start.map;
+    return reachableMapsFrom(afterOrigin).has(destMapId);
   };
 
   /** 按任务自身的 goals 与 targetChanges 喂入真实领域事实（零假刷怪点、零假交互实体、零凭空塞包）。 */
@@ -1814,6 +2023,8 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
     director.releaseTriggers();
 
     if (['active', 'ready'].includes(session.status(questId))) {
+      session.questBook.clearDebugOverrides();
+      session.questBook.commit(session.questBook.plan({ type: 'refresh' }));
       phaseMode = 'complete';
       await settle();
       await settleActiveEncounters();
@@ -1863,6 +2074,8 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
       await fireStoryEvent(ev);
     }
 
+    session.questBook.clearDebugOverrides();
+    session.questBook.commit(session.questBook.plan({ type: 'refresh' }));
     phaseMode = 'complete';
     assert.ok(
       ['active', 'ready', 'completed'].includes(session.status(questId)) || session.questBook.completedCycles(questId) > startCycles,
@@ -1924,15 +2137,24 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
       }
 
       if (session.status(depQuestId) === 'available' || session.status(depQuestId) === 'locked') {
-        const accEv = (indexes.eventsAcceptingQuest.get(depQuestId) ?? []).find(
-          e => (e.repeat || director.runtime.eventStatus(e.id) !== 'completed') && (!e.condition || session.evaluateCondition(e.condition)),
+        const accEvs = [...(indexes.eventsAcceptingQuest.get(depQuestId) ?? [])].sort(
+          (a, b) => Number(!!a.repeat) - Number(!!b.repeat),
         );
+        const accEv = accEvs.find(e => {
+          if (!e.repeat && director.runtime.eventStatus(e.id) === 'completed') return false;
+          if (e.condition && !session.evaluateCondition(e.condition)) return false;
+          if (e.source === 'near' && (e.nearCharacterId || e.near || e.entity)) {
+            const cands = [e.map, ...placesToMaps(e.place)].filter((m): m is string => !!m);
+            if (!tryLocateVisibleEntity(e.entity ?? e.near!, e.entity ? undefined : e.nearCharacterId, cands)) return false;
+          }
+          return true;
+        });
         if (accEv) {
           await fireStoryEvent(accEv, visitedQuests);
         } else if (depQuest.giver && session.status(depQuestId) === 'available') {
           await admitViaGiver(depQuest, visitedQuests);
         } else {
-          const anyAccEv = (indexes.eventsAcceptingQuest.get(depQuestId) ?? []).find(
+          const anyAccEv = accEvs.find(
             e => !visitedEvents.has(e.id) && (e.repeat || director.runtime.eventStatus(e.id) !== 'completed'),
           );
           if (anyAccEv) {

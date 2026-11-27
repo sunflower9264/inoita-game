@@ -40,49 +40,24 @@ export function createQuestNavigation(
       );
   };
 
-  let reachCacheKey = '';
-  let reachCacheValue: ReadonlySet<string> = new Set();
-
-  /**
-   * 计算从当前所在地图沿“当前未被 exitRules 与 exitEnabled 禁用的真实静态出口”可达的全部地图集合（图级 BFS）。
-   * 严禁跨过上锁出口或直接穿墙到孤岛地图。
-   */
-  const reachableMapsFrom = (originMapId?: string): ReadonlySet<string> => {
-    const startMap = originMapId ?? session.storyWorld.currentLocation?.map ?? content.campaign.start.map;
-    const key = `${startMap}\0${session.storyWorld.revision}\0${session.questBook.version}\0${session.runtimeState.sequence}`;
-    if (key === reachCacheKey) return reachCacheValue;
-
-    const reached = new Set<string>([startMap]);
-    const queue = [startMap];
-    for (let i = 0; i < queue.length; i++) {
-      const mid = queue[i]!;
-      const mapObj = content.maps.get(mid);
-      if (!mapObj) continue;
-      for (const ex of mapObj.exits) {
-        const eid = storyExitId(mid, ex);
-        const ruleCond = sources.exitRuleByKey.get(`${mid}\0${eid}`);
-        const ruleOk = !ruleCond || session.evaluateCondition(ruleCond);
-        if (!ruleOk || !session.storyWorld.exitEnabled(mid, ex)) continue;
-        if (!reached.has(ex.destination) && content.maps.has(ex.destination)) {
-          reached.add(ex.destination);
-          queue.push(ex.destination);
-        }
-      }
-    }
-    reachCacheKey = key;
-    reachCacheValue = reached;
-    return reached;
+  const isExitOpen = (mapId: string, ex: WorldMap['exits'][number]): boolean => {
+    const eid = storyExitId(mapId, ex);
+    const ruleCond = sources.exitRuleByKey.get(`${mapId}\0${eid}`);
+    const ruleOk = !ruleCond || session.evaluateCondition(ruleCond);
+    return ruleOk && session.storyWorld.exitEnabled(mapId, ex);
   };
 
-  /** 构建叠加当前真实在场实体动态碰撞盒的地图导航世界，并从入口做静态格子 BFS 返回所有主角可站立格中心点。 */
-  const reachableCellsWithDynamicObstacles = (
+  /**
+   * 单图动态障碍格子 BFS（含同图传送阵迭代展开：仅当已可达格踩进已开启的同图传送入口框，才把传送终点并入搜索）。
+   */
+  const computeMapCellsFromStarts = (
     mapId: string,
-    options?: { extraStarts?: readonly Point[]; ignoreEntityIds?: ReadonlySet<string> },
+    starts: readonly Point[],
+    ignoreEntityIds?: ReadonlySet<string>,
   ): { cells: Point[]; entities: EntityPlacement[] } => {
     const map = content.maps.get(mapId);
     assert.ok(map, `导航校验目标地图不存在：${mapId}`);
     const entities = visibleEntities(mapId);
-    const ignoreEntityIds = options?.ignoreEntityIds;
     const obstacleParts: string[] = [];
     const obstacleEntities: { entity: EntityPlacement; col: NonNullable<ReturnType<typeof mirroredCollision>> }[] = [];
     for (const entity of entities) {
@@ -95,39 +70,45 @@ export function createQuestNavigation(
     obstacleParts.sort();
     const obstacleSig = obstacleParts.join('|');
 
-    const computeBfs = (starts: readonly Point[]): Point[] => {
-      const startsSig = starts.map(s => `${Math.round(s.x)},${Math.round(s.y)}`).join(';');
-      const cacheKey = `${mapId}\0${obstacleSig}\0${startsSig}`;
-      const cached = sources.bfsCache.get(cacheKey);
-      if (cached) return cached;
+    const selfExits = map.exits.filter(ex => ex.destination === mapId && isExitOpen(mapId, ex));
+    const selfSig = selfExits.map(ex => `${ex.x},${ex.y},${ex.width},${ex.height}->${ex.spawn.x},${ex.spawn.y}`).join(';');
+    const startsSig = starts.map(s => `${Math.round(s.x)},${Math.round(s.y)}`).join(';');
+    const cacheKey = `${mapId}\0${obstacleSig}\0${selfSig}\0${startsSig}`;
+    const cached = sources.bfsCache.get(cacheKey);
+    if (cached) return { cells: cached, entities };
 
-      const nav = new NavigationWorld(map);
-      for (const { entity, col } of obstacleEntities) {
-        nav.register({
-          shape: () => ({ collision: col }),
-          position: () => entity,
-          enabled: () => true,
-          faction: () => 'neutral',
-        });
-      }
+    const nav = new NavigationWorld(map);
+    for (const { entity, col } of obstacleEntities) {
+      nav.register({
+        shape: () => ({ collision: col }),
+        position: () => entity,
+        enabled: () => true,
+        faction: () => 'neutral',
+      });
+    }
 
-      const visited = new Set<number>();
-      const queue: number[] = [];
-      const cells: Point[] = [];
-      for (const sp of starts) {
-        const p = nav.nearestBody(kiyanActor, sp) ?? nav.nearest(kiyanActor, sp);
-        if (!p) continue;
-        const cx = Math.floor(p.x / map.tileSize);
-        const cy = Math.floor(p.y / map.tileSize);
-        if (cx < 0 || cy < 0 || cx >= map.columns || cy >= map.rows) continue;
-        const idx = cy * map.columns + cx;
-        if (visited.has(idx)) continue;
-        visited.add(idx);
-        queue.push(idx);
-        cells.push({ x: cx * map.tileSize + map.tileSize / 2, y: cy * map.tileSize + map.tileSize / 2 });
-      }
-      for (let i = 0; i < queue.length; i++) {
-        const cell = queue[i]!;
+    const visited = new Set<number>();
+    const queue: number[] = [];
+    const cells: Point[] = [];
+    const seedPoint = (sp: Point) => {
+      const p = nav.nearestBody(kiyanActor, sp) ?? nav.nearest(kiyanActor, sp);
+      if (!p) return;
+      const cx = Math.floor(p.x / map.tileSize);
+      const cy = Math.floor(p.y / map.tileSize);
+      if (cx < 0 || cy < 0 || cx >= map.columns || cy >= map.rows) return;
+      const idx = cy * map.columns + cx;
+      if (visited.has(idx)) return;
+      visited.add(idx);
+      queue.push(idx);
+      cells.push({ x: cx * map.tileSize + map.tileSize / 2, y: cy * map.tileSize + map.tileSize / 2 });
+    };
+
+    for (const sp of starts) seedPoint(sp);
+    const triggeredSelfExits = new Set<number>();
+    let head = 0;
+    while (head < queue.length) {
+      while (head < queue.length) {
+        const cell = queue[head++]!;
         const cx = cell % map.columns;
         const cy = Math.floor(cell / map.columns);
         for (const [dx, dy] of [
@@ -148,42 +129,146 @@ export function createQuestNavigation(
           cells.push(pt);
         }
       }
-      if (sources.bfsCache.size >= 4096) sources.bfsCache.clear();
-      sources.bfsCache.set(cacheKey, cells);
-      return cells;
-    };
-
-    const reachable = reachableMapsFrom();
-    const enabledEntrances: Point[] = [];
-    if (mapId === content.campaign.start.map && reachable.has(mapId)) {
-      enabledEntrances.push({ x: content.campaign.start.x, y: content.campaign.start.y });
-    }
-    for (const incoming of sources.mapIncomingExits.get(mapId) ?? []) {
-      if (!reachable.has(incoming.fromMap)) continue;
-      const eid = storyExitId(incoming.fromMap, incoming.exit);
-      const ruleCond = sources.exitRuleByKey.get(`${incoming.fromMap}\0${eid}`);
-      const ruleOk = !ruleCond || session.evaluateCondition(ruleCond);
-      if (!ruleOk || !session.storyWorld.exitEnabled(incoming.fromMap, incoming.exit)) continue;
-      enabledEntrances.push(incoming.point);
-    }
-    if (reachable.has(mapId)) {
-      const completedEvents = new Set(session.runtimeState.completedEvents);
-      for (const landing of sources.storyEntryLandingsByMap.get(mapId) ?? []) {
-        if (completedEvents.has(landing.eventId)) {
-          enabledEntrances.push(landing.point);
+      for (let i = 0; i < selfExits.length; i++) {
+        if (triggeredSelfExits.has(i)) continue;
+        const ex = selfExits[i]!;
+        if (cells.some(pt => overlapsFootRect(pt, ex))) {
+          triggeredSelfExits.add(i);
+          seedPoint(ex.spawn);
         }
       }
     }
-    const staticEntrances = enabledEntrances.length > 0
-      ? enabledEntrances
-      : (sources.mapEntrances.get(mapId) ?? []);
-    const baseStarts: Point[] = [...staticEntrances, ...(options?.extraStarts ?? [])];
-    const loc = session.storyWorld.currentLocation;
-    // 仅当目标地图不存在任何静态入口（如纯脚本落点室内图）时回退当前位置，严禁用 GM 跳转落点绕过路障 BFS
-    if (baseStarts.length === 0 && loc?.map === mapId) {
-      return { cells: computeBfs([{ x: loc.x, y: loc.y }]), entities };
+
+    if (sources.bfsCache.size >= 65536) sources.bfsCache.clear();
+    sources.bfsCache.set(cacheKey, cells);
+    return { cells, entities };
+  };
+
+  let reachCacheKey = '';
+  let reachCacheMaps: ReadonlySet<string> = new Set();
+  let reachCacheEntrances: ReadonlyMap<string, Point[]> = new Map();
+
+  const pushUniquePoint = (list: Point[], pt: Point): boolean => {
+    if (list.some(existing => existing.x === pt.x && existing.y === pt.y)) return false;
+    list.push({ x: pt.x, y: pt.y });
+    return true;
+  };
+
+  const initialSeedsForOriginMap = (startMap: string, completedEvents: ReadonlySet<string>): Point[] => {
+    const seeds: Point[] = [];
+    if (startMap === content.campaign.start.map) {
+      pushUniquePoint(seeds, { x: content.campaign.start.x, y: content.campaign.start.y });
     }
-    return { cells: computeBfs(baseStarts), entities };
+    for (const landing of sources.storyEntryLandingsByMap.get(startMap) ?? []) {
+      if (completedEvents.has(landing.eventId)) {
+        pushUniquePoint(seeds, landing.point);
+      }
+    }
+    for (const inc of sources.upstreamIncomingExits.get(startMap) ?? []) {
+      if (isExitOpen(inc.fromMap, inc.exit)) {
+        pushUniquePoint(seeds, inc.point);
+      }
+    }
+    if (seeds.length === 0) {
+      for (const pt of sources.mapEntrances.get(startMap) ?? []) {
+        pushUniquePoint(seeds, pt);
+      }
+    }
+    const loc = session.storyWorld.currentLocation;
+    if (seeds.length === 0 && loc?.map === startMap) {
+      pushUniquePoint(seeds, { x: loc.x, y: loc.y });
+    }
+    return seeds;
+  };
+
+  /**
+   * 跨图物理连通图计算：
+   * 从当前所在地图的合法入口出发，仅当某条跨图出口既未被 exitRules/exitEnabled 锁死，
+   * 又能在源地图绕过在场动态碰撞体真正踩进出口框（overlapsFootRect）时，才把对应 spawn 落点推入下一张地图。
+   */
+  const computeReachableGraph = (originMapId?: string) => {
+    const startMap = originMapId ?? session.storyWorld.currentLocation?.map ?? content.campaign.start.map;
+    const loc = session.storyWorld.currentLocation;
+    const locFallbackKey =
+      (sources.mapEntrances.get(startMap)?.length ?? 0) === 0 && loc?.map === startMap ? `${loc.x},${loc.y}` : '';
+    const key = `${startMap}\0${locFallbackKey}\0${session.storyWorld.revision}\0${session.questBook.version}\0${session.runtimeState.sequence}`;
+    if (key === reachCacheKey) {
+      return { maps: reachCacheMaps, entrancesByMap: reachCacheEntrances };
+    }
+
+    const completedEvents = new Set(session.runtimeState.completedEvents);
+    const entrancesByMap = new Map<string, Point[]>();
+    entrancesByMap.set(startMap, initialSeedsForOriginMap(startMap, completedEvents));
+    const queue = [startMap];
+    const inQueue = new Set<string>([startMap]);
+
+    for (let i = 0; i < queue.length; i++) {
+      const mid = queue[i]!;
+      inQueue.delete(mid);
+      const mapObj = content.maps.get(mid);
+      if (!mapObj) continue;
+      const mapStarts = entrancesByMap.get(mid)!;
+      if (mid === content.campaign.start.map) {
+        pushUniquePoint(mapStarts, { x: content.campaign.start.x, y: content.campaign.start.y });
+      }
+      for (const landing of sources.storyEntryLandingsByMap.get(mid) ?? []) {
+        if (completedEvents.has(landing.eventId)) {
+          pushUniquePoint(mapStarts, landing.point);
+        }
+      }
+      const { cells } = computeMapCellsFromStarts(mid, mapStarts);
+      for (const ex of mapObj.exits) {
+        if (ex.destination === mid || !content.maps.has(ex.destination)) continue;
+        if (!isExitOpen(mid, ex)) continue;
+        if (!cells.some(pt => overlapsFootRect(pt, ex))) continue;
+        let destStarts = entrancesByMap.get(ex.destination);
+        if (!destStarts) {
+          destStarts = [];
+          entrancesByMap.set(ex.destination, destStarts);
+        }
+        if (pushUniquePoint(destStarts, ex.spawn) && !inQueue.has(ex.destination)) {
+          inQueue.add(ex.destination);
+          queue.push(ex.destination);
+        }
+      }
+    }
+
+    const reached = new Set<string>(entrancesByMap.keys());
+    reachCacheKey = key;
+    reachCacheMaps = reached;
+    reachCacheEntrances = entrancesByMap;
+    return { maps: reached, entrancesByMap };
+  };
+
+  const reachableMapsFrom = (originMapId?: string): ReadonlySet<string> => computeReachableGraph(originMapId).maps;
+
+  const reachableEntrancesFor = (targetMapId: string, originMapId?: string): readonly Point[] =>
+    computeReachableGraph(originMapId).entrancesByMap.get(targetMapId) ?? [];
+
+  /** 构建叠加当前真实在场实体动态碰撞盒的地图导航世界，并从当前真实已打通入口做静态格子 BFS 返回所有主角可站立格中心点。 */
+  const reachableCellsWithDynamicObstacles = (
+    mapId: string,
+    options?: { extraStarts?: readonly Point[]; ignoreEntityIds?: ReadonlySet<string> },
+  ): { cells: Point[]; entities: EntityPlacement[] } => {
+    const graphEntrances = reachableEntrancesFor(mapId);
+    const completedEvents = new Set(session.runtimeState.completedEvents);
+    const baseStarts: Point[] =
+      graphEntrances.length > 0 ? [...graphEntrances] : initialSeedsForOriginMap(mapId, completedEvents);
+    for (const extra of options?.extraStarts ?? []) {
+      pushUniquePoint(baseStarts, extra);
+    }
+    return computeMapCellsFromStarts(mapId, baseStarts, options?.ignoreEntityIds);
+  };
+
+  /** 校验在场敌人生成点在当前地图未被死墙或动态路障与主角彻底隔绝（对齐正式场景校正刷怪可站位口径）。 */
+  const isEnemySpawnReachable = (mapId: string, enemyActorId: string | undefined, spawnPos: Point): boolean => {
+    const map = content.maps.get(mapId);
+    if (!map) return false;
+    const nav = new NavigationWorld(map);
+    const actorDef = (enemyActorId ? content.world.actors[enemyActorId] : undefined) ?? kiyanActor;
+    const snapped = nav.nearestBody(actorDef, spawnPos) ?? nav.nearest(actorDef, spawnPos) ?? spawnPos;
+    const { cells } = reachableCellsWithDynamicObstacles(mapId);
+    return cells.some(pt => Math.hypot(pt.x - snapped.x, pt.y - snapped.y) <= 48);
   };
 
   /** 静态格子硬校验：region 触发框内至少有一格主角可站立、重叠脚底框且从当前入口不被当前在场动态路障堵死。 */
@@ -332,6 +417,8 @@ export function createQuestNavigation(
     currentMapObj,
     visibleEntities,
     reachableMapsFrom,
+    reachableEntrancesFor,
+    isEnemySpawnReachable,
     canStaticallyWalkBetween,
     hasFormalStoryBridgeToIsland,
     reachableCellsWithDynamicObstacles,

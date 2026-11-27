@@ -67,6 +67,7 @@ export interface CampaignIndexes {
   choiceEvents: Map<string, StoryEvent[]>;
   scriptQuestCommands: Map<string, Extract<StoryCommand, { type: 'quest' }>['command'][]>;
   scriptHasTrap: Map<string, boolean>;
+  scriptResetsSideQuests: Map<string, boolean>;
   eventsCompletingQuest: Map<string, StoryEvent[]>;
   eventsReadyingQuest: Map<string, StoryEvent[]>;
   eventsAcceptingQuest: Map<string, StoryEvent[]>;
@@ -152,17 +153,38 @@ export function buildCampaignIndexes(campaign: Campaign): CampaignIndexes {
   }
   const scriptQuestCommands = new Map<string, Extract<StoryCommand, { type: 'quest' }>['command'][]>();
   const scriptHasTrap = new Map<string, boolean>();
+  const scriptResetsSideQuests = new Map<string, boolean>();
   for (const [sid, script] of Object.entries(campaign.scripts)) {
     const qcmds: Extract<StoryCommand, { type: 'quest' }>['command'][] = [];
     let trap = false;
+    let resetsSide = false;
     for (const node of script.nodes) {
       for (const cmd of node.commands) {
-        if (cmd.type === 'quest') qcmds.push(cmd.command);
+        if (cmd.type === 'quest') {
+          qcmds.push(cmd.command);
+          if (cmd.command.type === 'reset-side-quests') resetsSide = true;
+        }
         if (cmd.type === 'world' && cmd.command.kind === 'party-buff' && cmd.command.buff === 'story-trap') trap = true;
       }
     }
     scriptQuestCommands.set(sid, qcmds);
     scriptHasTrap.set(sid, trap);
+    scriptResetsSideQuests.set(sid, resetsSide);
+  }
+  for (const [sid, script] of Object.entries(campaign.scripts)) {
+    if (scriptResetsSideQuests.get(sid)) continue;
+    for (const node of script.nodes) {
+      if (node.exit.type === 'choice') {
+        for (const opt of Object.keys(node.exit.cases)) {
+          for (const cev of choiceEvents.get(`${node.exit.choice}=${opt}`) ?? []) {
+            if (scriptResetsSideQuests.get(cev.script)) {
+              scriptResetsSideQuests.set(sid, true);
+              break;
+            }
+          }
+        }
+      }
+    }
   }
   const eventsCompletingQuest = new Map<string, StoryEvent[]>();
   const eventsReadyingQuest = new Map<string, StoryEvent[]>();
@@ -198,6 +220,7 @@ export function buildCampaignIndexes(campaign: Campaign): CampaignIndexes {
     choiceEvents,
     scriptQuestCommands,
     scriptHasTrap,
+    scriptResetsSideQuests,
     eventsCompletingQuest,
     eventsReadyingQuest,
     eventsAcceptingQuest,
@@ -220,6 +243,8 @@ export interface StoryEntryLanding {
 export interface ContentSourceIndexes {
   mapEntrances: Map<string, Point[]>;
   mapIncomingExits: Map<string, IncomingMapEntrance[]>;
+  /** 排除了「必须先穿过本图才能抵达的后置死胡同房间回程口」之后的上游跨图入口。 */
+  upstreamIncomingExits: Map<string, IncomingMapEntrance[]>;
   exitRuleByKey: Map<string, StoryCondition>;
   /** 忽略出口锁后，每张地图沿静态出口有向可达的全部地图集合（用于区分“同岛出口上锁”与“真跨岛”）。 */
   staticReachableByMap: Map<string, ReadonlySet<string>>;
@@ -264,6 +289,8 @@ export function buildContentSourceIndexes(content: QuestHarnessContent): Content
   mapEntrances.get(content.campaign.start.map)?.push({ x: content.campaign.start.x, y: content.campaign.start.y });
   for (const src of content.maps.values()) {
     for (const ex of src.exits) {
+      // 同图传送阵（destination === src.id）必须先踩进传送入口才能解锁落点，严禁混入初始静态地图入口
+      if (ex.destination === src.id) continue;
       const point = { x: ex.spawn.x, y: ex.spawn.y };
       mapEntrances.get(ex.destination)?.push(point);
       mapIncomingExits.get(ex.destination)?.push({ fromMap: src.id, exit: ex, point });
@@ -318,6 +345,34 @@ export function buildContentSourceIndexes(content: QuestHarnessContent): Content
         }
       }
     }
+  }
+
+  const upstreamIncomingExits = new Map<string, IncomingMapEntrance[]>();
+  for (const targetId of content.maps.keys()) {
+    const incoming = mapIncomingExits.get(targetId) ?? [];
+    if (incoming.length === 0) {
+      upstreamIncomingExits.set(targetId, []);
+      continue;
+    }
+    const visitedWithoutTarget = new Set<string>();
+    const q: string[] = [];
+    for (const bridgeId of storyBridgeMaps) {
+      if (bridgeId !== targetId && !visitedWithoutTarget.has(bridgeId)) {
+        visitedWithoutTarget.add(bridgeId);
+        q.push(bridgeId);
+      }
+    }
+    for (let i = 0; i < q.length; i++) {
+      const cur = q[i]!;
+      for (const nxt of staticAdj.get(cur) ?? []) {
+        if (nxt !== targetId && !visitedWithoutTarget.has(nxt)) {
+          visitedWithoutTarget.add(nxt);
+          q.push(nxt);
+        }
+      }
+    }
+    const upstream = incoming.filter(inc => visitedWithoutTarget.has(inc.fromMap));
+    upstreamIncomingExits.set(targetId, upstream.length > 0 ? upstream : incoming);
   }
 
   const storyEntryLandingsByMap = new Map<string, StoryEntryLanding[]>();
@@ -480,6 +535,7 @@ export function buildContentSourceIndexes(content: QuestHarnessContent): Content
   const built: ContentSourceIndexes = {
     mapEntrances,
     mapIncomingExits,
+    upstreamIncomingExits,
     exitRuleByKey,
     staticReachableByMap,
     storyBridgeMaps,
