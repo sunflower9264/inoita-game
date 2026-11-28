@@ -743,13 +743,25 @@ test('全部 487 个正式任务逐一独立跑通「接取 → 目标达成 →
 
           if (outcome === 'terminal-landmark') {
             landmarkQuestsVerified++;
-            // 验证终态日志外任务要么被下游事件/任务条件消费，要么自身携带真实战斗目标已完成就绪
+            // 验证终态日志外任务要么被下游事件/任务条件消费，要么自身携带真实战斗目标已完成就绪，要么战斗目标已被原版残血剧情事件接管收尾
             const referencedDownstream =
               campaign.events.some(ev => storyConditionReferences(ev.condition).quests.has(questId)) ||
               campaign.quests.some(other => storyConditionReferences(other.availableWhen).quests.has(questId));
+            const supersededByLowHealthBattle =
+              quest.goals.length > 0 &&
+              quest.goals.every(
+                g =>
+                  g.kind === 'defeat' &&
+                  campaign.events.some(
+                    ev =>
+                      ev.source === 'battle' &&
+                      ev.key === `health-below-30:${g.target}` &&
+                      h.director.runtime.eventStatus(ev.id) === 'completed',
+                  ),
+              );
             assert.ok(
-              referencedDownstream || (quest.goals.length > 0 && h.session.status(questId) === 'ready'),
-              `终态日志外任务 ${questId} 既无下游引用也未达成目标`,
+              referencedDownstream || (quest.goals.length > 0 && h.session.status(questId) === 'ready') || supersededByLowHealthBattle,
+              `终态日志外任务 ${questId} 既无下游引用也未达成目标或触发残血剧情接管`,
             );
             continue;
           }

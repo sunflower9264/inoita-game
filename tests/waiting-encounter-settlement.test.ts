@@ -167,3 +167,34 @@ test('被 30% 锁血或击败剧情接管的挂起战斗在完成时与旧档恢
     director.dispose();
   }
 });
+
+test('悬崖亚历山大 30% 锁血剧情 event-337 接管后结清 event-336 遭遇，并使日志外任务 quest-297 停留在原版 active 终态', async () => {
+  const h = playthrough();
+  const { session, director } = h;
+  try {
+    session.accept('quest-265');
+    session.applyStoryCommands([
+      { type: 'travel', destination: { map: 'snowfield-cliffs-caf97633', x: 248, y: 120, facing: 'north' } },
+    ]);
+    assert.equal(await director.trigger({ id: 'event-336', script: 'event-336' }), true);
+    await h.idle();
+
+    assert.equal(session.status('quest-297'), 'active');
+    assert.equal(session.hasWaitingStoryRun, true);
+    assert.equal(session.hasWaitingEncounterOnMap('snowfield-cliffs-caf97633'), true);
+
+    await director.notify('battle', 'health-below-30:enemy-alexander-2', 'snowfield-cliffs-caf97633');
+    await h.idle();
+
+    assert.equal(director.runtime.eventStatus('event-337'), 'completed');
+    assert.equal(session.storyWorld.currentLocation?.map, 'snow-fey-village-b6acd59c');
+    assert.equal(session.status('quest-265'), 'completed');
+    assert.equal(session.status('quest-298'), 'active');
+    assert.equal(session.hasWaitingStoryRun, false, 'event-337 完成后应立即结清 event-336-battle');
+    assert.equal(session.storyWorld.activeEncounters.length, 0);
+    assert.ok(session.runtimeState.completedEvents.includes('event-336'));
+    assert.equal(session.status('quest-297'), 'active', '原版亚历山大残血逃跑且移除敌人不计击杀，日志外 quest-297 保持 active 终态');
+  } finally {
+    director.dispose();
+  }
+});

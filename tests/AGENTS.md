@@ -28,7 +28,7 @@
 - `story-preparation.test.ts` 覆盖确定路径与调用返回、预测边界；`story-asset-preparation.test.ts` 覆盖跨场景请求复用、目标替换、取消和失败重试；入口测试验证恢复游戏不等待后续剧情素材。
 - `story-equipment.test.ts` 覆盖剧情装备发放与拾取拦截、手动穿脱与连带替换保护、剧情移除与离队销毁、正常装备退回；`story-disguise.test.ts` 验证剧情伪装穿脱；`story-scene`、`story-stage-isolation` 与 `saved-game` 覆盖主角收放武器、同图保留、换图恢复默认和存档读回。
 - 剧情动作测试检查等待结束时仍在播放、自然完成后的保持或待机、跳过后的最终姿势；`story-playthrough-rewards.test.ts` 验证剧情奖励。
-- 剧情跳转回归（`quest-jump.test.ts`、`quest-jump-history.test.ts`、`gm-quest-jump.test.ts`）遍历全部菜单任务并颠倒显示顺序，验证因果历史推导、`place` 重放、无关区域事件隔离及跳转传送回滚。
+- 剧情跳转回归（`quest-jump.test.ts`、`quest-jump-history.test.ts`、`gm-quest-jump.test.ts`）遍历全部菜单任务并颠倒显示顺序，验证因果历史推导、`place` 重放、无关区域事件隔离、记忆层分翼无环推导与翼标志重置，以及跳转传送回滚。
 - `quest-drops.test.ts` 覆盖任务物品来源；`quest-item-generation.test.ts` 验证掉落满额后读档与任务拾取。
 - `audit:story:full` 运行 `audit:story`（舞台与演员台账审计）以及 `quest-e2e-mechanisms.test.ts`、`quest-e2e-campaign.test.ts`、`combat-defeat-ticket.test.ts`。
 

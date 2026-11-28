@@ -190,8 +190,13 @@ function buildIndex(campaign: Campaign): ContentIndex {
   for (const [id, producers] of completers) completers.set(id, sortProducers(producers, quests.get(id)));
   for (const [id, producers] of readyProducers) readyProducers.set(id, sortProducers(producers, quests.get(id)));
   for (const [choice, writers] of choiceWriters)
-    choiceWriters.set(choice, [...writers].sort((left, right) =>
-      (events.get(left.eventId)?.index ?? 0) - (events.get(right.eventId)?.index ?? 0)));
+    choiceWriters.set(choice, [...writers].sort((left, right) => {
+      const leftInfo = events.get(left.eventId);
+      const rightInfo = events.get(right.eventId);
+      const repeatDiff = Number(!!leftInfo?.event.repeat) - Number(!!rightInfo?.event.repeat);
+      if (repeatDiff !== 0) return repeatDiff;
+      return (leftInfo?.index ?? 0) - (rightInfo?.index ?? 0);
+    }));
 
   const itemIds = new Set<string>();
   for (const quest of campaign.quests) {
@@ -1036,6 +1041,7 @@ class Planner {
     condition: StoryCondition | undefined,
     visited: Set<string>,
     consumerEventId?: string,
+    includeActive = true,
   ): boolean {
     if (!condition) return false;
     for (const ref of positiveQuestRefs(condition)) {
@@ -1046,7 +1052,7 @@ class Planner {
         ref.status !== 'completed' &&
         ref.status !== 'settled'
       ) continue;
-      if (this.questPresupposesTargetCompletion(ref.quest, ref.status, visited, consumerEventId)) return true;
+      if (this.questPresupposesTargetCompletion(ref.quest, ref.status, visited, consumerEventId, includeActive)) return true;
     }
     return false;
   }
@@ -1056,27 +1062,30 @@ class Planner {
     status: string,
     visited: Set<string>,
     consumerEventId?: string,
+    includeActive = true,
   ): boolean {
-    if (questId === this.questId) return true;
-    const visitKey = `${questId}:${status}`;
+    if (questId === this.questId) {
+      return includeActive || status === 'completed' || status === 'settled';
+    }
+    const visitKey = `${questId}:${status}:${includeActive ? 1 : 0}`;
     if (visited.has(visitKey)) return false;
     visited.add(visitKey);
 
     const quest = this.index.quests.get(questId);
-    if (quest?.availableWhen && this.conditionPresupposesTargetCompletion(quest.availableWhen, visited, consumerEventId)) {
+    if (quest?.availableWhen && this.conditionPresupposesTargetCompletion(quest.availableWhen, visited, consumerEventId, includeActive)) {
       return true;
     }
 
     const acceptor = this.primaryAcceptorFor(questId, consumerEventId);
     if (this.producerCompletesTarget(acceptor)) return true;
-    if (acceptor?.kind === 'event' && this.conditionPresupposesTargetCompletion(acceptor.event?.condition, visited, acceptor.event?.id)) {
+    if (acceptor?.kind === 'event' && this.conditionPresupposesTargetCompletion(acceptor.event?.condition, visited, acceptor.event?.id, includeActive)) {
       return true;
     }
 
     if (status === 'ready' || status === 'completed' || status === 'settled') {
       const readyProd = this.primaryReadyProducerFor(questId, consumerEventId);
       if (this.producerCompletesTarget(readyProd)) return true;
-      if (readyProd?.kind === 'event' && this.conditionPresupposesTargetCompletion(readyProd.event?.condition, visited, readyProd.event?.id)) {
+      if (readyProd?.kind === 'event' && this.conditionPresupposesTargetCompletion(readyProd.event?.condition, visited, readyProd.event?.id, includeActive)) {
         return true;
       }
     }
@@ -1084,16 +1093,18 @@ class Planner {
     if (status === 'completed' || status === 'settled') {
       const completer = this.primaryCompleterFor(questId, consumerEventId);
       if (this.producerCompletesTarget(completer)) return true;
-      if (completer?.kind === 'event' && this.conditionPresupposesTargetCompletion(completer.event?.condition, visited, completer.event?.id)) {
+      if (completer?.kind === 'event' && this.conditionPresupposesTargetCompletion(completer.event?.condition, visited, completer.event?.id, includeActive)) {
         return true;
       }
     }
     return false;
   }
 
-  eventPresupposesTargetCompletion(event: StoryEvent | undefined): boolean {
-    if (!event?.condition) return false;
-    return this.conditionPresupposesTargetCompletion(event.condition, new Set(), event.id);
+  eventPresupposesTargetCompletion(event: StoryEvent | undefined, includeActive = true): boolean {
+    if (!event) return false;
+    if (this.producerCompletesTarget({ kind: 'event', event })) return true;
+    if (!event.condition) return false;
+    return this.conditionPresupposesTargetCompletion(event.condition, new Set(), event.id, includeActive);
   }
 
   acceptProducer(): Producer | undefined {
@@ -1344,9 +1355,34 @@ class Planner {
   }
 
   choiceResolving = new Set<string>();
+  resolvingNodes = new Set<string>();
   targetChoiceNames = new Set<string>();
   targetChoiceValues = new Map<string, string>();
   prerequisiteChoiceNames = new Set<string>();
+
+  /** 判断在依赖图里新增 `fromId -> toId` 是否会与正在解析的祖先或已有依赖形成环。 */
+  private wouldCycle(fromId: string, toId: string | undefined): boolean {
+    if (!toId) return false;
+    if (fromId === toId || this.resolvingNodes.has(fromId)) return true;
+    const seen = new Set<string>();
+    const stack = [fromId];
+    while (stack.length) {
+      const current = stack.pop()!;
+      if (current === toId) return true;
+      if (seen.has(current)) continue;
+      seen.add(current);
+      const node = this.nodes.get(current);
+      if (!node) continue;
+      for (const dep of node.deps) stack.push(dep);
+    }
+    return false;
+  }
+
+  private eventBlockedForHistory(event: StoryEvent | undefined): boolean {
+    if (!event) return false;
+    if (event.id === this.targetAccept?.event?.id) return this.mode === 'available';
+    return this.eventPresupposesTargetCompletion(event, this.mode !== 'ready');
+  }
 
   ensureChoice(choice: string, value: string, consumerNodeId: string | undefined,
     consumerEventId: string | undefined): void {
@@ -1366,8 +1402,12 @@ class Planner {
     this.prerequisiteChoiceNames.add(choice);
     if (this.choiceResolving.has(choice)) return;
     const writers = (this.index.choiceWriters.get(choice) ?? [])
-      .filter(writer => writer.values.includes(value) && writer.eventId !== consumerEventId
-        && !this.conditionConflicts(this.index.events.get(writer.eventId)?.event.condition));
+      .filter(writer => {
+        if (!writer.values.includes(value) || writer.eventId === consumerEventId) return false;
+        const ev = this.index.events.get(writer.eventId)?.event;
+        if (!ev || this.conditionConflicts(ev.condition) || this.eventBlockedForHistory(ev)) return false;
+        return !this.wouldCycle('event:' + writer.eventId, consumerNodeId);
+      });
     if (!writers.length) return;
     this.choiceResolving.add(choice);
     try {
@@ -1378,10 +1418,10 @@ class Planner {
   }
 
   ensureEvent(eventId: string, optional = false, consumerNodeId?: string): PlanNode | undefined {
-    // available 模式下，目标任务自身的接取事件和预设目标任务已完成的后置解锁事件都尚未发生，绝不能被环路拉进前置历史提前重放。
-    if (this.mode === 'available' && eventId === this.targetAccept?.event?.id) return undefined;
+    // available 模式下，目标任务自身的接取事件不提前重放；所有模式下，已完成/预设完成目标任务的后置事件都绝不能被环路拉进前置历史。
     const info = this.index.events.get(eventId);
-    if (this.mode === 'available' && this.eventPresupposesTargetCompletion(info?.event)) {
+    if (this.mode === 'available' && eventId === this.targetAccept?.event?.id) return undefined;
+    if (info && this.eventBlockedForHistory(info.event)) {
       return undefined;
     }
     const id = 'event:' + eventId;
@@ -1398,8 +1438,13 @@ class Planner {
       node = { id, kind: 'event', order: info.index, event: info.event, optional, deps: new Set() };
       this.nodes.set(id, node);
       this.plannedEvents.add(eventId);
-      this.resolveCondition(info.event.condition, id, eventId);
-      this.analyzeScriptCommands(info.event.script, eventId, id);
+      this.resolvingNodes.add(id);
+      try {
+        this.resolveCondition(info.event.condition, id, eventId);
+        this.analyzeScriptCommands(info.event.script, eventId, id);
+      } finally {
+        this.resolvingNodes.delete(id);
+      }
     } else if (!optional) node.optional = false;
     if (consumerNodeId) this.edge(id, consumerNodeId);
     return node;
@@ -1416,7 +1461,12 @@ class Planner {
     if (!node) {
       node = { id, kind: 'script', order: Number.MAX_SAFE_INTEGER - 4, script, quest: questId, optional: false, deps: new Set() };
       this.nodes.set(id, node);
-      this.analyzeScriptCommands(script, undefined, id);
+      this.resolvingNodes.add(id);
+      try {
+        this.analyzeScriptCommands(script, undefined, id);
+      } finally {
+        this.resolvingNodes.delete(id);
+      }
     }
     if (consumerNodeId) this.edge(id, consumerNodeId);
     return node;
@@ -1428,7 +1478,7 @@ class Planner {
     const existing = this.producers.get(key);
     if (existing) {
       this.markPlannedAccepted(questId);
-      if (consumerNodeId) this.edge(existing, consumerNodeId);
+      if (consumerNodeId && !this.wouldCycle(existing, consumerNodeId)) this.edge(existing, consumerNodeId);
       return existing;
     }
     const quest = this.index.quests.get(questId);
@@ -1437,8 +1487,12 @@ class Planner {
       return undefined;
     }
     const candidates = (this.index.acceptors.get(questId) ?? [])
-      .filter(candidate => candidate.kind !== 'event'
-        || (candidate.event!.id !== consumerEventId && !this.conditionConflicts(candidate.event!.condition)));
+      .filter(candidate => {
+        if (candidate.kind !== 'event') return true;
+        const ev = candidate.event!;
+        if (ev.id === consumerEventId || this.conditionConflicts(ev.condition) || this.eventBlockedForHistory(ev)) return false;
+        return !this.wouldCycle('event:' + ev.id, consumerNodeId);
+      });
     const candidate = quest.offerScript
       ? candidates.find(entry => entry.script === quest.offerScript) ?? candidates[0]
       : candidates[0];
@@ -1470,7 +1524,7 @@ class Planner {
     const existing = this.producers.get(key);
     if (existing) {
       this.plannedStatus.set(questId, 'ready');
-      if (consumerNodeId) this.edge(existing, consumerNodeId);
+      if (consumerNodeId && !this.wouldCycle(existing, consumerNodeId)) this.edge(existing, consumerNodeId);
       return existing;
     }
     const accept = this.ensureAccepted(questId, undefined, consumerEventId);
@@ -1479,13 +1533,17 @@ class Planner {
     if (quest.completion === 'talk') {
       this.producers.set(key, accept);
       this.plannedStatus.set(questId, 'ready');
-      if (consumerNodeId) this.edge(accept, consumerNodeId);
+      if (consumerNodeId && !this.wouldCycle(accept, consumerNodeId)) this.edge(accept, consumerNodeId);
       return accept;
     }
     if (!forceSynthetic && quest.completion === 'story') {
       const candidates = (this.index.readyProducers.get(questId) ?? [])
-        .filter(candidate => candidate.kind !== 'event'
-          || (candidate.event!.id !== consumerEventId && !this.conditionConflicts(candidate.event!.condition)));
+        .filter(candidate => {
+          if (candidate.kind !== 'event') return true;
+          const ev = candidate.event!;
+          if (ev.id === consumerEventId || this.conditionConflicts(ev.condition) || this.eventBlockedForHistory(ev)) return false;
+          return !this.wouldCycle('event:' + ev.id, consumerNodeId);
+        });
       const candidate = candidates[0];
       if (candidate) {
         if (candidate.kind === 'event') this.producers.set(key, 'event:' + candidate.event!.id);
@@ -1514,7 +1572,7 @@ class Planner {
     const existing = this.producers.get(key);
     if (existing) {
       this.plannedStatus.set(questId, 'completed');
-      if (consumerNodeId) this.edge(existing, consumerNodeId);
+      if (consumerNodeId && !this.wouldCycle(existing, consumerNodeId)) this.edge(existing, consumerNodeId);
       return existing;
     }
     const quest = this.index.quests.get(questId);
@@ -1525,8 +1583,12 @@ class Planner {
     const accept = this.ensureAccepted(questId, undefined, consumerEventId);
     if (!accept) return undefined;
     const candidates = (this.index.completers.get(questId) ?? [])
-      .filter(candidate => candidate.kind !== 'event'
-        || (candidate.event!.id !== consumerEventId && !this.conditionConflicts(candidate.event!.condition)));
+      .filter(candidate => {
+        if (candidate.kind !== 'event') return true;
+        const ev = candidate.event!;
+        if (ev.id === consumerEventId || this.conditionConflicts(ev.condition) || this.eventBlockedForHistory(ev)) return false;
+        return !this.wouldCycle('event:' + ev.id, consumerNodeId);
+      });
     const explicit = quest.completeScript && this.campaign.scripts[quest.completeScript]
       ? { kind: 'script' as const, script: quest.completeScript } : undefined;
     const candidate = explicit ?? candidates[0];
@@ -1821,12 +1883,13 @@ class Planner {
     const quest = this.index.quests.get(id);
     if (!quest) return;
     const before = state.status.get(id) ?? 'available';
-    if (before === 'available' || before === 'locked') {
+    // 与 QuestBook（原版 QUESTSYSTEM_ChangeQuestState(id, 1)）一致：已完成的任务被剧情重新接取时回到 active/ready。
+    if (before === 'available' || before === 'locked' || before === 'completed') {
       const status: QuestStatus = quest.completion === 'talk' ? 'ready' : 'active';
       state.status.set(id, status);
       state.opened.add(id);
       if (status === 'ready') state.ready.add(id);
-      if (before === 'available') for (const entry of quest.onAcceptItems ?? [])
+      if (before === 'available' || before === 'completed') for (const entry of quest.onAcceptItems ?? [])
         state.items.set(entry.item, (state.items.get(entry.item) ?? 0) + entry.quantity);
     } else {
       state.opened.add(id);

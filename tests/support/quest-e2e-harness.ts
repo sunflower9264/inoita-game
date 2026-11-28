@@ -285,7 +285,14 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
       }
       for (const qc of cmds) {
         if ('quest' in qc && targetQuestId && qc.quest === targetQuestId) {
-          if (qc.type === 'accept' || qc.type === 'script-ready') {
+          if (qc.type === 'accept') {
+            const targetStatus = session.status(targetQuestId);
+            if (phaseMode === 'complete' && targetStatus === 'completed') {
+              score -= 1000;
+            } else if (targetStatus === 'available' || targetStatus === 'locked') {
+              score += 1000;
+            }
+          } else if (qc.type === 'script-ready') {
             score += 1000;
           } else if (qc.type === 'complete' || qc.type === 'script-complete') {
             score += phaseMode === 'admit' ? -400 : 1000;
@@ -2232,7 +2239,28 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
         return 'completed';
       }
 
-      if (session.status(quest.id) === 'active' && (quest.goals.length > 0 || (quest.handoverItems?.length ?? 0) > 0)) {
+      const compEvs = indexes.eventsCompletingQuest.get(quest.id) ?? [];
+      const isTerminalLandmark = !quest.delivery && !quest.completeScript && !quest.interactionEvent && compEvs.length === 0;
+      const supersededByLowHealthBattle =
+        isTerminalLandmark &&
+        quest.journal === false &&
+        quest.goals.length > 0 &&
+        quest.goals.every(
+          g =>
+            g.kind === 'defeat' &&
+            content.campaign.events.some(
+              ev =>
+                ev.source === 'battle' &&
+                ev.key === `health-below-30:${g.target}` &&
+                director.runtime.eventStatus(ev.id) === 'completed',
+            ),
+        );
+
+      if (
+        !supersededByLowHealthBattle &&
+        session.status(quest.id) === 'active' &&
+        (quest.goals.length > 0 || (quest.handoverItems?.length ?? 0) > 0)
+      ) {
         await fulfillQuestGoals(quest, visitedQuests);
       }
       if (hasSettledThisCycle()) {
@@ -2249,8 +2277,6 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
         return 'completed';
       }
 
-      const compEvs = indexes.eventsCompletingQuest.get(quest.id) ?? [];
-      const isTerminalLandmark = !quest.delivery && !quest.completeScript && !quest.interactionEvent && compEvs.length === 0;
       if (isTerminalLandmark) {
         assert.equal(quest.journal, false, `非日志外任务 ${quest.id} 缺少交付或完成出口`);
         assert.ok(['active', 'ready'].includes(session.status(quest.id)), `终态日志外任务 ${quest.id} 未停在有效状态`);

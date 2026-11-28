@@ -625,3 +625,81 @@ test('调试跳转第 6 步先重放开场后继 event-604 关掉终局怪，且
   assert.equal(availability(endgame, 'shadow-training-dungeon-2-a6b8293b', 'enemy-remains-of-a-forgotten-soldier-1'), true);
   assert.equal(availability(endgame, 'shadow-training-dungeon-2-a6b8293b', 'enemy-black-skeleton-1'), false);
 });
+
+test('记忆层分翼跳转不把当层通关结算拉进前置历史，跨层后继无环重放并按原版重置翼标志任务', () => {
+  const layers = [
+    {
+      clearEvent: 'event-452',
+      wings: ['quest-372', 'quest-375', 'quest-378'],
+      flags: ['quest-399', 'quest-400', 'quest-401'],
+    },
+    {
+      clearEvent: 'event-468',
+      wings: ['quest-390', 'quest-393', 'quest-396'],
+      flags: ['quest-404', 'quest-405', 'quest-406'],
+    },
+    {
+      clearEvent: 'event-493',
+      wings: ['quest-416', 'quest-419', 'quest-422'],
+      flags: ['quest-425', 'quest-426', 'quest-427'],
+    },
+    {
+      clearEvent: 'event-512',
+      wings: ['quest-433', 'quest-436', 'quest-439'],
+      flags: ['quest-442', 'quest-443', 'quest-444'],
+    },
+  ] as const;
+
+  for (const layer of layers) {
+    for (const wingId of layer.wings) {
+      for (const mode of ['available', 'active', 'ready'] as const) {
+        const history = questJumpHistory(campaign, wingId, mode);
+        assert.deepEqual(history.warnings, [], `${wingId} (${mode}) 不应出现历史依赖环或冲突警告`);
+        assert.equal(
+          history.completedEvents.has(layer.clearEvent),
+          false,
+          `${wingId} (${mode}) 不应将直接完成自身的通关事件 ${layer.clearEvent} 提前拉进历史`,
+        );
+        for (const flagId of layer.flags) {
+          assert.notEqual(
+            history.progress.get(flagId),
+            'completed',
+            `${wingId} (${mode}) 跳转现场不应遗留已完成的分翼标志任务 ${flagId}`,
+          );
+        }
+      }
+    }
+  }
+
+  // 跳到记忆 1 层哥布林翼 quest-378（ready）时不拉入 event-452/event-453，艾丽尼娅在场且不被 event-453 抢占
+  const h = playthrough();
+  try {
+    const plan378 = planQuestStart(campaign, h.session, 'quest-378', 'ready');
+    assert.equal(plan378.conditionPatch.completedEvents.includes('event-453'), false);
+    assert.equal(plan378.conditionPatch.completedEvents.includes('event-452'), false);
+    applyQuestStartPlan(h.session, plan378);
+    const layer1Map = 'kiyan-s-memory-layer-1-631d46d8';
+    const elenia = h.session.storyWorld
+      .projectEntities(layer1Map, headlessContent.maps.get(layer1Map)?.entities ?? [], campaign.placements)
+      .find(entity => entity.characterId === 'npc-598');
+    assert.ok(elenia, '记忆 1 层艾丽尼娅在场');
+    assert.notEqual(
+      h.session.nearEvent(elenia, layer1Map)?.id,
+      'event-453',
+      'quest-399 未完成时，艾丽尼娅不应抢先触发灵界翼交付事件 event-453',
+    );
+  } finally {
+    h.director.dispose();
+  }
+
+  // 第 2 层前置任务（如 quest-408）合法包含第 1 层通关 event-452：choice-17 优先采用非重复入口 event-560 而非重复交付 event-453，
+  // 且无环重放并在 event-452 中把 quest-399..401 重置回 active（与 QuestBook 一致）
+  const layer2 = questJumpHistory(campaign, 'quest-408', 'available');
+  assert.deepEqual(layer2.warnings, []);
+  assert.equal(layer2.completedEvents.has('event-560'), true);
+  assert.equal(layer2.completedEvents.has('event-453'), false);
+  assert.equal(layer2.completedEvents.has('event-452'), true);
+  for (const flagId of ['quest-399', 'quest-400', 'quest-401']) {
+    assert.equal(layer2.progress.get(flagId), 'active', `event-452 重放后应把 ${flagId} 重置回 active`);
+  }
+});
