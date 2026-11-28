@@ -730,7 +730,6 @@ export class TitleMenuController {
     const finishDelete=(deleted:boolean)=>{
       if(this.disposed||!this.scene.sys.isActive())return;
       if(deleted){
-        this.app.audio?.ui('select');
         if(this.page==='slots'&&this.slotBoard&&typeof ref==='number'){
           const specs=this.slotBoard.update(ref,newestFirstSlots(slot=>this.app.saves.peek(slot)));
           this.domSpecs=this.domSpecs.filter(spec=>!spec.key.startsWith('save-slot-')).concat(specs.map(spec=>this.saveBoardSpec(spec)));

@@ -25,6 +25,7 @@ function fixture() {
   let renders = 0, confirmations = 0, syncs = 0, notice = '';
   const written: string[] = [];
   const savedRefs: number[] = [];
+  const audioCalls: string[] = [];
   const app = {
     saves: {
       peek: () => ({ kind: 'empty' as const }),
@@ -36,7 +37,7 @@ function fixture() {
     storyClasses: { classes: [{ id: 'dark-knight', name: '暗骑士' }] },
     menuPanels: { character: { portraits: { kiyan: { image: 'kiyan.png' } } }, assets: {} },
     captureSaveWorld: () => ({ ok: true as const, map: { id: 'map', name: '地图' }, world: { location: {} } }),
-    audio: { ui() {} }
+    audio: { ui(name: string) { audioCalls.push(name); } }
   } as unknown as StoryUIContext;
   const session = {
     character: { classId: 'dark-knight' }, player: { level: 5 },
@@ -61,13 +62,14 @@ function fixture() {
     scroll: () => { throw new Error('测试不画滚动区'); },
     finishScroll: () => {}
   };
-  return { page: new SavePage(host), session, world, app, written, savedRefs,
+  return { page: new SavePage(host), session, world, app, written, savedRefs, audioCalls,
     renders: () => renders, confirmations:()=>confirmations, syncs: () => syncs, notice: () => notice };
 }
 
 interface SavePageInternals {
   saveConfirm?: number;
   saveToSlot(ref: number): void;
+  deleteSlot(ref: number): void;
   loadConfirm?: number;
   deleteConfirm?: number;
   renameSlot(ref:number):void;
@@ -165,6 +167,12 @@ test('手动存档成功后通知宿主，自动槽和写入失败都不通知',
   internals.saveToSlot(2);
   assert.deepEqual(f.written, ['write:2']);
   assert.deepEqual(f.savedRefs, [2]);
+  assert.equal(f.notice(), '保存成功');
+  assert.deepEqual(f.audioCalls, [], '保存落盘回调不重复播放按钮点击音');
+
+  internals.deleteSlot(2);
+  assert.deepEqual(f.written, ['write:2', 'erase:2']);
+  assert.deepEqual(f.audioCalls, [], '删除落盘回调不重复播放按钮点击音');
 
   internals.saveToSlot(AUTO_SAVE_SLOT as unknown as number);
   assert.deepEqual(f.savedRefs, [2], '自动槽没有保存动作');

@@ -277,6 +277,8 @@ test('mixed slots load existing saves, start empty slots and leave damaged slots
 
 test('title slots delete a manual save only after the native confirmation',async()=>{
   const f=await fixture();f.entries.set('inotia4.story.v1.slot0',saved());f.entries.set('inotia4.story.v1.slot1','broken JSON');
+  const directAudio:string[]=[];
+  Object.defineProperty(f.app,'audio',{value:{ui(name:string){directAudio.push(name);}}});
   f.click('开始游戏');
   // 自动槽没有管理动作；坏档只能删，不能改名。
   assert(!f.view.buttons.some(button=>String(button.getData('label')).startsWith('自动存档 ')));
@@ -302,6 +304,7 @@ test('title slots delete a manual save only after the native confirmation',async
   f.click('存档槽 1 删除');f.clickModal('是');
   assert.equal(f.entries.has('inotia4.story.v1.slot0'),false);
   assert(!f.view.buttons.some(button=>button.getData('label')==='存档槽 1 删除'),'空槽不再给出删除');
+  assert.deepEqual(directAudio,[],'标题页删除落盘回调不重复播放按钮点击音');
 });
 
 test('title save deletion moves other rows without rebuilding them',async()=>{

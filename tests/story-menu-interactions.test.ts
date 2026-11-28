@@ -2470,9 +2470,13 @@ test('fusion socket opening repeats until the quality cap', t => {
 
 test('save page writes the loaded world into the chosen slot and asks before overwriting it', t => {
   const f=fixture();t.after(f.cleanup);
+  let selectSounds=0;
+  f.scene.game.events.on(UI_EVENTS.select,()=>{selectSounds++;});
+  Object.defineProperty(f.app,'audio',{value:{ui(name:string){if(name==='select')selectSounds++;}}});
   f.session.gainMoney(77);f.session.accept('grafton-mission');
   f.menu.show('save');
   f.scene.click(f.scene.button('存档槽 2'));
+  assert.equal(selectSounds,1,'点空槽存档只播放一次点击音');
   const written=f.app.saves.inspect(1);
   assert.equal(written.kind,'ok');
   if(written.kind!=='ok')return;
@@ -2483,6 +2487,7 @@ test('save page writes the loaded world into the chosen slot and asks before ove
   assert.deepEqual(written.game.session.money,f.session.money);
   assert(domTexts(f).includes('保存成功'));
   f.scene.click(f.scene.button('确认'));
+  assert.equal(selectSounds,2,'点确认关闭提示框再播放一次点击音');
   assert.equal(f.internals.modal.root.visible,false);
 
   // 槽里的摘要回到面板上：标题、地图名与等级/职业。
@@ -2507,10 +2512,19 @@ test('save page writes the loaded world into the chosen slot and asks before ove
   f.scene.click(f.scene.button('否'));
   assert.equal(JSON.stringify(f.app.saves.inspect(1)),bytes);
   f.session.gainMoney(5);
-  f.scene.click(f.scene.button('存档槽 2'));f.scene.click(f.scene.button('是'));
+  f.scene.click(f.scene.button('存档槽 2'));
+  const beforeOverwriteConfirm=selectSounds;
+  f.scene.click(f.scene.button('是'));
+  assert.equal(selectSounds-beforeOverwriteConfirm,1,'覆盖确认点「是」只播放一次点击音');
   const overwritten=f.app.saves.inspect(1);
   assert.equal(overwritten.kind==='ok'&&overwritten.game.session.money,f.session.money,'确认后写入当前状态');
   assert(domTexts(f).includes('保存成功'));
+  f.scene.click(f.scene.button('确认'));
+
+  f.scene.click(f.scene.button('存档槽 2 删除'));
+  const beforeDeleteConfirm=selectSounds;
+  f.scene.click(f.scene.button('是'));
+  assert.equal(selectSounds-beforeDeleteConfirm,1,'删除确认点「是」只播放一次点击音');
 });
 
 test('a story jump waits for a manual save and is cancelled by leaving the save page', t => {
