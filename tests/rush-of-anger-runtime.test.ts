@@ -327,7 +327,7 @@ function quietWarriorWorldSetup(weapon: Weapon = 'longsword') {
     exits: [],
     enemySpawns: [],
   };
-  const roster = new WorldEnemyRoster(session, map, [], hero.level);
+  const roster = new WorldEnemyRoster(session, map, []);
   const placed = roster.placeEnemy(quietEnemy.id, 88, 64);
   return { quietCatalog, hero, session, map, roster, placed };
 }

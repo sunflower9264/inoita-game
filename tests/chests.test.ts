@@ -146,18 +146,18 @@ test('failed reward preparation releases the claim without spawning a monster',(
 });
 
 test('mimic survives scene rebuild with vitals and never joins timed respawns',()=>{
-  const session=new Session(campaign),roster=new WorldEnemyRoster(session,map,[],1);
+  const session=new Session(campaign),roster=new WorldEnemyRoster(session,map,[]);
   session.chests.open(map.id,'box',{x:504,y:104},()=>({rewards:[],enemies:[mimic]}));
   const [spawn]=session.chests.spawns;
   assert.deepEqual(roster.refresh().added.map(enemy=>enemy.key),[spawn.id]);
   assert.equal(roster.source(spawn.id)?.respawn,false);
   session.setEnemyVitals(spawn.id,12,0);
-  assert.equal(new WorldEnemyRoster(session,map,[],1).enemies.find(enemy=>enemy.key===spawn.id)?.health,12);
+  assert.equal(new WorldEnemyRoster(session,map,[]).enemies.find(enemy=>enemy.key===spawn.id)?.health,12);
   session.enemyDefeated(spawn);assert.ok(roster.refresh().removed.includes(spawn.id));
   session.advanceGameTime(DEFAULT_ENEMY_RESPAWN_MS*10);
-  assert.equal(new WorldEnemyRoster(session,map,[],1).enemies.some(enemy=>enemy.key===spawn.id),false);
+  assert.equal(new WorldEnemyRoster(session,map,[]).enemies.some(enemy=>enemy.key===spawn.id),false);
   session.enterMap('elsewhere');assert.deepEqual(session.enemyVitals(spawn.id),{});
-  new WorldEnemyRoster(session,map,[],1);
+  new WorldEnemyRoster(session,map,[]);
   // 同一个摆放点已经开过，换图回来也不会再开；换一个摆放点验证新访问仍会生成新的宝箱怪记录。
   assert.equal(session.chests.open(map.id,'box',{x:504,y:104},
     ()=>{throw new Error('已开启的宝箱不能再掷奖励')}),undefined);

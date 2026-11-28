@@ -340,7 +340,7 @@ test('a failed death settlement keeps the one-time encounter winnable after savi
     assert.equal(h.session.accept('quest-46'), true);
     h.session.applyStoryCommands([{type:'travel',destination:{map:map.id,x:300,y:152,facing:'east'}}]);
     await h.region('event-60');
-    const roster = new WorldEnemyRoster(h.session, map, [], h.session.hero!.level);
+    const roster = new WorldEnemyRoster(h.session, map, []);
     const spawn = roster.spawns.find(spawn => spawn.enemyId === 'enemy-head-werewolf-1')!;
     const definition = headlessContent.battle.enemies.find(enemy => enemy.id === spawn.enemyId)!;
     assert.equal(spawn.respawn, false);

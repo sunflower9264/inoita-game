@@ -35,7 +35,7 @@ function begin(){const session=createSession();enter(session,{map:map.id,...retu
 function director(session:Session){return new StoryDirector(content,session,ui,()=>{},
   {begin(){},async execute(){},async finish(){},release(){}});}
 function targets(session:Session){return session.storyWorld.projectEntities(map.id,[]).filter(entity=>entity.characterId==='npc-458');}
-function roster(session:Session){return new WorldEnemyRoster(session,map,[],session.hero!.level,undefined,()=>1);}
+function roster(session:Session){return new WorldEnemyRoster(session,map,[],undefined,()=>1);}
 function ratCount(enemies:WorldEnemyRoster){return enemies.enemies.filter(enemy=>enemy.enemyId===enemyId).length;}
 function progress(session:Session){return session.quests.get(quest.id)!.goals[quest.goals[0].id];}
 async function capture(session:Session,story:StoryDirector,enemies:WorldEnemyRoster){

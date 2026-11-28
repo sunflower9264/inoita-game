@@ -22,24 +22,30 @@ function sessionFor(questId:string,accept:boolean):Session{
   return session;
 }
 
-test('item quest keeps its drop source when its tier is discarded',()=>{
+test('item quest restores a story-disabled drop source while active and keeps native level',()=>{
   const session=sessionFor('quest-171',true);
-  const roster=new WorldEnemyRoster(session,map('closed-dungeon-2-563efc16'),[],105,new QuestEnemyWatch(session,drops.questItems));
+  const mapData=map('closed-dungeon-2-563efc16');
+  session.applyStoryCommands([{type:'world',command:{kind:'enemy-availability',map:mapData.id,enemyId:'enemy-enraged-magic-book-1',available:false}}]);
+  const roster=new WorldEnemyRoster(session,mapData,[],new QuestEnemyWatch(session,drops.questItems));
   assert.ok(roster.spawns.some(spawn=>spawn.enemyId==='enemy-enraged-magic-book-1'));
   const definition=battle.enemies.find(enemy=>enemy.id==='enemy-enraged-magic-book-1')!;
   const placed=roster.enemies.find(enemy=>enemy.enemyId===definition.id)!;
   assert.equal(roster.enemySnapshot(placed.key,definition,105)?.level,definition.level,'任务怪不按玩家等级缩放');
 });
 
-test('defeat quest keeps a low-tier target at endgame level',()=>{
+test('defeat quest restores a story-disabled target while active',()=>{
   const session=sessionFor('quest-181',true);
-  const roster=new WorldEnemyRoster(session,map('shadow-training-dungeon-2-a6b8293b'),[],105,new QuestEnemyWatch(session,drops.questItems));
+  const mapData=map('shadow-training-dungeon-2-a6b8293b');
+  session.applyStoryCommands([{type:'world',command:{kind:'enemy-availability',map:mapData.id,enemyId:'enemy-knife-needled-mosquitoes-1',available:false}}]);
+  const roster=new WorldEnemyRoster(session,mapData,[],new QuestEnemyWatch(session,drops.questItems));
   assert.ok(roster.spawns.some(spawn=>spawn.enemyId==='enemy-knife-needled-mosquitoes-1'));
 });
 
-test('targetChanges enemy is protected across tiers',()=>{
+test('targetChanges enemy is protected when story-disabled',()=>{
   const session=sessionFor('quest-18',true);
-  const roster=new WorldEnemyRoster(session,map('training-dungeon-two'),[],105,new QuestEnemyWatch(session,drops.questItems));
+  const mapData=map('training-dungeon-two');
+  session.applyStoryCommands([{type:'world',command:{kind:'enemy-availability',map:mapData.id,enemyId:'enemy-shaggy-grayfang-1',available:false}}]);
+  const roster=new WorldEnemyRoster(session,mapData,[],new QuestEnemyWatch(session,drops.questItems));
   assert.ok(roster.spawns.some(spawn=>spawn.enemyId==='enemy-shaggy-grayfang-1'));
 });
 
@@ -49,11 +55,11 @@ test('a story-hidden enemy stays spawnable while its quest is active',()=>{
   const target='enemy-knife-needled-mosquitoes-1';
   session.applyStoryCommands([{type:'world',command:{kind:'enemy-availability',map:mapData.id,enemyId:target,available:false}}]);
 
-  const roster=new WorldEnemyRoster(session,mapData,[],105,new QuestEnemyWatch(session,drops.questItems));
+  const roster=new WorldEnemyRoster(session,mapData,[],new QuestEnemyWatch(session,drops.questItems));
   assert.ok(roster.spawns.some(spawn=>spawn.enemyId===target),'任务进行中，剧情禁用不压任务目标');
 
   session.applyStoryCommands([{type:'quest',command:{type:'script-complete',quest:'quest-181'}}]);
-  const completed=new WorldEnemyRoster(session,mapData,[],105,new QuestEnemyWatch(session,drops.questItems));
+  const completed=new WorldEnemyRoster(session,mapData,[],new QuestEnemyWatch(session,drops.questItems));
   assert.equal(completed.spawns.some(spawn=>spawn.enemyId===target),false,'任务结束后剧情禁用重新生效');
 });
 
@@ -63,10 +69,12 @@ test('inactive quests do not protect their enemies',()=>{
   assert.equal(watch.snapshot().ids.has('enemy-knife-needled-mosquitoes-1'),false);
 });
 
-test('accepting a quest after entry adds its enemy without swapping the selected tier',()=>{
+test('accepting a quest after entry adds its story-disabled enemy on refresh',()=>{
   const session=sessionFor('quest-181',false);
-  const roster=new WorldEnemyRoster(session,map('shadow-training-dungeon-2-a6b8293b'),[],105,new QuestEnemyWatch(session,drops.questItems));
+  const mapData=map('shadow-training-dungeon-2-a6b8293b');
   const target='enemy-knife-needled-mosquitoes-1';
+  session.applyStoryCommands([{type:'world',command:{kind:'enemy-availability',map:mapData.id,enemyId:target,available:false}}]);
+  const roster=new WorldEnemyRoster(session,mapData,[],new QuestEnemyWatch(session,drops.questItems));
   assert.equal(roster.spawns.some(spawn=>spawn.enemyId===target),false);
   assert.equal(session.accept('quest-181'),true);
   assert.ok(roster.refresh().added.some(enemy=>enemy.enemyId===target));

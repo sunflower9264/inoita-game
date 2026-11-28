@@ -121,7 +121,7 @@
 - 仇恨账本以 owner→source 索引为准，记录数组只用于快照与容量淘汰；增删必须同时维护两边。
 - 剧情世界的进行中遭遇以 `StoryWorldState` 的 active 索引为准，`encounters` 表只用于历史、快照和完整状态查询；新增、结算和整份恢复必须同时维护索引，每帧读取只走索引。
 - 地图敌人生成点索引按投影复用；任务、剧情、生成资格或名册身份变化及复活期限到达后才重新计算增删。`Session.enemySpawnRevision` 只跟踪死亡期限与恢复/回滚，血量和法力变化继续推进存档用的 `enemyRevision`，不会触发生成扫描。按前缀清理历史剧情敌怪状态使用 `Session.forgetEnemyVitalsByPrefix`，直接删表并同步推进修订号，不触发整份 `captureState()` 深拷贝。
-- `WorldEnemyRoster.isPresent` 统一提供当前实例的有效在场状态，综合当前生成投影、剧情、进行中任务、死亡和捕捉记录；刷怪与战斗使用同一份生成资格规则。静态任务怪恢复期间保留剧情原始记录，任务待交付后恢复剧情退场。`Session.canRespawnEnemy` 只读死亡刷新资格，死亡记录由名册刷新入口清理；捕捉承接已验证的受击实例，并检查重复捕捉与死亡状态。
+- `WorldEnemyRoster.isPresent` 统一提供当前实例的有效在场状态，综合当前生成投影、剧情、进行中任务、死亡和捕捉记录；刷怪与战斗使用同一份生成资格规则。静态地图生成点（`map.enemySpawns`）直接遵循原版剧情开关名单（`enemy-availability`）与可见状态过滤，不再按主角等级分档；静态任务怪恢复期间保留剧情原始记录，任务待交付后恢复剧情退场。`Session.canRespawnEnemy` 只读死亡刷新资格，死亡记录由名册刷新入口清理；捕捉承接已验证的受击实例，并检查重复捕捉与死亡状态。
 - 普通静态地图生成点在死亡结算后，镜头内等 60 秒，镜头外等 20 秒；主镜头的地图范围向四边各扩 48 像素，再判断生成点。名册收到有效镜头范围才允许提前刷新；回头时未生成的怪恢复原来的 60 秒期限，已生成的怪继续在场。一次性、剧情动态生成和已捕捉目标沿用各自生命周期。死亡状态保存正常期限 `deadUntil` 和提前期限 `offscreenRespawnAt`，二者都使用游戏时间；生成时一起消费，换图仍按原规则重置普通怪。镜头变化只复核等待提前刷新的点。
 - **敌人名册按 key 索引，快照分层缓存。** `EnemyRoster` 维护 `Map<key, PlacedEnemy>`，在 place/restore/remove/restoreState 同步；稳定派生属性可按逻辑帧/版本缓存，生命法力必须按当前实例实时读取，不能只按 `combatTick` 缓存整份快照。`hasZeroHealth` 继续用 Set。
 - **遭遇完成按修订号缓存。** `completedEncounters` 的缓存键覆盖 `encounterRevision`、`enemySpawnRevision`、`membershipRevision`；死亡结算、捕获、遭遇增删和恢复会推进这些修订号。判定仍是 `deadUntil !== undefined && !capture`。

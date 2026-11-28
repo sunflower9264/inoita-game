@@ -163,7 +163,7 @@ interface EnemyPlanOptions {
 /** 目标图可能出现的敌人 id 超集；不构造 `WorldEnemyRoster`，避免 `session.enterMap` 的副作用。 */
 export function potentialMapEnemyIds(map: WorldMap, input: WorldAssetInputs, options: EnemyPlanOptions = {}): string[] {
   const ids = new Set<string>();
-  // 预取不按等级选档：剧情可能在到达目的地前升级，档位会变；全档敌人种类很少。
+  // 直接收集本图全部静态刷怪点（以及可能触发的可破坏景物替换怪）作为预取超集。
   for (const spawn of map.enemySpawns ?? []) ids.add(spawn.enemyId);
   if ((map.enemySpawns ?? []).some(spawn => spawn.breakableEligible)) {
     for (const enemyId of Object.values(BREAKABLE_ENEMY_IDS)) ids.add(enemyId);

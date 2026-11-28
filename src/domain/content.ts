@@ -233,8 +233,6 @@ export interface EnemySpawn {
   enemyId: string;
   x: number;
   y: number;
-  /** 地图被多个等级阶段复用时，本批敌人的代表等级。 */
-  tierLevel?: number;
   /** 原怪类别为 0，允许在激活时被罐子/箱子替换。 */
   breakableEligible?: boolean;
 }

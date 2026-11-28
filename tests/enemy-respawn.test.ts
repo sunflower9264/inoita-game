@@ -12,7 +12,7 @@ const away={x:1000,y:1000,width:200,height:200};
 function fixture(respawn=true){
   const session=new Session(campaign);
   const map={id:'respawn-test',enemySpawns:[{id:'resident',enemyId:'enemy-cave-bat',x:100,y:100,respawn}]} as WorldMap;
-  const roster=new WorldEnemyRoster(session,map,[],1),spawn=roster.spawns[0]!;
+  const roster=new WorldEnemyRoster(session,map,[]),spawn=roster.spawns[0]!;
   const defeat=()=>{session.enemyDefeated(spawn);roster.refresh(visible);};
   return {session,map,roster,spawn,defeat};
 }
@@ -77,12 +77,12 @@ test('saved deaths retain both deadlines through a same-map session rebuild',()=
   const first=fixture();first.defeat();first.session.advanceGameTime(19_999);
   const saved=JSON.parse(JSON.stringify(first.session.captureState()));
   const session=new Session(campaign);session.restoreState(saved);
-  const roster=new WorldEnemyRoster(session,first.map,[],1);
+  const roster=new WorldEnemyRoster(session,first.map,[]);
   assert.equal(roster.refresh(away).added.length,0);
   session.advanceGameTime(1);assert.equal(roster.refresh(away).added.length,1);
   session.enemyDefeated(first.spawn);roster.refresh(visible);
   session.enterMap('elsewhere');
-  assert.equal(new WorldEnemyRoster(session,first.map,[],1).isPresent(first.spawn.id),true,'换图重置普通怪的现有规则保留');
+  assert.equal(new WorldEnemyRoster(session,first.map,[]).isPresent(first.spawn.id),true,'换图重置普通怪的现有规则保留');
 });
 
 test('permanent deaths, captured targets and dynamic story spawns do not accelerate',()=>{

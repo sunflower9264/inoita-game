@@ -572,7 +572,7 @@ const storyCondition:Check=(v,p)=>{
 const visibility={id:text,condition:optional(storyCondition)};
 const entity={...visibility,actor:text,characterId:optional(text),authority:optional(oneOf('registered','npc','story','static')),x:number,y:number,flip:optional(boolean),name:optional(text),hint:optional(text),objective:optional(text),collectible:optional(boolean),afterInteractScript:optional(text),
   appear:optional(object({atMost:diceFace})),downgrade:optional(object({atLeast:diceFace,actor:text})),spring:optional(boolean)};
-const enemySpawn={respawn:optional((v,p)=>requireValue(v===false,p,'一次性敌人不可刷新')),id:text,enemyId:text,x:number,y:number,tierLevel:optional(count),breakableEligible:optional(boolean)};
+const enemySpawn={respawn:optional((v,p)=>requireValue(v===false,p,'一次性敌人不可刷新')),id:text,enemyId:text,x:number,y:number,breakableEligible:optional(boolean)};
 const campaignEnemy={...enemySpawn,map:text,activeQuest:text,rewardItem:text,respawn:(value:unknown,path:string)=>requireValue(value===false,path,'任务敌人不可刷新')};
 const world=shape<WorldIndex>({storyEffects:optional(record(object({clips:record(effectClip),placement:optional(oneOf('ground','above-characters'))}))),version:integer,maps:array(object({id:text,name:text,file})),actors:record(actor),portraits:record(object({file,width:positive,height:positive})),props:array(object({key:text,file}))});
 const map=shape<WorldMap>({townPose:optional(boolean),lootLevel:optional(integer),chestLevel:optional(integer),chestLevelSource:optional(oneOf('native','neighbor','floor','override')),id:text,name:text,width:positive,height:positive,tileSize:positive,columns:positive,rows:positive,blocked:array(boolean),water:optional(array(integer)),ground:file,canopy:file,

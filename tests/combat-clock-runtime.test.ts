@@ -158,7 +158,7 @@ test('scene respawn uses main-camera map coordinates and stops both deadlines wh
   for(const sampling of [1,2,3]){
     const hero=new BattleCharacter('dark-knight',statsCatalog,items);
     const session=new Session(campaign,undefined,undefined,items,hero,battleCatalog);
-    const roster=new WorldEnemyRoster(session,map,[],1),spawn=roster.spawns[0]!;
+    const roster=new WorldEnemyRoster(session,map,[]),spawn=roster.spawns[0]!;
     // 画布尺寸随采样变化；名册必须收到主镜头已经换算好的地图范围。
     const phaserScene=fullPhaserScene({
       scale:{width:200*sampling,height:200*sampling},

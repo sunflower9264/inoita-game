@@ -54,7 +54,7 @@ test('task drop validation checks enemy and item references, thresholds, and dup
 });
 
 test('native map spirits drop on the ground and pickup completes the five-item handover',()=>{
-  const run=session(),ground=groundLootFor(run),roster=new WorldEnemyRoster(run,map,[],4);
+  const run=session(),ground=groundLootFor(run),roster=new WorldEnemyRoster(run,map,[]);
   const spirits=roster.spawns.filter(spawn=>spawn.enemyId===enemy);
   assert.deepEqual(spirits.map(({x,y})=>[x,y]),[[136,232],[56,328],[72,536],[296,536],[488,536]]);
   assert.deepEqual(run.questDropRequirements(),[]);

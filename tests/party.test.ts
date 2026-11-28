@@ -139,7 +139,7 @@ test('enemy health scales with deployed party size and survives a map reload',()
   const campaign=read<Campaign>('campaign'),map=JSON.parse(readFileSync(new URL('../public/content/maps/shadow-forest-west.json',import.meta.url),'utf8')) as WorldMap;
   const battle=read<BattleCatalog>('battle'),hero=new BattleCharacter('dark-knight',stats,items);
   const session=new Session(campaign,undefined,undefined,items,hero,battle,stats,catalog);
-  const roster=new WorldEnemyRoster(session,map,[],hero.level),placed=roster.enemies[0];
+  const roster=new WorldEnemyRoster(session,map,[]),placed=roster.enemies[0];
   const definition=battle.enemies.find(enemy=>enemy.id===placed.enemyId)!;
   const original=roster.enemySnapshot(placed.key,definition,hero.level)!;
   roster.setEnemyHealth(placed.key,Math.floor(original.maxHealth/2),definition);
@@ -150,7 +150,7 @@ test('enemy health scales with deployed party size and survives a map reload',()
   const scaled=roster.enemySnapshot(placed.key,definition,hero.level)!;
   assert.equal(scaled.partySize,2);
   assert.ok(Math.abs(scaled.health/scaled.maxHealth-.5)<.02);
-  const revisited=new WorldEnemyRoster(session,map,[],hero.level).enemySnapshot(placed.key,definition,hero.level)!;
+  const revisited=new WorldEnemyRoster(session,map,[]).enemySnapshot(placed.key,definition,hero.level)!;
   assert.equal(revisited.health,scaled.health);
   assert.equal(revisited.maxHealth,scaled.maxHealth);
 });

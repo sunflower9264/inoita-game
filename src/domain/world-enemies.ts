@@ -66,59 +66,6 @@ export interface QuestEnemyProvider {
   snapshot(): QuestEnemySnapshot;
 }
 
-interface MapSpawnSelectionOptions {
-  /** active 任务的关键敌人：无论档位都保留。 */
-  questEnemies?: ReadonlySet<string>;
-  /** 当前剧情下这个站位是否还有出现资格；不得读取死亡/刷新计时。 */
-  spawnable?: (spawn: WorldSpawn) => boolean;
-}
-
-/**
- * 按主角等级选择地图的敌人档位。
- *
- * 复刻规则：取不超过主角等级的最高档，低于全部档位时用最低档；达到下一档
- * 代表等级才切换。active 任务的关键敌人无视档位保留。整个静态选择在当前
- * 剧情下都不可生成时，只向更低的一档回退一次，避免提前放出未来章节的敌人。
- *
- * 不触碰 Session；`spawnable` 只用于判断剧情资格，临时死亡和刷新计时不参与。
- */
-function tierLevels(spawns:readonly WorldSpawn[]):number[]{
-  return [...new Set(spawns.flatMap(spawn=>spawn.tierLevel===undefined?[]:[spawn.tierLevel]))]
-    .sort((a,b)=>a-b);
-}
-
-export function selectMapSpawns(map:WorldMap,questSpawns:readonly CampaignEnemyPlacement[],heroLevel:number,
-  options:MapSpawnSelectionOptions={}):WorldSpawn[]{
-  const raw=map.enemySpawns??[];
-  const tiers=tierLevels(raw);
-  if(!tiers.length)return [...raw,...questSpawns];
-
-  let selected=tiers[0]!;
-  for(const tier of tiers)if(tier<=heroLevel)selected=tier;
-
-  const questEnemies=options.questEnemies,spawnable=options.spawnable??(()=>true);
-  const chosen=new Set<number>();
-  raw.forEach((spawn,index)=>{
-    if(spawn.tierLevel===undefined||spawn.tierLevel===selected||questEnemies?.has(spawn.enemyId))
-      chosen.add(index);
-  });
-
-  const base=[...chosen].map(index=>raw[index]!);
-  if(![...base,...questSpawns].some(spawnable)){
-    // 只补更低的一档，并用它替换不可用的选中档；没有低档可用就保持空图，由名册记录诊断。
-    for(const tier of tiers.filter(value=>value<selected).reverse()){
-      const indices=raw.flatMap((spawn,index)=>spawn.tierLevel===tier?[index]:[]);
-      if(!indices.some(index=>spawnable(raw[index]!)))continue;
-      raw.forEach((spawn,index)=>{
-        if(spawn.tierLevel===selected&&!questEnemies?.has(spawn.enemyId))chosen.delete(index);
-      });
-      for(const index of indices)chosen.add(index);
-      break;
-    }
-  }
-  return [...raw.filter((_,index)=>chosen.has(index)),...questSpawns];
-}
-
 /** 主镜头的地图坐标范围；边缘缓冲也以地图像素计。 */
 export interface EnemyRespawnView {x:number;y:number;width:number;height:number}
 export const ENEMY_RESPAWN_VIEW_MARGIN_PX=48;
@@ -127,9 +74,7 @@ export class WorldEnemyRoster extends EnemyRoster {
   readonly session:WorldEnemySessionPort;
   private readonly mapId:string;
   private readonly rawMapSpawns:readonly WorldSpawn[];
-  private readonly bandSpawns:readonly WorldSpawn[];
-  private readonly mapSpawnIds:ReadonlySet<string>;
-  private readonly heroLevel:number;
+  private readonly staticSpawns:readonly WorldSpawn[];
   private readonly questEnemies?:QuestEnemyProvider;
   private readonly breakableSpawn?:'bush'|'jar';
   /** 生产场景传 Math.random；测试和离线验证默认不替换，结果稳定可复现。 */
@@ -138,7 +83,7 @@ export class WorldEnemyRoster extends EnemyRoster {
   private readonly breakableRolls=new Map<string,string>();
   /** 可能被可破坏物替换的静态槽，按生成点 id 索引；恢复名册时据此对齐替换结果。 */
   private readonly breakableSlots:ReadonlyMap<string,WorldSpawn>;
-  /** 本次进图累计的任务关键敌人；只增不减，避免任务完成时撤掉正在交战的怪。 */
+  /** 本次进图累计出现过的任务关键敌人；本次访问内保持原怪不被可破坏景物替换。 */
   private readonly questSpawnIds=new Set<string>();
   /** 地图静态刷怪槽和战役追加槽；只有这些槽允许任务目标豁免剧情移除。 */
   private readonly staticSpawnIds:ReadonlySet<string>;
@@ -170,27 +115,24 @@ export class WorldEnemyRoster extends EnemyRoster {
     return value;
   }
   private readonly sources = new Map<string,WorldSpawn>();
-  constructor(session:WorldEnemySessionPort,map:WorldMap,questSpawns:readonly CampaignEnemyPlacement[],heroLevel:number,
+  constructor(session:WorldEnemySessionPort,map:WorldMap,questSpawns:readonly CampaignEnemyPlacement[],
     questEnemies?:QuestEnemyProvider,random:()=>number=()=>1){
     super();
     this.session=session;
     this.mapId=map.id;
-    this.heroLevel=heroLevel;
     this.questEnemies=questEnemies;
     this.breakableSpawn=map.breakableSpawn;
     this.random=random;
     this.rawMapSpawns=map.enemySpawns??[];
-    this.staticSpawnIds=new Set([...this.rawMapSpawns,...questSpawns].map(spawn=>spawn.id));
+    this.staticSpawns=[...this.rawMapSpawns,...questSpawns];
+    this.staticSpawnIds=new Set(this.staticSpawns.map(spawn=>spawn.id));
     // 只索引原始地图槽和战役追加槽；读档恢复时要靠它把名册里的身份写回替换缓存。
-    this.breakableSlots=new Map([...this.rawMapSpawns,...questSpawns]
+    this.breakableSlots=new Map(this.staticSpawns
       .filter(spawn=>'breakableEligible' in spawn&&spawn.breakableEligible)
       .map(spawn=>[spawn.id,spawn]));
     session.enterMap(map.id,map.questItemSpawns??[],map,map.enemySpawns);
     this.setPartySize(session.party?.activeSize??1,[]);
     this.collectQuestSpawns();
-    this.bandSpawns=selectMapSpawns(map,questSpawns,heroLevel,{
-      questEnemies:this.questSpawnIds,spawnable:spawn=>this.storySpawnable(spawn)});
-    this.mapSpawnIds=new Set(this.bandSpawns.map(spawn=>spawn.id));
     for(const spawn of this.spawns)this.sources.set(spawn.id,spawn);
     this.refresh();
   }
@@ -431,13 +373,10 @@ capturePreparedState():{roster:ReturnType<EnemyRoster['captureState']>;breakable
     const story=this.session.storyWorld.revision,chests=this.session.chests.revision,sources=this.questSourceIds,size=this.questSpawnIds.size;
     const old=this.sourceProjection;
     if(old?.story===story&&old.chests===chests&&old.quests===questRevision&&old.sources===sources&&old.size===size)return old.byId;
-    const extras=this.questSpawnIds.size
-      ?this.rawMapSpawns.filter(spawn=>this.questSpawnIds.has(spawn.enemyId)&&!this.mapSpawnIds.has(spawn.id)):[];
     const encounters=this.session.storyWorld.activeEncounters.filter(encounter=>encounter.map===this.mapId);
     // 遭遇占用同格同身份的地图槽时，地图实例让位给这次遭遇。
     const claimed=new Set(encounters.flatMap(encounter=>encounter.spawns.map(spawn=>occupiedKey(spawn.enemyId,spawn.x,spawn.y))));
-    const resident=[...this.bandSpawns.filter(spawn=>this.spawnAvailable(spawn)),
-      ...extras.filter(spawn=>this.spawnAvailable(spawn)),
+    const resident=[...this.staticSpawns.filter(spawn=>this.spawnAvailable(spawn)),
       ...this.session.storyWorld.enemySpawns(this.mapId),...this.session.chests.spawns];
     const value=[...resident.filter(spawn=>!claimed.has(occupiedKey(spawn.enemyId,spawn.x,spawn.y))),
       ...encounters.flatMap(encounter=>encounter.spawns.map(spawn=>({...spawn,id:encounterSpawnId(encounter.id,spawn.id),respawn:false as const})))];
@@ -467,13 +406,10 @@ capturePreparedState():{roster:ReturnType<EnemyRoster['captureState']>;breakable
     if(spawns.some(spawn=>this.storySpawnable(spawn)))return;
     this.emptyReported=true;
     globalThis.storyDiagnostics?.record('map-enemies-empty',{
-      map:this.mapId,heroLevel:this.heroLevel,tiers:this.tiers(),
+      map:this.mapId,heroLevel:this.session.hero?.level??1,
       spawns:spawns.length,quests:this.session.questBook.runningQuestIds
         .filter(id=>this.session.questBook.status(id)==='active'),
     });
-  }
-  private tiers():number[]{
-    return tierLevels(this.rawMapSpawns);
   }
 }
 

@@ -596,3 +596,32 @@ function repeatCampaign(): Campaign {
     placements: [], events, scripts,
   };
 }
+
+test('调试跳转第 6 步先重放开场后继 event-604 关掉终局怪，且不提前开启终局链与路障截止线', () => {
+  const availability = (history: ReturnType<typeof questJumpHistory>, map: string, enemyId: string): boolean | undefined => {
+    let result: boolean | undefined;
+    for (const cmd of history.world) {
+      if (cmd.type === 'world' && cmd.command.kind === 'enemy-availability' && cmd.command.map === map && cmd.command.enemyId === enemyId) {
+        result = cmd.command.available;
+      }
+    }
+    return result;
+  };
+
+  for (const questId of ['knight-uniform', 'quest-105']) {
+    const history = questJumpHistory(campaign, questId, 'available');
+    assert.equal(history.completedEvents.has('event-604'), true, `${questId} 应重放 event-604`);
+    assert.equal(availability(history, 'shadow-training-dungeon1-5e8c19b4', 'enemy-evil-bat-1'), false);
+    assert.equal(availability(history, 'shadow-training-dungeon1-5e8c19b4', 'enemy-remains-of-a-forgotten-soldier-1'), false);
+    assert.equal(availability(history, 'shadow-training-dungeon-2-a6b8293b', 'enemy-evil-bat-1'), false);
+    assert.equal(availability(history, 'shadow-training-dungeon-2-a6b8293b', 'enemy-remains-of-a-forgotten-soldier-1'), false);
+    assert.equal(history.progress.get('quest-180'), 'active', `${questId} 的第 1 章路障保持未提前关闭`);
+  }
+
+  const endgame = questJumpHistory(campaign, 'quest-496', 'available');
+  assert.equal(endgame.completedEvents.has('event-604'), true);
+  assert.equal(endgame.completedEvents.has('event-605'), true);
+  assert.equal(availability(endgame, 'shadow-training-dungeon1-5e8c19b4', 'enemy-evil-bat-1'), true);
+  assert.equal(availability(endgame, 'shadow-training-dungeon-2-a6b8293b', 'enemy-remains-of-a-forgotten-soldier-1'), true);
+  assert.equal(availability(endgame, 'shadow-training-dungeon-2-a6b8293b', 'enemy-black-skeleton-1'), false);
+});

@@ -84,7 +84,7 @@ export function prepareSceneVisit(inputs:SceneVisitInputs,map:WorldMap,player:Sc
       x:position.x,y:position.y,facing:'south',visible:member.alive,appearance:structuredClone(appearance)};
     actors.push(actor);register(actor,'party');
   }
-  const roster=new WorldEnemyRoster(session,map,(campaign.enemyPlacements??[]).filter(enemy=>enemy.map===map.id),level,
+  const roster=new WorldEnemyRoster(session,map,(campaign.enemyPlacements??[]).filter(enemy=>enemy.map===map.id),
     new QuestEnemyWatch(session,drops.questItems),random);
   for(const placed of roster.enemies){
     const definition=battleCatalog.enemies.find(enemy=>enemy.id===placed.enemyId);

@@ -2,35 +2,42 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { Session, DEFAULT_ENEMY_RESPAWN_MS } from '../src/domain/session.ts';
-import { WorldEnemyRoster, applyStoryEnemyRemovals, encounterSpawnId, selectMapSpawns } from '../src/domain/world-enemies.ts';
+import { WorldEnemyRoster, applyStoryEnemyRemovals, encounterSpawnId } from '../src/domain/world-enemies.ts';
 import { QuestEnemyWatch } from '../src/domain/quest-enemies.ts';
+import { BattleCharacter, type CharacterStatsCatalog } from '../src/domain/character-stats.ts';
 import type { WorldMap } from '../src/domain/content.ts';
 import type { Campaign } from '../src/domain/campaign.ts';
 import type { DropCatalog } from '../src/domain/drops.ts';
+import type { ItemCatalog } from '../src/domain/items.ts';
 
 const content=(name:string)=>JSON.parse(fs.readFileSync(new URL(`../public/content/${name}`,import.meta.url),'utf8'));
 const campaign=content('campaign.json') as Campaign;
 const dropsCatalog=content('drops.json') as DropCatalog;
+const itemsCatalog=content('items.json') as ItemCatalog;
+const statsCatalog=content('character-stats.json') as CharacterStatsCatalog;
 const turtleMap=()=>content('maps/piolren-meadows-7-4c61d9fe.json') as WorldMap;
 const turtleSpawnIds=()=>turtleMap().enemySpawns!.filter(spawn=>spawn.enemyId==='enemy-meadow-turtle-1').map(spawn=>spawn.id);
+const applyScriptWorld=(session:Session,scriptId:string)=>{
+  for(const node of campaign.scripts[scriptId]!.nodes)for(const cmd of node.commands)if(cmd.type==='world')session.applyStoryCommands([cmd]);
+};
 /** 复现 event-231 的 remove-enemy：先让当前名册消费命令，写入剧情移除和永久死亡。 */
 const removeStoryTurtles=(session:Session,map:WorldMap):void=>{
   session.applyStoryCommands([{type:'world',command:{kind:'remove-enemy',enemyId:'enemy-meadow-turtle-1',map:map.id,all:true}}]);
-  const roster=new WorldEnemyRoster(session,map,[],10);
+  const roster=new WorldEnemyRoster(session,map,[]);
   applyStoryEnemyRemovals(session,map.id,roster.enemies,key=>roster.removeEnemy(key));
 };
 
 test('map enemy dies, remains absent across map visits, then respawns after game time',()=>{
   const session=new Session(campaign);
   const map=content('maps/shadow-forest-west.json') as WorldMap;
-  const first=new WorldEnemyRoster(session,map,[],1);
+  const first=new WorldEnemyRoster(session,map,[]);
   const spawn=first.spawns[0];
   assert.ok(spawn);
   session.setEnemyVitals(spawn.id,1,0);
   session.enemyDefeated(spawn);
   assert.deepEqual(first.refresh().removed,[spawn.id]);
-  assert.equal(new WorldEnemyRoster(session,map,[],1).source(spawn.id)?.id,spawn.id);
-  assert.equal(new WorldEnemyRoster(session,map,[],1).enemies.some(enemy=>enemy.key===spawn.id),false);
+  assert.equal(new WorldEnemyRoster(session,map,[]).source(spawn.id)?.id,spawn.id);
+  assert.equal(new WorldEnemyRoster(session,map,[]).enemies.some(enemy=>enemy.key===spawn.id),false);
   session.advanceGameTime(DEFAULT_ENEMY_RESPAWN_MS-1);
   assert.equal(first.refresh().added.length,0);
   session.advanceGameTime(1);
@@ -38,20 +45,50 @@ test('map enemy dies, remains absent across map visits, then respawns after game
   assert.deepEqual(session.enemyVitals(spawn.id),{});
 });
 
-test('mixed-level source map activates the last tier reached by the hero',()=>{
-  const map=content('maps/shadow-training-dungeon1-5e8c19b4.json') as WorldMap;
-  const session=new Session(campaign);
-  for(const [level,expected] of [[1,3],[40,3],[41,41],[90,41],[103,103],[105,103]]){
-    const roster=new WorldEnemyRoster(session,map,[],level);
-    assert.ok(roster.spawns.some(spawn=>spawn.tierLevel===expected));
-    assert.ok(roster.spawns.every(spawn=>spawn.tierLevel===undefined||spawn.tierLevel===expected));
-  }
+test('reused dungeons follow story enemy-availability across chapters regardless of hero level',()=>{
+  const hero=new BattleCharacter('lancer',statsCatalog,itemsCatalog);
+  hero.restoreState({...hero.captureState(),level:40});
+  const session=new Session(campaign,undefined,undefined,itemsCatalog,hero,undefined,statsCatalog);
+  const dungeon1=content('maps/shadow-training-dungeon1-5e8c19b4.json') as WorldMap;
+  const dungeon2=content('maps/shadow-training-dungeon-2-a6b8293b.json') as WorldMap;
+  const enemyIds=(map:WorldMap)=>[...new Set(new WorldEnemyRoster(session,map,[]).spawns.map(spawn=>spawn.enemyId))].sort();
+
+  applyScriptWorld(session,'event-0');
+  applyScriptWorld(session,'event-604');
+  assert.deepEqual(enemyIds(dungeon1),['enemy-cave-bat-1','enemy-fragile-skeleton-soldier-1']);
+  assert.deepEqual(enemyIds(dungeon2),['enemy-knife-needled-mosquitoes-1','enemy-reagents-1']);
+
+  applyScriptWorld(session,'event-55');
+  applyScriptWorld(session,'event-156');
+  const records:{kind:string;detail:unknown}[]=[];
+  const previous=globalThis.storyDiagnostics;
+  globalThis.storyDiagnostics={record:(kind:string,detail:unknown)=>records.push({kind,detail})} as unknown as typeof globalThis.storyDiagnostics;
+  try{
+    assert.deepEqual(enemyIds(dungeon1),['enemy-bat-2','enemy-skeleton-2'],'40 级回帝国时应按剧情开关刷出 41 级中期怪');
+    assert.deepEqual(enemyIds(dungeon2),['enemy-black-skeleton-1','enemy-boss-skeleton-1','enemy-dungeon-mimics-1'],
+      '40 级回帝国时训练场 2 应按剧情开关刷出 42 级中期怪');
+    assert.equal(records.filter(record=>record.kind==='map-enemies-empty').length,0);
+  }finally{globalThis.storyDiagnostics=previous;}
+
+  applyScriptWorld(session,'event-605');
+  assert.deepEqual(enemyIds(dungeon1),['enemy-evil-bat-1','enemy-remains-of-a-forgotten-soldier-1']);
+  assert.deepEqual(enemyIds(dungeon2),['enemy-evil-bat-1','enemy-remains-of-a-forgotten-soldier-1']);
+});
+
+test('beacon-hill-floor-1 spawns all 7 goblins regardless of hero level',()=>{
+  const hero=new BattleCharacter('lancer',statsCatalog,itemsCatalog);
+  hero.restoreState({...hero.captureState(),level:53});
+  const session=new Session(campaign,undefined,undefined,itemsCatalog,hero,undefined,statsCatalog);
+  const map=content('maps/beacon-hill-floor-1-7f80ae24.json') as WorldMap;
+  const roster=new WorldEnemyRoster(session,map,[]);
+  assert.equal(roster.spawns.filter(spawn=>spawn.enemyId==='enemy-white-goblin-warrior-1').length,7);
+  assert.equal(roster.spawns.length,8);
 });
 
 test('spawn projection is reused until the story world or generated spawns change',()=>{
   const session=new Session(campaign);
   const map=content('maps/shadow-forest-west.json') as WorldMap;
-  const roster=new WorldEnemyRoster(session,map,[],1);
+  const roster=new WorldEnemyRoster(session,map,[]);
   const first=roster.spawns;
   assert.equal(roster.spawns,first,'没有变化时复用同一份投影');
   const spawn=map.enemySpawns![0]!;
@@ -65,7 +102,7 @@ test('spawn projection is reused until the story world or generated spawns chang
 
 test('unchanged enemy spawn eligibility does not rescan the map on every battle tick',()=>{
   const session=new Session(campaign),map=content('maps/shadow-forest-west.json') as WorldMap;
-  const roster=new WorldEnemyRoster(session,map,[],1),spawn=roster.spawns[0]!;
+  const roster=new WorldEnemyRoster(session,map,[]),spawn=roster.spawns[0]!;
   const canSpawn=session.canRespawnEnemy.bind(session);let checks=0;
   session.canRespawnEnemy=value=>{checks++;return canSpawn(value);};
   const revision=session.enemySpawnRevision;
@@ -85,7 +122,7 @@ test('unchanged enemy spawn eligibility does not rescan the map on every battle 
 
 test('manual roster removals and restored session eligibility invalidate the stable refresh',()=>{
   const session=new Session(campaign),map=content('maps/shadow-forest-west.json') as WorldMap;
-  const roster=new WorldEnemyRoster(session,map,[],1),spawn=roster.spawns[0]!;
+  const roster=new WorldEnemyRoster(session,map,[]),spawn=roster.spawns[0]!;
   roster.removeEnemy(spawn.id);
   assert.deepEqual(roster.refresh().added.map(value=>value.key),[spawn.id]);
   const saved=session.captureState();session.enemyDefeated(spawn);
@@ -98,7 +135,7 @@ test('manual roster removals and restored session eligibility invalidate the sta
 
 test('same-length direct instance replacement cannot bypass the roster identity check',()=>{
   const session=new Session(campaign),map=content('maps/shadow-forest-west.json') as WorldMap;
-  const roster=new WorldEnemyRoster(session,map,[],1),placed=roster.enemies[0]!,original=placed.key;
+  const roster=new WorldEnemyRoster(session,map,[]),placed=roster.enemies[0]!,original=placed.key;
   placed.key='local-summon';placed.summonedBy='player';
   assert.deepEqual(roster.refresh().added.map(enemy=>enemy.key),[original]);
   assert.ok(roster.enemies.some(enemy=>enemy.key==='local-summon'),'临时召唤仍保留');
@@ -106,7 +143,7 @@ test('same-length direct instance replacement cannot bypass the roster identity 
 
 test('removing a summon owner also removes its summons from the roster',()=>{
   const session=new Session(campaign),map=content('maps/shadow-forest-west.json') as WorldMap;
-  const roster=new WorldEnemyRoster(session,map,[],1),owner=roster.enemies[0]!;
+  const roster=new WorldEnemyRoster(session,map,[]),owner=roster.enemies[0]!;
   roster.restoreEnemy({key:'summon',enemyId:owner.enemyId,x:owner.x+8,y:owner.y,summonedBy:owner.key});
   assert.equal(roster.enemies.some(enemy=>enemy.key==='summon'),true);
   session.applyStoryCommands([{type:'world',command:{kind:'enemy-availability',map:map.id,enemyId:owner.enemyId,available:false}}]);
@@ -120,7 +157,7 @@ test('a source enemy identity changed in place refreshes its existing slot',()=>
   const session=new Session(campaign),map={id:'identity-map',enemySpawns:[
     {id:'slot',enemyId:'enemy-before',x:16,y:16}
   ]} as unknown as WorldMap;
-  const roster=new WorldEnemyRoster(session,map,[],1);
+  const roster=new WorldEnemyRoster(session,map,[]);
   map.enemySpawns![0]!.enemyId='enemy-after';
   const changes=roster.refresh();
   assert.deepEqual(changes.removed,['slot']);
@@ -130,7 +167,7 @@ test('a source enemy identity changed in place refreshes its existing slot',()=>
 
 test('rolled-back enemy deaths invalidate the spawn eligibility cache',()=>{
   const session=new Session(campaign),map=content('maps/shadow-forest-west.json') as WorldMap;
-  const roster=new WorldEnemyRoster(session,map,[],1),spawn=roster.spawns[0]!;
+  const roster=new WorldEnemyRoster(session,map,[]),spawn=roster.spawns[0]!;
   assert.throws(()=>session.atomic(()=>{
     session.enemyDefeated(spawn);
     assert.deepEqual(roster.refresh().removed,[spawn.id]);
@@ -139,84 +176,42 @@ test('rolled-back enemy deaths invalidate the spawn eligibility cache',()=>{
   assert.deepEqual(roster.refresh().added.map(enemy=>enemy.key),[spawn.id]);
 });
 
-test('tier bands switch only after reaching the next representative level',()=>{
-  const map={id:'band-map',enemySpawns:[
-    {id:'low',enemyId:'enemy-low',x:0,y:0,tierLevel:10},
-    {id:'mid',enemyId:'enemy-mid',x:0,y:0,tierLevel:50},
-    {id:'high',enemyId:'enemy-high',x:0,y:0,tierLevel:90},
-    {id:'free',enemyId:'enemy-free',x:0,y:0},
-  ]} as unknown as WorldMap;
-  const ids=(level:number)=>selectMapSpawns(map,[],level).map(spawn=>spawn.id);
-  assert.deepEqual(ids(1),['low','free']);
-  assert.deepEqual(ids(49),['low','free']);
-  assert.deepEqual(ids(50),['mid','free']);
-  assert.deepEqual(ids(89),['mid','free']);
-  assert.deepEqual(ids(90),['high','free']);
-});
-
-test('active quest enemies stay when their tier is not selected',()=>{
-  const map={id:'quest-map',enemySpawns:[
-    {id:'low',enemyId:'enemy-low',x:0,y:0,tierLevel:10},
-    {id:'high',enemyId:'enemy-high',x:0,y:0,tierLevel:90},
-    {id:'free',enemyId:'enemy-free',x:0,y:0},
-  ]} as unknown as WorldMap;
-  const ids=selectMapSpawns(map,[],10,{questEnemies:new Set(['enemy-high'])}).map(spawn=>spawn.id);
-  assert.deepEqual(ids,['low','high','free']);
-});
-
-test('an unavailable selected band falls back to the nearest lower available tier only',()=>{
-  const map={id:'fallback-map',enemySpawns:[
-    {id:'low',enemyId:'enemy-low',x:0,y:0,tierLevel:10},
-    {id:'mid',enemyId:'enemy-mid',x:0,y:0,tierLevel:50},
-    {id:'high',enemyId:'enemy-high',x:0,y:0,tierLevel:90},
-  ]} as unknown as WorldMap;
-  const lower=selectMapSpawns(map,[],50,{spawnable:spawn=>spawn.enemyId!=='enemy-mid'}).map(spawn=>spawn.id);
-  assert.deepEqual(lower,['low'],'选中档不可用时补最近低档');
-  const noLower=selectMapSpawns(map,[],50,{spawnable:spawn=>spawn.enemyId==='enemy-high'}).map(spawn=>spawn.id);
-  assert.deepEqual(noLower,['mid'],'没有可用低档时不向高档回退');
-});
-
-test('story-hidden selected band falls back to a lower tier and an all-hidden map records a diagnostic',()=>{
+test('an all-hidden map records a map-enemies-empty diagnostic without tiers',()=>{
   const map=content('maps/shadow-training-dungeon1-5e8c19b4.json') as WorldMap;
-  const tiers=[...new Set(map.enemySpawns!.flatMap(spawn=>spawn.tierLevel===undefined?[]:[spawn.tierLevel]))];
-  const hide=(session:Session,tier:number)=>session.applyStoryCommands(map.enemySpawns!
-    .filter(spawn=>spawn.tierLevel===tier).map(spawn=>({type:'world' as const,
-      command:{kind:'enemy-availability' as const,map:map.id,enemyId:spawn.enemyId,available:false}})));
-
-  const partial=new Session(campaign);hide(partial,41);
-  const fallback=new WorldEnemyRoster(partial,map,[],41);
-  assert.ok(fallback.spawns.some(spawn=>spawn.tierLevel===3));
-  assert.ok(fallback.spawns.every(spawn=>spawn.tierLevel!==41));
-
-  const hidden=new Session(campaign);for(const tier of tiers)hide(hidden,tier);
-  const records:{kind:string;detail:unknown}[]=[];
+  const hidden=new Session(campaign);
+  const enemyIds=[...new Set(map.enemySpawns!.map(spawn=>spawn.enemyId))];
+  hidden.applyStoryCommands(enemyIds.map(enemyId=>({type:'world' as const,
+    command:{kind:'enemy-availability' as const,map:map.id,enemyId,available:false}})));
+  const records:{kind:string;detail:Record<string,unknown>}[]=[];
   const previous=globalThis.storyDiagnostics;
-  globalThis.storyDiagnostics={record:(kind:string,detail:unknown)=>records.push({kind,detail})} as unknown as typeof globalThis.storyDiagnostics;
+  globalThis.storyDiagnostics={record:(kind:string,detail:unknown)=>records.push({kind,detail:detail as Record<string,unknown>})} as unknown as typeof globalThis.storyDiagnostics;
   try{
-    new WorldEnemyRoster(hidden,map,[],41);
-    assert.equal(records.filter(record=>record.kind==='map-enemies-empty').length,1);
+    new WorldEnemyRoster(hidden,map,[]);
+    const empty=records.filter(record=>record.kind==='map-enemies-empty');
+    assert.equal(empty.length,1);
+    assert.equal('tiers' in empty[0]!.detail,false);
   }finally{globalThis.storyDiagnostics=previous;}
 });
 
-test('quest enemies added after entry are merged without swapping the selected tier',()=>{
+test('quest enemies added after entry restore story-disabled spawns while active and retire when finished',()=>{
   const session=new Session(campaign);
   const map=content('maps/shadow-training-dungeon1-5e8c19b4.json') as WorldMap;
-  const highSpawn=map.enemySpawns!.find(spawn=>spawn.tierLevel===103)!;
+  const target='enemy-evil-bat-1';
+  session.applyStoryCommands([{type:'world',command:{kind:'enemy-availability',map:map.id,enemyId:target,available:false}}]);
   let ids:ReadonlySet<string>=new Set();
   const provider={snapshot:()=>({revision:1,ids})};
-  const roster=new WorldEnemyRoster(session,map,[],10,provider);
-  assert.equal(roster.spawns.some(spawn=>spawn.enemyId===highSpawn.enemyId),false);
+  const roster=new WorldEnemyRoster(session,map,[],provider);
+  assert.equal(roster.spawns.some(spawn=>spawn.enemyId===target),false);
 
-  ids=new Set([highSpawn.enemyId]);
-  assert.ok(roster.refresh().added.some(enemy=>enemy.enemyId===highSpawn.enemyId));
-  assert.ok(roster.spawns.every(spawn=>spawn.tierLevel===undefined||spawn.tierLevel===3||spawn.enemyId===highSpawn.enemyId),
-    '只补任务怪，不切到高档');
+  ids=new Set([target]);
+  assert.ok(roster.refresh().added.some(enemy=>enemy.enemyId===target));
+  assert.equal(roster.spawns.some(spawn=>spawn.enemyId===target),true,'任务激活期间补回被剧情禁用的目标怪');
 
   ids=new Set();
-  roster.refresh();
-  assert.ok(roster.spawns.some(spawn=>spawn.enemyId===highSpawn.enemyId),'本次进图内任务怪保留到离图');
-  const next=new WorldEnemyRoster(session,map,[],10,provider);
-  assert.equal(next.spawns.some(spawn=>spawn.enemyId===highSpawn.enemyId),false,'重建名册后恢复档位过滤');
+  const retired=roster.refresh();
+  assert.ok(retired.removed.length>0,'任务离开进行中后当场撤回被剧情禁用的怪');
+  assert.equal(roster.spawns.some(spawn=>spawn.enemyId===target),false,'刷新后恢复剧情禁用');
+  assert.equal(roster.enemies.some(enemy=>enemy.enemyId===target),false);
 });
 
 test('native quest spirits use ordinary map spawns and deaths alone do not grant material',()=>{
@@ -224,7 +219,7 @@ test('native quest spirits use ordinary map spawns and deaths alone do not grant
   const session=new Session({...campaign,quests:[quest],questGroups:[],events:[]});
   assert.equal(session.accept('knight-uniform'),true);
   const map=content('maps/shadow-training-dungeon-2-a6b8293b.json') as WorldMap;
-  const roster=new WorldEnemyRoster(session,map,[],4,undefined,()=>1);
+  const roster=new WorldEnemyRoster(session,map,[],undefined,()=>1);
   const spirits=roster.spawns.filter(spawn=>spawn.enemyId==='enemy-reagents-1');
   assert.equal(spirits.length,5);
   for(const spawn of spirits){
@@ -244,7 +239,7 @@ test('native quest spirits use ordinary map spawns and deaths alone do not grant
 test('map resources survive scene rebuilds while summoned instances stay local to the roster',()=>{
   const session=new Session(campaign),map=content('maps/shadow-forest-west.json') as WorldMap;
   const definitions=content('battle.json').enemies as import('../src/domain/battle.ts').EnemyDefinition[];
-  const roster=new WorldEnemyRoster(session,map,[],1),spawn=roster.enemies[0];
+  const roster=new WorldEnemyRoster(session,map,[]),spawn=roster.enemies[0];
   const definition=definitions.find(enemy=>enemy.id===spawn.enemyId)!;
   roster.setEnemyHealth(spawn.key,Math.trunc(definition.maxHealth/2),definition);
   roster.setEnemyMana(spawn.key,0,definition);
@@ -253,7 +248,7 @@ test('map resources survive scene rebuilds while summoned instances stay local t
   roster.moveEnemy(summon.key,40,48);roster.setEnemyHealth(summon.key,1,definition);
   assert.deepEqual([summon.x,summon.y],[40,48]);
   assert.equal(roster.enemySnapshot(spawn.key,definition)!.health,saved.health);
-  const restored=new WorldEnemyRoster(session,map,[],1);
+  const restored=new WorldEnemyRoster(session,map,[]);
   assert.deepEqual(restored.enemySnapshot(spawn.key,definition),saved);
   assert.equal(restored.enemies.some(enemy=>enemy.key===summon.key),false);
   roster.removeEnemy(summon.key);
@@ -263,7 +258,7 @@ test('map resources survive scene rebuilds while summoned instances stay local t
 
 test('story encounter instances appear after a node commit, require every settled death and survive restoration',()=>{
   const session=new Session(campaign),map=content('maps/shadow-forest-west.json') as WorldMap;
-  const roster=new WorldEnemyRoster(session,map,[],1),enemyId=roster.spawns[0].enemyId;
+  const roster=new WorldEnemyRoster(session,map,[]),enemyId=roster.spawns[0].enemyId;
   const encounter={id:'earl-battle:run-1',map:map.id,status:'active' as const,spawns:[
     {id:'earl',enemyId,x:128,y:128},{id:'guard',enemyId,x:160,y:128}
   ]};
@@ -277,7 +272,7 @@ test('story encounter instances appear after a node commit, require every settle
   session.enemyDefeated(guard);
   assert.deepEqual(roster.completedEncounters().map(encounter=>encounter.id),[encounter.id]);
   const state=session.captureState();session.restoreState(state);
-  const restored=new WorldEnemyRoster(session,map,[],1);
+  const restored=new WorldEnemyRoster(session,map,[]);
   assert.equal(restored.enemies.some(enemy=>enemy.key===earl.id||enemy.key===guard.id),false);
   assert.equal(restored.completedEncounters()[0].id,encounter.id);
   session.applyStoryCommands([{type:'world',command:{kind:'encounter-result',id:encounter.id,result:'won'}}]);
@@ -288,7 +283,7 @@ test('story encounter instances appear after a node commit, require every settle
 
 test('completed encounter checks reuse their cache until settlement or encounter changes',()=>{
   const session=new Session(campaign),map=content('maps/shadow-forest-west.json') as WorldMap;
-  const roster=new WorldEnemyRoster(session,map,[],1),enemyId=roster.spawns[0].enemyId;
+  const roster=new WorldEnemyRoster(session,map,[]),enemyId=roster.spawns[0].enemyId;
   const encounter={id:'cache-battle:run-1',map:map.id,status:'active' as const,spawns:[
     {id:'first',enemyId,x:128,y:128},{id:'second',enemyId,x:160,y:128}
   ]};
@@ -308,7 +303,7 @@ test('completed encounter checks reuse their cache until settlement or encounter
   assert.equal(roster.completedEncounters(),completed);
   const saved=session.captureState();
   session.restoreState(saved);
-  const restored=new WorldEnemyRoster(session,map,[],1);
+  const restored=new WorldEnemyRoster(session,map,[]);
   assert.deepEqual(restored.completedEncounters().map(value=>value.id),[encounter.id],'恢复状态后重新判定');
   session.applyStoryCommands([{type:'world',command:{kind:'encounter-result',id:encounter.id,result:'won'}}]);
   assert.deepEqual(restored.completedEncounters(),[],'遭遇结算使缓存失效');
@@ -316,7 +311,7 @@ test('completed encounter checks reuse their cache until settlement or encounter
 
 test('loading a save taken during an active encounter restores its boss',()=>{
   const session=new Session(campaign),map=content('maps/shadow-forest-west.json') as WorldMap;
-  const enemyId=(new WorldEnemyRoster(session,map,[],1)).spawns[0].enemyId;
+  const enemyId=(new WorldEnemyRoster(session,map,[])).spawns[0].enemyId;
   const encounter={id:'boss-battle:run-1',map:map.id,status:'active' as const,spawns:[
     {id:'boss',enemyId,x:128,y:128}
   ]};
@@ -325,7 +320,7 @@ test('loading a save taken during an active encounter restores its boss',()=>{
 
   // 战败后读取这份存档，走的是新建会话再恢复；遭遇仍是 active，Boss 必须重新出现在名册里。
   const loaded=new Session(campaign);loaded.restoreState(state);
-  const roster=new WorldEnemyRoster(loaded,map,[],1);
+  const roster=new WorldEnemyRoster(loaded,map,[]);
   const key=encounterSpawnId(encounter.id,'boss');
   assert.equal(loaded.storyWorld.encounter(encounter.id)?.status,'active');
   assert.equal(roster.enemies.some(enemy=>enemy.key===key),true);
@@ -333,7 +328,7 @@ test('loading a save taken during an active encounter restores its boss',()=>{
 
 test('completed story encounters ignore a long settled history',()=>{
   const session=new Session(campaign),map=content('maps/shadow-forest-west.json') as WorldMap;
-  const enemyId=(new WorldEnemyRoster(session,map,[],1)).spawns[0].enemyId;
+  const enemyId=(new WorldEnemyRoster(session,map,[])).spawns[0].enemyId;
   for(let index=0;index<100;index++){
     const id=`settled-battle-${index}`;
     session.applyStoryCommands([{type:'encounter',encounter:{id,map:map.id,status:'active',spawns:[{id:'enemy',enemyId,x:index,y:index}]}}]);
@@ -341,7 +336,7 @@ test('completed story encounters ignore a long settled history',()=>{
   }
   const encounter={id:'current-battle',map:map.id,status:'active' as const,spawns:[{id:'boss',enemyId,x:64,y:64}]};
   session.applyStoryCommands([{type:'encounter',encounter}]);
-  const roster=new WorldEnemyRoster(session,map,[],1),key=encounterSpawnId(encounter.id,'boss');
+  const roster=new WorldEnemyRoster(session,map,[]),key=encounterSpawnId(encounter.id,'boss');
   const spawn=roster.source(key)!;
   session.setEnemyVitals(key,0,0);
   session.enemyDefeated(spawn);
@@ -358,7 +353,7 @@ test('breakable spawns follow the native replacement branch and reroll after dea
   const values=[0,0.05];
   let index=0;
   const session=new Session(campaign);
-  const roster=new WorldEnemyRoster(session,map,[],1,undefined,()=>values[index++]??1);
+  const roster=new WorldEnemyRoster(session,map,[],undefined,()=>values[index++]??1);
   assert.equal(roster.source('slot')?.enemyId,'enemy-jar-1');
   const source=roster.source('slot')!;
   session.setEnemyVitals(source.id,0,0);
@@ -373,7 +368,7 @@ test('breakable replacement respects branch, eligibility and quest protection',(
   const spawn={id:'slot',enemyId:'enemy-base',x:0,y:0,breakableEligible:true};
   const make=(branch:'bush'|'jar'|undefined,random:()=>number,eligible=true,ids=new Set<string>())=>
     new WorldEnemyRoster(new Session(campaign),{id:'breakable-map',breakableSpawn:branch,enemySpawns:[{...spawn,breakableEligible:eligible}]} as unknown as WorldMap,
-      [],1,{snapshot:()=>({revision:1,ids})},random);
+      [],{snapshot:()=>({revision:1,ids})},random);
   assert.equal(make(undefined,()=>0).source('slot')?.enemyId,'enemy-box-1','缺省分支是箱子');
   assert.equal(make('bush',()=>0).source('slot')?.enemyId,'enemy-bush-1');
   assert.equal(make('jar',()=>0).source('slot')?.enemyId,'enemy-jar-1');
@@ -389,7 +384,7 @@ test('a breaking spawn that becomes a quest target restores the original enemy',
   ]} as unknown as WorldMap;
   let ids=new Set<string>();
   const provider={snapshot:()=>({revision:ids.size,ids})};
-  const roster=new WorldEnemyRoster(new Session(campaign),map,[],1,provider,()=>0);
+  const roster=new WorldEnemyRoster(new Session(campaign),map,[],provider,()=>0);
   assert.equal(roster.source('slot')?.enemyId,'enemy-jar-1');
   ids=new Set(['enemy-base']);
   roster.refresh();
@@ -403,20 +398,20 @@ test('re-entering a different map respawns ordinary enemies but not permanent on
   ]} as unknown as WorldMap;
   const mapB={id:'map-b',enemySpawns:[]} as unknown as WorldMap;
   const session=new Session(campaign);
-  const first=new WorldEnemyRoster(session,mapA,[],1);
+  const first=new WorldEnemyRoster(session,mapA,[]);
   const normal=first.source('map-a-spawn-1')!,permanent=first.source('map-a-spawn-2')!;
   session.enemyDefeated(normal);session.enemyDefeated(permanent);
   assert.equal(session.canRespawnEnemy(normal),false);
   assert.equal(session.canRespawnEnemy(permanent),false);
 
-  new WorldEnemyRoster(session,mapB,[],1);
-  const back=new WorldEnemyRoster(session,mapA,[],1);
+  new WorldEnemyRoster(session,mapB,[]);
+  const back=new WorldEnemyRoster(session,mapA,[]);
   assert.ok(back.source('map-a-spawn-1'),'重新进图后普通怪恢复');
   assert.equal(back.enemies.some(enemy=>enemy.key==='map-a-spawn-2'),false,'一次性敌人不恢复');
 
   // 同一张图的场景重建（读档、检查点、同图演出）不是新访问，不能把刚杀的怪刷回来。
   session.enemyDefeated(back.source('map-a-spawn-1')!);
-  const rebuilt=new WorldEnemyRoster(session,mapA,[],1);
+  const rebuilt=new WorldEnemyRoster(session,mapA,[]);
   assert.equal(rebuilt.enemies.some(enemy=>enemy.key==='map-a-spawn-1'),false);
 });
 
@@ -425,9 +420,9 @@ test('restored breakable identities stay pinned to the saved roster',()=>{
     {id:'slot-a',enemyId:'enemy-base-a',x:0,y:0,breakableEligible:true},
     {id:'slot-b',enemyId:'enemy-base-b',x:16,y:0,breakableEligible:true}
   ]} as unknown as WorldMap;
-  const saved=new WorldEnemyRoster(new Session(campaign),map,[],1,undefined,()=>0).captureState();
+  const saved=new WorldEnemyRoster(new Session(campaign),map,[],undefined,()=>0).captureState();
   // 新名册构造时本来会把两个槽都解析成原怪；恢复后必须沿用存档里的罐子身份。
-  const restored=new WorldEnemyRoster(new Session(campaign),map,[],1,undefined,()=>0.9);
+  const restored=new WorldEnemyRoster(new Session(campaign),map,[],undefined,()=>0.9);
   assert.deepEqual(restored.enemies.map(enemy=>enemy.enemyId),['enemy-base-a','enemy-base-b']);
   restored.restoreState(saved);
   assert.deepEqual(restored.spawns.map(spawn=>spawn.enemyId),['enemy-jar-1','enemy-jar-1']);
@@ -439,8 +434,8 @@ test('restored original identities are pinned even when a fresh roll would repla
   const map={id:'breakable-map',breakableSpawn:'jar' as const,enemySpawns:[
     {id:'slot',enemyId:'enemy-base',x:0,y:0,breakableEligible:true}
   ]} as unknown as WorldMap;
-  const saved=new WorldEnemyRoster(new Session(campaign),map,[],1,undefined,()=>0.9).captureState();
-  const restored=new WorldEnemyRoster(new Session(campaign),map,[],1,undefined,()=>0);
+  const saved=new WorldEnemyRoster(new Session(campaign),map,[],undefined,()=>0.9).captureState();
+  const restored=new WorldEnemyRoster(new Session(campaign),map,[],undefined,()=>0);
   assert.equal(restored.source('slot')?.enemyId,'enemy-jar-1','构造时本来会掷成罐子');
   restored.restoreState(saved);
   assert.equal(restored.spawns[0]?.enemyId,'enemy-base');
@@ -452,7 +447,7 @@ test('a same-key identity change does not reroll the breakable cache',()=>{
     {id:'slot',enemyId:'enemy-base',x:0,y:0,breakableEligible:true}
   ]} as unknown as WorldMap;
   let rolls=0;
-  const roster=new WorldEnemyRoster(new Session(campaign),map,[],1,undefined,()=>rolls++===0?0:0.9);
+  const roster=new WorldEnemyRoster(new Session(campaign),map,[],undefined,()=>rolls++===0?0:0.9);
   assert.equal(roster.source('slot')?.enemyId,'enemy-jar-1');
   roster.enemies[0]!.enemyId='enemy-base';
   const first=roster.refresh();
@@ -472,7 +467,7 @@ test('event-115 availability clears and restores all hall ghosts including a bre
   let roll=0;
 
   availability(false);
-  const roster=new WorldEnemyRoster(session,map,[],1,undefined,()=>rolls[roll++]??0.9);
+  const roster=new WorldEnemyRoster(session,map,[],undefined,()=>rolls[roll++]??0.9);
   assert.equal(roster.spawns.length,0);
   assert.deepEqual(roster.refresh().added,[]);
 
@@ -493,7 +488,7 @@ test('event-115 scene commands suppress the hall ghosts until the battle result 
   const spawnIds=map.enemySpawns!.map(spawn=>spawn.id).sort();
   for(const result of ['battle-won','battle-lost']){
     const session=new Session(campaign);
-    const roster=new WorldEnemyRoster(session,map,[],1,undefined,()=>0.9);
+    const roster=new WorldEnemyRoster(session,map,[],undefined,()=>0.9);
     assert.deepEqual(roster.spawns.map(spawn=>spawn.id).sort(),spawnIds);
 
     session.applyStoryCommands(commands('scene-1'));
@@ -515,12 +510,12 @@ test('pending removals keep commands for maps that were not applied yet',()=>{
     {type:'world',command:{kind:'remove-enemy',enemyId:'enemy-b',map:'map-b',all:true}},
   ]);
 
-  const rosterA=new WorldEnemyRoster(session,mapA,[],1);
+  const rosterA=new WorldEnemyRoster(session,mapA,[]);
   applyStoryEnemyRemovals(session,'map-a',rosterA.enemies,key=>rosterA.removeEnemy(key));
   assert.deepEqual(rosterA.enemies,[]);
   assert.deepEqual(session.storyWorld.pendingEnemyRemovals,[{enemyId:'enemy-b',map:'map-b',all:true}]);
 
-  const rosterB=new WorldEnemyRoster(session,mapB,[],1);
+  const rosterB=new WorldEnemyRoster(session,mapB,[]);
   assert.equal(rosterB.enemies.some(enemy=>enemy.key==='map-b-spawn'),true);
   applyStoryEnemyRemovals(session,'map-b',rosterB.enemies,key=>rosterB.removeEnemy(key));
   assert.deepEqual(rosterB.enemies,[]);
@@ -529,7 +524,7 @@ test('pending removals keep commands for maps that were not applied yet',()=>{
 
 test('a second encounter occurrence with the same cast owns fresh enemy resources',()=>{
   const session=new Session(campaign),map=content('maps/shadow-forest-west.json') as WorldMap;
-  const roster=new WorldEnemyRoster(session,map,[],1),enemyId=roster.spawns[0].enemyId;
+  const roster=new WorldEnemyRoster(session,map,[]),enemyId=roster.spawns[0].enemyId;
   const add=(id:string)=>session.applyStoryCommands([{type:'encounter',encounter:{id,map:map.id,status:'active',spawns:[{id:'earl',enemyId,x:128,y:128}]}}]);
   add('run-1');roster.refresh();session.enemyDefeated(roster.source(encounterSpawnId('run-1','earl'))!);
   session.applyStoryCommands([{type:'world',command:{kind:'encounter-result',id:'run-1',result:'won'}}]);
@@ -539,7 +534,7 @@ test('a second encounter occurrence with the same cast owns fresh enemy resource
 
 test('pruning old completed encounters also clears their one-off enemy death records',()=>{
   const session=new Session(campaign),map=content('maps/shadow-forest-west.json') as WorldMap;
-  const roster=new WorldEnemyRoster(session,map,[],1),enemyId=roster.spawns[0].enemyId,keys:string[]=[];
+  const roster=new WorldEnemyRoster(session,map,[]),enemyId=roster.spawns[0].enemyId,keys:string[]=[];
   for(let index=0;index<65;index++){
     const encounter={id:`repeat-${index}`,map:map.id,status:'active' as const,
       spawns:[{id:'mob',enemyId,x:128+index,y:128}]};
@@ -561,11 +556,11 @@ test('story-removed map enemies return while an active quest targets them',()=>{
     assert.equal(session.storyWorld.visible(id),false,'剧情 remove-enemy 已撤下地图槽');
     assert.equal(session.enemyVitals(id).deadUntil,'permanent');
   }
-  assert.equal(new WorldEnemyRoster(session,map,[],10).enemies.some(enemy=>enemy.enemyId==='enemy-meadow-turtle-1'),false,
+  assert.equal(new WorldEnemyRoster(session,map,[]).enemies.some(enemy=>enemy.enemyId==='enemy-meadow-turtle-1'),false,
     '没有进行中任务时不生成');
 
   assert.equal(session.accept('quest-357'),true);
-  const roster=new WorldEnemyRoster(session,map,[],10,new QuestEnemyWatch(session,dropsCatalog.questItems),()=>1);
+  const roster=new WorldEnemyRoster(session,map,[],new QuestEnemyWatch(session,dropsCatalog.questItems),()=>1);
   assert.deepEqual(roster.enemies.filter(enemy=>enemy.enemyId==='enemy-meadow-turtle-1').map(enemy=>enemy.key).sort(),
     [...spawnIds].sort(),'任务目标豁免剧情永久移除');
   for(const id of spawnIds)assert.deepEqual(session.enemyVitals(id),{},'豁免生成前清掉永久死亡与 0 血记录');
@@ -575,7 +570,7 @@ test('kills still count after the story returns a quest-target map enemy',()=>{
   const session=new Session(campaign),map=turtleMap(),spawnIds=turtleSpawnIds();
   removeStoryTurtles(session,map);
   assert.equal(session.accept('quest-357'),true);
-  const roster=new WorldEnemyRoster(session,map,[],10,new QuestEnemyWatch(session,dropsCatalog.questItems),()=>1);
+  const roster=new WorldEnemyRoster(session,map,[],new QuestEnemyWatch(session,dropsCatalog.questItems),()=>1);
   const key=spawnIds[0]!,spawn=roster.source(key)!;
   assert.equal(spawn.enemyId,'enemy-meadow-turtle-1');
   const previousFacts=session.questBook.factSequence('combat');
@@ -590,7 +585,7 @@ test('story-removed quest targets survive unrelated refreshes',()=>{
   const session=new Session(campaign),map=turtleMap(),spawnIds=turtleSpawnIds();
   removeStoryTurtles(session,map);
   assert.equal(session.accept('quest-357'),true);
-  const roster=new WorldEnemyRoster(session,map,[],10,new QuestEnemyWatch(session,dropsCatalog.questItems),()=>1);
+  const roster=new WorldEnemyRoster(session,map,[],new QuestEnemyWatch(session,dropsCatalog.questItems),()=>1);
   assert.equal(roster.enemies.filter(enemy=>enemy.enemyId==='enemy-meadow-turtle-1').length,spawnIds.length);
 
   session.applyStoryCommands([{type:'flag',flag:'unrelated-refresh',value:true}]);
@@ -607,7 +602,7 @@ test('a quest target removed by story keeps its normal death timer',()=>{
   const session=new Session(campaign),map=turtleMap(),spawnIds=turtleSpawnIds();
   removeStoryTurtles(session,map);
   assert.equal(session.accept('quest-357'),true);
-  const roster=new WorldEnemyRoster(session,map,[],10,new QuestEnemyWatch(session,dropsCatalog.questItems),()=>1);
+  const roster=new WorldEnemyRoster(session,map,[],new QuestEnemyWatch(session,dropsCatalog.questItems),()=>1);
   const key=spawnIds[0]!,spawn=roster.source(key)!;
   session.enemyDefeated(spawn);
   roster.removeEnemy(key);
@@ -622,7 +617,7 @@ test('a story-removed encounter enemy is not restored by a quest target',()=>{
   session.applyStoryCommands([{type:'encounter',encounter:{id:'boss-battle',map,status:'active',
     spawns:[{id:'boss',enemyId:'enemy-alexander-2',x:100,y:100}]}}]);
   assert.equal(session.accept('quest-297'),true);
-  const roster=new WorldEnemyRoster(session,{...content('maps/'+map+'.json') as WorldMap,enemySpawns:[]},[],1,
+  const roster=new WorldEnemyRoster(session,{...content('maps/'+map+'.json') as WorldMap,enemySpawns:[]},[],
     new QuestEnemyWatch(session,dropsCatalog.questItems));
   const key=encounterSpawnId('boss-battle','boss');
   session.removeStoryEnemy(key);
@@ -635,7 +630,7 @@ test('a finished or unaccepted quest no longer exempts story-removed map enemies
   removeStoryTurtles(session,map);
   assert.equal(session.accept('quest-357'),true);
   const watch=new QuestEnemyWatch(session,dropsCatalog.questItems);
-  const roster=new WorldEnemyRoster(session,map,[],10,watch,()=>1);
+  const roster=new WorldEnemyRoster(session,map,[],watch,()=>1);
   assert.equal(roster.enemies.some(enemy=>enemy.enemyId==='enemy-meadow-turtle-1'),true);
 
   session.bag.add('meadow-turtle-s-shell',3);
@@ -648,6 +643,6 @@ test('a finished or unaccepted quest no longer exempts story-removed map enemies
 
   assert.equal(session.complete('quest-357'),true);
   assert.equal(session.status('quest-357'),'available','可重复任务回到可接取');
-  assert.equal(new WorldEnemyRoster(session,map,[],10,watch,()=>1).enemies.some(enemy=>enemy.enemyId==='enemy-meadow-turtle-1'),false,
+  assert.equal(new WorldEnemyRoster(session,map,[],watch,()=>1).enemies.some(enemy=>enemy.enemyId==='enemy-meadow-turtle-1'),false,
     '完成并重新进图也不会生成');
 });

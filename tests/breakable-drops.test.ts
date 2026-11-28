@@ -77,7 +77,7 @@ test('a defeated breakable opens one death ticket and reports its settlement', a
   };
   const hero = new BattleCharacter('dark-knight', stats, items);
   const session = new Session(campaign, undefined, undefined, items, hero, battle, stats, companions);
-  const roster = new WorldEnemyRoster(session, map, [], hero.level);
+  const roster = new WorldEnemyRoster(session, map, []);
   roster.refresh();
   roster.setEnemyHealth(spawn.id, 1, enemy);
   t.mock.method(session, 'settleEnemyDefeat', (input: Record<string, unknown>) => {

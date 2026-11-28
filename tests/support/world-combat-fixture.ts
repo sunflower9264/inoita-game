@@ -430,7 +430,7 @@ export async function createTestWorldCombat(options: TestWorldCombatOptions = {}
     enemySpawns: [],
   };
   const movement = options.movement ?? createFakeMovementWorld(new NavigationWorld(map));
-  const roster = options.roster ?? new WorldEnemyRoster(session, map, [], hero.level);
+  const roster = options.roster ?? new WorldEnemyRoster(session, map, []);
   const phaserScene = options.phaserScene ?? createFakePhaserScene();
 
   const defaultActor = battleCatalog.classes.find(c => c.id === hero.classId)?.actor;

@@ -629,7 +629,6 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
       this.app.session,
       map,
       (campaign.enemyPlacements ?? []).filter(enemy => enemy.map === map.id),
-      hero.level,
       new QuestEnemyWatch(this.app.session, drops.questItems),
       Math.random,
     );

@@ -505,7 +505,7 @@ export function playthrough(saved?:SessionState){
   };
   const defeat=async(enemyId:string)=>{
     const map=maps.get(session.storyWorld.currentLocation!.map)!;
-    const roster=new WorldEnemyRoster(session,map,[],session.hero!.level,questEnemies);
+    const roster=new WorldEnemyRoster(session,map,[],questEnemies);
     const spawn=roster.spawns.find(spawn=>spawn.enemyId===enemyId&&roster.isPresent(spawn.id,enemyId));assert.ok(spawn,'当前地图敌人 '+enemyId);
     const hero=session.hero!,killer=session.party?.controlledId??'player';
     const member=killer==='player'?hero:session.party?.get(killer);
@@ -561,7 +561,7 @@ export function playthrough(saved?:SessionState){
   const damage=async(enemyId:string,remainingRatio:number)=>{
     assert.ok(remainingRatio>=0&&remainingRatio<=1);
     const map=maps.get(session.storyWorld.currentLocation!.map)!;
-    const roster=new WorldEnemyRoster(session,map,[],session.hero!.level,questEnemies),definition=battle.enemies.find(enemy=>enemy.id===enemyId)!;
+    const roster=new WorldEnemyRoster(session,map,[],questEnemies),definition=battle.enemies.find(enemy=>enemy.id===enemyId)!;
     const placed=roster.enemies.find(enemy=>enemy.enemyId===enemyId);
     assert.ok(placed,`当前地图受伤敌人 ${enemyId}（现在在 ${map.id}，本图 ${roster.enemies.length} 只：${[...new Set(roster.enemies.map(enemy=>enemy.enemyId))].slice(0,8).join(',')}）`);
     const snapshot=roster.enemySnapshot(placed.key,definition,session.hero!.level)!;

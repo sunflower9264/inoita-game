@@ -783,7 +783,6 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
         session,
         map,
         (content.campaign.enemyPlacements ?? []).filter(ep => ep.map === map.id),
-        session.hero?.level ?? 1,
         questEnemies,
       );
 
@@ -866,7 +865,6 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
         session,
         map,
         (content.campaign.enemyPlacements ?? []).filter(ep => ep.map === map.id),
-        session.hero?.level ?? 1,
         questEnemies,
       );
       const key = encounterSpawnId(enc.id, sp.id);
@@ -905,7 +903,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
       if (!hasAnyPotential) continue;
 
       travelToMapEntrance(mid);
-      let roster = new WorldEnemyRoster(session, map, mapPlacements, session.hero?.level ?? 1, questEnemies);
+      let roster = new WorldEnemyRoster(session, map, mapPlacements, questEnemies);
       const matchesReachableEnemy = (e: WorldEnemyRoster['enemies'][number]) =>
         e.enemyId === enemyId && isEnemySpawnReachable(mid, enemyDef.actor.id, e);
       let placed = roster.enemies.find(matchesReachableEnemy);
@@ -933,7 +931,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
           if (neighbor) {
             travelToMapEntrance(neighbor);
             travelToMapEntrance(mid);
-            roster = new WorldEnemyRoster(session, map, mapPlacements, session.hero?.level ?? 1, questEnemies);
+            roster = new WorldEnemyRoster(session, map, mapPlacements, questEnemies);
             placed = roster.enemies.find(matchesReachableEnemy);
           }
         }
@@ -979,7 +977,7 @@ export function createQuestE2EHarness(content: QuestHarnessContent, options: Que
         if (reachableMapsFrom().has(m)) {
           const map = content.maps.get(m)!;
           const mapPlacements = (content.campaign.enemyPlacements ?? []).filter(ep => ep.map === m);
-          const roster = new WorldEnemyRoster(session, map, mapPlacements, session.hero?.level ?? 1, questEnemies);
+          const roster = new WorldEnemyRoster(session, map, mapPlacements, questEnemies);
           const blockedEnemy = roster.enemies.find(e => e.enemyId === enemyId);
           if (blockedEnemy) {
             travelToMapEntrance(m);

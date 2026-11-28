@@ -924,7 +924,7 @@ class Planner {
       }
     }
 
-    // 6. 重放已完成前驱任务在「激活（active/accepted）」瞬间触发的刷怪开关事件（如终章支线链首环激活开启专属怪物的 event-605..607）
+    // 6. 重放开场后继刷怪开关（如 event-604 关掉终局怪）与已完成前驱任务在「激活（active/accepted）」瞬间触发的刷怪开关事件（如 event-605..607）
     const lastAvailWriteIdx = new Map<string, number>();
     for (const evId of state.completedEvents) {
       const info = this.index.events.get(evId);
@@ -935,6 +935,25 @@ class Planner {
           lastAvailWriteIdx.set(k, Math.max(lastAvailWriteIdx.get(k) ?? -1, info.index));
         }
       }
+    }
+    const startIds = new Set(this.index.startEvents.map(event => event.id));
+    for (const info of this.index.eventOrder) {
+      if (info.event.source !== 'event' || info.event.repeat || info.hasQuestCommands || state.completedEvents.has(info.event.id)) continue;
+      if (this.conditionConflicts(info.event.condition) || eventTouchesTargetQuest(info)) continue;
+      if (positiveQuestRefs(info.event.condition).length > 0) continue;
+      const evRefs = eventRefs(info.event.condition);
+      if (evRefs.length === 0 || !evRefs.every(ref => ref.status === 'completed' && startIds.has(ref.event) && state.completedEvents.has(ref.event))) continue;
+      if (!conditionHolds(info.event.condition, state)) continue;
+      let pushedAvail = false;
+      for (const cmd of info.commands) {
+        if (cmd.type !== 'world' || cmd.command.kind !== 'enemy-availability') continue;
+        const k = `${cmd.command.map}\0${cmd.command.enemyId}`;
+        if ((lastAvailWriteIdx.get(k) ?? -1) > info.index) continue;
+        state.world.push(cmd);
+        lastAvailWriteIdx.set(k, info.index);
+        pushedAvail = true;
+      }
+      if (pushedAvail) state.completedEvents.add(info.event.id);
     }
     for (const info of this.index.eventOrder) {
       if (info.event.source !== 'quest' || info.event.repeat || state.completedEvents.has(info.event.id)) continue;

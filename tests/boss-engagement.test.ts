@@ -250,16 +250,18 @@ test('disposing the map Boss cancels its action and prevents late hits',()=>{
   assert.equal(run.contacts.length,before);assert.equal(run.plays.length,1);assert.equal(run.runtime.idle,true);
 });
 
-test('map-wide Bosses remain subject to their existing level batches and defeated spawn records',()=>{
+test('map-wide Bosses remain subject to story availability and defeated spawn records',()=>{
   const campaign=read('campaign') as Campaign;
-  for(const [example,activeLevel,inactiveLevel]of [[cases[0],5,43],[cases[1],42,4]] as const){
+  for(const example of cases){
     const map=read(`maps/${example.map}`) as WorldMap;
-    const inactive=new WorldEnemyRoster(new Session(campaign),map,[],inactiveLevel);
+    const disabled=new Session(campaign);
+    disabled.applyStoryCommands([{type:'world',command:{kind:'enemy-availability',map:map.id,enemyId:example.enemyId,available:false}}]);
+    const inactive=new WorldEnemyRoster(disabled,map,[]);
     assert.equal(inactive.enemies.some(enemy=>enemy.enemyId===example.enemyId),false);
-    const session=new Session(campaign),active=new WorldEnemyRoster(session,map,[],activeLevel);
+    const session=new Session(campaign),active=new WorldEnemyRoster(session,map,[]);
     const boss=active.enemies.find(enemy=>enemy.enemyId===example.enemyId)!;assert.ok(boss);
     session.enemyDefeated(active.source(boss.key)!);active.refresh();
     assert.equal(active.enemies.some(enemy=>enemy.key===boss.key),false);
-    assert.equal(new WorldEnemyRoster(session,map,[],activeLevel).enemies.some(enemy=>enemy.key===boss.key),false);
+    assert.equal(new WorldEnemyRoster(session,map,[]).enemies.some(enemy=>enemy.key===boss.key),false);
   }
 });

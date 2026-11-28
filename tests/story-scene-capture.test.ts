@@ -158,7 +158,7 @@ test('live capture includes the physical scene with equipped party, props, enemy
       {id:'wolf-2',enemyId:'enemy-snake-1',x:256,y:208},
     ],
   };
-  const roster=new WorldEnemyRoster(session,map,[],hero.level,undefined,()=>0.99);
+  const roster=new WorldEnemyRoster(session,map,[],undefined,()=>0.99);
   const phaserScene=completePhaserScene(sprite=>{
     Object.assign(sprite.anims as object,{currentAnim:{},getProgress:()=>1,isPlaying:false});
     Object.assign(sprite,{play(){return sprite;}});
@@ -332,7 +332,7 @@ test('foreign map preparation isolates session state and formal adoption preserv
   assert(snapshot.actors.some(actor=>actor.worldEntityId==='future-visit-npc'),'next-visit registrations appear in the prepared destination');
   assert(snapshot.actors.some(actor=>actor.worldEntityId&&snapshot.visit!.generatedEntities.some(entity=>entity.id===actor.worldEntityId&&entity.spring)),
     'prepared scene materializes the actual rolled spring');
-  const formal=new WorldEnemyRoster(session,map,[],1,undefined,()=>.99);
+  const formal=new WorldEnemyRoster(session,map,[],undefined,()=>.99);
   formal.adoptPreparedState(snapshot.visit!);
   assert.deepEqual(formal.captureState(),snapshot.visit!.roster);
   assert.deepEqual(formal.refresh(),{added:[],removed:[]},'normal refresh must preserve the adopted breakable rolls');
@@ -472,7 +472,7 @@ test('a live visit snapshot keeps the actual enemy foot position alongside its o
     breakableSpawn:'jar',
     enemySpawns:[{id:'wolf-1',enemyId:'enemy-snake-1',x:32,y:32,breakableEligible:true}],
   };
-  const roster=new WorldEnemyRoster(session,map,[],hero.level,undefined,()=>0);
+  const roster=new WorldEnemyRoster(session,map,[],undefined,()=>0);
   const world=await createTestWorldCombat({phaserScene:completePhaserScene(),map,hero,session,roster,battleCatalog,items,characterStats:statsCatalog});
   await world.combat.start();
   world.combat.adoptStoryPositions([{id:'enemy:wolf-1',actor:'enemy-jar-1',enemyKey:'wolf-1',x:96,y:112,facing:'south',visible:true}]);

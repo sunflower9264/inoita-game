@@ -86,7 +86,6 @@ test('roster refresh only syncs the arena projection and keeps the new roster id
     session,
     map,
     [],
-    hero.level,
     { snapshot: () => ({ revision: questIds.size, ids: questIds }) },
     () => 0,
   );

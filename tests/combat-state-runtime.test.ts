@@ -91,7 +91,7 @@ test('state entry stops the current actor and stealth immediately clears hostile
     blocked: Array<boolean>(400).fill(false), ground: '', canopy: '', features: [], entities: [], exits: [],
     enemySpawns: [{ id: 'enemy', enemyId: enemyDef.id, x: 96, y: 64 }],
   };
-  const roster = new WorldEnemyRoster(session, map, [], hero.level);
+  const roster = new WorldEnemyRoster(session, map, []);
   roster.refresh();
   const layer = { alpha: 1, setAlpha(alpha: number) { this.alpha = alpha; return this; }, anims: { pause() {}, resume() {}, stop() {} } };
   const container = createFakeContainer(64, 64);
@@ -140,7 +140,7 @@ test('scene movement checks distinguish root from disabled actions and failed se
     blocked: Array<boolean>(400).fill(false), ground: '', canopy: '', features: [], entities: [], exits: [],
     enemySpawns: [{ id: 'hidden', enemyId: enemyDef.id, x: 96, y: 64 }],
   };
-  const roster = new WorldEnemyRoster(session, map, [], hero.level);
+  const roster = new WorldEnemyRoster(session, map, []);
   roster.refresh();
   const world = await createTestWorldCombat({ battleCatalog: catalog, map, hero, session, roster });
   await world.combat.start();

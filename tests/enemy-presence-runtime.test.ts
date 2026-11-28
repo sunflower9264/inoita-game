@@ -30,7 +30,7 @@ const makeSession=(content=campaign)=>{
 };
 function clearByStory(session:Session,next:WorldMap,enemyId:string){
   session.applyStoryCommands([{type:'world',command:{kind:'remove-enemy',enemyId,map:next.id,all:true}}]);
-  const previous=new WorldEnemyRoster(session,next,[],52);
+  const previous=new WorldEnemyRoster(session,next,[]);
   applyStoryEnemyRemovals(session,next.id,previous.enemies,key=>previous.removeEnemy(key));
 }
 function restoredTurtles(){
@@ -38,7 +38,7 @@ function restoredTurtles(){
   assert.equal(original.accept('quest-357'),true);
   // 玩家旧档保留剧情移除和进行中的任务，读回后由当前规则重新决定在场状态。
   const session=makeSession();session.restoreState(JSON.parse(JSON.stringify(original.captureState())));
-  const roster=new WorldEnemyRoster(session,map,[],52,new QuestEnemyWatch(session,drops.questItems));
+  const roster=new WorldEnemyRoster(session,map,[],new QuestEnemyWatch(session,drops.questItems));
   return {session,roster};
 }
 function combat(session:Session,roster:WorldEnemyRoster,enemyId=turtleId,next=map,key?:string){
@@ -175,7 +175,7 @@ test('quest completion invalidates same-frame candidates and delayed hits while 
   assert.equal(roster.isPresent(enemy.key),true);
   assert.equal(session.storyWorld.visible(enemy.key),false,'任务没有改写剧情原始状态');
   session.enterMap('other-map');
-  const returning=new WorldEnemyRoster(session,map,[],52,new QuestEnemyWatch(session,drops.questItems));
+  const returning=new WorldEnemyRoster(session,map,[],new QuestEnemyWatch(session,drops.questItems));
   assert.equal(returning.isPresent(enemy.key),true,'换图回来仍按有效任务生成');
 });
 
@@ -219,7 +219,7 @@ test('presence queries use only already chosen breakable identities and do not p
   ]} as unknown as WorldMap;
   session.storyWorld.apply({kind:'hide',id:'later'});
   let rolls=0;
-  const roster=new WorldEnemyRoster(session,next,[],52,undefined,()=>{rolls++;return 0;});
+  const roster=new WorldEnemyRoster(session,next,[],undefined,()=>{rolls++;return 0;});
   const firstIdentity=roster.enemy('first')!.enemyId,baseline=rolls;
   session.storyWorld.apply({kind:'show',id:'later'});
   const before=session.captureState();
@@ -233,7 +233,7 @@ test('presence queries use only already chosen breakable identities and do not p
 test('an explicit story encounter remains removed even when an active quest needs the same enemy',()=>{
   const {session}=restoredTurtles();
   session.storyWorld.apply({kind:'encounter',encounter:{id:'turtles',map:map.id,status:'active',spawns:[{id:'one',enemyId:turtleId,x:32,y:32}]}});
-  const roster=new WorldEnemyRoster(session,map,[],52,new QuestEnemyWatch(session,drops.questItems));
+  const roster=new WorldEnemyRoster(session,map,[],new QuestEnemyWatch(session,drops.questItems));
   const key=encounterSpawnId('turtles','one');
   assert.equal(roster.isPresent(key),true);
   session.removeStoryEnemy(key);
@@ -244,7 +244,7 @@ test('an explicit story encounter remains removed even when an active quest need
 test('an encounter result immediately excludes its old instance and blocks late damage before projection catches up',()=>{
   const {session}=restoredTurtles();
   session.storyWorld.apply({kind:'encounter',encounter:{id:'finished-turtles',map:map.id,status:'active',spawns:[{id:'one',enemyId:turtleId,x:32,y:32}]}});
-  const roster=new WorldEnemyRoster(session,map,[],52,new QuestEnemyWatch(session,drops.questItems));
+  const roster=new WorldEnemyRoster(session,map,[],new QuestEnemyWatch(session,drops.questItems));
   const key=encounterSpawnId('finished-turtles','one');
   const definition=battle.enemies.find(enemy=>enemy.id===turtleId)!;
   const {harness}=combat(session,roster);
@@ -265,7 +265,7 @@ test('a quest-restored capture target converts once without rechecking raw story
   const enemyId='enemy-jagged-teeth-rats-1';
   session.applyStoryCommands([{type:'travel',destination:{map:next.id,x:32,y:32,facing:'south'}}]);
   clearByStory(session,next,enemyId);session.accept(captureQuest.id);
-  const roster=new WorldEnemyRoster(session,next,[],52,new QuestEnemyWatch(session,drops.questItems));
+  const roster=new WorldEnemyRoster(session,next,[],new QuestEnemyWatch(session,drops.questItems));
   const {harness,pendingDefeats,director,enemy,strike,skillEvent}=combat(session,roster,enemyId,next);
   director.healthChanged=(id:string,_before:number,_after:number,_max:number,source:{id:string;map:string;x:number;y:number})=>session.weakenQuestTarget(id,source);
   strike(100000);strike(100000);
