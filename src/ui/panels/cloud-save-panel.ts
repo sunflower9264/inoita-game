@@ -55,7 +55,7 @@ function drawStatus(
 }
 
 /**
- * 云存档页：账号/密码输入、登录注册，或已登录后的导入/下载/退出。
+ * 云存档页：账号/密码输入、登录注册，或已登录后的上传/下载/退出。
  * 传入 `domMode` 时显式收集 DOM 文字规格与控件句柄，无需宿主篡改 `view.text`/`view.button`。
  */
 export function drawCloudSavePage(
@@ -205,7 +205,7 @@ export function drawCloudSavePage(
     state.cloudCount === undefined ? '云端存档：正在读取…' : `云端存档：${state.cloudCount} 个`,
     left, CLOUD_PAGE.content.top + 48, width, 22, TEXT_COLORS.secondary,
   );
-  emitButton('导入本机存档', CLOUD_PAGE.actions.x, CLOUD_PAGE.actions.y,
+  emitButton('上传云存档', CLOUD_PAGE.actions.x, CLOUD_PAGE.actions.y,
     CLOUD_PAGE.actions.width, CLOUD_PAGE.actions.height, actions.upload, { fontSize: 23, disabled });
   emitButton('下载云存档', CLOUD_PAGE.actions.x + CLOUD_PAGE.actions.step, CLOUD_PAGE.actions.y,
     CLOUD_PAGE.actions.width, CLOUD_PAGE.actions.height, actions.download, { fontSize: 23, disabled });
@@ -214,7 +214,7 @@ export function drawCloudSavePage(
 
   const note = view.scroll(CLOUD_PAGE.loggedInNote.x, CLOUD_PAGE.loggedInNote.y,
     CLOUD_PAGE.loggedInNote.width, CLOUD_PAGE.loggedInNote.height);
-  emitNoteText(note, '导入：把本机现有存档上传到云端。', 0, 0, width, 20, TEXT_COLORS.secondary);
+  emitNoteText(note, '上传：把本机现有存档上传到云端。', 0, 0, width, 20, TEXT_COLORS.secondary);
   emitNoteText(note, '下载：把云端存档写回本机同号槽位；覆盖后本机原内容无法恢复。', 0, 30, width, 20, TEXT_COLORS.secondary);
   drawStatus(view, state, 0, 72, width, note.content, note, sink);
   note.setHeight(260);

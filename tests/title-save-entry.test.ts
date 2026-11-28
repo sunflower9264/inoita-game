@@ -606,7 +606,7 @@ test('cloud button labels stay centered in their buttons before and after login'
     f.view.root.getWorldTransformMatrix=()=>({tx:offsetX,ty:offsetY,scaleX:scale,scaleY:scale,
       transformPoint:(x:number,y:number)=>({x:offsetX+x*scale,y:offsetY+y*scale})});
     f.click('开始游戏');f.click('云存档');await settle();
-    const labels=loggedIn?['修改密码','导入本机存档','下载云存档','退出登录']:['登录','注册'];
+    const labels=loggedIn?['修改密码','上传云存档','下载云存档','退出登录']:['登录','注册'];
     for(const text of labels){
       const button=f.view.buttons.find(item=>item.getData('label')===text)!;
       assert.ok(button,text);
@@ -628,7 +628,7 @@ test('cloud login switches to the signed-in actions',async()=>{
   f.click('登录');await settle();
   assert.deepEqual(cloud.calls,['login','list']);
   assert(f.domTexts().some(text=>text.includes('已登录：hero')));
-  assert(f.view.buttons.some(button=>button.getData('label')==='导入本机存档'));
+  assert(f.view.buttons.some(button=>button.getData('label')==='上传云存档'));
   assert(f.view.buttons.some(button=>button.getData('label')==='下载云存档'));
   assert(f.view.buttons.some(button=>button.getData('label')==='退出登录'));
 });
@@ -668,9 +668,9 @@ test('cloud backup uploads valid local slots and skips damaged ones',async()=>{
   f.entries.set('inotia4.story.v1.slot0',saved());
   f.entries.set('inotia4.story.v1.slot1','{broken');
   f.click('开始游戏');f.click('云存档');await settle();
-  f.click('导入本机存档');await settle();
+  f.click('上传云存档');await settle();
   assert.deepEqual(cloud.uploads.map(item=>item.slot),[0]);
-  assert(f.domTexts().some(text=>text.includes('导入成功 1 个')));
+  assert(f.domTexts().some(text=>text.includes('上传成功 1 个')));
   assert(f.domTexts().some(text=>text.includes('存档槽 2')));
 });
 
@@ -689,7 +689,7 @@ test('cloud backup asks before overwriting and does not upload when cancelled',a
   const f=await fixture(undefined,cloud.port);
   f.entries.set('inotia4.story.v1.slot0',saved());
   f.click('开始游戏');f.click('云存档');await settle();
-  f.click('导入本机存档');await settle();
+  f.click('上传云存档');await settle();
   assert(f.domTexts().some(text=>text.includes('覆盖')));
   assert.equal(cloud.uploads.length,0,'确认前不上传');
   f.clickModal('是');await settle();
@@ -701,7 +701,7 @@ test('resizing the title view recreates the cloud overwrite confirmation',async(
   const f=await fixture(undefined,cloud.port);
   f.entries.set('inotia4.story.v1.slot0',saved());
   f.click('开始游戏');f.click('云存档');await settle();
-  f.click('导入本机存档');await settle();
+  f.click('上传云存档');await settle();
   assert(f.domTexts().some(text=>text.includes('覆盖')));
   const modalLabels=()=>f.domLabels.filter(label=>label.style.zIndex==='2'&&!label.removed);
   const before=modalLabels();
@@ -727,7 +727,7 @@ test('cloud password change uses the password form hook and keeps the player sig
   assert.equal(asked,1);
   assert.ok(cloud.calls.includes('change-password'));
   assert(f.domTexts().some(text=>text.includes('密码已修改')));
-  assert(f.view.buttons.some(button=>button.getData('label')==='导入本机存档'));
+  assert(f.view.buttons.some(button=>button.getData('label')==='上传云存档'));
 });
 
 test('a near-expiry cloud session renews before listing',async()=>{
@@ -768,7 +768,7 @@ test('a network error during renewal still lets the list run',async()=>{
   f.click('开始游戏');f.click('云存档');await settle();
   assert.ok(cloud.calls.includes('refresh'));
   assert.ok(cloud.calls.includes('list'));
-  assert(f.view.buttons.some(button=>button.getData('label')==='导入本机存档'));
+  assert(f.view.buttons.some(button=>button.getData('label')==='上传云存档'));
 });
 
 

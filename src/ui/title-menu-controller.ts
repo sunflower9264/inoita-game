@@ -664,7 +664,7 @@ export class TitleMenuController {
   private updateCloudPage():void{
     const view=this.surface;if(!view||this.page!=='cloud')return;
     const state=this.cloudState(),disabled=state.busy||!state.available;
-    const labels=state.loggedIn?['修改密码','导入本机存档','下载云存档','退出登录']:['登录','注册'];
+    const labels=state.loggedIn?['修改密码','上传云存档','下载云存档','退出登录']:['登录','注册'];
     for(const button of this.cloudControls){
       if(!labels.includes(String(button.getData('label'))))continue;
       const setEnabled=button.getData('setEnabled') as ((enabled:boolean)=>void)|undefined;setEnabled?.(!disabled);
@@ -1015,7 +1015,7 @@ export class TitleMenuController {
     }
     if(request.signal.aborted||serial!==this.cloudSerial)return;
     this.cloudBusy=false;
-    this.cloudStatus={kind:this.syncStatusKind(result),text:this.syncMessage(result,'导入')};
+    this.cloudStatus={kind:this.syncStatusKind(result),text:this.syncMessage(result,'上传')};
     if(this.page==='cloud'&&this.scene.sys.isActive())this.render();
     if(result.ok||result.completed>0)void this.refreshCloudCount(request,serial);
   }

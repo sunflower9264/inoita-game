@@ -80,14 +80,14 @@ export async function backupLocalSaves<World>(ports: CloudSaveSyncPorts<World>):
   const conflicts = local.filter(item => listed.value.some(entry => entry.slot === item.slot));
   if (conflicts.length) {
     const confirmed = await ports.confirm(
-      `云端已有 ${conflicts.length} 个同号存档（包括自动存档），继续会用本机存档覆盖它们。确定导入吗？`,
+      `云端已有 ${conflicts.length} 个同号存档（包括自动存档），继续会用本机存档覆盖它们。确定上传吗？`,
     );
     if (!confirmed) return { ok: false, total, completed: 0, failures, cancelled: true };
   }
   let completed = 0;
   for (const [index, item] of local.entries()) {
     if (ports.signal?.aborted) return { ok: false, total, completed, failures, aborted: true };
-    ports.progress?.(`正在导入 ${index + 1}/${local.length}…`);
+    ports.progress?.(`正在上传 ${index + 1}/${local.length}…`);
     let game: unknown;
     try { game = JSON.parse(item.raw); }
     catch { failures.push({ slot: item.slot, reason: '本机存档内容无效' }); continue; }
