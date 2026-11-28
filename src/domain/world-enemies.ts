@@ -90,7 +90,7 @@ export class WorldEnemyRoster extends EnemyRoster {
   /** 可破坏物替换结果的版本：缓存重建后必须重新掷骰。 */
   private breakableRevision=0;
   private spawnsCache?:{sources:ReadonlyMap<string,WorldSpawn>;revision:number;value:readonly WorldSpawn[]};
-  private sourceProjection?:{story:number;chests:number;quests:number;sources:ReadonlySet<string>|undefined;size:number;byId:ReadonlyMap<string,WorldSpawn>};
+  private sourceProjection?:{story:number;chests:number;quests:number;questVersion:number;sources:ReadonlySet<string>|undefined;byId:ReadonlyMap<string,WorldSpawn>};
   private spawnIndex?:{spawns:readonly WorldSpawn[];byId:ReadonlyMap<string,WorldSpawn>};
   private membershipRevision=0;
   /**
@@ -321,7 +321,7 @@ capturePreparedState():{roster:ReturnType<EnemyRoster['captureState']>;breakable
   private breakableSpawnFor(spawn:WorldSpawn):WorldSpawn{
     if(!('breakableEligible' in spawn)||!spawn.breakableEligible)return spawn;
     // 任务关键敌人优先：任务目标出现时恢复原怪，并让 refresh 替换掉已生成的景物。
-    if(this.questSpawnIds.has(spawn.enemyId)){this.breakableRolls.delete(spawn.id);this.breakableRevision++;return spawn;}
+    if(this.questSpawnIds.has(spawn.enemyId)){if(this.breakableRolls.delete(spawn.id))this.breakableRevision++;return spawn;}
     let enemyId=this.breakableRolls.get(spawn.id);
     if(enemyId===undefined){
       enemyId=this.rollBreakableEnemy(spawn.enemyId);
@@ -349,17 +349,12 @@ capturePreparedState():{roster:ReturnType<EnemyRoster['captureState']>;breakable
     }
     return snapshot?.revision??0;
   }
-  /** 有效剧情资格含静态任务恢复；死亡与刷新计时由刷新入口处理。 */
-  private storySpawnable(spawn:WorldSpawn):boolean{
-    return this.spawnPresence(spawn)!=='absent';
-  }
-
   /** 当前 active 任务的目标怪；任务目标集合由 `collectQuestSpawns` 在每次投影前更新。 */
   private questTarget(spawn:WorldSpawn):boolean {
     if(!this.questSourceIds?.has(spawn.enemyId))return false;
     return !('activeQuest' in spawn)||this.session.status(spawn.activeQuest)==='active';
   }
-  /** 剧情禁用不压当前任务目标；任务结束后 `enemyAvailable` 重新生效。 */
+  /** 有效剧情资格含静态任务恢复：剧情禁用不压当前任务目标，任务结束后恢复剧情禁用。 */
   private spawnAvailable(spawn:WorldSpawn):boolean {
     return this.spawnPresence(spawn)!=='absent';
   }
@@ -370,9 +365,9 @@ capturePreparedState():{roster:ReturnType<EnemyRoster['captureState']>;breakable
   }
   private projectedSources():ReadonlyMap<string,WorldSpawn> {
     const questRevision=this.collectQuestSpawns();
-    const story=this.session.storyWorld.revision,chests=this.session.chests.revision,sources=this.questSourceIds,size=this.questSpawnIds.size;
+    const story=this.session.storyWorld.revision,chests=this.session.chests.revision,questVersion=this.session.questBook.version,sources=this.questSourceIds;
     const old=this.sourceProjection;
-    if(old?.story===story&&old.chests===chests&&old.quests===questRevision&&old.sources===sources&&old.size===size)return old.byId;
+    if(old?.story===story&&old.chests===chests&&old.quests===questRevision&&old.questVersion===questVersion&&old.sources===sources)return old.byId;
     const encounters=this.session.storyWorld.activeEncounters.filter(encounter=>encounter.map===this.mapId);
     // 遭遇占用同格同身份的地图槽时，地图实例让位给这次遭遇。
     const claimed=new Set(encounters.flatMap(encounter=>encounter.spawns.map(spawn=>occupiedKey(spawn.enemyId,spawn.x,spawn.y))));
@@ -381,7 +376,7 @@ capturePreparedState():{roster:ReturnType<EnemyRoster['captureState']>;breakable
     const value=[...resident.filter(spawn=>!claimed.has(occupiedKey(spawn.enemyId,spawn.x,spawn.y))),
       ...encounters.flatMap(encounter=>encounter.spawns.map(spawn=>({...spawn,id:encounterSpawnId(encounter.id,spawn.id),respawn:false as const})))];
     const byId=new Map(value.map(spawn=>[spawn.id,spawn]));
-    this.sourceProjection={story,chests,quests:questRevision,sources,size,byId};return byId;
+    this.sourceProjection={story,chests,quests:questRevision,questVersion,sources,byId};return byId;
   }
   private outsideRespawnView(spawn:WorldSpawn,view:EnemyRespawnView|undefined):boolean {
     if(!view||!this.staticSpawnIds.has(spawn.id)||spawn.respawn===false)return false;
@@ -403,7 +398,7 @@ capturePreparedState():{roster:ReturnType<EnemyRoster['captureState']>;breakable
   }
   private recordEmptyDiagnostic(spawns:readonly WorldSpawn[]):void{
     if(this.emptyReported||this.enemies.length||!this.rawMapSpawns.length)return;
-    if(spawns.some(spawn=>this.storySpawnable(spawn)))return;
+    if(spawns.some(spawn=>this.spawnAvailable(spawn)))return;
     this.emptyReported=true;
     globalThis.storyDiagnostics?.record('map-enemies-empty',{
       map:this.mapId,heroLevel:this.session.hero?.level??1,

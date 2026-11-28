@@ -910,7 +910,30 @@ class Planner {
       }
 
     // 5. 关闭已过期的纯剧情零目标日志外路障任务（如第1章路障 quest-180、罗尼恩路障 quest-473），避免其退回区域阻断后章通行
-    const roadblockCutoff = Math.max(passageCutoff, maxTargetMapEra);
+    let fallbackPlacerEra = -1;
+    if (targetAcceptIndex < 0 && maxCompletedIndex <= 0) {
+      for (const charId of placementCharIds) {
+        const placements = this.campaign.placements.filter(p => p.characterId === charId);
+        if (!placements.length || placements.some(p => isUnconditionalCondition(p.condition))) continue;
+        for (const p of placements) {
+          const neededFlags = requiredTrueFlags(p.condition);
+          if (!neededFlags?.length) continue;
+          for (const flag of neededFlags) {
+            const earliest = this.index.eventOrder.find(info =>
+              !info.event.repeat &&
+              !eventTouchesTargetQuest(info) &&
+              info.commands.some(
+                cmd =>
+                  (cmd.type === 'flag' && cmd.flag === flag && (cmd.value ?? true)) ||
+                  (cmd.type === 'world' && cmd.command.kind === 'flag' && cmd.command.id === flag && cmd.command.value),
+              ),
+            );
+            if (earliest && earliest.index > fallbackPlacerEra) fallbackPlacerEra = earliest.index;
+          }
+        }
+      }
+    }
+    const roadblockCutoff = Math.max(passageCutoff, maxTargetMapEra, fallbackPlacerEra);
     if (roadblockCutoff > 0) {
       const targetPositiveRefs = new Set([
         ...positiveQuestRefs(this.target.availableWhen).map(r => r.quest),
@@ -929,56 +952,147 @@ class Planner {
       }
     }
 
-    // 6. 重放开场后继刷怪开关（如 event-604 关掉终局怪）与已完成前驱任务在「激活（active/accepted）」瞬间触发的刷怪开关事件（如 event-605..607）
+    // 6. 按逻辑时序补齐三类刷怪开关（enemy-availability）：
+    //    6a) 仅含 enemy-availability、由开场事件串联的单/多跳初始化事件（如 event-604，按开场逻辑时序写入并标记完成）；
+    //    6b) 已被当前章节进度越过的开场复用图主线切档事件（如 event-55 / event-156，仅投影对应地图的 enemy-availability）；
+    //    6c) 已完成前驱或当前已激活目标触发的刷怪开关事件（如 event-605..607）。
+    const isPureEnemyAvailEvent = (info: EventInfo): boolean =>
+      info.commands.length > 0 &&
+      info.commands.every(cmd => cmd.type === 'world' && cmd.command.kind === 'enemy-availability');
+    const logicalEventIdx = (info: EventInfo): number => {
+      if (info.event.source === 'choice') {
+        const key = info.event.key ?? choiceRefs(info.event.condition)[0]?.choice;
+        const writer = key ? this.index.choiceWriters.get(key)?.find(w => !this.index.events.get(w.eventId)?.event.repeat) : undefined;
+        const writerIdx = writer ? this.index.events.get(writer.eventId)?.index : undefined;
+        if (writerIdx !== undefined && writerIdx < info.index) return writerIdx;
+      }
+      return info.index;
+    };
+
+    const startChainIdx = new Map<string, number>();
+    const startManagedMaps = new Set<string>();
+    for (const startEv of this.index.startEvents) {
+      const info = this.index.events.get(startEv.id);
+      if (!info) continue;
+      if (state.completedEvents.has(startEv.id)) startChainIdx.set(startEv.id, info.index);
+      for (const cmd of info.commands) {
+        if (cmd.type === 'world' && cmd.command.kind === 'enemy-availability') startManagedMaps.add(cmd.command.map);
+      }
+    }
+
     const lastAvailWriteIdx = new Map<string, number>();
     for (const evId of state.completedEvents) {
       const info = this.index.events.get(evId);
       if (!info) continue;
+      const writeIdx = logicalEventIdx(info);
       for (const cmd of info.commands) {
         if (cmd.type === 'world' && cmd.command.kind === 'enemy-availability') {
           const k = `${cmd.command.map}\0${cmd.command.enemyId}`;
-          lastAvailWriteIdx.set(k, Math.max(lastAvailWriteIdx.get(k) ?? -1, info.index));
+          lastAvailWriteIdx.set(k, Math.max(lastAvailWriteIdx.get(k) ?? -1, writeIdx));
         }
       }
     }
-    const startIds = new Set(this.index.startEvents.map(event => event.id));
-    for (const info of this.index.eventOrder) {
-      if (info.event.source !== 'event' || info.event.repeat || info.hasQuestCommands || state.completedEvents.has(info.event.id)) continue;
-      if (this.conditionConflicts(info.event.condition) || eventTouchesTargetQuest(info)) continue;
-      if (positiveQuestRefs(info.event.condition).length > 0) continue;
-      const evRefs = eventRefs(info.event.condition);
-      if (evRefs.length === 0 || !evRefs.every(ref => ref.status === 'completed' && startIds.has(ref.event) && state.completedEvents.has(ref.event))) continue;
-      if (!conditionHolds(info.event.condition, state)) continue;
-      let pushedAvail = false;
-      for (const cmd of info.commands) {
-        if (cmd.type !== 'world' || cmd.command.kind !== 'enemy-availability') continue;
-        const k = `${cmd.command.map}\0${cmd.command.enemyId}`;
-        if ((lastAvailWriteIdx.get(k) ?? -1) > info.index) continue;
-        state.world.push(cmd);
-        lastAvailWriteIdx.set(k, info.index);
-        pushedAvail = true;
+
+    // 6a. 开场后继纯刷怪开关链（如 event-604 及潜在多跳链）：逻辑写索引沿用开场链索引，避免末尾数组下标倒挂覆写后续章节；
+    //     满足前提即计入 completedEvents，防止全部键被更晚事件覆盖时运行期二次误触发。
+    for (let changed = true; changed;) {
+      changed = false;
+      for (const info of this.index.eventOrder) {
+        if (info.event.source !== 'event' || info.event.repeat || info.hasQuestCommands || state.completedEvents.has(info.event.id)) continue;
+        if (!isPureEnemyAvailEvent(info)) continue;
+        if (this.conditionConflicts(info.event.condition) || eventTouchesTargetQuest(info)) continue;
+        if (positiveQuestRefs(info.event.condition).length > 0) continue;
+        const evRefs = eventRefs(info.event.condition);
+        if (evRefs.length === 0 || !evRefs.every(ref => ref.status === 'completed' && startChainIdx.has(ref.event) && state.completedEvents.has(ref.event))) continue;
+        if (!conditionHolds(info.event.condition, state)) continue;
+        const logicalIdx = Math.max(...evRefs.map(ref => startChainIdx.get(ref.event)!));
+        for (const cmd of info.commands) {
+          if (cmd.type !== 'world' || cmd.command.kind !== 'enemy-availability') continue;
+          const k = `${cmd.command.map}\0${cmd.command.enemyId}`;
+          if ((lastAvailWriteIdx.get(k) ?? -1) > logicalIdx) continue;
+          state.world.push(cmd);
+          lastAvailWriteIdx.set(k, logicalIdx);
+        }
+        state.completedEvents.add(info.event.id);
+        startChainIdx.set(info.event.id, logicalIdx);
+        changed = true;
       }
-      if (pushedAvail) state.completedEvents.add(info.event.id);
     }
+
+    // 6b. 已被章节进度越过的开场复用图主线切档事件（如 event-55 / event-156），按事件顺序投影其刷怪开关命令
+    const maxLogicalCompletedIdx = Math.max(
+      -1,
+      ...[...state.completedEvents].map(evId => {
+        if (startChainIdx.has(evId)) return startChainIdx.get(evId)!;
+        const info = this.index.events.get(evId);
+        return info ? logicalEventIdx(info) : -1;
+      }),
+    );
+    const stageEarliestEra = (place: StoryEvent['place']): number => {
+      if (!place) return -1;
+      if (place.type === 'fixed') return this.index.earliestMainMapIndex.get(place.map) ?? -1;
+      if (place.type === 'alternatives') {
+        let earliest = Infinity;
+        for (const spot of place.spots) {
+          const idx = this.index.earliestMainMapIndex.get(spot.map);
+          if (idx !== undefined && idx < earliest) earliest = idx;
+        }
+        return Number.isFinite(earliest) ? earliest : -1;
+      }
+      return -1;
+    };
+    const minPlaceEra = Math.max(
+      stageEarliestEra(this.target.places?.available),
+      stageEarliestEra(this.target.places?.active),
+      stageEarliestEra(this.target.places?.ready),
+    );
+    const targetAcceptLogicalIdx = targetAcceptId
+      ? logicalEventIdx(this.index.events.get(targetAcceptId)!)
+      : -1;
+    const availEraCutoff = targetAcceptLogicalIdx >= 0
+      ? (this.mode === 'available' ? targetAcceptLogicalIdx : Math.max(targetAcceptLogicalIdx, maxLogicalCompletedIdx))
+      : Math.max(maxLogicalCompletedIdx, sideChapterCutoff, fallbackPlacerEra, minPlaceEra);
+    if (startManagedMaps.size > 0 && availEraCutoff > 0) {
+      for (const info of this.index.eventOrder) {
+        if (info.event.repeat || state.completedEvents.has(info.event.id)) continue;
+        if (info.event.id === targetAcceptId || this.conditionConflicts(info.event.condition) || eventTouchesTargetQuest(info) || this.eventPresupposesTargetCompletion(info.event)) continue;
+        if (info.index >= availEraCutoff) continue;
+        const touchesMainStory = info.commands.some(
+          cmd => cmd.type === 'quest' && 'quest' in cmd.command && (this.index.corridorQuestIds.has(cmd.command.quest) || this.index.quests.get(cmd.command.quest)?.journal === false),
+        );
+        if (!touchesMainStory) continue;
+        for (const cmd of info.commands) {
+          if (cmd.type !== 'world' || cmd.command.kind !== 'enemy-availability') continue;
+          if (!startManagedMaps.has(cmd.command.map)) continue;
+          const k = `${cmd.command.map}\0${cmd.command.enemyId}`;
+          if ((lastAvailWriteIdx.get(k) ?? -1) > info.index) continue;
+          state.world.push(cmd);
+          lastAvailWriteIdx.set(k, info.index);
+        }
+      }
+    }
+
+    // 6c. 已完成前驱任务在「激活」瞬间触发、或当前已激活目标自身触发的刷怪开关事件（如 event-605..607）
     for (const info of this.index.eventOrder) {
       if (info.event.source !== 'quest' || info.event.repeat || state.completedEvents.has(info.event.id)) continue;
-      if (info.event.id === targetAcceptId || this.conditionConflicts(info.event.condition) || eventTouchesTargetQuest(info)) continue;
+      if (info.event.id === targetAcceptId || this.conditionConflicts(info.event.condition)) continue;
       const qRefs = positiveQuestRefs(info.event.condition);
       if (qRefs.length === 0) continue;
-      const allCompletedAncestors = qRefs.every(
+      const allCompletedAncestors = !eventTouchesTargetQuest(info) && qRefs.every(
         ref => (ref.status === 'active' || ref.status === 'accepted') && state.delivered.has(ref.quest),
       );
-      if (!allCompletedAncestors || !eventRefsSatisfied(info)) continue;
-      let pushedAvail = false;
+      const activeTargetSwitch = this.mode !== 'available' && !info.hasQuestCommands && isPureEnemyAvailEvent(info) && conditionHolds(info.event.condition, state);
+      if ((!allCompletedAncestors || !eventRefsSatisfied(info)) && !activeTargetSwitch) continue;
+      let hasAvail = false;
       for (const cmd of info.commands) {
         if (cmd.type !== 'world' || cmd.command.kind !== 'enemy-availability') continue;
+        hasAvail = true;
         const k = `${cmd.command.map}\0${cmd.command.enemyId}`;
         if ((lastAvailWriteIdx.get(k) ?? -1) > info.index) continue;
         state.world.push(cmd);
         lastAvailWriteIdx.set(k, info.index);
-        pushedAvail = true;
       }
-      if (pushedAvail) state.completedEvents.add(info.event.id);
+      if (hasAvail) state.completedEvents.add(info.event.id);
     }
   }
 
@@ -1503,6 +1617,15 @@ class Planner {
     } else if (candidate?.script) {
       this.producers.set(key, 'script:' + candidate.script + ':accepted:' + questId);
       node = this.ensureScript(candidate.script, 'accepted', questId);
+      if (node) {
+        this.resolvingNodes.add(node.id);
+        try {
+          if (candidate.after) this.ensureCompleted(candidate.after, node.id, undefined);
+          this.resolveCondition(quest.availableWhen, node.id, undefined);
+        } finally {
+          this.resolvingNodes.delete(node.id);
+        }
+      }
     }
     if (!node) {
       node = this.synthetic('accept', questId);

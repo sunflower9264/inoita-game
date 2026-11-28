@@ -4,6 +4,7 @@ import { headlessContent, playthrough } from './helpers/story-playthrough.ts';
 import { applyQuestStartPlan, planQuestStart } from '../src/debug/quest-jump.ts';
 import { questJumpHistory } from '../src/debug/quest-jump-history.ts';
 import { newStorySession } from '../src/domain/story-class.ts';
+import { WorldEnemyRoster } from '../src/domain/world-enemies.ts';
 import type { Campaign, CampaignQuest } from '../src/domain/campaign.ts';
 import type { StoryEvent, StoryScript } from '../src/domain/story-graph.ts';
 
@@ -597,33 +598,163 @@ function repeatCampaign(): Campaign {
   };
 }
 
-test('调试跳转第 6 步先重放开场后继 event-604 关掉终局怪，且不提前开启终局链与路障截止线', () => {
-  const availability = (history: ReturnType<typeof questJumpHistory>, map: string, enemyId: string): boolean | undefined => {
-    let result: boolean | undefined;
-    for (const cmd of history.world) {
-      if (cmd.type === 'world' && cmd.command.kind === 'enemy-availability' && cmd.command.map === map && cmd.command.enemyId === enemyId) {
-        result = cmd.command.available;
-      }
-    }
-    return result;
+test('调试跳转第 6 步按逻辑时序补齐开场、主线复用图切档与终局刷怪开关，支持往返跳转且无空图混刷', () => {
+  const rosterEnemiesOn = (session: ReturnType<typeof playthrough>['session'], mapId: string): string[] => {
+    const map = headlessContent.maps.get(mapId)!;
+    const roster = new WorldEnemyRoster(session, map, []);
+    const fromSpawns = [...new Set(roster.spawns.map(s => s.enemyId))].sort();
+    const fromPlaced = [...new Set(roster.enemies.map(e => e.enemyId))].sort();
+    assert.deepEqual(fromPlaced, fromSpawns, `${mapId} 实际生成敌人集合应与投影名单一致`);
+    return fromPlaced;
   };
 
-  for (const questId of ['knight-uniform', 'quest-105']) {
-    const history = questJumpHistory(campaign, questId, 'available');
-    assert.equal(history.completedEvents.has('event-604'), true, `${questId} 应重放 event-604`);
-    assert.equal(availability(history, 'shadow-training-dungeon1-5e8c19b4', 'enemy-evil-bat-1'), false);
-    assert.equal(availability(history, 'shadow-training-dungeon1-5e8c19b4', 'enemy-remains-of-a-forgotten-soldier-1'), false);
-    assert.equal(availability(history, 'shadow-training-dungeon-2-a6b8293b', 'enemy-evil-bat-1'), false);
-    assert.equal(availability(history, 'shadow-training-dungeon-2-a6b8293b', 'enemy-remains-of-a-forgotten-soldier-1'), false);
-    assert.equal(history.progress.get('quest-180'), 'active', `${questId} 的第 1 章路障保持未提前关闭`);
-  }
+  const h = playthrough();
+  try {
+    const jumpAndCheck = (questId: string, mode: 'available' | 'active' | 'ready', mapId: string, expected: string[]) => {
+      const plan = planQuestStart(campaign, h.session, questId, mode);
+      applyQuestStartPlan(h.session, plan);
+      assert.deepEqual(rosterEnemiesOn(h.session, mapId), expected, `${questId}(${mode}) @ ${mapId}`);
+      return plan;
+    };
 
-  const endgame = questJumpHistory(campaign, 'quest-496', 'available');
-  assert.equal(endgame.completedEvents.has('event-604'), true);
-  assert.equal(endgame.completedEvents.has('event-605'), true);
-  assert.equal(availability(endgame, 'shadow-training-dungeon1-5e8c19b4', 'enemy-evil-bat-1'), true);
-  assert.equal(availability(endgame, 'shadow-training-dungeon-2-a6b8293b', 'enemy-remains-of-a-forgotten-soldier-1'), true);
-  assert.equal(availability(endgame, 'shadow-training-dungeon-2-a6b8293b', 'enemy-black-skeleton-1'), false);
+    // 第 1 章（含 available / active）：仅刷 3~6 级初期怪，且 knight-uniform 可接取时不提前关闭第 1 章路障
+    const ch1Avail = jumpAndCheck('knight-uniform', 'available', 'shadow-training-dungeon-2-a6b8293b', [
+      'enemy-knife-needled-mosquitoes-1', 'enemy-reagents-1',
+    ]);
+    assert.equal(ch1Avail.conditionPatch.completedEvents.includes('event-604'), true);
+    assert.equal(h.session.status('quest-180'), 'active');
+    jumpAndCheck('knight-uniform', 'active', 'shadow-training-dungeon-2-a6b8293b', [
+      'enemy-knife-needled-mosquitoes-1', 'enemy-reagents-1',
+    ]);
+
+    // 第 3 章（主线回帝国、旗标发布人 quest-105 及支线 quest-169 / quest-222）：补齐 event-55 / event-156，仅刷 41~43 级中期怪且零空图
+    jumpAndCheck('quest-99', 'active', 'shadow-training-dungeon1-5e8c19b4', ['enemy-bat-2', 'enemy-skeleton-2']);
+    jumpAndCheck('quest-105', 'available', 'shadow-training-dungeon-2-a6b8293b', [
+      'enemy-black-skeleton-1', 'enemy-boss-skeleton-1', 'enemy-dungeon-mimics-1',
+    ]);
+    assert.equal(h.session.status('quest-180'), 'completed', '第 3 章任务 quest-105 应已越过第 1 章路障');
+    jumpAndCheck('quest-169', 'available', 'training-dungeon-one', ['enemy-forest-snake-2', 'enemy-slime-3']);
+    jumpAndCheck('quest-222', 'available', 'training-dungeon-one', ['enemy-forest-snake-2', 'enemy-slime-3']);
+
+    // 终局链：接取前保持中期怪；激活及后续环（available / active）仅刷 94~105 级终局怪，不混刷 3~6 级初期怪
+    const endBefore = jumpAndCheck('quest-495', 'available', 'shadow-training-dungeon1-5e8c19b4', ['enemy-bat-2', 'enemy-skeleton-2']);
+    assert.equal(endBefore.conditionPatch.completedEvents.includes('event-605'), false);
+    jumpAndCheck('quest-495', 'active', 'shadow-training-dungeon1-5e8c19b4', [
+      'enemy-evil-bat-1', 'enemy-remains-of-a-forgotten-soldier-1',
+    ]);
+    const end496 = jumpAndCheck('quest-496', 'available', 'shadow-training-dungeon1-5e8c19b4', [
+      'enemy-evil-bat-1', 'enemy-remains-of-a-forgotten-soldier-1',
+    ]);
+    assert.equal(end496.conditionPatch.completedEvents.includes('event-604'), true);
+    assert.equal(end496.conditionPatch.completedEvents.includes('event-605'), true);
+    assert.deepEqual(rosterEnemiesOn(h.session, 'shadow-training-dungeon-2-a6b8293b'), [
+      'enemy-evil-bat-1', 'enemy-remains-of-a-forgotten-soldier-1',
+    ]);
+    jumpAndCheck('quest-496', 'active', 'shadow-training-dungeon1-5e8c19b4', [
+      'enemy-evil-bat-1', 'enemy-remains-of-a-forgotten-soldier-1',
+    ]);
+    jumpAndCheck('quest-491', 'available', 'training-dungeon-one', ['enemy-deadly-poisonous-viper-1', 'enemy-heavy-slime-1']);
+    jumpAndCheck('quest-491', 'active', 'training-dungeon-one', ['enemy-deadly-poisonous-viper-1', 'enemy-heavy-slime-1']);
+
+    // GM 往返跳转（终局 -> 第 1 章 -> 开场 -> 终局）：无跨跳转残留污染
+    jumpAndCheck('knight-uniform', 'available', 'shadow-training-dungeon-2-a6b8293b', [
+      'enemy-knife-needled-mosquitoes-1', 'enemy-reagents-1',
+    ]);
+    const opening = planQuestStart(campaign, h.session, 'quest-180', 'available');
+    assert.equal(opening.conditionPatch.completedEvents.includes('event-0'), false);
+    assert.equal(opening.conditionPatch.completedEvents.includes('event-604'), false);
+    applyQuestStartPlan(h.session, opening);
+    jumpAndCheck('quest-496', 'available', 'shadow-training-dungeon1-5e8c19b4', [
+      'enemy-evil-bat-1', 'enemy-remains-of-a-forgotten-soldier-1',
+    ]);
+  } finally {
+    h.director.dispose();
+  }
+});
+
+test('调试跳转第 6a 步开场刷怪链遵守逻辑时序、全键覆写仍记完成、支持多跳且不吞混合命令', () => {
+  const mkQuest = (id: string, extra: Partial<CampaignQuest> = {}): CampaignQuest => ({
+    id, title: id, description: id, guidance: { available: id, active: id },
+    progressText: id, completeText: id, goals: [], availableWhen: { type: 'always', value: true }, completion: 'story',
+    ...extra,
+  });
+  const synthetic: Campaign = {
+    version: 2, contentVersion: 1,
+    start: { map: 'm1', x: 16, y: 16, actor: 'kiyan', facing: 'south', script: 's-start' },
+    quests: [
+      mkQuest('q-mid'),
+      mkQuest('q-target', { availableWhen: { type: 'quest', quest: 'q-mid', status: 'completed' } }),
+    ],
+    questGroups: [{ id: 'g', title: 'g', kind: 'main', questIds: ['q-mid', 'q-target'] }],
+    placements: [],
+    scripts: {
+      's-start': { entry: 'n', nodes: [{ id: 'n', presentation: [], commands: [], exit: { type: 'end' } }] },
+      's-mid': {
+        entry: 'n',
+        nodes: [{
+          id: 'n', presentation: [],
+          commands: [
+            { type: 'quest', command: { type: 'script-complete', quest: 'q-mid' } },
+            { type: 'world', command: { kind: 'enemy-availability', map: 'm1', enemyId: 'e-shared', available: true } },
+            { type: 'world', command: { kind: 'enemy-availability', map: 'm1', enemyId: 'e-hop2', available: true } },
+          ],
+          exit: { type: 'end' },
+        }],
+      },
+      's-init-1': {
+        entry: 'n',
+        nodes: [{
+          id: 'n', presentation: [],
+          commands: [
+            { type: 'world', command: { kind: 'enemy-availability', map: 'm1', enemyId: 'e-shared', available: false } },
+            { type: 'world', command: { kind: 'enemy-availability', map: 'm1', enemyId: 'e-only-init', available: false } },
+          ],
+          exit: { type: 'end' },
+        }],
+      },
+      's-init-2': {
+        entry: 'n',
+        nodes: [{
+          id: 'n', presentation: [],
+          commands: [
+            { type: 'world', command: { kind: 'enemy-availability', map: 'm1', enemyId: 'e-hop2', available: false } },
+          ],
+          exit: { type: 'end' },
+        }],
+      },
+      's-mixed': {
+        entry: 'n',
+        nodes: [{
+          id: 'n', presentation: [],
+          commands: [
+            { type: 'flag', flag: 'must-not-drop' },
+            { type: 'world', command: { kind: 'enemy-availability', map: 'm1', enemyId: 'e-mixed', available: false } },
+          ],
+          exit: { type: 'end' },
+        }],
+      },
+    },
+    events: [
+      { id: 'ev-start', source: 'start', script: 's-start', condition: { type: 'always', value: true } },
+      // 故意把 mid 排在 init-1/init-2 之前（数组下标更小），验证第 6a 步按开场逻辑时序（0）比较，不倒挂覆写 mid
+      { id: 'ev-mid', source: 'event', script: 's-mid', condition: { type: 'event', event: 'ev-start', status: 'completed' } },
+      { id: 'ev-init-1', source: 'event', script: 's-init-1', condition: { type: 'event', event: 'ev-start', status: 'completed' } },
+      { id: 'ev-init-2', source: 'event', script: 's-init-2', condition: { type: 'event', event: 'ev-init-1', status: 'completed' } },
+      { id: 'ev-mixed', source: 'event', script: 's-mixed', condition: { type: 'event', event: 'ev-start', status: 'completed' } },
+    ],
+  };
+
+  const history = questJumpHistory(synthetic, 'q-target', 'available');
+  const avail = new Map<string, boolean>();
+  for (const cmd of history.world) {
+    if (cmd.type === 'world' && cmd.command.kind === 'enemy-availability') avail.set(cmd.command.enemyId, cmd.command.available);
+  }
+  assert.equal(avail.get('e-shared'), true, '排在数组末尾的开场初始化事件不能倒挂覆写后续中段开启状态');
+  assert.equal(avail.get('e-only-init'), false, '未被后续覆盖的开场初始化开关正常写入');
+  assert.equal(avail.get('e-hop2'), true, '多跳开场链同样不能覆写后续中段开启状态');
+  assert.equal(history.completedEvents.has('ev-init-1'), true);
+  assert.equal(history.completedEvents.has('ev-init-2'), true, '多跳开场链即使全部键被更晚事件覆盖，也应标记为已完成防止二次误触发');
+  assert.equal(history.completedEvents.has('ev-mixed'), false, '含非 enemy-availability 混合命令的事件不被 6a 静默吞掉 flag 并标为已完成');
 });
 
 test('记忆层分翼跳转不把当层通关结算拉进前置历史，跨层后继无环重放并按原版重置翼标志任务', () => {

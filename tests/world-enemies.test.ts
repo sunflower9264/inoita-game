@@ -9,6 +9,7 @@ import type { WorldMap } from '../src/domain/content.ts';
 import type { Campaign } from '../src/domain/campaign.ts';
 import type { DropCatalog } from '../src/domain/drops.ts';
 import type { ItemCatalog } from '../src/domain/items.ts';
+import { playthrough } from './helpers/story-playthrough.ts';
 
 const content=(name:string)=>JSON.parse(fs.readFileSync(new URL(`../public/content/${name}`,import.meta.url),'utf8'));
 const campaign=content('campaign.json') as Campaign;
@@ -51,7 +52,14 @@ test('reused dungeons follow story enemy-availability across chapters regardless
   const session=new Session(campaign,undefined,undefined,itemsCatalog,hero,undefined,statsCatalog);
   const dungeon1=content('maps/shadow-training-dungeon1-5e8c19b4.json') as WorldMap;
   const dungeon2=content('maps/shadow-training-dungeon-2-a6b8293b.json') as WorldMap;
-  const enemyIds=(map:WorldMap)=>[...new Set(new WorldEnemyRoster(session,map,[]).spawns.map(spawn=>spawn.enemyId))].sort();
+  const enemyIds=(map:WorldMap)=>{
+    const roster=new WorldEnemyRoster(session,map,[]);
+    const fromSpawns=[...new Set(roster.spawns.map(spawn=>spawn.enemyId))].sort();
+    const fromPlaced=[...new Set(roster.enemies.map(enemy=>enemy.enemyId))].sort();
+    assert.deepEqual(fromPlaced,fromSpawns,'实际生成的敌怪种类必须与投影名单一致');
+    assert.ok(roster.enemies.length>0,'有效刷怪点应实际生成到场上名册');
+    return fromPlaced;
+  };
 
   applyScriptWorld(session,'event-0');
   applyScriptWorld(session,'event-604');
@@ -83,6 +91,8 @@ test('beacon-hill-floor-1 spawns all 7 goblins regardless of hero level',()=>{
   const roster=new WorldEnemyRoster(session,map,[]);
   assert.equal(roster.spawns.filter(spawn=>spawn.enemyId==='enemy-white-goblin-warrior-1').length,7);
   assert.equal(roster.spawns.length,8);
+  assert.equal(roster.enemies.filter(enemy=>enemy.enemyId==='enemy-white-goblin-warrior-1').length,7);
+  assert.equal(roster.enemies.length,8);
 });
 
 test('spawn projection is reused until the story world or generated spawns change',()=>{
@@ -645,4 +655,53 @@ test('a finished or unaccepted quest no longer exempts story-removed map enemies
   assert.equal(session.status('quest-357'),'available','可重复任务回到可接取');
   assert.equal(new WorldEnemyRoster(session,map,[],watch,()=>1).enemies.some(enemy=>enemy.enemyId==='enemy-meadow-turtle-1'),false,
     '完成并重新进图也不会生成');
+});
+
+test('activeQuest campaign spawn invalidates sourceProjection without questEnemies provider',()=>{
+  const quest={...campaign.quests.find(q=>q.id==='knight-uniform')!,availableWhen:{type:'always' as const,value:true}};
+  const session=new Session({...campaign,quests:[quest],questGroups:[],events:[]});
+  const map={id:'quest-spawn-map',enemySpawns:[]} as unknown as WorldMap;
+  const questSpawn={id:'q-placement',enemyId:'enemy-reagents-1',map:'quest-spawn-map',x:32,y:32,activeQuest:'knight-uniform',rewardItem:'ectoplasm',respawn:false as const};
+  const roster=new WorldEnemyRoster(session,map,[questSpawn]);
+  assert.equal(roster.enemies.length,0,'接取前 activeQuest 刷怪点不生成');
+
+  assert.equal(session.accept('knight-uniform'),true);
+  const changes=roster.refresh();
+  assert.deepEqual(changes.added.map(e=>e.key),['q-placement'],'未传 questEnemies 时 questBook.version 变更仍应立即失效 sourceProjection 并刷出');
+  assert.equal(roster.enemies.length,1);
+});
+
+test('breakableEligible quest target without cached roll does not spuriously bump breakableRevision on unrelated story flags',()=>{
+  const session=new Session(campaign);
+  const map={id:'breakable-rev-map',breakableSpawn:'jar',enemySpawns:[
+    {id:'slot-1',enemyId:'enemy-cave-bat-1',x:32,y:32,breakableEligible:true},
+  ]} as unknown as WorldMap;
+  const ids=new Set(['enemy-cave-bat-1']);
+  const provider={snapshot:()=>({revision:1,ids})};
+  const roster=new WorldEnemyRoster(session,map,[],provider,()=>0);
+  assert.equal(roster.enemies[0]?.enemyId,'enemy-cave-bat-1');
+  const before=roster.presenceRevision;
+  session.mark('unrelated-story-flag');
+  const afterFlag=roster.presenceRevision;
+  assert.equal(afterFlag,before+1,'无关剧情标志应仅推进一次 presenceRevision');
+  void roster.spawns;
+  assert.equal(roster.presenceRevision,afterFlag,'无缓存可破坏替换记录时读取 spawns 不应额外递增 breakableRevision');
+});
+
+test('new session StoryDirector automatically chains event-604 after event-0 to disable endgame spawns',async()=>{
+  const h=playthrough();
+  try{
+    assert.equal(await h.director.start(),true);
+    await h.idle();
+    assert.equal(h.session.runtimeState.completedEvents.includes('event-0'),true);
+    assert.equal(h.session.runtimeState.completedEvents.includes('event-604'),true,'开场 event-0 完成后应由真实导演自动串联触发 event-604');
+    const dungeon1=content('maps/shadow-training-dungeon1-5e8c19b4.json') as WorldMap;
+    const dungeon2=content('maps/shadow-training-dungeon-2-a6b8293b.json') as WorldMap;
+    const roster1=new WorldEnemyRoster(h.session,dungeon1,[]);
+    const roster2=new WorldEnemyRoster(h.session,dungeon2,[]);
+    assert.deepEqual([...new Set(roster1.enemies.map(e=>e.enemyId))].sort(),['enemy-cave-bat-1','enemy-fragile-skeleton-soldier-1']);
+    assert.deepEqual([...new Set(roster2.enemies.map(e=>e.enemyId))].sort(),['enemy-knife-needled-mosquitoes-1','enemy-reagents-1']);
+  }finally{
+    h.director.dispose();
+  }
 });
