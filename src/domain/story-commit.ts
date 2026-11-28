@@ -1,11 +1,21 @@
+import type { TravelDestination } from './content.ts';
 import type { StoryCommand } from './story-graph.ts';
 import type { StoryNodeCommit } from './story-runtime.ts';
 import type { StoryWorldState, StoryEntityState } from './story-world.ts';
 import { placementAuthority } from './actor-authority.ts';
 
+export interface StoryCommitOptions {
+  /** 演出接管正式世界时的真实主角坐标；优先于可能滞后的 `world.currentLocation`。 */
+  baselineLocation?: TravelDestination;
+  /** 当前队伍操控者 ID；常规舞台演出交还控制权时按原版切回主角。 */
+  controlledMemberId?: string;
+  /** 主角当前生命与上限；主角倒地但佣兵触发剧情时按原版 10% 生命值复苏后再切回操控。 */
+  heroHealth?: { health: number; maxHealth: number };
+}
+
 /** 正常演出和预演共用角色落位、转场及事件完成的提交规则。 */
 export function storyCommitCommands(commit: StoryNodeCommit, world: StoryWorldState, changes: readonly StoryEntityState[],
-  hasPartyMember: (memberId: string) => boolean = () => true): StoryCommand[] {
+  hasPartyMember: (memberId: string) => boolean = () => true, options?: StoryCommitOptions): StoryCommand[] {
   let commands = [...commit.commands];
   const run = commit.checkpoint.runs.find(candidate => candidate.id === commit.runId);
   const explicitTravel = commands.some(command => command.type === 'travel' || command.type === 'world' && command.command.kind === 'travel');
@@ -57,11 +67,34 @@ export function storyCommitCommands(commit: StoryNodeCommit, world: StoryWorldSt
   // 演出里出现过 `walk`/`face` 时，表现层的最终帧已经和入场位置不同，收尾仍要把这个位置写回。
   // 没有表现层时只拿到脚本里的兜底锚点，保持不提交（见 findings 106）。
   const performed = commit.stage;
-  const moved = !!performed && (!world.currentLocation || performed.map !== world.currentLocation.map ||
-    performed.x !== world.currentLocation.x || performed.y !== world.currentLocation.y ||
-    performed.facing !== world.currentLocation.facing);
-  if ((run?.status === 'completed' || run?.status === 'waiting') && stage && !explicitTravel && (!stage.retainPlayerPosition || moved))
+  const referenceLocation = options?.baselineLocation ?? world.currentLocation;
+  const moved = !!performed && (!referenceLocation || performed.map !== referenceLocation.map ||
+    performed.x !== referenceLocation.x || performed.y !== referenceLocation.y ||
+    performed.facing !== referenceLocation.facing);
+  const handingBack = run?.status === 'completed' || run?.status === 'waiting';
+  if (handingBack && stage && !explicitTravel && (!stage.retainPlayerPosition || moved))
     commands.push({type:'travel',destination:{map:stage.map,x:stage.x,y:stage.y,facing:stage.facing}});
+  // 原版 `EVTSYSTEM_SetState` 在常规剧情演出中将受控人归还主角（主角倒地时先以 10% 生命复苏）。
+  if (handingBack && stage && options?.controlledMemberId && options.controlledMemberId !== 'player'
+    && !commands.some(command => command.type === 'party-control')) {
+    commands.push({ type: 'party-control', member: 'player' });
+  }
+  const controlToHeroIndex = commands.findIndex(command => command.type === 'party-control' && command.member === 'player');
+  const controlToOther = commands.some(command => command.type === 'party-control' && command.member !== 'player');
+  const shouldReviveFallenHero =
+    !!options?.heroHealth &&
+    options.heroHealth.health <= 0 &&
+    !commands.some(command => command.type === 'health' && command.member === 'player') &&
+    (controlToHeroIndex >= 0 || (handingBack && !!stage && !controlToOther));
+  if (shouldReviveFallenHero && options?.heroHealth) {
+    const revive: StoryCommand = {
+      type: 'health',
+      member: 'player',
+      value: Math.max(1, Math.floor(options.heroHealth.maxHealth * 0.1)),
+    };
+    if (controlToHeroIndex >= 0) commands.splice(controlToHeroIndex, 0, revive);
+    else commands.push(revive);
+  }
   if(commit.eventId&&run?.status==='completed')commands.push({type:'flag',flag:commit.eventId});
   return commands;
 }

@@ -422,12 +422,26 @@ export class NavigationWorld {
    * 落点本身仍走 `canPlaceBody`，出生瞬间不能把身体压进墙里或叠在别人身上。
    */
   nearestReachableBody(shape: NavigationShape, origin: Point, preferred?: Point,
-    ignore?: NavigationActor, placements: readonly Placement[] = [], extra?: (point: Point) => boolean): Point | undefined {
+    ignore?: NavigationActor, placements: readonly Placement[] = [], extra?: (point: Point) => boolean,
+    canStep?: (point: Point) => boolean): Point | undefined {
     if (!shape.collision) return undefined;
-    if (preferred && this.canPlaceBody(shape, preferred, ignore, placements) && this.terrainRoute(origin, preferred)
-      && (!extra || extra(preferred))) return { ...preferred };
+    const free = canStep
+      ? (point: Point) => this.terrainFree(point) && canStep(point)
+      : (point: Point) => this.terrainFree(point);
+    if (preferred && this.canPlaceBody(shape, preferred, ignore, placements) && (!extra || extra(preferred))) {
+      const reachable = canStep
+        ? free(origin) && free(preferred) && (canTraverse(origin, preferred, free) || findPath(origin, {
+          bounds: this.bounds,
+          canStand: free,
+          canStandXY: (x, y) => free({ x, y }),
+          isGoal: point => Math.hypot(point.x - preferred.x, point.y - preferred.y) <= PATH_GRID_SIZE && canTraverse(point, preferred, free),
+          heuristic: point => Math.max(0, Math.hypot(point.x - preferred.x, point.y - preferred.y) - PATH_GRID_SIZE),
+        }, PLACEMENT_SEARCH_BUDGET) !== null)
+        : this.terrainRoute(origin, preferred);
+      if (reachable) return { ...preferred };
+    }
+    if (canStep && !free(origin)) return undefined;
     let landing: Point | undefined;
-    const free = (point: Point) => this.terrainFree(point);
     const search = createPathSearch(origin, {
       bounds: this.bounds,
       canStand: free,
@@ -449,6 +463,29 @@ export class NavigationWorld {
       });
       return undefined;
     }
+    return result.status === 'found' && landing ? landing : undefined;
+  }
+  /** 足底版可达就近点：整张可达区域连整盒空间都没有（或形状无碰撞盒）时，按 `canStep` 搜索最近可站脚点。 */
+  nearestReachableFoot(shape: NavigationShape, origin: Point, ignore?: NavigationActor,
+    placements: readonly Placement[] = [], canStep?: (point: Point) => boolean): Point | undefined {
+    const free = canStep
+      ? (point: Point) => this.terrainFree(point) && canStep(point)
+      : (point: Point) => this.terrainFree(point);
+    if (!free(origin)) return undefined;
+    if (this.canPlace(shape, origin, ignore, placements)) return { ...origin };
+    let landing: Point | undefined;
+    const search = createPathSearch(origin, {
+      bounds: this.bounds,
+      canStand: free,
+      canStandXY: (x, y) => free({ x, y }),
+      isGoal: point => {
+        if (!this.canPlace(shape, point, ignore, placements)) return false;
+        landing = { ...point };
+        return true;
+      },
+      heuristic: () => 0,
+    });
+    const result = search.step(PLACEMENT_SEARCH_BUDGET);
     return result.status === 'found' && landing ? landing : undefined;
   }
   /**

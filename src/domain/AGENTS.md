@@ -162,6 +162,7 @@
 - 舞台快照的人物编号以实际绑定的演员为准，演员没有编号时沿用舞台声明；队伍成员实例只有 `memberId`，收尾按声明的人物编号移除同图地图副本。`memberId` 始终来自实际绑定，不能由声明补齐。
 
 - 剧情导演的 `script` 和 `trigger` 都返回实际播放结果，调用方可据此判定演出是否启动。手动交互产生的后续剧情等本次弹窗和演出成功收起才开始；遇错保留到重试成功，换存档或取消时清掉。
+- **区域阻拦与舞台交还对齐原版。** `segmentOverlapsFootRect` 用闭线段扫掠脚底碰撞盒，单帧快速位移或掉帧大步长跨过 16px 窄区域条带也能命中；`ExitTrigger.syncPosition` 在切人等非行走交接时只对齐参考点，不累计虚假行走距离。`choosePartyLanding` 与 `nearestReachableBody`/`nearestReachableFoot` 支持可选通行边界 `allowed`/`canStep`，从真实锚点 `origin` 出发校验沿途可达性，安全侧空间挤满时放宽队友重叠限制也不把非受控单位放到触发带内或彼岸。`StoryWorldState.locationRevision` 在每次 `travel` 与恢复时递增；`storyCommitCommands` 用演出接管时的真实主角坐标 `baselineLocation` 判断 `retainPlayerPosition` 是否发生过走位或转向，保证重复阻拦事件每次都能写回退点；常规舞台收尾交还控制权时（未显式切给其他角色）统一归还主角，主角阵亡倒地时前置 10% 生命复苏命令；`resolveStoryScene` 与 `applyStorySceneAction` 在主角和舞台演员显式出场/显示时清掉阵亡渐隐留下的 `alpha: 0`。
 
 ## 验证
 

@@ -1,6 +1,7 @@
 import type Phaser from 'phaser';
 import type { ActorDefinition, EntityPlacement, Facing, WorldMap } from '../domain/content.ts';
 import type { Cooldown } from '../domain/combat.ts';
+import type { GameRectangle, Point } from '../domain/navigation.ts';
 import type { CharacterVisual } from '../rendering/characters.ts';
 import type { MovementWorld } from '../rendering/movement-world.ts';
 
@@ -34,4 +35,6 @@ export interface CombatWorldHost {
   lootLanding(map:string,x:number,y:number):{x:number;y:number};
   refreshGroundLoot():void;
   syncControlledCharacter(resetExitTrigger?:boolean):void;
+  /** 当前地图对非受控队友禁入的活动区域剧情矩形（排除队长已踏入的区域）。 */
+  activeStoryRegions?(excludeAt?:Point):readonly GameRectangle[];
 }

@@ -75,6 +75,8 @@ export class StoryPresenter implements StoryPresentationPort {
   private actors = new Map<string, Performer>();
   private appearance?: ActorDefinition;
   private baseline?: StoryStageSnapshot;
+  private worldOrigin?: TravelDestination;
+  private worldOriginRevision?: number;
   private finalStage?: StoryStageSnapshot;
   private state?: StoryStageSnapshot;
   /** 跳过期间只推进逻辑舞台；需要选择或任务弹窗时才补画一次。 */
@@ -113,12 +115,17 @@ export class StoryPresenter implements StoryPresentationPort {
     const mapId = world.map!.id;
     this.appearance = player.actor;
     const source = world.captureStoryScene();
+    const sourcePlayer = source.actors.find(actor => actor.id === 'player')!;
     const current = this.captureStage() ?? resolveStoryScene({
-      type: 'stage', map: source.map, x: player.container.x, y: player.container.y,
-      facing: world.facing, playerVisible: source.actors.find(actor => actor.id === 'player')!.visible, retainPlayerPosition: true, cast: []
+      type: 'stage', map: source.map, x: sourcePlayer.x, y: sourcePlayer.y,
+      facing: world.facing, playerVisible: sourcePlayer.visible, retainPlayerPosition: true, cast: []
     }, source);
     this.skipping = !!skipSignal?.aborted;
     const stage = restored ?? current;
+    if (!this.worldOrigin) {
+      this.worldOrigin = { map: mapId, x: sourcePlayer.x, y: sourcePlayer.y, facing: world.facing };
+      this.worldOriginRevision = this.app.session.storyWorld.locationRevision;
+    }
     this.baseline = structuredClone(current); this.finalStage = undefined;
     this.rememberScene(current.scene);
     const curtain = initialCurtain ?? (stage.map !== mapId ? { opacity: 1, color: 0 } : undefined);
@@ -257,6 +264,7 @@ export class StoryPresenter implements StoryPresentationPort {
     await this.renderStage(stage, signal, ++this.epoch);
   }
   getStageState(): StoryStageSnapshot | undefined { return this.captureStage(); }
+  getBaselineLocation(): TravelDestination | undefined { return this.worldOrigin ? { ...this.worldOrigin } : undefined; }
   getWorldChanges(): readonly StoryEntityState[] {
     const current = this.captureStage();
     if (current) this.scenes.set(current.map, current.scene);
@@ -284,16 +292,34 @@ export class StoryPresenter implements StoryPresentationPort {
     const current = this.captureStage();
     if (current) this.scenes.set(current.map, current.scene);
     this.committedScenes = new Map([...this.scenes].map(([map, scene]) => [map, structuredClone(scene)]));
+    const locationRevision = this.app.session.storyWorld.locationRevision;
+    if (this.worldOriginRevision !== locationRevision) {
+      this.worldOrigin = this.app.session.storyWorld.currentLocation;
+      this.worldOriginRevision = locationRevision;
+    }
   }
   private rememberScene(scene: SceneSnapshot): void {
     this.scenes.set(scene.map, structuredClone(scene));
     if (!this.committedScenes.has(scene.map)) this.committedScenes.set(scene.map, structuredClone(scene));
   }
   async restoreStage(stage: StoryStageSnapshot, signal: AbortSignal): Promise<void> {
+    if (!this.worldOrigin) {
+      const world = this.world();
+      if (world?.map && world.worldReady() && world.player) {
+        const sourcePlayer = world.captureStoryScene().actors.find(actor => actor.id === 'player');
+        const x = sourcePlayer?.x ?? world.player.container.x;
+        const y = sourcePlayer?.y ?? world.player.container.y;
+        this.worldOrigin = { map: world.map.id, x, y, facing: world.facing };
+        this.worldOriginRevision = this.app.session.storyWorld.locationRevision;
+      }
+    }
     await this.ready(signal);
     await this.stage(stage, signal);
     this.scenes = new Map((stage.scenes ?? []).map(scene => [scene.map, structuredClone(scene)]));
     this.scenes.set(stage.map, structuredClone(stage.scene));
+    for (const [map, scene] of this.scenes) {
+      if (!this.committedScenes.has(map)) this.committedScenes.set(map, structuredClone(scene));
+    }
   }
   private actor(id: string): Performer {
     const canonical = this.state?.bindings.find(([alias]) => alias === id)?.[1] ?? id;
@@ -642,9 +668,9 @@ export class StoryPresenter implements StoryPresentationPort {
         this.actors.set(actor.id, performer);
       }
       performer.unpositioned = actor.unpositioned;
-      if (!before || actor.x !== before.x || actor.y !== before.y || actor.visible !== before.visible) {
+      if (!before || actor.x !== before.x || actor.y !== before.y || actor.visible !== before.visible || actor.alpha !== before.alpha) {
         placements.push({visual, position:actor, enabled:actor.visible && !actor.unpositioned});
-        visual.container.setVisible(actor.visible && !actor.unpositioned);
+        visual.container.setVisible(actor.visible && !actor.unpositioned).setAlpha(actor.alpha ?? 1);
       }
       if (!before || actor.facing !== before.facing || actor.id === appearing) {
         if (action.type === 'face') this.turn(performer, actor.facing);
@@ -924,6 +950,7 @@ export class StoryPresenter implements StoryPresentationPort {
     this.skipping = false;
     this.epoch++;
     this.resetActors(); this.opacity = 0; this.finalStage = undefined; this.baseline = undefined;
+    this.worldOrigin = undefined; this.worldOriginRevision = undefined;
     this.state = undefined; this.walkTerrain = undefined; this.dynamicStage = true;
     this.scenes.clear(); this.committedScenes.clear();
     this.groundEffects = undefined; this.topEffects = undefined; this.toneFilter = undefined; this.mapEffect = false;

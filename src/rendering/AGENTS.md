@@ -72,7 +72,7 @@
 
 - 剧情收放武器按快照重建主角外观并保留当前动作及进度；跳过时只改逻辑快照，补画与正常播放使用同一姿态覆盖。
 
-- 剧情舞台的世界查询绑定所属会话；会话结束后正常操作按取消结束，舞台释放在没有所属世界时直接完成，不恢复其他会话的地图音乐。
+- 剧情舞台的世界查询绑定所属会话；会话结束后正常操作按取消结束，舞台释放在没有所属世界时直接完成，不恢复其他会话的地图音乐。`StoryPresenter` 在开场与 `restoreStage` 时按 `movement.position(player)` 记录正式世界真实起点 `worldOrigin`，节点提交发生正式 `travel` 后按 `StoryWorldState.locationRevision` 推进基线，保证多节点或重试后的 `retainPlayerPosition` 演出仍能准确判断主角是否被脚本移动。
 
 - `loadSceneAssets(consumer, assets, options)` 的 consumer 表示请求所属场景，底层文件统一交给已登记的图片加载场景；options 的 lifetime 为 scene 时随请求场景关闭归还，manual 时交付后由调用方归还。等待中两种方式均响应场景关闭与 signal 取消，交付前重新检查取消状态。
 

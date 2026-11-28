@@ -520,8 +520,18 @@ export class StoryDirector {
   }
   /** 把节点命令落到会话；回执保留到 `commit`，供分支求值失败时回滚。 */
   private apply(commit: StoryNodeCommit): void {
-    const commands=storyCommitCommands(commit,this.session.storyWorld,this.presenting?this.presentation?.getWorldChanges?.()??[]:[],
-      memberId=>!!this.session.party?.get(memberId));
+    const heroStats = this.session.hero?.player ?? this.session.player;
+    const commands=storyCommitCommands(
+      commit,
+      this.session.storyWorld,
+      this.presenting?this.presentation?.getWorldChanges?.()??[]:[],
+      memberId=>!!this.session.party?.get(memberId),
+      {
+        baselineLocation:this.presenting?this.presentation?.getBaselineLocation?.():undefined,
+        controlledMemberId:this.session.party?.controlledId,
+        heroHealth:heroStats?{health:heroStats.health,maxHealth:heroStats.maxHealth}:undefined,
+      },
+    );
     const run=commit.checkpoint.runs.find(candidate=>candidate.id===commit.runId);
     const stage=commit.stage??run?.stage;
     const explicitTravel=commit.commands.flatMap(command=>command.type==='travel'?[command.destination]

@@ -102,6 +102,8 @@ export interface StoryPresentationPort {
   parallel?(actions: PerformanceAction[], playback: PerformancePlayback): Promise<void>;
   finish(completed: boolean, signal?: AbortSignal): Promise<void>;
   getStageState?(): StoryStageSnapshot | undefined;
+  /** 演出从正式世界接管时记录的主角真实入场位置，供 `retainPlayerPosition` 判断是否发生了位移。 */
+  getBaselineLocation?(): TravelDestination | undefined;
   getWorldChanges?(): readonly StoryEntityState[];
   committed?(): void;
   restoreStage?(stage: StoryStageSnapshot, signal: AbortSignal): Promise<void>;

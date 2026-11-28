@@ -1,6 +1,7 @@
 import type { Facing } from './content.ts';
 import type { Point } from './navigation.ts';
 import type { NavigationActor, NavigationShape, NavigationWorld } from './navigation-world.ts';
+import { canTraverse } from './pathfinding.ts';
 
 export type CompanionStance = 'front' | 'back' | 'support';
 
@@ -49,18 +50,50 @@ export function partyBodyOverlaps(point: Point, other: Point, shape: NavigationS
  * - 地图连整盒空间都没有时退回脚点口径（与旧行为一致）；完全没有可行走区域时返回
  *   `undefined`，由调用方决定报错还是保持原位。
  */
+export interface PartyLandingOptions {
+  /** 期望的编队侧位；连通性与安全边界仍从真实锚点 `origin` 出发校验，避免偏到薄墙或触发带彼岸。 */
+  preferred?: Point;
+  /** 额外通行边界（如未触发的区域剧情矩形）：候选落点与沿途步进都必须满足。 */
+  allowed?: (point: Point) => boolean;
+}
+
 export function choosePartyLanding(navigation: NavigationWorld, shape: NavigationShape, origin: Point,
-  ignore?: NavigationActor, avoid: readonly Point[] = []): Point | undefined {
-  // 队友之间可以挤过彼此，但落位不能直接叠在主角或已站好的队友身上。
+  ignore?: NavigationActor, avoid: readonly Point[] = [], options?: PartyLandingOptions): Point | undefined {
+  // 队友之间可以挤过彼此，但落位尽量不直接叠在主角或已站好的队友身上。
   // 用碰撞盒重叠判断而不是中心点距离，斜向候选也不会留下部分重叠。
-  const clear = (point: Point) => avoid.every(other => !partyBodyOverlaps(point, other, shape));
-  const settle = (point: Point) => clear(point) && navigation.terrainFree(point)
-    && navigation.canPlaceBody(shape, point, ignore);
-  const preferred = navigation.nearestBody(shape, origin, ignore, [], clear);
-  if (preferred) {
-    const reachable = navigation.nearestReachableBody(shape, origin, preferred, ignore, [], clear);
+  const allowed = options?.allowed;
+  const stepAllowed = allowed
+    ? (point: Point) => navigation.terrainFree(point) && allowed(point)
+    : (point: Point) => navigation.terrainFree(point);
+  const clear = (point: Point) => stepAllowed(point)
+    && avoid.every(other => !partyBodyOverlaps(point, other, shape));
+  const settle = (point: Point) => clear(point) && navigation.canPlaceBody(shape, point, ignore);
+  const target = options?.preferred ?? origin;
+  const preferred = navigation.nearestBody(shape, target, ignore, [], clear);
+  const candidate = preferred && (!allowed || !options?.preferred || canTraverse(origin, preferred, stepAllowed))
+    ? preferred
+    : (allowed ? navigation.nearestBody(shape, origin, ignore, [], clear) : undefined);
+  if (shape.collision && (candidate || allowed)) {
+    const reachable = navigation.nearestReachableBody(shape, origin, candidate, ignore, [], clear, allowed);
     if (reachable && settle(reachable)) return reachable;
-    if (settle(preferred)) return preferred;
+    if (!allowed) {
+      if (candidate && !options?.preferred && settle(candidate)) return candidate;
+      if (options?.preferred) {
+        const nearAnchor = navigation.nearestReachableBody(shape, origin, undefined, ignore, [], clear);
+        if (nearAnchor && settle(nearAnchor)) return nearAnchor;
+        const fallbackBody = navigation.nearestBody(shape, origin, ignore, [], clear);
+        if (fallbackBody && settle(fallbackBody)) return fallbackBody;
+      }
+    } else {
+      // 安全侧空间狭小、避让点占满全部整盒空位时，放宽队友重叠限制（同阵营不阻挡移动），
+      // 优先落在安全侧可达整盒点，绝不把非受控队员留在触发区内部或放到薄条带彼岸。
+      const stacked = navigation.nearestReachableBody(shape, origin, undefined, ignore, [], stepAllowed, allowed);
+      if (stacked && stepAllowed(stacked) && navigation.canPlaceBody(shape, stacked, ignore)) return stacked;
+    }
+  }
+  if (allowed) {
+    if (stepAllowed(origin) && navigation.canPlace(shape, origin, ignore)) return { ...origin };
+    return navigation.nearestReachableFoot(shape, origin, ignore, [], allowed);
   }
   try { return navigation.nearest(shape, origin, ignore, [], clear); } catch { return undefined; }
 }

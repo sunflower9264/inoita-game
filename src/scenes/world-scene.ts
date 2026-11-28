@@ -649,6 +649,8 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
     }
     signal.throwIfAborted();
     if (options.checkpoint) await this.combat.restoreState(options.checkpoint, signal);
+    this.syncControlledCharacter(true);
+    if (options.triggerContacts) this.restoreTriggerContacts(options.triggerContacts);
     this.worldHud!.mountMinimap(map, this.app.storyInterface);
     this.resizeView();
     this.refreshState();
@@ -667,7 +669,7 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
     if (!this.app.checkpoint.available) this.captureEntryCheckpoint();
     options.onReady?.();
     if (!options.resumeStory) this.app.autoSave?.();
-    this.lastProjectedLocation = JSON.stringify(this.app.session.storyWorld.currentLocation);
+    this.lastProjectedLocation = this.locationProjectionSignature();
     this.app.session.setStoryWorldContext(() =>
       this.triggers.storyWorldContext(this.map, (this.combat?.controlledVisual ?? this.player)?.container, this.near, this.app.campaign));
     if (!options.silentEntry && !options.suppressEntry && plan.scripts.length) {
@@ -1387,13 +1389,24 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
     if (!this.combat) throw new Error('请等待地图加载');
     return this.combat.revive(id, item);
   }
+  activeStoryRegions(excludeAt?: { x: number; y: number }) {
+    return this.triggers.activeRegions(this.map, this.app.campaign, this.app.session, this.app.director, this.characters, excludeAt);
+  }
+  private locationProjectionSignature(): string {
+    const storyWorld = this.app.session.storyWorld as { readonly currentLocation?: TravelDestination; readonly locationRevision?: number };
+    return storyWorld.locationRevision !== undefined
+      ? `rev:${storyWorld.locationRevision}:${JSON.stringify(storyWorld.currentLocation)}`
+      : JSON.stringify(storyWorld.currentLocation);
+  }
   syncControlledCharacter(resetExitTrigger = false): void {
     const actor = this.combat?.controlledVisual ?? this.player;
     this.applyNoclip(actor);
     if (actor?.container.active) this.cameras.main.startFollow(actor.container, true, 1, 1);
     this.lastPlayerPosition = actor ? this.movement?.position(actor) : undefined;
-    if (resetExitTrigger && this.map && this.lastPlayerPosition) {
-      this.triggers.setExitTrigger(this.map.exits, this.lastPlayerPosition);
+    if (this.map && this.lastPlayerPosition) {
+      if (resetExitTrigger) this.triggers.setExitTrigger(this.map.exits, this.lastPlayerPosition);
+      else this.triggers.syncExitPosition(this.lastPlayerPosition);
+      this.triggers.pruneOccupiedRegions(this.lastPlayerPosition, this.app.campaign, this.map.id, this.characters);
     }
     this.shortcuts.refreshLoadout();
     this.refreshCombatTarget();
@@ -1659,10 +1672,10 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
         this.restoreScenePositions(state.scene);
         await this.projectEquipment(signal);
       }
+      this.syncControlledCharacter(true);
       this.restoreTriggerContacts(state.triggerContacts);
       signal.throwIfAborted();
       if (state.audio) this.app.audio?.restoreStoryAudio(state.audio);
-      this.syncControlledCharacter(true);
       return;
     }
     await this.restartStoryWorld(state.location, signal, {
@@ -1685,7 +1698,7 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
   async projectStoryWorld(stage: StoryStageSnapshot | undefined, signal: AbortSignal, restoredLocation?: TravelDestination): Promise<void> {
     signal.throwIfAborted();
     const location = this.app.session.storyWorld.currentLocation;
-    const signature = JSON.stringify(location);
+    const signature = this.locationProjectionSignature();
     if (location && location.map !== this.map?.id) {
       signal.throwIfAborted();
       const stageScene = this.scene.get?.(SCENE_KEYS.storyStage) as { worldCovered?: boolean } | undefined;
@@ -1769,6 +1782,7 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
       this.setClip(this.player!, `idle-${this.facing}`);
       this.lastProjectedLocation = signature;
     }
+    const previousControl = this.combat?.syncedControlledMemberId;
     this.entities = projected;
     await this.combat?.projectStoryEnemies(signal);
     this.app.director.onSkipProgress?.('assets-ready');
@@ -1780,11 +1794,14 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
     await this.projectEquipment(signal);
     this.app.director.onSkipProgress?.('outfit-ready');
     signal.throwIfAborted();
-    if (playerLocation) {
-      if (!restoredLocation) this.combat?.regroupPartyAroundHero();
-      this.syncControlledCharacter(true);
+    const controlChanged = previousControl !== undefined && previousControl !== (this.combat?.controlledId ?? 'player');
+    const allyBlocked = !restoredLocation && !!this.combat?.hasAllyInBlockedStoryRegion?.();
+    const shouldResetControlled = !!(playerLocation || (!restoredLocation && (controlChanged || allyBlocked)));
+    if (!restoredLocation && (playerLocation || controlChanged || allyBlocked)) {
+      this.combat?.regroupPartyAroundHero(!!(playerLocation || controlChanged));
     }
     if (stage?.scene.map === this.map!.id) this.combat?.adoptStoryPositions(stage.scene.actors);
+    this.syncControlledCharacter(shouldResetControlled);
     this.rebuildTriggerIndex();
     this.refreshState();
     this.syncHud();
@@ -2044,6 +2061,7 @@ export class WorldScene extends Phaser.Scene implements CombatWorldHost {
       director: this.app.director,
       characters: this.characters,
       pos,
+      previousPos: previous,
       moving,
       playStory: work => this.playStory(work),
       onExit: exit => this.changeMap(exit),

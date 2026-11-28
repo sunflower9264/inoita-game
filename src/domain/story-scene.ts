@@ -177,6 +177,7 @@ export function resolveStoryScene(declaration: StoryStage, source: SceneSnapshot
     player.clip=`idle-${player.facing}`;player.animationProgress=0;player.animationPlaying=true;
   }
   player.visible = declaration.playerVisible;
+  delete player.alpha;
   const bindings: [string, string][] = [['player', player.id]];
   for (const member of declaration.cast) {
     const referencesWorld=member.binding==='world'||member.inheritPosition||member.worldEntityId||member.characterId||member.memberId||member.enemyId;
@@ -190,11 +191,13 @@ export function resolveStoryScene(declaration: StoryStage, source: SceneSnapshot
     } else if (member.binding !== 'world' && !member.inheritPosition) {
       Object.assign(actor, { x: member.x, y: member.y, facing: member.facing, visible: member.visible,
         unpositioned: member.unpositioned,clip:`idle-${member.facing}`,animationProgress:0,animationPlaying:true });
+      delete actor.alpha;
     }
     if (actor.memberId && actor.memberId !== 'player') {
       // 舞台点名了这名队员：初始显隐按声明来，之后由脚本动作负责。
       controlIndependently(actor);
       actor.visible = member.visible;
+      delete actor.alpha;
     }
     const owner = bindings.find(([, id]) => id === actor.id);
     if (owner) throw new Error(`剧情演员重复绑定：${member.id} 与 ${owner[0]} 指向 ${actor.id}`);
@@ -269,6 +272,7 @@ export function applyStorySceneAction(previous: StoryStageSnapshot, action: Perf
       const appearanceChanged=actor.actor!==entity.actor;
       Object.assign(actor, { actor: entity.actor!, worldEntityId:entity.id, characterId: entity.characterId, x: entity.x!, y: entity.y!,
         facing: entity.facing ?? actor.facing, visible: entity.visible !== false, unpositioned: false, removed:false });
+      delete actor.alpha;
       delete actor.storyPoseHold;actor.clip=`idle-${actor.facing}`;actor.animationProgress=0;actor.animationPlaying=true;
       if(appearanceChanged)delete actor.appearance;
       controlIndependently(actor);
@@ -283,6 +287,7 @@ export function applyStorySceneAction(previous: StoryStageSnapshot, action: Perf
       for (const actor of state.scene.actors) if (actor.worldEntityId === command.id) {
         controlIndependently(actor);
         actor.visible = command.kind === 'show';actor.removed=command.kind==='remove';
+        if (command.kind === 'show') delete actor.alpha;
       }
     }
     return syncStoryScene(state);
@@ -303,6 +308,7 @@ export function applyStorySceneAction(previous: StoryStageSnapshot, action: Perf
     }
     if(action.worldEntityId)actor.worldEntityId=action.worldEntityId;
     Object.assign(actor, { x: action.x, y: action.y, facing: action.facing, visible: true, unpositioned: false, removed:false });
+    delete actor.alpha;
     delete actor.storyPoseHold;actor.clip=`idle-${actor.facing}`;actor.animationProgress=0;actor.animationPlaying=true;
     controlIndependently(actor);
     // 正式出场：撤销开场的临时隐藏，之后的位置和显隐照常写回正式世界。
@@ -313,6 +319,7 @@ export function applyStorySceneAction(previous: StoryStageSnapshot, action: Perf
   } else if (action.type === 'show') {
     if (!actor.unpositioned && !actor.removed) {
       controlIndependently(actor); actor.visible = true;
+      delete actor.alpha;
       delete actor.stageHidden;
     }
   }

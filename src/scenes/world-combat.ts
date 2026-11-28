@@ -51,8 +51,8 @@ import { FriendlySummonController } from '../domain/friendly-summon-ai.ts';
 import { groundLootFor } from '../domain/ground-loot.ts';
 import type { ItemResult, ManaPickup } from '../domain/items.ts';
 import { recoverManaPickup, rollManaGem } from '../domain/mana-gems.ts';
-import type { Point } from '../domain/navigation.ts';
-import { overlapsFootRect } from '../domain/navigation.ts';
+import type { GameRectangle, Point } from '../domain/navigation.ts';
+import { overlapsFootRect, segmentOverlapsFootRect } from '../domain/navigation.ts';
 import type { NavigationActor, NavigationShape } from '../domain/navigation-world.ts';
 import { adjacentLivingMember, type CompanionMember, type PartyRoster } from '../domain/party.ts';
 import { PartyController, type PartyPort } from '../domain/party-ai.ts';
@@ -60,7 +60,7 @@ import { choosePartyLanding, followOffset, partyBodyOverlaps } from '../domain/p
 import { reviveAtHealer } from '../domain/party-revival.ts';
 import type { PassiveModifier } from '../domain/passive-skills.ts';
 import { PathBudget } from '../domain/path-budget.ts';
-import { canTraverse } from '../domain/pathfinding.ts';
+import { canTraverse, findPath } from '../domain/pathfinding.ts';
 import type { PhysicalHit } from '../domain/physical-hit.ts';
 import {
   PRESSURE_DEFAULT_MAX_ENEMIES,
@@ -604,6 +604,9 @@ export class WorldCombat {
   get controlledId(): string {
     return this.app.session.party?.controlledId ?? 'player';
   }
+  get syncedControlledMemberId(): string {
+    return this.syncedControlledId;
+  }
   get controlledMember(): BattleCharacter | CompanionMember {
     return this.memberOf(this.controlledId)!;
   }
@@ -794,7 +797,7 @@ export class WorldCombat {
       setCharacterClip(this.scene.phaserScene, visual, `idle-${actor.facing}`);
       placements.push({ visual, position: { x: actor.x, y: actor.y }, enabled: actor.visible });
     }
-    this.movement.placeAll(placements, { evictOccupied: true, displaceable: [this.player] });
+    if (placements.length) this.movement.placeAll(placements, { evictOccupied: true, displaceable: [this.player] });
   }
 
   captureStoryVisit(): Pick<PreparedSceneVisit, 'roster' | 'breakableRolls'> {
@@ -952,7 +955,6 @@ export class WorldCombat {
       }
       // 恢复会换掉状态和增益；蓝耗缓存必须按新现场重算。
       this.stats.clearAiSkillCosts();
-      this.syncControlled();
       this.focusTargetId = state.focusTargetId;
       for (const saved of state.party) {
         const visual = this.visualOf(saved.id);
@@ -968,6 +970,7 @@ export class WorldCombat {
         if (this.memberOf(saved.id)?.player.health) setCharacterClip(this.scene.phaserScene, visual, `idle-${saved.facing}`, true);
         else this.markAlreadyFallen(saved.id);
       }
+      this.syncControlled();
       for (const placed of this.roster.enemies) this.spawnEnemy(placed);
       for (const saved of state.enemies) {
         const enemy = combatActor(this.arena, saved.id, actor => actor.key);
@@ -1220,7 +1223,38 @@ export class WorldCombat {
               {
                 ...port,
                 tactics: () => this.awareness.tactics(placed.summonedBy!, this.activeParty, this.focusTargetId),
-                navigationSnapshot: () => this.movement.navigation.captureStandability(this.movement.actor(visual)),
+                navigationSnapshot: () =>
+                  this.wrapSnapshotWithForbiddenRegions(
+                    this.movement.navigation.captureStandability(this.movement.actor(visual)),
+                    this.forbiddenRegionsForFollower(),
+                  ),
+                moveToward: pos => {
+                  if (this.wouldStepIntoStoryRegions(this.movement.position(visual), pos, this.forbiddenRegionsForFollower())) {
+                    this.movement.stop(visual);
+                    return;
+                  }
+                  port.moveToward(pos);
+                },
+                canStand: (pos, clearanceActorId) =>
+                  port.canStand(pos, clearanceActorId) && !this.isBlockedByStoryRegion(pos, this.forbiddenRegionsForFollower()),
+                canPlaceBody: (pos, clearanceActorId) =>
+                  this.canPlaceBodyAt(visual, pos, clearanceActorId) &&
+                  !this.isBlockedByStoryRegion(pos, this.forbiddenRegionsForFollower()),
+                canRelocateReach: pos =>
+                  this.canReachWithoutStoryRegions(this.movement.position(visual), pos, this.forbiddenRegionsForFollower()),
+                canRelocateVerify: pos => {
+                  const regions = this.forbiddenRegionsForFollower();
+                  if (regions.length && !canTraverse(this.movement.position(visual), pos, p => !this.isBlockedByStoryRegion(p, regions))) {
+                    return false;
+                  }
+                  return port.canRelocateVerify ? port.canRelocateVerify(pos) : true;
+                },
+                relocate: (pos, clearance) => {
+                  if (!this.canReachWithoutStoryRegions(this.movement.position(visual), pos, this.forbiddenRegionsForFollower())) {
+                    return false;
+                  }
+                  return this.relocateVisual(enemy.visual, pos, clearance);
+                },
                 tryRecall: () => this.tryRecallSummon(enemy),
                 autonomousTarget: id => {
                   const target = combatActor(this.arena, id, entry => entry.key);
@@ -1254,6 +1288,7 @@ export class WorldCombat {
         if (!definition?.actor.collision) return;
         // 召唤落点一律按整个碰撞盒校验；不复刻原版「找位失败就复制主人坐标、允许重叠」那条分支。
         if (!this.movement.navigation.canPlaceBody({ collision: definition.actor.collision }, spot)) return;
+        if (this.memberOf(casterId) && this.isBlockedByStoryRegion(spot, this.forbiddenRegionsForFollower())) return;
         const placed = this.roster.placeEnemy(enemyId, spot.x, spot.y);
         placed.summonedBy = casterId;
         placed.summonedStats = summonedStats;
@@ -1276,14 +1311,16 @@ export class WorldCombat {
     const casterVisual = this.visualOf(request.casterId);
     if (!casterVisual) return false;
     const navigation = this.movement.navigation;
+    const regions = this.memberOf(request.casterId) ? this.forbiddenRegionsForFollower(request.casterPosition) : [];
+    const allowed = regions.length ? (point: Point) => !this.isBlockedByStoryRegion(point, regions) : undefined;
     const preferred = planSummonSpot(
       request.casterPosition,
       casterVisual.actor.collision!,
       request.casterFacing,
       request.placement,
-      point => navigation.canPlaceBody({ collision: request.bounds }, point),
+      point => navigation.canPlaceBody({ collision: request.bounds }, point) && (!allowed || allowed(point)),
     );
-    const spot = navigation.nearestReachableBody({ collision: request.bounds }, request.casterPosition, preferred);
+    const spot = navigation.nearestReachableBody({ collision: request.bounds }, request.casterPosition, preferred, undefined, [], allowed, allowed);
     if (!spot) return false;
     const visual = factory.create(
       request.casterId,
@@ -1440,8 +1477,11 @@ export class WorldCombat {
     const ownerVisual = this.visualOf(owner.id);
     if (!ownerVisual) return false;
     const ownerBody = this.movement.actor(ownerVisual);
+    const forbiddenRegions = this.forbiddenRegionsForFollower(owner.position);
     const localFree = (point: Point) =>
-      navigation.terrainFree(point) && navigation.canPlace(body.shape(), point, body, [{ actor: ownerBody, position: owner.position, enabled: false }]);
+      navigation.terrainFree(point) &&
+      !this.isBlockedByStoryRegion(point, forbiddenRegions) &&
+      navigation.canPlace(body.shape(), point, body, [{ actor: ownerBody, position: owner.position, enabled: false }]);
     const seed = stableSeed(enemy.key);
     for (const radius of SUMMON_RECALL_RADII_PX) {
       for (let index = 0; index < SUMMON_RECALL_DIRECTIONS; index++) {
@@ -1449,6 +1489,7 @@ export class WorldCombat {
         const point = { x: owner.position.x + Math.cos(angle) * radius, y: owner.position.y + Math.sin(angle) * radius };
         if (
           !this.canPlaceBodyAt(enemy.visual, point) ||
+          this.isBlockedByStoryRegion(point, forbiddenRegions) ||
           !safe(point) ||
           this.scene.map?.exits.some(exit => overlapsFootRect(point, exit)) ||
           this.scene.map?.entities.some(entity => Math.hypot(point.x - entity.x, point.y - entity.y) < SUMMON_RECALL_ENTITY_CLEARANCE_PX) ||
@@ -1532,6 +1573,10 @@ export class WorldCombat {
   private dispatcherFor(presenter: CombatPresenter): CombatActionDispatcher {
     const existing = this.actionDispatchers.get(presenter);
     if (existing) return existing;
+    const isFriendlyOwner = () =>
+      presenter === this.presenter ||
+      this.allies.some(ally => ally.presenter === presenter) ||
+      this.arena.some(enemy => enemy.presenter === presenter && !!enemy.summonedBy && !!this.memberOf(enemy.summonedBy));
     const dispatcher = new CombatActionDispatcher({
       runtime: this.runtime,
       catalog: this.app.battleCatalog,
@@ -1547,8 +1592,14 @@ export class WorldCombat {
       flight: event => presenter.renderFlight(event),
       screen: value => presenter.screenFill(value),
       notify: (name, data) => this.scene.events.emit(name, data),
-      canSummonAt: (position, bounds) => this.movement.navigation.canPlaceBody({ collision: bounds }, position),
-      nearestSummonSpot: (position, bounds, preferred) => this.movement.navigation.nearestReachableBody({ collision: bounds }, position, preferred),
+      canSummonAt: (position, bounds) =>
+        this.movement.navigation.canPlaceBody({ collision: bounds }, position) &&
+        (!isFriendlyOwner() || !this.isBlockedByStoryRegion(position, this.forbiddenRegionsForFollower())),
+      nearestSummonSpot: (position, bounds, preferred) => {
+        const regions = isFriendlyOwner() ? this.forbiddenRegionsForFollower(position) : [];
+        const allowed = regions.length ? (point: Point) => !this.isBlockedByStoryRegion(point, regions) : undefined;
+        return this.movement.navigation.nearestReachableBody({ collision: bounds }, position, preferred, undefined, [], allowed, allowed);
+      },
       beginSummons: id => this.summonFactory().begin(id),
       summon: (ownerId, enemyId, position) => this.summonFactory().create(ownerId, enemyId, position)?.entity.id,
     });
@@ -2031,8 +2082,13 @@ export class WorldCombat {
       healScore: key => this.settlement.healScoreFor(key),
       healCandidates: () => this.settlement.healCandidates(),
       facing,
-      followCanStand: point => this.movement.canStand(visual, point),
-      followNavigationSnapshot: () => this.movement.navigation.captureStandability(this.movement.actor(visual), true),
+      followCanStand: point =>
+        this.movement.canStand(visual, point) &&
+        (id === this.controlledId || !this.isBlockedByStoryRegion(point, this.forbiddenRegionsForFollower())),
+      followNavigationSnapshot: () => {
+        const snapshot = this.movement.navigation.captureStandability(this.movement.actor(visual), true);
+        return id === this.controlledId ? snapshot : this.wrapSnapshotWithForbiddenRegions(snapshot, this.forbiddenRegionsForFollower());
+      },
       leader: () => this.combatant(this.controlledId),
       leaderFacing: () => this.facingOfControlled(),
       followSlot: () => this.app.session.party?.followSlotOf(this.controlledId, id),
@@ -2069,9 +2125,19 @@ export class WorldCombat {
         this.stats.actorAttribute(key, 'attackRangeBonusUnits'),
       navigationBounds: () => this.movement.navigation.bounds,
       pathBudget: this.pathBudget,
-      navigationSnapshot: () => this.movement.navigation.captureStandability(this.movement.actor(visual)),
+      navigationSnapshot: () => {
+        const snapshot = this.movement.navigation.captureStandability(this.movement.actor(visual));
+        return id === this.controlledId ? snapshot : this.wrapSnapshotWithForbiddenRegions(snapshot, this.forbiddenRegionsForFollower());
+      },
       moveToward: position => {
         if (!this.conditions.canAutoApproach(id)) {
+          this.movement.stop(visual);
+          return;
+        }
+        if (
+          id !== this.controlledId &&
+          this.wouldStepIntoStoryRegions(this.movement.position(visual), position, this.forbiddenRegionsForFollower())
+        ) {
           this.movement.stop(visual);
           return;
         }
@@ -2092,27 +2158,44 @@ export class WorldCombat {
       stop: () => this.movement.stop(visual),
       canStand: (position, clearanceActorId) => {
         const clearanceVisual = clearanceActorId ? this.visualOf(clearanceActorId) : visual;
-        return !!clearanceVisual && this.movement.canStand(clearanceVisual, position);
+        if (!clearanceVisual || !this.movement.canStand(clearanceVisual, position)) return false;
+        return id === this.controlledId || !this.isBlockedByStoryRegion(position, this.forbiddenRegionsForFollower());
       },
       regroup: () => this.catchUpFollower(id),
-      canPlaceBody: (position, clearanceActorId) => this.canPlaceBodyAt(visual, position, clearanceActorId),
-      canRelocateReach: position => {
-        const actor = this.movement.actor(visual);
-        return this.movement.navigation.sameTerrainRegion(actor.position(), position);
-      },
+      canPlaceBody: (position, clearanceActorId) =>
+        this.canPlaceBodyAt(visual, position, clearanceActorId) &&
+        (id === this.controlledId || !this.isBlockedByStoryRegion(position, this.forbiddenRegionsForFollower())),
+      canRelocateReach: position =>
+        this.canReachWithoutStoryRegions(
+          this.movement.position(visual),
+          position,
+          id === this.controlledId ? [] : this.forbiddenRegionsForFollower(),
+        ),
       canRelocateVerify: position => {
         const actor = this.movement.actor(visual);
         const shape = actor.shape();
+        const regions = id === this.controlledId ? [] : this.forbiddenRegionsForFollower();
         return (
           this.movement.navigation.sameTerrainRegion(actor.position(), position) &&
           canTraverse(
             actor.position(),
             position,
-            point => this.movement.navigation.terrainFree(point) && !this.movement.navigation.blockedByContent(shape, point, actor),
+            point =>
+              this.movement.navigation.terrainFree(point) &&
+              !this.movement.navigation.blockedByContent(shape, point, actor) &&
+              !this.isBlockedByStoryRegion(point, regions),
           )
         );
       },
-      relocate: (position, clearance) => this.relocateVisual(visual, position, clearance),
+      relocate: (position, clearance) => {
+        if (
+          id !== this.controlledId &&
+          !this.canReachWithoutStoryRegions(this.movement.position(visual), position, this.forbiddenRegionsForFollower())
+        ) {
+          return false;
+        }
+        return this.relocateVisual(visual, position, clearance);
+      },
       face: setFacing,
       play: (action, frame, complete) => {
         setFacing(action.facing);
@@ -2268,7 +2351,7 @@ export class WorldCombat {
         // 上阵落点以主角为锚点，与当前操控者是谁无关；整盒判定避免身体压进地形。
         // 整张图都没有整盒空位时退到主角脚点：队友之间不占位，移动体会在下一步自愈，
         // 不因为一个队员的落点中断剧情或战斗。
-        const landing = this.partyLanding({ collision: actor.collision });
+        const landing = this.partyLanding({ collision: actor.collision }, undefined, id);
         if (!landing) globalThis.storyDiagnostics?.record('party-landing-fallback', { map: this.scene.map?.id, id });
         const position = landing ?? this.movement.position(this.player);
         const visual = createCharacter(this.scene.phaserScene, actor, { id, actor: actor.id, ...position });
@@ -2337,6 +2420,91 @@ export class WorldCombat {
     return !!party && party.activeRevision !== this.syncedPartyRevision;
   }
 
+  private forbiddenRegionsForFollower(anchor?: Point): readonly GameRectangle[] {
+    if (!this.scene.activeStoryRegions || !this.movement) return [];
+    const leader = anchor ?? (this.controlledVisual ? this.movement.position(this.controlledVisual) : undefined);
+    return this.scene.activeStoryRegions(leader);
+  }
+
+  private isBlockedByStoryRegion(point: Point, regions: readonly GameRectangle[]): boolean {
+    for (const region of regions) {
+      if (overlapsFootRect(point, region)) return true;
+    }
+    return false;
+  }
+
+  private wouldStepIntoStoryRegions(from: Point, target: Point, regions: readonly GameRectangle[]): boolean {
+    if (!regions.length || this.isBlockedByStoryRegion(from, regions)) return false;
+    const dx = target.x - from.x;
+    const dy = target.y - from.y;
+    const dist = Math.hypot(dx, dy);
+    const step = Math.min(dist, 16);
+    const next = dist > 0.01 ? { x: from.x + (dx / dist) * step, y: from.y + (dy / dist) * step } : target;
+    return regions.some(region => segmentOverlapsFootRect(from, next, region));
+  }
+
+  private canReachWithoutStoryRegions(from: Point, to: Point, regions: readonly GameRectangle[]): boolean {
+    if (!this.movement.navigation.sameTerrainRegion(from, to)) return false;
+    if (!regions.length) return true;
+    if (this.isBlockedByStoryRegion(from, regions) || this.isBlockedByStoryRegion(to, regions)) return false;
+    const free = (point: Point) =>
+      this.movement.navigation.terrainFree(point) && !this.isBlockedByStoryRegion(point, regions);
+    if (!free(from) || !free(to)) return false;
+    if (canTraverse(from, to, free)) return true;
+    return (
+      findPath(
+        from,
+        {
+          bounds: this.movement.navigation.bounds,
+          canStand: free,
+          canStandXY: (x, y) => free({ x, y }),
+          isGoal: point => Math.hypot(point.x - to.x, point.y - to.y) <= 8 && canTraverse(point, to, free),
+          heuristic: point => Math.max(0, Math.hypot(point.x - to.x, point.y - to.y) - 8),
+        },
+        256,
+      ) !== null
+    );
+  }
+
+  private wrapSnapshotWithForbiddenRegions<T extends { canStand(point: Point): boolean; canStandXY?(x: number, y: number): boolean }>(
+    snapshot: T,
+    regions: readonly GameRectangle[],
+  ): T {
+    if (!regions.length) return snapshot;
+    const baseCanStandXY = snapshot.canStandXY?.bind(snapshot);
+    return {
+      ...snapshot,
+      ...(baseCanStandXY
+        ? {
+            canStandXY: (x: number, y: number) => !this.isBlockedByStoryRegion({ x, y }, regions) && baseCanStandXY(x, y),
+          }
+        : {}),
+      canStand: (point: Point) => !this.isBlockedByStoryRegion(point, regions) && snapshot.canStand(point),
+    };
+  }
+
+  hasAllyInBlockedStoryRegion(): boolean {
+    if (this.closed || !this.movement) return false;
+    const leaderId = this.controlledId;
+    const leaderVisual = this.controlledVisual ?? this.scene.player;
+    if (!leaderVisual) return false;
+    const leaderPos = this.movement.position(leaderVisual);
+    const regions = this.forbiddenRegionsForFollower(leaderPos);
+    if (!regions.length) return false;
+    for (const id of this.activeParty) {
+      if (id === leaderId) continue;
+      if (id === 'player') {
+        if (!this.scene.player || !this.hero.player.health || this.fallen.has('player') || !this.scene.player.container.active) continue;
+        if (this.isBlockedByStoryRegion(this.movement.position(this.scene.player), regions)) return true;
+        continue;
+      }
+      const ally = combatActor(this.allies, id, actor => actor.id);
+      if (!ally || !ally.member.player.health || this.fallen.has(id) || !ally.visual.container.active) continue;
+      if (this.isBlockedByStoryRegion(this.movement.position(ally.visual), regions)) return true;
+    }
+    return false;
+  }
+
   /** 以队长脚点为锚，按相对当前队长的跟随侧位偏到后排附近。 */
   private partyLanding(
     shape: NavigationShape,
@@ -2350,14 +2518,18 @@ export class WorldCombat {
     const leaderId = leader === this.player ? 'player' : this.controlledId;
     const slot = id ? this.app.session.party?.followSlotOf(leaderId, id) : undefined;
     const offset = slot === undefined ? undefined : followOffset(this.facingOfControlled(), 'back', slot);
-    const origin = offset ? { x: anchor.x + offset.x, y: anchor.y + offset.y } : anchor;
+    const preferred = offset ? { x: anchor.x + offset.x, y: anchor.y + offset.y } : undefined;
+    const regions = this.forbiddenRegionsForFollower(anchor);
+    const allowed = regions.length ? (point: Point) => !this.isBlockedByStoryRegion(point, regions) : undefined;
     // 主角不是 `allies` 的一员；操控佣兵时补位必须把主角也列为避让点，否则会瞬移叠到主角身上。
     const avoid = [
       anchor,
-      ...(leader === this.player ? [] : [this.movement.position(this.player)]),
-      ...this.allies.filter(ally => this.movement.actor(ally.visual) !== ignore).map(ally => this.movement.position(ally.visual)),
+      ...(leader === this.player || !this.hero.player.health || this.fallen.has('player') ? [] : [this.movement.position(this.player)]),
+      ...this.allies
+        .filter(ally => this.movement.actor(ally.visual) !== ignore && ally.member.player.health > 0 && !this.fallen.has(ally.id))
+        .map(ally => this.movement.position(ally.visual)),
     ];
-    return choosePartyLanding(this.movement.navigation, shape, origin, ignore, avoid);
+    return choosePartyLanding(this.movement.navigation, shape, anchor, ignore, avoid, { preferred, allowed });
   }
 
   private facingOfControlled(): Facing {
@@ -2367,58 +2539,88 @@ export class WorldCombat {
   }
 
   /**
-   * 剧情把主角送到新位置后，把其余上阵队员收拢到主角身边。
-   * 只移动队员视觉体，不改变操控者；倒下或找不到合法落点的队员保持原位。
+   * 剧情把主角送到新位置后，把其余上阵队员收拢到主角身边；
+   * 若是无舞台投影触发的禁区清理（`anchorHero=false`），则以当前实际受控人为锚，绝不把玩家操控的角色瞬移走。
    */
-  regroupPartyAroundHero(): void {
-    if (this.closed || !this.movement || !this.scene.player) return;
+  regroupPartyAroundHero(anchorHero = true): void {
+    if (this.closed || !this.movement) return;
+    const leaderId = anchorHero ? 'player' : this.controlledId;
+    const leaderVisual = anchorHero ? this.scene.player : (this.controlledVisual ?? this.scene.player);
+    if (!leaderVisual) return;
     for (const id of this.activeParty) {
-      if (id === 'player') continue;
+      if (id === leaderId) continue;
+      if (id === 'player') {
+        if (!this.scene.player || !this.hero.player.health || this.fallen.has('player') || !this.scene.player.container.active) continue;
+        this.heroAi?.cancel();
+        const actor = this.movement.actor(this.scene.player);
+        const landing = this.partyLanding(actor.shape(), actor, 'player', leaderVisual);
+        if (!landing) continue;
+        this.movement.place(this.scene.player, landing);
+        setCharacterClip(this.scene.phaserScene, this.scene.player, `idle-${this.scene.facing}`, true);
+        continue;
+      }
       const ally = combatActor(this.allies, id, actor => actor.id);
       if (!ally || !ally.member.player.health || this.fallen.has(id) || !ally.visual.container.active) continue;
       ally.ai.cancel();
       const actor = this.movement.actor(ally.visual);
-      const landing = this.partyLanding(actor.shape(), actor, id);
+      const landing = this.partyLanding(actor.shape(), actor, id, leaderVisual);
       if (!landing) continue;
       this.movement.place(ally.visual, landing);
       setCharacterClip(this.scene.phaserScene, ally.visual, `idle-${ally.facing}`, true);
     }
   }
 
-  /** 是否该在剧情收尾时把单位拉回主角身边：太远、整盒不合法，或已经和队友叠在一起。 */
-  private shouldSettleFriendly(visual: CharacterVisual, actor: NavigationActor, id?: string): boolean {
+  /** 是否该在剧情收尾时把单位拉回当前队长身边：太远、落入待触发区域、整盒不合法，或与队友重叠。 */
+  private shouldSettleFriendly(visual: CharacterVisual, actor: NavigationActor, leaderVisual: CharacterVisual, id?: string): boolean {
     const position = this.movement.position(visual);
-    const hero = this.movement.position(this.player);
+    const leaderPos = this.movement.position(leaderVisual);
     // 与普通跟随的收拢阈值一致，避免剧情收尾时在玩家眼前做小幅瞬移。
-    if (Math.hypot(position.x - hero.x, position.y - hero.y) > FRIENDLY_SETTLE_MAX_DISTANCE_PX) return true;
+    if (Math.hypot(position.x - leaderPos.x, position.y - leaderPos.y) > FRIENDLY_SETTLE_MAX_DISTANCE_PX) return true;
+    if (this.isBlockedByStoryRegion(position, this.forbiddenRegionsForFollower(leaderPos))) return true;
     const navigation = this.movement.navigation;
     if (!navigation.terrainFree(position) || !navigation.canPlaceBody(actor.shape(), position, actor)) return true;
     if (!id) return false;
-    // 读档可能带进旧重叠；已经和主角或另一名存活队员站在同一个盒子里时也重新落位。
+    // 读档可能带进旧重叠；已经和存活主角或另一名存活队员站在同一个盒子里时也重新落位。
     const shape = actor.shape();
     return [
-      this.player,
+      ...(id !== 'player' && this.hero.player.health > 0 && !this.fallen.has('player') ? [this.player] : []),
       ...this.allies.filter(other => other.id !== id && other.member.player.health > 0 && !this.fallen.has(other.id)).map(other => other.visual),
     ].some(other => partyBodyOverlaps(position, this.movement.position(other), shape));
   }
 
   /**
-   * 剧情正常结束后，把掉队或被剧情障碍困住的佣兵、友方召唤物收拢到主角身边。
-   * 只处理远离或位置非法的单位；已经站好的队形和正在攻击/施法的单位不动。
+   * 剧情或交互对话正常结束后，把掉队或被剧情障碍困住的非受控队员、友方召唤物收拢到当前队长身边。
+   * 绝不瞬移当前受控者（无舞台交付脚本保持操控佣兵时，以该佣兵为锚点，不拉回远处的主角或尸体）。
    */
   settleFriendlyUnitsAroundHero(): void {
-    if (this.closed || !this.movement || !this.scene.player) return;
+    if (this.closed || !this.movement) return;
+    const leaderId = this.controlledId;
+    const leaderVisual = this.controlledVisual ?? this.scene.player;
+    if (!leaderVisual) return;
     // 剧情末节点 waitEncounter 会先把遭遇置为 active；这表示战斗即将开始，
     // 不表示佣兵已经交战。因此这里只挡玩家已指派的战斗目标，真正的追击、
     // 施法单位由下面的逐单位状态检查跳过。
     if (this.focusTargetId) return;
     for (const id of this.activeParty) {
-      if (id === 'player') continue;
+      if (id === leaderId) continue;
+      if (id === 'player') {
+        if (!this.scene.player || !this.hero.player.health || this.fallen.has('player') || !this.scene.player.container.active) continue;
+        const actor = this.movement.actor(this.scene.player);
+        if ((this.heroAi && (this.heroAi.actionState() !== 'idle' || this.heroAi.selectedTargetId())) || !this.shouldSettleFriendly(this.scene.player, actor, leaderVisual, 'player')) {
+          continue;
+        }
+        const landing = this.partyLanding(actor.shape(), actor, 'player', leaderVisual);
+        if (!landing) continue;
+        this.heroAi?.cancel();
+        this.movement.place(this.scene.player, landing);
+        setCharacterClip(this.scene.phaserScene, this.scene.player, `idle-${this.scene.facing}`, true);
+        continue;
+      }
       const ally = combatActor(this.allies, id, actor => actor.id);
       if (!ally || !ally.member.player.health || this.fallen.has(id) || !ally.visual.container.active) continue;
       const actor = this.movement.actor(ally.visual);
-      if (ally.ai.actionState() !== 'idle' || ally.ai.selectedTargetId() || !this.shouldSettleFriendly(ally.visual, actor, id)) continue;
-      const landing = this.partyLanding(actor.shape(), actor, id);
+      if (ally.ai.actionState() !== 'idle' || ally.ai.selectedTargetId() || !this.shouldSettleFriendly(ally.visual, actor, leaderVisual, id)) continue;
+      const landing = this.partyLanding(actor.shape(), actor, id, leaderVisual);
       if (!landing) continue;
       ally.ai.cancel();
       this.movement.place(ally.visual, landing);
@@ -2431,8 +2633,8 @@ export class WorldCombat {
       if (summonLifetimeExpired(enemy.summonRemainingMs)) continue;
       if (enemy.controller && 'actionState' in enemy.controller && enemy.controller.actionState() !== 'idle') continue;
       const actor = this.movement.actor(enemy.visual);
-      if (!this.shouldSettleFriendly(enemy.visual, actor)) continue;
-      const landing = this.partyLanding(actor.shape(), actor);
+      if (!this.shouldSettleFriendly(enemy.visual, actor, leaderVisual)) continue;
+      const landing = this.partyLanding(actor.shape(), actor, undefined, leaderVisual);
       if (!landing) continue;
       enemy.controller?.cancel();
       this.movement.place(enemy.visual, landing);
@@ -2469,8 +2671,8 @@ export class WorldCombat {
   }
 
   /**
-   * 绑定当前操控者。`cancelActions=false` 只交接触发、相机和 HUD，不碰任何人的动作；
-   * 玩家主动切人走这条，正在进行的普攻或技能由原角色自己收尾。
+   * 绑定当前操控者。`cancelActions=false` 只交接触发、相机和 HUD，不碰正在挥击/施法的动作；
+   * 玩家主动切人走这条，正在进行的普攻或技能动画由原角色自己收尾。
    */
   private syncControlled(cancelActions = true): void {
     const id = this.controlledId;
@@ -2489,9 +2691,13 @@ export class WorldCombat {
   switchControl(id: string): boolean {
     if (id === this.controlledId) return false;
     if (!this.partyControllers.has(id)) return false;
+    const previousId = this.controlledId;
     const previous = this.controlledVisual;
     if (!this.app.session.party?.switchControl(id)) return false;
     this.movement.stop(previous);
+    // 切人保留已经在播放的攻击动画，但取消尚未出手的手动追近，交给队友 AI 的安全寻路接管。
+    const previousController = this.partyControllers.get(previousId);
+    if (previousController?.actionState() === 'approaching') previousController.cancel(false, false);
     this.syncControlled(false);
     return true;
   }
@@ -3219,14 +3425,34 @@ export class WorldCombat {
     if (id === 'player') this.heroAi?.reset();
     else combatActor(this.allies, id, actor => actor.id)?.ai.reset();
     const actor = this.movement.actor(visual);
-    // 一次复活两名队员时不能让两人落在同一个 origin 上：避开复活点、主角和其余队员。
-    const avoid = [origin, ...this.allies.filter(other => other.id !== id).map(other => this.movement.position(other.visual))];
-    if (this.scene.player) avoid.push(this.movement.position(this.player));
-    const landing =
-      choosePartyLanding(this.movement.navigation, actor.shape(), origin, actor, avoid) ??
-      this.movement.navigation.nearestBody(actor.shape(), origin, actor) ??
-      this.movement.navigation.nearest(actor.shape(), origin, actor);
-    this.relocateVisual(visual, landing);
+    const isControlled = id === this.controlledId;
+    if (isControlled && this.canPlaceBodyAt(visual, origin)) {
+      this.relocateVisual(visual, origin);
+    } else {
+      // 一次复活多名队员或复活非操控队员时避开复活点、受控队长、存活主角和其余存活队员。
+      const avoid = [
+        ...(isControlled ? [] : [origin]),
+        ...this.allies
+          .filter(other => other.id !== id && other.member.player.health > 0 && !this.fallen.has(other.id))
+          .map(other => this.movement.position(other.visual)),
+      ];
+      if (id !== 'player' && this.scene.player && this.hero.player.health > 0 && !this.fallen.has('player')) {
+        avoid.push(this.movement.position(this.player));
+      }
+      const regions = isControlled ? [] : this.forbiddenRegionsForFollower(origin);
+      const allowed = regions.length ? (point: Point) => !this.isBlockedByStoryRegion(point, regions) : undefined;
+      const stepAllowed = allowed
+        ? (point: Point) => this.movement.navigation.terrainFree(point) && allowed(point)
+        : undefined;
+      const landing =
+        choosePartyLanding(this.movement.navigation, actor.shape(), origin, actor, avoid, { allowed }) ??
+        (allowed
+          ? this.movement.navigation.nearestReachableBody(actor.shape(), origin, undefined, actor, [], stepAllowed, allowed)
+          : this.movement.navigation.nearestBody(actor.shape(), origin, actor) ??
+            this.movement.navigation.nearest(actor.shape(), origin, actor));
+      if (landing) this.relocateVisual(visual, landing);
+      else if (this.canPlaceBodyAt(visual, origin) && (!allowed || allowed(origin))) this.relocateVisual(visual, origin);
+    }
     this.movement.setEnabled(visual, true);
     visual.container.setAlpha(1).setVisible(true);
     setCharacterClip(this.scene.phaserScene, visual, 'idle-south', true);
@@ -3240,12 +3466,12 @@ export class WorldCombat {
     const dead = party.activeIds.filter(member => !party.alive(member));
     const origin = this.wipeoutPosition ?? this.movement.position(this.controlledVisual);
     const result = party.revive(id, item);
+    if (!party.alive(party.controlledId)) party.switchControl(party.livingIds[0]);
     for (const member of dead) if (party.alive(member)) this.reviveMember(member, origin);
     this.wipeoutPosition = undefined;
     this.defeated = false;
     this.wipeoutPending = false;
     this.focusTargetId = undefined;
-    if (!party.alive(party.controlledId)) party.switchControl(party.livingIds[0]);
     this.syncControlled();
     this.app.audio?.ui('heal');
     return result;

@@ -59,6 +59,35 @@ export function overlapsFootRect(point: Point, rectangle: GameRectangle): boolea
 }
 
 /**
+ * 脚点从 `from` 移动到 `to` 的闭线段上，是否存在任意时刻与 `rectangle` 发生脚底接触。
+ * 用于区域事件帧间扫掠：高移速、掉帧大步长或单帧强制位移跨过 16px 薄触发条带时仍能命中。
+ */
+export function segmentOverlapsFootRect(from: Point, to: Point, rectangle: GameRectangle): boolean {
+  if (overlapsFootRect(from, rectangle) || overlapsFootRect(to, rectangle)) return true;
+  const left = rectangle.x - PLAYER_RADIUS, right = rectangle.x + rectangle.width + PLAYER_RADIUS;
+  const top = rectangle.y - PLAYER_RADIUS, bottom = rectangle.y + rectangle.height + PLAYER_RADIUS;
+  const dx = to.x - from.x, dy = to.y - from.y;
+  let tMin = 0, tMax = 1;
+  if (dx === 0) {
+    if (from.x <= left || from.x >= right) return false;
+  } else {
+    const tx1 = (left - from.x) / dx, tx2 = (right - from.x) / dx;
+    tMin = Math.max(tMin, Math.min(tx1, tx2));
+    tMax = Math.min(tMax, Math.max(tx1, tx2));
+  }
+  if (dy === 0) {
+    if (from.y <= top || from.y >= bottom) return false;
+  } else {
+    const ty1 = (top - from.y) / dy, ty2 = (bottom - from.y) / dy;
+    tMin = Math.max(tMin, Math.min(ty1, ty2));
+    tMax = Math.min(tMax, Math.max(ty1, ty2));
+  }
+  if (tMin >= tMax) return false;
+  const mid = (tMin + tMax) * 0.5;
+  return overlapsFootRect({ x: from.x + dx * mid, y: from.y + dy * mid }, rectangle);
+}
+
+/**
  * 进图后要先走过这段距离，出口才会触发。
  * 落点常常贴着回程出口，走一步就会弹回上一张图；改成累计实际走过的距离后，
  * 在走满之前任何出口都不触发，走满之后才按脚底接触判定。
@@ -78,6 +107,10 @@ export class ExitTrigger<T extends GameRectangle = GameRectangle> {
     this.guarded = arrivalGuard;
     this.last = { x: spawn.x, y: spawn.y };
     this.armed = !arrivalGuard && !exits.some(exit => overlapsFootRect(spawn, exit));
+  }
+  /** 切换操控角色等非行走坐标交接时只对齐参考起点，不重置已走距离、也不把角色间距误计入行走距离。 */
+  syncPosition(position: Point): void {
+    this.last = { x: position.x, y: position.y };
   }
   update(position: Point, moving: boolean, available: (exit:T)=>boolean = ()=>true): T | null {
     if (!this.guarded) {

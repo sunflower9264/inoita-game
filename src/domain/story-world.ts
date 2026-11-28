@@ -103,6 +103,9 @@ export class StoryWorldState {
   /** 每次剧情世界变化递增；只读投影可以据此复用上一次的结果。 */
   private revisionValue=0;
   get revision():number{return this.revisionValue;}
+  /** 每次写入或恢复主角剧情落点（`travel` / `restoreState`）递增，同坐标重复回退也能驱动正式世界投影。 */
+  private locationRevisionValue=0;
+  get locationRevision():number{return this.locationRevisionValue;}
   private encounterRevisionValue=0;
   private encounterStatusesCache?:{revision:number;value:Map<string,{status:StoryEncounter['status'];definitionId?:string}>};
   /**
@@ -302,7 +305,8 @@ export class StoryWorldState {
           const value=JSON.parse(flag) as unknown[];
           if(value[1]!==this.mapVisit)this.flags.delete(flag);
         }
-        this.location={...command.destination};return;
+        this.location={...command.destination};
+        this.locationRevisionValue++;return;
       }
       case 'encounter':{
         this.validateEncounter(command.encounter);
@@ -361,7 +365,7 @@ export class StoryWorldState {
       ||encounter.spawns.some(spawn=>!spawn.id||!spawn.enemyId||!Number.isFinite(spawn.x)||!Number.isFinite(spawn.y)))throw new Error('剧情遭遇快照无效');
   }
   restoreState(state:StoryWorldSnapshot):void{
-    this.revisionValue++;this.encounterRevisionValue++;
+    this.revisionValue++;this.locationRevisionValue++;this.encounterRevisionValue++;
     const restored=this.prepareRestore(state);
     this.entities=new Map(restored.entities.map(e=>[e.id,e]));this.exits=new Map(restored.exits);
     this.flags=new Set(restored.flags);this.choices=new Map(restored.choices);
